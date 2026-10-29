@@ -4846,6 +4846,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get securityKeyTouch => 'Введите PIN ключа, если его спросят, и коснитесь ключа, когда он замигает.';
 
   @override
+  String get securityKeyTouchTitle => 'Коснитесь ключа безопасности';
+
+  @override
+  String get securityKeyTouchHelp =>
+      'Ключ мигает и ждёт касания: нажмите на его кнопку или коснитесь золотой площадки.';
+
+  @override
+  String get securityKeyTouchTwice => 'Для включения нужно коснуться дважды: второй раз — когда ключ снова замигает.';
+
+  @override
+  String get securityKeyTouchTimeout => 'Без касания запрос отменится примерно через 30 секунд.';
+
+  @override
   String get securityKeyEnabled => 'Разблокировка ключом безопасности включена';
 
   @override

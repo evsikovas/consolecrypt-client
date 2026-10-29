@@ -8162,6 +8162,30 @@ abstract class AppLocalizations {
   /// **'Enter the key PIN if asked and touch the key when it blinks.'**
   String get securityKeyTouch;
 
+  /// Security key touch prompt: securityKeyTouchTitle (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Touch the security key'**
+  String get securityKeyTouchTitle;
+
+  /// Security key touch prompt: securityKeyTouchHelp (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'The key is blinking and waits for a touch: press its button or touch the gold contact.'**
+  String get securityKeyTouchHelp;
+
+  /// Security key touch prompt: securityKeyTouchTwice (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Switching it on needs two touches: the second after the key blinks again.'**
+  String get securityKeyTouchTwice;
+
+  /// Security key touch prompt: securityKeyTouchTimeout (FEAT-16)
+  ///
+  /// In en, this message translates to:
+  /// **'Without a touch the request is cancelled after about 30 seconds.'**
+  String get securityKeyTouchTimeout;
+
   /// Vault settings / unlock screen: securityKeyEnabled (FEAT-16)
   ///
   /// In en, this message translates to:
