@@ -110,20 +110,29 @@ Future<T> withSecurityKeyTouch<T>(
   int touches = 1,
 }) async {
   if (info.pinPrompt != SecurityKeyPinPrompt.app || touches == 0) return action();
-  BuildContext? dialog;
+  // Remove exactly this route: a successful unlock navigates away (which
+  // may already have removed it), and a fast failure can finish before the
+  // dialog is built. Popping "the top route" would close the app's page.
+  ModalRoute<void>? route;
+  var finished = false;
+  void remove(ModalRoute<void> r) {
+    if (r.isActive) r.navigator?.removeRoute(r);
+  }
+
   showAppDialog<void>(
     context,
     barrierDismissible: false,
     builder: (context) {
-      dialog = context;
+      final r = route ??= ModalRoute.of(context);
+      if (finished && r != null) WidgetsBinding.instance.addPostFrameCallback((_) => remove(r));
       return _TouchDialog(touches: touches);
     },
   ).ignore();
   try {
     return await action();
   } finally {
-    final open = dialog;
-    if (open != null && open.mounted) closeDialog<void>(open);
+    finished = true;
+    if (route case final r?) remove(r);
   }
 }
 

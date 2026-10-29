@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -25,6 +26,9 @@ class _Vault implements VaultService {
 
   /// Holds the request like a key waiting for its touch.
   Completer<void>? touch;
+
+  /// The key opens the vault (the mock unlocks with its passphrase).
+  bool opens = false;
 
   VaultStatus _with(VaultStatus s) => VaultStatus(
     phase: s.phase,
@@ -62,6 +66,13 @@ class _Vault implements VaultService {
   Future<void> unlockWithSecurityKey({SecretText? pin}) async {
     pins.add(pin?.expose());
     await touch?.future;
+    if (opens) {
+      await delegate.unlockWithPassphrase(SecretText(MockCloud.demoPassphrase));
+      // The native service then reloads the whole inventory: the app has
+      // already left the lock screen when the call returns.
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      return;
+    }
     throw const AppException(
       AppErrorCode.validation,
       'wrong key',
@@ -96,6 +107,46 @@ void main() {
     vault.touch!.complete();
     await settle(tester);
     expect(find.byKey(const ValueKey('security-key-touch-dialog')), findsNothing);
+    expect(find.text('This is not the security key set up for this vault.'), findsOneWidget);
+  });
+
+  testWidgets('a successful key unlock opens the app, not an empty window', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final vault = _Vault(backend.services.vault)
+      ..enabled = true
+      ..opens = true;
+    await pumpApp(tester, backend, overrides: [vaultServiceProvider.overrideWithValue(vault)]);
+    await backend.services.vault.lock();
+    await settle(tester);
+
+    await tapKey(tester, 'unlock-security-key');
+    await enterKey(tester, 'security-key-pin', '123456');
+    vault.touch = Completer<void>();
+    await tapKey(tester, 'security-key-pin-ok');
+    expect(find.byKey(const ValueKey('security-key-touch-dialog')), findsOneWidget);
+    vault.touch!.complete();
+    await settle(tester);
+    expect(find.byKey(const ValueKey('security-key-touch-dialog')), findsNothing);
+    expect(find.byKey(const ValueKey('unlock-security-key')), findsNothing);
+    expect(find.byKey(const ValueKey('host-prod-db-1')), findsOneWidget);
+  });
+
+  testWidgets('an instant failure leaves no touch prompt behind', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final vault = _Vault(backend.services.vault)..enabled = true;
+    await pumpApp(tester, backend, overrides: [vaultServiceProvider.overrideWithValue(vault)]);
+    await backend.services.vault.lock();
+    await settle(tester);
+
+    await tapKey(tester, 'unlock-security-key');
+    await enterKey(tester, 'security-key-pin', '123456');
+    await tapKey(tester, 'security-key-pin-ok');
+    expect(find.byKey(const ValueKey('security-key-touch-dialog')), findsNothing);
+    expect(find.byKey(const ValueKey('unlock-security-key')), findsOneWidget);
     expect(find.text('This is not the security key set up for this vault.'), findsOneWidget);
   });
 
