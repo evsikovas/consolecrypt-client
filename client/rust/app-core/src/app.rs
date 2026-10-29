@@ -1013,8 +1013,9 @@ impl AppCore {
         }
     }
 
-    /// Lock the vault: stop sync, close SSH sessions/tunnels, zeroize keys,
-    /// drop the decrypted working set.
+    /// Lock the vault: stop sync and tunnels, zeroize keys, drop the
+    /// decrypted working set. Open terminals keep running (no new SSH shell
+    /// until the next unlock); closing the profile closes them.
     pub async fn lock(&self) -> AppResult<()> {
         let s = self.session().await?;
         s.lock().await;

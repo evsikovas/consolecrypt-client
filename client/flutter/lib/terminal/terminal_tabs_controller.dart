@@ -152,8 +152,11 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     ref.listen(activeProfileProvider.select((p) => p?.id), (prev, next) {
       if (prev != next) closeAll();
     });
+    // A lock (often the idle auto-lock) keeps the open tabs: the core keeps
+    // their shells running. Only connections still opening are dropped, as
+    // the locked vault refuses them.
     ref.listen(vaultStatusProvider.select((s) => s.value?.isUnlocked), (_, unlocked) {
-      if (unlocked == false) closeAll();
+      if (unlocked == false) _generation++;
     });
     return const TerminalTabsState();
   }
