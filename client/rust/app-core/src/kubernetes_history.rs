@@ -108,8 +108,10 @@ impl Drop for EventRecorder {
     }
 }
 impl EventRecorder {
+    /// Records into the profile's current database, which a lock closes and
+    /// the next unlock reopens; events seen while locked are not kept.
     pub(crate) fn start(
-        storage: Storage,
+        owner: std::sync::Weak<crate::session::Session>,
         context_id: String,
         api: ResourceApi,
         parent: CancellationToken,
@@ -122,7 +124,7 @@ impl EventRecorder {
             let result = tokio::select! {
                 biased;
                 _ = task_cancel.cancelled() => return,
-                result = record(storage, context_id, api, task_cancel.clone(), task_state.clone()) => result,
+                result = record(owner, context_id, api, task_cancel.clone(), task_state.clone()) => result,
             };
             *task_state.lock().unwrap_or_else(|e| e.into_inner()) = if result.is_ok() {
                 "closed"
@@ -143,7 +145,7 @@ impl EventRecorder {
 }
 
 async fn record(
-    storage: Storage,
+    owner: std::sync::Weak<crate::session::Session>,
     context_id: String,
     api: ResourceApi,
     cancel: CancellationToken,
@@ -198,6 +200,9 @@ async fn record(
         if records.is_empty() {
             continue;
         }
+        let Some(storage) = owner.upgrade().and_then(|owner| owner.storage_opt()) else {
+            continue;
+        };
         storage
             .write(move |tx| {
                 let old: Vec<KubeHistoricalEvent> = tx.setting_get(KEY)?.unwrap_or_default();

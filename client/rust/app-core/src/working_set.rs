@@ -134,6 +134,11 @@ impl Inner {
     }
 }
 
+/// Revision fences of connections that outlive a lock (Kubernetes
+/// sessions); the next unlock checks them against the reloaded vault.
+#[derive(Debug, Default)]
+pub(crate) struct ParkedGuards(Vec<RevisionGuard>);
+
 /// The working set. Cheap reads; writers hold the lock briefly.
 #[derive(Debug, Default)]
 pub(crate) struct WorkingSet {
@@ -417,6 +422,31 @@ impl WorkingSet {
         affected
     }
 
+    /// Take the live fences out before a lock clears the set, so clearing
+    /// does not revoke connections that survive the lock.
+    pub(crate) fn park_guards(&self) -> ParkedGuards {
+        let mut g = self.write();
+        ParkedGuards(
+            std::mem::take(&mut g.guards)
+                .into_iter()
+                .filter(|guard| !guard.cancel.is_cancelled())
+                .collect(),
+        )
+    }
+
+    /// Re-install parked fences after an unlock: whatever changed or vanished
+    /// while locked revokes its connection now.
+    pub(crate) fn adopt_guards(&self, parked: ParkedGuards) {
+        let mut g = self.write();
+        g.guards.extend(
+            parked
+                .0
+                .into_iter()
+                .filter(|guard| !guard.cancel.is_cancelled()),
+        );
+        g.revoke_stale();
+    }
+
     pub(crate) fn clear(&self) {
         let mut g = self.write();
         g.entries.clear();
@@ -553,6 +583,32 @@ mod tests {
             .is_none());
         assert!(ws.host(h.id).is_none());
         assert_eq!(ws.hosts().len(), 0);
+    }
+
+    #[test]
+    fn parked_fences_survive_the_lock_and_recheck_after_unlock() {
+        for changed in [false, true] {
+            let host = Host::new("route", "192.0.2.1");
+            let locked = WorkingSet::new();
+            locked.apply(host.id, Readback::Live(Box::new(dec(&host, 3))));
+            let cancel = CancellationToken::new();
+            assert!(locked.watch_revisions(BTreeMap::from([(host.id, 3)]), cancel.clone()));
+            let parked = locked.park_guards();
+            locked.clear();
+            assert!(!cancel.is_cancelled(), "a lock keeps the connection");
+            let unlocked = WorkingSet::new();
+            unlocked.replace_all(vec![dec(&host, if changed { 4 } else { 3 })]);
+            unlocked.adopt_guards(parked);
+            assert_eq!(
+                cancel.is_cancelled(),
+                changed,
+                "changed while locked: {changed}"
+            );
+            if !changed {
+                unlocked.apply(host.id, Readback::Live(Box::new(dec(&host, 5))));
+                assert!(cancel.is_cancelled(), "the adopted fence still revokes");
+            }
+        }
     }
 
     #[test]

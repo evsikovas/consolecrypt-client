@@ -10,7 +10,7 @@ use crate::prompts::PromptBroker;
 use crate::secrets::{self, SecureTokenStore};
 use crate::ssh::SshRuntime;
 use crate::teams::{TeamOpenContext, TeamRegistry};
-use crate::working_set::{Readback, WorkingSet};
+use crate::working_set::{ParkedGuards, Readback, WorkingSet};
 use crate::writer::{EngineSlot, VaultWriter};
 use crate::{AppConfig, KdfPolicy};
 use cc_models::{KekClass, ObjectKind};
@@ -199,12 +199,15 @@ pub(crate) struct Session {
     pub pending_kit: Mutex<Option<PendingKit>>,
     /// Serializes sharing actions; contains no plaintext or device keys.
     pub sharing_gate: tokio::sync::Mutex<()>,
-    /// Terminals, tunnels and RDP sessions of this profile. They survive a
+    /// Terminals, tunnels, RDP and Kubernetes sessions of this profile. They survive a
     /// lock (an idle auto-lock must not drop live connections) and close
     /// with the profile.
     terminals: Arc<cc_terminal_core::TerminalManager>,
     tunnels: Arc<cc_tunnel_core::TunnelManager>,
     rdp: Arc<cc_rdp_core::RdpManager>,
+    kube: Arc<crate::kubernetes_runtime::KubeSessions>,
+    /// Revision fences of those sessions while the vault is locked.
+    parked_guards: Mutex<ParkedGuards>,
 }
 
 impl std::fmt::Debug for Session {
@@ -439,6 +442,8 @@ impl Session {
             terminals: locked_terminals(),
             tunnels: Arc::new(cc_tunnel_core::TunnelManager::new()),
             rdp: Arc::new(cc_rdp_core::RdpManager::new()),
+            kube: Default::default(),
+            parked_guards: Default::default(),
         }))
     }
 
@@ -491,6 +496,8 @@ impl Session {
             terminals: locked_terminals(),
             tunnels: Arc::new(cc_tunnel_core::TunnelManager::new()),
             rdp: Arc::new(cc_rdp_core::RdpManager::new()),
+            kube: Default::default(),
+            parked_guards: Default::default(),
         }))
     }
 
@@ -995,6 +1002,9 @@ impl Session {
         // Subscribe before loading so no change is missed.
         let rx = store.subscribe();
         writer.reload_all().await?;
+        writer
+            .working
+            .adopt_guards(std::mem::take(&mut *lock_mutex(&self.parked_guards)));
         let ssh = Arc::new(SshRuntime::new(
             writer.clone(),
             self.ctx.prompts.clone(),
@@ -1032,7 +1042,7 @@ impl Session {
             sharing_shutdown: tokio::sync::watch::channel(false).0,
             enrollment: crate::sharing_api::enrollment::EnrollmentRuntime::default(),
             kube_imports: Arc::new(crate::kubernetes_import::ImportRuntime::default()),
-            kube: crate::kubernetes_runtime::KubeRuntime::default(),
+            kube: crate::kubernetes_runtime::KubeRuntime::new(self.kube.clone()),
             db: crate::database_runtime::DbRuntime::default(),
             db_imports: Default::default(),
             db_ai: Default::default(),
@@ -1256,7 +1266,9 @@ impl Session {
     pub(crate) async fn lock(&self) {
         let taken = self.unlocked.write().await.take();
         if let Some(u) = taken {
+            let parked = u.writer.working.park_guards();
             u.shutdown().await;
+            *lock_mutex(&self.parked_guards) = parked;
             self.ctx.emit(AppEvent::VaultLocked {
                 profile_id: self.profile_id.to_string(),
             });
@@ -1270,6 +1282,7 @@ impl Session {
     pub(crate) async fn close(&self) {
         self.lock().await;
         self.rdp.shutdown();
+        self.kube.close();
         self.tunnels.stop_all().await;
         self.terminals.shutdown().await;
         if let Some(st) = self.storage_opt() {

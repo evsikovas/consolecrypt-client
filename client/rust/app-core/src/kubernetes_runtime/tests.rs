@@ -381,7 +381,27 @@ async fn pod_shell_uses_normal_terminal_input_output_and_lock_lifecycle() {
     app.terminal_resize(terminal.id.clone(), 90, 25)
         .await
         .unwrap();
+    // An idle lock keeps the cluster session and its shell (BUG-02).
+    let session_id = terminal.id.clone();
     app.lock().await.unwrap();
+    assert!(app
+        .terminal_write(session_id.clone(), b"must not send".to_vec())
+        .await
+        .is_err());
+    app.unlock_with_passphrase("synthetic-runtime-test-passphrase".into())
+        .await
+        .unwrap();
+    app.terminal_write(session_id.clone(), b"echo again\n".to_vec())
+        .await
+        .unwrap();
+    let chunk = tokio::time::timeout(Duration::from_secs(3), attachment.output.recv())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(matches!(chunk, crate::dto::TerminalChunk::Data(bytes) if bytes == b"echo again\n"));
+    // Closing the profile ends it.
+    let profile = app.active_profile().await.unwrap().unwrap();
+    app.close_profile().await.unwrap();
     let mut closed = false;
     while let Some(chunk) = tokio::time::timeout(Duration::from_secs(3), attachment.output.recv())
         .await
@@ -393,8 +413,12 @@ async fn pod_shell_uses_normal_terminal_input_output_and_lock_lifecycle() {
         }
     }
     assert!(closed);
+    app.open_profile(profile.id).await.unwrap();
+    app.unlock_with_passphrase("synthetic-runtime-test-passphrase".into())
+        .await
+        .unwrap();
     assert!(app
-        .terminal_write(terminal.id, b"must not send".to_vec())
+        .terminal_write(session_id, b"must not send".to_vec())
         .await
         .is_err());
     app.shutdown().await.unwrap();
@@ -527,7 +551,7 @@ async fn local_cli_proxy_pins_tls_replaces_identity_and_enforces_production_poli
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn cli_capability_files_are_private_and_removed_on_lock_and_drop() {
+async fn cli_capability_files_are_private_and_removed_on_drop_and_profile_close() {
     let fixture = Fixture::start(false).await;
     let (_dir, app, context) = fixture.app().await;
     let session = app.kube_connect(context.id.to_string()).await.unwrap();
@@ -556,7 +580,12 @@ async fn cli_capability_files_are_private_and_removed_on_lock_and_drop() {
     assert!(!path.exists());
     let lease = app.kube_cli_proxy(session.id).await.unwrap();
     let path = lease.path();
+    // A lock keeps the session and the context terminals that use the
+    // lease (BUG-02); closing the profile removes it.
     app.lock().await.unwrap();
+    assert!(path.is_file());
+    assert!(!lease.cancellation().is_cancelled());
+    app.close_profile().await.unwrap();
     tokio::time::timeout(Duration::from_secs(2), async {
         while path.exists() {
             tokio::task::yield_now().await;

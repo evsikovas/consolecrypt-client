@@ -228,8 +228,8 @@ async fn https_workload_selection_is_bounded_and_export_is_private_masked_and_re
     app.lock().await.unwrap();
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     assert!(
-        !proxy_path.exists(),
-        "context terminal lease is removed on lock"
+        proxy_path.exists(),
+        "a lock keeps the context terminal and its lease"
     );
     let blocked = temp.path().join("after-lock.log");
     assert!(app

@@ -110,6 +110,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   late final KubeAiHostController _aiHost;
   late final SidebarCollapsed _sidebar;
   late final KubeForwardRestore _restoreController;
+  late final KubeParkedSessions _parked;
   bool _forwardRestoreFailed = false;
   bool _connectionFailed = false, _requestFailed = false, _namespacesFailed = false;
   bool _authenticationRequired = false, _panelOpen = false, _aiPanel = false;
@@ -162,6 +163,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     // The cluster workspace needs the width: the app menu folds to icons.
     if (!AppPlatform.isMobile) scheduleMicrotask(_sidebar.autoCollapse);
     _restoreController = ref.read(kubeForwardRestoreProvider.notifier);
+    _parked = ref.read(kubeParkedSessionsProvider.notifier);
     _gitOpsAlerts = ref.read(kubeGitOpsAlertsProvider.notifier);
     _favoriteNamespaces = widget.connection.favouriteNamespaces.toSet();
     _favoriteKinds = widget.connection.favouriteKinds.toSet();
@@ -187,6 +189,15 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     _watch = null;
     if (watch != null) unawaited(watch.cancel());
     _live = false;
+  }
+
+  /// A lock (often the idle auto-lock) keeps the session with its terminals
+  /// and forwards for the browser after unlock instead of disconnecting it.
+  void _parkIfLocked(KubeScope now) {
+    final session = _session;
+    if (session == null || now.unlocked || now.profileId != _scope.profileId) return;
+    _session = null;
+    scheduleMicrotask(() => _parked.park(session));
   }
 
   void _revoke() {
@@ -227,6 +238,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _metricsTimer?.cancel();
+    _parkIfLocked(_providerContainer.read(kubeScopeProvider));
     _revoke();
     _selector.dispose();
     _searchFocus.dispose();
@@ -285,7 +297,22 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     });
     KubeSession? connected;
     try {
-      connected = await widget.service.connect(widget.connection.id);
+      // A session kept across a lock, unless the core revoked it meanwhile
+      // (for example the connection settings changed).
+      var adopted = _parked.take(widget.connection.id);
+      if (adopted != null) {
+        try {
+          await widget.service.discover(adopted.id);
+        } catch (_) {
+          _disconnect(adopted);
+          adopted = null;
+        }
+        if (!_current || requestGeneration != _connectionGeneration) {
+          if (adopted != null) _parked.park(adopted);
+          return;
+        }
+      }
+      connected = adopted ?? await widget.service.connect(widget.connection.id);
       if (!_current || requestGeneration != _connectionGeneration) {
         _disconnect(connected);
         return;
@@ -1172,6 +1199,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   Widget build(BuildContext context) {
     ref.listen(kubeScopeProvider, (_, next) {
       if (identical(_scope, next)) return;
+      _parkIfLocked(next);
       _revoke();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) widget.onClose();

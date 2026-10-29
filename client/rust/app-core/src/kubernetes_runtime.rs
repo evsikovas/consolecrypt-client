@@ -118,16 +118,24 @@ async fn poll_stream<T>(stream: &StreamHandle<T>, max_items: usize) -> AppResult
     Ok((events, false))
 }
 
-struct DurableAudit(cc_storage_core::Storage);
+/// Writes to the profile's current database: a lock closes a sealed
+/// database and the next unlock opens a new one, while the session lives on.
+/// Locked, there is no database and the write path stays closed.
+struct DurableAudit(std::sync::Weak<crate::session::Session>);
 impl Audit for DurableAudit {
     fn record(&self, entry: AuditEntry) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let storage = self
+            .0
+            .upgrade()
+            .and_then(|owner| owner.storage_opt())
+            .ok_or("the profile is locked")?;
         let record = KubeAuditRecord {
             timestamp_ms: chrono::Utc::now().timestamp_millis(),
             context_id: entry.context_id.to_string(),
             method: entry.method.to_string(),
             path: entry.path,
         };
-        self.0.write_blocking(move |tx| {
+        storage.write_blocking(move |tx| {
             let mut records: Vec<KubeAuditRecord> = tx.setting_get(AUDIT_KEY)?.unwrap_or_default();
             let oldest = record.timestamp_ms - 7 * 24 * 60 * 60 * 1000;
             records.retain(|item| item.timestamp_ms >= oldest);
@@ -166,19 +174,18 @@ impl Drop for LiveSession {
     }
 }
 
-pub(crate) struct KubeRuntime {
-    pub(crate) auth: Arc<crate::kubernetes_auth::RuntimeAuth>,
-    pub(crate) cli: Arc<crate::kubernetes_cli::FluxCliRuntime>,
+/// The profile's live Kubernetes sessions. They outlive a lock (an idle
+/// auto-lock must not drop clusters, their terminals and forwards) and
+/// close with the profile.
+pub(crate) struct KubeSessions {
     shutdown: CancellationToken,
     slots: Arc<Semaphore>,
     sessions: Mutex<HashMap<String, Arc<LiveSession>>>,
 }
 
-impl Default for KubeRuntime {
+impl Default for KubeSessions {
     fn default() -> Self {
         Self {
-            auth: Arc::new(crate::kubernetes_auth::RuntimeAuth::default()),
-            cli: Arc::new(crate::kubernetes_cli::FluxCliRuntime::default()),
             shutdown: CancellationToken::new(),
             slots: Arc::new(Semaphore::new(MAX_SESSIONS)),
             sessions: Mutex::new(HashMap::new()),
@@ -186,9 +193,46 @@ impl Default for KubeRuntime {
     }
 }
 
-impl KubeRuntime {
-    pub(crate) fn connections(&self) -> Vec<Arc<LiveSession>> {
+impl KubeSessions {
+    pub(crate) fn close(&self) {
+        self.shutdown.cancel();
+        self.slots.close();
         self.sessions
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+    }
+}
+
+impl Drop for KubeSessions {
+    fn drop(&mut self) {
+        self.close();
+    }
+}
+
+/// Kubernetes state of one unlock: sign-in and CLI operations end with the
+/// lock, the sessions in `live` do not.
+pub(crate) struct KubeRuntime {
+    pub(crate) auth: Arc<crate::kubernetes_auth::RuntimeAuth>,
+    pub(crate) cli: Arc<crate::kubernetes_cli::FluxCliRuntime>,
+    /// Cancelled by the lock: connects still in flight end with it.
+    unlock: CancellationToken,
+    live: Arc<KubeSessions>,
+}
+
+impl KubeRuntime {
+    pub(crate) fn new(live: Arc<KubeSessions>) -> Self {
+        Self {
+            auth: Arc::new(crate::kubernetes_auth::RuntimeAuth::default()),
+            cli: Arc::new(crate::kubernetes_cli::FluxCliRuntime::default()),
+            unlock: CancellationToken::new(),
+            live,
+        }
+    }
+
+    pub(crate) fn connections(&self) -> Vec<Arc<LiveSession>> {
+        self.live
+            .sessions
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .values()
@@ -196,19 +240,15 @@ impl KubeRuntime {
             .cloned()
             .collect()
     }
+
     pub(crate) fn close(&self) {
-        self.shutdown.cancel();
+        self.unlock.cancel();
         self.auth.close();
         self.cli.close();
-        self.slots.close();
-        self.sessions
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .clear();
     }
 
     pub(crate) fn get(&self, id: &str) -> AppResult<Arc<LiveSession>> {
-        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        let mut sessions = self.live.sessions.lock().unwrap_or_else(|e| e.into_inner());
         sessions.retain(|_, live| !live.cancel.is_cancelled());
         let session = sessions
             .get(id)
@@ -318,17 +358,19 @@ impl AppCore {
         let (owner, unlocked) = self.unlocked().await?;
         unlocked
             .kube
+            .live
             .sessions
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .retain(|_, live| !live.cancel.is_cancelled());
         let permit = unlocked
             .kube
+            .live
             .slots
             .clone()
             .try_acquire_owned()
             .map_err(|_| AppError::invalid("kubernetes", "too_many_connections"))?;
-        let cancel = unlocked.kube.shutdown.child_token();
+        let cancel = unlocked.kube.live.shutdown.child_token();
         let mut pending = PendingScope(Some(cancel.clone()));
         let id = parse_id("context_id", &context_id)?;
         let snapshot = unlocked.working().snapshot();
@@ -407,7 +449,7 @@ impl AppCore {
                     allow_exec_in_production: context.allow_exec_in_prod,
                     allow_port_forward_in_production: context.allow_port_forward_in_prod,
                 },
-                Arc::new(DurableAudit(owner.storage()?)),
+                Arc::new(DurableAudit(Arc::downgrade(&owner))),
                 cancel.clone(),
             )
             .map_err(|_| AppError::invalid("kubernetes", "invalid_connection"))?;
@@ -421,6 +463,7 @@ impl AppCore {
         let (session, resources, server_version) = tokio::select! {
             biased;
             _ = cancel.cancelled() => return Err(AppError::VaultLocked),
+            _ = unlocked.kube.unlock.cancelled() => return Err(AppError::VaultLocked),
             result = connection => result?,
         };
         let _profile = self.hold_session(&owner).await?;
@@ -428,10 +471,9 @@ impl AppCore {
         if cancel.is_cancelled() {
             return Err(AppError::VaultLocked);
         }
-        let history_storage = owner.storage()?;
         let history = context.event_history_enabled.then(|| {
             crate::kubernetes_history::EventRecorder::start(
-                history_storage,
+                Arc::downgrade(&owner),
                 context_id.clone(),
                 resources.clone(),
                 cancel.clone(),
@@ -449,6 +491,7 @@ impl AppCore {
         };
         unlocked
             .kube
+            .live
             .sessions
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -479,6 +522,7 @@ impl AppCore {
         let (_, u) = self.unlocked().await?;
         if let Some(session) = u
             .kube
+            .live
             .sessions
             .lock()
             .unwrap_or_else(|e| e.into_inner())
