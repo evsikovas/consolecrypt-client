@@ -24,7 +24,11 @@ fn open() -> Result<FidoKeyHid, SecurityKeyError> {
         1 => {}
         _ => return Err(SecurityKeyError::SeveralDevices),
     }
-    FidoKeyHidFactory::create(&LibCfg::init()).map_err(|e| error(&e))
+    // The library would print its own "touch the sensor" line to stdout;
+    // the app shows the touch prompt itself.
+    let mut cfg = LibCfg::init();
+    cfg.enable_keep_alive_msg = false;
+    FidoKeyHidFactory::create(&cfg).map_err(|e| error(&e))
 }
 
 /// CTAP status names appear in the library's error text.

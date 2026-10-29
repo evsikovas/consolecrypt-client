@@ -4647,6 +4647,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get securityKeyTouch => 'Enter the key PIN if asked and touch the key when it blinks.';
 
   @override
+  String get securityKeyTouchTitle => 'Touch the security key';
+
+  @override
+  String get securityKeyTouchHelp =>
+      'The key is blinking and waits for a touch: press its button or touch the gold contact.';
+
+  @override
+  String get securityKeyTouchTwice => 'Switching it on needs two touches: the second after the key blinks again.';
+
+  @override
+  String get securityKeyTouchTimeout => 'Without a touch the request is cancelled after about 30 seconds.';
+
+  @override
   String get securityKeyEnabled => 'Security key unlock is on';
 
   @override

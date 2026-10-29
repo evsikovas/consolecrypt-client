@@ -37,7 +37,14 @@ class _SecurityKeySettingsState extends ConsumerState<SecurityKeySettings> {
       _error = null;
     });
     try {
-      await ref.read(vaultServiceProvider).setSecurityKeyEnabled(enabled, pin: pin);
+      final service = ref.read(vaultServiceProvider);
+      final p = pin;
+      await withSecurityKeyTouch(
+        context,
+        info,
+        () => service.setSecurityKeyEnabled(enabled, pin: p),
+        touches: enabled ? 2 : 0,
+      );
       if (mounted && enabled) showSnack(context, context.l10n.securityKeyEnabled, tone: GlassTone.success);
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e);
@@ -88,6 +95,89 @@ class _SecurityKeySettingsState extends ConsumerState<SecurityKeySettings> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Runs [action] while the key waits for a touch, with a prompt saying so.
+/// After the PIN every request needs the user's touch, but the key only
+/// blinks: without the prompt the app looks frozen. Windows shows its own
+/// dialog, so the prompt is only for [SecurityKeyPinPrompt.app].
+Future<T> withSecurityKeyTouch<T>(
+  BuildContext context,
+  SecurityKeyInfo info,
+  Future<T> Function() action, {
+  int touches = 1,
+}) async {
+  if (info.pinPrompt != SecurityKeyPinPrompt.app || touches == 0) return action();
+  BuildContext? dialog;
+  showAppDialog<void>(
+    context,
+    barrierDismissible: false,
+    builder: (context) {
+      dialog = context;
+      return _TouchDialog(touches: touches);
+    },
+  ).ignore();
+  try {
+    return await action();
+  } finally {
+    final open = dialog;
+    if (open != null && open.mounted) closeDialog<void>(open);
+  }
+}
+
+class _TouchDialog extends StatefulWidget {
+  const _TouchDialog({required this.touches});
+  final int touches;
+
+  @override
+  State<_TouchDialog> createState() => _TouchDialogState();
+}
+
+class _TouchDialogState extends State<_TouchDialog> with SingleTickerProviderStateMixin {
+  late final _blink = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _blink.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    return GlassDialog(
+      key: const ValueKey('security-key-touch-dialog'),
+      title: l.securityKeyTouchTitle,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FadeTransition(
+            opacity: Tween<double>(begin: 0.25, end: 1).animate(_blink),
+            child: Icon(Icons.touch_app_rounded, size: 56, color: tokens.palette.accent),
+          ),
+          const SizedBox(height: GlassSpacing.s12),
+          Text(l.securityKeyTouchHelp, textAlign: TextAlign.center),
+          if (widget.touches > 1) ...[
+            const SizedBox(height: GlassSpacing.s8),
+            Text(
+              l.securityKeyTouchTwice,
+              key: const ValueKey('security-key-touch-twice'),
+              textAlign: TextAlign.center,
+              style: tokens.typography.callout,
+            ),
+          ],
+          const SizedBox(height: GlassSpacing.s8),
+          Text(
+            l.securityKeyTouchTimeout,
+            textAlign: TextAlign.center,
+            style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+          ),
+        ],
+      ),
     );
   }
 }

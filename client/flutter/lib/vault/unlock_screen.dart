@@ -76,7 +76,8 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> with WidgetsBinding
     }
     await _guard(() async {
       try {
-        await ref.read(vaultServiceProvider).unlockWithSecurityKey(pin: pin);
+        final service = ref.read(vaultServiceProvider);
+        await withSecurityKeyTouch(context, info, () => service.unlockWithSecurityKey(pin: pin));
       } finally {
         pin?.wipe();
       }

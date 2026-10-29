@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -20,6 +22,9 @@ class _Vault implements VaultService {
   bool enabled = false;
   final pins = <String?>[];
   final toggles = <bool>[];
+
+  /// Holds the request like a key waiting for its touch.
+  Completer<void>? touch;
 
   VaultStatus _with(VaultStatus s) => VaultStatus(
     phase: s.phase,
@@ -48,6 +53,7 @@ class _Vault implements VaultService {
   @override
   Future<void> setSecurityKeyEnabled(bool enabled, {SecretText? pin}) async {
     pins.add(pin?.expose());
+    await touch?.future;
     toggles.add(enabled);
     this.enabled = enabled;
   }
@@ -55,6 +61,7 @@ class _Vault implements VaultService {
   @override
   Future<void> unlockWithSecurityKey({SecretText? pin}) async {
     pins.add(pin?.expose());
+    await touch?.future;
     throw const AppException(
       AppErrorCode.validation,
       'wrong key',
@@ -80,8 +87,15 @@ void main() {
     await tapKey(tester, 'unlock-security-key');
     expect(find.byKey(const ValueKey('security-key-pin')), findsOneWidget);
     await enterKey(tester, 'security-key-pin', '123456');
+    vault.touch = Completer<void>();
     await tapKey(tester, 'security-key-pin-ok');
     expect(vault.pins, ['123456']);
+    // After the PIN the key only blinks: the app says to touch it.
+    expect(find.byKey(const ValueKey('security-key-touch-dialog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('security-key-touch-twice')), findsNothing);
+    vault.touch!.complete();
+    await settle(tester);
+    expect(find.byKey(const ValueKey('security-key-touch-dialog')), findsNothing);
     expect(find.text('This is not the security key set up for this vault.'), findsOneWidget);
   });
 
@@ -121,7 +135,12 @@ void main() {
 
     await tapKey(tester, 'security-key-switch');
     await enterKey(tester, 'security-key-pin', '654321');
+    vault.touch = Completer<void>();
     await tapKey(tester, 'security-key-pin-ok');
+    expect(find.byKey(const ValueKey('security-key-touch-twice')), findsOneWidget);
+    vault.touch!.complete();
+    await settle(tester);
+    expect(find.byKey(const ValueKey('security-key-touch-dialog')), findsNothing);
     expect(vault.toggles, [true]);
     expect(vault.pins, ['654321']);
     expect(find.text('Security key unlock is on'), findsOneWidget);
