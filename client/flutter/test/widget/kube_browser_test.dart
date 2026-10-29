@@ -53,6 +53,9 @@ class _Scope extends Notifier<KubeScope> {
   @override
   KubeScope build() => const KubeScope('profile', true);
   void lock() => state = const KubeScope('profile', false);
+  // A fresh identity, as after a real unlock.
+  // ignore: prefer_const_constructors
+  void unlock() => state = KubeScope('profile', true);
   void changeProfile() => state = const KubeScope('another-profile', true);
 }
 
@@ -169,7 +172,36 @@ void main() {
     await settle(tester);
     expect(service.namespaceCalls, 0);
     expect(service.requests, isEmpty);
-    expect(service.disconnected, contains(_session.id));
+    expect(service.disconnected, isEmpty, reason: 'parked for the next unlock');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an idle lock keeps the cluster session and unlock adopts it', (tester) async {
+    final service = _Service();
+    final container = await _pump(tester, service);
+    expect(service.connected, ['context']);
+    container.read(_scope.notifier).lock();
+    await settle(tester);
+    expect(find.byType(KubeBrowser), findsNothing);
+    expect(service.disconnected, isEmpty, reason: 'its terminals and forwards keep running');
+    container.read(_scope.notifier).unlock();
+    await settle(tester);
+    expect(find.byType(KubeBrowser), findsOneWidget);
+    expect(service.connected, ['context'], reason: 'the parked session is adopted, not reconnected');
+    expect(service.disconnected, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a session revoked while locked is replaced by a fresh connection', (tester) async {
+    final service = _Service();
+    final container = await _pump(tester, service);
+    container.read(_scope.notifier).lock();
+    await settle(tester);
+    service.discoverError = StateError('session_closed');
+    container.read(_scope.notifier).unlock();
+    await settle(tester);
+    expect(service.disconnected, [_session.id]);
+    expect(service.connected, ['context', 'context']);
     expect(tester.takeException(), isNull);
   });
 
@@ -1373,7 +1405,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('lock closes detail dialog, native session and live subscription', (tester) async {
+  testWidgets('lock closes detail dialog and live subscription but keeps the native session', (tester) async {
     final service = _Service();
     final container = await _pump(tester, service);
     expect(service.watches.single.hasListener, isTrue);
@@ -1384,7 +1416,8 @@ void main() {
     expect(find.byKey(const ValueKey('kube-resource-details')), findsNothing);
     expect(find.text('demo-pod'), findsNothing);
     expect(service.watches.single.hasListener, isFalse);
-    expect(service.disconnected, ['opaque-native-session']);
+    // The native session itself is kept for the next unlock (BUG-02).
+    expect(service.disconnected, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -1628,7 +1661,7 @@ class _Service implements KubeService, KubeBrowserService, KubeWatchService {
   Completer<KubeSession>? connectPending;
   Completer<KubeResourcePage>? listPending;
   Completer<KubeResourcePage>? continuationPending;
-  StateError? connectError, listError;
+  StateError? connectError, listError, discoverError;
   int discoverCalls = 0;
   KubeSession session = _session;
 
@@ -1650,6 +1683,10 @@ class _Service implements KubeService, KubeBrowserService, KubeWatchService {
   @override
   Future<List<KubeResourceKind>> discover(String sessionId) async {
     discoverCalls++;
+    if (discoverError case final error?) {
+      discoverError = null;
+      throw error;
+    }
     return [_pods, _nodes];
   }
 

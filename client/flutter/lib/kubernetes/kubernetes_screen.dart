@@ -101,6 +101,25 @@ class _KubernetesScreenState extends ConsumerState<KubernetesScreen> {
         });
       }
     }
+    // After an unlock, reopen the cluster whose session survived the lock.
+    final parked = ref.watch(kubeParkedSessionsProvider);
+    final open = _selected != null && identical(_selectedScope, scope);
+    if (!open && scope.unlocked && request == null && parked.isNotEmpty) {
+      final connection = state.value?.where((entry) => parked.containsKey(entry.id)).firstOrNull;
+      if (connection != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted ||
+              (_selected != null && identical(_selectedScope, scope)) ||
+              !identical(scope, ref.read(kubeScopeProvider))) {
+            return;
+          }
+          setState(() {
+            _selected = connection;
+            _selectedScope = scope;
+          });
+        });
+      }
+    }
     if (_selected != null && identical(_selectedScope, scope) && scope.unlocked && service is KubeBrowserService) {
       return KubeBrowser(
         key: ValueKey((_selectedScope, _selected!.id)),
