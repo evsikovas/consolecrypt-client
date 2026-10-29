@@ -81,7 +81,8 @@ void main() {
       expect(find.byType(RdpFullscreen), findsNothing);
       expect(find.text('F12'), findsNothing);
       expect(find.text('Phone controls'), findsNothing);
-      expect(service.disconnected, ['rdp-1']);
+      // The lock screen replaces the desktop; the session survives (BUG-01).
+      expect(service.disconnected, isEmpty);
       expect(tester.takeException(), isNull);
     }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
   }

@@ -45,7 +45,6 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
   ShellBranch get noteBranch => ShellBranch.rdp;
 
   bool _fullscreen = false;
-  RdpWorkspaceController? _controller;
   String? _minimizedPhoneSession;
   bool _mobileEntryScheduled = false;
   bool _wasVisible = false;
@@ -131,9 +130,8 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Indexed-shell navigation retains this screen; actual route/profile
-    // teardown must not retain a remote desktop in another workspace.
-    _controller?.closeAll().ignore();
+    // The lock screen replaces the shell, but sessions survive a lock:
+    // rdpWorkspaceProvider closes them when the profile changes.
     super.dispose();
   }
 
@@ -149,7 +147,6 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
       _wasVisible = visible;
     }
     controller.setVisible(visible || _fullscreen);
-    _controller = controller;
     final l = context.l10n;
     final mobile = AppPlatform.isMobile;
     final mobileSettings = mobile

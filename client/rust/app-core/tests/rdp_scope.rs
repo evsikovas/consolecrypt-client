@@ -61,7 +61,7 @@ async fn rdp_cannot_access_network_or_input_without_an_unlocked_profile() {
 }
 
 #[tokio::test]
-async fn locking_destroys_rdp_session_ids_instead_of_reusing_them_after_unlock() {
+async fn a_lock_keeps_rdp_sessions_and_closing_the_profile_ends_them() {
     let dir = tempfile::tempdir().unwrap();
     let app = app_with(dir.path(), memory_store(), false);
     app.create_local_profile("RDP test".into(), PASSPHRASE.into())
@@ -73,7 +73,15 @@ async fn locking_destroys_rdp_session_ids_instead_of_reusing_them_after_unlock()
         .rdp_connect(options(), uuid::Uuid::new_v4().to_string().into())
         .await
         .unwrap();
+    // An idle auto-lock must not drop the remote desktop (BUG-01).
     app.lock().await.unwrap();
+    app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
+    app.rdp_poll(id.clone()).await.unwrap();
+
+    // Closing the profile ends its sessions.
+    let profile = app.active_profile().await.unwrap().unwrap();
+    app.close_profile().await.unwrap();
+    app.open_profile(profile.id.clone()).await.unwrap();
     app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
     assert!(matches!(
         app.rdp_poll(id).await,

@@ -449,7 +449,8 @@ pub(crate) struct SshRuntime {
     /// The profile's terminals: they outlive this runtime, so open shells
     /// survive a lock (see [`LockedShellOpener`]).
     pub terminals: Arc<TerminalManager>,
-    pub tunnels: TunnelManager,
+    /// The profile's tunnels: like terminals, they survive a lock.
+    pub tunnels: Arc<TunnelManager>,
     pool: tokio::sync::Mutex<HashMap<ObjectId, (ConnectionPlan, Arc<SshSession>)>>,
     sftp: tokio::sync::Mutex<HashMap<String, SftpEntry>>,
     openssh: std::sync::Mutex<HashMap<String, OpenSshPrepared>>,
@@ -489,6 +490,7 @@ impl SshRuntime {
         writer: VaultWriter,
         prompts: Arc<PromptBroker>,
         terminals: Arc<TerminalManager>,
+        tunnels: Arc<TunnelManager>,
     ) -> Self {
         let working = writer.working.clone();
         let inventory = Arc::new(AppInventory {
@@ -521,7 +523,7 @@ impl SshRuntime {
                 terminals.set_opener(opener);
                 terminals
             },
-            tunnels: TunnelManager::new(),
+            tunnels,
             pool: tokio::sync::Mutex::new(HashMap::new()),
             sftp: tokio::sync::Mutex::new(HashMap::new()),
             openssh: std::sync::Mutex::new(HashMap::new()),
@@ -713,10 +715,9 @@ impl SshRuntime {
             .collect())
     }
 
-    /// Stop tunnels, SFTP and pooled connections. Open terminals keep
-    /// running; only new SSH shells are refused until the next unlock.
+    /// Close SFTP and idle pooled connections. Open terminals and tunnels
+    /// keep running; new SSH shells are refused until the next unlock.
     pub(crate) async fn shutdown(&self) {
-        self.tunnels.stop_all().await;
         self.terminals.set_opener(Arc::new(LockedShellOpener));
         let sftp: Vec<SftpEntry> = self.sftp.lock().await.drain().map(|(_, e)| e).collect();
         for e in sftp {
@@ -729,8 +730,12 @@ impl SshRuntime {
             .drain()
             .map(|(_, (_, s))| s)
             .collect();
+        // A connection a running tunnel still carries stays up; it closes
+        // when its last tunnel stops.
         for s in pool {
-            let _ = s.disconnect().await;
+            if Arc::strong_count(&s) == 1 {
+                let _ = s.disconnect().await;
+            }
         }
         self.openssh
             .lock()

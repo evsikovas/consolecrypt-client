@@ -346,7 +346,26 @@ void main() {
     await settle(tester);
     expect(find.byType(RdpView), findsNothing);
     expect(fixture.window.calls, ['enter', 'leave', 'enter', 'leave']);
-    expect(fixture.service.disconnected, ['rdp-1']);
+    // The lock hides the desktop; the session itself survives (BUG-01).
+    expect(fixture.service.disconnected, isEmpty);
+    await fixture.dispose(tester);
+  });
+
+  _desktopTest('an idle lock pauses the RDP session and unlock resumes the same tab', (tester) async {
+    final fixture = _Fixture();
+    await _connectedWithClipboard(tester, fixture);
+    final controller = ProviderScope.containerOf(tester.element(find.byType(RdpScreen))).read(rdpWorkspaceProvider);
+    final tab = controller.active!;
+    fixture.status.value = const VaultStatus(phase: VaultPhase.locked);
+    await settle(tester);
+    expect(find.byType(RdpView), findsNothing);
+    expect(controller.canConnect, isFalse);
+    fixture.status.value = const VaultStatus(phase: VaultPhase.unlocked);
+    await settle(tester);
+    expect(controller.tabs, [same(tab)]);
+    expect(tab.closed, isFalse);
+    expect(fixture.service.disconnected, isEmpty);
+    expect(find.byType(RdpView), findsOneWidget);
     await fixture.dispose(tester);
   });
 

@@ -199,9 +199,12 @@ pub(crate) struct Session {
     pub pending_kit: Mutex<Option<PendingKit>>,
     /// Serializes sharing actions; contains no plaintext or device keys.
     pub sharing_gate: tokio::sync::Mutex<()>,
-    /// Terminals of this profile. They survive a lock (an idle auto-lock
-    /// must not drop SSH sessions) and close with the profile.
+    /// Terminals, tunnels and RDP sessions of this profile. They survive a
+    /// lock (an idle auto-lock must not drop live connections) and close
+    /// with the profile.
     terminals: Arc<cc_terminal_core::TerminalManager>,
+    tunnels: Arc<cc_tunnel_core::TunnelManager>,
+    rdp: Arc<cc_rdp_core::RdpManager>,
 }
 
 impl std::fmt::Debug for Session {
@@ -218,7 +221,8 @@ pub(crate) struct Unlocked {
     pub codec: Arc<VaultCodec>,
     pub writer: VaultWriter,
     pub ssh: Arc<SshRuntime>,
-    /// RDP sessions belong to this unlock lifetime, never to the global bridge.
+    /// The profile's RDP sessions, never the global bridge's: they outlive
+    /// this unlock and close with the profile.
     pub rdp: Arc<cc_rdp_core::RdpManager>,
     /// AI runtime: search index, providers, conversations, approvals.
     pub ai: Arc<crate::ai::AiSession>,
@@ -352,8 +356,6 @@ impl Unlocked {
     /// first (their final uploads need SFTP), then transfers.
     async fn shutdown(&self) {
         self.sharing_shutdown.send_replace(true);
-        // Fence in-flight RDP connects before waiting for SFTP/SSH cleanup.
-        self.rdp.shutdown();
         self.edit.begin_shutdown();
         self.enrollment.clear();
         self.kube_imports.close();
@@ -435,6 +437,8 @@ impl Session {
             pending_kit: Mutex::new(None),
             sharing_gate: tokio::sync::Mutex::new(()),
             terminals: locked_terminals(),
+            tunnels: Arc::new(cc_tunnel_core::TunnelManager::new()),
+            rdp: Arc::new(cc_rdp_core::RdpManager::new()),
         }))
     }
 
@@ -485,6 +489,8 @@ impl Session {
             pending_kit: Mutex::new(None),
             sharing_gate: tokio::sync::Mutex::new(()),
             terminals: locked_terminals(),
+            tunnels: Arc::new(cc_tunnel_core::TunnelManager::new()),
+            rdp: Arc::new(cc_rdp_core::RdpManager::new()),
         }))
     }
 
@@ -993,6 +999,7 @@ impl Session {
             writer.clone(),
             self.ctx.prompts.clone(),
             self.terminals.clone(),
+            self.tunnels.clone(),
         ));
         let ai = crate::ai::AiSession::new(
             self.ctx.clone(),
@@ -1018,7 +1025,7 @@ impl Session {
             codec,
             writer: writer.clone(),
             ssh: ssh.clone(),
-            rdp: Arc::new(cc_rdp_core::RdpManager::new()),
+            rdp: self.rdp.clone(),
             ai: ai.clone(),
             edit: edit.clone(),
             transfers: crate::transfers::TransferManager::new(self.ctx.clone()),
@@ -1262,6 +1269,8 @@ impl Session {
     /// (the session is unusable afterwards).
     pub(crate) async fn close(&self) {
         self.lock().await;
+        self.rdp.shutdown();
+        self.tunnels.stop_all().await;
         self.terminals.shutdown().await;
         if let Some(st) = self.storage_opt() {
             st.close().await;

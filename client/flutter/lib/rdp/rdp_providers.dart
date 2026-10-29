@@ -35,8 +35,14 @@ final rdpScopeProvider = Provider<RdpScope>((ref) {
 
 final rdpWorkspaceProvider = Provider<RdpWorkspaceController>((ref) {
   final controller = RdpWorkspaceController(ref.watch(rdpServiceProvider));
+  // Sessions belong to the profile. A lock (often the idle auto-lock) only
+  // pauses them: the core keeps the connection, unlock resumes the tabs.
   ref.listen(rdpScopeProvider, (previous, next) {
-    if (!identical(previous, next)) unawaited(controller.closeAll());
+    if (previous?.profileId != next.profileId) {
+      unawaited(controller.closeAll());
+    } else {
+      controller.setLocked(!next.unlocked);
+    }
   });
   ref.onDispose(controller.dispose);
   return controller;
