@@ -60,7 +60,25 @@ final class RdpWorkspaceController extends ChangeNotifier {
   int _connecting = 0;
   bool _disposed = false;
   bool _visible = true;
-  bool get canConnect => !_disposed && _tabs.length + _connecting < rdpMaxSessions;
+  bool _locked = false;
+  bool get canConnect => !_disposed && !_locked && _tabs.length + _connecting < rdpMaxSessions;
+
+  /// While the vault is locked the native sessions stay open but refuse
+  /// polling and input: tabs pause instead of failing. Connects still in
+  /// flight are dropped. Unlock releases keys and buttons held before.
+  void setLocked(bool locked) {
+    if (_disposed || _locked == locked) return;
+    _locked = locked;
+    if (locked) {
+      _generation++;
+      for (final tab in _tabs) {
+        tab._inputEpoch++;
+      }
+    } else if (_active case final tab?) {
+      cancelInteraction(tab);
+    }
+    notifyListeners();
+  }
 
   /// Indexed-shell branches remain mounted while offstage. Polling pauses
   /// while another section is selected; the native connection stays open.
@@ -212,6 +230,7 @@ final class RdpWorkspaceController extends ChangeNotifier {
   Future<void> _pollActive() async {
     final tab = _active;
     if (_disposed ||
+        _locked ||
         !_visible ||
         tab == null ||
         tab.closed ||
@@ -264,6 +283,7 @@ final class RdpWorkspaceController extends ChangeNotifier {
   /// Queue overflow fails the session instead of silently dropping key-up.
   void send(RdpTab tab, List<RdpInput> inputs) {
     if (_disposed ||
+        _locked ||
         !_visible ||
         !identical(_active, tab) ||
         tab.closed ||
@@ -287,6 +307,7 @@ final class RdpWorkspaceController extends ChangeNotifier {
     tab._inputTail = tab._inputTail.then((_) async {
       try {
         if (!_disposed &&
+            !_locked &&
             _visible &&
             identical(_active, tab) &&
             !tab.closed &&

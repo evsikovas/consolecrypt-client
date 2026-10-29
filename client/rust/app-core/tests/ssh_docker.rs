@@ -257,8 +257,32 @@ async fn ssh_terminal_tunnel_sftp_through_two_jump_hosts() {
     assert!(stats
         .iter()
         .any(|s| s.id == tunnel.id && s.total_connections >= 1));
+    // A lock (the idle auto-lock) keeps the tunnel forwarding (BUG-01).
+    app.lock().await.unwrap();
+    let mut sock = tokio::net::TcpStream::connect(&status.listen)
+        .await
+        .unwrap();
+    sock.write_all(b"SSH-2.0-cc-tunnel-probe\r\n")
+        .await
+        .unwrap();
+    let n = tokio::time::timeout(Duration::from_secs(10), sock.read(&mut banner))
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        String::from_utf8_lossy(&banner[..n]).starts_with("SSH-2.0-"),
+        "banner through the tunnel while locked"
+    );
+    drop(sock);
+    app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
+    assert!(app
+        .tunnel_statuses()
+        .await
+        .unwrap()
+        .iter()
+        .any(|s| s.id == tunnel.id && s.state == TunnelStateDto::Running));
     app.stop_tunnel(tunnel.id.clone()).await.unwrap();
-    println!("IT local tunnel roundtrip ... ok");
+    println!("IT local tunnel roundtrip, also across a lock ... ok");
 
     // ── SFTP put / get / ls ─────────────────────────────────────────────
     let sftp = app.sftp_open(target.id.clone()).await.unwrap();
