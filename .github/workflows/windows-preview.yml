@@ -1,0 +1,45 @@
+name: Windows preview build
+
+# Manual, unpublished test build of one branch: produces installer artifacts
+# only, without the release test pass. Stable installers, update feeds and
+# releases remain tag-only (client.yml).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consolecrypt-windows-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: windows-2025
+    timeout-minutes: 150
+    defaults:
+      run:
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+    env:
+      CC_CARGO_TARGET_ROOT: D:\cc-target
+      CC_CI_TOOLS_DIR: D:\cc-tools
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Package Windows preview
+        run: |
+          & client/scripts/ci-windows.ps1 -PackageOnly
+          if ($LASTEXITCODE -ne 0) { throw 'Windows preview build failed' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-preview
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          path: |
+            dist/windows/*-setup.exe
+            dist/windows/ConsoleCrypt-windows.zip
+            dist/windows/*.sha256
