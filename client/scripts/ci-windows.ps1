@@ -1,4 +1,6 @@
-param([switch]$NativeOnly)
+# -PackageOnly: an unpublished preview (windows-preview.yml) builds the
+# installer only; the release keeps every check.
+param([switch]$NativeOnly, [switch]$PackageOnly)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $Repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -94,6 +96,15 @@ if (-not $env:CARGO_BUILD_JOBS) {
     Write-Host "Cargo jobs: $env:CARGO_BUILD_JOBS"
 }
 # Resolve Python/toolchain paths before reserving a GitHub build number.
+if ($PackageOnly) {
+    Push-Location $Repo
+    try {
+        & (Join-Path $PSScriptRoot 'build-windows.ps1') -Installer
+        if ($LASTEXITCODE -ne 0) { throw 'Windows packaging failed' }
+    } finally { Pop-Location }
+    Write-Host 'WINDOWS_PREVIEW_PACKAGED: not a release, nothing published'
+    return
+}
 if ($env:GITHUB_RUN_NUMBER -and -not $NativeOnly) {
     $githubBuild = & python (Join-Path $PSScriptRoot 'github-build-number.py') windows --print-only
     if ($LASTEXITCODE -ne 0 -or "$githubBuild" -notmatch '^\d+$') { throw 'GitHub build identity reservation failed' }
