@@ -1,6 +1,6 @@
 # Windows: .\client\scripts\build-windows.ps1 -Installer   (-NoCli: without bin\consolecrypt-cli.exe)
 # Prerequisites: docs/public/BUILD_WINDOWS.md
-param([switch]$Debug, [string]$Commit = '', [switch]$Mock, [switch]$NoCli, [switch]$Installer)
+param([switch]$Debug, [string]$Commit = '', [switch]$Mock, [switch]$NoCli, [switch]$Installer, [switch]$PackageOnly)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -47,6 +47,9 @@ $OriginalCargoTarget = $env:CARGO_TARGET_DIR
 $OriginalBridgeTarget = $env:CONSOLECRYPT_CARGO_TARGET_DIR
 try {
     if ($Debug -and $Installer) { throw 'Installers require a release build; remove -Debug' }
+    if ($PackageOnly -and ($Debug -or $Mock -or $Commit -ne '' -or -not $NoCli)) {
+        throw '-PackageOnly requires the current release bundle and -NoCli'
+    }
     foreach ($tool in @('flutter', 'cargo', 'rustup', 'perl', 'git', 'python')) {
         if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Missing $tool; see docs/public/BUILD_WINDOWS.md" }
     }
@@ -66,20 +69,42 @@ try {
     $env:CONSOLECRYPT_CARGO_TARGET_DIR = if ($env:CC_CARGO_TARGET_ROOT) { Join-Path $env:CC_CARGO_TARGET_ROOT 'windows-rust' } else { Join-Path $Src 'target\windows-rust' }
     $Out = Join-Path $Repo 'dist\windows'
     New-Item -ItemType Directory -Force -Path $Out | Out-Null
-    $BuildVersion = & python (Join-Path $Repo 'client\scripts\bump-version.py') --root $Repo --source-root $Src
-    if ($LASTEXITCODE -ne 0) { throw 'Version bump failed' }
+    if ($PackageOnly) {
+        $pubspec = Get-Content (Join-Path $Src 'client/flutter/pubspec.yaml') -Raw
+        if ($pubspec -notmatch '(?m)^version:\s*(\S+)') { throw 'Missing source build version' }
+        $BuildVersion = $Matches[1]
+    } else {
+        $BuildVersion = & python (Join-Path $Repo 'client\scripts\bump-version.py') --root $Repo --source-root $Src
+        if ($LASTEXITCODE -ne 0) { throw 'Version bump failed' }
+    }
     $BuildVersion = "$BuildVersion".Trim()
     if ($BuildVersion -notmatch '^(\d+\.\d+\.\d+)\+(\d+)$') { throw 'Invalid build version' }
     $FileVersion = "$($Matches[1]).$($Matches[2])"
     Write-Host "==> ConsoleCrypt $BuildVersion ($Mode, Windows x64)"
     Set-Location (Join-Path $Src 'client\flutter')
-    Invoke-Checked flutter @('pub', 'get')
-    $BuildArgs = @('build', 'windows', "--$Mode")
-    if ($Mock) { $BuildArgs += '--dart-define=CC_MOCK=true' }
-    Invoke-Checked flutter $BuildArgs
+    if (-not $PackageOnly) {
+        Invoke-Checked flutter @('pub', 'get')
+        $BuildArgs = @('build', 'windows', "--$Mode")
+        if ($Mock) { $BuildArgs += '--dart-define=CC_MOCK=true' }
+        Invoke-Checked flutter $BuildArgs
+    }
     $Configuration = if ($Debug) { 'Debug' } else { 'Release' }
     $Built = Join-Path (Get-Location) "build\windows\x64\runner\$Configuration"
+    if ($PackageOnly) {
+        $builtExe = Get-Item (Join-Path $Built 'ConsoleCrypt.exe')
+        $info = $builtExe.VersionInfo
+        $actualVersion = "$($info.FileMajorPart).$($info.FileMinorPart).$($info.FileBuildPart).$($info.FilePrivatePart)"
+        if ($actualVersion -ne $FileVersion) { throw 'Existing runner has a different build version' }
+    }
     $AppOut = Join-Path $Out 'ConsoleCrypt'
+    $ExpectedAppOut = [IO.Path]::GetFullPath((Join-Path $Repo 'dist\windows\ConsoleCrypt'))
+    if ([IO.Path]::GetFullPath($AppOut) -ne $ExpectedAppOut) { throw 'Unexpected Windows staging directory' }
+    foreach ($directory in @((Join-Path $Repo 'dist'), $Out, $AppOut)) {
+        if ((Test-Path -LiteralPath $directory) -and
+            ((Get-Item -LiteralPath $directory).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "Refusing to replace a linked staging directory: $directory"
+        }
+    }
     if (Test-Path $AppOut) { Remove-Item -Recurse -Force $AppOut }
     Copy-Item -Recurse $Built $AppOut
     if ($Runtime) { Copy-Item (Join-Path $Runtime '*.dll') $AppOut -Force }

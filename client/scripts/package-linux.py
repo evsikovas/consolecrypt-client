@@ -15,7 +15,7 @@ import tempfile
 
 VERSION = re.compile(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\+([1-9][0-9]*)')
 REQUIRED_ELFS = ('consolecrypt', 'consolecrypt-cli', 'lib/libapp.so', 'lib/libflutter_linux_gtk.so', 'lib/libcc_bridge.so')
-DEB_DEPENDS = ('libc6 (>= 2.35), libstdc++6 (>= 11), libgcc-s1, '
+DEB_DEPENDS = ('libc6 (>= 2.35), libstdc++6 (>= 11), libgcc-s1, libgomp1, libssl3, '
                'libgtk-3-0 (>= 3.22), libglib2.0-0 (>= 2.56), libblkid1, libepoxy0, liblzma5, libgl1, libegl1, libgles2, '
                'xdg-desktop-portal')
 
@@ -149,7 +149,7 @@ def build_packages(root: Path, bundle: Path, output: Path, version: str) -> dict
             'Summary: SSH, SFTP and encrypted workspaces for Linux\nLicense: AGPL-3.0-only\n'
             'URL: https://consolecrypt.dev\nBuildArch: x86_64\n'
             'Requires: gtk3 >= 3.22\nRequires: glib2 >= 2.56\nRequires: dbus\n'
-            'Requires: xdg-desktop-portal\n'
+            'Requires: xdg-desktop-portal\nRequires: libgomp\nRequires: openssl-libs >= 3\n'
             # Impeller dlopens GLES, so ELF dependency discovery cannot find it.
             'Requires: mesa-libGL\nRequires: mesa-libEGL\nRequires: libGLESv2.so.2()(64bit)\n'
             'Recommends: gnome-keyring\nRecommends: mesa-dri-drivers\n'

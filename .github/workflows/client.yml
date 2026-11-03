@@ -3,9 +3,10 @@ name: Client tag release
 on:
   push:
     tags: ['v[0-9]*.[0-9]*.[0-9]*']
+  workflow_dispatch:
 
 # No pull_request / pull_request_target trigger on persistent native runners.
-# A hosted guard checks the tag and main ancestry before native runners start.
+# A hosted guard checks tags or an explicit main-only unpublished candidate.
 permissions:
   contents: read
 
@@ -31,7 +32,7 @@ jobs:
           persist-credentials: false
       - name: Check release tag and main ancestry
         id: tag
-        run: python3 client/scripts/verify-github-tag.py
+        run: python3 client/scripts/verify-github-tag.py --allow-main-candidate
       - name: Test release boundaries
         run: |
           python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
@@ -217,9 +218,8 @@ jobs:
             dist/android/ConsoleCrypt-android-arm64.apk.sha256
             dist/android/ConsoleCrypt.version
 
-  # iOS Simulator: build and launch in an isolated, throwaway Simulator. The
-  # preview is kept as a workflow artifact only; releases do not publish it
-  # (prepare-github-release.py) and a failure here does not block them.
+  # iOS Simulator is a required 1.0 release artifact, not an iPhone installer.
+  # Build and launch it in an isolated, throwaway Simulator before publishing.
   ios:
     needs: validate
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
@@ -249,9 +249,10 @@ jobs:
             dist/ios/ConsoleCrypt-simulator-universal.version
 
   publish:
+    if: startsWith(github.ref, 'refs/tags/v')
     outputs:
       published: ${{ steps.release.outputs.published }}
-    needs: [validate, macos, windows, linux, android]
+    needs: [validate, macos, windows, linux, android, ios]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:

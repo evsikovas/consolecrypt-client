@@ -301,6 +301,13 @@ async fn settings_conflict_is_last_writer_wins() {
     let (a, b, vault) = two_devices(&server).await;
     let now = chrono::Utc::now();
     let settings = VaultSettings {
+        password_vaults: vec![cc_models::settings::PasswordVaultConnection {
+            id: "dav-1".into(),
+            name: "Passwords".into(),
+            url: "https://dav.example/passwords.kdbx".into(),
+            username: "dav-user".into(),
+            credential_id: Some(cc_protocol::ObjectId::new().to_string()),
+        }],
         id: cc_protocol::ObjectId::new(),
         vault_name: "Personal".into(),
         terminal_history_mode: Default::default(),
@@ -322,6 +329,20 @@ async fn settings_conflict_is_last_writer_wins() {
     sync_ok(&b.engine).await;
 
     // B edits later than A but A pushes first → B's (newer) value wins.
+    match b
+        .store
+        .get(settings.id)
+        .await
+        .unwrap()
+        .unwrap()
+        .payload
+        .object
+    {
+        VaultObject::VaultSettings(ref received) => {
+            assert_eq!(received.password_vaults, settings.password_vaults)
+        }
+        _ => panic!("expected encrypted synced vault settings"),
+    }
     let mut sa = settings.clone();
     sa.vault_name = "A-name".into();
     sa.updated_at = now + chrono::Duration::seconds(10);

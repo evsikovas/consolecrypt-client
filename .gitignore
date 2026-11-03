@@ -25,6 +25,8 @@ Thumbs.db
 !.env.example
 *.pem
 *.key
+# Public interoperability fixture: bytes 0..31, no user secret.
+!client/flutter/test/fixtures/keepass/binary.key
 !**/testdata/**/*.pub
 secrets/
 *.sqlite

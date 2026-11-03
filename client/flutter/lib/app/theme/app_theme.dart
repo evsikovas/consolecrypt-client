@@ -143,8 +143,7 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: const Color(0x00000000),
       canvasColor: canvas,
       dividerTheme: DividerThemeData(color: s.separator, space: 1, thickness: 1),
-      // Fields are fills, never glass (§4.4): r.md, no stroke at rest, 2 px
-      // accent ring on focus, 1.5 px danger border on error.
+      // Fields use fills with a subtle focus underline below the text.
       inputDecorationTheme: InputDecorationTheme(
         isDense: true,
         filled: true,
@@ -156,7 +155,7 @@ abstract final class AppTheme {
         disabledBorder: GlassInputBorder(radius: r.md),
         focusedBorder: GlassInputBorder(
           radius: r.md,
-          borderSide: BorderSide(color: tokens.focusRingColor, width: tokens.focusRingWidth),
+          borderSide: BorderSide(color: tokens.focusRingColor.withValues(alpha: .75), width: 1),
         ),
         errorBorder: GlassInputBorder(
           radius: r.md,

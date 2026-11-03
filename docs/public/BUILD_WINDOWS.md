@@ -11,7 +11,10 @@
    Точная минимальная версия указана в `client/flutter/pubspec.yaml`; lock-файлы не удаляйте.
 3. [Visual Studio](https://visualstudio.microsoft.com/downloads/) с workload
    **Desktop development with C++ / Разработка классических приложений на C++**:
-   MSVC x64/x86, Windows SDK, CMake tools. Одного VS Code недостаточно.
+   MSVC x64/x86, Windows SDK, CMake tools и **C++ ATL for latest v143 build tools
+   (x86 & x64)** (`Microsoft.VisualStudio.Component.VC.ATL`). ATL нужен плагину
+   уведомлений Windows (`atlbase.h`); `flutter doctor` не проверяет этот компонент.
+   Одного VS Code недостаточно.
 4. [Rust через rustup](https://rustup.rs/), стандартный MSVC toolchain.
    Версия из `rust-toolchain.toml` загрузится при первом запуске Cargo.
 5. [Strawberry Perl](https://strawberryperl.com/) x64 и [Python 3](https://www.python.org/downloads/windows/)
@@ -57,6 +60,10 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 копирует всю папку Flutter и распространяемые DLL Visual C++, затем запускает Inno Setup.
 Rust и встроенный OpenSSL собираются в `target\windows-rust` у корня репозитория:
 это сокращает пути для Perl на Windows. Сохраняйте короткий путь самого клона.
+При вызове Cargo через Cargokit удаляется служебная переменная телеметрии
+MSBuild `VSTEL_MSBuildProjectFullPath`: она заставляла `cc-rs` пересобирать
+OpenSSL/AWS-LC при чередовании сборки и нативных тестов. Компилятор и целевая
+архитектура выбираются по установленным MSVC и параметрам Cargo.
 [Почему нужны все DLL и папка data](https://docs.flutter.dev/platform-integration/windows/building#building-your-own-zip-file-for-windows).
 
 Результат в `dist\windows\`:

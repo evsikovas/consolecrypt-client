@@ -995,6 +995,8 @@ impl KnownHostDto {
 /// Vault-wide synced settings (singleton).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VaultSettingsDto {
+    #[serde(default)]
+    pub password_vaults: Vec<cc_models::settings::PasswordVaultConnection>,
     pub id: String,
     pub vault_name: String,
     pub terminal_history_mode: TerminalHistoryMode,
@@ -1023,6 +1025,7 @@ impl EditableDto for VaultSettingsDto {
     }
     fn from_model(s: &VaultSettings) -> Self {
         Self {
+            password_vaults: s.password_vaults.clone(),
             id: s.id.to_string(),
             vault_name: s.vault_name.clone(),
             terminal_history_mode: s.terminal_history_mode,
@@ -1038,6 +1041,32 @@ impl EditableDto for VaultSettingsDto {
     }
     fn to_model(&self, id: ObjectId, existing: Option<&VaultSettings>) -> AppResult<VaultSettings> {
         require_name("vault_name", &self.vault_name)?;
+        if self.password_vaults.len() > 100 {
+            return Err(AppError::invalid("password_vaults", "at most 100"));
+        }
+        let mut ids = std::collections::HashSet::new();
+        for p in &self.password_vaults {
+            let url =
+                url::Url::parse(&p.url).map_err(|_| AppError::invalid("password_vaults", "URL"))?;
+            if p.id.is_empty()
+                || p.id.len() > 100
+                || !ids.insert(&p.id)
+                || p.name.trim().is_empty()
+                || p.name.len() > 200
+                || p.url.len() > 4096
+                || p.username.len() > 500
+                || url.scheme() != "https"
+                || url.host_str().is_none()
+                || !url.username().is_empty()
+                || url.password().is_some()
+                || url.fragment().is_some()
+            {
+                return Err(AppError::invalid(
+                    "password_vaults",
+                    "unique id, name and HTTPS URL without embedded credentials",
+                ));
+            }
+        }
         let trimmed = |v: &Option<String>| {
             v.as_deref()
                 .map(str::trim)
@@ -1066,6 +1095,7 @@ impl EditableDto for VaultSettingsDto {
         }
         let (created_at, updated_at) = created(existing.map(|e| e.created_at));
         Ok(VaultSettings {
+            password_vaults: self.password_vaults.clone(),
             id,
             vault_name: self.vault_name.trim().to_owned(),
             terminal_history_mode: self.terminal_history_mode,

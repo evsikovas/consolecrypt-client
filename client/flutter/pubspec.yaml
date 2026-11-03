@@ -3,7 +3,7 @@ description: "ConsoleCrypt desktop client UI: zero-knowledge E2EE SSH client (Fl
 # Never published to pub.dev; distributed as a desktop application.
 publish_to: 'none'
 
-version: 0.9.15+21075
+version: 1.0.0+21085
 
 environment:
   sdk: ^3.13.4
@@ -12,6 +12,11 @@ environment:
 # Every dependency is justified and license-checked in
 # docs/adr/ADR-0101-ui-architecture-and-bridge.md (ADR-0005 allow-list).
 dependencies:
+  # KeePass KDBX 3/4, pure Dart in a disposable worker isolate (GPL-3.0).
+  # Vendored pin and Argon2id compatibility patch: vendor/kdbx/NOTICE.md.
+  kdbx:
+    path: vendor/kdbx
+  path: ^1.9.1
   flutter:
     sdk: flutter
   # State management and DI (MIT).

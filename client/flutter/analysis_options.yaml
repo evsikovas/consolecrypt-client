@@ -31,6 +31,8 @@ analyzer:
     # Published drag-and-drop plugins with Android build patches (NOTICE.md).
     - vendor/irondash_engine_context/**
     - vendor/super_native_extensions/**
+    # KDBX upstream style; compatibility and encrypted round trips are tested.
+    - vendor/kdbx/**
     - android/**
     - linux/**
     - ios/**

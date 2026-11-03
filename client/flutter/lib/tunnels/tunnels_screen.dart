@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
@@ -11,19 +13,51 @@ import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
+import 'package:consolecrypt/tunnels/saved_forward_tile.dart';
+import 'package:consolecrypt/tunnels/saved_forwards.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-class TunnelsScreen extends ConsumerWidget {
+class TunnelsScreen extends ConsumerStatefulWidget {
   const TunnelsScreen({super.key});
+  @override
+  ConsumerState<TunnelsScreen> createState() => _TunnelsScreenState();
+}
+
+class _TunnelsScreenState extends ConsumerState<TunnelsScreen> {
+  Timer? _timer;
+  bool _refreshing = false;
+  @override
+  void initState() {
+    super.initState();
+    scheduleMicrotask(() {
+      if (mounted) unawaited(ref.read(savedForwardManagerProvider).refresh());
+    });
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (!mounted || _refreshing || !TickerMode.valuesOf(context).enabled) return;
+      _refreshing = true;
+      try {
+        await ref.read(savedForwardManagerProvider).refresh();
+      } finally {
+        _refreshing = false;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _edit(BuildContext context, {Tunnel? tunnel}) =>
       showAppDialog<void>(context, builder: (_) => TunnelEditorDialog(tunnel: tunnel));
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final tunnelsAsync = ref.watch(tunnelsProvider);
+    final saved = ref.watch(savedForwardsProvider);
     final runtime = ref.watch(tunnelRuntimeProvider).value ?? const {};
     final hosts = ref.watch(hostByIdProvider);
     final l10n = context.l10n;
@@ -42,19 +76,22 @@ class TunnelsScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (kubernetesEnabled) const KubeForwardsPanel(),
+          if (saved.isNotEmpty)
+            Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(l10n.tunnelsSavedForwardHelp)),
           Expanded(
             child: AsyncValueView(
               value: tunnelsAsync,
-              data: (tunnels) => tunnels.isEmpty
+              data: (tunnels) => tunnels.isEmpty && saved.isEmpty
                   ? EmptyState(
                       icon: Icons.swap_horiz_rounded,
                       title: l10n.tunnelsEmptyTitle,
                       message: l10n.tunnelsEmptyMessage,
                     )
                   : ContentList(
-                      itemCount: tunnels.length,
+                      itemCount: saved.length + tunnels.length,
                       itemBuilder: (context, i) {
-                        final t = tunnels[i];
+                        if (i < saved.length) return SavedForwardTile(saved[i]);
+                        final t = tunnels[i - saved.length];
                         final rt = runtime[t.id] ?? TunnelRuntime.stopped;
                         return _TunnelTile(
                           tunnel: t,

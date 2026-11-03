@@ -25,6 +25,7 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/hosts/connection_picker.dart';
+import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
 import 'package:consolecrypt/notes/notes_reminders.dart';
 import 'package:consolecrypt/sftp/edit_flows.dart';
@@ -51,6 +52,7 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
   ShellBranch.hosts => l.navHosts,
   ShellBranch.groups => l.navGroups,
   ShellBranch.credentials => l.navCredentials,
+  ShellBranch.passwords => l.navPasswords,
   ShellBranch.knownHosts => l.settingsKnownHostsTitle,
   ShellBranch.terminal => l.navTerminal,
   ShellBranch.sftp => l.navSftp,
@@ -69,6 +71,7 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
 const _navItems = [
   _NavItem(ShellBranch.hosts, Icons.dns_rounded),
   _NavItem(ShellBranch.credentials, Icons.key_rounded),
+  _NavItem(ShellBranch.passwords, Icons.password_rounded),
   _NavItem(ShellBranch.knownHosts, Icons.verified_user_outlined),
   _NavItem(ShellBranch.sharing, Icons.people_outline_rounded, syncedOnly: true),
   _NavItem(ShellBranch.terminal, Icons.terminal_rounded),
@@ -180,6 +183,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(passwordManagerProvider);
     if (AppPlatform.isMobile) {
       return NotesReminderWatcher(
         child: _MobileShell(navigationShell: widget.navigationShell, location: widget.location),

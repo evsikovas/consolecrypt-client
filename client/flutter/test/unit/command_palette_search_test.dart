@@ -13,6 +13,14 @@ Host host(String id, String name, String address, {String? username, String note
 );
 
 void main() {
+  test('password namespace is recognized before ordinary commands or AI', () {
+    expect(passwordPaletteQuery('пароли:'), '');
+    expect(passwordPaletteQuery('  ПАРОЛИ : api key  '), 'api key');
+    expect(passwordPaletteQuery('Passwords: service'), 'service');
+    expect(passwordPaletteQuery('find password'), isNull);
+    expect(passwordPaletteQuery('echo пароли: service'), isNull);
+  });
+
   test('RDP default endpoint is searchable without SSH inheritance', () {
     final rdp = Host(
       id: ObjectId.generate(),

@@ -1,37 +1,34 @@
 # GitHub Actions: native client builds
 
-The `Client tag release` workflow runs only when an exact stable `vX.Y.Z`
-tag is pushed. The version must match `pubspec.yaml`, and the tagged commit
-must already belong to `main`. Branch pushes and manual dispatch do not build
-packages. No pull request code executes on persistent native runners.
+The `Client tag release` workflow publishes only an exact stable `vX.Y.Z`
+tag whose version matches `pubspec.yaml` and whose commit belongs to `main`.
+A manual dispatch on the current `main` runs the same audit, tests and five
+native packaging jobs as an unpublished candidate. Dispatches on other branches
+are rejected before persistent runners receive code. Candidates do not publish
+releases, sign update feeds or send announcements. Branch pushes do not build.
+No pull request code executes on persistent native runners.
 
-| Runner labels | Jobs | Required tools |
+| Runner | Jobs | Required tools |
 |---|---|---|
-| `self-hosted, macOS, ARM64, consolecrypt, client` | Android; macOS unless `MACOS_BUILD_RUNNER` is set | Flutter 3.47.5, Rust 1.98, Python; Android SDK 36, build-tools 36.0.0, NDK 28.2.13676358, CMake 3.22.1; full Xcode and CocoaPods for Apple builds |
-| `self-hosted, Windows, X64, consolecrypt, client` | Windows x64 | MSVC C++/Windows SDK, Git, Python, Rust; Flutter, Strawberry Perl and Inno Setup are discovered or provisioned by `ci-windows.ps1` |
-| `cc-linux-k3s` | Linux DEB/RPM | Home ARC scale set with Docker-in-Docker, Python 3 and a shared work/temp volume; pinned Ubuntu 22.04 builder contains native tools and isolated Secret Service tests |
+| Dedicated `self-hosted, macOS, ARM64, consolecrypt, client` | Android, iOS Simulator; macOS unless overridden | Flutter 3.47.5, Rust 1.98, Python; Android SDK 36, build-tools 36.0.0, NDK 28.2.13676358, CMake 3.22.1; full Xcode and CocoaPods |
+| GitHub-hosted `windows-2025` | Windows x64 | MSVC C++/ATL and Windows SDK; `ci-windows.ps1` provisions Flutter, Perl and Inno Setup |
+| GitHub-hosted `ubuntu-24.04` | Linux DEB/RPM | Isolated Ubuntu 22.04 Docker builder, native Secret Service/FFI tests, Kubernetes acceptance and Linux CPU local-AI inference smoke |
 
-Repository variable `MACOS_BUILD_RUNNER` can override only the macOS runner
-with a JSON array, for example `["macos-26"]` for a hosted runner with full Xcode
-(set this way since October 2026). Remove the override after installing Xcode on
-the dedicated Mac. Android always uses the dedicated Mac and its existing signing
-key. `ci-macos-tools.sh` provisions the pinned Flutter SDK when it is absent.
-macOS, Android, Windows and Linux build independently. A single self-hosted Mac
-serializes its jobs. The tag workflow builds no iOS package: iOS builds and
-testing are deferred, and the last iOS artifact is the 0.5.6 Simulator ZIP
-(`client/scripts/build-ios.sh` still builds one locally).
+Repository variable `MACOS_BUILD_RUNNER` overrides only the macOS job using a
+JSON label array, for example `["macos-26"]`. Android and iOS use the dedicated
+Mac; Android retains its existing signing key. `ci-macos-tools.sh` provisions
+the pinned Flutter SDK when absent. One dedicated Mac serializes its jobs.
+The iOS job compiles, installs and launches the application in a disposable
+Simulator. It does not require Apple provisioning credentials or produce an IPA.
 
-The ARC runner and Docker daemon must mount `RUNNER_TEMP` at the same absolute
-path. `ci-linux.sh` stages the source snapshot there, not in an unshared `/tmp`.
-The home cluster is a build environment; these jobs do not deploy production there.
-
-Native jobs have `contents: read`. After all four platforms succeed, a hosted
-publisher validates the version receipts, assembles a closed list of six
-installers (macOS DMG, Windows EXE and portable ZIP, Linux DEB and RPM, Android
-APK) plus SHA-256 checksums, creates a draft GitHub Release, uploads its
-files, and publishes it. Only that job gets `contents: write` and `actions: write`.
-It then dispatches `update-feeds.yml` on trusted `main` to refresh signed metadata.
-Website and sync-server deployment use their own tag workflows.
+Native jobs have `contents: read`. All five platform jobs are required before
+a hosted publisher validates receipts and publishes seven packages: macOS DMG,
+Windows EXE and portable ZIP, Linux DEB and RPM, Android APK and universal iOS
+Simulator ZIP, with SHA-256 checksums. It first creates a draft, uploads the
+complete closed asset set and only then publishes. Only the publisher receives
+`contents: write` and `actions: write`. It requests `update-feeds.yml` on trusted
+`main` after publication. Website and server deployment have independent tag
+workflows. Simulator archives are for Xcode on Mac, not physical iPhones.
 
 Dependency checks run only on GitHub-hosted `ubuntu-24.04`. The release
 `validate` job runs `client/scripts/dependency-audit.py` (pinned `cargo-deny`
@@ -66,7 +63,8 @@ checkout/cache until the new location is verified.
 platform: macOS=1, Windows=2, Linux=3, Android=4, iOS=5
 ```
 
-The first run/attempt yields `11011`–`11015`, above every GitLab release build.
+The formula yields `11011`–`11015` for the first run/attempt. Each native job
+also checks that its reserved number exceeds the current source build floor.
 Retries receive new numbers. Attempts above 99 and Android versionCode overflow
 fail closed. Do not reset/recreate this workflow and reuse its run-number sequence
 without raising the baseline above all published builds. Do not publish an older
@@ -77,8 +75,7 @@ Windows native `FILEVERSION` and Inno Setup version components are limited to
 Before exceeding that limit, change and test the Windows metadata representation
 while preserving the complete application/update version and monotonic Android
 `versionCode`. With the current formula, run 56 exceeds the Windows limit even
-on its first attempt; many retries can reach it sooner. The 0.3.2 packages are
-below this limit. Do not reset the GitHub run sequence to work around it.
+on its first attempt; many retries can reach it sooner. The limit applies to both manual candidates and tag releases. Do not reset the GitHub run sequence to work around it.
 
 ## Signing and credentials
 
@@ -93,8 +90,8 @@ below this limit. Do not reset the GitHub run sequence to work around it.
 - Optional repository variable `CC_CODESIGN_IDENTITY` selects an existing
   macOS keychain signing identity by name or SHA-1. Without it, builds retain
   the previous ad-hoc behavior. Developer ID distribution needs notarization.
-- No iOS job runs; a local iOS build is a Simulator preview and requests no
-  provisioning credentials.
+- The required iOS job produces a Simulator ZIP and requests no provisioning
+  credentials; iPhone distribution is outside the 1.0.0 release scope.
 - The update signing keys (`UPDATE_SIGNING_KEY`, and `LINUX_UPDATE_SIGNING_KEY`
   for the separate Linux feed) remain confined to the separate update-feed
   workflow. Native build jobs do not receive production credentials or update

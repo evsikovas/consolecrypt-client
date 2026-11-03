@@ -493,6 +493,12 @@ impl AppCore {
         // An OS device unlock key outlives the files (Windows Hello).
         let dir = self.inner.profiles.profile_dir(pid);
         if let Ok(Some(kf)) = blocking(move || crate::keyfile::load(&dir)).await {
+            for (name, record) in kf.password_vault_keys {
+                if name.ends_with(".hello") {
+                    let keys = self.inner.ctx.device_keys.clone();
+                    let _ = blocking(move || Ok(keys.destroy(&record.handle.0)?)).await;
+                }
+            }
             if let Some(record) = kf.device_unlock.filter(|r| !r.external) {
                 let keys = self.inner.ctx.device_keys.clone();
                 let _ = blocking(move || Ok(keys.destroy(&record.handle.0)?)).await;
@@ -1299,6 +1305,7 @@ async fn seed_vault_settings(u: &Unlocked, name: &str) -> AppResult<()> {
     let now = chrono::Utc::now();
     u.writer
         .put(VaultObject::VaultSettings(VaultSettings {
+            password_vaults: Default::default(),
             id: ObjectId::new(),
             vault_name: if name.trim().is_empty() {
                 "Vault".into()

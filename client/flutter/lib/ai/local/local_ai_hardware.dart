@@ -28,8 +28,11 @@ class LocalAiHardware {
     final target = platform ?? LocalAiCatalog.platform;
     if (target == LocalAiPlatform.unsupported) return LocalAiHardware(platform: target);
     final windows = target == LocalAiPlatform.windowsX64;
+    final linux = target == LocalAiPlatform.linuxX64;
     final executable = windows
         ? '${Platform.environment['SystemRoot'] ?? r'C:\Windows'}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'
+        : linux
+        ? '/bin/cat'
         : '/usr/sbin/sysctl';
     final arguments = windows
         ? [
@@ -39,10 +42,19 @@ class LocalAiHardware {
             '-Command',
             '[Console]::Write([UInt64](Get-CimInstance -ClassName Win32_ComputerSystem -Property TotalPhysicalMemory).TotalPhysicalMemory)', // l10n-ignore: read-only Windows system query
           ]
+        : linux
+        ? ['/proc/meminfo']
         : ['-n', 'hw.memsize'];
     try {
       final output = await (query ?? _query)(executable, arguments).timeout(timeout);
-      final memory = output == null ? null : int.tryParse(output.trim());
+      final kib = linux && output != null
+          ? RegExp(r'^MemTotal:\s+(\d+)\s+kB\s*$', multiLine: true).firstMatch(output)?.group(1)
+          : null;
+      final memory = linux
+          ? (kib == null ? null : int.parse(kib) * 1024)
+          : output == null
+          ? null
+          : int.tryParse(output.trim());
       return LocalAiHardware(platform: target, totalMemoryBytes: memory != null && memory > 0 ? memory : null);
     } catch (_) {
       return LocalAiHardware(platform: target);

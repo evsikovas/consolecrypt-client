@@ -432,27 +432,17 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
                   ],
                 ),
                 const SizedBox(height: GlassSpacing.s12),
-                TextFormField(
-                  key: const ValueKey('host-username'),
-                  controller: _username,
-                  validator: (v) =>
-                      _protocol == HostProtocol.rdp && (v ?? '').trim().isEmpty ? l10n.hostRdpUsernameRequired : null,
-                  autocorrect: false,
-                  decoration: InputDecoration(
-                    labelText: l10n.hostEditorUsernameLabel,
-                    hintText: l10n.hostEditorUsernameHint,
-                  ),
-                ),
-                const SizedBox(height: GlassSpacing.s12),
-                if (_protocol == HostProtocol.rdp) ...[
+                if (_protocol != HostProtocol.rdp)
                   TextFormField(
-                    key: const ValueKey('host-rdp-domain'),
-                    controller: _domain,
+                    key: const ValueKey('host-username'),
+                    controller: _username,
                     autocorrect: false,
-                    decoration: InputDecoration(labelText: l10n.rdpDomain),
+                    decoration: InputDecoration(
+                      labelText: l10n.hostEditorUsernameLabel,
+                      hintText: l10n.hostEditorUsernameHint,
+                    ),
                   ),
-                  const SizedBox(height: GlassSpacing.s12),
-                ],
+                const SizedBox(height: GlassSpacing.s12),
                 GlassDropdownField<ObjectId?>(
                   key: const ValueKey('host-group'),
                   value: groups.any((g) => g.id == _groupId) ? _groupId : null,
@@ -469,6 +459,38 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
           const SizedBox(height: GlassSpacing.s16),
           HostAuthSection(
             passwordOnly: _protocol == HostProtocol.rdp,
+            onCredentialLinked: _protocol == HostProtocol.rdp
+                ? (credential) {
+                    final username = credential.username;
+                    if (username == null || username.isEmpty) return;
+                    final parts = username.split(r'\');
+                    _username.text = parts.last;
+                    _domain.text = parts.length > 1 ? parts.first : '';
+                  }
+                : null,
+            identityFields: _protocol == HostProtocol.rdp
+                ? Column(
+                    children: [
+                      TextFormField(
+                        key: const ValueKey('host-username'),
+                        controller: _username,
+                        validator: (v) => (v ?? '').trim().isEmpty ? l10n.hostRdpUsernameRequired : null,
+                        autocorrect: false,
+                        decoration: InputDecoration(
+                          labelText: l10n.hostEditorUsernameLabel,
+                          hintText: l10n.hostEditorUsernameHint,
+                        ),
+                      ),
+                      const SizedBox(height: GlassSpacing.s12),
+                      TextFormField(
+                        key: const ValueKey('host-rdp-domain'),
+                        controller: _domain,
+                        autocorrect: false,
+                        decoration: InputDecoration(labelText: l10n.rdpDomain),
+                      ),
+                    ],
+                  )
+                : null,
             draft: _auth!,
             onChanged: _recompute,
             groupName: _groupId == null ? null : groupPathName(groupsById, _groupId),
@@ -476,6 +498,8 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
           const SizedBox(height: GlassSpacing.s16),
           if (_protocol == HostProtocol.ssh) ...[
             SectionCard(
+              collapsible: true,
+              initiallyExpanded: false,
               title: l10n.hostEditorJumpSection,
               icon: Icons.alt_route_rounded,
               subtitle: l10n.hostEditorJumpSubtitle,
@@ -521,6 +545,8 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
             ),
             const SizedBox(height: GlassSpacing.s16),
             SectionCard(
+              collapsible: true,
+              initiallyExpanded: false,
               title: l10n.hostEditorSecuritySection,
               icon: Icons.verified_user_rounded,
               child: Column(
@@ -574,6 +600,8 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
             const SizedBox(height: GlassSpacing.s16),
           ],
           SectionCard(
+            collapsible: true,
+            initiallyExpanded: false,
             title: l10n.hostEditorOrganisationSection,
             icon: Icons.label_rounded,
             child: Column(

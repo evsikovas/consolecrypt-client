@@ -181,7 +181,17 @@ impl PinnedVaultKey {
 
 /// The key file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct PasswordVaultKeyRecord {
+    pub handle: Bytes,
+    pub salt: Bytes,
+    pub envelope: LocalSealed,
+}
+
+/// The key file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct KeyFile {
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub password_vault_keys: std::collections::BTreeMap<String, PasswordVaultKeyRecord>,
     pub version: u32,
     pub vault_id: VaultId,
     pub header: LockedHeader,
@@ -206,6 +216,7 @@ pub(crate) struct KeyFile {
 impl KeyFile {
     pub(crate) fn new(vault_id: VaultId, header: LockedHeader, db_key: LocalSealed) -> Self {
         Self {
+            password_vault_keys: Default::default(),
             version: VERSION,
             vault_id,
             header,

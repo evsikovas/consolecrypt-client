@@ -10,6 +10,29 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get keepassMobileFilesHelp =>
+      'Локальные файлы импортируются в приложение и сохраняются здесь автоматически. Чтобы выгрузить изменения в «Файлы», выберите «Сохранить локальную копию». WebDAV сохраняет изменения прямо в удалённую базу.';
+
+  @override
+  String get keepassMoveToGroup => 'Переместить в другую группу…';
+
+  @override
+  String get tunnelsSaveForward => 'Сохранить туннель';
+
+  @override
+  String get tunnelsSavedForwardHelp =>
+      'Сохранённые туннели Docker и Kubernetes остаются на этом устройстве в текущем профиле.';
+
+  @override
+  String get tunnelsRemoveSavedMessage => 'Остановить проброс и удалить его сохранённые параметры с этого устройства?';
+
+  @override
+  String get tunnelsStartSaved => 'Запустить сохранённый туннель';
+
+  @override
+  String get tunnelsStopSaved => 'Остановить туннель';
+
+  @override
   String get commonCancel => 'Отмена';
 
   @override
@@ -2396,7 +2419,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get hostAuthSavePasswordOn =>
-      'Хранится как отдельный секрет со сквозным шифрованием и больше никогда не показывается.';
+      'Хранится как отдельный секрет со сквозным шифрованием. Посмотреть пароль можно при редактировании подключения.';
 
   @override
   String get hostAuthSavePasswordOff => 'Ничего не сохраняется — терминал запрашивает пароль при каждом подключении.';
@@ -6170,7 +6193,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get localAiError => 'Ошибка локального ИИ';
 
   @override
-  String get localAiUnsupported => 'Доступно на поддерживаемых компьютерах с Windows и macOS.';
+  String get localAiUnsupported => 'Доступно на поддерживаемых компьютерах с Windows, macOS и Linux.';
 
   @override
   String get localAiDefault => 'Использовать по умолчанию после установки';
@@ -14004,4 +14027,356 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get cliFailed => 'Не удалось установить или удалить команды CLI.';
+
+  @override
+  String get terminalPreviousTab => 'Предыдущая вкладка терминала';
+
+  @override
+  String get terminalNextTab => 'Следующая вкладка терминала';
+
+  @override
+  String get sharingTeamsHelp => 'Команды, их участники и доступные им ресурсы.';
+
+  @override
+  String sharingTeamResources(int count) {
+    return 'Ресурсов: $count';
+  }
+
+  @override
+  String get sharingTeamNoResources => 'В этой команде пока нет ресурсов.';
+
+  @override
+  String get sharingTeamLocked => 'Разблокируйте хранилище команды, чтобы посмотреть участников и ресурсы.';
+
+  @override
+  String get keepassTitle => 'Файлы KeePass';
+
+  @override
+  String get keepassHelp =>
+      'Откройте локальную базу KDBX 3/4 или подключите WebDAV. Открытые базы доступны через Ctrl+K. Сохраняйте изменения перед блокировкой; локальное сохранение оставляет рядом зашифрованную резервную копию.';
+
+  @override
+  String get keepassOpen => 'Открыть KDBX';
+
+  @override
+  String get keepassCreate => 'Создать KDBX';
+
+  @override
+  String get keepassPassword => 'Пароль базы';
+
+  @override
+  String get keepassConfirm => 'Повторите пароль базы';
+
+  @override
+  String get keepassKeyFile => 'Выбрать ключевой файл (необязательно)';
+
+  @override
+  String get keepassClearKey => 'Убрать ключевой файл';
+
+  @override
+  String get keepassNewEntry => 'Добавить запись';
+
+  @override
+  String get keepassNewGroup => 'Добавить группу';
+
+  @override
+  String get keepassEntry => 'Запись KeePass';
+
+  @override
+  String get keepassGroup => 'Группа';
+
+  @override
+  String get keepassGroupName => 'Название группы';
+
+  @override
+  String get keepassEntryTitle => 'Название';
+
+  @override
+  String get keepassUsername => 'Пользователь';
+
+  @override
+  String get keepassEntryPassword => 'Пароль';
+
+  @override
+  String get keepassUrl => 'URL';
+
+  @override
+  String get keepassNotes => 'Заметки';
+
+  @override
+  String get keepassSearch => 'Поиск записей';
+
+  @override
+  String get keepassDirty => 'Есть несохранённые изменения';
+
+  @override
+  String get keepassSaved => 'Зашифрованный файл сохранён';
+
+  @override
+  String get keepassDiscard => 'Отбросить изменения';
+
+  @override
+  String get keepassDiscardHelp => 'Закрыть файл и отбросить несохранённые изменения?';
+
+  @override
+  String get keepassDelete => 'Переместить запись в корзину?';
+
+  @override
+  String get keepassDeleteHelp => 'Запись останется в корзине базы. Сохраните файл, чтобы записать изменение на диск.';
+
+  @override
+  String get keepassKeyError => 'Неверный пароль или ключевой файл. Проверьте оба и повторите попытку.';
+
+  @override
+  String get keepassFormatError =>
+      'Не удалось открыть базу: файл может быть повреждён или иметь неподдерживаемый формат. Исходный файл не изменён.';
+
+  @override
+  String get keepassUnsupported =>
+      'Некоторые возможности или настройки этой базы пока не поддерживаются. Исходный файл не изменён.';
+
+  @override
+  String get keepassChanged =>
+      'Файл изменился на диске. Сохранение отменено, чтобы защитить эту версию. Откройте файл заново для загрузки изменений.';
+
+  @override
+  String get keepassIoError => 'Не удалось прочитать или сохранить файл. Проверьте права доступа и свободное место.';
+
+  @override
+  String get keepassClosed => 'Сеанс KeePass заблокирован. Откройте файл заново с его паролем.';
+
+  @override
+  String get keepassLimits => 'Файл слишком велик или его параметры выработки ключа требуют слишком много ресурсов.';
+
+  @override
+  String get keepassExists => 'Файл уже существует. Выберите новое имя.';
+
+  @override
+  String get keepassMismatch => 'Пароли не совпадают.';
+
+  @override
+  String get keepassEmpty => 'В этой группе пока нет записей';
+
+  @override
+  String get keepassLock => 'Заблокировать базу';
+
+  @override
+  String errorWindowsHelloDiagnostic(String diagnostic) {
+    return 'Ошибка Windows Hello ($diagnostic). Если отпечаток не принимается, попробуйте PIN в системном окне безопасности Windows. Пароль хранилища остаётся доступен.';
+  }
+
+  @override
+  String get navPasswords => 'Пароли';
+
+  @override
+  String get keepassDavAdd => 'Подключить WebDAV';
+
+  @override
+  String get keepassDavUrl => 'URL файла KDBX (HTTPS)';
+
+  @override
+  String get keepassDavName => 'Название подключения';
+
+  @override
+  String get keepassDavPassword => 'Пароль WebDAV / токен приложения';
+
+  @override
+  String get keepassDavHelp =>
+      'Параметры подключения и данные авторизации шифруются и синхронизируются с хранилищем ConsoleCrypt. Сам файл KDBX остаётся на WebDAV.';
+
+  @override
+  String get keepassDavUrlError =>
+      'Укажите полный HTTPS-адрес файла .kdbx, например https://server/folder/Passwords.kdbx. Адрес сервера или папки не подходит.';
+
+  @override
+  String get keepassDavAuthError => 'WebDAV отклонил авторизацию. Проверьте данные подключения.';
+
+  @override
+  String get keepassDavEtagError =>
+      'Сервер не предоставляет ни надёжный ETag, ни подходящую блокировку файла. Сохраните локальную копию изменений.';
+
+  @override
+  String get keepassDavRedirectError => 'WebDAV перенаправил запрос. Укажите конечный адрес файла.';
+
+  @override
+  String get keepassDavIoError => 'Не удалось обратиться к файлу WebDAV. Проверьте адрес, сеть и права доступа.';
+
+  @override
+  String get keepassUnlock => 'Разблокировать базу';
+
+  @override
+  String get keepassDatabases => 'Базы паролей';
+
+  @override
+  String get keepassHello => 'Биометрия / PIN устройства';
+
+  @override
+  String get keepassSecurityKey => 'Физический ключ FIDO2';
+
+  @override
+  String get keepassQuickHelp =>
+      'Первое открытие — мастер-паролем. Затем можно включить отдельный локальный ключ под защитой системной биометрии/PIN устройства или FIDO2 с поддержкой PRF. Настройка действует только на этом устройстве.';
+
+  @override
+  String get keepassQuickEnabled => 'Быстрое открытие включено';
+
+  @override
+  String get keepassQuickDisabled => 'Быстрое открытие отключено';
+
+  @override
+  String get keepassProtection => 'Быстрое открытие';
+
+  @override
+  String get keepassPin => 'PIN физического ключа';
+
+  @override
+  String get keepassCopyPassword => 'Скопировать пароль';
+
+  @override
+  String get keepassCopyUsername => 'Скопировать логин';
+
+  @override
+  String get keepassCopyField => 'Скопировать поле';
+
+  @override
+  String get keepassField => 'Поле';
+
+  @override
+  String get keepassValue => 'Значение';
+
+  @override
+  String get keepassFieldAdd => 'Добавить поле';
+
+  @override
+  String get keepassExport => 'Сохранить локальную копию';
+
+  @override
+  String get keepassAllGroups => 'Все группы';
+
+  @override
+  String get keepassPaletteHelp => 'Найдите запись, затем выберите поле для копирования.';
+
+  @override
+  String get keepassPaletteBack => 'Назад ко всем командам';
+
+  @override
+  String get keepassOpenManager => 'Открыть менеджер паролей';
+
+  @override
+  String get keepassConnectDelete => 'Удалить подключение';
+
+  @override
+  String get keepassConnectDeleteHelp =>
+      'Удалить подключение из синхронизируемых настроек? Файл KDBX останется на WebDAV.';
+
+  @override
+  String get keepassGroups => 'Группы';
+
+  @override
+  String get keepassFieldNameError => 'Названия полей должны быть уникальными и отличаться от стандартных полей.';
+
+  @override
+  String get keepassWelcome => 'Менеджер паролей';
+
+  @override
+  String get keepassWelcomeHelp => 'Откройте базу KDBX, создайте новую или подключите файл с WebDAV.';
+
+  @override
+  String get keepassAddDatabase => 'Добавить базу';
+
+  @override
+  String get keepassNoSelection => 'Выберите запись, чтобы открыть карточку.';
+
+  @override
+  String get keepassDropHint => 'Перетащите запись на папку, чтобы переместить её.';
+
+  @override
+  String get keepassUngrouped => 'Без папки';
+
+  @override
+  String get keepassAutosaving => 'Сохраняем изменения…';
+
+  @override
+  String get keepassAutosaved => 'Все изменения сохранены автоматически';
+
+  @override
+  String get keepassRetrySave => 'Повторить сохранение';
+
+  @override
+  String get keepassChooseField => 'Выберите, что скопировать';
+
+  @override
+  String get keepassBackEntries => 'Назад к записям';
+
+  @override
+  String get keepassSelectCard => 'Открыть карточку записи';
+
+  @override
+  String get keepassMore => 'Действия с базой';
+
+  @override
+  String get keepassDavTimeout => 'Сервер WebDAV не ответил вовремя. Проверьте адрес файла и подключение.';
+
+  @override
+  String get keepassDavLocked => 'Файл заблокирован другим клиентом. Повторите сохранение позже.';
+
+  @override
+  String get keepassResizeGroups => 'Изменить ширину папок';
+
+  @override
+  String get keepassResizeCard => 'Изменить ширину карточки';
+
+  @override
+  String get keepassGenerator => 'Генератор паролей';
+
+  @override
+  String get keepassGeneratorLength => 'Длина (8–128)';
+
+  @override
+  String get keepassGeneratorUpper => 'Заглавные буквы (A–Z)';
+
+  @override
+  String get keepassGeneratorLower => 'Строчные буквы (a–z)';
+
+  @override
+  String get keepassGeneratorDigits => 'Цифры (0–9)';
+
+  @override
+  String get keepassGeneratorSymbols => 'Специальные символы (! @ # …)';
+
+  @override
+  String get keepassGeneratorSimilar => 'Исключить похожие символы (0 O 1 I l)';
+
+  @override
+  String get keepassGeneratorRegenerate => 'Сгенерировать заново';
+
+  @override
+  String get keepassGeneratorUse => 'Использовать пароль';
+
+  @override
+  String get keepassGeneratorLengthError => 'Укажите длину от 8 до 128.';
+
+  @override
+  String get keepassGeneratorGroupsError => 'Выберите хотя бы один вид символов.';
+
+  @override
+  String keepassGeneratorEntropy(String bits) {
+    return 'Энтропия генерации: $bits бит';
+  }
+
+  @override
+  String get keepassSelectSource => 'Выбрать базу';
+
+  @override
+  String get keepassRemoveSource => 'Удалить из списка';
+
+  @override
+  String keepassRemoveLocalHelp(String name) {
+    return 'Убрать «$name» из списка на этом устройстве и закрыть базу? Сам файл KDBX останется на диске.';
+  }
+
+  @override
+  String keepassRemoveRemoteHelp(String name) {
+    return 'Удалить подключение «$name» и закрыть базу? Файл на WebDAV останется. Параметры подключения будут удалены на синхронизированных устройствах.';
+  }
 }

@@ -11,6 +11,7 @@ import 'dart:convert';
 
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/rdp_mobile.dart';
+import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/models/sftp_browser.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/models/terminal_colors.dart';
@@ -186,6 +187,7 @@ AppException mapBridgeError(BridgeError e) {
       code = AppErrorCode.secureStore;
     case 'os_auth_failed':
       code = AppErrorCode.osAuthFailed;
+      if (d['hello_diagnostic'] case final diagnostic?) args = {'hello_diagnostic': diagnostic};
     case 'os_auth_invalidated':
       code = AppErrorCode.osAuthInvalidated;
     case 'local_profile':
@@ -629,6 +631,10 @@ Json snippetToJson(Snippet s, {Json? base}) => {
 };
 
 VaultSettings vaultSettingsFromJson(Json j) => VaultSettings(
+  passwordVaults: [
+    for (final p in j['password_vaults'] as List? ?? [])
+      PasswordVaultConnection.fromJson((p as Map).cast<String, Object?>()),
+  ],
   id: ObjectId(j['id']! as String),
   vaultName: j['vault_name']! as String,
   terminalHistoryMode: _byWire(
@@ -650,6 +656,7 @@ VaultSettings vaultSettingsFromJson(Json j) => VaultSettings(
 
 Json vaultSettingsToJson(VaultSettings s, {Json? base}) => {
   ...?base,
+  'password_vaults': s.passwordVaults.map((p) => p.toJson()).toList(),
   'id': s.id.value,
   'vault_name': s.vaultName,
   'terminal_history_mode': s.terminalHistoryMode.wireName,
@@ -833,6 +840,8 @@ List<FileEntry> sortEntries(Iterable<FileEntry> entries) => entries.toList()
 // ---- device-local UI state (own JSON format, never synced) --------------------------
 
 Json localSettingsToJson(LocalSettings s) => {
+  'saved_forwards': [for (final p in s.savedForwards) p.toJson()],
+  'password_vault_files': s.passwordVaultFiles,
   'theme_mode': s.themeMode.name,
   'ui_font_scale': s.uiFontScale,
   'ui_font_scale_version': 2,
@@ -880,6 +889,15 @@ LocalSettings localSettingsFromJson(Json j) {
       ? scale.toDouble() / (j['ui_font_scale_version'] == 2 ? 1 : LocalSettings.uiFontBase)
       : d.uiFontScale;
   return LocalSettings(
+    savedForwards: [
+      for (final p in j['saved_forwards'] is List ? j['saved_forwards'] as List : const [])
+        ?SavedForward.tryFromJson(p),
+    ],
+    passwordVaultFiles: [
+      for (final p in j['password_vault_files'] as List? ?? [])
+        if (p is Map && p['profile'] is String && p['path'] is String)
+          {'profile': p['profile'] as String, 'path': p['path'] as String},
+    ],
     themeMode: _byWire(AppThemeMode.values, (e) => e.name, j['theme_mode'], d.themeMode),
     uiFontScale: normalizedScale.clamp(LocalSettings.uiFontScaleMin, LocalSettings.uiFontScaleMax),
     uiAccentColor: rgb(j['ui_accent_color']),

@@ -49,7 +49,7 @@ class LocalAiEndpoint {
 
 /// Owns one llama.cpp process, never a pre-existing local service.
 /// Construction/initialize are offline; only install() downloads artifacts.
-/// macOS uses a signed, bundled helper; Windows downloads a pinned runtime.
+/// macOS uses a signed helper; Windows/Linux download a digest-pinned runtime.
 class LocalAiRuntime {
   LocalAiRuntime({
     Directory? supportDirectory,
@@ -149,6 +149,13 @@ class LocalAiRuntime {
   }
 
   static Directory _defaultDirectory() {
+    if (Platform.isLinux) {
+      final xdg = Platform.environment['XDG_DATA_HOME'];
+      final home = Platform.environment['HOME'];
+      if (xdg != null && xdg.startsWith('/')) return Directory('$xdg/ConsoleCrypt/local-ai');
+      if (home != null && home.startsWith('/')) return Directory('$home/.local/share/ConsoleCrypt/local-ai');
+      throw const LocalAiException('local_storage_unavailable');
+    }
     if (Platform.isWindows) {
       final local = Platform.environment['LOCALAPPDATA'];
       if (local != null && local.isNotEmpty) return Directory('$local/ConsoleCrypt/local-ai');

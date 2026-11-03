@@ -18,6 +18,18 @@ release = load('prepare-github-release')
 
 
 class TagTests(unittest.TestCase):
+    def test_manual_candidate_is_explicit_and_main_only(self):
+        source = 'version: 1.0.0+21085\n'
+        self.assertEqual(tag.build_version('refs/heads/main', source, 'workflow_dispatch', True), ('1.0.0', True))
+        for ref, event, allowed in (
+            ('refs/heads/feature', 'workflow_dispatch', True),
+            ('refs/heads/main', 'push', True),
+            ('refs/heads/main', 'pull_request', True),
+            ('refs/heads/main', 'workflow_dispatch', False),
+        ):
+            with self.subTest(ref=ref, event=event, allowed=allowed), self.assertRaises(ValueError):
+                tag.build_version(ref, source, event, allowed)
+
     def test_only_matching_stable_tag(self):
         source = 'name: consolecrypt\nversion: 0.4.0+13034\n'
         self.assertEqual(tag.release_version('refs/tags/v0.4.0', source), '0.4.0')
@@ -71,6 +83,31 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             release.prepare(self.artifacts, self.output, '0.4.0')
         self.assertFalse(self.output.exists())
+
+    def test_one_point_zero_requires_matching_ios_simulator_and_checksums(self):
+        # Existing releases remain verifiable; 1.0 must contain every platform.
+        for folder in self.artifacts.iterdir():
+            receipt = folder / 'ConsoleCrypt.version'
+            full = receipt.read_text().strip().replace('0.4.0+', '1.0.0+')
+            receipt.write_text(full)
+            for package in list(folder.glob('ConsoleCrypt-0.4.0+*')):
+                package.rename(package.with_name(package.name.replace('0.4.0+', '1.0.0+')))
+        with self.assertRaises(ValueError):
+            release.prepare(self.artifacts, self.output, '1.0.0')
+        folder = self.artifacts / 'ios-preview'
+        folder.mkdir()
+        receipt = folder / 'ConsoleCrypt-simulator-universal.version'
+        receipt.write_text('0.9.15+14015')
+        archive = folder / 'ConsoleCrypt-1.0.0+14015-ios-simulator-universal.zip'
+        archive.write_bytes(b'synthetic simulator archive')
+        with self.assertRaises(ValueError):
+            release.prepare(self.artifacts, self.output, '1.0.0')
+        receipt.write_text('1.0.0+14015')
+        names = release.prepare(self.artifacts, self.output, '1.0.0')
+        self.assertEqual(len(names), 7)
+        self.assertIn(archive.name, names)
+        self.assertIn(hashlib.sha256(archive.read_bytes()).hexdigest(),
+                      (self.output / 'SHA256SUMS-1.0.0.txt').read_text())
 
     def test_missing_platform_is_rejected(self):
         (self.artifacts / 'linux/ConsoleCrypt.version').unlink()

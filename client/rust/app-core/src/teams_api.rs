@@ -261,6 +261,7 @@ impl AppCore {
         let cx = self.team_ctx().await?;
         let now = chrono::Utc::now();
         let mut settings = VaultSettingsDto::from_model(&VaultSettings {
+            password_vaults: Default::default(),
             id: ObjectId::new(),
             vault_name: name,
             terminal_history_mode: Default::default(),

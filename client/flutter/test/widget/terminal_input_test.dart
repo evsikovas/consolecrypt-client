@@ -49,6 +49,29 @@ Future<(ProviderContainer, TerminalTab)> openTerminal(WidgetTester tester, {Term
 }
 
 void main() {
+  testWidgets('Ctrl arrows cycle tabs and subsequent input reaches the newly active terminal', (tester) async {
+    final (container, first) = await openTerminal(tester);
+    final second = await container.read(terminalTabsProvider.notifier).open(first.host!);
+    await settle(tester);
+    final firstOutput = <String>[], secondOutput = <String>[];
+    first.terminal.onOutput = firstOutput.add;
+    second.terminal.onOutput = secondOutput.add;
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(container.read(terminalTabsProvider).active, same(first));
+    tester.testTextInput.enterText('first');
+    await tester.pump();
+    expect(firstOutput.join(), 'first');
+    expect(secondOutput, isEmpty);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(container.read(terminalTabsProvider).active, same(second));
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   testWidgets('Windows Cyrillic input waits for the first async write before sending the next key or Enter', (
     tester,
   ) async {

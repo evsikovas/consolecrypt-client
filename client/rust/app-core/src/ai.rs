@@ -250,9 +250,13 @@ impl AppCore {
         api_key: String,
         model: String,
     ) -> AppResult<()> {
-        if !cfg!(any(target_os = "windows", target_os = "macos")) {
+        if !cfg!(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux"
+        )) {
             return Err(AppError::Unsupported(
-                "device-local AI requires Windows or macOS".into(),
+                "device-local AI requires Windows, macOS or Linux".into(),
             ));
         }
         if port == 0

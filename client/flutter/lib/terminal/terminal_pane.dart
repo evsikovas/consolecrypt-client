@@ -295,9 +295,9 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
                       : keys.isControlPressed && !keys.isMetaPressed;
                   if (primary &&
                       !keys.isAltPressed &&
-                      !keys.isShiftPressed &&
+                      (!keys.isShiftPressed || AppPlatform.isWindows) &&
                       event.logicalKey == LogicalKeyboardKey.keyV) {
-                    unawaited(pasteIntoTerminal(context, ref, tab));
+                    if (event is KeyDownEvent) unawaited(pasteIntoTerminal(context, ref, tab));
                     return KeyEventResult.handled;
                   }
                   if (AppPlatform.isWindows &&

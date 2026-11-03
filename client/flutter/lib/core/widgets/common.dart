@@ -149,49 +149,104 @@ class PageScaffold extends StatelessWidget {
 
 /// Content card with a heading (§4.6): [ContentSurface], title3 heading,
 /// optional secondary icon, subtitle and trailing action.
-class SectionCard extends StatelessWidget {
-  const SectionCard({required this.title, required this.child, super.key, this.subtitle, this.trailing, this.icon});
+class SectionCard extends StatefulWidget {
+  const SectionCard({
+    required this.title,
+    required this.child,
+    super.key,
+    this.subtitle,
+    this.trailing,
+    this.icon,
+    this.collapsible = false,
+    this.initiallyExpanded = true,
+  });
 
   final String title;
   final String? subtitle;
   final Widget? trailing;
   final IconData? icon;
   final Widget child;
+  final bool collapsible;
+  final bool initiallyExpanded;
+
+  @override
+  State<SectionCard> createState() => _SectionCardState();
+}
+
+class _SectionCardState extends State<SectionCard> {
+  late bool _expanded = widget.initiallyExpanded;
 
   @override
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
+    final expanded = !widget.collapsible || _expanded;
+    final title = widget.title;
+    final icon = widget.icon;
+    final trailing = widget.trailing;
+    final subtitle = widget.subtitle;
+    final heading = Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: GlassSizes.iconToolbar, color: tokens.secondaryLabel),
+          const SizedBox(width: GlassSpacing.s8),
+        ],
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(title, style: tokens.typography.title3.copyWith(color: tokens.palette.label)),
+          ),
+        ),
+        if (widget.collapsible)
+          Icon(
+            expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+            size: 18,
+            color: tokens.secondaryLabel,
+          ),
+      ],
+    );
     return ContentSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: GlassSizes.iconToolbar, color: tokens.secondaryLabel),
-                const SizedBox(width: GlassSpacing.s8),
-              ],
               Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(title, style: tokens.typography.title3.copyWith(color: tokens.palette.label)),
-                ),
+                child: widget.collapsible
+                    ? Semantics(
+                        expanded: expanded,
+                        child: InkWell(
+                          onTap: () => setState(() => _expanded = !_expanded),
+                          child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: heading),
+                        ),
+                      )
+                    : heading,
               ),
               if (MediaQuery.sizeOf(context).width >= 600) ?trailing,
             ],
           ),
-          if (trailing != null && MediaQuery.sizeOf(context).width < 600)
+          if (expanded && trailing != null && MediaQuery.sizeOf(context).width < 600)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Align(alignment: Alignment.centerLeft, child: trailing),
             ),
-          if (subtitle != null)
+          if (expanded && subtitle != null)
             Padding(
               padding: const EdgeInsets.only(top: GlassSpacing.s4),
-              child: Text(subtitle!, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
+              child: Text(subtitle, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
             ),
-          const SizedBox(height: GlassSpacing.s12),
-          child,
+          ExcludeFocus(
+            excluding: !expanded,
+            child: Offstage(
+              offstage: !expanded,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: GlassSpacing.s12),
+                  widget.child,
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

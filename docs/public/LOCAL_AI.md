@@ -1,9 +1,9 @@
-# Локальный ИИ / Local AI — 0.5
+# Локальный ИИ / Local AI — 1.0.0
 
 ## Русский
 
-На Windows и macOS откройте «Настройки» → «Встроенный локальный ИИ».
-В серии 0.5 доступен выбор трёх моделей Q4_K_M:
+На Windows, macOS и Linux x64 откройте «Настройки» → «Встроенный локальный ИИ».
+Доступен выбор трёх моделей Q4_K_M:
 
 | Вариант | Модель | Загрузка GGUF | Ориентир по общей ОЗУ |
 | --- | --- | --- | --- |
@@ -15,7 +15,7 @@
 компьютера (4/8/16 ГиБ). Если память неизвестна или меньше 4 ГиБ, звезды нет.
 Рекомендация не меняет выбранную модель или флажок default. Это ориентир, а не
 гарантия скорости: оставьте память системе и другим программам. На Apple Silicon
-используется Metal, на Intel Mac и Windows x64 — CPU. Android, iOS и Linux
+используется Metal, на Intel Mac, Windows x64 и Linux x64 — CPU. Android и iOS
 не показывают раздел встроенной установки; настройка других провайдеров
 сохраняется.
 
@@ -23,7 +23,7 @@
 
 1. Выберите модель и нажмите «Установить локальный ИИ». Большие GGUF-файлы не
    входят в установщик приложения. macOS содержит небольшой подписанный движок
-   llama.cpp, Windows скачивает его отдельно.
+   llama.cpp, Windows и Linux скачивают его отдельно.
 2. Дождитесь загрузки и проверки размера и SHA-256. Прогресс виден в настройках;
    загрузку можно отменить и продолжить позднее. Установка не начинается сама
    при запуске приложения или смене рекомендации.
@@ -106,17 +106,17 @@ ConsoleCrypt. Путь к модели и токен процесса не си�
 
 ## English
 
-In Windows/macOS Settings, open **Built-in local AI**. The 0.5 series offers
+In Windows/macOS/Linux Settings, open **Built-in local AI**. Version 1.0 offers
 Light Qwen2.5-Coder 1.5B (about 1.1 GB, 4 GiB RAM), Medium Qwen3.5 4B (about
 2.7 GB, 8 GiB RAM) and Strong Qwen3.5 9B (about 5.7 GB, 16 GiB RAM), all Q4_K_M.
 The star recommends the largest tier fitting total system RAM; unknown RAM or
 less than 4 GiB shows no star. It never changes your selection or default.
 Memory guidance does not guarantee speed. Apple Silicon uses Metal; Intel Mac
-and Windows x64 use CPU. Built-in installation is unavailable on Linux/mobile.
+Windows x64 and Linux x64 use CPU. Built-in installation is unavailable on mobile.
 
 Select a model, then install it. The app verifies exact size and SHA-256 and
 supports cancellation/resume. Models are optional downloads outside the app
-package. macOS bundles the small signed runtime; Windows installs it separately.
+package. macOS bundles the small signed runtime; Windows/Linux install it separately.
 The device-only default starts enabled after installation; your cloud provider
 configuration remains. After a local model has been installed, selecting another
 model that is not downloaded asks for installation instead of silently falling
@@ -167,3 +167,26 @@ The smoke check exercises installation, authorization, an answer and idle
 lifecycle. Add `--runtime-only` to check just the runtime. Use a separate test
 directory, never the user's installed model directory. Native packaging and
 large-model validation are separate release checks.
+
+## Linux x64 в 1.0.0 / Linux x64 in 1.0.0
+
+Linux uses the CPU runtime from the official llama.cpp b11739 release:
+[llama-b11739-bin-ubuntu-x64.tar.gz](https://github.com/ggml-org/llama.cpp/releases/tag/b11739).
+The archive is 17,995,598 bytes; SHA-256 is
+`0b3b7579835cc3d837c6046bbc970fd4be0281d1a9ee2ea5b7cdb6eeb84b5842`.
+The same download verification, model catalog, authenticated loopback and idle
+lifecycle apply as on Windows/macOS. Linux data uses an absolute
+`XDG_DATA_HOME/ConsoleCrypt/local-ai`, otherwise
+`~/.local/share/ConsoleCrypt/local-ai`. RAM is read from `/proc/meminfo`.
+
+DEB depends on `libgomp1` and `libssl3`; RPM depends on `libgomp` and
+`openssl-libs >= 3`. CUDA/GPU execution and Linux ARM64 are not included.
+The Linux CI builder runs `ci-linux-local-ai.sh`: it downloads the pinned engine
+and default model into a disposable directory, checks a real answer, token
+authentication, single-flight startup, active leases and idle unloading.
+Widget screenshots show a synthetic offline state; they are not inference
+results. Android and iOS do not download or start this runtime.
+
+На Linux 1.0.0 встроенный ИИ работает на CPU x64. Загрузка модели запускается
+пользователем в настройках; до загрузки проверьте доступную память и место.
+Модели и личные хранилища для CI не используются: проверка выполняется отдельно.

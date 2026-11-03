@@ -12,7 +12,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final deviceLocalAiAvailableProvider = Provider<bool>(
-  (ref) => (AppPlatform.isMacOS || AppPlatform.isWindows) && ref.watch(appServicesProvider).ai is DeviceLocalAiBridge,
+  (ref) =>
+      (AppPlatform.isMacOS || AppPlatform.isWindows || AppPlatform.isLinux) &&
+      ref.watch(appServicesProvider).ai is DeviceLocalAiBridge,
 );
 
 final localAiRuntimeProvider = Provider<LocalAiRuntime>((ref) {

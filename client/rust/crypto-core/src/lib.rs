@@ -69,10 +69,11 @@ pub use keys::{
     generate_vrk, vault_access_key_verifier, vrk_commitment, Dek, Kek, KeyHierarchy, Vak, Vrk,
 };
 pub use local::{
-    derive_local_subkey, open_local_secret, open_unlock_envelope, seal_local_secret,
-    seal_unlock_envelope, LocalSealed, UnlockKey, AAD_LOCAL, LOCAL_DEVICE_UNLOCK_LABEL,
-    LOCAL_STORAGE_WRAP_LABEL, LOCAL_SUBKEY_LABEL, LOCAL_UNLOCK_MATERIAL_LABEL,
-    MAX_LOCAL_CONTEXT_LEN, MAX_LOCAL_SECRET_LEN, MIN_UNLOCK_MATERIAL_LEN,
+    derive_local_subkey, open_local_secret, open_password_vault_key, open_unlock_envelope,
+    seal_local_secret, seal_password_vault_key, seal_unlock_envelope, LocalSealed, UnlockKey,
+    AAD_LOCAL, LOCAL_DEVICE_UNLOCK_LABEL, LOCAL_STORAGE_WRAP_LABEL, LOCAL_SUBKEY_LABEL,
+    LOCAL_UNLOCK_MATERIAL_LABEL, MAX_LOCAL_CONTEXT_LEN, MAX_LOCAL_SECRET_LEN,
+    MIN_UNLOCK_MATERIAL_LEN,
 };
 pub use object::{
     decrypt_object, encrypt_object, padded_len, KEK_TRIAL_ORDER, MAX_PADDED_PLAINTEXT, PAD_LARGE,

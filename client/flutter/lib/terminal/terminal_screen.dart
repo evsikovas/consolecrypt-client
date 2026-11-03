@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:consolecrypt/ai/command_palette.dart';
+import 'package:consolecrypt/ai/terminal_attachment.dart';
 import 'package:consolecrypt/app/commands.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
@@ -398,12 +398,16 @@ class _SessionToolbar extends ConsumerWidget {
           style: GlassIconButtonStyle.plain,
           size: GlassSizes.tab,
           iconSize: GlassSizes.iconRow,
-          onPressed: () => showCommandPalette(
-            context,
-            selectedText: tab.selectedText,
-            hostId: tab.host?.id,
-            shellTarget: tab.isLocal ? tab.target.shellType : null,
-          ),
+          onPressed: () {
+            final selection = tab.selectedText;
+            final attachment = ref.read(terminalAttachmentProvider.notifier);
+            if (selection == null) {
+              attachment.clear();
+            } else {
+              attachment.attach(tab, selection);
+            }
+            ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.ai);
+          },
         ),
         if (tab.host case final host?)
           GlassIconButton(

@@ -1,7 +1,7 @@
 import 'dart:ffi';
 import 'dart:math';
 
-enum LocalAiPlatform { macArm64, macX64, windowsX64, unsupported }
+enum LocalAiPlatform { macArm64, macX64, windowsX64, linuxX64, unsupported }
 
 /// [custom]: a GGUF the user added (LIM-04); never downloaded.
 enum LocalAiTier { light, medium, strong, custom }
@@ -93,6 +93,12 @@ abstract final class LocalAiCatalog {
   // Keep the original model first: upgrades never choose a larger model for the user.
   static const models = [model, qwen4B, qwen9B];
   static const runtimes = {
+    LocalAiPlatform.linuxX64: LocalAiArtifact(
+      url: 'https://github.com/ggml-org/llama.cpp/releases/download/b11739/llama-b11739-bin-ubuntu-x64.tar.gz',
+      sha256: '0b3b7579835cc3d837c6046bbc970fd4be0281d1a9ee2ea5b7cdb6eeb84b5842',
+      bytes: 17995598,
+      filename: 'llama-b11739-bin-ubuntu-x64.tar.gz',
+    ),
     LocalAiPlatform.macArm64: LocalAiArtifact(
       url: 'https://github.com/ggml-org/llama.cpp/releases/download/b11739/llama-b11739-bin-macos-arm64.tar.gz',
       sha256: 'a2073ed1aa00904d408a6694429aa9b6dcf4949c2683206c403930849ce222ac',
@@ -117,6 +123,7 @@ abstract final class LocalAiCatalog {
     Abi.macosArm64 => LocalAiPlatform.macArm64,
     Abi.macosX64 => LocalAiPlatform.macX64,
     Abi.windowsX64 => LocalAiPlatform.windowsX64,
+    Abi.linuxX64 => LocalAiPlatform.linuxX64,
     _ => LocalAiPlatform.unsupported,
   };
 }

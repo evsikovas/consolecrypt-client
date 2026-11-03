@@ -7,6 +7,7 @@ enum AppSymbol {
   hosts,
   groups,
   credentials,
+  passwords,
   knownHosts,
   sharing,
   terminal,
@@ -75,6 +76,12 @@ class _SymbolPainter extends CustomPainter {
         canvas.drawCircle(const Offset(8, 8), 5, ink);
         path(const [Offset(11.5, 11.5), Offset(21, 21), Offset(21, 17), Offset(18, 17), Offset(18, 14)]);
         line(6.5, 6.5, 6.6, 6.5);
+      case AppSymbol.passwords:
+        box(3, 3, 18, 18, 3);
+        canvas.drawCircle(const Offset(12, 11), 4, ink);
+        line(12, 7, 12, 15);
+        line(8, 11, 16, 11);
+        line(17, 17, 17, 18);
       case AppSymbol.knownHosts:
         canvas.drawPath(
           Path()

@@ -31,7 +31,9 @@ Future<void> chooseMode(WidgetTester tester, String label) async {
 }
 
 void main() {
-  testWidgets('inline password: a Password credential is created, linked and never shown again', (tester) async {
+  testWidgets('inline password: stored privately, explicitly revealed in editor and automatically hidden', (
+    tester,
+  ) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
@@ -60,6 +62,17 @@ void main() {
     expect(find.byKey(const ValueKey('password-saved')), findsOneWidget);
     expect(find.text('••••••'), findsOneWidget);
     expect(find.text('hunter2-grafana'), findsNothing);
+
+    final savedRow = tester.getRect(find.byKey(const ValueKey('password-saved')));
+    final removeButton = tester.getRect(find.byKey(const ValueKey('password-remove')));
+    expect(removeButton.right, closeTo(savedRow.right, 1));
+
+    await tapKey(tester, 'host-password-reveal');
+    expect(find.text('hunter2-grafana'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 21));
+    expect(find.text('hunter2-grafana'), findsNothing);
+    await tester.tap(find.text('Close'));
+    await settle(tester);
 
     // Change: same credential, new secret.
     await tapKey(tester, 'password-change');

@@ -19,7 +19,7 @@ enum GlassFieldSize {
 
 /// Text field styling of LIQUID_GLASS_SPEC §4.4: always a `fill.field`, never
 /// glass (also inside glass — vibrancy-on-glass rule). Radius `r.md`,
-/// capsule for search. No border at rest; 2 px accent ring on focus; 1.5 px
+/// capsule for search. No border at rest; subtle focus underline; 1.5 px
 /// danger border plus an icon + text error row.
 ///
 /// [secret]: mono, obscured with an eye toggle, Caps Lock indicator, no
@@ -222,7 +222,15 @@ class _GlassFieldState extends State<GlassField> {
     final children = <Widget>[
       Material(
         type: MaterialType.transparency,
-        child: GlassFocusRing(visible: _focused, shape: shape, child: box),
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            border: _focused
+                ? Border(bottom: BorderSide(color: tokens.focusRingColor.withValues(alpha: .75), width: 1))
+                : null,
+          ),
+          child: box,
+        ),
       ),
       if (widget.secret && _focused && _capsLock)
         _FieldNote(icon: Icons.warning_rounded, text: strings.capsLockOn, color: p.warning, style: tokens),

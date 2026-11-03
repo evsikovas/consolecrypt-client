@@ -43,6 +43,7 @@ ASSETS = [
     (r"-linux-x64\.AppImage$", "Linux", {"ru": "AppImage", "en": "AppImage"}),
     (r"-linux-x64\.tar\.gz$", "Linux", {"ru": "архив", "en": "archive"}),
     (r"-android-arm64\.apk$", "Android", {"ru": "APK", "en": "APK"}),
+    (r"-ios-simulator-universal\.zip$", "iOS", {"ru": "Simulator для Mac, не iPhone", "en": "Simulator for Mac, not iPhone"}),
     (r"\.ipa$", "iOS", {"ru": "IPA", "en": "IPA"}),
 ]
 PLATFORMS = ["macOS", "Windows", "Linux", "Android", "iOS"]

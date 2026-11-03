@@ -6,15 +6,17 @@
 
 ## Релизы из GitHub
 
-`main` содержит актуальные исходники. Установщики собираются только при отправке
+`main` содержит актуальные исходники. Публичные установщики выпускаются только при отправке
 стабильного тега `vX.Y.Z`, совпадающего с версией в `pubspec.yaml`. Тег должен
-указывать на коммит из истории `main`. Push в ветку и ручной запуск без тега
-не выпускают пакеты. Старый GitLab pipeline отключён.
+указывать на коммит из истории `main`. Push в ветку не запускает сборку. Ручной запуск workflow на текущем `main`
+проверяет все платформы и сохраняет CI-пакеты без публикации и анонсов. Старый GitLab pipeline отключён.
 
 Workflow `Client tag release` проверяет тег, запускает Windows, macOS, Android,
-Linux и iOS Simulator, затем публикует один полный GitHub Release с SHA-256.
-Windows использует `cc-windows-x64`, Android — `cc-macos-arm64`, Linux — ARC
-`cc-linux-k3s`. Для macOS/iOS по умолчанию используется тот же Mac с полным Xcode;
+Linux и iOS Simulator, затем публикует семь пакетов в одном GitHub Release с SHA-256.
+Начиная с 1.0.0 iOS Simulator — обязательная часть выпуска.
+Windows использует GitHub-hosted `windows-2025`, Linux — `ubuntu-24.04`
+с изолированным Docker builder. Android и iOS используют `cc-macos-arm64`
+с полным Xcode. Для macOS по умолчанию используется тот же Mac;
 переменная `MACOS_BUILD_RUNNER` позволяет задать JSON-массив других меток, например
 `["macos-26"]` для подготовленного GitHub runner. Command Line Tools недостаточно.
 SDK Android задаётся через `ANDROID_HOME`, JDK — через `JAVA_HOME` в repository

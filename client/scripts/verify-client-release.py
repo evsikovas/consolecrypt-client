@@ -29,7 +29,7 @@ from urllib.parse import quote, unquote, urlsplit
 
 REPOSITORY = "evsikovas/consolecrypt-client"
 LIMIT = 500 * 1024 * 1024  # The update mirror refuses larger installers.
-# Installer suffix → (platform, package). iOS is not built for releases.
+# Package suffix → (platform, package). iOS is a Simulator archive, never IPA.
 PACKAGES = {
     "macos-universal.dmg": ("macos", "dmg"),
     "windows-x64-setup.exe": ("windows", "exe"),
@@ -37,6 +37,7 @@ PACKAGES = {
     "linux-x64.deb": ("linux", "deb"),
     "linux-x64.rpm": ("linux", "rpm"),
     "android-arm64.apk": ("android", "apk"),
+    "ios-simulator-universal.zip": ("ios", "simulator-zip"),
 }
 FEEDS = {"stable.json", "legacy-stable.json", "linux-stable.json"}
 
@@ -102,7 +103,10 @@ def validate(release: dict, checksum_text: str) -> dict:
             "name": name, "size": asset["size"], "sha256": digest,
             "url": f"https://github.com/{REPOSITORY}/releases/download/{tag}/" + quote(name, safe="-._"),
         })
-    if seen != set(PACKAGES) or set(checksums) != {item["name"] for item in installers}:
+    expected = set(PACKAGES)
+    if int(version.split('.')[0]) < 1:
+        expected.remove('ios-simulator-universal.zip')
+    if seen != expected or set(checksums) != {item["name"] for item in installers}:
         raise ReleaseError("The installer or checksum set is incomplete or has extra files")
     installers.sort(key=lambda item: list(PACKAGES).index(item["suffix"]))
     return {

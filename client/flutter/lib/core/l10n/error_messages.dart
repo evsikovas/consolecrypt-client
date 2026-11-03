@@ -74,7 +74,10 @@ String errorCodeMessage(AppLocalizations l, AppErrorCode code, {Map<String, Stri
   AppErrorCode.invalidRecoveryKey => l.errorInvalidRecoveryKey,
   AppErrorCode.deviceNotTrusted => l.errorDeviceNotTrusted,
   AppErrorCode.secureStore => l.errorSecureStore,
-  AppErrorCode.osAuthFailed => l.errorOsAuthFailed,
+  AppErrorCode.osAuthFailed => switch (args['hello_diagnostic']) {
+    final diagnostic? => l.errorWindowsHelloDiagnostic(diagnostic),
+    _ => l.errorOsAuthFailed,
+  },
   AppErrorCode.osAuthInvalidated => l.errorOsAuthInvalidated,
   AppErrorCode.verificationMismatch => l.errorVerificationMismatch,
   AppErrorCode.requestExpired => l.errorRequestExpired,

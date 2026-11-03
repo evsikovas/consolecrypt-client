@@ -101,7 +101,9 @@ mixin _Busy<T extends ConsumerStatefulWidget> on ConsumerState<T> {
 }
 
 class PasswordCredentialDialog extends ConsumerStatefulWidget {
-  const PasswordCredentialDialog({super.key});
+  const PasswordCredentialDialog({super.key, this.rdp = false});
+
+  final bool rdp;
 
   @override
   ConsumerState<PasswordCredentialDialog> createState() => _PasswordCredentialDialogState();
@@ -111,12 +113,14 @@ class _PasswordCredentialDialogState extends ConsumerState<PasswordCredentialDia
   final _name = TextEditingController();
   final _username = TextEditingController();
   final _password = TextEditingController();
+  final _domain = TextEditingController();
 
   @override
   void dispose() {
     _name.dispose();
     _username.dispose();
     _password.dispose();
+    _domain.dispose();
     super.dispose();
   }
 
@@ -125,7 +129,13 @@ class _PasswordCredentialDialogState extends ConsumerState<PasswordCredentialDia
     try {
       final created = await ref
           .read(inventoryServiceProvider)
-          .createPasswordCredential(name: _name.text, username: _username.text, password: secret);
+          .createPasswordCredential(
+            name: _name.text,
+            username: widget.rdp && _domain.text.trim().isNotEmpty
+                ? '${_domain.text.trim()}\\${_username.text.trim()}'
+                : _username.text,
+            password: secret,
+          );
       _password.clear();
       if (mounted) closeDialog(context, created);
     } finally {
@@ -143,17 +153,28 @@ class _PasswordCredentialDialogState extends ConsumerState<PasswordCredentialDia
       onSave: _save,
       children: [
         TextField(
+          key: const ValueKey('password-credential-name'),
           controller: _name,
           autofocus: true,
           decoration: InputDecoration(labelText: l10n.commonName),
         ),
         const SizedBox(height: GlassSpacing.s12),
         TextField(
+          key: const ValueKey('password-credential-username'),
           controller: _username,
           decoration: InputDecoration(labelText: l10n.credentialDialogUsernameOptional),
         ),
         const SizedBox(height: GlassSpacing.s12),
         SecretField(controller: _password, label: l10n.credentialDialogPasswordLabel),
+        if (widget.rdp) ...[
+          const SizedBox(height: GlassSpacing.s12),
+          TextField(
+            key: const ValueKey('credential-rdp-domain'),
+            controller: _domain,
+            autocorrect: false,
+            decoration: InputDecoration(labelText: l10n.rdpDomain),
+          ),
+        ],
       ],
     );
   }

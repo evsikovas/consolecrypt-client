@@ -363,6 +363,24 @@ impl AppCore {
                 return Err(e);
             }
         };
+        // Keep the complete Windows identity with the host-owned password.
+        // DOMAIN\user uses the existing credential username representation,
+        // so older clients can still read the credential without a migration.
+        if saved.protocol == crate::HostProtocol::Rdp {
+            if let Some(mut credential) = keep_inline.and_then(|id| u.working().credential(id)) {
+                let username = saved.username.as_ref().map(|user| match &saved.rdp_domain {
+                    Some(domain) if !domain.is_empty() && !user.contains('\\') => {
+                        format!("{domain}\\{user}")
+                    }
+                    _ => user.clone(),
+                });
+                if credential.username != username {
+                    credential.username = username;
+                    credential.updated_at = chrono::Utc::now();
+                    u.writer.put(VaultObject::Credential(credential)).await?;
+                }
+            }
+        }
         if let Some(old) = old_inline.filter(|o| Some(*o) != keep_inline) {
             delete_credential_if_unused(&u, old).await?;
         }

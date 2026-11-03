@@ -13,6 +13,8 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
+import 'package:consolecrypt/keepass/kdbx_dialog.dart';
+import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:consolecrypt/kubernetes/kube_navigation.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
@@ -42,8 +44,9 @@ Future<void> showCommandPalette(
   _paletteOpen[navigator] = true;
   try {
     // `glass.thick`, live backdrop (refractive on macOS), one overlay level.
-    await showGlassDialog<void>(
+    await showAppDialog<void>(
       context,
+      secure: true,
       builder: (_) => CommandPalette(selectedText: selectedText, hostId: hostId, shellTarget: shellTarget),
     );
   } finally {
@@ -59,7 +62,13 @@ AiProviderConfig? defaultProvider(List<AiProviderConfig> providers) =>
 enum _AiError { noProvider, failed }
 
 /// Result groups of the palette (caption headers, §4.8).
-enum _Group { hosts, snippets, kubernetes, ai, actions }
+enum _Group { hosts, snippets, kubernetes, passwords, ai, actions }
+
+/// Password queries are an isolated local mode and must never reach AI.
+String? passwordPaletteQuery(String input) {
+  final match = RegExp(r'^\s*(?:пароли|passwords)\s*:\s*(.*)$', caseSensitive: false, dotAll: true).firstMatch(input);
+  return match?.group(1)?.trim();
+}
 
 /// Metadata-only labels from the planner; no credential secret is loaded.
 typedef PaletteHostEndpoint = ({String? username, int? port});
@@ -235,6 +244,10 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   /// Raw provider diagnostic for [_AiError.failed] (never localized).
   String? _aiErrorDetail;
   bool _generating = false;
+  bool _passwordBusy = false;
+  ({PasswordVaultSession session, String entry})? _passwordCard;
+  String _passwordSearch = '';
+
   TerminalTarget? _originTarget;
 
   @override
@@ -256,6 +269,12 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   }
 
   void _onChanged(String q) {
+    if (passwordPaletteQuery(q) == null) _passwordCard = null;
+    if (passwordPaletteQuery(q) != null) {
+      unawaited(_generation?.cancel());
+      _generation = null;
+      _generating = false;
+    }
     setState(() {
       _selected = 0;
       _keyboardSelection = null;
@@ -266,6 +285,201 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   }
 
   void _close() => Navigator.of(context).pop();
+
+  void _setPasswordQuery() {
+    _input.text = '${context.l10n.navPasswords}: ';
+    _input.selection = TextSelection.collapsed(offset: _input.text.length);
+    _onChanged(_input.text);
+    _focus.requestFocus();
+  }
+
+  void _backPasswordEntries() {
+    _passwordCard = null;
+    _input.text = '${context.l10n.navPasswords}: $_passwordSearch';
+    _input.selection = TextSelection.collapsed(offset: _input.text.length);
+    _onChanged(_input.text);
+    _focus.requestFocus();
+  }
+
+  Future<void> _passwordAction(Future<void> Function() action) async {
+    if (_passwordBusy) return;
+    setState(() => _passwordBusy = true);
+    try {
+      await action();
+    } catch (error) {
+      if (mounted) showSnack(context, passwordManagerError(context.l10n, error), error: true);
+    } finally {
+      if (mounted) {
+        setState(() => _passwordBusy = false);
+        _focus.requestFocus();
+      }
+    }
+  }
+
+  List<_Item> _passwordItems(String query) {
+    final l = context.l10n;
+    final manager = ref.watch(passwordManagerProvider);
+    final terms = query.toLowerCase().split(RegExp(r'\s+'));
+    bool matches(String text) => terms.every(text.toLowerCase().contains);
+    String fieldLabel(String field) => switch (field) {
+      'Password' => l.keepassEntryPassword,
+      'UserName' => l.keepassUsername,
+      'URL' => l.keepassUrl,
+      'Notes' => l.keepassNotes,
+      _ => field,
+    };
+    final result = <_Item>[];
+    final card = _passwordCard;
+    if (card != null &&
+        (!manager.current(card.session) ||
+            !card.session.rows('entries').any((e) => e['id'] == card.entry && e['recycled'] != true))) {
+      _passwordCard = null;
+    }
+    if (_passwordCard case final selected?) {
+      final session = selected.session;
+      final entry = session.rows('entries').firstWhere((e) => e['id'] == selected.entry);
+      for (final field in [
+        'Password',
+        'UserName',
+        ...(entry['fields'] as List<Object?>? ?? []).cast<String>().where(
+          (f) => !['title', 'username', 'password'].contains(f.toLowerCase()),
+        ),
+      ]) {
+        if (!matches('${fieldLabel(field)} $field')) continue;
+        result.add(
+          _Item(
+            group: _Group.passwords,
+            key: ValueKey('palette-password-${session.source.id}-${entry['id']}-$field'),
+            icon: field == 'UserName'
+                ? Icons.person_outline_rounded
+                : field == 'Notes'
+                ? Icons.notes_rounded
+                : Icons.copy_outlined,
+            title: fieldLabel(field),
+            subtitle: '${entry['title']} · ${session.source.name}', // l10n-ignore: user data.
+            enabled: !_passwordBusy,
+            onSelect: () => unawaited(
+              _passwordAction(() async {
+                final value = await manager.field(session, selected.entry, field);
+                bool currentCard() =>
+                    mounted &&
+                    manager.current(session) &&
+                    identical(_passwordCard?.session, session) &&
+                    _passwordCard?.entry == selected.entry;
+                if (!mounted || !currentCard()) return;
+                await copySecretWithNotice(context, ref, value, isCurrent: currentCard);
+                if (currentCard()) _close();
+              }),
+            ),
+          ),
+        );
+      }
+      result.add(
+        _Item(
+          group: _Group.passwords,
+          key: const ValueKey('palette-password-back-entries'),
+          icon: Icons.arrow_back_rounded,
+          title: l.keepassBackEntries,
+          subtitle: 'Esc', // l10n-ignore: key.
+          onSelect: _backPasswordEntries,
+        ),
+      );
+      return result;
+    }
+    if (manager.valid) {
+      for (final session in manager.sessions.values) {
+        for (final entry in session.rows('entries')) {
+          if (entry['recycled'] == true ||
+              !matches(
+                '${entry['title']} ${entry['username']} ${entry['url']} ${session.source.name} ${(entry['fields'] as List<Object?>? ?? []).join(' ')}', // l10n-ignore: search index of user data.
+              )) {
+            continue;
+          }
+          result.add(
+            _Item(
+              group: _Group.passwords,
+              key: ValueKey('palette-password-card-${session.source.id}-${entry['id']}'),
+              icon: Icons.key_outlined,
+              title: entry['title']! as String,
+              subtitle: '${entry['username']} · ${session.source.name} · ${l.keepassSelectCard}', // l10n-ignore: user data with localized hint.
+              enabled: !_passwordBusy,
+              onSelect: () {
+                _passwordSearch = query;
+                _passwordCard = (session: session, entry: entry['id']! as String);
+                _setPasswordQuery();
+              },
+            ),
+          );
+          if (result.length >= 100) break;
+        }
+        if (result.length >= 100) break;
+      }
+      for (final source in manager.sources.where((s) => !manager.sessions.containsKey(s.id))) {
+        result.add(
+          _Item(
+            group: _Group.passwords,
+            key: ValueKey('palette-password-open-${source.id}'),
+            icon: Icons.lock_outline_rounded,
+            title: '${l.keepassUnlock} · ${source.name}',
+            subtitle: source.remote ? 'WebDAV' : source.path,
+            enabled: !_passwordBusy, // l10n-ignore: protocol name.
+            onSelect: () => unawaited(
+              _passwordAction(() async {
+                manager.check();
+                await unlockKdbxSource(context, ref, source);
+                if (mounted && manager.valid) _onChanged(_input.text);
+              }),
+            ),
+          ),
+        );
+      }
+      result.add(
+        _Item(
+          group: _Group.passwords,
+          key: const ValueKey('palette-password-open-file'),
+          icon: Icons.folder_open_rounded,
+          title: l.keepassOpen,
+          subtitle: l.keepassPaletteHelp,
+          enabled: !_passwordBusy,
+          onSelect: () => unawaited(
+            _passwordAction(() async {
+              await chooseAndUnlockKdbx(context, ref);
+              if (mounted && manager.valid) _onChanged(_input.text);
+            }),
+          ),
+        ),
+      );
+    }
+    result.add(
+      _Item(
+        group: _Group.passwords,
+        key: const ValueKey('palette-password-manager'),
+        icon: Icons.password_rounded,
+        title: l.keepassOpenManager,
+        subtitle: l.keepassTitle,
+        enabled: !_passwordBusy,
+        onSelect: () {
+          final router = GoRouter.of(context);
+          _close();
+          router.go(AppRoutes.passwords);
+        },
+      ),
+    );
+    result.add(
+      _Item(
+        group: _Group.passwords,
+        key: const ValueKey('palette-password-back'),
+        icon: Icons.arrow_back_rounded,
+        title: l.keepassPaletteBack,
+        subtitle: 'Esc', // l10n-ignore: keyboard key.
+        onSelect: () {
+          _input.clear();
+          _onChanged('');
+        },
+      ),
+    ); // l10n-ignore: key label.
+    return result;
+  }
 
   Future<void> _newLocalTerminal() async {
     if (_openingLocal ||
@@ -396,6 +610,11 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   List<_Item> _items() {
     final l10n = context.l10n;
     final q = _input.text.trim();
+    ref.watch(passwordManagerChangesProvider);
+    ref.watch(vaultSettingsProvider);
+    ref.watch(localSettingsProvider);
+    final passwordQuery = passwordPaletteQuery(q);
+    if (passwordQuery != null) return _passwordItems(passwordQuery);
     final router = GoRouter.of(context);
     final aiProviders = ref.watch(aiProvidersProvider);
     final endpointState = ref.watch(_hostEndpointsProvider);
@@ -421,6 +640,16 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     bool matchesKube(Iterable<String> values) =>
         q.isEmpty || values.any((value) => value.toLowerCase().contains(q.toLowerCase()));
     final items = <_Item>[
+      if (q.isEmpty ||
+          ['пароли:', 'passwords:', 'kdbx', l10n.navPasswords.toLowerCase()].any((v) => v.contains(q.toLowerCase())))
+        _Item(
+          group: _Group.passwords,
+          key: const ValueKey('palette-passwords'),
+          icon: Icons.password_rounded,
+          title: '${l10n.navPasswords}:',
+          subtitle: l10n.keepassPaletteHelp,
+          onSelect: () => _setPasswordQuery(),
+        ),
       for (final host in hosts)
         _Item(
           group: _Group.hosts,
@@ -649,6 +878,15 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event, List<_Item> items) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.escape && passwordPaletteQuery(_input.text) != null) {
+      if (_passwordCard != null) {
+        _backPasswordEntries();
+        return KeyEventResult.handled;
+      }
+      _input.clear();
+      _onChanged('');
+      return KeyEventResult.handled;
+    }
     if (items.isEmpty) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       setState(() {
@@ -672,6 +910,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     _Group.ai => l10n.paletteGroupAi,
     _Group.snippets => l10n.navSnippets,
     _Group.kubernetes => l10n.kubeCommandContext,
+    _Group.passwords => _passwordCard == null ? l10n.navPasswords : l10n.keepassChooseField,
     _Group.actions => l10n.paletteGroupActions,
   };
 
@@ -756,6 +995,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           search,
+          if (_passwordBusy) const LinearProgressIndicator(),
           if (showAi) _aiPanel(context),
           if (rows.isNotEmpty)
             Flexible(

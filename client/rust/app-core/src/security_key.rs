@@ -25,7 +25,7 @@ use zeroize::Zeroizing;
 
 /// The machine-readable reason of a failed security key step (the UI
 /// localizes it): `invalid_input` with field `security_key`.
-fn failure(e: SecurityKeyError) -> AppError {
+pub(crate) fn failure(e: SecurityKeyError) -> AppError {
     let rule = match e {
         SecurityKeyError::Unsupported => "unsupported",
         SecurityKeyError::NoDevice => "no_device",

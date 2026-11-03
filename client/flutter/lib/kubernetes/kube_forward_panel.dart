@@ -5,6 +5,8 @@ import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/models/ids.dart';
+import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -13,6 +15,7 @@ import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_restore.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/tunnels/saved_forwards.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -61,6 +64,8 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
   bool get _networkAllowed =>
       !AppPlatform.isMobile && !widget.session.production && widget.service is KubeNetworkForwardService;
   bool _busy = false, _failed = false, _restore = false;
+  bool _saveTunnel = false;
+  late final _manager = ref.read(savedForwardManagerProvider);
   KubeForward? _created;
   bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(kubeScopeProvider));
   List<int> get _ports =>
@@ -110,6 +115,23 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
       _failed = false;
     });
     try {
+      SavedForward? saved;
+      if (_saveTunnel) {
+        saved = await _manager.save(
+          SavedForward(
+            id: generateUuidV4(),
+            profile: _manager.profile,
+            kind: SavedForwardKind.kubernetes,
+            connectionId: widget.session.contextId,
+            target: widget.resource.name,
+            namespace: widget.resource.namespace!,
+            remotePort: remote,
+            localPort: local,
+            localAddress: _network ? _address.text.trim() : '127.0.0.1',
+          ),
+        );
+      }
+      if (!_current) return;
       final forward = _network
           ? await (widget.service as KubeNetworkForwardService).startNetworkForward(
               widget.session.id,
@@ -130,6 +152,9 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
       if (!_current) {
         await widget.service.stopForward(widget.session.id, forward.id);
         return;
+      }
+      if (saved != null) {
+        _manager.attach(saved, ForwardHandle(saved.kind, forward.sessionId, forward.id, forward.address));
       }
       if (_restore) {
         ref
@@ -161,6 +186,7 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(savedForwardManagerProvider);
     ref.listen(kubeScopeProvider, (_, next) {
       if (identical(_scope, next)) return;
       _remote.clear();
@@ -260,6 +286,13 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
                         ),
                       ],
                     ],
+                    CheckboxListTile(
+                      key: const ValueKey('kube-forward-save'),
+                      contentPadding: EdgeInsets.zero,
+                      value: _saveTunnel,
+                      onChanged: _busy ? null : (value) => setState(() => _saveTunnel = value ?? false),
+                      title: Text(l.tunnelsSaveForward),
+                    ),
                     CheckboxListTile(
                       key: const ValueKey('kube-forward-restore'),
                       contentPadding: EdgeInsets.zero,

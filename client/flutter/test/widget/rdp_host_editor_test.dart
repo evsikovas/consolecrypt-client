@@ -87,5 +87,16 @@ void main() {
     await tapKey(tester, 'picker-new-credential');
     expect(find.byType(PasswordCredentialDialog), findsOneWidget);
     expect(find.byKey(const ValueKey('new-credential-chooser')), findsNothing);
+    await enterKey(tester, 'password-credential-name', 'Windows account');
+    await enterKey(tester, 'password-credential-username', 'alice');
+    await enterKey(tester, 'credential-rdp-domain', 'LAB');
+    final secret = find.descendant(of: find.byType(PasswordCredentialDialog), matching: find.byType(TextField)).at(2);
+    await tester.enterText(secret, 'rdp-test-password');
+    await tapKey(tester, 'credential-save');
+    expect(tester.widget<TextFormField>(find.byKey(const ValueKey('host-username'))).controller!.text, 'alice');
+    expect(tester.widget<TextFormField>(find.byKey(const ValueKey('host-rdp-domain'))).controller!.text, 'LAB');
+    final credential = backend.cloud.activeData!.credentials.firstWhere((c) => c.name == 'Windows account');
+    expect(credential.username, r'LAB\alice');
+    expect(backend.cloud.activeData!.secrets[credential.id]?.expose(), 'rdp-test-password');
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 }

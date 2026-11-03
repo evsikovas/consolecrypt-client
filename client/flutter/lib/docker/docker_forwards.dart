@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/models/ids.dart';
+import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -9,6 +11,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:consolecrypt/tunnels/saved_forwards.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -40,6 +43,10 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
   final _remote = TextEditingController(), _local = TextEditingController(text: '0');
   List<int> _ports = const [];
   bool _busy = false;
+  bool _saveTunnel = false;
+  late final _manager = ref.read(savedForwardManagerProvider);
+  late final _scope = ref.read(dockerScopeProvider);
+  bool get _current => mounted && _scope.unlocked && identical(_scope, ref.read(dockerScopeProvider));
   Object? _error;
   DockerForward? _created;
 
@@ -85,21 +92,39 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
 
   Future<void> _start() async {
     final remote = _remotePort, local = _localPort;
-    if (_busy || remote == null || local == null) return;
+    if (!_current || _busy || remote == null || local == null) return;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
+      SavedForward? saved;
+      if (_saveTunnel) {
+        saved = await _manager.save(
+          SavedForward(
+            id: generateUuidV4(),
+            profile: _manager.profile,
+            kind: SavedForwardKind.docker,
+            connectionId: widget.session.hostId,
+            target: widget.container.name,
+            remotePort: remote,
+            localPort: local,
+          ),
+        );
+      }
+      if (!_current) return;
       final forward = await widget.service.startForward(
         widget.session.id,
         widget.container.id,
         remotePort: remote,
         localPort: local,
       );
-      if (!mounted) {
+      if (!_current) {
         unawaited(widget.service.stopForward(forward.id).catchError((Object _) {}));
         return;
+      }
+      if (saved != null) {
+        _manager.attach(saved, ForwardHandle(saved.kind, forward.sessionId, forward.id, forward.address));
       }
       ref.invalidate(dockerForwardsProvider);
       setState(() => _created = forward);
@@ -112,6 +137,7 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(savedForwardManagerProvider);
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final created = _created;
@@ -188,6 +214,13 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
                 enabled: !_busy,
                 decoration: InputDecoration(labelText: l.dockerForwardLocalPort, helperText: l.dockerForwardLocalHelp),
                 onChanged: (_) => setState(() {}),
+              ),
+              CheckboxListTile(
+                key: const ValueKey('docker-forward-save'),
+                contentPadding: EdgeInsets.zero,
+                value: _saveTunnel,
+                title: Text(l.tunnelsSaveForward),
+                onChanged: _busy ? null : (v) => setState(() => _saveTunnel = v ?? false),
               ),
               if (_error != null) ...[
                 const SizedBox(height: GlassSpacing.s8),

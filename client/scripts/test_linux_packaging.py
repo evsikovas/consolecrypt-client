@@ -159,6 +159,8 @@ class LinuxPackagingTest(unittest.TestCase):
         requires = [line for line in metadata['rpm'].splitlines() if line.startswith('Requires:')]
         self.assertIn('xdg-desktop-portal', [part.strip() for part in depends.removeprefix('Depends:').split(',')])
         self.assertIn('Requires: xdg-desktop-portal', requires)
+        self.assertIn('Requires: libgomp', requires)
+        self.assertIn('Requires: openssl-libs >= 3', requires)
         for backend in ('xdg-desktop-portal-gtk', 'xdg-desktop-portal-gnome', 'xdg-desktop-portal-kde'):
             self.assertNotIn(backend, depends)
             self.assertFalse(any(backend in line for line in requires))

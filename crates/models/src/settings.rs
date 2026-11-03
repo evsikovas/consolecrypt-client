@@ -5,6 +5,16 @@ use crate::ai::PrivacyProfile;
 use crate::{ObjectId, Timestamp};
 use serde::{Deserialize, Serialize};
 
+/// WebDAV KDBX locations. Authentication secret is a separate encrypted credential.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PasswordVaultConnection {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+    pub username: String,
+    pub credential_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TerminalHistoryMode {
@@ -16,6 +26,8 @@ pub enum TerminalHistoryMode {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VaultSettings {
+    #[serde(default)]
+    pub password_vaults: Vec<PasswordVaultConnection>,
     pub id: ObjectId,
     /// Display name of the vault (kept here, not on the server).
     pub vault_name: String,

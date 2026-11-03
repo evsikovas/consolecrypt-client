@@ -1,4 +1,18 @@
 {
+  "keepassMobileFilesHelp": "Local files are imported into the app and saved there automatically. Use Save a local copy to export changes to Files. WebDAV saves directly to the remote database.",
+  "@keepassMobileFilesHelp": {"description": "Explain mobile KDBX import and explicit export before opening a file"},
+  "keepassMoveToGroup": "Move to another group…",
+  "@keepassMoveToGroup": {"description": "Entry context menu: choose a destination group"},
+  "tunnelsSaveForward": "Save tunnel",
+  "@tunnelsSaveForward": {"description": "Opt in to saving port forwarding parameters"},
+  "tunnelsSavedForwardHelp": "Saved Docker and Kubernetes tunnels stay on this device, in this profile.",
+  "@tunnelsSavedForwardHelp": {"description": "Persistence scope of saved forwarding presets"},
+  "tunnelsRemoveSavedMessage": "Stop this forward and remove its saved settings from this device?",
+  "@tunnelsRemoveSavedMessage": {"description": "Confirm removing a saved forwarding preset"},
+  "tunnelsStartSaved": "Start saved tunnel",
+  "@tunnelsStartSaved": {"description": "Restart a saved forwarding preset"},
+  "tunnelsStopSaved": "Stop tunnel",
+  "@tunnelsStopSaved": {"description": "Stop a saved forwarding preset"},
   "@@locale": "en",
   "commonCancel": "Cancel",
   "@commonCancel": {
@@ -3203,7 +3217,7 @@
   "@hostAuthSavePassword": {
     "description": "Checkbox: store the host password in the vault."
   },
-  "hostAuthSavePasswordOn": "Stored end-to-end encrypted as a separate secret; never shown again.",
+  "hostAuthSavePasswordOn": "Stored end-to-end encrypted as a separate secret. You can explicitly reveal it when editing the connection.",
   "@hostAuthSavePasswordOn": {
     "description": "Checkbox subtitle when saving the password is on."
   },
@@ -8254,7 +8268,7 @@
   "localAiReady": "Ready · running on this computer",
   "localAiStopping": "Stopping…",
   "localAiError": "Local AI needs attention",
-  "localAiUnsupported": "Available on supported Windows and macOS computers.",
+  "localAiUnsupported": "Available on supported Windows, macOS and Linux computers.",
   "localAiDefault": "Use by default after installation",
   "localAiDeviceOnly": "Only on this computer. Other devices and saved provider settings stay independent.",
   "localAiInstall": "Install local AI",
@@ -18729,5 +18743,474 @@
   "cliFailed": "Could not install or remove the CLI commands.",
   "@cliFailed": {
     "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "terminalPreviousTab": "Previous terminal tab",
+  "terminalNextTab": "Next terminal tab",
+  "sharingTeamsHelp": "Teams, their members and the resources available to them.",
+  "sharingTeamResources": "{count, plural, one{1 resource} other{{count} resources}}",
+  "@sharingTeamResources": {
+    "description": "Number of resources in a team vault.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharingTeamNoResources": "No resources in this team.",
+  "sharingTeamLocked": "Unlock the team vault to view its members and resources.",
+  "@terminalPreviousTab": {
+    "description": "terminalPreviousTab"
+  },
+  "@terminalNextTab": {
+    "description": "terminalNextTab"
+  },
+  "@sharingTeamsHelp": {
+    "description": "sharingTeamsHelp"
+  },
+  "@sharingTeamNoResources": {
+    "description": "sharingTeamNoResources"
+  },
+  "@sharingTeamLocked": {
+    "description": "sharingTeamLocked"
+  },
+  "keepassTitle": "KeePass files",
+  "@keepassTitle": {
+    "description": "Local KeePass file manager: keepassTitle"
+  },
+  "keepassHelp": "Open a local KDBX 3/4 file or connect a WebDAV database. Open databases stay available to Ctrl+K. Save changes before locking; local saves keep an encrypted backup beside the original.",
+  "@keepassHelp": {
+    "description": "Local KeePass file manager: keepassHelp"
+  },
+  "keepassOpen": "Open KDBX",
+  "@keepassOpen": {
+    "description": "Local KeePass file manager: keepassOpen"
+  },
+  "keepassCreate": "New KDBX",
+  "@keepassCreate": {
+    "description": "Local KeePass file manager: keepassCreate"
+  },
+  "keepassPassword": "Database password",
+  "@keepassPassword": {
+    "description": "Local KeePass file manager: keepassPassword"
+  },
+  "keepassConfirm": "Repeat database password",
+  "@keepassConfirm": {
+    "description": "Local KeePass file manager: keepassConfirm"
+  },
+  "keepassKeyFile": "Choose key file (optional)",
+  "@keepassKeyFile": {
+    "description": "Local KeePass file manager: keepassKeyFile"
+  },
+  "keepassClearKey": "Remove key file",
+  "@keepassClearKey": {
+    "description": "Local KeePass file manager: keepassClearKey"
+  },
+  "keepassNewEntry": "Add entry",
+  "@keepassNewEntry": {
+    "description": "Local KeePass file manager: keepassNewEntry"
+  },
+  "keepassNewGroup": "Add group",
+  "@keepassNewGroup": {
+    "description": "Local KeePass file manager: keepassNewGroup"
+  },
+  "keepassEntry": "KeePass entry",
+  "@keepassEntry": {
+    "description": "Local KeePass file manager: keepassEntry"
+  },
+  "keepassGroup": "Group",
+  "@keepassGroup": {
+    "description": "Local KeePass file manager: keepassGroup"
+  },
+  "keepassGroupName": "Group name",
+  "@keepassGroupName": {
+    "description": "Local KeePass file manager: keepassGroupName"
+  },
+  "keepassEntryTitle": "Title",
+  "@keepassEntryTitle": {
+    "description": "Local KeePass file manager: keepassEntryTitle"
+  },
+  "keepassUsername": "Username",
+  "@keepassUsername": {
+    "description": "Local KeePass file manager: keepassUsername"
+  },
+  "keepassEntryPassword": "Password",
+  "@keepassEntryPassword": {
+    "description": "Local KeePass file manager: keepassEntryPassword"
+  },
+  "keepassUrl": "URL",
+  "@keepassUrl": {
+    "description": "Local KeePass file manager: keepassUrl"
+  },
+  "keepassNotes": "Notes",
+  "@keepassNotes": {
+    "description": "Local KeePass file manager: keepassNotes"
+  },
+  "keepassSearch": "Search entries",
+  "@keepassSearch": {
+    "description": "Local KeePass file manager: keepassSearch"
+  },
+  "keepassDirty": "Unsaved changes",
+  "@keepassDirty": {
+    "description": "Local KeePass file manager: keepassDirty"
+  },
+  "keepassSaved": "Encrypted file saved",
+  "@keepassSaved": {
+    "description": "Local KeePass file manager: keepassSaved"
+  },
+  "keepassDiscard": "Discard changes",
+  "@keepassDiscard": {
+    "description": "Local KeePass file manager: keepassDiscard"
+  },
+  "keepassDiscardHelp": "Close this file and discard unsaved changes?",
+  "@keepassDiscardHelp": {
+    "description": "Local KeePass file manager: keepassDiscardHelp"
+  },
+  "keepassDelete": "Move entry to recycle bin?",
+  "@keepassDelete": {
+    "description": "Local KeePass file manager: keepassDelete"
+  },
+  "keepassDeleteHelp": "The entry stays in the database recycle bin. Save to write the change to disk.",
+  "@keepassDeleteHelp": {
+    "description": "Local KeePass file manager: keepassDeleteHelp"
+  },
+  "keepassKeyError": "The password or key file is incorrect. Check both and try again.",
+  "@keepassKeyError": {
+    "description": "Local KeePass file manager: keepassKeyError"
+  },
+  "keepassFormatError": "The database could not be opened. It may be damaged or use an unsupported format. The original file was not changed.",
+  "@keepassFormatError": {
+    "description": "Local KeePass file manager: keepassFormatError"
+  },
+  "keepassUnsupported": "Some features or settings of this database are not supported yet. The original file was not changed.",
+  "@keepassUnsupported": {
+    "description": "Local KeePass file manager: keepassUnsupported"
+  },
+  "keepassChanged": "The file changed on disk. Save was cancelled to protect that version. Reopen the file to load the latest changes.",
+  "@keepassChanged": {
+    "description": "Local KeePass file manager: keepassChanged"
+  },
+  "keepassIoError": "Could not read or save the file. Check access permissions and free disk space.",
+  "@keepassIoError": {
+    "description": "Local KeePass file manager: keepassIoError"
+  },
+  "keepassClosed": "The KeePass session is locked. Reopen the file with its password.",
+  "@keepassClosed": {
+    "description": "Local KeePass file manager: keepassClosed"
+  },
+  "keepassLimits": "The file is too large or its key derivation takes too many resources.",
+  "@keepassLimits": {
+    "description": "Local KeePass file manager: keepassLimits"
+  },
+  "keepassExists": "A file already exists here. Choose a new file name.",
+  "@keepassExists": {
+    "description": "Local KeePass file manager: keepassExists"
+  },
+  "keepassMismatch": "The passwords do not match.",
+  "@keepassMismatch": {
+    "description": "Local KeePass file manager: keepassMismatch"
+  },
+  "keepassEmpty": "No entries in this group",
+  "@keepassEmpty": {
+    "description": "Local KeePass file manager: keepassEmpty"
+  },
+  "keepassLock": "Lock database",
+  "@keepassLock": {
+    "description": "Local KeePass file manager: keepassLock"
+  },
+  "errorWindowsHelloDiagnostic": "Windows Hello failed ({diagnostic}). If fingerprint verification fails, try PIN in the Windows Security dialog. The vault passphrase remains available.",
+  "@errorWindowsHelloDiagnostic": {
+    "description": "Safe numeric Windows Hello failure stage and code",
+    "placeholders": {
+      "diagnostic": {
+        "type": "String"
+      }
+    }
+  },
+  "navPasswords": "Passwords",
+  "keepassDavAdd": "Connect WebDAV",
+  "keepassDavUrl": "KDBX file URL (HTTPS)",
+  "keepassDavName": "Connection name",
+  "keepassDavPassword": "WebDAV password / app token",
+  "keepassDavHelp": "Connection settings and authentication credentials are encrypted and synced with your ConsoleCrypt vault. The KDBX file stays on WebDAV.",
+  "keepassDavUrlError": "Use the full HTTPS URL of a .kdbx file, for example https://server/folder/Passwords.kdbx. A server or folder URL is not enough.",
+  "keepassDavAuthError": "WebDAV rejected authentication. Check the connection credentials.",
+  "keepassDavEtagError": "This server offers neither a strong ETag nor a usable file lock. Save a local copy to retain your changes.",
+  "keepassDavRedirectError": "WebDAV redirected the request. Use the final file URL.",
+  "keepassDavIoError": "Could not access the WebDAV file. Check the address, network and permissions.",
+  "keepassUnlock": "Unlock database",
+  "keepassDatabases": "Databases",
+  "keepassHello": "Biometrics / device PIN",
+  "keepassSecurityKey": "FIDO2 security key",
+  "keepassQuickHelp": "Open with the master password first. Then enable a separate local key protected by system biometrics/device PIN or a FIDO2 key with PRF support. This setting is specific to this device.",
+  "keepassQuickEnabled": "Quick unlock enabled",
+  "keepassQuickDisabled": "Quick unlock disabled",
+  "keepassProtection": "Quick unlock",
+  "keepassPin": "Security key PIN",
+  "keepassCopyPassword": "Copy password",
+  "keepassCopyUsername": "Copy username",
+  "keepassCopyField": "Copy field",
+  "keepassField": "Field",
+  "keepassValue": "Value",
+  "keepassFieldAdd": "Add field",
+  "keepassExport": "Save local copy",
+  "keepassAllGroups": "All groups",
+  "keepassPaletteHelp": "Find an entry, then choose a field to copy.",
+  "keepassPaletteBack": "Back to all commands",
+  "keepassOpenManager": "Open password manager",
+  "keepassConnectDelete": "Remove connection",
+  "keepassConnectDeleteHelp": "Remove this connection from synced settings? The KDBX file will remain on WebDAV.",
+  "keepassGroups": "Groups",
+  "@navPasswords": {
+    "description": "Password manager: navPasswords"
+  },
+  "@keepassDavAdd": {
+    "description": "Password manager: keepassDavAdd"
+  },
+  "@keepassDavUrl": {
+    "description": "Password manager: keepassDavUrl"
+  },
+  "@keepassDavName": {
+    "description": "Password manager: keepassDavName"
+  },
+  "@keepassDavPassword": {
+    "description": "Password manager: keepassDavPassword"
+  },
+  "@keepassDavHelp": {
+    "description": "Password manager: keepassDavHelp"
+  },
+  "@keepassDavUrlError": {
+    "description": "Password manager: keepassDavUrlError"
+  },
+  "@keepassDavAuthError": {
+    "description": "Password manager: keepassDavAuthError"
+  },
+  "@keepassDavEtagError": {
+    "description": "Password manager: keepassDavEtagError"
+  },
+  "@keepassDavRedirectError": {
+    "description": "Password manager: keepassDavRedirectError"
+  },
+  "@keepassDavIoError": {
+    "description": "Password manager: keepassDavIoError"
+  },
+  "@keepassUnlock": {
+    "description": "Password manager: keepassUnlock"
+  },
+  "@keepassDatabases": {
+    "description": "Password manager: keepassDatabases"
+  },
+  "@keepassHello": {
+    "description": "Password manager: keepassHello"
+  },
+  "@keepassSecurityKey": {
+    "description": "Password manager: keepassSecurityKey"
+  },
+  "@keepassQuickHelp": {
+    "description": "Password manager: keepassQuickHelp"
+  },
+  "@keepassQuickEnabled": {
+    "description": "Password manager: keepassQuickEnabled"
+  },
+  "@keepassQuickDisabled": {
+    "description": "Password manager: keepassQuickDisabled"
+  },
+  "@keepassProtection": {
+    "description": "Password manager: keepassProtection"
+  },
+  "@keepassPin": {
+    "description": "Password manager: keepassPin"
+  },
+  "@keepassCopyPassword": {
+    "description": "Password manager: keepassCopyPassword"
+  },
+  "@keepassCopyUsername": {
+    "description": "Password manager: keepassCopyUsername"
+  },
+  "@keepassCopyField": {
+    "description": "Password manager: keepassCopyField"
+  },
+  "@keepassField": {
+    "description": "Password manager: keepassField"
+  },
+  "@keepassValue": {
+    "description": "Password manager: keepassValue"
+  },
+  "@keepassFieldAdd": {
+    "description": "Password manager: keepassFieldAdd"
+  },
+  "@keepassExport": {
+    "description": "Password manager: keepassExport"
+  },
+  "@keepassAllGroups": {
+    "description": "Password manager: keepassAllGroups"
+  },
+  "@keepassPaletteHelp": {
+    "description": "Password manager: keepassPaletteHelp"
+  },
+  "@keepassPaletteBack": {
+    "description": "Password manager: keepassPaletteBack"
+  },
+  "@keepassOpenManager": {
+    "description": "Password manager: keepassOpenManager"
+  },
+  "@keepassConnectDelete": {
+    "description": "Password manager: keepassConnectDelete"
+  },
+  "@keepassConnectDeleteHelp": {
+    "description": "Password manager: keepassConnectDeleteHelp"
+  },
+  "@keepassGroups": {
+    "description": "Password manager: keepassGroups"
+  },
+  "keepassFieldNameError": "Field names must be unique and cannot use standard field names.",
+  "@keepassFieldNameError": {
+    "description": "KDBX custom field validation"
+  },
+  "keepassWelcome": "Your password manager",
+  "@keepassWelcome": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassWelcomeHelp": "Open a KDBX database, create a new one, or connect a file from WebDAV.",
+  "@keepassWelcomeHelp": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassAddDatabase": "Add database",
+  "@keepassAddDatabase": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassNoSelection": "Select an entry to view its card.",
+  "@keepassNoSelection": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassDropHint": "Drag entries onto a folder to move them.",
+  "@keepassDropHint": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassUngrouped": "No folder",
+  "@keepassUngrouped": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassAutosaving": "Saving changes…",
+  "@keepassAutosaving": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassAutosaved": "All changes saved automatically",
+  "@keepassAutosaved": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassRetrySave": "Retry saving",
+  "@keepassRetrySave": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassChooseField": "Choose what to copy",
+  "@keepassChooseField": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassBackEntries": "Back to entries",
+  "@keepassBackEntries": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassSelectCard": "Open entry card",
+  "@keepassSelectCard": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassMore": "Database actions",
+  "@keepassMore": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassDavTimeout": "The WebDAV request timed out. Check the file URL and connection.",
+  "@keepassDavTimeout": {
+    "description": "KDBX layout and WebDAV feedback"
+  },
+  "keepassDavLocked": "This file is locked by another client. Try saving again later.",
+  "@keepassDavLocked": {
+    "description": "KDBX layout and WebDAV feedback"
+  },
+  "keepassResizeGroups": "Resize folders pane",
+  "@keepassResizeGroups": {
+    "description": "KDBX layout and WebDAV feedback"
+  },
+  "keepassResizeCard": "Resize entry card",
+  "@keepassResizeCard": {
+    "description": "KDBX layout and WebDAV feedback"
+  },
+  "keepassGenerator": "Password generator",
+  "@keepassGenerator": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorLength": "Length (8–128)",
+  "@keepassGeneratorLength": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorUpper": "Uppercase (A–Z)",
+  "@keepassGeneratorUpper": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorLower": "Lowercase (a–z)",
+  "@keepassGeneratorLower": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorDigits": "Digits (0–9)",
+  "@keepassGeneratorDigits": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorSymbols": "Symbols (! @ # …)",
+  "@keepassGeneratorSymbols": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorSimilar": "Exclude similar characters (0 O 1 I l)",
+  "@keepassGeneratorSimilar": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorRegenerate": "Generate again",
+  "@keepassGeneratorRegenerate": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorUse": "Use password",
+  "@keepassGeneratorUse": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorLengthError": "Choose a length from 8 to 128.",
+  "@keepassGeneratorLengthError": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorGroupsError": "Select at least one character class.",
+  "@keepassGeneratorGroupsError": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorEntropy": "Generation entropy: {bits} bits",
+  "@keepassGeneratorEntropy": {
+    "description": "Password manager generator and database menus",
+    "placeholders": {
+      "bits": {
+        "type": "String"
+      }
+    }
+  },
+  "keepassSelectSource": "Select database",
+  "@keepassSelectSource": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassRemoveSource": "Remove from list",
+  "@keepassRemoveSource": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassRemoveLocalHelp": "Remove “{name}” from this device’s list and close it? The KDBX file will stay on disk.",
+  "@keepassRemoveLocalHelp": {
+    "description": "Password manager generator and database menus",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepassRemoveRemoteHelp": "Remove the “{name}” connection and close it? The WebDAV file will stay. Connection settings will be removed from synced devices.",
+  "@keepassRemoveRemoteHelp": {
+    "description": "Password manager generator and database menus",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

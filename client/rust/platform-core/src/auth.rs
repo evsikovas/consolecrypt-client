@@ -40,4 +40,10 @@ pub enum OsAuthError {
     ExternalRequired,
     #[error("OS authentication error: {0}")]
     Platform(String),
+    /// Only an operation name and numeric OS result; safe to show in diagnostics.
+    #[error("Windows Hello {operation}: {diagnostic}")]
+    WindowsHello {
+        operation: &'static str,
+        diagnostic: String,
+    },
 }

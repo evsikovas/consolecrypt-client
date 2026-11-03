@@ -20,15 +20,30 @@ def release_version(ref, pubspec):
     return version
 
 
+def build_version(ref, pubspec, event, allow_main_candidate=False):
+    candidate = allow_main_candidate and event == 'workflow_dispatch' and ref == 'refs/heads/main'
+    if candidate:
+        source = re.search(r'^version: (' + SEMVER + r')\+[1-9]\d*\s*$', pubspec, re.M)
+        if source is None:
+            raise ValueError('Invalid candidate version')
+        version = source[1]
+    else:
+        version = release_version(ref, pubspec)
+    return version, candidate
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument('--allow-main-candidate', action='store_true')
     args = parser.parse_args()
-    version = release_version(os.environ.get('GITHUB_REF', ''), (args.root / 'client/flutter/pubspec.yaml').read_text())
+    ref = os.environ.get('GITHUB_REF', '')
+    version, candidate = build_version(ref, (args.root / 'client/flutter/pubspec.yaml').read_text(),
+                                       os.environ.get('GITHUB_EVENT_NAME', ''), args.allow_main_candidate)
     # Checkout fetches origin/main explicitly. Never publish an unrelated tag
     # merely because its version string happens to match the source manifest.
     subprocess.run(['git', 'merge-base', '--is-ancestor', 'HEAD', 'origin/main'], cwd=args.root, check=True)
-    tag_commit = subprocess.check_output(['git', 'rev-parse', os.environ['GITHUB_REF'] + '^{commit}'], cwd=args.root, text=True).strip()
+    tag_commit = subprocess.check_output(['git', 'rev-parse', ('origin/main' if candidate else ref) + '^{commit}'], cwd=args.root, text=True).strip()
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=args.root, text=True).strip()
     if tag_commit != head:
         raise ValueError('Checkout is not the tagged commit')

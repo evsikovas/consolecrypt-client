@@ -37,6 +37,15 @@ async fn rdp_inventory_survives_lock_and_owns_its_password_credential() {
     app.lock().await.unwrap();
     app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
     let hosts = app.list_hosts().await.unwrap();
+    assert_eq!(
+        app.get_credential(saved.credential_id.clone().unwrap())
+            .await
+            .unwrap()
+            .username
+            .as_deref(),
+        Some("LAB\\operator"),
+        "the reusable password credential keeps domain and user after unlocking"
+    );
     assert_eq!(hosts.len(), 1);
     assert_eq!(hosts[0].protocol, HostProtocol::Rdp);
     assert_eq!(hosts[0].rdp_width, 1280);

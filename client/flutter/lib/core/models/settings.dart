@@ -2,6 +2,7 @@ import 'package:consolecrypt/core/models/ai.dart';
 import 'package:consolecrypt/core/models/glass_settings.dart';
 import 'package:consolecrypt/core/models/ids.dart';
 import 'package:consolecrypt/core/models/rdp_mobile.dart';
+import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
 import 'package:consolecrypt/core/models/terminal_colors.dart';
 
@@ -20,6 +21,33 @@ enum TerminalHistoryMode {
 }
 
 /// Mirrors `cc_models::settings::VaultSettings` — synced, E2EE.
+final class PasswordVaultConnection {
+  const PasswordVaultConnection({
+    required this.id,
+    required this.name,
+    required this.url,
+    this.username = '',
+    this.credentialId,
+  });
+  final String id, name, url, username;
+  final String? credentialId;
+  factory PasswordVaultConnection.fromJson(Map<String, Object?> j) => PasswordVaultConnection(
+    id: j['id']! as String,
+    name: j['name']! as String,
+    url: j['url']! as String,
+    username: j['username'] as String? ?? '',
+    credentialId: j['credential_id'] as String?,
+  );
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'name': name,
+    'url': url,
+    'username': username,
+    'credential_id': credentialId,
+  };
+}
+
+/// Mirrors `cc_models::settings::VaultSettings` — synced, E2EE.
 final class VaultSettings {
   const VaultSettings({
     required this.id,
@@ -29,6 +57,7 @@ final class VaultSettings {
     this.terminalHistoryMode = TerminalHistoryMode.localOnly,
     this.defaultPrivacyProfile = PrivacyProfile.strict,
     this.syncAiConversations = false,
+    this.passwordVaults = const [],
   });
 
   final ObjectId id;
@@ -36,6 +65,7 @@ final class VaultSettings {
   final TerminalHistoryMode terminalHistoryMode;
   final PrivacyProfile defaultPrivacyProfile;
   final bool syncAiConversations;
+  final List<PasswordVaultConnection> passwordVaults;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -44,12 +74,14 @@ final class VaultSettings {
     TerminalHistoryMode? terminalHistoryMode,
     PrivacyProfile? defaultPrivacyProfile,
     bool? syncAiConversations,
+    List<PasswordVaultConnection>? passwordVaults,
   }) => VaultSettings(
     id: id,
     vaultName: vaultName ?? this.vaultName,
     terminalHistoryMode: terminalHistoryMode ?? this.terminalHistoryMode,
     defaultPrivacyProfile: defaultPrivacyProfile ?? this.defaultPrivacyProfile,
     syncAiConversations: syncAiConversations ?? this.syncAiConversations,
+    passwordVaults: passwordVaults ?? this.passwordVaults,
     createdAt: createdAt,
     updatedAt: DateTime.now().toUtc(),
   );
@@ -110,6 +142,8 @@ enum AppLocale {
 /// Device-local preferences (`local_settings` table; never synced).
 final class LocalSettings {
   const LocalSettings({
+    this.savedForwards = const [],
+    this.passwordVaultFiles = const [],
     this.themeMode = AppThemeMode.system,
     this.uiFontScale = 1,
     this.uiAccentColor,
@@ -163,6 +197,10 @@ final class LocalSettings {
 
   /// Opening a profile can prompt for OS keychain access. Opt-in at startup.
   final bool reopenLastProfile;
+
+  /// Local paths scoped by profile id. Never sent to sync.
+  final List<Map<String, String>> passwordVaultFiles;
+  final List<SavedForward> savedForwards;
   final double terminalFontSize;
 
   /// Installed monospace family for terminals; null uses the platform default.
@@ -246,6 +284,8 @@ final class LocalSettings {
   final Map<String, int> dbFetchSizes;
 
   LocalSettings copyWith({
+    List<SavedForward>? savedForwards,
+    List<Map<String, String>>? passwordVaultFiles,
     AppThemeMode? themeMode,
     double? uiFontScale,
     int? uiAccentColor,
@@ -283,6 +323,8 @@ final class LocalSettings {
     ScreenCaptureProtection? screenCaptureProtection,
     Map<String, int>? dbFetchSizes,
   }) => LocalSettings(
+    savedForwards: savedForwards ?? this.savedForwards,
+    passwordVaultFiles: passwordVaultFiles ?? this.passwordVaultFiles,
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
     uiAccentColor: resetUiColors ? null : (uiAccentColor ?? this.uiAccentColor),

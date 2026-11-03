@@ -84,6 +84,11 @@ pub enum AppError {
     /// unavailable: the OS did not release the device unlock key.
     #[error("OS authentication: {0}")]
     OsAuth(String),
+    #[error("Windows Hello {operation}: {diagnostic}")]
+    WindowsHello {
+        operation: &'static str,
+        diagnostic: String,
+    },
     /// The device unlock key is no longer valid (fingerprints changed,
     /// Windows Hello reset): unlock with the passphrase and enable again.
     #[error("device unlock must be enabled again")]
@@ -325,7 +330,7 @@ impl AppError {
             AppError::VaultKeyMismatch { .. } => "vault_key_mismatch",
             AppError::RecipientUnverified { .. } => "recipient_unverified",
             AppError::PeerVerificationFailed => "peer_verification_failed",
-            AppError::OsAuth(_) => "os_auth_failed",
+            AppError::OsAuth(_) | AppError::WindowsHello { .. } => "os_auth_failed",
             AppError::OsAuthInvalidated => "os_auth_invalidated",
             AppError::LocalProfile => "local_profile",
             AppError::AlreadySynced => "already_synced",
@@ -431,6 +436,12 @@ impl AppError {
             m.insert(k.to_owned(), v);
         };
         match self {
+            AppError::WindowsHello {
+                operation,
+                diagnostic,
+            } => {
+                put("hello_diagnostic", format!("{operation}: {diagnostic}"));
+            }
             AppError::InvalidInput { field, reason } => {
                 put("field", field.clone());
                 put("rule", reason.clone());
@@ -680,6 +691,13 @@ impl From<OsAuthError> for AppError {
         match e {
             // Cancelled or failed: no key, the vault stays locked (S5 TR-3).
             OsAuthError::Invalidated => AppError::OsAuthInvalidated,
+            OsAuthError::WindowsHello {
+                operation,
+                diagnostic,
+            } => AppError::WindowsHello {
+                operation,
+                diagnostic,
+            },
             other => AppError::OsAuth(other.to_string()),
         }
     }

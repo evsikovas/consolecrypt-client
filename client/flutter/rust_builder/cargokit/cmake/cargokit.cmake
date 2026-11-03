@@ -52,6 +52,14 @@ function(apply_cargokit target manifest_dir lib_name any_symbol_name)
         "CARGOKIT_OHOS_SDK_HOME=${CARGOKIT_OHOS_SDK_HOME}"
     )
 
+    if(WIN32)
+        # cc-rs watches the telemetry variable and MSBuild's INCLUDE/LIB.
+        # These differ from standalone Cargo even with the same SDK, forcing
+        # OpenSSL/AWS-LC to rebuild on every test/build transition. Let cc-rs
+        # discover MSVC consistently; the C++ runner keeps its own SDK paths.
+        list(PREPEND CARGOKIT_ENV "--unset=VSTEL_MSBuildProjectFullPath" "--unset=INCLUDE" "--unset=LIB")
+    endif()
+
     if (WIN32)
         set(SCRIPT_EXTENSION ".cmd")
         set(IMPORT_LIB_EXTENSION ".lib")

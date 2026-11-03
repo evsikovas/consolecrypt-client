@@ -535,15 +535,20 @@ impl Session {
     {
         let _w = self.keyfile_write.lock().await;
         let (dir, kf) = {
-            let mut g = lock_mutex(&self.keyfile);
-            let Some(kf) = g.as_mut() else {
+            let g = lock_mutex(&self.keyfile);
+            let Some(mut kf) = g.clone() else {
                 return Ok(());
             };
-            f(kf);
-            (self.dir.clone(), kf.clone())
+            f(&mut kf);
+            (self.dir.clone(), kf)
         };
         let dir = dir.ok_or_else(|| AppError::internal("key file without a directory"))?;
-        secrets::blocking(move || keyfile::store(&dir, &kf)).await
+        let stored = kf.clone();
+        secrets::blocking(move || keyfile::store(&dir, &stored)).await?;
+        // A failed enrollment must not replace the live record with a handle
+        // that the caller will destroy while rolling the operation back.
+        *lock_mutex(&self.keyfile) = Some(kf);
+        Ok(())
     }
 
     async fn write_keyfile(&self, kf: KeyFile) -> AppResult<()> {

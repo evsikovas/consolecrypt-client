@@ -61,6 +61,7 @@ class GlassInteractive extends StatefulWidget {
     this.button = true,
     this.inMutuallyExclusiveGroup = false,
     this.canRequestFocus = true,
+    this.descendantsAreFocusable = false,
     this.minHitSize = GlassSizes.minHitTarget,
     this.cursor = SystemMouseCursors.click,
     this.shortcuts,
@@ -78,6 +79,7 @@ class GlassInteractive extends StatefulWidget {
   final bool button;
   final bool inMutuallyExclusiveGroup;
   final bool canRequestFocus;
+  final bool descendantsAreFocusable;
   final double minHitSize;
   final MouseCursor cursor;
   final Map<ShortcutActivator, Intent>? shortcuts;
@@ -133,7 +135,7 @@ class _GlassInteractiveState extends State<GlassInteractive> {
       enabled: _enabled,
       focusNode: widget.focusNode,
       autofocus: widget.autofocus,
-      descendantsAreFocusable: false,
+      descendantsAreFocusable: widget.descendantsAreFocusable,
       mouseCursor: _enabled ? widget.cursor : SystemMouseCursors.basic,
       shortcuts: widget.shortcuts,
       actions: {ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (_) => _activate())},

@@ -142,9 +142,10 @@ class CredentialsScreen extends ConsumerWidget {
 
 /// Details with explicit reveal/copy of secrets and public key copy.
 class CredentialDetailsDialog extends ConsumerStatefulWidget {
-  const CredentialDetailsDialog({required this.credential, super.key});
+  const CredentialDetailsDialog({required this.credential, this.revealOnOpen = false, super.key});
 
   final Credential credential;
+  final bool revealOnOpen;
 
   @override
   ConsumerState<CredentialDetailsDialog> createState() => _CredentialDetailsDialogState();
@@ -162,6 +163,11 @@ class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialo
     super.initState();
     _profile = ref.read(activeProfileProvider)?.id;
     _vault = ref.read(vaultStatusProvider).value?.vaultId;
+    if (widget.revealOnOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_reveal());
+      });
+    }
   }
 
   bool get _currentSession =>

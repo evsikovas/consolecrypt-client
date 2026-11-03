@@ -1,4 +1,11 @@
 {
+  "keepassMobileFilesHelp": "Локальные файлы импортируются в приложение и сохраняются здесь автоматически. Чтобы выгрузить изменения в «Файлы», выберите «Сохранить локальную копию». WebDAV сохраняет изменения прямо в удалённую базу.",
+  "keepassMoveToGroup": "Переместить в другую группу…",
+  "tunnelsSaveForward": "Сохранить туннель",
+  "tunnelsSavedForwardHelp": "Сохранённые туннели Docker и Kubernetes остаются на этом устройстве в текущем профиле.",
+  "tunnelsRemoveSavedMessage": "Остановить проброс и удалить его сохранённые параметры с этого устройства?",
+  "tunnelsStartSaved": "Запустить сохранённый туннель",
+  "tunnelsStopSaved": "Остановить туннель",
   "@@locale": "ru",
   "commonCancel": "Отмена",
   "commonSave": "Сохранить",
@@ -911,7 +918,7 @@
   "hostAuthNewPasswordLabel": "Новый пароль",
   "hostAuthPasswordHelper": "Оставьте пустым, чтобы вводить пароль при подключении.",
   "hostAuthSavePassword": "Сохранить пароль в хранилище",
-  "hostAuthSavePasswordOn": "Хранится как отдельный секрет со сквозным шифрованием и больше никогда не показывается.",
+  "hostAuthSavePasswordOn": "Хранится как отдельный секрет со сквозным шифрованием. Посмотреть пароль можно при редактировании подключения.",
   "hostAuthSavePasswordOff": "Ничего не сохраняется — терминал запрашивает пароль при каждом подключении.",
   "hostAuthKeepSaved": "Оставить сохранённый пароль",
   "hostAuthKeyLabel": "Ключ",
@@ -2837,7 +2844,7 @@
   "localAiReady": "Готово · работает на этом компьютере",
   "localAiStopping": "Остановка…",
   "localAiError": "Ошибка локального ИИ",
-  "localAiUnsupported": "Доступно на поддерживаемых компьютерах с Windows и macOS.",
+  "localAiUnsupported": "Доступно на поддерживаемых компьютерах с Windows, macOS и Linux.",
   "localAiDefault": "Использовать по умолчанию после установки",
   "localAiDeviceOnly": "Только на этом компьютере. Настройки других устройств и сохранённых провайдеров независимы.",
   "localAiInstall": "Установить локальный ИИ",
@@ -6950,5 +6957,253 @@
   "cliFailed": "Не удалось установить или удалить команды CLI.",
   "@cliFailed": {
     "description": "Settings: install the bundled consolecrypt-cli command."
+  },
+  "terminalPreviousTab": "Предыдущая вкладка терминала",
+  "terminalNextTab": "Следующая вкладка терминала",
+  "sharingTeamsHelp": "Команды, их участники и доступные им ресурсы.",
+  "sharingTeamResources": "Ресурсов: {count}",
+  "@sharingTeamResources": {
+    "description": "Number of resources in a team vault.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharingTeamNoResources": "В этой команде пока нет ресурсов.",
+  "sharingTeamLocked": "Разблокируйте хранилище команды, чтобы посмотреть участников и ресурсы.",
+  "@terminalPreviousTab": {
+    "description": "terminalPreviousTab"
+  },
+  "@terminalNextTab": {
+    "description": "terminalNextTab"
+  },
+  "@sharingTeamsHelp": {
+    "description": "sharingTeamsHelp"
+  },
+  "@sharingTeamNoResources": {
+    "description": "sharingTeamNoResources"
+  },
+  "@sharingTeamLocked": {
+    "description": "sharingTeamLocked"
+  },
+  "keepassTitle": "Файлы KeePass",
+  "keepassHelp": "Откройте локальную базу KDBX 3/4 или подключите WebDAV. Открытые базы доступны через Ctrl+K. Сохраняйте изменения перед блокировкой; локальное сохранение оставляет рядом зашифрованную резервную копию.",
+  "keepassOpen": "Открыть KDBX",
+  "keepassCreate": "Создать KDBX",
+  "keepassPassword": "Пароль базы",
+  "keepassConfirm": "Повторите пароль базы",
+  "keepassKeyFile": "Выбрать ключевой файл (необязательно)",
+  "keepassClearKey": "Убрать ключевой файл",
+  "keepassNewEntry": "Добавить запись",
+  "keepassNewGroup": "Добавить группу",
+  "keepassEntry": "Запись KeePass",
+  "keepassGroup": "Группа",
+  "keepassGroupName": "Название группы",
+  "keepassEntryTitle": "Название",
+  "keepassUsername": "Пользователь",
+  "keepassEntryPassword": "Пароль",
+  "keepassUrl": "URL",
+  "keepassNotes": "Заметки",
+  "keepassSearch": "Поиск записей",
+  "keepassDirty": "Есть несохранённые изменения",
+  "keepassSaved": "Зашифрованный файл сохранён",
+  "keepassDiscard": "Отбросить изменения",
+  "keepassDiscardHelp": "Закрыть файл и отбросить несохранённые изменения?",
+  "keepassDelete": "Переместить запись в корзину?",
+  "keepassDeleteHelp": "Запись останется в корзине базы. Сохраните файл, чтобы записать изменение на диск.",
+  "keepassKeyError": "Неверный пароль или ключевой файл. Проверьте оба и повторите попытку.",
+  "keepassFormatError": "Не удалось открыть базу: файл может быть повреждён или иметь неподдерживаемый формат. Исходный файл не изменён.",
+  "keepassUnsupported": "Некоторые возможности или настройки этой базы пока не поддерживаются. Исходный файл не изменён.",
+  "keepassChanged": "Файл изменился на диске. Сохранение отменено, чтобы защитить эту версию. Откройте файл заново для загрузки изменений.",
+  "keepassIoError": "Не удалось прочитать или сохранить файл. Проверьте права доступа и свободное место.",
+  "keepassClosed": "Сеанс KeePass заблокирован. Откройте файл заново с его паролем.",
+  "keepassLimits": "Файл слишком велик или его параметры выработки ключа требуют слишком много ресурсов.",
+  "keepassExists": "Файл уже существует. Выберите новое имя.",
+  "keepassMismatch": "Пароли не совпадают.",
+  "keepassEmpty": "В этой группе пока нет записей",
+  "keepassLock": "Заблокировать базу",
+  "errorWindowsHelloDiagnostic": "Ошибка Windows Hello ({diagnostic}). Если отпечаток не принимается, попробуйте PIN в системном окне безопасности Windows. Пароль хранилища остаётся доступен.",
+  "navPasswords": "Пароли",
+  "keepassDavAdd": "Подключить WebDAV",
+  "keepassDavUrl": "URL файла KDBX (HTTPS)",
+  "keepassDavName": "Название подключения",
+  "keepassDavPassword": "Пароль WebDAV / токен приложения",
+  "keepassDavHelp": "Параметры подключения и данные авторизации шифруются и синхронизируются с хранилищем ConsoleCrypt. Сам файл KDBX остаётся на WebDAV.",
+  "keepassDavUrlError": "Укажите полный HTTPS-адрес файла .kdbx, например https://server/folder/Passwords.kdbx. Адрес сервера или папки не подходит.",
+  "keepassDavAuthError": "WebDAV отклонил авторизацию. Проверьте данные подключения.",
+  "keepassDavEtagError": "Сервер не предоставляет ни надёжный ETag, ни подходящую блокировку файла. Сохраните локальную копию изменений.",
+  "keepassDavRedirectError": "WebDAV перенаправил запрос. Укажите конечный адрес файла.",
+  "keepassDavIoError": "Не удалось обратиться к файлу WebDAV. Проверьте адрес, сеть и права доступа.",
+  "keepassUnlock": "Разблокировать базу",
+  "keepassDatabases": "Базы паролей",
+  "keepassHello": "Биометрия / PIN устройства",
+  "keepassSecurityKey": "Физический ключ FIDO2",
+  "keepassQuickHelp": "Первое открытие — мастер-паролем. Затем можно включить отдельный локальный ключ под защитой системной биометрии/PIN устройства или FIDO2 с поддержкой PRF. Настройка действует только на этом устройстве.",
+  "keepassQuickEnabled": "Быстрое открытие включено",
+  "keepassQuickDisabled": "Быстрое открытие отключено",
+  "keepassProtection": "Быстрое открытие",
+  "keepassPin": "PIN физического ключа",
+  "keepassCopyPassword": "Скопировать пароль",
+  "keepassCopyUsername": "Скопировать логин",
+  "keepassCopyField": "Скопировать поле",
+  "keepassField": "Поле",
+  "keepassValue": "Значение",
+  "keepassFieldAdd": "Добавить поле",
+  "keepassExport": "Сохранить локальную копию",
+  "keepassAllGroups": "Все группы",
+  "keepassPaletteHelp": "Найдите запись, затем выберите поле для копирования.",
+  "keepassPaletteBack": "Назад ко всем командам",
+  "keepassOpenManager": "Открыть менеджер паролей",
+  "keepassConnectDelete": "Удалить подключение",
+  "keepassConnectDeleteHelp": "Удалить подключение из синхронизируемых настроек? Файл KDBX останется на WebDAV.",
+  "keepassGroups": "Группы",
+  "keepassFieldNameError": "Названия полей должны быть уникальными и отличаться от стандартных полей.",
+  "keepassWelcome": "Менеджер паролей",
+  "@keepassWelcome": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassWelcomeHelp": "Откройте базу KDBX, создайте новую или подключите файл с WebDAV.",
+  "@keepassWelcomeHelp": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassAddDatabase": "Добавить базу",
+  "@keepassAddDatabase": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassNoSelection": "Выберите запись, чтобы открыть карточку.",
+  "@keepassNoSelection": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassDropHint": "Перетащите запись на папку, чтобы переместить её.",
+  "@keepassDropHint": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassUngrouped": "Без папки",
+  "@keepassUngrouped": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassAutosaving": "Сохраняем изменения…",
+  "@keepassAutosaving": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassAutosaved": "Все изменения сохранены автоматически",
+  "@keepassAutosaved": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassRetrySave": "Повторить сохранение",
+  "@keepassRetrySave": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassChooseField": "Выберите, что скопировать",
+  "@keepassChooseField": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassBackEntries": "Назад к записям",
+  "@keepassBackEntries": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassSelectCard": "Открыть карточку записи",
+  "@keepassSelectCard": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassMore": "Действия с базой",
+  "@keepassMore": {
+    "description": "KDBX password manager workspace"
+  },
+  "keepassDavTimeout": "Сервер WebDAV не ответил вовремя. Проверьте адрес файла и подключение.",
+  "@keepassDavTimeout": {
+    "description": "KDBX layout and WebDAV feedback"
+  },
+  "keepassDavLocked": "Файл заблокирован другим клиентом. Повторите сохранение позже.",
+  "@keepassDavLocked": {
+    "description": "KDBX layout and WebDAV feedback"
+  },
+  "keepassResizeGroups": "Изменить ширину папок",
+  "@keepassResizeGroups": {
+    "description": "KDBX layout and WebDAV feedback"
+  },
+  "keepassResizeCard": "Изменить ширину карточки",
+  "@keepassResizeCard": {
+    "description": "KDBX layout and WebDAV feedback"
+  },
+  "keepassGenerator": "Генератор паролей",
+  "@keepassGenerator": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorLength": "Длина (8–128)",
+  "@keepassGeneratorLength": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorUpper": "Заглавные буквы (A–Z)",
+  "@keepassGeneratorUpper": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorLower": "Строчные буквы (a–z)",
+  "@keepassGeneratorLower": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorDigits": "Цифры (0–9)",
+  "@keepassGeneratorDigits": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorSymbols": "Специальные символы (! @ # …)",
+  "@keepassGeneratorSymbols": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorSimilar": "Исключить похожие символы (0 O 1 I l)",
+  "@keepassGeneratorSimilar": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorRegenerate": "Сгенерировать заново",
+  "@keepassGeneratorRegenerate": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorUse": "Использовать пароль",
+  "@keepassGeneratorUse": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorLengthError": "Укажите длину от 8 до 128.",
+  "@keepassGeneratorLengthError": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorGroupsError": "Выберите хотя бы один вид символов.",
+  "@keepassGeneratorGroupsError": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassGeneratorEntropy": "Энтропия генерации: {bits} бит",
+  "@keepassGeneratorEntropy": {
+    "description": "Password manager generator and database menus",
+    "placeholders": {
+      "bits": {
+        "type": "String"
+      }
+    }
+  },
+  "keepassSelectSource": "Выбрать базу",
+  "@keepassSelectSource": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassRemoveSource": "Удалить из списка",
+  "@keepassRemoveSource": {
+    "description": "Password manager generator and database menus"
+  },
+  "keepassRemoveLocalHelp": "Убрать «{name}» из списка на этом устройстве и закрыть базу? Сам файл KDBX останется на диске.",
+  "@keepassRemoveLocalHelp": {
+    "description": "Password manager generator and database menus",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepassRemoveRemoteHelp": "Удалить подключение «{name}» и закрыть базу? Файл на WebDAV останется. Параметры подключения будут удалены на синхронизированных устройствах.",
+  "@keepassRemoveRemoteHelp": {
+    "description": "Password manager generator and database menus",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -20,8 +20,8 @@ def load(name):
 verify = load('verify-client-release')
 update = load('update-release-docs')
 REPO = verify.REPOSITORY
-SUFFIXES = list(verify.PACKAGES)
-BUILDS = {'macos': 46011, 'windows': 46012, 'linux': 46013, 'android': 46014}
+SUFFIXES = [suffix for suffix in verify.PACKAGES if suffix != 'ios-simulator-universal.zip']
+BUILDS = {'macos': 46011, 'windows': 46012, 'linux': 46013, 'android': 46014, 'ios': 46015}
 
 
 def release(version='0.9.3'):
@@ -34,7 +34,9 @@ def release(version='0.9.3'):
             'browser_download_url': f'https://github.com/{REPO}/releases/download/{tag}/{name.replace("+", "%2B")}',
         })
 
-    for index, suffix in enumerate(SUFFIXES):
+    for index, suffix in enumerate(verify.PACKAGES):
+        if suffix == 'ios-simulator-universal.zip' and int(version.split('.')[0]) < 1:
+            continue
         name = f'ConsoleCrypt-{version}+{BUILDS[verify.PACKAGES[suffix][0]]}-{suffix}'
         digest = f'{index:x}' * 64
         sums.append(f'{digest}  {name}')
@@ -50,7 +52,7 @@ def release(version='0.9.3'):
 class VerifyReleaseTests(unittest.TestCase):
     def test_a_complete_release_lists_every_installer_with_its_checksum(self):
         verified = verify.validate(*release())
-        self.assertEqual(verified['builds'], BUILDS)
+        self.assertEqual(verified['builds'], {k: v for k, v in BUILDS.items() if k != 'ios'})
         self.assertEqual([item['suffix'] for item in verified['installers']], SUFFIXES)
         self.assertEqual(verified['feeds'], ['legacy-stable.json', 'linux-stable.json', 'stable.json'])
         dmg = verified['installers'][0]
@@ -83,6 +85,15 @@ class VerifyReleaseTests(unittest.TestCase):
             return s.replace('ConsoleCrypt-0.9.3+46012-windows-x64.zip', new)
         broken(split_build)
         broken(lambda d, s: s + s.splitlines()[0] + '\n')  # duplicate checksum
+
+    def test_one_point_zero_requires_the_simulator_in_the_verified_set(self):
+        data, sums = release('1.0.0')
+        result = verify.validate(data, sums)
+        self.assertEqual(len(result['installers']), 7)
+        self.assertEqual(result['builds']['ios'], BUILDS['ios'])
+        data['assets'] = [a for a in data['assets'] if 'ios-simulator' not in a['name']]
+        with self.assertRaises(verify.ReleaseError):
+            verify.validate(data, sums)
 
 
 README = """# ConsoleCrypt — документация
@@ -147,7 +158,7 @@ class UpdateDocsTests(unittest.TestCase):
 
     def run_script(self, *extra):
         return subprocess.run(
-            [sys.executable, str(HERE / 'update-release-docs.py'), str(self.verified), '--docs', str(self.docs), '--site', str(self.site), *extra],
+            [sys.executable, '-X', 'utf8', str(HERE / 'update-release-docs.py'), str(self.verified), '--docs', str(self.docs), '--site', str(self.site), *extra],
             capture_output=True, text=True,
         )
 

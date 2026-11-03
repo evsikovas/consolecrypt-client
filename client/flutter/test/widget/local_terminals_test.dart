@@ -129,7 +129,10 @@ void main() {
     final tab = await c.read(terminalTabsProvider.notifier).openTarget(LocalTerminalTarget(profiles[0]));
     c.read(routerProvider).go(AppRoutes.terminal);
     await settle(tester);
-    await tapKey(tester, 'terminal-ask-ai');
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
     await enterKey(tester, 'palette-input', 'list processes');
     await tapKey(tester, 'palette-generate');
     expect(ai.dialect, SnippetType.powershell);

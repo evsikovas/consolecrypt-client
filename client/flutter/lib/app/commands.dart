@@ -28,6 +28,8 @@ enum AppCommandId {
   splitTerminalRight,
   splitTerminalDown,
   nextTerminalPane,
+  previousTerminalTab,
+  nextTerminalTab,
 }
 
 /// A key combination: the platform primary modifier (⌘ on macOS, Ctrl
@@ -175,6 +177,8 @@ final class AppCommand {
     AppCommandId.splitTerminalRight => l.terminalSplitRight,
     AppCommandId.splitTerminalDown => l.terminalSplitDown,
     AppCommandId.nextTerminalPane => l.terminalNextPane,
+    AppCommandId.previousTerminalTab => l.terminalPreviousTab,
+    AppCommandId.nextTerminalTab => l.terminalNextTab,
   };
 }
 
@@ -192,6 +196,8 @@ const appCommands = [
   AppCommand(AppCommandId.splitTerminalRight, ShortcutBinding(LogicalKeyboardKey.backslash, shift: true)),
   AppCommand(AppCommandId.splitTerminalDown, ShortcutBinding(LogicalKeyboardKey.minus, shift: true)),
   AppCommand(AppCommandId.nextTerminalPane, ShortcutBinding(LogicalKeyboardKey.bracketRight)),
+  AppCommand(AppCommandId.previousTerminalTab, ShortcutBinding(LogicalKeyboardKey.arrowLeft)),
+  AppCommand(AppCommandId.nextTerminalTab, ShortcutBinding(LogicalKeyboardKey.arrowRight)),
 ];
 
 /// Commands with the user's overrides (`id → encoded binding`, empty =
@@ -292,6 +298,14 @@ final class AppCommandDispatcher {
       case AppCommandId.nextTerminalPane:
         if (router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
           _ref.read(terminalTabsProvider.notifier).focusNextPane();
+        }
+      case AppCommandId.previousTerminalTab || AppCommandId.nextTerminalTab:
+        if (router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
+          final tabs = _ref.read(terminalTabsProvider);
+          if (tabs.tabs.isNotEmpty) {
+            final step = id == AppCommandId.nextTerminalTab ? 1 : -1;
+            _ref.read(terminalTabsProvider.notifier).activate((tabs.activeIndex + step) % tabs.tabs.length);
+          }
         }
     }
   }

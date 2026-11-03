@@ -89,6 +89,30 @@ void main() {
     await settle(tester);
     expect(reads, 2);
     expect(writes, ['\x1b[200~Привет 🌐\x1b[201~']);
+    writes.clear();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.keyV);
+    await settle(tester);
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(reads, 3);
+    expect(writes, ['\x1b[200~Привет 🌐\x1b[201~']);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('toolbar Ask AI opens chat with explicit selection and sends nothing automatically', (tester) async {
+    final (_, c, tab) = await _open(tester);
+    _select(tab, 'sample output');
+    final selected = tab.selectedText;
+    await tapKey(tester, 'terminal-ask-ai');
+    expect(find.byKey(const ValueKey('ai-input')), findsOneWidget);
+    expect(find.byKey(const ValueKey('palette-input')), findsNothing);
+    expect(c.read(terminalAttachmentProvider)?.text, selected);
+    expect(c.read(aiChatControllerProvider).messages, isEmpty);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 

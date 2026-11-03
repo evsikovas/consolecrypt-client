@@ -5,7 +5,7 @@ import 'package:material_ui/material_ui.dart';
 /// Text-field border of LIQUID_GLASS_SPEC §4.4 for `material_ui` inputs
 /// (`TextFormField` with validators, dropdown fields): the field is a
 /// `fill.field` shape with continuous corners (`r.md`), no stroke at rest, a
-/// 2 px accent ring on focus and a 1.5 px danger border on error.
+/// subtle underline on focus and a danger underline on error.
 ///
 /// It is not an outline border, so the floating label sits inside the fill
 /// (like `GlassField`, whose fill it matches) instead of on a stroke.
@@ -44,14 +44,9 @@ class GlassInputBorder extends InputBorder {
     TextDirection? textDirection,
   }) {
     if (borderSide.style == BorderStyle.none || borderSide.width == 0) return;
-    // Stroke centred half a width inside the edge: the ring stays inside the fill.
-    final inset = rect.deflate(borderSide.width / 2);
-    canvas.drawPath(
-      RoundedSuperellipseBorder(
-        borderRadius: BorderRadius.circular((radius - borderSide.width / 2).clamp(0, double.infinity)),
-      ).getOuterPath(inset, textDirection: textDirection),
-      borderSide.toPaint(),
-    );
+    // Focus/error stays below the text and floating label.
+    final y = rect.bottom - borderSide.width / 2;
+    canvas.drawLine(Offset(rect.left + radius, y), Offset(rect.right - radius, y), borderSide.toPaint());
   }
 
   @override

@@ -48,6 +48,7 @@ mod database_runtime;
 pub mod database_vault_move;
 mod docker_compose;
 mod docker_runtime;
+mod password_vault;
 pub use database_ai::{DbAiConsent, DbAiRequest};
 pub use database_import::{DbImportChoice, DbImportReviewDto};
 pub use database_runtime::{DbLiveSession, DbPreparedQueryDto, DbQueryReviewDto};

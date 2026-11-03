@@ -10,6 +10,28 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get keepassMobileFilesHelp =>
+      'Local files are imported into the app and saved there automatically. Use Save a local copy to export changes to Files. WebDAV saves directly to the remote database.';
+
+  @override
+  String get keepassMoveToGroup => 'Move to another group…';
+
+  @override
+  String get tunnelsSaveForward => 'Save tunnel';
+
+  @override
+  String get tunnelsSavedForwardHelp => 'Saved Docker and Kubernetes tunnels stay on this device, in this profile.';
+
+  @override
+  String get tunnelsRemoveSavedMessage => 'Stop this forward and remove its saved settings from this device?';
+
+  @override
+  String get tunnelsStartSaved => 'Start saved tunnel';
+
+  @override
+  String get tunnelsStopSaved => 'Stop tunnel';
+
+  @override
   String get commonCancel => 'Cancel';
 
   @override
@@ -2301,7 +2323,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostAuthSavePassword => 'Save password in vault';
 
   @override
-  String get hostAuthSavePasswordOn => 'Stored end-to-end encrypted as a separate secret; never shown again.';
+  String get hostAuthSavePasswordOn =>
+      'Stored end-to-end encrypted as a separate secret. You can explicitly reveal it when editing the connection.';
 
   @override
   String get hostAuthSavePasswordOff => 'Nothing is stored — the terminal asks for the password each time you connect.';
@@ -5963,7 +5986,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localAiError => 'Local AI needs attention';
 
   @override
-  String get localAiUnsupported => 'Available on supported Windows and macOS computers.';
+  String get localAiUnsupported => 'Available on supported Windows, macOS and Linux computers.';
 
   @override
   String get localAiDefault => 'Use by default after installation';
@@ -13672,4 +13695,357 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cliFailed => 'Could not install or remove the CLI commands.';
+
+  @override
+  String get terminalPreviousTab => 'Previous terminal tab';
+
+  @override
+  String get terminalNextTab => 'Next terminal tab';
+
+  @override
+  String get sharingTeamsHelp => 'Teams, their members and the resources available to them.';
+
+  @override
+  String sharingTeamResources(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count resources', one: '1 resource');
+    return '$_temp0';
+  }
+
+  @override
+  String get sharingTeamNoResources => 'No resources in this team.';
+
+  @override
+  String get sharingTeamLocked => 'Unlock the team vault to view its members and resources.';
+
+  @override
+  String get keepassTitle => 'KeePass files';
+
+  @override
+  String get keepassHelp =>
+      'Open a local KDBX 3/4 file or connect a WebDAV database. Open databases stay available to Ctrl+K. Save changes before locking; local saves keep an encrypted backup beside the original.';
+
+  @override
+  String get keepassOpen => 'Open KDBX';
+
+  @override
+  String get keepassCreate => 'New KDBX';
+
+  @override
+  String get keepassPassword => 'Database password';
+
+  @override
+  String get keepassConfirm => 'Repeat database password';
+
+  @override
+  String get keepassKeyFile => 'Choose key file (optional)';
+
+  @override
+  String get keepassClearKey => 'Remove key file';
+
+  @override
+  String get keepassNewEntry => 'Add entry';
+
+  @override
+  String get keepassNewGroup => 'Add group';
+
+  @override
+  String get keepassEntry => 'KeePass entry';
+
+  @override
+  String get keepassGroup => 'Group';
+
+  @override
+  String get keepassGroupName => 'Group name';
+
+  @override
+  String get keepassEntryTitle => 'Title';
+
+  @override
+  String get keepassUsername => 'Username';
+
+  @override
+  String get keepassEntryPassword => 'Password';
+
+  @override
+  String get keepassUrl => 'URL';
+
+  @override
+  String get keepassNotes => 'Notes';
+
+  @override
+  String get keepassSearch => 'Search entries';
+
+  @override
+  String get keepassDirty => 'Unsaved changes';
+
+  @override
+  String get keepassSaved => 'Encrypted file saved';
+
+  @override
+  String get keepassDiscard => 'Discard changes';
+
+  @override
+  String get keepassDiscardHelp => 'Close this file and discard unsaved changes?';
+
+  @override
+  String get keepassDelete => 'Move entry to recycle bin?';
+
+  @override
+  String get keepassDeleteHelp => 'The entry stays in the database recycle bin. Save to write the change to disk.';
+
+  @override
+  String get keepassKeyError => 'The password or key file is incorrect. Check both and try again.';
+
+  @override
+  String get keepassFormatError =>
+      'The database could not be opened. It may be damaged or use an unsupported format. The original file was not changed.';
+
+  @override
+  String get keepassUnsupported =>
+      'Some features or settings of this database are not supported yet. The original file was not changed.';
+
+  @override
+  String get keepassChanged =>
+      'The file changed on disk. Save was cancelled to protect that version. Reopen the file to load the latest changes.';
+
+  @override
+  String get keepassIoError => 'Could not read or save the file. Check access permissions and free disk space.';
+
+  @override
+  String get keepassClosed => 'The KeePass session is locked. Reopen the file with its password.';
+
+  @override
+  String get keepassLimits => 'The file is too large or its key derivation takes too many resources.';
+
+  @override
+  String get keepassExists => 'A file already exists here. Choose a new file name.';
+
+  @override
+  String get keepassMismatch => 'The passwords do not match.';
+
+  @override
+  String get keepassEmpty => 'No entries in this group';
+
+  @override
+  String get keepassLock => 'Lock database';
+
+  @override
+  String errorWindowsHelloDiagnostic(String diagnostic) {
+    return 'Windows Hello failed ($diagnostic). If fingerprint verification fails, try PIN in the Windows Security dialog. The vault passphrase remains available.';
+  }
+
+  @override
+  String get navPasswords => 'Passwords';
+
+  @override
+  String get keepassDavAdd => 'Connect WebDAV';
+
+  @override
+  String get keepassDavUrl => 'KDBX file URL (HTTPS)';
+
+  @override
+  String get keepassDavName => 'Connection name';
+
+  @override
+  String get keepassDavPassword => 'WebDAV password / app token';
+
+  @override
+  String get keepassDavHelp =>
+      'Connection settings and authentication credentials are encrypted and synced with your ConsoleCrypt vault. The KDBX file stays on WebDAV.';
+
+  @override
+  String get keepassDavUrlError =>
+      'Use the full HTTPS URL of a .kdbx file, for example https://server/folder/Passwords.kdbx. A server or folder URL is not enough.';
+
+  @override
+  String get keepassDavAuthError => 'WebDAV rejected authentication. Check the connection credentials.';
+
+  @override
+  String get keepassDavEtagError =>
+      'This server offers neither a strong ETag nor a usable file lock. Save a local copy to retain your changes.';
+
+  @override
+  String get keepassDavRedirectError => 'WebDAV redirected the request. Use the final file URL.';
+
+  @override
+  String get keepassDavIoError => 'Could not access the WebDAV file. Check the address, network and permissions.';
+
+  @override
+  String get keepassUnlock => 'Unlock database';
+
+  @override
+  String get keepassDatabases => 'Databases';
+
+  @override
+  String get keepassHello => 'Biometrics / device PIN';
+
+  @override
+  String get keepassSecurityKey => 'FIDO2 security key';
+
+  @override
+  String get keepassQuickHelp =>
+      'Open with the master password first. Then enable a separate local key protected by system biometrics/device PIN or a FIDO2 key with PRF support. This setting is specific to this device.';
+
+  @override
+  String get keepassQuickEnabled => 'Quick unlock enabled';
+
+  @override
+  String get keepassQuickDisabled => 'Quick unlock disabled';
+
+  @override
+  String get keepassProtection => 'Quick unlock';
+
+  @override
+  String get keepassPin => 'Security key PIN';
+
+  @override
+  String get keepassCopyPassword => 'Copy password';
+
+  @override
+  String get keepassCopyUsername => 'Copy username';
+
+  @override
+  String get keepassCopyField => 'Copy field';
+
+  @override
+  String get keepassField => 'Field';
+
+  @override
+  String get keepassValue => 'Value';
+
+  @override
+  String get keepassFieldAdd => 'Add field';
+
+  @override
+  String get keepassExport => 'Save local copy';
+
+  @override
+  String get keepassAllGroups => 'All groups';
+
+  @override
+  String get keepassPaletteHelp => 'Find an entry, then choose a field to copy.';
+
+  @override
+  String get keepassPaletteBack => 'Back to all commands';
+
+  @override
+  String get keepassOpenManager => 'Open password manager';
+
+  @override
+  String get keepassConnectDelete => 'Remove connection';
+
+  @override
+  String get keepassConnectDeleteHelp =>
+      'Remove this connection from synced settings? The KDBX file will remain on WebDAV.';
+
+  @override
+  String get keepassGroups => 'Groups';
+
+  @override
+  String get keepassFieldNameError => 'Field names must be unique and cannot use standard field names.';
+
+  @override
+  String get keepassWelcome => 'Your password manager';
+
+  @override
+  String get keepassWelcomeHelp => 'Open a KDBX database, create a new one, or connect a file from WebDAV.';
+
+  @override
+  String get keepassAddDatabase => 'Add database';
+
+  @override
+  String get keepassNoSelection => 'Select an entry to view its card.';
+
+  @override
+  String get keepassDropHint => 'Drag entries onto a folder to move them.';
+
+  @override
+  String get keepassUngrouped => 'No folder';
+
+  @override
+  String get keepassAutosaving => 'Saving changes…';
+
+  @override
+  String get keepassAutosaved => 'All changes saved automatically';
+
+  @override
+  String get keepassRetrySave => 'Retry saving';
+
+  @override
+  String get keepassChooseField => 'Choose what to copy';
+
+  @override
+  String get keepassBackEntries => 'Back to entries';
+
+  @override
+  String get keepassSelectCard => 'Open entry card';
+
+  @override
+  String get keepassMore => 'Database actions';
+
+  @override
+  String get keepassDavTimeout => 'The WebDAV request timed out. Check the file URL and connection.';
+
+  @override
+  String get keepassDavLocked => 'This file is locked by another client. Try saving again later.';
+
+  @override
+  String get keepassResizeGroups => 'Resize folders pane';
+
+  @override
+  String get keepassResizeCard => 'Resize entry card';
+
+  @override
+  String get keepassGenerator => 'Password generator';
+
+  @override
+  String get keepassGeneratorLength => 'Length (8–128)';
+
+  @override
+  String get keepassGeneratorUpper => 'Uppercase (A–Z)';
+
+  @override
+  String get keepassGeneratorLower => 'Lowercase (a–z)';
+
+  @override
+  String get keepassGeneratorDigits => 'Digits (0–9)';
+
+  @override
+  String get keepassGeneratorSymbols => 'Symbols (! @ # …)';
+
+  @override
+  String get keepassGeneratorSimilar => 'Exclude similar characters (0 O 1 I l)';
+
+  @override
+  String get keepassGeneratorRegenerate => 'Generate again';
+
+  @override
+  String get keepassGeneratorUse => 'Use password';
+
+  @override
+  String get keepassGeneratorLengthError => 'Choose a length from 8 to 128.';
+
+  @override
+  String get keepassGeneratorGroupsError => 'Select at least one character class.';
+
+  @override
+  String keepassGeneratorEntropy(String bits) {
+    return 'Generation entropy: $bits bits';
+  }
+
+  @override
+  String get keepassSelectSource => 'Select database';
+
+  @override
+  String get keepassRemoveSource => 'Remove from list';
+
+  @override
+  String keepassRemoveLocalHelp(String name) {
+    return 'Remove “$name” from this device’s list and close it? The KDBX file will stay on disk.';
+  }
+
+  @override
+  String keepassRemoveRemoteHelp(String name) {
+    return 'Remove the “$name” connection and close it? The WebDAV file will stay. Connection settings will be removed from synced devices.';
+  }
 }

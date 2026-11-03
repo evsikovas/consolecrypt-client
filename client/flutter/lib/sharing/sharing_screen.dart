@@ -21,6 +21,8 @@ import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:consolecrypt/sharing/sharing_providers.dart';
 import 'package:consolecrypt/sharing/sharing_rdp.dart';
 import 'package:consolecrypt/sharing/sharing_secrets.dart';
+import 'package:consolecrypt/sharing/sharing_teams.dart';
+import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -38,6 +40,12 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
     final service = ref.read(sharingServiceProvider);
     setState(() => _busy = true);
     await runWithFeedback(context, () async {
+      if (ref.read(teamsSupportedProvider).value == true) {
+        await ref.read(teamServiceProvider).refresh();
+        if (!mounted || !identical(scope, ref.read(sharingSessionScopeProvider))) return;
+        ref.invalidate(teamsProvider);
+        ref.invalidate(objectTeamsProvider);
+      }
       // Recheck support even after an unavailable/error result. The retained
       // shell page must not require signing out after a server flag changes.
       final status = await ref.refresh(sharingStatusProvider.future);
@@ -123,6 +131,7 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
         child: CustomScrollView(
           key: const ValueKey('sharing-workspace-scroll'),
           slivers: [
+            if (unlocked && !local) const SliverToBoxAdapter(child: SharingTeams()),
             if (status.isLoading || _busy) const SliverToBoxAdapter(child: LinearProgressIndicator()),
             if (local || status.hasError || status.value?.enabled == false)
               SliverToBoxAdapter(

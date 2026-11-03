@@ -41,7 +41,18 @@ final class TerminalTab {
 
   /// Name chosen by the user; wins over titles set by the remote shell.
   String? customTitle;
-  String get displayTitle => customTitle ?? title;
+  String get displayTitle => customTitle ?? _shellTitle(title);
+
+  // PowerShell's OSC title can be a POSIX-escaped executable path. Keep
+  // useful dynamic titles (directories, commands), shortening only a bare
+  // Windows shell executable. The process command line is never changed.
+  String _shellTitle(String value) {
+    if (!isLocal) return value;
+    final path = value.trim().replaceAll(r'\ ', ' ').replaceAll('"', '');
+    final name = path.split(RegExp(r'[/\\]')).last;
+    return const {'pwsh.exe', 'powershell.exe', 'cmd.exe'}.contains(name.toLowerCase()) ? name : value;
+  }
+
   bool exited = false;
 
   /// Output finished (or the terminal bell rang) while nobody was looking at

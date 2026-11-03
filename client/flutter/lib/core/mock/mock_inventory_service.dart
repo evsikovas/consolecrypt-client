@@ -157,6 +157,15 @@ final class MockInventoryService extends VaultScopedMock implements InventorySer
     }
 
     final saved = _copyHost(host, credentialId: credentialId, setCredential: true, metadata: meta);
+    if (host.isRdp && keepInline) {
+      final index = d.credentials.indexWhere((c) => c.id == credentialId);
+      final domain = host.rdpDomain;
+      final user = host.username;
+      final qualified = domain != null && domain.isNotEmpty && user != null && !user.contains(r'\')
+          ? '$domain\\$user'
+          : user;
+      if (index >= 0) d.credentials[index] = d.credentials[index].copyWith(username: qualified);
+    }
     final i = d.hosts.indexWhere((h) => h.id == host.id);
     if (i >= 0) {
       d.hosts[i] = saved;

@@ -92,6 +92,48 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
 
+  /// Explain mobile KDBX import and explicit export before opening a file
+  ///
+  /// In en, this message translates to:
+  /// **'Local files are imported into the app and saved there automatically. Use Save a local copy to export changes to Files. WebDAV saves directly to the remote database.'**
+  String get keepassMobileFilesHelp;
+
+  /// Entry context menu: choose a destination group
+  ///
+  /// In en, this message translates to:
+  /// **'Move to another group…'**
+  String get keepassMoveToGroup;
+
+  /// Opt in to saving port forwarding parameters
+  ///
+  /// In en, this message translates to:
+  /// **'Save tunnel'**
+  String get tunnelsSaveForward;
+
+  /// Persistence scope of saved forwarding presets
+  ///
+  /// In en, this message translates to:
+  /// **'Saved Docker and Kubernetes tunnels stay on this device, in this profile.'**
+  String get tunnelsSavedForwardHelp;
+
+  /// Confirm removing a saved forwarding preset
+  ///
+  /// In en, this message translates to:
+  /// **'Stop this forward and remove its saved settings from this device?'**
+  String get tunnelsRemoveSavedMessage;
+
+  /// Restart a saved forwarding preset
+  ///
+  /// In en, this message translates to:
+  /// **'Start saved tunnel'**
+  String get tunnelsStartSaved;
+
+  /// Stop a saved forwarding preset
+  ///
+  /// In en, this message translates to:
+  /// **'Stop tunnel'**
+  String get tunnelsStopSaved;
+
   /// Button: dismiss a dialog without changes.
   ///
   /// In en, this message translates to:
@@ -4175,7 +4217,7 @@ abstract class AppLocalizations {
   /// Checkbox subtitle when saving the password is on.
   ///
   /// In en, this message translates to:
-  /// **'Stored end-to-end encrypted as a separate secret; never shown again.'**
+  /// **'Stored end-to-end encrypted as a separate secret. You can explicitly reveal it when editing the connection.'**
   String get hostAuthSavePasswordOn;
 
   /// Checkbox subtitle when saving the password is off.
@@ -10577,7 +10619,7 @@ abstract class AppLocalizations {
   /// Built-in device-local AI settings.
   ///
   /// In en, this message translates to:
-  /// **'Available on supported Windows and macOS computers.'**
+  /// **'Available on supported Windows, macOS and Linux computers.'**
   String get localAiUnsupported;
 
   /// Built-in device-local AI settings.
@@ -24007,6 +24049,672 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not install or remove the CLI commands.'**
   String get cliFailed;
+
+  /// terminalPreviousTab
+  ///
+  /// In en, this message translates to:
+  /// **'Previous terminal tab'**
+  String get terminalPreviousTab;
+
+  /// terminalNextTab
+  ///
+  /// In en, this message translates to:
+  /// **'Next terminal tab'**
+  String get terminalNextTab;
+
+  /// sharingTeamsHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Teams, their members and the resources available to them.'**
+  String get sharingTeamsHelp;
+
+  /// Number of resources in a team vault.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 resource} other{{count} resources}}'**
+  String sharingTeamResources(int count);
+
+  /// sharingTeamNoResources
+  ///
+  /// In en, this message translates to:
+  /// **'No resources in this team.'**
+  String get sharingTeamNoResources;
+
+  /// sharingTeamLocked
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the team vault to view its members and resources.'**
+  String get sharingTeamLocked;
+
+  /// Local KeePass file manager: keepassTitle
+  ///
+  /// In en, this message translates to:
+  /// **'KeePass files'**
+  String get keepassTitle;
+
+  /// Local KeePass file manager: keepassHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Open a local KDBX 3/4 file or connect a WebDAV database. Open databases stay available to Ctrl+K. Save changes before locking; local saves keep an encrypted backup beside the original.'**
+  String get keepassHelp;
+
+  /// Local KeePass file manager: keepassOpen
+  ///
+  /// In en, this message translates to:
+  /// **'Open KDBX'**
+  String get keepassOpen;
+
+  /// Local KeePass file manager: keepassCreate
+  ///
+  /// In en, this message translates to:
+  /// **'New KDBX'**
+  String get keepassCreate;
+
+  /// Local KeePass file manager: keepassPassword
+  ///
+  /// In en, this message translates to:
+  /// **'Database password'**
+  String get keepassPassword;
+
+  /// Local KeePass file manager: keepassConfirm
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat database password'**
+  String get keepassConfirm;
+
+  /// Local KeePass file manager: keepassKeyFile
+  ///
+  /// In en, this message translates to:
+  /// **'Choose key file (optional)'**
+  String get keepassKeyFile;
+
+  /// Local KeePass file manager: keepassClearKey
+  ///
+  /// In en, this message translates to:
+  /// **'Remove key file'**
+  String get keepassClearKey;
+
+  /// Local KeePass file manager: keepassNewEntry
+  ///
+  /// In en, this message translates to:
+  /// **'Add entry'**
+  String get keepassNewEntry;
+
+  /// Local KeePass file manager: keepassNewGroup
+  ///
+  /// In en, this message translates to:
+  /// **'Add group'**
+  String get keepassNewGroup;
+
+  /// Local KeePass file manager: keepassEntry
+  ///
+  /// In en, this message translates to:
+  /// **'KeePass entry'**
+  String get keepassEntry;
+
+  /// Local KeePass file manager: keepassGroup
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get keepassGroup;
+
+  /// Local KeePass file manager: keepassGroupName
+  ///
+  /// In en, this message translates to:
+  /// **'Group name'**
+  String get keepassGroupName;
+
+  /// Local KeePass file manager: keepassEntryTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get keepassEntryTitle;
+
+  /// Local KeePass file manager: keepassUsername
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get keepassUsername;
+
+  /// Local KeePass file manager: keepassEntryPassword
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get keepassEntryPassword;
+
+  /// Local KeePass file manager: keepassUrl
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get keepassUrl;
+
+  /// Local KeePass file manager: keepassNotes
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get keepassNotes;
+
+  /// Local KeePass file manager: keepassSearch
+  ///
+  /// In en, this message translates to:
+  /// **'Search entries'**
+  String get keepassSearch;
+
+  /// Local KeePass file manager: keepassDirty
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get keepassDirty;
+
+  /// Local KeePass file manager: keepassSaved
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted file saved'**
+  String get keepassSaved;
+
+  /// Local KeePass file manager: keepassDiscard
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get keepassDiscard;
+
+  /// Local KeePass file manager: keepassDiscardHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Close this file and discard unsaved changes?'**
+  String get keepassDiscardHelp;
+
+  /// Local KeePass file manager: keepassDelete
+  ///
+  /// In en, this message translates to:
+  /// **'Move entry to recycle bin?'**
+  String get keepassDelete;
+
+  /// Local KeePass file manager: keepassDeleteHelp
+  ///
+  /// In en, this message translates to:
+  /// **'The entry stays in the database recycle bin. Save to write the change to disk.'**
+  String get keepassDeleteHelp;
+
+  /// Local KeePass file manager: keepassKeyError
+  ///
+  /// In en, this message translates to:
+  /// **'The password or key file is incorrect. Check both and try again.'**
+  String get keepassKeyError;
+
+  /// Local KeePass file manager: keepassFormatError
+  ///
+  /// In en, this message translates to:
+  /// **'The database could not be opened. It may be damaged or use an unsupported format. The original file was not changed.'**
+  String get keepassFormatError;
+
+  /// Local KeePass file manager: keepassUnsupported
+  ///
+  /// In en, this message translates to:
+  /// **'Some features or settings of this database are not supported yet. The original file was not changed.'**
+  String get keepassUnsupported;
+
+  /// Local KeePass file manager: keepassChanged
+  ///
+  /// In en, this message translates to:
+  /// **'The file changed on disk. Save was cancelled to protect that version. Reopen the file to load the latest changes.'**
+  String get keepassChanged;
+
+  /// Local KeePass file manager: keepassIoError
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read or save the file. Check access permissions and free disk space.'**
+  String get keepassIoError;
+
+  /// Local KeePass file manager: keepassClosed
+  ///
+  /// In en, this message translates to:
+  /// **'The KeePass session is locked. Reopen the file with its password.'**
+  String get keepassClosed;
+
+  /// Local KeePass file manager: keepassLimits
+  ///
+  /// In en, this message translates to:
+  /// **'The file is too large or its key derivation takes too many resources.'**
+  String get keepassLimits;
+
+  /// Local KeePass file manager: keepassExists
+  ///
+  /// In en, this message translates to:
+  /// **'A file already exists here. Choose a new file name.'**
+  String get keepassExists;
+
+  /// Local KeePass file manager: keepassMismatch
+  ///
+  /// In en, this message translates to:
+  /// **'The passwords do not match.'**
+  String get keepassMismatch;
+
+  /// Local KeePass file manager: keepassEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'No entries in this group'**
+  String get keepassEmpty;
+
+  /// Local KeePass file manager: keepassLock
+  ///
+  /// In en, this message translates to:
+  /// **'Lock database'**
+  String get keepassLock;
+
+  /// Safe numeric Windows Hello failure stage and code
+  ///
+  /// In en, this message translates to:
+  /// **'Windows Hello failed ({diagnostic}). If fingerprint verification fails, try PIN in the Windows Security dialog. The vault passphrase remains available.'**
+  String errorWindowsHelloDiagnostic(String diagnostic);
+
+  /// Password manager: navPasswords
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords'**
+  String get navPasswords;
+
+  /// Password manager: keepassDavAdd
+  ///
+  /// In en, this message translates to:
+  /// **'Connect WebDAV'**
+  String get keepassDavAdd;
+
+  /// Password manager: keepassDavUrl
+  ///
+  /// In en, this message translates to:
+  /// **'KDBX file URL (HTTPS)'**
+  String get keepassDavUrl;
+
+  /// Password manager: keepassDavName
+  ///
+  /// In en, this message translates to:
+  /// **'Connection name'**
+  String get keepassDavName;
+
+  /// Password manager: keepassDavPassword
+  ///
+  /// In en, this message translates to:
+  /// **'WebDAV password / app token'**
+  String get keepassDavPassword;
+
+  /// Password manager: keepassDavHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Connection settings and authentication credentials are encrypted and synced with your ConsoleCrypt vault. The KDBX file stays on WebDAV.'**
+  String get keepassDavHelp;
+
+  /// Password manager: keepassDavUrlError
+  ///
+  /// In en, this message translates to:
+  /// **'Use the full HTTPS URL of a .kdbx file, for example https://server/folder/Passwords.kdbx. A server or folder URL is not enough.'**
+  String get keepassDavUrlError;
+
+  /// Password manager: keepassDavAuthError
+  ///
+  /// In en, this message translates to:
+  /// **'WebDAV rejected authentication. Check the connection credentials.'**
+  String get keepassDavAuthError;
+
+  /// Password manager: keepassDavEtagError
+  ///
+  /// In en, this message translates to:
+  /// **'This server offers neither a strong ETag nor a usable file lock. Save a local copy to retain your changes.'**
+  String get keepassDavEtagError;
+
+  /// Password manager: keepassDavRedirectError
+  ///
+  /// In en, this message translates to:
+  /// **'WebDAV redirected the request. Use the final file URL.'**
+  String get keepassDavRedirectError;
+
+  /// Password manager: keepassDavIoError
+  ///
+  /// In en, this message translates to:
+  /// **'Could not access the WebDAV file. Check the address, network and permissions.'**
+  String get keepassDavIoError;
+
+  /// Password manager: keepassUnlock
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock database'**
+  String get keepassUnlock;
+
+  /// Password manager: keepassDatabases
+  ///
+  /// In en, this message translates to:
+  /// **'Databases'**
+  String get keepassDatabases;
+
+  /// Password manager: keepassHello
+  ///
+  /// In en, this message translates to:
+  /// **'Biometrics / device PIN'**
+  String get keepassHello;
+
+  /// Password manager: keepassSecurityKey
+  ///
+  /// In en, this message translates to:
+  /// **'FIDO2 security key'**
+  String get keepassSecurityKey;
+
+  /// Password manager: keepassQuickHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Open with the master password first. Then enable a separate local key protected by system biometrics/device PIN or a FIDO2 key with PRF support. This setting is specific to this device.'**
+  String get keepassQuickHelp;
+
+  /// Password manager: keepassQuickEnabled
+  ///
+  /// In en, this message translates to:
+  /// **'Quick unlock enabled'**
+  String get keepassQuickEnabled;
+
+  /// Password manager: keepassQuickDisabled
+  ///
+  /// In en, this message translates to:
+  /// **'Quick unlock disabled'**
+  String get keepassQuickDisabled;
+
+  /// Password manager: keepassProtection
+  ///
+  /// In en, this message translates to:
+  /// **'Quick unlock'**
+  String get keepassProtection;
+
+  /// Password manager: keepassPin
+  ///
+  /// In en, this message translates to:
+  /// **'Security key PIN'**
+  String get keepassPin;
+
+  /// Password manager: keepassCopyPassword
+  ///
+  /// In en, this message translates to:
+  /// **'Copy password'**
+  String get keepassCopyPassword;
+
+  /// Password manager: keepassCopyUsername
+  ///
+  /// In en, this message translates to:
+  /// **'Copy username'**
+  String get keepassCopyUsername;
+
+  /// Password manager: keepassCopyField
+  ///
+  /// In en, this message translates to:
+  /// **'Copy field'**
+  String get keepassCopyField;
+
+  /// Password manager: keepassField
+  ///
+  /// In en, this message translates to:
+  /// **'Field'**
+  String get keepassField;
+
+  /// Password manager: keepassValue
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get keepassValue;
+
+  /// Password manager: keepassFieldAdd
+  ///
+  /// In en, this message translates to:
+  /// **'Add field'**
+  String get keepassFieldAdd;
+
+  /// Password manager: keepassExport
+  ///
+  /// In en, this message translates to:
+  /// **'Save local copy'**
+  String get keepassExport;
+
+  /// Password manager: keepassAllGroups
+  ///
+  /// In en, this message translates to:
+  /// **'All groups'**
+  String get keepassAllGroups;
+
+  /// Password manager: keepassPaletteHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Find an entry, then choose a field to copy.'**
+  String get keepassPaletteHelp;
+
+  /// Password manager: keepassPaletteBack
+  ///
+  /// In en, this message translates to:
+  /// **'Back to all commands'**
+  String get keepassPaletteBack;
+
+  /// Password manager: keepassOpenManager
+  ///
+  /// In en, this message translates to:
+  /// **'Open password manager'**
+  String get keepassOpenManager;
+
+  /// Password manager: keepassConnectDelete
+  ///
+  /// In en, this message translates to:
+  /// **'Remove connection'**
+  String get keepassConnectDelete;
+
+  /// Password manager: keepassConnectDeleteHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this connection from synced settings? The KDBX file will remain on WebDAV.'**
+  String get keepassConnectDeleteHelp;
+
+  /// Password manager: keepassGroups
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get keepassGroups;
+
+  /// KDBX custom field validation
+  ///
+  /// In en, this message translates to:
+  /// **'Field names must be unique and cannot use standard field names.'**
+  String get keepassFieldNameError;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Your password manager'**
+  String get keepassWelcome;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Open a KDBX database, create a new one, or connect a file from WebDAV.'**
+  String get keepassWelcomeHelp;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Add database'**
+  String get keepassAddDatabase;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Select an entry to view its card.'**
+  String get keepassNoSelection;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Drag entries onto a folder to move them.'**
+  String get keepassDropHint;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'No folder'**
+  String get keepassUngrouped;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Saving changes…'**
+  String get keepassAutosaving;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'All changes saved automatically'**
+  String get keepassAutosaved;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Retry saving'**
+  String get keepassRetrySave;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what to copy'**
+  String get keepassChooseField;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Back to entries'**
+  String get keepassBackEntries;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Open entry card'**
+  String get keepassSelectCard;
+
+  /// KDBX password manager workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Database actions'**
+  String get keepassMore;
+
+  /// KDBX layout and WebDAV feedback
+  ///
+  /// In en, this message translates to:
+  /// **'The WebDAV request timed out. Check the file URL and connection.'**
+  String get keepassDavTimeout;
+
+  /// KDBX layout and WebDAV feedback
+  ///
+  /// In en, this message translates to:
+  /// **'This file is locked by another client. Try saving again later.'**
+  String get keepassDavLocked;
+
+  /// KDBX layout and WebDAV feedback
+  ///
+  /// In en, this message translates to:
+  /// **'Resize folders pane'**
+  String get keepassResizeGroups;
+
+  /// KDBX layout and WebDAV feedback
+  ///
+  /// In en, this message translates to:
+  /// **'Resize entry card'**
+  String get keepassResizeCard;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Password generator'**
+  String get keepassGenerator;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Length (8–128)'**
+  String get keepassGeneratorLength;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Uppercase (A–Z)'**
+  String get keepassGeneratorUpper;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Lowercase (a–z)'**
+  String get keepassGeneratorLower;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Digits (0–9)'**
+  String get keepassGeneratorDigits;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Symbols (! @ # …)'**
+  String get keepassGeneratorSymbols;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude similar characters (0 O 1 I l)'**
+  String get keepassGeneratorSimilar;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Generate again'**
+  String get keepassGeneratorRegenerate;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Use password'**
+  String get keepassGeneratorUse;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a length from 8 to 128.'**
+  String get keepassGeneratorLengthError;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one character class.'**
+  String get keepassGeneratorGroupsError;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Generation entropy: {bits} bits'**
+  String keepassGeneratorEntropy(String bits);
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Select database'**
+  String get keepassSelectSource;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from list'**
+  String get keepassRemoveSource;
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Remove “{name}” from this device’s list and close it? The KDBX file will stay on disk.'**
+  String keepassRemoveLocalHelp(String name);
+
+  /// Password manager generator and database menus
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the “{name}” connection and close it? The WebDAV file will stay. Connection settings will be removed from synced devices.'**
+  String keepassRemoveRemoteHelp(String name);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

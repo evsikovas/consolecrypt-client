@@ -32,6 +32,7 @@ ROWS = {
     "linux-x64.deb": ("Linux x64", "DEB"),
     "linux-x64.rpm": ("Linux x64", "RPM"),
     "android-arm64.apk": ("Android ARM64", "APK"),
+    "ios-simulator-universal.zip": ("iOS Simulator на Mac (не iPhone)", "Simulator ZIP"),
 }
 SITE_FILES = ["download.html", "index.html", "assets/en.js"]
 
@@ -61,6 +62,8 @@ def rewrite_readme(readme: str, verified: dict) -> str:
         f"| {ROWS[item['suffix']][0]} | {new}+{item['build']} | [{ROWS[item['suffix']][1]}]({item['url']}) | {spaced(item['size'])} |"
         for item in verified["installers"]
     )
+    if any(item['platform'] == 'ios' for item in verified['installers']):
+        readme = re.sub(r'^\| iOS[^\n]*\n', '', readme, flags=re.M)
     # The heading, the tag and checksum lines, the table head and every row
     # before the iOS one (an older preview build that stays as it is).
     section = re.compile(r"## Готовые сборки \d+\.\d+\.\d+\n\n[\s\S]*?\n\| --- \| --- \| --- \| ---: \|\n(?:\| (?!iOS)[^\n]*\n)+")
@@ -82,6 +85,8 @@ def old_builds(html: str, old: str) -> dict[str, int]:
     builds = {}
     for suffix in ROWS:
         found = set(re.findall(rf"ConsoleCrypt-{re.escape(old)}%2B(\d+)-{re.escape(suffix)}", html))
+        if not found and suffix == 'ios-simulator-universal.zip':
+            continue  # First 1.0 release adds this download after verification.
         if len(found) != 1:
             raise SystemExit(f"download.html: expected one {suffix} link of {old}, found {sorted(found)}")
         builds[suffix] = int(found.pop())
@@ -91,10 +96,14 @@ def old_builds(html: str, old: str) -> dict[str, int]:
 def rewrite_site(text: str, verified: dict, old: str, builds: dict[str, int]) -> str:
     new, tag = verified["version"], verified["release"]
     for item in verified["installers"]:
+        if item["suffix"] not in builds:
+            continue
         before = builds[item["suffix"]]
         text = text.replace(f"v{old}/ConsoleCrypt-{old}%2B{before}-{item['suffix']}", f"{tag}/ConsoleCrypt-{new}%2B{item['build']}-{item['suffix']}")
     # Labels and analytics carry version+build per platform (same build within one).
     for item in verified["installers"]:
+        if item["suffix"] not in builds:
+            continue
         text = text.replace(f"{old}+{builds[item['suffix']]}", f"{new}+{item['build']}")
     text = text.replace(f"releases/tag/v{old}", f"releases/tag/{tag}")
     text = re.sub(rf"(?<![\d.]){re.escape('v' + old)}(?![\d.])", tag, text)

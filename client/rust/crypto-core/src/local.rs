@@ -52,6 +52,7 @@ pub const MAX_LOCAL_SECRET_LEN: usize = 1024;
 
 const PURPOSE_STORAGE: u8 = 1;
 const PURPOSE_UNLOCK: u8 = 2;
+const PURPOSE_PASSWORD_VAULT: u8 = 3;
 
 /// A sealed local blob: `nonce` (24 bytes) and `ciphertext || tag`.
 /// Ciphertext only — safe to keep in a plain file.
@@ -214,6 +215,53 @@ pub fn open_unlock_envelope(
     Ok(Vrk::from_secret(vrk))
 }
 
+/// Wrap a KDBX composite key under independently authenticated OS/FIDO material.
+/// Separate purpose and HKDF label prevent reuse of a profile unlock envelope.
+pub fn seal_password_vault_key(
+    key: &UnlockKey,
+    vault: VaultId,
+    context: &[u8],
+    secret: &[u8],
+) -> Result<LocalSealed> {
+    if secret.len() != KEY_LEN {
+        return Err(CryptoError::Decrypt);
+    }
+    let aad = local_aad(PURPOSE_PASSWORD_VAULT, vault, context)?;
+    let wrap = hkdf_sha256_32(
+        key.0.expose_secret(),
+        vault.as_bytes(),
+        &[b"consolecrypt/v1/local/password-vault"],
+    );
+    let nonce = random_array::<NONCE_LEN>()?;
+    Ok(LocalSealed {
+        nonce: Bytes::new(nonce.to_vec()),
+        ciphertext: Bytes::new(aead::seal(wrap.expose_secret(), &nonce, &aad, secret)?),
+    })
+}
+
+pub fn open_password_vault_key(
+    key: &UnlockKey,
+    vault: VaultId,
+    context: &[u8],
+    sealed: &LocalSealed,
+) -> Result<Zeroizing<Vec<u8>>> {
+    if sealed.ciphertext.0.len() != KEY_LEN + TAG_LEN {
+        return Err(CryptoError::Decrypt);
+    }
+    let aad = local_aad(PURPOSE_PASSWORD_VAULT, vault, context)?;
+    let wrap = hkdf_sha256_32(
+        key.0.expose_secret(),
+        vault.as_bytes(),
+        &[b"consolecrypt/v1/local/password-vault"],
+    );
+    aead::open(
+        wrap.expose_secret(),
+        &nonce_of(sealed)?,
+        &aad,
+        &sealed.ciphertext.0,
+    )
+}
+
 /// `HKDF-SHA256(ikm = secret, salt = "", info = LOCAL_SUBKEY_LABEL || name)`:
 /// an independent 32-byte key for another local file (e.g. the search index
 /// key from the database key).
@@ -225,6 +273,31 @@ pub fn derive_local_subkey(secret: &[u8; KEY_LEN], name: &[u8]) -> Zeroizing<[u8
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn password_vault_keys_are_bound_to_authenticator_vault_source_and_purpose() {
+        let v = vid();
+        let key = UnlockKey::generate().unwrap();
+        let sealed = seal_password_vault_key(&key, v, b"p1:file1:hello", &[9; 32]).unwrap();
+        assert_eq!(
+            &*open_password_vault_key(&key, v, b"p1:file1:hello", &sealed).unwrap(),
+            &[9; 32]
+        );
+        assert!(open_password_vault_key(
+            &UnlockKey::generate().unwrap(),
+            v,
+            b"p1:file1:hello",
+            &sealed
+        )
+        .is_err());
+        assert!(open_password_vault_key(&key, vid(), b"p1:file1:hello", &sealed).is_err());
+        assert!(open_password_vault_key(&key, v, b"p1:file2:hello", &sealed).is_err());
+        assert!(open_password_vault_key(&key, v, b"p1:file1:security_key", &sealed).is_err());
+        assert!(open_unlock_envelope(&sealed, v, &key, b"p1:file1:hello").is_err());
+        let mut bad = sealed;
+        bad.ciphertext.0[0] ^= 1;
+        assert!(open_password_vault_key(&key, v, b"p1:file1:hello", &bad).is_err());
+    }
 
     fn vid() -> VaultId {
         VaultId::new()

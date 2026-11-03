@@ -899,10 +899,9 @@ class _HostTile extends ConsumerWidget {
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              SelectableText(
                 endpoint,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: t.mono.copyWith(fontSize: t.callout.fontSize, color: tokens.secondaryLabel),
               ),
               Text(
@@ -920,6 +919,7 @@ class _HostTile extends ConsumerWidget {
     }
     return GlassInteractive(
       key: ValueKey('host-${host.name}'),
+      descendantsAreFocusable: true,
       semanticLabel: '${host.name}, $endpoint, ${l10n.commonConnect}',
       onPressed: () => connectToHost(context, ref, host),
       builder: (context, state) => GlassFocusRing(
@@ -946,10 +946,9 @@ class _HostTile extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
+              SelectableText(
                 endpoint,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: t.mono.copyWith(fontSize: t.callout.fontSize, color: tokens.palette.label),
               ),
               const SizedBox(height: 6),

@@ -71,6 +71,7 @@ final class HostAuthDraft extends ChangeNotifier {
     final draft = HostAuthDraft._(HostAuthMode.password);
     if (id == host.inlineCredentialId) {
       draft.hasSavedInline = true;
+      draft.savedInlineCredentialId = id;
     } else {
       draft.sharedCredentialId = id;
     }
@@ -91,6 +92,7 @@ final class HostAuthDraft extends ChangeNotifier {
   bool savePassword = true;
   bool hasSavedInline = false;
   bool changingInline = false;
+  ObjectId? savedInlineCredentialId;
 
   /// A shared Password credential linked via "Use existing credential…".
   ObjectId? sharedCredentialId;
@@ -203,10 +205,14 @@ class HostAuthSection extends ConsumerWidget {
     super.key,
     this.groupName,
     this.passwordOnly = false,
+    this.identityFields,
+    this.onCredentialLinked,
   });
 
   final HostAuthDraft draft;
   final bool passwordOnly;
+  final Widget? identityFields;
+  final ValueChanged<Credential>? onCredentialLinked;
 
   /// Called after any change (to refresh the effective preview).
   final VoidCallback onChanged;
@@ -226,6 +232,7 @@ class HostAuthSection extends ConsumerWidget {
     );
     if (picked != null) {
       draft.link(picked);
+      onCredentialLinked?.call(picked);
       onChanged();
     }
   }
@@ -270,6 +277,7 @@ class HostAuthSection extends ConsumerWidget {
                 onChanged: (m) => _update((d) => d.mode = m),
               ),
             const SizedBox(height: GlassSpacing.s12),
+            if (identityFields != null) ...[identityFields!, const SizedBox(height: GlassSpacing.s12)],
             switch (draft.mode) {
               HostAuthMode.password => _passwordMode(context, credentials),
               HostAuthMode.sshKey => _keyMode(context, ref, credentials),
@@ -288,25 +296,39 @@ class HostAuthSection extends ConsumerWidget {
     final shared = draft.sharedCredentialId;
     if (shared != null) {
       final c = credentials[shared];
-      return _LinkedCredential(
-        key: const ValueKey('linked-credential'),
-        label: c == null
-            ? l10n.hostAuthLinkedDeleted
-            : l10n.hostAuthLinkedShared(c.name, c.kind.localized(l10n).toLowerCase()),
-        onChange: () => _useExisting(context),
-        onUnlink: () => _update((d) => d.sharedCredentialId = null),
-        unlinkLabel: l10n.hostAuthUnlink,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _LinkedCredential(
+            key: const ValueKey('linked-credential'),
+            label: c == null
+                ? l10n.hostAuthLinkedDeleted
+                : l10n.hostAuthLinkedShared(c.name, c.kind.localized(l10n).toLowerCase()),
+            onChange: () => _useExisting(context),
+            onUnlink: () => _update((d) => d.sharedCredentialId = null),
+            unlinkLabel: l10n.hostAuthUnlink,
+          ),
+          if (c != null) Align(alignment: AlignmentDirectional.centerEnd, child: _showPassword(context, c)),
+        ],
       );
     }
     if (draft.hasSavedInline && !draft.changingInline) {
-      return Row(
-        key: const ValueKey('password-saved'),
+      final status = Wrap(
+        spacing: GlassSpacing.s8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Icon(Icons.check_circle_rounded, size: 18, color: tokens.palette.success),
           const SizedBox(width: GlassSpacing.s8),
           Text(l10n.hostAuthPasswordSaved),
           Text('••••••', style: tokens.typography.mono.copyWith(color: tokens.palette.label)),
-          const Spacer(),
+        ],
+      );
+      final actions = Wrap(
+        alignment: WrapAlignment.end,
+        spacing: GlassSpacing.s8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (credentials[draft.savedInlineCredentialId] case final credential?) _showPassword(context, credential),
           GlassButton.plain(
             key: const ValueKey('password-change'),
             size: GlassControlSize.sm,
@@ -330,6 +352,25 @@ class HostAuthSection extends ConsumerWidget {
             label: l10n.commonRemove,
           ),
         ],
+      );
+      return LayoutBuilder(
+        key: const ValueKey('password-saved'),
+        builder: (_, constraints) => constraints.maxWidth < 480
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  status,
+                  const SizedBox(height: GlassSpacing.s8),
+                  actions,
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(child: status),
+                  const SizedBox(width: GlassSpacing.s8),
+                  actions,
+                ],
+              ),
       );
     }
     return Column(
@@ -368,6 +409,17 @@ class HostAuthSection extends ConsumerWidget {
       ],
     );
   }
+
+  Widget _showPassword(BuildContext context, Credential credential) => GlassIconButton(
+    key: const ValueKey('host-password-reveal'),
+    icon: Icons.visibility_rounded,
+    tooltip: context.l10n.commonShow,
+    onPressed: () => showAppDialog<void>(
+      context,
+      secure: true,
+      builder: (_) => CredentialDetailsDialog(credential: credential, revealOnOpen: true),
+    ),
+  );
 
   Widget _keyMode(BuildContext context, WidgetRef ref, Map<ObjectId, Credential> credentials) {
     final keys = credentials.values.where((c) => _isKey(c.kind)).toList()..sort((a, b) => a.name.compareTo(b.name));
@@ -589,7 +641,11 @@ class _CredentialPickerDialog extends ConsumerWidget {
         key: const ValueKey('picker-new-credential'),
         onPressed: () async {
           final created = passwordOnly
-              ? await showCreateCredentialDialog(context, NewCredentialKind.password)
+              ? await showAppDialog<Credential>(
+                  context,
+                  secure: true,
+                  builder: (_) => const PasswordCredentialDialog(rdp: true),
+                )
               : await showNewCredentialChooser(context);
           if (created != null && (!passwordOnly || created.kind == CredentialKind.password) && context.mounted) {
             closeDialog(context, created);

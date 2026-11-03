@@ -1062,6 +1062,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Kubernetes forward can be saved without enabling automatic restore', (tester) async {
+    final service = _ForwardService();
+    final container = await _pump(tester, service);
+    await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('kube-pod-forward')));
+    await settle(tester);
+    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('kube-forward-save'))).value, isFalse);
+    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('kube-forward-restore'))).value, isFalse);
+    await tester.tap(find.byKey(const ValueKey('kube-forward-save')));
+    await tester.enterText(find.byKey(const ValueKey('kube-forward-remote')), '8080');
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('kube-forward-start')));
+    await settle(tester);
+    final plan = container.read(settingsServiceProvider).currentLocal.savedForwards.single;
+    expect(plan.connectionId, 'context');
+    expect(plan.target, 'demo-pod');
+    expect(plan.remotePort, 8080);
+    expect(plan.localPort, 0);
+    expect(plan.localAddress, '127.0.0.1');
+    expect(container.read(kubeForwardRestoreProvider), isEmpty);
+    expect(service.started, hasLength(1));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('debug container creation validates image, needs the vault passphrase and sends version precondition', (
     tester,
   ) async {
