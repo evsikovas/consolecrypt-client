@@ -39,7 +39,7 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 Для ZIP сначала проверьте SHA-256, затем распакуйте `Runner.app` и установите
 его той же командой. Этот ZIP не является IPA для установки на iPhone.
 
-### Готовый архив из релиза 0.5.6
+### Исторический архив из релиза 0.5.6
 
 В [релизе v0.5.6](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.6)
 скачайте [полный Simulator ZIP](https://github.com/evsikovas/consolecrypt-client/releases/download/v0.5.6/ConsoleCrypt-0.5.6%2B23015-ios-simulator-universal.zip)
@@ -82,12 +82,13 @@ flutter test integration_test/ios_core_test.dart -d <SIMULATOR_UDID> \
 
 ## GitHub Actions и iOS Simulator
 
-В workflow `Client tag release` job `ios` зависит от macOS и использует
-Mac runner, выбранный настройкой `MACOS_BUILD_RUNNER`. Она запускает
+В workflow `Client tag release` job `ios` запускается после проверки исходников
+на выделенном `cc-macos-arm64`, независимо от job macOS. Настройка
+`MACOS_BUILD_RUNNER` изменяет только job macOS. Job iOS запускает
 `ci-ios.sh --build-only`, устанавливает и открывает preview в отдельном Simulator.
 Actions artifact содержит **полный Simulator ZIP**, его SHA-256 и файл версии;
 срок хранения — 30 дней. После успешной проверки всех платформ job `publish`
-сверяет квитанции версий и автоматически публикует семь установщиков и общие
+сверяет квитанции версий и автоматически публикует семь пакетов и общие
 контрольные суммы в GitHub Release. Push ветки сам по себе выпуск не запускает.
 [Раннеры и номера сборок](GITHUB_ACTIONS.md).
 
@@ -96,7 +97,8 @@ Actions artifact содержит **полный Simulator ZIP**, его SHA-256
 завершился успешно; журнал подтверждает установку и запуск
 `io.consolecrypt.consolecrypt` с получением PID.
 
-In GitHub Actions, `Client tag release` runs the `ios` job after macOS and uploads
+In GitHub Actions, `Client tag release` runs `ios` after the hosted source gate,
+independently of the macOS job, on the dedicated Mac runner. It uploads
 the complete Simulator ZIP, checksum and version receipt. After all platforms
 pass, the publisher checks the receipts and publishes the release automatically.
 The artifact and released ZIP are for Simulator, not installable iPhone IPAs.
