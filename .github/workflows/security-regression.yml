@@ -31,4 +31,6 @@ jobs:
       - name: Optimized native security regressions
         run: bash client/scripts/security-linux.sh
       - name: Real isolated Secret Service acceptance
+        env:
+          CC_LINUX_DISPOSABLE_BUILDER: '1'
         run: python3 client/rust/platform-core/tests/run_linux_secret_service.py
