@@ -39,6 +39,28 @@ xcrun simctl launch booted io.consolecrypt.consolecrypt
 Для ZIP сначала проверьте SHA-256, затем распакуйте `Runner.app` и установите
 его той же командой. Этот ZIP не является IPA для установки на iPhone.
 
+### Готовый архив из релиза 1.0.0
+
+[Скачать Simulator ZIP](https://github.com/evsikovas/consolecrypt-client/releases/download/v1.0.0/ConsoleCrypt-1.0.0%2B61015-ios-simulator-universal.zip) из [релиза 1.0.0](https://github.com/evsikovas/consolecrypt-client/releases/tag/v1.0.0).
+Версия **1.0.0+61015**, размер **246,829,118 байт**.
+
+Проверьте SHA-256 скачанного файла перед распаковкой:
+
+```sh
+shasum -a 256 "ConsoleCrypt-1.0.0+61015-ios-simulator-universal.zip"
+```
+
+Ожидаемая SHA-256: `c3663727b184e9d560ef75cb58e61c8cf9f53dde95da81a19f7f16e474a80c0d`. После совпадения:
+
+```sh
+unzip "ConsoleCrypt-1.0.0+61015-ios-simulator-universal.zip"
+xcrun simctl install booted Runner.app
+xcrun simctl launch booted io.consolecrypt.consolecrypt
+```
+
+Запустите Simulator в Xcode заранее; при нескольких устройствах замените
+`booted` на нужный UDID. Архив не устанавливается на физический iPhone.
+
 ### Исторический архив из релиза 0.5.6
 
 В [релизе v0.5.6](https://github.com/evsikovas/consolecrypt-client/releases/tag/v0.5.6)
