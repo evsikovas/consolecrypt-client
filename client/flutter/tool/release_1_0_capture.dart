@@ -196,7 +196,10 @@ void main() {
     await settle(tester);
     await tester.enterText(find.byKey(const ValueKey('palette-input')), '${ru ? 'пароли' : 'passwords'}: API');
     await shot('passwords-palette');
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    tester.widget<TextField>(find.byKey(const ValueKey('palette-input'))).onSubmitted!(
+      '${ru ? 'пароли' : 'passwords'}: API',
+    );
+    await wait(find.byKey(ValueKey('palette-password-${session.source.id}-$id-Password')));
     await shot('passwords-palette-fields');
     for (var i = 0; i < 4 && find.byKey(const ValueKey('palette-input')).evaluate().isNotEmpty; i++) {
       await escape();
