@@ -1,7 +1,8 @@
 """Supplement RustSec with OSV/GHSA for the Cargo graphs actually shipped.
 
-Only public crates.io package names/versions are submitted. Local backports
-are checked separately; git/private registries are never uploaded to OSV.
+Only public crates.io package names/versions are submitted, including explicitly
+allowlisted upstream versions of hash-verified local backports. Private/Git
+registries and unlisted local packages are never uploaded to OSV.
 """
 import concurrent.futures
 import datetime as dt
@@ -72,7 +73,13 @@ def verify_backports(root):
 def check(root, manifests, request=api, today=None):
     today = today or dt.datetime.now(dt.timezone.utc).date()
     exceptions = policy(root, today)
-    packages, direct = {}, set()
+    backports_file = root / 'client/security-backports.json'
+    backports = json.loads(backports_file.read_text(encoding='utf-8')) if backports_file.exists() else {}
+    public_backports = {name: record for name, record in backports.items()
+                        if record.get('public_crates_io_upstream') is True}
+    if public_backports:
+        verify_backports(root)
+    packages, direct, registry_keys, local_keys = {}, set(), set(), set()
     for manifest in manifests:
         path = root / manifest
         document = tomllib.loads(path.read_text(encoding='utf-8'))
@@ -88,9 +95,15 @@ def check(root, manifests, request=api, today=None):
                         direct.add(value.get('package', name) if isinstance(value, dict) else name)
         lock = tomllib.loads(path.with_name('Cargo.lock').read_text(encoding='utf-8'))
         for package in lock['package']:
-            if package.get('source') == 'registry+https://github.com/rust-lang/crates.io-index':
-                key = (package['name'], package['version'])
+            key = (package['name'], package['version'])
+            registry = package.get('source') == 'registry+https://github.com/rust-lang/crates.io-index'
+            record = public_backports.get(package['name'], {})
+            reviewed_local = (not package.get('source')
+                              and record.get('package_version') == package['version']
+                              and record.get('patch_manifest') == path.relative_to(root).as_posix())
+            if registry or reviewed_local:
                 packages.setdefault(key, []).append(str(path.with_name('Cargo.lock').relative_to(root)))
+                (registry_keys if registry else local_keys).add(key)
     keys = sorted(packages)
     matches = []
     for offset in range(0, len(keys), 200):
@@ -117,6 +130,9 @@ def check(root, manifests, request=api, today=None):
         if exception:
             if exception['package'] != name:
                 raise ValueError('security exception package mismatch')
+            if required := exception.get('requires_backport'):
+                if required != name or (name, version) not in local_keys or (name, version) in registry_keys:
+                    raise ValueError('backport exception cannot cover an unpatched registry package')
             warnings.append(f"{identifier}: {name}@{version}, reviewed exception until {exception['expires']}")
             continue
         affected = [entry for entry in advisory.get('affected', []) if entry.get('package', {}).get('name') == name]

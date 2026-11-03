@@ -6,3 +6,11 @@ package = "rsa"
 owner = "Alexander Evsikov (@evsikovas)"
 expires = "2027-01-21"
 reason = "No upstream patch; retained RSA compatibility. See SECURITY.md for operation-level review and residual risk; Ed25519 is the default."
+
+[[exception]]
+id = "RUSTSEC-2024-0429"
+package = "glib"
+requires_backport = "glib"
+owner = "Alexander Evsikov (@evsikovas)"
+expires = "2027-01-21"
+reason = "Upstream iterator fix is backported to the hash-verified local GLib 0.17.10. This exception cannot cover a registry GLib package; see client/security-backports.json and optimized Linux regression."

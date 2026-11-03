@@ -6,7 +6,8 @@
     "file": "src/variant_iter.rs",
     "sha256": "a0f5ee8acb8faa089bcdfbc9a57372609fce7654026ccef7d9a224d05a654ccc",
     "upstream_fix": "https://github.com/gtk-rs/gtk-rs-core/commit/b5a4071e439bef2b5eea76c3aa25e5ae84839e34",
-    "source_sha256": "65ac5df82295cd5b941d1ae2642846ca56622cde3e295439f5db7c7d4078c4e8"
+    "source_sha256": "65ac5df82295cd5b941d1ae2642846ca56622cde3e295439f5db7c7d4078c4e8",
+    "public_crates_io_upstream": true
   },
   "ssh-key": {
     "package_version": "0.7.0-rc.11",
@@ -15,60 +16,70 @@
     "file": "src/signature.rs",
     "sha256": "604c8e0ec5ebe1a172c513307524428f490f03fd835184f028f832ff3d3c6674",
     "upstream_fix": "RustCrypto rsa RandomizedSigner API with getrandom::SysRng (local hardening)",
-    "source_sha256": "e68cef62cfdfa69a12c5537979e071d588fc92c7718327a3a38c7e371fbe2521"
+    "source_sha256": "e68cef62cfdfa69a12c5537979e071d588fc92c7718327a3a38c7e371fbe2521",
+    "public_crates_io_upstream": true
   },
   "secret-service": {
     "package_version": "5.2.0",
     "patch_manifest": "client/rust/Cargo.toml",
     "source": "client/rust/platform-core/vendor/secret-service",
-    "source_sha256": "4c7081d6e7e1779d2bf5674f9c92df135a5d89013b831d539ed76ce02d7cbfc7"
+    "source_sha256": "4c7081d6e7e1779d2bf5674f9c92df135a5d89013b831d539ed76ce02d7cbfc7",
+    "public_crates_io_upstream": true
   },
   "zbus": {
     "package_version": "6.2.1",
     "patch_manifest": "client/rust/Cargo.toml",
     "source": "client/rust/platform-core/vendor/zbus",
-    "source_sha256": "85e168f030fce87976509abe9e100403192b85b26161ae61123d863807391d81"
+    "source_sha256": "85e168f030fce87976509abe9e100403192b85b26161ae61123d863807391d81",
+    "public_crates_io_upstream": true
   },
   "ashpd": {
     "package_version": "0.11.1",
     "patch_manifest": "client/rust/Cargo.toml",
     "source": "client/rust/rdp-core/vendor/ashpd",
-    "source_sha256": "4bf631d8239c7636da903f23e807491527aea05cc1437a56575a4350e6c0b35c"
+    "source_sha256": "4bf631d8239c7636da903f23e807491527aea05cc1437a56575a4350e6c0b35c",
+    "public_crates_io_upstream": true
   },
   "iso7816": {
     "package_version": "0.1.4",
     "patch_manifest": "client/rust/Cargo.toml",
     "source": "client/rust/rdp-core/vendor/iso7816",
-    "source_sha256": "fb0003a069191a650a4e400edfa7d4cf9776e3cf39c50ff74f2c46c3948eb32f"
+    "source_sha256": "fb0003a069191a650a4e400edfa7d4cf9776e3cf39c50ff74f2c46c3948eb32f",
+    "public_crates_io_upstream": true
   },
   "ironrdp-connector": {
     "package_version": "0.10.0",
     "patch_manifest": "client/rust/Cargo.toml",
     "source": "client/rust/rdp-core/vendor/ironrdp-connector",
-    "source_sha256": "d6c5abe688adcf20b35f637f988cc66a7e2b767908a1ac2409e21c4e368a52fd"
+    "source_sha256": "d6c5abe688adcf20b35f637f988cc66a7e2b767908a1ac2409e21c4e368a52fd",
+    "public_crates_io_upstream": true
   },
   "portable-pty": {
     "package_version": "0.9.0",
     "patch_manifest": "client/rust/Cargo.toml",
     "source": "client/rust/terminal-core/vendor/portable-pty",
-    "source_sha256": "8d913b07a159cf6a4ddec4138839e80eeac1a00e1a78e99c07ee61b0021cd64a"
+    "source_sha256": "8d913b07a159cf6a4ddec4138839e80eeac1a00e1a78e99c07ee61b0021cd64a",
+    "public_crates_io_upstream": true
   },
   "glib-macros": {
     "package_version": "0.17.10",
     "patch_manifest": "client/flutter/vendor/super_native_extensions/rust/Cargo.toml",
     "source": "client/flutter/vendor/security/glib-macros",
-    "source_sha256": "865f24e38a64443e188041cc9e821da605ee6bdd6964aad95b2213446dc04c2a"
+    "source_sha256": "865f24e38a64443e188041cc9e821da605ee6bdd6964aad95b2213446dc04c2a",
+    "public_crates_io_upstream": true
   },
   "gtk3-macros": {
     "package_version": "0.17.1",
     "patch_manifest": "client/flutter/vendor/super_native_extensions/rust/Cargo.toml",
     "source": "client/flutter/vendor/security/gtk3-macros",
-    "source_sha256": "1f4a2c61e7a1b3275f745a6bba722eaf3fc627678a5915b484ced42c67f73642"
+    "source_sha256": "1f4a2c61e7a1b3275f745a6bba722eaf3fc627678a5915b484ced42c67f73642",
+    "public_crates_io_upstream": true
   },
   "irondash_message_channel_derive": {
     "package_version": "0.1.1",
     "patch_manifest": "client/flutter/vendor/super_native_extensions/rust/Cargo.toml",
     "source": "client/flutter/vendor/security/irondash_message_channel_derive",
-    "source_sha256": "8610d7ff2157d19635937fbdb875a73bbc9969d0032fb46d0a0ffc1f308763d0"
+    "source_sha256": "8610d7ff2157d19635937fbdb875a73bbc9969d0032fb46d0a0ffc1f308763d0",
+    "public_crates_io_upstream": true
   }
 }

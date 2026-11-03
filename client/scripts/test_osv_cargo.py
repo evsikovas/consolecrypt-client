@@ -96,6 +96,39 @@ class OsvCargoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             osv_cargo.verify_backports(self.root)
 
+    def public_backport(self):
+        source = self.root / 'local'
+        (source / 'src').mkdir(parents=True)
+        (self.root / 'client').mkdir()
+        (source / 'Cargo.toml').write_text('[package]\nname="public"\nversion="1.0.0"\n')
+        (source / 'src/lib.rs').write_text('// reviewed\n')
+        (self.root / 'Cargo.toml').write_text('[package]\nname="test"\nversion="1.0.0"\n[patch.crates-io]\npublic={path="local"}\n')
+        (self.root / 'Cargo.lock').write_text('[[package]]\nname="public"\nversion="1.0.0"\n'
+            '[[package]]\nname="private-local"\nversion="1.0.0"\n')
+        (self.root / 'client/security-backports.json').write_text(json.dumps({'public': {
+            'patch_manifest': 'Cargo.toml', 'source': 'local', 'package_version': '1.0.0',
+            'source_sha256': osv_cargo.source_digest(source), 'public_crates_io_upstream': True,
+        }}))
+
+    def test_reviewed_public_local_upstream_is_scanned_but_private_local_is_not(self):
+        self.public_backport()
+        self.assertEqual(len(self.check(self.request())), 1)
+
+    def test_backport_exception_does_not_cover_same_version_in_another_registry_graph(self):
+        self.public_backport()
+        (self.root / 'security-exceptions.toml').write_text(
+            '[[exception]]\nid="GHSA-example"\npackage="public"\nrequires_backport="public"\n'
+            'owner="maintainer"\nreason="test"\nexpires="2027-01-01"\n')
+        self.assertEqual(self.check(self.request()), [])
+        other = self.root / 'other'
+        other.mkdir()
+        (other / 'Cargo.toml').write_text('[package]\nname="other"\nversion="1.0.0"\n')
+        (other / 'Cargo.lock').write_text('[[package]]\nname="public"\nversion="1.0.0"\n'
+            'source="registry+https://github.com/rust-lang/crates.io-index"\n')
+        with self.assertRaises(ValueError):
+            osv_cargo.check(self.root, ['Cargo.toml', 'other/Cargo.toml'],
+                            request=self.request(), today=dt.date(2026, 11, 4))
+
 
 if __name__ == '__main__':
     unittest.main()
