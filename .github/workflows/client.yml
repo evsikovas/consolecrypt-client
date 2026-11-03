@@ -55,7 +55,7 @@ jobs:
   macos:
     needs: validate
     runs-on: ${{ fromJSON(vars.MACOS_BUILD_RUNNER || '["self-hosted","macOS","ARM64","consolecrypt","client"]') }}
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
       CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
     steps:
