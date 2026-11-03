@@ -1,0 +1,24 @@
+name: Encrypted client compatibility
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CARGO_PROFILE_DEV_DEBUG: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require a manual candidate on current main
+        run: python3 client/scripts/verify-github-tag.py --allow-main-candidate
+      - name: Encrypted settings and local key envelopes
+        run: cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-sync-core -p cc-crypto-core --all-targets
