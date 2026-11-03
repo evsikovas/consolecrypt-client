@@ -64,6 +64,7 @@ def rewrite_readme(readme: str, verified: dict) -> str:
     )
     if any(item['platform'] == 'ios' for item in verified['installers']):
         readme = re.sub(r'^\| iOS[^\n]*\n', '', readme, flags=re.M)
+        readme = re.sub(r'^Выпуск \d+\.\d+\.\d+ для iOS отложен[^\n]*\n', '', readme, flags=re.M)
     # The heading, the tag and checksum lines, the table head and every row
     # before the iOS one (an older preview build that stays as it is).
     section = re.compile(r"## Готовые сборки \d+\.\d+\.\d+\n\n[\s\S]*?\n\| --- \| --- \| --- \| ---: \|\n(?:\| (?!iOS)[^\n]*\n)+")

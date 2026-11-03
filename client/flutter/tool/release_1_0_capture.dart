@@ -108,9 +108,9 @@ void main() {
     final router = container.read(routerProvider);
     final manager = container.read(passwordManagerProvider);
     Future<void> shot(String name) async {
-      if (captureCase.isNotEmpty && captureCase != name) return;
       await settle(tester);
       expect(tester.takeException(), isNull);
+      if (captureCase.isNotEmpty && captureCase != name) return;
       final boundary = capture.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       await tester.runAsync(() async {
         final image = await boundary.toImage();

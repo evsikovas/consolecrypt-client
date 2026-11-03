@@ -197,6 +197,17 @@ class UpdateDocsTests(unittest.TestCase):
         self.assertIn('Текущий релиз · 0.9.2', (self.site / 'download.html').read_text())
         self.assertIn('## Готовые сборки 0.9.2', (self.docs / 'README.md').read_text())
 
+    def test_one_point_zero_replaces_the_historical_ios_download_and_deferral(self):
+        self.verified.write_text(json.dumps(verify.validate(*release('1.0.0'))))
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text = (self.docs / 'README.md').read_text()
+        self.assertIn('Семь файлов', text)
+        self.assertIn('1.0.0+46015', text)
+        self.assertNotIn('прежняя сборка', text)
+        self.assertNotIn('для iOS отложен', text)
+        self.assertEqual(self.run_script('--check').returncode, 0)
+
 
 if __name__ == '__main__':
     unittest.main()
