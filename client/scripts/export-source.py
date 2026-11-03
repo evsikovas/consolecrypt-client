@@ -20,6 +20,11 @@ PUBLIC_DOCUMENTS = {
     'server/deploy/native/README.md',
     'client/rust/rdp-core/vendor/PROVENANCE.md',
     'client/rust/terminal-core/vendor/PROVENANCE.md',
+    # These public upstream files are compile-time include_str! inputs.
+    'client/flutter/vendor/security/glib/README.md',
+    'client/rust/platform-core/vendor/zbus/README.md',
+    'client/rust/rdp-core/vendor/ashpd/README.md',
+    'client/rust/ssh-core/vendor/ssh-key/README.md',
 }
 PRIVATE_DIRS = {
     '.git', '.github', '.codex', '.claude', '.agents', '.idea', '.vscode',

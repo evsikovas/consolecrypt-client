@@ -13,6 +13,10 @@ class ExportTests(unittest.TestCase):
     def test_build_sources_and_licenses_are_kept(self):
         for path in ('LICENSE', 'PROTOCOL_CHANGELOG.md', 'client/flutter/assets/licenses/AGPL-3.0-only.txt',
                      'client/rust/rdp-core/vendor/PROVENANCE.md',
+                     'client/flutter/vendor/security/glib/README.md',
+                     'client/rust/platform-core/vendor/zbus/README.md',
+                     'client/rust/rdp-core/vendor/ashpd/README.md',
+                     'client/rust/ssh-core/vendor/ssh-key/README.md',
                      'client/flutter/assets/licenses/RDP-THIRD-PARTY-NOTICES.txt',
                      'client/flutter/pubspec.lock', 'client/rust/Cargo.lock',
                      'crates/models/src/lib.rs', 'server/migrations/001.sql',
