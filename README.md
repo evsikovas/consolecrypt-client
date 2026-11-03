@@ -19,6 +19,14 @@ your own sync server, or use the public ConsoleCrypt server.
 
 ## Features
 
+- **Passwords (1.0):** KDBX 3/4 databases, WebDAV, autosave, folders, a password
+  generator and entry-first command-palette copying. Mobile imports keep an
+  encrypted in-app copy with explicit export. [Guide](docs/public/KEEPASS.md).
+- **Local AI:** optional model installation on Windows, macOS and Linux x64
+  (CPU); configured AI APIs remain available on mobile. [Guide](docs/public/LOCAL_AI.md).
+- **Saved forwards:** keep Docker/Kubernetes port-forward presets in Tunnels
+  and restart them later on this device.
+
 - **SSH:** multiple terminal tabs, password and key authentication, host key
   verification, jump hosts, tunnels, and terminal history. Connections go directly
   from your device to the target host.
@@ -61,7 +69,7 @@ your own sync server, or use the public ConsoleCrypt server.
 | Windows x64 | EXE / portable ZIP | Run the installer or extract the ZIP |
 | Linux x64 | DEB / RPM | Requires a graphical session and an unlocked persistent Secret Service keyring |
 | Android ARM64 | APK | Mobile preview, Android 11+ |
-| iOS | Previous 0.5.6 Simulator ZIP | New builds and testing deferred; not an iPhone installer |
+| iOS | Universal Simulator ZIP | Required 1.0 CI build and launch on Mac; not an iPhone installer |
 
 Compare the downloaded file's SHA-256 with `SHA256SUMS-VERSION.txt` in the release.
 Install Linux packages with `sudo apt install ./package.deb` or
@@ -73,8 +81,8 @@ does not establish compatibility with a physical iPhone.
 
 RDP supports up to four sessions. The clipboard transfers text up to 64 KiB,
 without images or files. Selected-folder transfers support files up to 256 MiB,
-with a 512 MiB limit on attempted writes per session. Sharing saved RDP hosts
-with other users is not yet supported. To sync RDP hosts, update every device
+with a 512 MiB limit on attempted writes per session. Saved RDP hosts can be shared with compatible clients from 0.9.14;
+[sharing limits](docs/public/SHARING.md) apply. To sync RDP hosts, update every device
 using the vault to version 0.3 or later.
 
 ## Getting started
@@ -149,6 +157,15 @@ flutter test
 Tests that need a native library, a system keyring, or a real SSH/RDP server have
 additional prerequisites. Do not run Flutter tests alongside a native build
 in the same working directory.
+
+## Release 1.0.0
+
+Integrated KDBX password management, WebDAV, password generation, two-step
+palette lookup, saved Docker/Kubernetes forwards and Linux CPU local AI.
+The public package set includes the iOS Simulator archive. Platform-specific
+limits and server compatibility are documented in the
+[release notes](docs/public/RELEASE_1_0_0.md) and
+[platform matrix](docs/public/PLATFORM_SUPPORT.md).
 
 ## Release 0.9.15
 
