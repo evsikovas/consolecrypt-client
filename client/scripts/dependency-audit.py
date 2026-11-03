@@ -177,8 +177,9 @@ def check(root):
         else:
             findings += own_crate_findings(json.loads(metadata.stdout), manifest)
     for manifest in CARGO_NATIVE_MANIFESTS:
-        base = ['cargo', 'deny', '--manifest-path', manifest, '--locked']
-        args = ['check', '--config', 'client/native-deny.toml', 'advisories']
+        base = ['cargo', 'deny', '--manifest-path', manifest, '--locked',
+                '--config', 'client/native-deny.toml']
+        args = ['check', 'advisories']
         if run([*base, *args], root).returncode:
             result = run([*base, '--offline', '--format', 'json', *args], root, capture_output=True)
             findings += deny_findings(result.stderr.splitlines(), manifest) or [
