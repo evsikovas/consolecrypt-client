@@ -108,6 +108,10 @@ async fn roundtrip(posix_rename: bool) {
     }
     #[cfg(unix)]
     let (ino_before, _) = ino_mode(&remote_file);
+    // Keep the original inode allocated across both uploads. Otherwise the
+    // filesystem may legitimately reuse its number for the second new file.
+    #[cfg(unix)]
+    let mut original = std::fs::File::open(&remote_file).unwrap();
 
     let c = client(srv.path(), posix_rename).await;
     let opener = FakeOpener::new();
@@ -133,7 +137,13 @@ async fn roundtrip(posix_rename: bool) {
     #[cfg(unix)]
     {
         let (ino_after, mode_after) = ino_mode(&remote_file);
-        assert_ne!(ino_before, ino_after, "replaced atomically (new inode)");
+        assert_ne!(
+            ino_before, ino_after,
+            "replaced without modifying the original inode"
+        );
+        let mut old_contents = Vec::new();
+        std::io::Read::read_to_end(&mut original, &mut old_contents).unwrap();
+        assert_eq!(old_contents, b"<?php echo 'v1';\n");
         assert_eq!(mode_after, 0o640, "permissions preserved");
     }
     assert!(no_temp_files(&srv.path().join("www")));
