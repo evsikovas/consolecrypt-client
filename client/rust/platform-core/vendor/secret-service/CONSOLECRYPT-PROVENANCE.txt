@@ -1,0 +1,3 @@
+Upstream secret-service 5.2.0
+Archive SHA256: 5107b24b91445dd2aa449a258a1807b63240942157292354dc5bfdbeb8bc6db8
+Local maintained-dependency migration. See ConsoleCrypt SECURITY.md and git diff.

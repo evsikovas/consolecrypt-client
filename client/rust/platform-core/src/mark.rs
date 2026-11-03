@@ -53,6 +53,34 @@ pub fn mark_downloaded(path: &Path) -> io::Result<()> {
     }
 }
 
+/// Mark a staged download through its retained directory handle. No ambient
+/// parent path is reopened after the user-selected directory was established.
+pub fn mark_downloaded_in(dir: &cap_std::fs::Dir, relative: &Path) -> io::Result<()> {
+    if !dir.symlink_metadata(relative)?.is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
+    #[cfg(windows)]
+    {
+        use std::io::Write;
+        let mut options = cap_std::fs::OpenOptions::new();
+        options.write(true).create(true).truncate(true);
+        dir.open_with(zone_stream(relative), &options)?
+            .write_all(ZONE_IDENTIFIER.as_bytes())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let file = dir.open(relative)?.into_std();
+        macos::mark_file(&file)
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        Ok(())
+    }
+}
+
 /// Whether `path` carries the mark of [`mark_downloaded`] (`true` on
 /// platforms without one is never returned: they report `false`).
 pub fn is_marked_downloaded(path: &Path) -> bool {
@@ -88,6 +116,33 @@ mod macos {
     use std::path::Path;
 
     pub(super) const QUARANTINE: &str = "com.apple.quarantine";
+
+    pub(super) fn mark_file(file: &std::fs::File) -> io::Result<()> {
+        use std::os::fd::AsRawFd;
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let value = super::quarantine_value(secs);
+        let name = CString::new(QUARANTINE).expect("constant attribute name");
+        // SAFETY: file owns a live fd; name is NUL-terminated, and value's
+        // buffer is readable for the complete length for the duration of call.
+        let rc = unsafe {
+            libc::fsetxattr(
+                file.as_raw_fd(),
+                name.as_ptr(),
+                value.as_ptr().cast(),
+                value.len(),
+                0,
+                0,
+            )
+        };
+        if rc == 0 {
+            Ok(())
+        } else {
+            Err(io::Error::last_os_error())
+        }
+    }
 
     fn c_path(path: &Path) -> io::Result<CString> {
         CString::new(path.as_os_str().as_bytes())

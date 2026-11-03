@@ -26,6 +26,10 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
 CARGO_MANIFESTS = ('client/rust/Cargo.toml', 'crates/Cargo.toml')
+CARGO_NATIVE_MANIFESTS = (
+    'client/flutter/vendor/super_native_extensions/rust/Cargo.toml',
+    'client/flutter/vendor/irondash_engine_context/android/rust/Cargo.toml',
+)
 LOCKFILE_NAMES = {'pubspec.lock', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'}
 OSV_CONFIG = 'osv-scanner.toml'
 DOCS = 'docs/public/BUILDING.md'
@@ -122,7 +126,7 @@ def osv_findings(report):
     for result in report.get('results', []):
         path = result.get('source', {}).get('path', '')
         try:
-            path = str(Path(path).resolve().relative_to(ROOT))
+            path = Path(path).resolve().relative_to(ROOT).as_posix()
         except ValueError:
             pass
         for entry in result.get('packages', []):
@@ -152,6 +156,11 @@ def run(cmd, root, **kwargs):
 
 def check(root):
     findings, errors = [], []
+    import osv_cargo
+    try:
+        osv_cargo.verify_backports(root)
+    except Exception as error:
+        errors.append(f'local security backport guard failed ({type(error).__name__})')
     for manifest in CARGO_MANIFESTS:
         base = ['cargo', 'deny', '--manifest-path', manifest, '--locked']
         checks = ['advisories', 'bans', 'sources', 'licenses']
@@ -167,6 +176,17 @@ def check(root):
             errors.append(f'cargo metadata {manifest}: {metadata.stderr.strip()[-500:]}')
         else:
             findings += own_crate_findings(json.loads(metadata.stdout), manifest)
+    for manifest in CARGO_NATIVE_MANIFESTS:
+        base = ['cargo', 'deny', '--manifest-path', manifest, '--locked']
+        args = ['check', '--config', 'client/native-deny.toml', 'advisories']
+        if run([*base, *args], root).returncode:
+            result = run([*base, '--offline', '--format', 'json', *args], root, capture_output=True)
+            findings += deny_findings(result.stderr.splitlines(), manifest) or [
+                {'source': manifest, 'id': 'cargo-deny', 'package': '', 'title': 'native dependency audit failed; see job log'}]
+    try:
+        findings += osv_cargo.check(root, (*CARGO_MANIFESTS, *CARGO_NATIVE_MANIFESTS))
+    except Exception as error:
+        errors.append(f'Cargo OSV/GHSA check failed ({type(error).__name__})')
     files = lockfiles(root)
     if files and not shutil.which('osv-scanner'):
         errors.append(f'osv-scanner is not on PATH; see {DOCS}')

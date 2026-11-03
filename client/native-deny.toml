@@ -1,0 +1,11 @@
+# Native Flutter plugins have independent Cargo workspaces. Apply the same
+# vulnerability/yanked gate, without pretending they are ConsoleCrypt crates.
+[graph]
+all-features = true
+[advisories]
+version = 2
+yanked = "deny"
+unmaintained = "workspace"
+ignore = [
+  { id = "RUSTSEC-2024-0429", reason = "GLib 0.17.10 local backport of gtk-rs/gtk-rs-core#1343, immutable source/hash guard and optimized Linux regression. Owner @evsikovas; review 2027-01-21." },
+]

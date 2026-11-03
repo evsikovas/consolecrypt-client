@@ -45,6 +45,7 @@ jobs:
           python3 -m unittest discover -s client/scripts -p 'test_cleanup_policy.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_linux_cleanup.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_dependency_audit.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_osv_cargo.py' -v
           python3 -m unittest discover -s client/scripts/tests -p 'test_kubernetes_ci.py' -v
       # Hosted runner only: a vulnerable, yanked, banned or unlicensed dependency
       # stops the release before any self-hosted packaging job starts.
@@ -72,7 +73,7 @@ jobs:
           python3 client/scripts/github-build-number.py macos
       - name: Regression checks
         run: |
-          cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-terminal-core -p cc-k8s-core -p cc-app-core -p cc-sync-core -p cc-crypto-core --all-targets
+          cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-terminal-core -p cc-k8s-core -p cc-app-core -p cc-sync-core -p cc-crypto-core -p cc-sftp-core -p cc-ssh-core -p cc-ssh-agent-core -p cc-tunnel-core --all-targets
           python3 -m unittest discover -s client/scripts -p 'test_*version.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_github_build_number.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_release_identity.py' -v

@@ -26,6 +26,11 @@ members = [
 ]
 
 [patch.crates-io]
+ssh-key = { path = "ssh-core/vendor/ssh-key" }
+secret-service = { path = "platform-core/vendor/secret-service" }
+zbus = { path = "platform-core/vendor/zbus" }
+ashpd = { path = "rdp-core/vendor/ashpd" }
+iso7816 = { path = "rdp-core/vendor/iso7816" }
 ironrdp-connector = { path = "rdp-core/vendor/ironrdp-connector" }
 portable-pty = { path = "terminal-core/vendor/portable-pty" }
 

@@ -19,7 +19,7 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 log = "0.4"
-simple_logger = "2.1"
+simple_logger = "5"
 async-trait = "0.1"
 rand = "0.8.5"
 url = "2.2.2"
@@ -176,6 +176,10 @@ gtk = { version = "0.17.1" }
 mime_guess = "2.0.4"
 
 [patch.crates-io]
+glib = { path = "../../security/glib" }
+glib-macros = { path = "../../security/glib-macros" }
+gtk3-macros = { path = "../../security/gtk3-macros" }
+irondash_message_channel_derive = { path = "../../security/irondash_message_channel_derive" }
 # Until the PR gets upstreamed
 mime_guess = { git = "https://github.com/knopp/mime_guess.git", branch = "super_native_extensions" }
 

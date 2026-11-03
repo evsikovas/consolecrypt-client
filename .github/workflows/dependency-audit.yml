@@ -17,6 +17,11 @@ on:
       - '**/package-lock.json'
       - osv-scanner.toml
       - client/scripts/dependency-audit.py
+      - client/scripts/osv_cargo.py
+      - client/native-deny.toml
+      - client/security-backports.json
+      - security-exceptions.toml
+      - client/flutter/vendor/security/**
       - .github/workflows/dependency-audit.yml
 
 permissions: {}
@@ -45,6 +50,8 @@ jobs:
           persist-credentials: false
       - name: Test the audit script
         run: python3 -m unittest discover -s client/scripts -p 'test_dependency_audit.py' -v
+      - name: Test the Cargo GHSA/OSV gate
+        run: python3 -m unittest discover -s client/scripts -p 'test_osv_cargo.py' -v
       - name: Install pinned cargo-deny and osv-scanner
         run: |
           python3 client/scripts/dependency-audit.py install "$RUNNER_TEMP/audit-tools" cargo-deny osv-scanner

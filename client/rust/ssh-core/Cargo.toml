@@ -32,7 +32,7 @@ secrecy.workspace = true
 zeroize.workspace = true
 base64.workspace = true
 # SSH protocol (Apache-2.0). Re-exports ssh-key (Apache-2.0 OR MIT).
-russh = "0.63"
+russh = "0.65"
 # Same RustCrypto versions russh already links (MIT OR Apache-2.0).
 sha2 = "0.11"
 sha1 = "0.11"

@@ -9,7 +9,7 @@
 use cc_platform_core::{
     ExposeSecret, OsSecureStore, SecureStore, SecureStoreError, MAX_SECRET_LEN,
 };
-use secret_service::{blocking::SecretService, EncryptionType};
+use secret_service::{SecretService, EncryptionType};
 use std::{collections::HashMap, io::Read, time::Instant};
 use zeroize::Zeroizing;
 
@@ -29,9 +29,9 @@ fn assert_denied<T>(result: Result<T, SecureStoreError>) {
     );
 }
 
-#[test]
+#[tokio::test]
 #[ignore = "requires an owned isolated Linux session bus and disposable GNOME keyring"]
-fn secret_service_disposable_desktop() {
+async async fn secret_service_disposable_desktop() {
     assert_eq!(
         std::env::var("CC_LINUX_KEYRING_IT").as_deref(),
         Ok("owned-disposable")
@@ -54,11 +54,11 @@ fn secret_service_disposable_desktop() {
             );
         }
         "missing-default" | "transient-default" => {
-            let ss = SecretService::connect(EncryptionType::Dh).unwrap();
-            let collections_before = ss.get_all_collections().unwrap().len();
+            let ss = SecretService::connect(EncryptionType::Dh).await.unwrap();
+            let collections_before = ss.get_all_collections().await.unwrap().len();
             assert_denied(OsSecureStore::with_service(&service));
             assert_eq!(
-                ss.get_all_collections().unwrap().len(),
+                ss.get_all_collections().await.unwrap().len(),
                 collections_before,
                 "must not create collections"
             );
@@ -94,8 +94,8 @@ fn secret_service_disposable_desktop() {
             assert!(!store.delete(name).unwrap());
             assert!(store.get(name).unwrap().is_none());
 
-            let ss = SecretService::connect(EncryptionType::Dh).unwrap();
-            let collection = ss.get_default_collection().unwrap();
+            let ss = SecretService::connect(EncryptionType::Dh).await.unwrap();
+            let collection = ss.get_default_collection().await.unwrap();
             let attrs = HashMap::from([("service", service.as_str()), ("username", "malformed")]);
             let malformed = collection
                 .create_item(
@@ -105,12 +105,13 @@ fn secret_service_disposable_desktop() {
                     false,
                     "text/plain",
                 )
+                .await
                 .unwrap();
             assert_eq!(
                 store.get("malformed").unwrap_err(),
                 SecureStoreError::Corrupted
             );
-            malformed.delete().unwrap();
+            malformed.delete().await.unwrap();
             // Reject ambiguous items instead of choosing/overwriting a key.
             let first = collection
                 .create_item(
@@ -120,6 +121,7 @@ fn secret_service_disposable_desktop() {
                     false,
                     "text/plain",
                 )
+                .await
                 .unwrap();
             let second = collection
                 .create_item(
@@ -129,6 +131,7 @@ fn secret_service_disposable_desktop() {
                     false,
                     "text/plain",
                 )
+                .await
                 .unwrap();
             assert!(matches!(
                 store.get("malformed"),
@@ -142,14 +145,14 @@ fn secret_service_disposable_desktop() {
                 store.delete("malformed"),
                 Err(SecureStoreError::Backend(_))
             ));
-            first.delete().unwrap();
-            second.delete().unwrap();
+            first.delete().await.unwrap();
+            second.delete().await.unwrap();
 
             // Keep an item when the collection locks. A locked store must
             // never return None or accept a replacement/new device key.
             store.set(name, &value).unwrap();
-            collection.lock().unwrap();
-            assert!(collection.is_locked().unwrap());
+            collection.lock().await.unwrap();
+            assert!(collection.is_locked().await.unwrap());
             let start = Instant::now();
             assert_denied(store.get(name));
             assert_denied(store.get("absent"));

@@ -19,6 +19,7 @@ os-keychain = [
     "dep:windows-native-keyring-store",
     "dep:android-native-keyring-store",
     "dep:secret-service",
+    "dep:tokio",
     "dep:base64",
     "dep:core-foundation",
     "dep:objc2",
@@ -32,6 +33,7 @@ thiserror.workspace = true
 secrecy.workspace = true
 zeroize.workspace = true
 directories = "6"
+cap-std = "=4.0.3"
 # Open files with the OS default application (Windows ShellExecuteW, xdg-open
 # fallbacks). MIT OR Apache-2.0. No features: `reveal` would pull zbus.
 opener = "0.8"
@@ -79,15 +81,20 @@ windows = { version = "0.62", optional = true, features = [
 android-native-keyring-store = { version = "1", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-# Blocking API owns its async-io executor, including when AppCore calls it from
-# a Tokio blocking worker. DH encrypts the session bus; no libsecret C ABI.
-secret-service = { version = "5.2", optional = true, default-features = false, features = ["rt-async-io-crypto-rust"] }
+# The synchronous adapter owns a bounded Tokio runtime and also works when
+# called from AppCore's runtime. DH encrypts the bus; no libsecret C ABI.
+secret-service = { version = "5.2", optional = true, default-features = false, features = ["rt-tokio-crypto-rust"] }
+tokio = { workspace = true, optional = true }
 # KWallet's Secret Service accepts UTF-8 values, including binary device keys
 # encoded inside the encrypted item. Buffers are zeroized after use.
 base64 = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+zbus = { version = "6.2.1", default-features = false, features = ["tokio", "enumflags2"] }
+enumflags2 = { version = "0.7", features = ["serde"] }
 
 [lints]
 workspace = true

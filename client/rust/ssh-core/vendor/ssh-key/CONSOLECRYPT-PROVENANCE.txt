@@ -1,0 +1,7 @@
+Upstream ssh-key 0.7.0-rc.11
+Archive SHA256: f9a32fae177b74a22aa9c5b01bf7e68b33545be32d9e381e248058d2adc15ce3
+Local hardening: use RandomizedSigner with getrandom::SysRng for RSA signatures.
+Preserves the SSH wire signature format; RNG failure fails signing closed.
+
+Upstream test fixtures containing public example private keys are omitted.
+ConsoleCrypt tests generate disposable keys at runtime.

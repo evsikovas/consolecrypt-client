@@ -335,7 +335,12 @@ async fn prepare_openssh_writes_no_secrets() {
         );
     }
     let cfg = std::fs::read_to_string(session.join("ssh_config")).unwrap();
-    assert!(cfg.contains(&format!("IdentityAgent {}", launch.agent_path().display())));
+    let agent_path = launch.agent_path().display().to_string();
+    // Windows named pipes contain backslashes and must be quoted/escaped in
+    // ssh_config. The Unix socket path in this fixture is an unquoted token.
+    #[cfg(windows)]
+    let agent_path = format!("\"{}\"", agent_path.replace('\\', "\\\\"));
+    assert!(cfg.contains(&format!("IdentityAgent {agent_path}")));
     assert!(cfg.contains("ProxyJump cc-hop-1"));
     assert!(launch.command.args.ends_with(&[
         "cc-target".to_string(),

@@ -605,48 +605,85 @@ impl SftpClient {
         progress: &mut (dyn FnMut(TransferProgress) + Send),
         cancel: &CancelToken,
     ) -> Result<TransferSummary, SftpError> {
+        let parent = local
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        let root = DownloadRoot::open(parent).map_err(|source| SftpError::Local {
+            path: local.display().to_string(),
+            source,
+        })?;
+        let name = local.file_name().ok_or_else(|| SftpError::Local {
+            path: local.display().to_string(),
+            source: std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "missing download filename",
+            ),
+        })?;
+        self.download_into(remote, &root, Path::new(name), opts, progress, cancel)
+            .await
+    }
+
+    /// Download beneath an already selected directory capability. Recursive
+    /// callers must reuse the same root for every remote-derived child path.
+    pub async fn download_into(
+        &self,
+        remote: &str,
+        root: &DownloadRoot,
+        local: &Path,
+        opts: &TransferOptions,
+        progress: &mut (dyn FnMut(TransferProgress) + Send),
+        cancel: &CancelToken,
+    ) -> Result<TransferSummary, SftpError> {
         let lp = local.display().to_string();
-        if !opts.overwrite && tokio::fs::try_exists(local).await.unwrap_or(false) {
-            return Err(SftpError::AlreadyExists(lp));
-        }
         // Fail early (before creating the local file) if the source is missing.
         let src = self.stat(remote).await?;
-        let mut file = tokio::fs::File::create(local)
-            .await
-            .map_err(|source| SftpError::Local {
-                path: lp.clone(),
-                source,
-            })?;
+        let (mut staged, file) = root.stage(local).map_err(|source| SftpError::Local {
+            path: lp.clone(),
+            source,
+        })?;
+        let mut file = tokio::fs::File::from_std(file);
         let r = self
             .download_to(remote, &mut file, opts, progress, cancel)
             .await;
         let synced = file.sync_all().await;
+        // Apply provenance before optional remote permissions can make the
+        // staging file read-only, and before it becomes a visible destination.
+        if let Err(e) = staged.mark_downloaded() {
+            tracing::debug!(path = %lp, error = %e, "cannot mark the download");
+        }
+        #[cfg(unix)]
+        if opts.preserve_permissions {
+            if let Some(mode) = src.permissions {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = file
+                    .set_permissions(std::fs::Permissions::from_mode(mode & 0o777))
+                    .await;
+            }
+        }
         drop(file);
+        let _ = &src;
         match r {
             Ok(s) => {
                 synced.map_err(|source| SftpError::Local {
                     path: lp.clone(),
                     source,
                 })?;
-                #[cfg(unix)]
-                if opts.preserve_permissions {
-                    if let Some(mode) = src.permissions {
-                        use std::os::unix::fs::PermissionsExt;
-                        let _ =
-                            std::fs::set_permissions(local, std::fs::Permissions::from_mode(mode));
+                staged.commit(opts.overwrite).map_err(|source| {
+                    if source.kind() == std::io::ErrorKind::AlreadyExists {
+                        SftpError::AlreadyExists(lp.clone())
+                    } else {
+                        SftpError::Local {
+                            path: lp.clone(),
+                            source,
+                        }
                     }
-                }
-                let _ = &src;
-                // Mark-of-the-Web / quarantine: the OS warns before running
-                // a downloaded program (security audit H4). Best effort.
-                if let Err(e) = cc_platform_core::mark_downloaded(local) {
-                    tracing::debug!(path = %lp, error = %e, "cannot mark the download");
-                }
+                })?;
                 Ok(s)
             }
             Err(e) => {
-                if opts.remove_partial {
-                    let _ = tokio::fs::remove_file(local).await;
+                if !opts.remove_partial {
+                    staged.keep_partial();
                 }
                 Err(e)
             }
@@ -915,7 +952,9 @@ impl SftpClient {
     }
 }
 
+mod download;
 pub mod edit;
+pub use download::DownloadRoot;
 mod ext;
 /// In-process SFTP server over a local directory (tests of this crate and,
 /// with the `test-harness` feature, of its consumers).

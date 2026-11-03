@@ -644,8 +644,9 @@ class KdbxWorkspace extends StatelessWidget {
                 field('UserName', l.keepassUsername, value: entry['username']! as String),
                 field('Password', l.keepassEntryPassword),
                 if ((entry['url']! as String).isNotEmpty) field('URL', l.keepassUrl, value: entry['url']! as String),
+                field('Notes', l.keepassNotes, value: entry['notes'] as String? ?? ''),
                 for (final key in (entry['fields'] as List<Object?>? ?? []).cast<String>().where(
-                  (k) => !['title', 'username', 'password', 'url'].contains(k.toLowerCase()),
+                  (k) => !['title', 'username', 'password', 'url', 'notes'].contains(k.toLowerCase()),
                 ))
                   field(key, key == 'Notes' ? l.keepassNotes : key),
               ],

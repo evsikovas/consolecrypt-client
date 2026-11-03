@@ -13,7 +13,7 @@ unmaintained = "workspace"
 # Every ignore needs a reason and a review date (docs/public/BUILDING.md).
 # Owner of all exceptions: Alexander Evsikov (@evsikovas).
 ignore = [
-    { id = "RUSTSEC-2023-0071", reason = "rsa (Marvin): only SSH user-key and RDP NTLM/CredSSP private-key operations, a few per connection; Ed25519 is the default SSH key; no fixed version; review 2027-01-21" },
+    { id = "RUSTSEC-2023-0071", reason = "rsa (Marvin): upstream has no fix; reviewed ssh-key patch uses system-random RSA blinding for SSH/agent signatures, prefer Ed25519; scope in SECURITY.md. Owner @evsikovas; review 2027-01-21" },
 ]
 
 [licenses]

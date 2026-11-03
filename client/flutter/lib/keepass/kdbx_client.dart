@@ -202,6 +202,7 @@ class _Document {
           'title': _value(entry, 'Title'),
           'username': _value(entry, 'UserName'),
           'url': _value(entry, 'URL'),
+          'notes': _value(entry, 'Notes'),
           'recycled': entry.parent?.breadcrumbs.any((g) => g.uuid == db.recycleBin?.uuid) ?? false,
           'fields': [for (final field in entry.stringEntries) field.key.key],
         },

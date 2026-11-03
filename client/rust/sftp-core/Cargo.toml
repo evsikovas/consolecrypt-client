@@ -27,6 +27,7 @@ chrono.workspace = true
 async-trait.workspace = true
 uuid.workspace = true
 hex.workspace = true
+cap-std = "=4.0.3"
 # SFTP protocol client (Apache-2.0).
 russh-sftp = "3"
 # Edit sessions: content hashes (MIT OR Apache-2.0).

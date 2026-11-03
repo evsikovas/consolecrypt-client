@@ -1,0 +1,3 @@
+Upstream irondash_message_channel_derive 0.1.1
+Archive SHA256: 3cc040dca601ea6a092d0c936dbe362863580c3537e4748ca6c17cbaf88cb0b7
+Local maintained-dependency migration. See ConsoleCrypt SECURITY.md and git diff.

@@ -1,0 +1,3 @@
+Upstream glib-macros 0.17.10
+Archive SHA256: eca5c79337338391f1ab8058d6698125034ce8ef31b72a442437fa6c8580de26
+Local maintained-dependency migration. See ConsoleCrypt SECURITY.md and git diff.

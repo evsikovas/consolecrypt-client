@@ -1,0 +1,8 @@
+# Version-based scanners cannot remove an upstream risk with no patched release.
+# The reachable RSA operations and controls are documented in SECURITY.md.
+[[exception]]
+id = "RUSTSEC-2023-0071"
+package = "rsa"
+owner = "Alexander Evsikov (@evsikovas)"
+expires = "2027-01-21"
+reason = "No upstream patch; retained RSA compatibility. See SECURITY.md for operation-level review and residual risk; Ed25519 is the default."

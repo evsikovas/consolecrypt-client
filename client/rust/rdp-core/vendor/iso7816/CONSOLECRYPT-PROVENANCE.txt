@@ -1,0 +1,3 @@
+Upstream iso7816 0.1.4
+Archive SHA256: cd3c7e91da489667bb054f9cd2f1c60cc2ac4478a899f403d11dbc62189215b0
+Local maintained-dependency migration. See ConsoleCrypt SECURITY.md and git diff.

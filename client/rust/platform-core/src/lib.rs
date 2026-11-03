@@ -51,7 +51,7 @@ pub use dirs::{
 };
 #[cfg(all(feature = "os-keychain", target_os = "linux"))]
 pub use linux_secret_service::{OsSecureStore, DEFAULT_SERVICE};
-pub use mark::{is_marked_downloaded, mark_downloaded};
+pub use mark::{is_marked_downloaded, mark_downloaded, mark_downloaded_in};
 pub use open::{
     choose_app_and_open, open_path, open_with, reveal, AppRef, ChooseOutcome, FileOpener, Launcher,
     OpenError, OsFamily, SystemLauncher,

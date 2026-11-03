@@ -1,0 +1,3 @@
+Upstream gtk3-macros 0.17.1
+Archive SHA256: 3efb84d682c9a39c10bd9f24f5a4b9c15cc8c7edc45c19cb2ca2c4fc38b2d95e
+Local maintained-dependency migration. See ConsoleCrypt SECURITY.md and git diff.

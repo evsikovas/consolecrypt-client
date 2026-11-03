@@ -1,0 +1,4 @@
+Upstream: glib 0.17.10, https://static.crates.io/crates/glib/glib-0.17.10.crate
+Archive SHA256: d3fad45ba8d4d2cea612b432717e834f48031cd8853c8aaf43b2c79fec8d144b
+Security backport: https://github.com/gtk-rs/gtk-rs-core/pull/1343
+RUSTSEC-2024-0429: mutable out-pointer in VariantStrIter::impl_get.

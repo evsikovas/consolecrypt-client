@@ -455,6 +455,18 @@ impl TransferManager {
         started: Instant,
     ) -> AppResult<()> {
         let local = PathBuf::from(&request.local_path);
+        let download_root = if request.direction == TransferDirectionDto::Download {
+            let parent = local
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .unwrap_or(Path::new("."))
+                .to_path_buf();
+            let root = cc_sftp_core::DownloadRoot::open(&parent)
+                .map_err(|e| AppError::Io(format!("{}: {e}", parent.display())))?;
+            Some((root, parent))
+        } else {
+            None
+        };
         let plan = match request.direction {
             TransferDirectionDto::Upload => {
                 let l = local.clone();
@@ -480,9 +492,12 @@ impl TransferManager {
         for (ldir, rdir) in &plan.dirs {
             match request.direction {
                 TransferDirectionDto::Upload => c.mkdir_all(rdir).await?,
-                TransferDirectionDto::Download => tokio::fs::create_dir_all(ldir)
-                    .await
-                    .map_err(|e| AppError::Io(format!("{}: {e}", ldir.display())))?,
+                TransferDirectionDto::Download => {
+                    let (root, base) = download_root.as_ref().expect("download root established");
+                    let relative = ldir.strip_prefix(base).map_err(AppError::internal)?;
+                    root.create_dir_all(relative)
+                        .map_err(|e| AppError::Io(format!("{}: {e}", ldir.display())))?;
+                }
             }
         }
         let opts = TransferOptions::default();
@@ -522,7 +537,9 @@ impl TransferManager {
                         .await
                 }
                 TransferDirectionDto::Download => {
-                    c.download(&item.remote, &item.local, &opts, &mut progress, cancel)
+                    let (root, base) = download_root.as_ref().expect("download root established");
+                    let relative = item.local.strip_prefix(base).map_err(AppError::internal)?;
+                    c.download_into(&item.remote, root, relative, &opts, &mut progress, cancel)
                         .await
                 }
             };

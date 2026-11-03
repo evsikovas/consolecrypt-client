@@ -1,0 +1,29 @@
+name: Security regressions
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: '3'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install Linux native test prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwayland-dev libssl-dev dbus dbus-x11 gnome-keyring
+          rustup toolchain install 1.98 --profile minimal
+      - name: Check Linux RDP portal compilation
+        run: cargo check --locked --manifest-path client/rust/Cargo.toml -p cc-rdp-core
+      - name: Optimized native security regressions
+        run: bash client/scripts/security-linux.sh
+      - name: Real isolated Secret Service acceptance
+        run: python3 client/rust/platform-core/tests/run_linux_secret_service.py
