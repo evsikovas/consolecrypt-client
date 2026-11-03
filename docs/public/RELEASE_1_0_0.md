@@ -39,7 +39,7 @@ Linux DEB/RPM, Android и iOS Simulator на Mac. Simulator — не устан�
 Перед настройкой WebDAV обновите все устройства до 1.0.0: старый клиент может
 не сохранить новые поля при изменении общих настроек.
 
-[Менеджер паролей](KEEPASS.md) · [Поддержка платформ](PLATFORM_SUPPORT.md) ·
+[Менеджер паролей](https://github.com/evsikovas/consolecrypt-client/blob/main/docs/public/KEEPASS.md) · [Поддержка платформ](https://github.com/evsikovas/consolecrypt-client/blob/main/docs/public/PLATFORM_SUPPORT.md) ·
 [Совместимость сервера](https://github.com/evsikovas/consolecrypt-server/blob/main/docs/public/COMPATIBILITY_1_0.md) ·
 [Руководство со скриншотами](https://consolecrypt.dev/guide)
 
@@ -83,6 +83,6 @@ HTTP endpoints or migrations: the existing encrypted-object transport is used.
 Upgrade all devices to 1.0.0 before adding WebDAV connections: an older client
 may drop the new fields when updating shared settings.
 
-[Passwords](KEEPASS.md) · [Platform support](PLATFORM_SUPPORT.md) ·
+[Passwords](https://github.com/evsikovas/consolecrypt-client/blob/main/docs/public/KEEPASS.md) · [Platform support](https://github.com/evsikovas/consolecrypt-client/blob/main/docs/public/PLATFORM_SUPPORT.md) ·
 [Server compatibility](https://github.com/evsikovas/consolecrypt-server/blob/main/docs/public/COMPATIBILITY_1_0.md) ·
 [Illustrated guide](https://consolecrypt.dev/guide?lang=en)

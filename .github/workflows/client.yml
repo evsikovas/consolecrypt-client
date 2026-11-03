@@ -37,6 +37,7 @@ jobs:
         run: |
           python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_announce_telegram.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_wait_release_website.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_announce_evsikovnet.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_release_docs.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_live_stand.py' -v
@@ -290,7 +291,7 @@ jobs:
     needs: publish
     if: needs.publish.outputs.published == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 45
     continue-on-error: true
     permissions:
       contents: read
@@ -306,14 +307,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Wait for the verified release downloads on the website
+        id: website
+        run: |
+          python3 client/scripts/wait-release-website.py --tag "$GITHUB_REF_NAME" --timeout-seconds 1800
+          echo "ready=true" >> "$GITHUB_OUTPUT"
       - name: Announce the release in Telegram
-        if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        if: steps.website.outputs.ready == 'true' && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
         run: python3 client/scripts/announce-telegram.py --tag "$GITHUB_REF_NAME"
       - name: Announce the release in the personal channel (@evsikovlife)
-        if: always() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_PERSONAL_CHAT_ID != ''
+        if: always() && steps.website.outputs.ready == 'true' && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_PERSONAL_CHAT_ID != ''
         run: TELEGRAM_CHAT_ID="$TELEGRAM_PERSONAL_CHAT_ID" python3 client/scripts/announce-telegram.py --tag "$GITHUB_REF_NAME"
       - name: Publish the release on evsikov.net
-        if: always() && env.EVSIKOVNET_TOKEN != ''
+        if: always() && steps.website.outputs.ready == 'true' && env.EVSIKOVNET_TOKEN != ''
         run: python3 client/scripts/announce-evsikovnet.py --tag "$GITHUB_REF_NAME"
 
   # No checkout here: validate the immutable owner/HEAD of the released build.

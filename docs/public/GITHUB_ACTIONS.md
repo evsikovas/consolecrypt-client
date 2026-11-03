@@ -105,6 +105,13 @@ on its first attempt; many retries can reach it sooner. The limit applies to bot
   Russian notes and consolecrypt.dev download links). The scripts refuse to post
   outside this release job; locally use `--dry-run`.
 
+Before posting, `announce` waits up to 30 minutes for the public download page
+to show this version and link every verified package, including Simulator.
+Website deployment uses its separate tag workflow. A timeout withholds every
+announcement channel; it does not remove the published client packages.
+The manual `Encrypted client compatibility` workflow also runs crypto/sync
+tests on an isolated Ubuntu runner without packaging or publication.
+
 Artifacts are retained for 30 days and include only explicit package, checksum
 and version paths. The Linux test report uses a redacted, closed JSON schema;
 test keyrings, raw runtime output and private fixtures are not uploaded.
