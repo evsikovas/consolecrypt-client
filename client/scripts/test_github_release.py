@@ -21,11 +21,13 @@ class TagTests(unittest.TestCase):
     def test_manual_candidate_is_explicit_and_main_only(self):
         source = 'version: 1.0.0+21085\n'
         self.assertEqual(tag.build_version('refs/heads/main', source, 'workflow_dispatch', True), ('1.0.0', True))
+        self.assertEqual(tag.build_version('refs/tags/v1.0.0', source, 'push', True), ('1.0.0', False))
         for ref, event, allowed in (
             ('refs/heads/feature', 'workflow_dispatch', True),
             ('refs/heads/main', 'push', True),
             ('refs/heads/main', 'pull_request', True),
             ('refs/heads/main', 'workflow_dispatch', False),
+            ('refs/tags/v1.0.0', 'workflow_dispatch', True),
         ):
             with self.subTest(ref=ref, event=event, allowed=allowed), self.assertRaises(ValueError):
                 tag.build_version(ref, source, event, allowed)

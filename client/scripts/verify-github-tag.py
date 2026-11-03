@@ -22,6 +22,10 @@ def release_version(ref, pubspec):
 
 def build_version(ref, pubspec, event, allow_main_candidate=False):
     candidate = allow_main_candidate and event == 'workflow_dispatch' and ref == 'refs/heads/main'
+    if event == 'workflow_dispatch' and not candidate:
+        raise ValueError('Manual candidates require the current main branch')
+    if event not in ('push', 'workflow_dispatch'):
+        raise ValueError('Unsupported native build event')
     if candidate:
         source = re.search(r'^version: (' + SEMVER + r')\+[1-9]\d*\s*$', pubspec, re.M)
         if source is None:

@@ -249,7 +249,7 @@ jobs:
             dist/ios/ConsoleCrypt-simulator-universal.version
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     outputs:
       published: ${{ steps.release.outputs.published }}
     needs: [validate, macos, windows, linux, android, ios]
