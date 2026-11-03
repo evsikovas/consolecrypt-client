@@ -809,6 +809,16 @@ void main() {
     final session = (await tester.runAsync(
       () => manager.open(KdbxSource.local(fixturePath), password: SecretText('fixture-password')),
     ))!;
+    await tester.runAsync(
+      () => manager.request(session, 'put', {
+        'id': session.rows('entries').single['id'],
+        'Title': 'Test entry',
+        'UserName': 'test-user',
+        'Password': 'still-hidden-password',
+        'URL': '',
+        'Notes': 'Visible note\nSecond line',
+      }),
+    );
     container.read(routerProvider).go(AppRoutes.passwords);
     await settle(tester);
     final settings = container.read(vaultSettingsProvider).value!;
@@ -823,6 +833,8 @@ void main() {
     final id = session.rows('entries').single['id'];
     await tester.tap(find.byKey(ValueKey('keepass-entry-$id')));
     await settle(tester);
+    expect(find.text('Visible note\nSecond line'), findsOneWidget);
+    expect(find.text('still-hidden-password'), findsNothing);
     final block = find.byKey(const ValueKey('keepass-detail-Password'));
     expect(tester.getSize(block).height, lessThanOrEqualTo(68));
     for (final scale in [1.0, 1.3]) {

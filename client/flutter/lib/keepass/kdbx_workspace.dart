@@ -648,7 +648,7 @@ class KdbxWorkspace extends StatelessWidget {
                 for (final key in (entry['fields'] as List<Object?>? ?? []).cast<String>().where(
                   (k) => !['title', 'username', 'password', 'url', 'notes'].contains(k.toLowerCase()),
                 ))
-                  field(key, key == 'Notes' ? l.keepassNotes : key),
+                  field(key, key),
               ],
             ),
           ),

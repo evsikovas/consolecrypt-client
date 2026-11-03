@@ -35,15 +35,18 @@ void main() {
               'UserName': 'service-user',
               'Password': 'service-secret',
               'URL': '',
-              'Notes': '',
+              'Notes': 'Visible note\nSecond line',
               'custom': {'API Key': 'api-secret', 'Token': 'api-token'},
             }))!
             as KdbxData;
     final entry = rows(data, 'entries').singleWhere((e) => e['title'] == 'API service');
     expect(entry['fields'], containsAll(['API Key', 'Token']));
+    expect(entry['notes'], 'Visible note\nSecond line');
+    expect(jsonEncode(data), isNot(contains('service-secret')));
     expect(jsonEncode(data), isNot(contains('api-secret')));
     expect(await client.request('field', {'id': entry['id'], 'key': 'API Key'}), 'api-secret');
     final saved = (await client.request('export'))! as Uint8List;
+    expect(utf8.decode(saved, allowMalformed: true), isNot(contains('Visible note')));
     final exported = Directory('build/kdbx-interoperability');
     await exported.create(recursive: true);
     await File('${exported.path}/webdav-export.kdbx').writeAsBytes(saved);

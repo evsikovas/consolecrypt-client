@@ -9,7 +9,7 @@
 use cc_platform_core::{
     ExposeSecret, OsSecureStore, SecureStore, SecureStoreError, MAX_SECRET_LEN,
 };
-use secret_service::{SecretService, EncryptionType};
+use secret_service::{EncryptionType, SecretService};
 use std::{collections::HashMap, io::Read, time::Instant};
 use zeroize::Zeroizing;
 
@@ -31,7 +31,7 @@ fn assert_denied<T>(result: Result<T, SecureStoreError>) {
 
 #[tokio::test]
 #[ignore = "requires an owned isolated Linux session bus and disposable GNOME keyring"]
-async async fn secret_service_disposable_desktop() {
+async fn secret_service_disposable_desktop() {
     assert_eq!(
         std::env::var("CC_LINUX_KEYRING_IT").as_deref(),
         Ok("owned-disposable")
