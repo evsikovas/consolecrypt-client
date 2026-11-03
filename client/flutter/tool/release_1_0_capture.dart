@@ -33,6 +33,7 @@ import '../test/helpers/test_app.dart';
 
 const language = String.fromEnvironment('CC_GUIDE_LOCALE', defaultValue: 'ru');
 const output = String.fromEnvironment('CC_GUIDE_OUTPUT', defaultValue: '../../.ci-cache/release-1.0-shots');
+const captureCase = String.fromEnvironment('CC_GUIDE_CASE');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -107,6 +108,7 @@ void main() {
     final router = container.read(routerProvider);
     final manager = container.read(passwordManagerProvider);
     Future<void> shot(String name) async {
+      if (captureCase.isNotEmpty && captureCase != name) return;
       await settle(tester);
       expect(tester.takeException(), isNull);
       final boundary = capture.currentContext!.findRenderObject()! as RenderRepaintBoundary;

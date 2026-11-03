@@ -10823,7 +10823,7 @@ abstract class AppLocalizations {
   /// Device-local AI model catalog, hardware recommendation, or license information.
   ///
   /// In en, this message translates to:
-  /// **'Windows and Intel Mac use the CPU. RAM guidance does not guarantee fast responses; larger models can be slow.'**
+  /// **'Windows, Linux x64 and Intel Mac use the CPU. RAM guidance does not guarantee fast responses; larger models can be slow.'**
   String get localAiCpuHelp;
 
   /// Device-local AI model catalog, hardware recommendation, or license information.

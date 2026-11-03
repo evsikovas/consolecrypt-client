@@ -6103,7 +6103,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localAiCpuHelp =>
-      'Windows and Intel Mac use the CPU. RAM guidance does not guarantee fast responses; larger models can be slow.';
+      'Windows, Linux x64 and Intel Mac use the CPU. RAM guidance does not guarantee fast responses; larger models can be slow.';
 
   @override
   String localAiModelAttribution(String publisher, String license) {

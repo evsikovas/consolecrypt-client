@@ -3036,7 +3036,7 @@
   "@localAiMetalHelp": {
     "description": "Device-local AI model catalog, hardware recommendation, or license information."
   },
-  "localAiCpuHelp": "На Windows и Intel Mac используется процессор. Объём памяти не гарантирует быстрые ответы; большие модели могут работать медленно.",
+  "localAiCpuHelp": "На Windows, Linux x64 и Intel Mac используется процессор. Объём памяти не гарантирует быстрые ответы; большие модели могут работать медленно.",
   "@localAiCpuHelp": {
     "description": "Device-local AI model catalog, hardware recommendation, or license information."
   },

@@ -6313,7 +6313,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get localAiCpuHelp =>
-      'На Windows и Intel Mac используется процессор. Объём памяти не гарантирует быстрые ответы; большие модели могут работать медленно.';
+      'На Windows, Linux x64 и Intel Mac используется процессор. Объём памяти не гарантирует быстрые ответы; большие модели могут работать медленно.';
 
   @override
   String localAiModelAttribution(String publisher, String license) {

@@ -8460,7 +8460,7 @@
   "@localAiMetalHelp": {
     "description": "Device-local AI model catalog, hardware recommendation, or license information."
   },
-  "localAiCpuHelp": "Windows and Intel Mac use the CPU. RAM guidance does not guarantee fast responses; larger models can be slow.",
+  "localAiCpuHelp": "Windows, Linux x64 and Intel Mac use the CPU. RAM guidance does not guarantee fast responses; larger models can be slow.",
   "@localAiCpuHelp": {
     "description": "Device-local AI model catalog, hardware recommendation, or license information."
   },
