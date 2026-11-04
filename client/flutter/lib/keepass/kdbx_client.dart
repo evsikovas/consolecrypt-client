@@ -198,6 +198,7 @@ class _Document {
           'id': group.uuid.toString(),
           'parent': group.parent?.uuid.toString(),
           'recycled': _recycledGroup(group),
+          'containsRecycleBin': db.recycleBin?.isInGroup(group) ?? false,
           'label': group.name.get() ?? '',
           'name': group.breadcrumbs.map((g) => g.name.get() ?? '').join(' / '),
         },
@@ -360,7 +361,11 @@ class _Document {
         }
         return snapshot();
       case 'deleteGroup':
-        db.deleteGroup(_editableGroup(args['id']! as String));
+        final group = _editableGroup(args['id']! as String);
+        // KeePass allows the recycle bin below an ordinary folder. Moving
+        // that ancestor into its own descendant detaches the entire subtree.
+        if (db.recycleBin?.isInGroup(group) == true) throw const KdbxFailure('group');
+        db.deleteGroup(group);
         _dirty = true;
         return snapshot();
       case 'save':

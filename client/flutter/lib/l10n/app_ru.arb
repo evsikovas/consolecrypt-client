@@ -7230,5 +7230,9 @@
   "keepassGroupUnavailable": "Эту группу больше нельзя изменить. Корневая группа и группы в корзине защищены.",
   "@keepassGroupUnavailable": {
     "description": "KDBX group rename and recycle actions"
+  },
+  "keepassGroupContainsBin": "Эта папка содержит системную корзину KDBX.",
+  "@keepassGroupContainsBin": {
+    "description": "Explains why a folder containing the system recycle bin cannot be deleted"
   }
 }

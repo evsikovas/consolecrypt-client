@@ -14398,4 +14398,7 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get keepassGroupUnavailable =>
       'Эту группу больше нельзя изменить. Корневая группа и группы в корзине защищены.';
+
+  @override
+  String get keepassGroupContainsBin => 'Эта папка содержит системную корзину KDBX.';
 }

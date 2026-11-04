@@ -1,4 +1,4 @@
-# ConsoleCrypt 1.0.2
+# ConsoleCrypt 1.0.3
 
 ## Русский
 
@@ -9,6 +9,8 @@
 - **Переименовать** меняет название выбранной папки, сохраняя её записи и вложенные группы.
 - **Удалить** требует подтверждения и переносит папку со всем содержимым в корзину KDBX.
   Корневая группа и папки в корзине защищены от этих действий.
+- Если системная корзина расположена внутри обычной папки, удаление её родителя запрещено;
+  переименование остаётся доступным. Это предотвращает потерю вложенного содержимого.
 - Обе операции автоматически сохраняются в локальный файл или через WebDAV.
   Если файл изменился извне, прежняя защита от перезаписи сохраняется.
 
@@ -25,6 +27,8 @@ The password manager now supports renaming and deleting KDBX groups.
 - **Rename** preserves the group's entries and nested folders.
 - **Delete** asks for confirmation and moves the entire group tree to the KDBX recycle bin.
   The root group and recycled groups are protected from these actions.
+- If the system recycle bin is nested inside an ordinary folder, deleting that ancestor is disabled;
+  renaming it remains available. The worker independently enforces this guard before mutation.
 - Both changes autosave to the local file or WebDAV, retaining external-change protection.
 
 Included in Windows, macOS, Linux DEB/RPM, Android and iOS Simulator packages.

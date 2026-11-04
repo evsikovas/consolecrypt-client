@@ -129,7 +129,7 @@ WebDAV. Действия относятся к базе, по которой в�
 
 ## Переименование и удаление групп
 
-В версии 1.0.2 у обычной папки есть меню **⋯**, доступное также по ПКМ.
+В версии 1.0.3 у обычной папки есть меню **⋯**, доступное также по ПКМ.
 Выберите **Переименовать**, введите новое название и сохраните. Записи и вложенные
 папки сохраняют свои идентификаторы; пути в карточках обновляются автоматически.
 На телефоне сначала выберите папку через кнопку групп, затем нажмите **⋯** рядом.
@@ -137,7 +137,8 @@ WebDAV. Действия относятся к базе, по которой в�
 **Удалить** требует подтверждения и переносит выбранную папку со всеми вложенными
 папками и записями в корзину KDBX. Это не безвозвратное удаление содержимого.
 Корневую группу («Без папки»), корзину и уже перемещённые в неё папки этими
-действиями изменить нельзя. После удаления выбранной папки интерфейс возвращается
+действиями изменить нельзя. Если системная корзина вложена в обычную папку,
+удаление этой папки недоступно, а переименование разрешено. После удаления выбранной папки интерфейс возвращается
 к её родителю или ко всем группам. Обе операции автоматически сохраняются,
 включая базы через WebDAV; защита от внешних изменений файла остаётся активной.
 
@@ -201,12 +202,13 @@ Enclave и Android Keystore. FIDO2/PRF остаётся на Windows/macOS; Linu
 он не подтверждает работу физического сканера на iPhone. Подробнее:
 [поддержка платформ](PLATFORM_SUPPORT.md).
 
-## English: rename and delete groups (1.0.2)
+## English: rename and delete groups (1.0.3)
 
 On desktop, right-click a normal folder or open its **⋯** menu. **Rename** keeps
 entry and subgroup IDs and refreshes their paths. On a phone, select the folder
 with the groups button, then open the adjacent **⋯** menu. **Delete** requires
 confirmation and moves the complete subtree to the KDBX recycle bin, preserving
 its entries and secrets. Root and recycled groups cannot be renamed or deleted.
-Both operations autosave to local files or WebDAV and retain external-change
+A normal folder containing the system recycle bin can be renamed but cannot
+be deleted, avoiding a move into its own descendant. Both operations autosave to local files or WebDAV and retain external-change
 protection. After deletion, navigation returns to the parent or all groups.

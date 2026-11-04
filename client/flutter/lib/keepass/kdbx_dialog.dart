@@ -231,7 +231,10 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
   Future<void> _deleteGroup(String id) => _run(() async {
     final manager = _manager;
     final session = _session!;
-    if (!_groupCurrent(manager, session, id)) return;
+    if (!_groupCurrent(manager, session, id) ||
+        session.rows('groups').any((row) => row['id'] == id && row['containsRecycleBin'] == true)) {
+      return;
+    }
     final row = session.rows('groups').firstWhere((row) => row['id'] == id);
     final parent = row['parent'] as String?;
     final confirmed = await showConfirmDialog(

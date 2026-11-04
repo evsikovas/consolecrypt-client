@@ -24745,6 +24745,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This group can no longer be changed. Root and recycled groups are protected.'**
   String get keepassGroupUnavailable;
+
+  /// Explains why a folder containing the system recycle bin cannot be deleted
+  ///
+  /// In en, this message translates to:
+  /// **'This folder contains the KDBX recycle bin.'**
+  String get keepassGroupContainsBin;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

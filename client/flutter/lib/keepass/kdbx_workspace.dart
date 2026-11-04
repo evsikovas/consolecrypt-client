@@ -405,7 +405,7 @@ class KdbxWorkspace extends StatelessWidget {
       id != opened.data['root'] &&
       opened.rows('groups').any((row) => row['id'] == id && row['recycled'] != true);
 
-  List<GlassMenuEntry<String>> _groupEntries(BuildContext context) => [
+  List<GlassMenuEntry<String>> _groupEntries(BuildContext context, PasswordVaultSession opened, String id) => [
     GlassMenuItem(
       key: const ValueKey('keepass-group-rename'),
       value: 'rename',
@@ -417,6 +417,10 @@ class KdbxWorkspace extends StatelessWidget {
       key: const ValueKey('keepass-group-delete'),
       value: 'delete',
       label: context.l10n.commonDelete,
+      enabled: !opened.rows('groups').any((row) => row['id'] == id && row['containsRecycleBin'] == true),
+      subtitle: opened.rows('groups').any((row) => row['id'] == id && row['containsRecycleBin'] == true)
+          ? context.l10n.keepassGroupContainsBin
+          : null,
       icon: Icons.delete_outline_rounded,
       destructive: true,
     ),
@@ -428,7 +432,7 @@ class KdbxWorkspace extends StatelessWidget {
     final action = await showGlassMenu<String>(
       context: context,
       anchor: Rect.fromLTWH(position.dx, position.dy, 0, 0),
-      entries: _groupEntries(context),
+      entries: _groupEntries(context, opened, id),
     );
     if (context.mounted && action != null && _groupAvailable(opened, id)) onGroupAction(id, action);
   }
@@ -436,7 +440,7 @@ class KdbxWorkspace extends StatelessWidget {
   Widget _groupMenu(BuildContext context, String id, {Key? key}) {
     final opened = session!;
     return GlassMenuButton<String>(
-      entries: _groupEntries(context),
+      entries: _groupEntries(context, opened, id),
       onSelected: (action) {
         if (_groupAvailable(opened, id)) onGroupAction(id, action);
       },

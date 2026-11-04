@@ -184,6 +184,39 @@ void main() {
     }, timeout: const Timeout(Duration(minutes: 2)));
   }
 
+  test('a parent of the recycle bin cannot be recycled into its own descendant', () async {
+    final file = KdbxFormat().create(Credentials(ProtectedValue.fromString('demo-only')), 'Nested bin');
+    addTearDown(file.dispose);
+    final parent = file.createGroup(parent: file.body.rootGroup, name: 'Contains recycle bin');
+    final bin = file.createGroup(parent: parent, name: 'Recycle bin');
+    file.body.meta.recycleBinUUID.set(bin.uuid);
+    file.body.meta.recycleBinEnabled.set(true);
+    final entry = KdbxEntry.create(file, parent);
+    entry.setString(KdbxKeyCommon.TITLE, PlainValue('Retain this record'));
+    entry.setString(KdbxKeyCommon.PASSWORD, ProtectedValue.fromString('retain-this-secret'));
+    parent.addEntry(entry);
+    final path = '${temp.path}/nested-bin.kdbx';
+    await File(path).writeAsBytes(await file.save());
+    final original = await File(path).readAsBytes();
+    await client.open(path, SecretText('demo-only'));
+    await expectLater(
+      client.request('deleteGroup', {'id': parent.uuid.toString()}),
+      throwsA(isA<KdbxFailure>().having((e) => e.code, 'code', 'group')),
+    );
+    final data = (await client.request('snapshot'))! as KdbxData;
+    expect(rows(data, 'groups').singleWhere((g) => g['id'] == parent.uuid.toString())['containsRecycleBin'], isTrue);
+    expect(rows(data, 'groups').any((g) => g['id'] == parent.uuid.toString()), isTrue);
+    expect(await client.request('field', {'id': entry.uuid.toString(), 'key': 'Password'}), 'retain-this-secret');
+    expect(data['dirty'], isFalse);
+    expect(await File(path).readAsBytes(), original);
+    await client.request('renameGroup', {'id': parent.uuid.toString(), 'name': 'Safely renamed'});
+    await client.request('save');
+    final reopened = await KdbxClient.start();
+    addTearDown(reopened.close);
+    await reopened.open(path, SecretText('demo-only'));
+    expect(await reopened.request('field', {'id': entry.uuid.toString(), 'key': 'Password'}), 'retain-this-secret');
+  });
+
   test('wrong password and externally modified files never overwrite the source', () async {
     final file = await File('$fixtures/argon2id.kdbx').copy('${temp.path}/conflict.kdbx');
     final original = await file.readAsBytes();

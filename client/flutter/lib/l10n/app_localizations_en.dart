@@ -14066,4 +14066,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keepassGroupUnavailable => 'This group can no longer be changed. Root and recycled groups are protected.';
+
+  @override
+  String get keepassGroupContainsBin => 'This folder contains the KDBX recycle bin.';
 }

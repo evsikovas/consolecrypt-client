@@ -20,6 +20,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kdbx/kdbx.dart' as keepass;
 import 'package:material_ui/material_ui.dart';
 
 import '../helpers/test_app.dart';
@@ -183,6 +184,50 @@ void main() {
       TargetPlatform.iOS,
     }),
   );
+
+  testWidgets('a folder containing the recycle bin offers rename but disables deletion', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final file = keepass.KdbxFormat().create(
+      keepass.Credentials(keepass.ProtectedValue.fromString('demo-only')),
+      'Demo',
+    );
+    addTearDown(file.dispose);
+    final parent = file.createGroup(parent: file.body.rootGroup, name: 'Contains bin');
+    final bin = file.createGroup(parent: parent, name: 'Recycle bin');
+    file.body.meta.recycleBinUUID.set(bin.uuid);
+    file.body.meta.recycleBinEnabled.set(true);
+    await tester.runAsync(() async => File(fixturePath).writeAsBytes(await file.save()));
+    await pumpApp(tester, backend);
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final manager = container.read(passwordManagerProvider);
+    final session = (await tester.runAsync(
+      () => manager.open(KdbxSource.local(fixturePath), password: SecretText('demo-only')),
+    ))!;
+    container.read(routerProvider).go(AppRoutes.passwords);
+    await settle(tester);
+    await tapKey(tester, 'keepass-group-menu-${parent.uuid}');
+    expect(find.text('This folder contains the KDBX recycle bin.'), findsOneWidget);
+    await tapKey(tester, 'keepass-group-delete');
+    expect(find.byKey(const ValueKey('confirm-ok')), findsNothing);
+    expect(session.data['dirty'], isFalse);
+    await tapKey(tester, 'keepass-group-rename');
+    expect(find.byKey(const ValueKey('keepass-title')), findsOneWidget);
+    await enterKey(tester, 'keepass-title', 'Renamed container');
+    await tapKey(tester, 'keepass-submit');
+    for (
+      var i = 0;
+      i < 400 && (session.busy || !session.rows('groups').any((g) => g['label'] == 'Renamed container'));
+      i++
+    ) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 25)));
+      await tester.pump(const Duration(milliseconds: 25));
+    }
+    expect(session.rows('groups').singleWhere((g) => g['id'] == parent.uuid.toString())['label'], 'Renamed container');
+    expect(session.data['dirty'], isFalse);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('a group context menu expires when its database selection changes', (tester) async {
     final backend = testBackend();

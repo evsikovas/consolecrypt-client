@@ -19237,5 +19237,9 @@
   "keepassGroupUnavailable": "This group can no longer be changed. Root and recycled groups are protected.",
   "@keepassGroupUnavailable": {
     "description": "KDBX group rename and recycle actions"
+  },
+  "keepassGroupContainsBin": "This folder contains the KDBX recycle bin.",
+  "@keepassGroupContainsBin": {
+    "description": "Explains why a folder containing the system recycle bin cannot be deleted"
   }
 }
