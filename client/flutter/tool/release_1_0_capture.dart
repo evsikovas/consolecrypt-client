@@ -172,6 +172,18 @@ void main() {
     await settle(tester);
     await tester.tap(entry);
     await shot('passwords-workspace');
+    final folder = session.rows('groups').firstWhere((g) => g['label'] == folderName)['id'];
+    await tapKey(tester, 'keepass-group-menu-$folder');
+    await shot('passwords-group-menu');
+    await tapKey(tester, 'keepass-group-rename');
+    await shot('passwords-group-rename');
+    await tester.tap(find.text(ru ? 'Отмена' : 'Cancel').last);
+    await settle(tester);
+    await tapKey(tester, 'keepass-group-menu-$folder');
+    await tapKey(tester, 'keepass-group-delete');
+    await shot('passwords-group-delete');
+    await tapKey(tester, 'confirm-cancel');
+
     await tester.tap(entry, buttons: kSecondaryMouseButton, kind: ui.PointerDeviceKind.mouse);
     await shot('passwords-entry-menu');
     await tapKey(tester, 'keepass-entry-move');
@@ -249,6 +261,12 @@ void main() {
     await shot('passwords-phone');
     await tester.tap(find.byKey(ValueKey('keepass-entry-$id')));
     await shot('passwords-phone-card');
+    await tapKey(tester, 'keepass-back-entries');
+    await tapKey(tester, 'keepass-compact-groups');
+    await tapKey(tester, 'keepass-compact-group-$folder');
+    await tapKey(tester, 'keepass-compact-group-actions');
+    await shot('passwords-phone-group-menu');
+    await escape();
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     await tester.pumpWidget(const SizedBox.shrink());
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
