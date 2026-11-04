@@ -78,7 +78,9 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Version bump failed' }
     }
     $BuildVersion = "$BuildVersion".Trim()
-    $FileVersion = & python (Join-Path $Src 'client\scripts\windows-file-version.py') $BuildVersion
+    # A historical -Commit checkout may predate this helper. Use the policy
+    # shipped with the build script, as bump-version.py above already does.
+    $FileVersion = & python (Join-Path $PSScriptRoot 'windows-file-version.py') $BuildVersion
     if ($LASTEXITCODE -ne 0) { throw 'Invalid Windows build version' }
     $FileVersion = "$FileVersion".Trim()
     Write-Host "==> ConsoleCrypt $BuildVersion ($Mode, Windows x64)"
