@@ -185,6 +185,179 @@ void main() {
     }),
   );
 
+  testWidgets(
+    'trash has its own icon and empties ALL nested groups and records only after confirmation',
+    (tester) async {
+      final backend = testBackend();
+      addTearDown(backend.dispose);
+      await backend.debugSignInDemoAndUnlock();
+      final mobile = AppPlatform.isMobile;
+      await pumpApp(tester, backend, size: mobile ? const Size(390, 844) : const Size(1440, 900));
+      final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+      final manager = container.read(passwordManagerProvider);
+      final session = (await tester.runAsync(
+        () => manager.open(KdbxSource.local(fixturePath), password: SecretText('fixture-password')),
+      ))!;
+      final original = session.rows('entries').single['id'];
+      late String parent;
+      late String child;
+      late String kept;
+      late String bin;
+      late String purgeChild;
+      late String purgeEntry;
+      late String direct;
+      await tester.runAsync(() async {
+        await manager.request(session, 'group', {'name': 'Discarded parent'});
+        parent = session.rows('groups').singleWhere((row) => row['label'] == 'Discarded parent')['id']! as String;
+        await manager.request(session, 'group', {'name': 'Discarded child', 'parent': parent});
+        child = session.rows('groups').singleWhere((row) => row['label'] == 'Discarded child')['id']! as String;
+        await manager.request(session, 'move', {'id': original, 'group': child});
+        await manager.request(session, 'group', {'name': 'Purge this branch', 'parent': parent});
+        purgeChild = session.rows('groups').singleWhere((row) => row['label'] == 'Purge this branch')['id']! as String;
+        await manager.request(session, 'put', {
+          'Title': 'Purge this record',
+          'UserName': '',
+          'Password': 'safe-demo',
+          'URL': '',
+          'Notes': '',
+          'group': purgeChild,
+        });
+        purgeEntry = session.rows('entries').singleWhere((row) => row['title'] == 'Purge this record')['id']! as String;
+        await manager.request(session, 'deleteGroup', {'id': parent});
+        bin = session.data['recycleBin']! as String;
+        for (final name in ['Discarded direct', 'Other discarded direct', 'Kept active']) {
+          await manager.request(session, 'put', {
+            'Title': name,
+            'UserName': '',
+            'Password': 'safe-demo',
+            'URL': '',
+            'Notes': '',
+            'group': session.data['root'],
+          });
+        }
+        kept = session.rows('entries').singleWhere((row) => row['title'] == 'Kept active')['id']! as String;
+        direct = session.rows('entries').singleWhere((row) => row['title'] == 'Discarded direct')['id']! as String;
+        for (final entry
+            in session
+                .rows('entries')
+                .where((row) => (row['title']! as String).contains('discarded direct') || row['id'] == direct)
+                .toList()) {
+          await manager.request(session, 'delete', {'id': entry['id']});
+        }
+      });
+      container.read(routerProvider).go(AppRoutes.passwords);
+      await settle(tester);
+      Future<void> select(String id) async {
+        if (mobile) {
+          await tapKey(tester, 'keepass-compact-groups');
+          await tapKey(tester, 'keepass-compact-group-$id');
+        } else {
+          await tapKey(tester, 'keepass-group-$id');
+        }
+      }
+
+      Future<void> menu(String id) async {
+        await select(id);
+        await tapKey(tester, mobile ? 'keepass-compact-group-actions' : 'keepass-group-menu-$id');
+      }
+
+      Future<void> saved(bool Function() changed) async {
+        for (var i = 0; i < 400 && (session.busy || !changed()); i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 25)));
+          await tester.pump(const Duration(milliseconds: 25));
+        }
+        expect(changed(), isTrue);
+        expect(session.data['dirty'], isFalse);
+        await settle(tester);
+      }
+
+      if (mobile) {
+        await tapKey(tester, 'keepass-compact-groups');
+        final item = find.byKey(ValueKey('keepass-compact-group-$bin'));
+        expect(find.descendant(of: item, matching: find.byIcon(Icons.delete_outline_rounded)), findsOneWidget);
+        await tapKey(tester, 'keepass-compact-group-$bin');
+        await tapKey(tester, 'keepass-compact-group-actions');
+      } else {
+        final tile = tester.widget<ListTile>(find.byKey(ValueKey('keepass-group-$bin')));
+        expect((tile.leading! as Icon).icon, Icons.delete_outline_rounded);
+        await tapKey(tester, 'keepass-group-$bin');
+        await tapKey(tester, 'keepass-group-menu-$bin');
+      }
+      expect(find.byKey(const ValueKey('keepass-group-rename')), findsNothing);
+      expect(find.byKey(const ValueKey('keepass-group-delete')), findsNothing);
+      await tapKey(tester, 'keepass-group-empty-trash');
+      await tapKey(tester, 'confirm-cancel');
+      expect(session.rows('groups').any((row) => row['id'] == child), isTrue);
+      await menu(purgeChild);
+      await tapKey(tester, 'keepass-group-purge');
+      await tapKey(tester, 'confirm-cancel');
+      expect(session.rows('groups').any((row) => row['id'] == purgeChild), isTrue);
+      await menu(purgeChild);
+      await tapKey(tester, 'keepass-group-purge');
+      await tapKey(tester, 'confirm-ok');
+      await saved(() => !session.rows('groups').any((row) => row['id'] == purgeChild));
+      expect(session.rows('entries').any((row) => row['id'] == purgeEntry), isFalse);
+      expect(session.rows('entries').any((row) => row['id'] == original), isTrue);
+      await select(bin);
+      Future<void> entryMenu() async {
+        final finder = find.byKey(ValueKey('keepass-entry-$direct'));
+        if (mobile) {
+          await tester.longPress(finder);
+        } else {
+          await tester.tap(finder, buttons: kSecondaryMouseButton, kind: ui.PointerDeviceKind.mouse);
+        }
+        await settle(tester);
+        expect(find.text('Delete permanently'), findsOneWidget);
+        await tapKey(tester, 'keepass-entry-delete');
+      }
+
+      await entryMenu();
+      await tapKey(tester, 'confirm-cancel');
+      expect(session.rows('entries').any((row) => row['id'] == direct), isTrue);
+      await entryMenu();
+      await tapKey(tester, 'confirm-ok');
+      await saved(() => !session.rows('entries').any((row) => row['id'] == direct));
+      await select(child);
+      await enterKey(tester, 'keepass-search', 'Test entry');
+      expect(find.byKey(ValueKey('keepass-entry-$original')), findsOneWidget);
+      await tapKey(tester, 'keepass-empty-trash');
+      expect(find.textContaining('all groups, nested groups and entries'), findsOneWidget);
+      await tapKey(tester, 'confirm-ok');
+      for (var i = 0; i < 400 && (session.busy || session.rows('entries').length != 1); i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 25)));
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+      await settle(tester);
+      expect(session.rows('entries').single['id'], kept);
+      expect(session.rows('groups').any((row) => row['id'] == parent || row['id'] == child), isFalse);
+      expect(session.data['recycleBin'], bin);
+      expect(session.data['dirty'], isFalse);
+      expect(isEnabled(tester, 'keepass-empty-trash'), isFalse);
+      await tester.runAsync(() async {
+        final check = await KdbxClient.start();
+        try {
+          final data = await check.open(fixturePath, SecretText('fixture-password'));
+          expect((data['entries']! as List<Object?>).cast<KdbxData>().single['id'], kept);
+          expect(
+            (data['groups']! as List<Object?>).cast<KdbxData>().any((row) => row['id'] == parent || row['id'] == child),
+            isFalse,
+          );
+          expect(data['recycleBin'], bin);
+        } finally {
+          check.close();
+        }
+      });
+      expect(tester.takeException(), isNull);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.windows,
+      TargetPlatform.macOS,
+      TargetPlatform.linux,
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
+
   testWidgets('a folder containing the recycle bin offers rename but disables deletion', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
@@ -226,6 +399,38 @@ void main() {
     }
     expect(session.rows('groups').singleWhere((g) => g['id'] == parent.uuid.toString())['label'], 'Renamed container');
     expect(session.data['dirty'], isFalse);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('empty trash confirmation cannot clear a different selected database with matching IDs', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(1440, 900));
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final manager = container.read(passwordManagerProvider);
+    final original = (await tester.runAsync(
+      () => manager.open(KdbxSource.local(fixturePath), password: SecretText('fixture-password')),
+    ))!;
+    await tester.runAsync(() => manager.request(original, 'delete', {'id': original.rows('entries').single['id']}));
+    final bin = original.data['recycleBin'];
+    final second = (await tester.runAsync(() async {
+      final copy = await File(fixturePath).copy('${temp.path}/Copied.kdbx');
+      return manager.open(KdbxSource.local(copy.path), password: SecretText('fixture-password'));
+    }))!;
+    expect(second.data['recycleBin'], bin);
+    manager.selected = original.source.id;
+    manager.notify();
+    container.read(routerProvider).go(AppRoutes.passwords);
+    await settle(tester);
+    await tapKey(tester, 'keepass-group-$bin');
+    await tapKey(tester, 'keepass-empty-trash');
+    manager.selected = second.source.id;
+    manager.notify();
+    await settle(tester);
+    await tapKey(tester, 'confirm-ok');
+    expect(original.rows('entries').single['recycled'], isTrue);
+    expect(second.rows('entries').single['recycled'], isTrue);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 

@@ -284,7 +284,7 @@ class KdbxWorkspace extends StatelessWidget {
         GlassMenuItem(
           key: const ValueKey('keepass-entry-delete'),
           value: 'delete',
-          label: l.commonDelete,
+          label: entry['recycled'] == true ? l.keepassDeletePermanently : l.commonDelete,
           icon: Icons.delete_outline_rounded,
           destructive: true,
         ),
@@ -403,27 +403,52 @@ class KdbxWorkspace extends StatelessWidget {
       manager.selected == opened.source.id &&
       !opened.busy &&
       id != opened.data['root'] &&
-      opened.rows('groups').any((row) => row['id'] == id && row['recycled'] != true);
+      opened.rows('groups').any((row) => row['id'] == id);
+
+  bool _trashNotEmpty(PasswordVaultSession opened) =>
+      opened.rows('entries').any((row) => row['recycled'] == true) ||
+      opened.rows('groups').any((row) => row['recycled'] == true && row['id'] != opened.data['recycleBin']);
+
+  bool get _inTrash => session?.rows('groups').any((row) => row['id'] == group && row['recycled'] == true) == true;
 
   List<GlassMenuEntry<String>> _groupEntries(BuildContext context, PasswordVaultSession opened, String id) => [
-    GlassMenuItem(
-      key: const ValueKey('keepass-group-rename'),
-      value: 'rename',
-      label: context.l10n.commonRename,
-      icon: Icons.edit_outlined,
-    ),
-    const GlassMenuDivider(),
-    GlassMenuItem(
-      key: const ValueKey('keepass-group-delete'),
-      value: 'delete',
-      label: context.l10n.commonDelete,
-      enabled: !opened.rows('groups').any((row) => row['id'] == id && row['containsRecycleBin'] == true),
-      subtitle: opened.rows('groups').any((row) => row['id'] == id && row['containsRecycleBin'] == true)
-          ? context.l10n.keepassGroupContainsBin
-          : null,
-      icon: Icons.delete_outline_rounded,
-      destructive: true,
-    ),
+    if (id == opened.data['recycleBin'])
+      GlassMenuItem(
+        key: const ValueKey('keepass-group-empty-trash'),
+        value: 'empty',
+        label: context.l10n.keepassEmptyTrash,
+        icon: Icons.delete_sweep_outlined,
+        destructive: true,
+        enabled: _trashNotEmpty(opened),
+      )
+    else if (opened.rows('groups').any((row) => row['id'] == id && row['recycled'] == true))
+      GlassMenuItem(
+        key: const ValueKey('keepass-group-purge'),
+        value: 'purge',
+        label: context.l10n.keepassDeletePermanently,
+        icon: Icons.delete_forever_outlined,
+        destructive: true,
+      )
+    else ...[
+      GlassMenuItem(
+        key: const ValueKey('keepass-group-rename'),
+        value: 'rename',
+        label: context.l10n.commonRename,
+        icon: Icons.edit_outlined,
+      ),
+      const GlassMenuDivider(),
+      GlassMenuItem(
+        key: const ValueKey('keepass-group-delete'),
+        value: 'delete',
+        label: context.l10n.commonDelete,
+        enabled: !opened.rows('groups').any((row) => row['id'] == id && row['containsRecycleBin'] == true),
+        subtitle: opened.rows('groups').any((row) => row['id'] == id && row['containsRecycleBin'] == true)
+            ? context.l10n.keepassGroupContainsBin
+            : null,
+        icon: Icons.delete_outline_rounded,
+        destructive: true,
+      ),
+    ],
   ];
 
   Future<void> _groupContext(BuildContext context, String id, Offset position) async {
@@ -483,12 +508,16 @@ class KdbxWorkspace extends StatelessWidget {
                 selected: all ? group == null : group == id,
                 selectedColor: Theme.of(context).colorScheme.onSurface,
                 selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
-                leading: Icon(all ? Icons.folder_copy_outlined : Icons.folder_outlined, size: 18),
+                leading: Icon(
+                  all
+                      ? Icons.folder_copy_outlined
+                      : id == session!.data['recycleBin']
+                      ? Icons.delete_outline_rounded
+                      : Icons.folder_outlined,
+                  size: 18,
+                ),
                 title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing:
-                    !all &&
-                        id != session!.data['root'] &&
-                        session!.rows('groups').any((row) => row['id'] == id && row['recycled'] != true)
+                trailing: !all && id != session!.data['root'] && session!.rows('groups').any((row) => row['id'] == id)
                     ? _groupMenu(context, id)
                     : null,
                 onTap: () => onGroup(all ? null : id),
@@ -557,6 +586,21 @@ class KdbxWorkspace extends StatelessWidget {
           onChanged: onSearch,
         ),
       ),
+      if (_inTrash)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: GlassButton.plain(
+              key: const ValueKey('keepass-empty-trash'),
+              label: context.l10n.keepassEmptyTrash,
+              icon: Icons.delete_sweep_outlined,
+              onPressed: busy || !_trashNotEmpty(session!)
+                  ? null
+                  : () => onGroupAction(session!.data['recycleBin']! as String, 'empty'),
+            ),
+          ),
+        ),
       Expanded(
         child: entries.isEmpty
             ? Center(child: Text(context.l10n.keepassEmpty))
@@ -742,7 +786,7 @@ class KdbxWorkspace extends StatelessWidget {
               const Spacer(),
               GlassIconButton(
                 icon: Icons.delete_outline_rounded,
-                tooltip: l.commonDelete,
+                tooltip: entry['recycled'] == true ? l.keepassDeletePermanently : l.commonDelete,
                 onPressed: busy ? null : () => onDelete(entry),
               ),
             ],
@@ -801,13 +845,13 @@ class KdbxWorkspace extends StatelessWidget {
                   value: row['id']! as String,
                   label: row['id'] == session!.data['root'] ? l.keepassUngrouped : row['name']! as String,
                   checked: group == row['id'],
-                  icon: Icons.folder_outlined,
+                  icon: row['id'] == session!.data['recycleBin'] ? Icons.delete_outline_rounded : Icons.folder_outlined,
                 ),
             ],
             onSelected: (id) => onGroup(id == 'all' ? null : id),
             builder: (context, open) => GlassIconButton(
               key: const ValueKey('keepass-compact-groups'),
-              icon: Icons.folder_outlined,
+              icon: group == session!.data['recycleBin'] ? Icons.delete_outline_rounded : Icons.folder_outlined,
               tooltip: l.keepassGroups,
               style: GlassIconButtonStyle.plain,
               onPressed: busy ? null : open,

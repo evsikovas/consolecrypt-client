@@ -13791,7 +13791,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepassDelete => 'Move entry to recycle bin?';
 
   @override
-  String get keepassDeleteHelp => 'The entry stays in the database recycle bin. Save to write the change to disk.';
+  String get keepassDeleteHelp => 'The entry will stay in the database recycle bin. The change saves automatically.';
 
   @override
   String get keepassKeyError => 'The password or key file is incorrect. Check both and try again.';
@@ -14065,8 +14065,35 @@ class AppLocalizationsEn extends AppLocalizations {
       'The group, its subgroups and all their entries will move to the KDBX recycle bin. The change is saved automatically.';
 
   @override
-  String get keepassGroupUnavailable => 'This group can no longer be changed. Root and recycled groups are protected.';
+  String get keepassGroupUnavailable =>
+      'This group cannot be changed. The root group and the system recycle bin are protected.';
 
   @override
   String get keepassGroupContainsBin => 'This folder contains the KDBX recycle bin.';
+
+  @override
+  String get keepassEmptyTrash => 'Empty recycle bin';
+
+  @override
+  String get keepassEmptyTrashHelp =>
+      'Permanently delete all groups, nested groups and entries in this KDBX recycle bin? This cannot be undone in the database. Active groups and entries will be kept. The change saves automatically.';
+
+  @override
+  String get keepassDeletePermanently => 'Delete permanently';
+
+  @override
+  String keepassPurgeGroup(String name) {
+    return 'Permanently delete group “$name”?';
+  }
+
+  @override
+  String get keepassPurgeGroupHelp =>
+      'This group, all nested groups and all their entries will be permanently deleted from the KDBX database. This cannot be undone in the database. The change saves automatically.';
+
+  @override
+  String get keepassPurgeEntry => 'Permanently delete this entry?';
+
+  @override
+  String get keepassPurgeEntryHelp =>
+      'The entry will be permanently deleted from the KDBX database. This cannot be undone in the database. The change saves automatically.';
 }

@@ -14122,7 +14122,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get keepassDelete => 'Переместить запись в корзину?';
 
   @override
-  String get keepassDeleteHelp => 'Запись останется в корзине базы. Сохраните файл, чтобы записать изменение на диск.';
+  String get keepassDeleteHelp => 'Запись останется в корзине базы. Изменение сохранится автоматически.';
 
   @override
   String get keepassKeyError => 'Неверный пароль или ключевой файл. Проверьте оба и повторите попытку.';
@@ -14396,9 +14396,34 @@ class AppLocalizationsRu extends AppLocalizations {
       'Группа, вложенные группы и все их записи будут перемещены в корзину KDBX. Изменение сохранится автоматически.';
 
   @override
-  String get keepassGroupUnavailable =>
-      'Эту группу больше нельзя изменить. Корневая группа и группы в корзине защищены.';
+  String get keepassGroupUnavailable => 'Эту группу нельзя изменить. Корневая группа и системная корзина защищены.';
 
   @override
   String get keepassGroupContainsBin => 'Эта папка содержит системную корзину KDBX.';
+
+  @override
+  String get keepassEmptyTrash => 'Очистить корзину';
+
+  @override
+  String get keepassEmptyTrashHelp =>
+      'Навсегда удалить все группы, вложенные группы и записи из этой корзины KDBX? Отменить это действие в базе нельзя. Действующие группы и записи сохранятся. Изменение сохранится автоматически.';
+
+  @override
+  String get keepassDeletePermanently => 'Удалить навсегда';
+
+  @override
+  String keepassPurgeGroup(String name) {
+    return 'Навсегда удалить группу «$name»?';
+  }
+
+  @override
+  String get keepassPurgeGroupHelp =>
+      'Группа, все вложенные группы и все их записи будут окончательно удалены из базы KDBX. Отменить это действие в базе нельзя. Изменение сохранится автоматически.';
+
+  @override
+  String get keepassPurgeEntry => 'Навсегда удалить эту запись?';
+
+  @override
+  String get keepassPurgeEntryHelp =>
+      'Запись будет окончательно удалена из базы KDBX. Отменить это действие в базе нельзя. Изменение сохранится автоматически.';
 }

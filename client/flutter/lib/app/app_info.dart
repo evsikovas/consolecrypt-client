@@ -13,8 +13,8 @@ const kAppSourceUrl = 'https://github.com/evsikovas/consolecrypt-client';
 
 /// Generated together with pubspec.yaml by client/scripts/bump-version.py.
 /// Native bundles, About and the core all use this release/build identity.
-const kAppVersion = '1.0.4';
-const kAppBuildNumber = 21089;
+const kAppVersion = '1.0.5';
+const kAppBuildNumber = 21090;
 const kAppFullVersion = '$kAppVersion+$kAppBuildNumber';
 
 /// SPDX licence expression of the client (ADR-0005).

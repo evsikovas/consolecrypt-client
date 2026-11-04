@@ -18869,7 +18869,7 @@
   "@keepassDelete": {
     "description": "Local KeePass file manager: keepassDelete"
   },
-  "keepassDeleteHelp": "The entry stays in the database recycle bin. Save to write the change to disk.",
+  "keepassDeleteHelp": "The entry will stay in the database recycle bin. The change saves automatically.",
   "@keepassDeleteHelp": {
     "description": "Local KeePass file manager: keepassDeleteHelp"
   },
@@ -19234,12 +19234,45 @@
   "@keepassDeleteGroupHelp": {
     "description": "KDBX group rename and recycle actions"
   },
-  "keepassGroupUnavailable": "This group can no longer be changed. Root and recycled groups are protected.",
+  "keepassGroupUnavailable": "This group cannot be changed. The root group and the system recycle bin are protected.",
   "@keepassGroupUnavailable": {
     "description": "KDBX group rename and recycle actions"
   },
   "keepassGroupContainsBin": "This folder contains the KDBX recycle bin.",
   "@keepassGroupContainsBin": {
     "description": "Explains why a folder containing the system recycle bin cannot be deleted"
+  },
+  "keepassEmptyTrash": "Empty recycle bin",
+  "@keepassEmptyTrash": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassEmptyTrashHelp": "Permanently delete all groups, nested groups and entries in this KDBX recycle bin? This cannot be undone in the database. Active groups and entries will be kept. The change saves automatically.",
+  "@keepassEmptyTrashHelp": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassDeletePermanently": "Delete permanently",
+  "@keepassDeletePermanently": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassPurgeGroup": "Permanently delete group “{name}”?",
+  "@keepassPurgeGroup": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepassPurgeGroupHelp": "This group, all nested groups and all their entries will be permanently deleted from the KDBX database. This cannot be undone in the database. The change saves automatically.",
+  "@keepassPurgeGroupHelp": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassPurgeEntry": "Permanently delete this entry?",
+  "@keepassPurgeEntry": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassPurgeEntryHelp": "The entry will be permanently deleted from the KDBX database. This cannot be undone in the database. The change saves automatically.",
+  "@keepassPurgeEntryHelp": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
   }
 }

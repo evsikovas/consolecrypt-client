@@ -261,15 +261,86 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
   Future<void> _delete(KdbxData entry) => _run(() async {
     final manager = _manager;
     final session = _session!;
+    final id = entry['id'];
+    final permanent = entry['recycled'] == true;
+    bool current() =>
+        _current &&
+        manager.current(session) &&
+        identical(_session, session) &&
+        session.rows('entries').any((row) => row['id'] == id && (row['recycled'] == true) == permanent);
+    if (!current()) return;
     final confirmed = await showConfirmDialog(
       context,
-      title: context.l10n.keepassDelete,
-      message: context.l10n.keepassDeleteHelp,
-      confirmLabel: context.l10n.commonDelete,
+      title: permanent ? context.l10n.keepassPurgeEntry : context.l10n.keepassDelete,
+      message: permanent ? context.l10n.keepassPurgeEntryHelp : context.l10n.keepassDeleteHelp,
+      confirmLabel: permanent ? context.l10n.keepassDeletePermanently : context.l10n.commonDelete,
       destructive: true,
     );
-    if (confirmed && _current && manager.current(session)) {
-      await manager.request(session, 'delete', {'id': entry['id']});
+    if (confirmed && current()) {
+      await manager.request(session, permanent ? 'purgeEntry' : 'delete', {'id': id});
+      if (mounted && _current && manager.current(session) && identical(_session, session)) {
+        setState(() => _selectedEntry = null);
+      }
+    }
+  });
+
+  bool _trashCurrent(PasswordManager manager, PasswordVaultSession session, String id, {bool bin = false}) =>
+      _current &&
+      manager.current(session) &&
+      identical(_session, session) &&
+      id != session.data['root'] &&
+      (id == session.data['recycleBin']) == bin &&
+      session.rows('groups').any((row) => row['id'] == id && row['recycled'] == true);
+
+  Future<void> _emptyTrash(String id) => _run(() async {
+    final manager = _manager;
+    final session = _session!;
+    if (!_trashCurrent(manager, session, id, bin: true)) return;
+    final confirmed = await showConfirmDialog(
+      context,
+      title: context.l10n.keepassEmptyTrash,
+      message: context.l10n.keepassEmptyTrashHelp,
+      confirmLabel: context.l10n.keepassEmptyTrash,
+      destructive: true,
+    );
+    if (confirmed && _trashCurrent(manager, session, id, bin: true)) {
+      await manager.request(session, 'emptyTrash', {'id': id});
+      if (mounted && _current && identical(_session, session)) {
+        setState(() {
+          _group = id;
+          _selectedEntry = null;
+        });
+      }
+    }
+  });
+
+  Future<void> _purgeGroup(String id) => _run(() async {
+    final manager = _manager;
+    final session = _session!;
+    if (!_trashCurrent(manager, session, id)) return;
+    final row = session.rows('groups').firstWhere((row) => row['id'] == id);
+    final parent = row['parent'] as String?;
+    var selected = _group;
+    final seen = <String>{};
+    while (selected != null && selected != id && seen.add(selected)) {
+      selected = session.rows('groups').where((row) => row['id'] == selected).firstOrNull?['parent'] as String?;
+    }
+    final inside = selected == id;
+    final confirmed = await showConfirmDialog(
+      context,
+      title: context.l10n.keepassPurgeGroup(row['label']! as String),
+      message: context.l10n.keepassPurgeGroupHelp,
+      confirmLabel: context.l10n.keepassDeletePermanently,
+      destructive: true,
+    );
+    if (confirmed && _trashCurrent(manager, session, id)) {
+      await manager.request(session, 'purgeGroup', {'id': id});
+      if (mounted && _current && identical(_session, session)) {
+        setState(() {
+          if (inside) _group = parent;
+          _selectedEntry = null;
+        });
+      }
     }
   });
 
@@ -440,10 +511,11 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
     final l = context.l10n;
     final current = _current;
     final busy = _busy || _session?.busy == true;
+    final inTrash = _rows('groups').any((row) => row['id'] == _group && row['recycled'] == true);
     final entries = _rows('entries')
         .where(
           (entry) =>
-              (entry['recycled'] != true || _group == entry['group'] && _search.isEmpty) &&
+              (entry['recycled'] == true) == inTrash &&
               (_group == null || entry['group'] == _group || _search.isNotEmpty) &&
               ['title', 'username', 'url'].any((key) => (entry[key]! as String).toLowerCase().contains(_search)),
         )
@@ -479,7 +551,12 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
         _group = id;
         _selectedEntry = null;
       }),
-      onGroupAction: (id, action) => unawaited(action == 'rename' ? _renameGroup(id) : _deleteGroup(id)),
+      onGroupAction: (id, action) => unawaited(switch (action) {
+        'rename' => _renameGroup(id),
+        'empty' => _emptyTrash(id),
+        'purge' => _purgeGroup(id),
+        _ => _deleteGroup(id),
+      }),
       onEntry: (id) => setState(() => _selectedEntry = id),
       onEdit: _edit,
       onDelete: _delete,

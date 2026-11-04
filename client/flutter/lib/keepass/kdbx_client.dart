@@ -190,6 +190,7 @@ class _Document {
   KdbxData snapshot() => {
     'path': _path,
     'root': db.body.rootGroup.uuid.toString(),
+    'recycleBin': db.recycleBin?.uuid.toString(),
     'dirty': _dirty,
     'version': db.header.version.toString(),
     'groups': [
@@ -367,6 +368,43 @@ class _Document {
         if (db.recycleBin?.isInGroup(group) == true) throw const KdbxFailure('group');
         db.deleteGroup(group);
         _dirty = true;
+        return snapshot();
+      case 'purgeGroup':
+        final group = _tree(db.body.rootGroup).where((g) => g.uuid.toString() == args['id']).firstOrNull;
+        if (db.recycleBin?.parent == null ||
+            group == null ||
+            group.parent == null ||
+            group == db.recycleBin ||
+            !_recycledGroup(group)) {
+          throw const KdbxFailure('group');
+        }
+        db.deletePermanently(group);
+        _dirty = true;
+        return snapshot();
+      case 'purgeEntry':
+        final entry = _entry(args['id']! as String);
+        if (db.recycleBin?.parent == null || entry.parent == null || !_recycledGroup(entry.parent!)) {
+          throw const KdbxFailure('group');
+        }
+        db.deletePermanently(entry);
+        _dirty = true;
+        return snapshot();
+      case 'emptyTrash':
+        final bin = db.recycleBin;
+        // Bind the destructive request to the actual system bin, not a name.
+        // Never create a bin as a side effect of clearing an absent/stale one.
+        if (bin == null || bin.parent == null || bin.uuid.toString() != args['id']) {
+          throw const KdbxFailure('group');
+        }
+        final groups = bin.groups.toList();
+        final entries = bin.entries.toList();
+        for (final group in groups) {
+          db.deletePermanently(group);
+        }
+        for (final entry in entries) {
+          db.deletePermanently(entry);
+        }
+        if (groups.isNotEmpty || entries.isNotEmpty) _dirty = true;
         return snapshot();
       case 'save':
         if (_remote) throw const KdbxFailure('unsupported');

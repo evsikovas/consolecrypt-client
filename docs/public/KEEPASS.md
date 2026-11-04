@@ -142,6 +142,21 @@ WebDAV. Действия относятся к базе, по которой в�
 к её родителю или ко всем группам. Обе операции автоматически сохраняются,
 включая базы через WebDAV; защита от внешних изменений файла остаётся активной.
 
+## Корзина: очистка и окончательное удаление (1.0.5)
+
+Системная корзина KDBX обозначена значком корзины. Выберите её или папку внутри
+неё и нажмите **Очистить корзину** над списком. Команда доступна также через
+**⋯** / ПКМ самой корзины; на телефоне — через **⋯** рядом с выбором группы.
+Подтверждение удаляет из текущей базы **все группы, вложенные группы и записи**
+корзины. Пустая системная папка остаётся, действующие данные вне неё сохраняются.
+
+Для отдельной группы или записи внутри корзины выберите **Удалить навсегда**.
+Действие требует подтверждения; удаление группы включает всё её содержимое.
+Переименование удалённых групп недоступно. Обычная папка с именем Trash не
+считается корзиной: используется системный идентификатор KDBX.
+Очистка и окончательное удаление автоматически сохраняются, в том числе через
+WebDAV. Ранее созданные зашифрованные резервные копии `.bak` не удаляются.
+
 ## Ctrl+K из терминала
 
 1. Нажмите **Ctrl+K**, введите **пароли:** (или **passwords:**).
@@ -208,7 +223,17 @@ On desktop, right-click a normal folder or open its **⋯** menu. **Rename** kee
 entry and subgroup IDs and refreshes their paths. On a phone, select the folder
 with the groups button, then open the adjacent **⋯** menu. **Delete** requires
 confirmation and moves the complete subtree to the KDBX recycle bin, preserving
-its entries and secrets. Root and recycled groups cannot be renamed or deleted.
+its entries and secrets. Root and recycled groups cannot be renamed or recycled again.
 A normal folder containing the system recycle bin can be renamed but cannot
 be deleted, avoiding a move into its own descendant. Both operations autosave to local files or WebDAV and retain external-change
 protection. After deletion, navigation returns to the parent or all groups.
+
+## English: recycle bin (1.0.5)
+
+The actual KDBX recycle bin has a trash icon. Select it or a recycled folder and
+use **Empty recycle bin**, or open the bin's **⋯** / right-click menu. On phones,
+the selected group menu is next to the groups button. Confirmation permanently
+removes all recycled groups, subgroups and entries while preserving active data;
+the empty system bin stays. A recycled group or entry also has **Delete
+permanently**, with confirmation. Both operations autosave locally or through
+WebDAV. Existing encrypted `.bak` files are kept.

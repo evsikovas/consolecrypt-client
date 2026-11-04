@@ -24233,7 +24233,7 @@ abstract class AppLocalizations {
   /// Local KeePass file manager: keepassDeleteHelp
   ///
   /// In en, this message translates to:
-  /// **'The entry stays in the database recycle bin. Save to write the change to disk.'**
+  /// **'The entry will stay in the database recycle bin. The change saves automatically.'**
   String get keepassDeleteHelp;
 
   /// Local KeePass file manager: keepassKeyError
@@ -24743,7 +24743,7 @@ abstract class AppLocalizations {
   /// KDBX group rename and recycle actions
   ///
   /// In en, this message translates to:
-  /// **'This group can no longer be changed. Root and recycled groups are protected.'**
+  /// **'This group cannot be changed. The root group and the system recycle bin are protected.'**
   String get keepassGroupUnavailable;
 
   /// Explains why a folder containing the system recycle bin cannot be deleted
@@ -24751,6 +24751,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This folder contains the KDBX recycle bin.'**
   String get keepassGroupContainsBin;
+
+  /// KDBX recycle bin action or irreversible deletion confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty recycle bin'**
+  String get keepassEmptyTrash;
+
+  /// KDBX recycle bin action or irreversible deletion confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete all groups, nested groups and entries in this KDBX recycle bin? This cannot be undone in the database. Active groups and entries will be kept. The change saves automatically.'**
+  String get keepassEmptyTrashHelp;
+
+  /// KDBX recycle bin action or irreversible deletion confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get keepassDeletePermanently;
+
+  /// KDBX recycle bin action or irreversible deletion confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete group “{name}”?'**
+  String keepassPurgeGroup(String name);
+
+  /// KDBX recycle bin action or irreversible deletion confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'This group, all nested groups and all their entries will be permanently deleted from the KDBX database. This cannot be undone in the database. The change saves automatically.'**
+  String get keepassPurgeGroupHelp;
+
+  /// KDBX recycle bin action or irreversible deletion confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete this entry?'**
+  String get keepassPurgeEntry;
+
+  /// KDBX recycle bin action or irreversible deletion confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'The entry will be permanently deleted from the KDBX database. This cannot be undone in the database. The change saves automatically.'**
+  String get keepassPurgeEntryHelp;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -325,7 +325,17 @@ class PasswordManager {
   Future<KdbxData> request(PasswordVaultSession session, String action, [KdbxData args = const {}]) =>
       _enqueue(session, () async {
         await _snapshotRequest(session, action, args);
-        if (const {'put', 'group', 'delete', 'move', 'renameGroup', 'deleteGroup'}.contains(action)) {
+        if (const {
+          'put',
+          'group',
+          'delete',
+          'move',
+          'renameGroup',
+          'deleteGroup',
+          'purgeGroup',
+          'purgeEntry',
+          'emptyTrash',
+        }.contains(action)) {
           await _saveNow(session);
         }
         return session.data;

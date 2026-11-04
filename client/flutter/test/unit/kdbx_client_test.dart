@@ -184,6 +184,142 @@ void main() {
     }, timeout: const Timeout(Duration(minutes: 2)));
   }
 
+  for (final fixture in ['v3.kdbx', 'aes4.kdbx', 'argon2id.kdbx']) {
+    test('permanent deletion and empty trash remove groups AND entries and persist in $fixture', () async {
+      final password = fixture == 'v3.kdbx' ? 'FooBar' : 'fixture-password';
+      final target = await File('$fixtures/$fixture').copy('${temp.path}/purge.kdbx');
+      var data = await client.open(target.path, SecretText(password));
+      final root = data['root'];
+      final liveIds = rows(data, 'entries').where((row) => row['recycled'] != true).map((row) => row['id']).toSet();
+      Future<Object?> group(String name, Object? parent) async {
+        final before = rows(data, 'groups').map((row) => row['id']).toSet();
+        data = (await client.request('group', {'name': name, 'parent': parent}))! as KdbxData;
+        return rows(data, 'groups').singleWhere((row) => !before.contains(row['id']))['id'];
+      }
+
+      Future<Object?> entry(String name, Object? parent) async {
+        data =
+            (await client.request('put', {
+                  'Title': name,
+                  'UserName': '',
+                  'Password': 'secret-$name',
+                  'URL': '',
+                  'Notes': '',
+                  'group': parent,
+                }))!
+                as KdbxData;
+        return rows(data, 'entries').singleWhere((row) => row['title'] == name)['id'];
+      }
+
+      final ordinaryTrash = await group('Trash', root);
+      final kept = await entry('Keep outside trash', ordinaryTrash);
+      final parent = await group('Discard parent', root);
+      final child = await group('Discard child', parent);
+      final nested = await entry('Nested discarded record', child);
+      final direct = await entry('Direct discarded record', root);
+      await client.request('deleteGroup', {'id': parent});
+      data = (await client.request('delete', {'id': direct}))! as KdbxData;
+      final bin = data['recycleBin'];
+      expect(bin, isNotNull);
+      expect(bin, isNot(ordinaryTrash));
+      for (final id in [root, ordinaryTrash, bin, 'missing']) {
+        await expectLater(client.request('purgeGroup', {'id': id}), throwsA(isA<KdbxFailure>()));
+      }
+      await expectLater(client.request('purgeEntry', {'id': kept}), throwsA(isA<KdbxFailure>()));
+      await expectLater(client.request('emptyTrash', {'id': ordinaryTrash}), throwsA(isA<KdbxFailure>()));
+      data = (await client.request('purgeGroup', {'id': child}))! as KdbxData;
+      expect(rows(data, 'groups').any((row) => row['id'] == child), isFalse);
+      expect(rows(data, 'entries').any((row) => row['id'] == nested), isFalse);
+      expect(rows(data, 'entries').any((row) => row['id'] == direct), isTrue);
+      data = (await client.request('purgeEntry', {'id': direct}))! as KdbxData;
+      expect(rows(data, 'entries').any((row) => row['id'] == direct), isFalse);
+      final otherChild = await group('Other discarded child', parent);
+      final otherNested = await entry('Other nested record', otherChild);
+      final otherDirect = await entry('Other direct record', bin);
+      final removed = {parent, child, nested, direct, otherChild, otherNested, otherDirect};
+      data = (await client.request('emptyTrash', {'id': bin}))! as KdbxData;
+      expect(data['recycleBin'], bin);
+      expect(rows(data, 'groups').where((row) => row['recycled'] == true).map((row) => row['id']), [bin]);
+      expect(rows(data, 'entries').any((row) => row['recycled'] == true), isFalse);
+      expect(rows(data, 'entries').map((row) => row['id']).toSet(), {...liveIds, kept});
+      expect(await client.request('field', {'id': kept, 'key': 'Password'}), 'secret-Keep outside trash');
+      await client.request('save');
+      final check = await KdbxClient.start();
+      addTearDown(check.close);
+      data = await check.open(target.path, SecretText(password));
+      expect(data['recycleBin'], bin);
+      expect(rows(data, 'groups').any((row) => removed.contains(row['id'])), isFalse);
+      expect(rows(data, 'entries').any((row) => removed.contains(row['id'])), isFalse);
+      expect(rows(data, 'entries').map((row) => row['id']).toSet(), {...liveIds, kept});
+      final decoded = await KdbxFormat().read(
+        await target.readAsBytes(),
+        Credentials(ProtectedValue.fromString(password)),
+      );
+      addTearDown(decoded.dispose);
+      expect(decoded.body.deletedObjects.map((obj) => obj.uuid.toString()).toSet(), containsAll(removed));
+      final empty = (await check.request('emptyTrash', {'id': bin}))! as KdbxData;
+      expect(empty['dirty'], isFalse);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+  }
+
+  test('clearing an absent bin never creates one or deletes live objects', () async {
+    final data = await client.open('${temp.path}/absent.kdbx', SecretText('demo'), create: true);
+    expect(data['recycleBin'], isNull);
+    await expectLater(client.request('emptyTrash', {'id': data['root']}), throwsA(isA<KdbxFailure>()));
+    final after = (await client.request('snapshot'))! as KdbxData;
+    expect(after['recycleBin'], isNull);
+    expect(after['dirty'], isFalse);
+  });
+
+  test('invalid metadata pointing the recycle bin at the root cannot authorize purging live data', () async {
+    final file = KdbxFormat().create(Credentials(ProtectedValue.fromString('demo')), 'Invalid bin');
+    addTearDown(file.dispose);
+    final child = file.createGroup(parent: file.body.rootGroup, name: 'Keep this folder');
+    final entry = KdbxEntry.create(file, child);
+    entry.setString(KdbxKeyCommon.TITLE, PlainValue('Keep this entry'));
+    child.addEntry(entry);
+    file.body.meta.recycleBinUUID.set(file.body.rootGroup.uuid);
+    final path = '${temp.path}/invalid-bin.kdbx';
+    final bytes = await file.save();
+    await File(path).writeAsBytes(bytes);
+    await client.open(path, SecretText('demo'));
+    for (final (action, id) in [
+      ('emptyTrash', file.body.rootGroup.uuid.toString()),
+      ('purgeGroup', child.uuid.toString()),
+      ('purgeEntry', entry.uuid.toString()),
+    ]) {
+      await expectLater(client.request(action, {'id': id}), throwsA(isA<KdbxFailure>()));
+    }
+    final data = (await client.request('snapshot'))! as KdbxData;
+    expect(data['dirty'], isFalse);
+    expect(rows(data, 'entries').single['id'], entry.uuid.toString());
+    expect(await File(path).readAsBytes(), bytes);
+  });
+
+  test('cleared remote KDBX export excludes every trashed group and entry', () async {
+    final bytes = await File('$fixtures/argon2id.kdbx').readAsBytes();
+    var data = await client.openSource(
+      'https://dav.example/Vault.kdbx',
+      password: SecretText('fixture-password'),
+      encrypted: bytes,
+    );
+    final entry = rows(data, 'entries').single['id'];
+    data = (await client.request('delete', {'id': entry}))! as KdbxData;
+    data = (await client.request('emptyTrash', {'id': data['recycleBin']}))! as KdbxData;
+    final encrypted = (await client.request('export'))! as Uint8List;
+    final check = await KdbxClient.start();
+    addTearDown(check.close);
+    final reopened = await check.openSource(
+      'https://dav.example/Vault.kdbx',
+      password: SecretText('fixture-password'),
+      encrypted: encrypted,
+    );
+    expect(rows(reopened, 'entries'), isEmpty);
+    expect(rows(reopened, 'groups').where((row) => row['recycled'] == true).map((row) => row['id']), [
+      data['recycleBin'],
+    ]);
+  });
+
   test('a parent of the recycle bin cannot be recycled into its own descendant', () async {
     final file = KdbxFormat().create(Credentials(ProtectedValue.fromString('demo-only')), 'Nested bin');
     addTearDown(file.dispose);

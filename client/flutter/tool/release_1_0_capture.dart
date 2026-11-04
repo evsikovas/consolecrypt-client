@@ -268,6 +268,39 @@ void main() {
     await shot('passwords-phone-group-menu');
     await escape();
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    tester.view.physicalSize = const Size(1440, 900);
+    await settle(tester);
+    await tester.runAsync(() async {
+      await manager.request(session, 'group', {'name': ru ? 'Удалённые сервисы' : 'Deleted services'});
+    });
+    final discarded = session.rows('groups').last['id'];
+    await tester.runAsync(() async {
+      await manager.request(session, 'deleteGroup', {'id': discarded});
+      await manager.request(session, 'put', {
+        'Title': ru ? 'Старый API-ключ' : 'Old API key',
+        'UserName': 'demo-service',
+        'Password': 'synthetic-retired-token',
+        'URL': '',
+        'Notes': '',
+        'group': session.data['recycleBin'],
+      });
+    });
+    final bin = session.data['recycleBin'];
+    await tapKey(tester, 'keepass-group-$bin');
+    await shot('passwords-trash');
+    await tapKey(tester, 'keepass-empty-trash');
+    await shot('passwords-empty-trash');
+    await tapKey(tester, 'confirm-cancel');
+    await tapKey(tester, 'keepass-group-menu-$discarded');
+    await shot('passwords-trash-group-menu');
+    await escape();
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    tester.view.physicalSize = const Size(390, 844);
+    await settle(tester);
+    await tapKey(tester, 'keepass-compact-groups');
+    await tapKey(tester, 'keepass-compact-group-$bin');
+    await shot('passwords-phone-trash');
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     await tester.pumpWidget(const SizedBox.shrink());
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 }

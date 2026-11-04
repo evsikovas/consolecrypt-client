@@ -7011,7 +7011,7 @@
   "keepassDiscard": "Отбросить изменения",
   "keepassDiscardHelp": "Закрыть файл и отбросить несохранённые изменения?",
   "keepassDelete": "Переместить запись в корзину?",
-  "keepassDeleteHelp": "Запись останется в корзине базы. Сохраните файл, чтобы записать изменение на диск.",
+  "keepassDeleteHelp": "Запись останется в корзине базы. Изменение сохранится автоматически.",
   "keepassKeyError": "Неверный пароль или ключевой файл. Проверьте оба и повторите попытку.",
   "keepassFormatError": "Не удалось открыть базу: файл может быть повреждён или иметь неподдерживаемый формат. Исходный файл не изменён.",
   "keepassUnsupported": "Некоторые возможности или настройки этой базы пока не поддерживаются. Исходный файл не изменён.",
@@ -7227,12 +7227,45 @@
   "@keepassDeleteGroupHelp": {
     "description": "KDBX group rename and recycle actions"
   },
-  "keepassGroupUnavailable": "Эту группу больше нельзя изменить. Корневая группа и группы в корзине защищены.",
+  "keepassGroupUnavailable": "Эту группу нельзя изменить. Корневая группа и системная корзина защищены.",
   "@keepassGroupUnavailable": {
     "description": "KDBX group rename and recycle actions"
   },
   "keepassGroupContainsBin": "Эта папка содержит системную корзину KDBX.",
   "@keepassGroupContainsBin": {
     "description": "Explains why a folder containing the system recycle bin cannot be deleted"
+  },
+  "keepassEmptyTrash": "Очистить корзину",
+  "@keepassEmptyTrash": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassEmptyTrashHelp": "Навсегда удалить все группы, вложенные группы и записи из этой корзины KDBX? Отменить это действие в базе нельзя. Действующие группы и записи сохранятся. Изменение сохранится автоматически.",
+  "@keepassEmptyTrashHelp": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassDeletePermanently": "Удалить навсегда",
+  "@keepassDeletePermanently": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassPurgeGroup": "Навсегда удалить группу «{name}»?",
+  "@keepassPurgeGroup": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepassPurgeGroupHelp": "Группа, все вложенные группы и все их записи будут окончательно удалены из базы KDBX. Отменить это действие в базе нельзя. Изменение сохранится автоматически.",
+  "@keepassPurgeGroupHelp": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassPurgeEntry": "Навсегда удалить эту запись?",
+  "@keepassPurgeEntry": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "keepassPurgeEntryHelp": "Запись будет окончательно удалена из базы KDBX. Отменить это действие в базе нельзя. Изменение сохранится автоматически.",
+  "@keepassPurgeEntryHelp": {
+    "description": "KDBX recycle bin action or irreversible deletion confirmation."
   }
 }
