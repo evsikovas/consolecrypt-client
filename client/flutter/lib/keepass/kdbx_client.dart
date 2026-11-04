@@ -172,6 +172,13 @@ class _Document {
   KdbxGroup _group(String? id) =>
       id == null ? db.body.rootGroup : db.body.rootGroup.getAllGroups().firstWhere((g) => g.uuid.toString() == id);
   KdbxEntry _entry(String id) => db.body.rootGroup.getAllEntries().firstWhere((e) => e.uuid.toString() == id);
+  bool _recycledGroup(KdbxGroup group) => group.breadcrumbs.any((g) => g.uuid == db.recycleBin?.uuid);
+  KdbxGroup _editableGroup(String id) {
+    final group = _tree(db.body.rootGroup).where((g) => g.uuid.toString() == id).firstOrNull;
+    if (group == null || group.parent == null || _recycledGroup(group)) throw const KdbxFailure('group');
+    return group;
+  }
+
   String _value(KdbxEntry entry, String key) => entry.getString(KdbxKey(key))?.getText() ?? '';
   Iterable<KdbxGroup> _tree(KdbxGroup group) sync* {
     yield group;
@@ -190,6 +197,7 @@ class _Document {
         {
           'id': group.uuid.toString(),
           'parent': group.parent?.uuid.toString(),
+          'recycled': _recycledGroup(group),
           'label': group.name.get() ?? '',
           'name': group.breadcrumbs.map((g) => g.name.get() ?? '').join(' / '),
         },
@@ -340,6 +348,19 @@ class _Document {
         return snapshot();
       case 'delete':
         db.deleteEntry(_entry(args['id']! as String));
+        _dirty = true;
+        return snapshot();
+      case 'renameGroup':
+        final group = _editableGroup(args['id']! as String);
+        final name = (args['name']! as String).trim();
+        if (name.isEmpty) throw const KdbxFailure('name');
+        if (group.name.get() != name) {
+          group.name.set(name);
+          _dirty = true;
+        }
+        return snapshot();
+      case 'deleteGroup':
+        db.deleteGroup(_editableGroup(args['id']! as String));
         _dirty = true;
         return snapshot();
       case 'save':

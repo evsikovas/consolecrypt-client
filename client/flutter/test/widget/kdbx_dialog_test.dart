@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -77,6 +78,140 @@ void main() {
     }
     expect(finder, findsOneWidget);
   }
+
+  testWidgets(
+    'group actions rename, confirm recycling and autosave nested records on desktop and phone',
+    (tester) async {
+      final backend = testBackend();
+      addTearDown(backend.dispose);
+      await backend.debugSignInDemoAndUnlock();
+      final mobile = AppPlatform.isMobile;
+      await pumpApp(tester, backend, size: mobile ? const Size(390, 844) : const Size(1440, 900));
+      final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+      final manager = container.read(passwordManagerProvider);
+      final session = (await tester.runAsync(
+        () => manager.open(KdbxSource.local(fixturePath), password: SecretText('fixture-password')),
+      ))!;
+      late String parent;
+      late String child;
+      final entry = session.rows('entries').single;
+      await tester.runAsync(() async {
+        await manager.request(session, 'group', {'name': 'Parent'});
+        parent = session.rows('groups').singleWhere((g) => g['label'] == 'Parent')['id']! as String;
+        await manager.request(session, 'group', {'name': 'Child', 'parent': parent});
+        child = session.rows('groups').singleWhere((g) => g['label'] == 'Child')['id']! as String;
+        await manager.request(session, 'move', {'id': entry['id'], 'group': child});
+      });
+      container.read(routerProvider).go(AppRoutes.passwords);
+      await settle(tester);
+      Future<void> menu() async {
+        if (mobile) {
+          await tapKey(tester, 'keepass-compact-groups');
+          await tapKey(tester, 'keepass-compact-group-$parent');
+          await tapKey(tester, 'keepass-compact-group-actions');
+        } else {
+          await tester.tap(
+            find.byKey(ValueKey('keepass-group-$parent')),
+            buttons: kSecondaryMouseButton,
+            kind: ui.PointerDeviceKind.mouse,
+          );
+          await settle(tester);
+        }
+        expect(find.byKey(const ValueKey('keepass-group-rename')), findsOneWidget);
+        expect(find.byKey(const ValueKey('keepass-group-delete')), findsOneWidget);
+      }
+
+      Future<void> saved(bool Function() changed) async {
+        for (var i = 0; i < 400 && (!changed() || session.busy || !isEnabled(tester, 'keepass-new-entry')); i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 25)));
+          await tester.pump(const Duration(milliseconds: 25));
+        }
+        expect(changed(), isTrue);
+        expect(session.busy, isFalse);
+        expect(session.data['dirty'], isFalse);
+      }
+
+      if (!mobile) {
+        expect(find.byKey(ValueKey('keepass-group-menu-${session.data['root']}')), findsNothing);
+        await tester.tap(find.byKey(ValueKey('keepass-group-$child')));
+        await settle(tester);
+      }
+      await menu();
+      await tapKey(tester, 'keepass-group-rename');
+      expect(tester.widget<TextField>(find.byKey(const ValueKey('keepass-title'))).controller!.text, 'Parent');
+      await enterKey(tester, 'keepass-title', '   ');
+      await tapKey(tester, 'keepass-submit');
+      expect(find.byKey(const ValueKey('keepass-title')), findsOneWidget);
+      await enterKey(tester, 'keepass-title', 'Renamed parent');
+      await tapKey(tester, 'keepass-submit');
+      await saved(() => session.rows('groups').any((g) => g['id'] == parent && g['label'] == 'Renamed parent'));
+      expect(session.rows('groups').singleWhere((g) => g['id'] == child)['name'], contains('Renamed parent / Child'));
+      await menu();
+      await tapKey(tester, 'keepass-group-delete');
+      expect(find.textContaining('Renamed parent'), findsWidgets);
+      await tapKey(tester, 'confirm-cancel');
+      expect(session.rows('groups').singleWhere((g) => g['id'] == parent)['recycled'], isFalse);
+      await menu();
+      await tapKey(tester, 'keepass-group-delete');
+      await tapKey(tester, 'confirm-ok');
+      await saved(() => session.rows('groups').singleWhere((g) => g['id'] == parent)['recycled'] == true);
+      expect(session.rows('groups').singleWhere((g) => g['id'] == child)['recycled'], isTrue);
+      expect(session.rows('entries').single['recycled'], isTrue);
+      expect(find.byKey(ValueKey('keepass-entry-${entry['id']}')), findsNothing);
+      if (mobile) expect(find.byKey(const ValueKey('keepass-compact-group-actions')), findsNothing);
+      await tester.runAsync(() async {
+        final check = await KdbxClient.start();
+        try {
+          final data = await check.open(fixturePath, SecretText('fixture-password'));
+          expect(
+            (data['groups']! as List<Object?>).cast<KdbxData>().singleWhere((g) => g['id'] == child)['parent'],
+            parent,
+          );
+          expect((data['entries']! as List<Object?>).cast<KdbxData>().single['recycled'], isTrue);
+          expect(await check.request('field', {'id': entry['id'], 'key': 'Password'}), 'updated-password');
+        } finally {
+          check.close();
+        }
+      });
+      expect(tester.takeException(), isNull);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.windows,
+      TargetPlatform.macOS,
+      TargetPlatform.linux,
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
+
+  testWidgets('a group context menu expires when its database selection changes', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend);
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final manager = container.read(passwordManagerProvider);
+    final original = (await tester.runAsync(
+      () => manager.open(KdbxSource.local(fixturePath), password: SecretText('fixture-password')),
+    ))!;
+    await tester.runAsync(() => manager.request(original, 'group', {'name': 'Original group'}));
+    final group = original.rows('groups').singleWhere((g) => g['label'] == 'Original group')['id'];
+    final second = (await tester.runAsync(
+      () => manager.open(KdbxSource.local('${temp.path}/Other.kdbx'), password: SecretText('other'), create: true),
+    ))!;
+    manager.selected = original.source.id;
+    manager.notify();
+    container.read(routerProvider).go(AppRoutes.passwords);
+    await settle(tester);
+    await tapKey(tester, 'keepass-group-menu-$group');
+    manager.selected = second.source.id;
+    manager.notify();
+    await settle(tester);
+    await tapKey(tester, 'keepass-group-delete');
+    expect(find.byKey(const ValueKey('confirm-ok')), findsNothing);
+    expect(original.rows('groups').singleWhere((g) => g['id'] == group)['recycled'], isFalse);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('KeePass opens from the sidebar and wipes its password form when the vault locks', (tester) async {
     final backend = testBackend();

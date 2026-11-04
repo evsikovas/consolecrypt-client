@@ -196,6 +196,65 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
     }
   });
 
+  bool _groupCurrent(PasswordManager manager, PasswordVaultSession session, String id) =>
+      _current &&
+      manager.current(session) &&
+      identical(_session, session) &&
+      id != session.data['root'] &&
+      session.rows('groups').any((row) => row['id'] == id && row['recycled'] != true);
+
+  Future<void> _renameGroup(String id) => _run(() async {
+    final manager = _manager;
+    final session = _session!;
+    if (!_groupCurrent(manager, session, id)) return;
+    final row = session.rows('groups').firstWhere((row) => row['id'] == id);
+    final input = await showAppDialog<KdbxData>(
+      context,
+      secure: true,
+      builder: (_) => _KdbxFormDialog(
+        valid: session.validity,
+        title: context.l10n.keepassRenameGroup,
+        groupOnly: true,
+        location: session.source.name,
+        initial: {'Title': row['label']},
+      ),
+    );
+    try {
+      if (input != null && _groupCurrent(manager, session, id)) {
+        await manager.request(session, 'renameGroup', {'id': id, 'name': input['Title']});
+      }
+    } finally {
+      input?.clear();
+    }
+  });
+
+  Future<void> _deleteGroup(String id) => _run(() async {
+    final manager = _manager;
+    final session = _session!;
+    if (!_groupCurrent(manager, session, id)) return;
+    final row = session.rows('groups').firstWhere((row) => row['id'] == id);
+    final parent = row['parent'] as String?;
+    final confirmed = await showConfirmDialog(
+      context,
+      title: context.l10n.keepassDeleteGroup(row['label']! as String),
+      message: context.l10n.keepassDeleteGroupHelp,
+      confirmLabel: context.l10n.commonDelete,
+      destructive: true,
+    );
+    if (confirmed && _groupCurrent(manager, session, id)) {
+      await manager.request(session, 'deleteGroup', {'id': id});
+      if (mounted && _current && identical(_session, session)) {
+        setState(() {
+          // A selected descendant must not leave the UI inside the recycled tree.
+          if (session.rows('groups').any((row) => row['id'] == _group && row['recycled'] == true)) {
+            _group = parent == session.data['root'] ? null : parent;
+          }
+          _selectedEntry = null;
+        });
+      }
+    }
+  });
+
   Future<void> _delete(KdbxData entry) => _run(() async {
     final manager = _manager;
     final session = _session!;
@@ -233,6 +292,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
     'closed' => l.keepassClosed,
     'limits' => l.keepassLimits,
     'exists' => l.keepassExists,
+    'group' => l.keepassGroupUnavailable,
     _ => l.keepassFormatError,
   };
 
@@ -416,6 +476,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
         _group = id;
         _selectedEntry = null;
       }),
+      onGroupAction: (id, action) => unawaited(action == 'rename' ? _renameGroup(id) : _deleteGroup(id)),
       onEntry: (id) => setState(() => _selectedEntry = id),
       onEdit: _edit,
       onDelete: _delete,
@@ -889,6 +950,7 @@ Future<String?> _securityPin(BuildContext context, PasswordManager manager) asyn
 
 String passwordManagerError(AppLocalizations l, Object error) => error is KdbxFailure
     ? switch (error.code) {
+        'group' => l.keepassGroupUnavailable,
         'key' => l.keepassKeyError,
         'changed' => l.keepassChanged,
         'closed' => l.keepassClosed,

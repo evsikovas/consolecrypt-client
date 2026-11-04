@@ -7205,5 +7205,30 @@
         "type": "String"
       }
     }
+  },
+  "keepassGroupActions": "Действия с группой",
+  "@keepassGroupActions": {
+    "description": "KDBX group rename and recycle actions"
+  },
+  "keepassRenameGroup": "Переименовать группу",
+  "@keepassRenameGroup": {
+    "description": "KDBX group rename and recycle actions"
+  },
+  "keepassDeleteGroup": "Переместить группу «{name}» в корзину?",
+  "@keepassDeleteGroup": {
+    "description": "KDBX group rename and recycle actions",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepassDeleteGroupHelp": "Группа, вложенные группы и все их записи будут перемещены в корзину KDBX. Изменение сохранится автоматически.",
+  "@keepassDeleteGroupHelp": {
+    "description": "KDBX group rename and recycle actions"
+  },
+  "keepassGroupUnavailable": "Эту группу больше нельзя изменить. Корневая группа и группы в корзине защищены.",
+  "@keepassGroupUnavailable": {
+    "description": "KDBX group rename and recycle actions"
   }
 }

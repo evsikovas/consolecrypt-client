@@ -36,6 +36,7 @@ class KdbxWorkspace extends StatelessWidget {
     required this.onSourceAction,
     required this.onGenerator,
     required this.onGroup,
+    required this.onGroupAction,
     required this.onEntry,
     required this.onEdit,
     required this.onDelete,
@@ -66,6 +67,7 @@ class KdbxWorkspace extends StatelessWidget {
   final void Function(KdbxSource, String) onSourceAction;
   final VoidCallback onGenerator;
   final ValueChanged<String?> onGroup;
+  final void Function(String id, String action) onGroupAction;
   final ValueChanged<String?> onEntry;
   final ValueChanged<KdbxData> onEdit, onDelete;
   final void Function(KdbxData, String) onCopy;
@@ -395,6 +397,61 @@ class KdbxWorkspace extends StatelessWidget {
     );
   }
 
+  bool _groupAvailable(PasswordVaultSession opened, String id) =>
+      !busy &&
+      manager.current(opened) &&
+      manager.selected == opened.source.id &&
+      !opened.busy &&
+      id != opened.data['root'] &&
+      opened.rows('groups').any((row) => row['id'] == id && row['recycled'] != true);
+
+  List<GlassMenuEntry<String>> _groupEntries(BuildContext context) => [
+    GlassMenuItem(
+      key: const ValueKey('keepass-group-rename'),
+      value: 'rename',
+      label: context.l10n.commonRename,
+      icon: Icons.edit_outlined,
+    ),
+    const GlassMenuDivider(),
+    GlassMenuItem(
+      key: const ValueKey('keepass-group-delete'),
+      value: 'delete',
+      label: context.l10n.commonDelete,
+      icon: Icons.delete_outline_rounded,
+      destructive: true,
+    ),
+  ];
+
+  Future<void> _groupContext(BuildContext context, String id, Offset position) async {
+    final opened = session!;
+    if (!_groupAvailable(opened, id)) return;
+    final action = await showGlassMenu<String>(
+      context: context,
+      anchor: Rect.fromLTWH(position.dx, position.dy, 0, 0),
+      entries: _groupEntries(context),
+    );
+    if (context.mounted && action != null && _groupAvailable(opened, id)) onGroupAction(id, action);
+  }
+
+  Widget _groupMenu(BuildContext context, String id, {Key? key}) {
+    final opened = session!;
+    return GlassMenuButton<String>(
+      entries: _groupEntries(context),
+      onSelected: (action) {
+        if (_groupAvailable(opened, id)) onGroupAction(id, action);
+      },
+      builder: (context, open) => GlassIconButton(
+        key: key ?? ValueKey('keepass-group-menu-$id'),
+        icon: Icons.more_horiz_rounded,
+        size: 28,
+        iconSize: 18,
+        style: GlassIconButtonStyle.plain,
+        tooltip: context.l10n.keepassGroupActions,
+        onPressed: _groupAvailable(opened, id) ? open : null,
+      ),
+    );
+  }
+
   Widget _folder(BuildContext context, {required String id, required String label, int depth = 0, bool all = false}) =>
       DragTarget<KdbxEntryDrag>(
         onWillAcceptWithDetails: (details) =>
@@ -409,15 +466,29 @@ class KdbxWorkspace extends StatelessWidget {
           ),
           child: Padding(
             padding: EdgeInsets.only(left: depth * 14.0),
-            child: ListTile(
-              key: ValueKey('keepass-group-${all ? 'all' : id}'),
-              dense: true,
-              selected: all ? group == null : group == id,
-              selectedColor: Theme.of(context).colorScheme.onSurface,
-              selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
-              leading: Icon(all ? Icons.folder_copy_outlined : Icons.folder_outlined, size: 18),
-              title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-              onTap: () => onGroup(all ? null : id),
+            child: GestureDetector(
+              onSecondaryTapDown: all || !_groupAvailable(session!, id)
+                  ? null
+                  : (details) => unawaited(_groupContext(context, id, details.globalPosition)),
+              onLongPressStart: all || !AppPlatform.isMobile || !_groupAvailable(session!, id)
+                  ? null
+                  : (details) => unawaited(_groupContext(context, id, details.globalPosition)),
+              child: ListTile(
+                key: ValueKey('keepass-group-${all ? 'all' : id}'),
+                dense: true,
+                selected: all ? group == null : group == id,
+                selectedColor: Theme.of(context).colorScheme.onSurface,
+                selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
+                leading: Icon(all ? Icons.folder_copy_outlined : Icons.folder_outlined, size: 18),
+                title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing:
+                    !all &&
+                        id != session!.data['root'] &&
+                        session!.rows('groups').any((row) => row['id'] == id && row['recycled'] != true)
+                    ? _groupMenu(context, id)
+                    : null,
+                onTap: () => onGroup(all ? null : id),
+              ),
             ),
           ),
         ),
@@ -738,6 +809,8 @@ class KdbxWorkspace extends StatelessWidget {
               onPressed: busy ? null : open,
             ),
           ),
+          if (group != null && _groupAvailable(session!, group!))
+            _groupMenu(context, group!, key: const ValueKey('keepass-compact-group-actions')),
           _addMenu(context),
         ],
       ),

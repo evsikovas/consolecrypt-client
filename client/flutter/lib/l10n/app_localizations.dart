@@ -24715,6 +24715,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove the “{name}” connection and close it? The WebDAV file will stay. Connection settings will be removed from synced devices.'**
   String keepassRemoveRemoteHelp(String name);
+
+  /// KDBX group rename and recycle actions
+  ///
+  /// In en, this message translates to:
+  /// **'Group actions'**
+  String get keepassGroupActions;
+
+  /// KDBX group rename and recycle actions
+  ///
+  /// In en, this message translates to:
+  /// **'Rename group'**
+  String get keepassRenameGroup;
+
+  /// KDBX group rename and recycle actions
+  ///
+  /// In en, this message translates to:
+  /// **'Move the “{name}” group to the recycle bin?'**
+  String keepassDeleteGroup(String name);
+
+  /// KDBX group rename and recycle actions
+  ///
+  /// In en, this message translates to:
+  /// **'The group, its subgroups and all their entries will move to the KDBX recycle bin. The change is saved automatically.'**
+  String get keepassDeleteGroupHelp;
+
+  /// KDBX group rename and recycle actions
+  ///
+  /// In en, this message translates to:
+  /// **'This group can no longer be changed. Root and recycled groups are protected.'**
+  String get keepassGroupUnavailable;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

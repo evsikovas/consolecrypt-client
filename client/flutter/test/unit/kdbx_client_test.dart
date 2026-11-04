@@ -128,6 +128,62 @@ void main() {
     }, timeout: const Timeout(Duration(minutes: 2)));
   }
 
+  for (final fixture in ['v3.kdbx', 'aes4.kdbx', 'argon2id.kdbx']) {
+    test('group rename and recycle preserve nested records and reopen in $fixture', () async {
+      final password = fixture == 'v3.kdbx' ? 'FooBar' : 'fixture-password';
+      final target = await File('$fixtures/$fixture').copy('${temp.path}/groups.kdbx');
+      var data = await client.open(target.path, SecretText(password));
+      final root = data['root'];
+      final entry = rows(data, 'entries').first;
+      final originalSecret = await client.request('field', {'id': entry['id'], 'key': 'Password'});
+      data = (await client.request('group', {'name': 'Parent'}))! as KdbxData;
+      final parent = rows(data, 'groups').singleWhere((g) => g['label'] == 'Parent')['id'];
+      data = (await client.request('group', {'name': 'Child', 'parent': parent}))! as KdbxData;
+      final child = rows(data, 'groups').singleWhere((g) => g['label'] == 'Child')['id'];
+      await client.request('move', {'id': entry['id'], 'group': child});
+      data = (await client.request('renameGroup', {'id': parent, 'name': '  Renamed parent  '}))! as KdbxData;
+      expect(rows(data, 'groups').singleWhere((g) => g['id'] == parent)['label'], 'Renamed parent');
+      expect(rows(data, 'groups').singleWhere((g) => g['id'] == child)['name'], contains('Renamed parent / Child'));
+      expect(rows(data, 'entries').singleWhere((e) => e['id'] == entry['id'])['group'], child);
+      await expectLater(
+        client.request('renameGroup', {'id': parent, 'name': '   '}),
+        throwsA(isA<KdbxFailure>().having((e) => e.code, 'code', 'name')),
+      );
+      for (final action in ['renameGroup', 'deleteGroup']) {
+        for (final id in [root, 'missing-group']) {
+          await expectLater(
+            client.request(action, {'id': id, 'name': 'Forbidden'}),
+            throwsA(isA<KdbxFailure>().having((e) => e.code, 'code', 'group')),
+          );
+        }
+      }
+      data = (await client.request('deleteGroup', {'id': parent}))! as KdbxData;
+      for (final id in [parent, child]) {
+        expect(rows(data, 'groups').singleWhere((g) => g['id'] == id)['recycled'], isTrue);
+      }
+      expect(rows(data, 'entries').singleWhere((e) => e['id'] == entry['id'])['recycled'], isTrue);
+      final bin = rows(data, 'groups').singleWhere((g) => g['id'] == parent)['parent'];
+      for (final id in [bin, parent, child]) {
+        for (final action in ['renameGroup', 'deleteGroup']) {
+          await expectLater(
+            client.request(action, {'id': id, 'name': 'Forbidden'}),
+            throwsA(isA<KdbxFailure>().having((e) => e.code, 'code', 'group')),
+          );
+        }
+      }
+      await client.request('save');
+      expect(utf8.decode(await target.readAsBytes(), allowMalformed: true), isNot(contains('Renamed parent')));
+      final reopened = await KdbxClient.start();
+      addTearDown(reopened.close);
+      data = await reopened.open(target.path, SecretText(password));
+      expect(data['root'], root);
+      expect(rows(data, 'groups').singleWhere((g) => g['id'] == child)['parent'], parent);
+      expect(rows(data, 'groups').singleWhere((g) => g['id'] == parent)['label'], 'Renamed parent');
+      expect(rows(data, 'entries').singleWhere((e) => e['id'] == entry['id'])['recycled'], isTrue);
+      expect(await reopened.request('field', {'id': entry['id'], 'key': 'Password'}), originalSecret);
+    }, timeout: const Timeout(Duration(minutes: 2)));
+  }
+
   test('wrong password and externally modified files never overwrite the source', () async {
     final file = await File('$fixtures/argon2id.kdbx').copy('${temp.path}/conflict.kdbx');
     final original = await file.readAsBytes();

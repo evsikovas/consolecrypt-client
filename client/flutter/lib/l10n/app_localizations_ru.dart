@@ -14379,4 +14379,23 @@ class AppLocalizationsRu extends AppLocalizations {
   String keepassRemoveRemoteHelp(String name) {
     return 'Удалить подключение «$name» и закрыть базу? Файл на WebDAV останется. Параметры подключения будут удалены на синхронизированных устройствах.';
   }
+
+  @override
+  String get keepassGroupActions => 'Действия с группой';
+
+  @override
+  String get keepassRenameGroup => 'Переименовать группу';
+
+  @override
+  String keepassDeleteGroup(String name) {
+    return 'Переместить группу «$name» в корзину?';
+  }
+
+  @override
+  String get keepassDeleteGroupHelp =>
+      'Группа, вложенные группы и все их записи будут перемещены в корзину KDBX. Изменение сохранится автоматически.';
+
+  @override
+  String get keepassGroupUnavailable =>
+      'Эту группу больше нельзя изменить. Корневая группа и группы в корзине защищены.';
 }

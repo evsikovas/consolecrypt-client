@@ -19212,5 +19212,30 @@
         "type": "String"
       }
     }
+  },
+  "keepassGroupActions": "Group actions",
+  "@keepassGroupActions": {
+    "description": "KDBX group rename and recycle actions"
+  },
+  "keepassRenameGroup": "Rename group",
+  "@keepassRenameGroup": {
+    "description": "KDBX group rename and recycle actions"
+  },
+  "keepassDeleteGroup": "Move the “{name}” group to the recycle bin?",
+  "@keepassDeleteGroup": {
+    "description": "KDBX group rename and recycle actions",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keepassDeleteGroupHelp": "The group, its subgroups and all their entries will move to the KDBX recycle bin. The change is saved automatically.",
+  "@keepassDeleteGroupHelp": {
+    "description": "KDBX group rename and recycle actions"
+  },
+  "keepassGroupUnavailable": "This group can no longer be changed. Root and recycled groups are protected.",
+  "@keepassGroupUnavailable": {
+    "description": "KDBX group rename and recycle actions"
   }
 }

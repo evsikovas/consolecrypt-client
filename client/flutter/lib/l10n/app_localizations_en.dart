@@ -14048,4 +14048,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String keepassRemoveRemoteHelp(String name) {
     return 'Remove the “$name” connection and close it? The WebDAV file will stay. Connection settings will be removed from synced devices.';
   }
+
+  @override
+  String get keepassGroupActions => 'Group actions';
+
+  @override
+  String get keepassRenameGroup => 'Rename group';
+
+  @override
+  String keepassDeleteGroup(String name) {
+    return 'Move the “$name” group to the recycle bin?';
+  }
+
+  @override
+  String get keepassDeleteGroupHelp =>
+      'The group, its subgroups and all their entries will move to the KDBX recycle bin. The change is saved automatically.';
+
+  @override
+  String get keepassGroupUnavailable => 'This group can no longer be changed. Root and recycled groups are protected.';
 }
