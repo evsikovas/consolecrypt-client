@@ -22,7 +22,7 @@ jobs:
   validate:
     if: github.repository == 'evsikovas/consolecrypt-client'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 60
     outputs:
       version: ${{ steps.tag.outputs.version }}
     steps:
@@ -54,6 +54,26 @@ jobs:
         run: |
           python3 client/scripts/dependency-audit.py install "$RUNNER_TEMP/audit-tools" cargo-deny osv-scanner
           PATH="$RUNNER_TEMP/audit-tools:$PATH" python3 client/scripts/dependency-audit.py check
+      # Fail fast on the real isolated Linux cluster before expensive native builds.
+      - name: Free disk space for the builder image, k3s and Rust
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force > /dev/null
+          df -h /
+      - name: Kubernetes, Flux and Helm acceptance in an isolated cluster
+        run: python3 client/scripts/ci-kubernetes-linux.py --workspace "$GITHUB_WORKSPACE"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: linux-kubernetes-acceptance
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            dist/linux/acceptance/kubernetes-acceptance.json
+            dist/linux/acceptance/kubernetes-acceptance.log
+      - name: Stop owned Kubernetes test containers and retain diagnostics
+        if: always()
+        run: python3 client/scripts/ci-kubernetes-linux.py --workspace "$GITHUB_WORKSPACE" --stop
 
   macos:
     needs: validate
@@ -155,8 +175,10 @@ jobs:
           df -h /
       - name: Reserve build number
         run: python3 client/scripts/github-build-number.py linux
-      - name: Kubernetes, Flux and Helm acceptance in an isolated cluster
-        run: python3 client/scripts/ci-kubernetes-linux.py --workspace "$GITHUB_WORKSPACE"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux-kubernetes-acceptance
+          path: dist/linux/acceptance
       - name: Build and check native Linux DEB and RPM
         run: bash client/scripts/ci-linux.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -174,18 +196,6 @@ jobs:
             dist/linux/acceptance/kubernetes-acceptance.json
             dist/linux/acceptance/kubernetes-acceptance.log
             dist/linux/ConsoleCrypt.version
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: linux-kubernetes-diagnostics
-          if-no-files-found: warn
-          retention-days: 30
-          path: |
-            dist/linux/acceptance/kubernetes-acceptance.json
-            dist/linux/acceptance/kubernetes-acceptance.log
-      - name: Stop owned Kubernetes test containers and retain diagnostics
-        if: always()
-        run: python3 client/scripts/ci-kubernetes-linux.py --workspace "$GITHUB_WORKSPACE" --stop
       - name: Stop this job's Linux container and retain scratch
         if: always()
         run: python3 client/scripts/cleanup-linux-job.py --workspace "$GITHUB_WORKSPACE"

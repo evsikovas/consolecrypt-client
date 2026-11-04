@@ -1,4 +1,4 @@
-# ConsoleCrypt 1.0.3
+# ConsoleCrypt 1.0.4
 
 ## Русский
 
@@ -18,6 +18,10 @@
 iOS Simulator предназначен для запуска на Mac, а не на физическом iPhone.
 Протокол синхронизации и схема сервера не меняются; обновлять sync-сервер для этого исправления не требуется.
 
+В CI устранена гонка готовности тестового Linux-кластера. Эта проверка проходит
+до запуска нативных сборок всех платформ; ошибка теперь указывает конкретный
+этап без публикации секретов и сырых данных кластера.
+
 ## English
 
 The password manager now supports renaming and deleting KDBX groups.
@@ -34,3 +38,7 @@ The password manager now supports renaming and deleting KDBX groups.
 Included in Windows, macOS, Linux DEB/RPM, Android and iOS Simulator packages.
 The iOS Simulator package runs on a Mac and is not an iPhone installer.
 No sync protocol, server schema or sync-server upgrade is required for this fix.
+
+CI now waits for the Linux test cluster's node registration and adapts its CPU
+limit to the runner. The isolated-cluster gate runs before all native builds;
+failures report a fixed step identifier without raw cluster data or credentials.

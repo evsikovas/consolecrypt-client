@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import socket
 import subprocess
@@ -12,7 +13,7 @@ import tarfile
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -228,6 +229,19 @@ class OwnershipTest(unittest.TestCase):
         self.assertIsNone(CI.native_failure_location("arbitrary private object", text))
         self.assertEqual(CI.native_failure_location(CI.TESTS[0], "private cluster response"), {"test": CI.TESTS[0]})
 
+    def test_setup_failure_exposes_only_fixed_step_and_numeric_exit_code(self):
+        marker = "password=must-not-escape"
+        self.assertEqual(CI.public_failure(CI.StepFailed("create-cluster", 125)),
+                         {"kind": "step_failed", "step": "create-cluster", "exit_code": 125})
+        self.assertEqual(CI.public_failure(CI.StepFailed(marker, marker)), {"kind": "step_failed"})
+        result = CI.public_failure(subprocess.TimeoutExpired([marker], 30, stderr=marker), "cluster-ready")
+        self.assertEqual(result, {"kind": "command_timeout", "step": "cluster-ready"})
+        for error in (OSError(marker), ValueError(marker), RuntimeError(marker)):
+            self.task.receipt["failure"] = CI.public_failure(error, marker)
+            self.task.publish_receipt()
+            self.assertNotIn(marker, (self.task.output / "kubernetes-acceptance.json").read_text())
+            self.assertNotIn(marker, (self.task.output / "kubernetes-acceptance.log").read_text())
+
     def test_pinned_download_rejects_modified_manifests(self):
         for url, digest in CI.DOWNLOADS.values():
             self.assertTrue(url.startswith("https://"))
@@ -251,6 +265,81 @@ class OwnershipTest(unittest.TestCase):
             CI.scale_receipts("\n".join(lines[:2]))
         with self.assertRaises(ValueError):
             CI.scale_receipts("\n".join(lines).replace('"cold_first_table_ms": 100', '"cold_first_table_ms": 2100'))
+
+
+class ClusterStartupTest(unittest.TestCase):
+    def setUp(self):
+        self.task = object.__new__(CI.Acceptance)
+        self.task.receipt = {}
+        self.task.docker = Mock(return_value=b"4\n")
+        self.task.create = Mock(return_value="a" * 64)
+
+    def kubectl(self, *args, **_kwargs):
+        if args == ("get", "--raw=/readyz"):
+            return b"ok"
+        if args == ("get", "nodes", "-o", "json"):
+            return b'{"items":[{"kind":"Node"}]}'
+        return b""
+
+    def test_cpu_limit_fits_two_core_runners_and_retains_the_upper_bound(self):
+        self.task.kubectl = Mock(side_effect=self.kubectl)
+        for capacity, expected in [(1, 1), (2, 2), (4, 4), (16, 4)]:
+            self.task.docker.return_value = str(capacity).encode()
+            self.task.start_cluster("owned-network")
+            options = self.task.create.call_args.kwargs["options"]
+            self.assertIn(f"--cpus={expected}", options)
+            self.assertIn("--memory=4g", options)
+            self.assertEqual(self.task.receipt["cluster_cpu_limit"], expected)
+
+    def test_invalid_docker_capacity_cannot_start_a_cluster(self):
+        for capacity in (b"0", b"-1", b"10000", b"private daemon details"):
+            self.task.docker.return_value = capacity
+            with self.assertRaises(ValueError):
+                self.task.start_cluster("owned-network")
+        self.task.create.assert_not_called()
+
+    def test_ready_api_with_no_node_waits_for_registration_before_node_ready(self):
+        nodes = iter([b'{"items":[]}', b'{"items":[]}', b'{"items":[{"kind":"Node"}]}'])
+        calls = []
+        def kubectl(*args, **kwargs):
+            calls.append(args)
+            if args == ("get", "nodes", "-o", "json"):
+                return next(nodes)
+            return self.kubectl(*args, **kwargs)
+        self.task.kubectl = kubectl
+        with patch.object(CI.time, "sleep"):
+            self.task.start_cluster("owned-network")
+        self.assertEqual(calls.count(("get", "nodes", "-o", "json")), 3)
+        self.assertEqual(calls[-1], ("wait", "--for=condition=Ready", "node", "--all", "--timeout=180s"))
+
+    def test_an_empty_cluster_still_fails_and_never_bypasses_node_readiness(self):
+        self.task.kubectl = Mock(side_effect=lambda *args, **kwargs:
+                                 b'{"items":[]}' if args == ("get", "nodes", "-o", "json")
+                                 else self.kubectl(*args, **kwargs))
+        with patch.object(CI.time, "monotonic", side_effect=[0, 0, 181]):
+            with self.assertRaises(CI.StepFailed) as failure:
+                self.task.start_cluster("owned-network")
+        self.assertEqual(failure.exception.step, "cluster-node-registered")
+        self.assertFalse(any(call.args[0] == "wait" for call in self.task.kubectl.call_args_list))
+
+    def test_unready_api_is_not_treated_as_a_registered_cluster(self):
+        self.task.kubectl = Mock(return_value=b"not ready")
+        with patch.object(CI.time, "monotonic", side_effect=[0, 241]):
+            with self.assertRaises(CI.StepFailed) as failure:
+                self.task.start_cluster("owned-network")
+        self.assertEqual(failure.exception.step, "cluster-ready")
+
+    def test_real_cluster_acceptance_gates_every_native_build_and_transfers_its_receipt(self):
+        workflow = (ROOT.parent / ".github/workflows/client.yml").read_text()
+        jobs = dict(re.findall(r"^  ([a-z_]+):\n(.*?)(?=^  [a-z_]+:|\Z)", workflow, re.M | re.S))
+        self.assertIn("python3 client/scripts/ci-kubernetes-linux.py --workspace", jobs["validate"])
+        self.assertIn("name: linux-kubernetes-acceptance", jobs["validate"])
+        for platform in ("windows", "macos", "linux", "android", "ios"):
+            self.assertRegex(jobs[platform], r"(?m)^    needs: validate$")
+        self.assertIn("uses: actions/download-artifact@", jobs["linux"])
+        self.assertIn("name: linux-kubernetes-acceptance", jobs["linux"])
+        self.assertLess(jobs["linux"].index("name: linux-kubernetes-acceptance"),
+                        jobs["linux"].index("bash client/scripts/ci-linux.sh"))
 
 
 class FixtureTest(unittest.TestCase):

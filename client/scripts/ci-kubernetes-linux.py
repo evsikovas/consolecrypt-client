@@ -46,12 +46,41 @@ SAFE_PHASES = {
     "prepare", "builder", "cluster", "controllers", "fixtures", "readiness",
     "native_tests", "complete", "stopped",
 }
+PUBLIC_FAILURE_STEPS = {
+    "docker-info", "docker-capacity", "diagnostics-volume", "inspect-diagnostics-volume",
+    "create-diagnostics", "start-diagnostics", "build", "network", "create-cluster",
+    "start-cluster", "cluster-ready", "cluster-node-registered", "kubectl", "node-ip",
+    "kubeconfig", "create-git", "start-git", "create-registry", "start-registry",
+    "registry-ready", "seed-oci", "native-test-receipt", "owned-container-stop", "interrupted",
+    *["test-" + name for name in TESTS],
+}
 
 
 class StepFailed(RuntimeError):
     def __init__(self, step, code=1):
         super().__init__(step)
         self.step, self.code = step, code
+
+
+def public_failure(error, current_step=None):
+    """Publish only fixed identities/codes, never exception text or command arguments."""
+    if isinstance(error, StepFailed):
+        result = {"kind": "step_failed"}
+        if isinstance(error.step, str) and error.step in PUBLIC_FAILURE_STEPS:
+            result["step"] = error.step
+        if type(error.code) is int and -128 <= error.code <= 255:
+            result["exit_code"] = error.code
+        return result
+    if isinstance(error, subprocess.TimeoutExpired):
+        result = {"kind": "command_timeout"}
+        if isinstance(current_step, str) and current_step in PUBLIC_FAILURE_STEPS:
+            result["step"] = current_step
+        return result
+    if isinstance(error, OSError):
+        return {"kind": "file_or_process_error"}
+    if isinstance(error, ValueError):
+        return {"kind": "validation_error"}
+    return {"kind": "runtime_error"}
 
 
 def regular_path(path, directory=False):
@@ -248,6 +277,7 @@ class Acceptance:
         self.output.mkdir(parents=True, exist_ok=True)
         self.state_file = regular_path(self.workspace / "dist" / STATE_NAME)
         self.sequence = 0
+        self.current_step = None
         if state is None:
             if self.state_file.exists():
                 raise ValueError("Existing ownership receipt: stop/review the previous run first")
@@ -274,6 +304,7 @@ class Acceptance:
         write_private(self.state_file, value)
 
     def run(self, step, args, data=None, capture=False, timeout=180):
+        self.current_step = step
         self.sequence += 1
         log = self.scratch / f"{self.sequence:03}-{step}.log"
         write_private(log, b"")
@@ -352,6 +383,27 @@ class Acceptance:
                 raise StepFailed(step)
             time.sleep(2)
 
+    def start_cluster(self, network):
+        # Docker rejects --cpus=4 on a two-core hosted runner. Keep the upper
+        # bound without requesting more CPUs than this daemon provides.
+        capacity = self.docker("docker-capacity", "info", "--format", "{{.NCPU}}",
+                               capture=True, timeout=30).decode().strip()
+        if not re.fullmatch(r"[1-9][0-9]{0,3}", capacity) or int(capacity) > 1024:
+            raise ValueError("Invalid Docker CPU capacity")
+        cpus = min(4, int(capacity))
+        self.receipt["cluster_cpu_limit"] = cpus
+        self.cluster = self.create("cluster", K3S, network, [
+            "server", "--disable=traefik,servicelb,local-storage", "--tls-san=cc-kube-acceptance.local",
+            "--cluster-cidr=10.242.0.0/16", "--service-cidr=10.243.0.0/16",
+            "--write-kubeconfig-mode=600",
+        ], options=("--privileged", f"--cpus={cpus}", "--memory=4g", "--tmpfs=/run", "--tmpfs=/var/run"))
+        self.wait("cluster-ready", lambda: self.kubectl("get", "--raw=/readyz", capture=True).strip() == b"ok", 240)
+        # /readyz can succeed before k3s registers its Node. `wait node --all`
+        # fails immediately on an empty list instead of waiting for registration.
+        self.wait("cluster-node-registered", lambda: bool(json.loads(
+            self.kubectl("get", "nodes", "-o", "json", capture=True))["items"]), 180)
+        self.kubectl("wait", "--for=condition=Ready", "node", "--all", "--timeout=180s", timeout=190)
+
     def setup(self):
         self.run("docker-info", ["docker", "info"], timeout=30)
         volume = "cc-kube-ci-" + self.state["owner"][:16] + "-diagnostics"
@@ -383,13 +435,7 @@ class Acceptance:
         if not re.fullmatch(r"[a-f0-9]{64}", network_id):
             raise ValueError("Unexpected network ID")
         self.advance("cluster")
-        self.cluster = self.create("cluster", K3S, network_name, [
-            "server", "--disable=traefik,servicelb,local-storage", "--tls-san=cc-kube-acceptance.local",
-            "--cluster-cidr=10.242.0.0/16", "--service-cidr=10.243.0.0/16",
-            "--write-kubeconfig-mode=600",
-        ], options=("--privileged", "--cpus=4", "--memory=4g", "--tmpfs=/run", "--tmpfs=/var/run"))
-        self.wait("cluster-ready", lambda: self.kubectl("get", "--raw=/readyz", capture=True).strip() == b"ok", 240)
-        self.kubectl("wait", "--for=condition=Ready", "node", "--all", "--timeout=180s", timeout=190)
+        self.start_cluster(network_name)
         address = self.docker("node-ip", "inspect", "--format",
                               "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
                               self.cluster, capture=True).decode().strip()
@@ -534,6 +580,8 @@ class Acceptance:
             lines.append(f"PASS {test['name']} ({test['elapsed_seconds']}s)")
         if self.receipt.get("native_failure"):
             lines.append("FAILURE " + json.dumps(self.receipt["native_failure"], sort_keys=True))
+        if self.receipt.get("failure"):
+            lines.append("FAILURE " + json.dumps(self.receipt["failure"], sort_keys=True))
         for sample in self.receipt["scale_samples"]:
             lines.append("SCALE " + json.dumps(sample, sort_keys=True))
         write_private(self.output / "kubernetes-acceptance.log", ("\n".join(lines) + "\n").encode())
@@ -559,21 +607,29 @@ def main():
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGINT, interrupted)
     failure = None
+    failure_info = None
     try:
         task.setup()
         task.execute()
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         failure = error
+        failure_info = public_failure(error, task.current_step)
         task.receipt["success"] = False
     finally:
         try:
             task.stop()
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            if failure is None:
+                failure_info = public_failure(error, task.current_step)
             failure = failure or error
             task.receipt["success"] = False
+        if failure:
+            task.receipt["failure"] = failure_info
         task.publish_receipt()
     if failure:
-        print("KUBERNETES_CI failed in " + task.phase + "; private scratch retained.", file=sys.stderr)
+        print("KUBERNETES_CI failed in " + task.phase + ": "
+              + json.dumps(task.receipt["failure"], sort_keys=True)
+              + "; private scratch retained.", file=sys.stderr)
         raise SystemExit(1)
     print("KUBERNETES_CI PASS; private scratch retained until release cleanup")
 
