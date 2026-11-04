@@ -111,6 +111,11 @@ if ($env:GITHUB_RUN_NUMBER -and -not $NativeOnly) {
     $env:CC_BUILD_NUMBER = "$githubBuild".Trim()
     Write-Host "Reserved Windows build $env:CC_BUILD_NUMBER"
 }
+if (-not $NativeOnly) {
+    Invoke-Checked python @('-m', 'unittest', 'discover', '-s', (Join-Path $Repo 'client\scripts'), '-p', 'test_windows_file_version.py', '-v')
+    & (Join-Path $PSScriptRoot 'test-windows-installer.ps1') -Iscc (Get-Command ISCC.exe).Source
+    if ($LASTEXITCODE -ne 0) { throw 'Windows installer metadata check failed' }
+}
 # Exercise native RDP, PTY and Kubernetes before the optional model downloads.
 # Live server tests remain opt-in and use no runner credentials in this pass.
 $OriginalNativeTestTarget = $env:CARGO_TARGET_DIR

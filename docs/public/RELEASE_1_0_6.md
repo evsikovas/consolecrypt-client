@@ -1,4 +1,4 @@
-# ConsoleCrypt 1.0.5
+# ConsoleCrypt 1.0.6
 
 ## Русский
 
@@ -18,6 +18,9 @@
 Исправление доступно на Windows, macOS, Linux DEB/RPM, Android и iOS Simulator.
 Протокол синхронизации и сервер не меняются.
 
+Также исправлена сборка Windows-установщика при больших номерах CI-сборок.
+Полная версия приложения и проверка обновлений сохраняются.
+
 ## English
 
 The KDBX password manager now identifies its recycle bin with a trash icon and
@@ -36,3 +39,6 @@ provides clear actions for its contents.
 
 Included on Windows, macOS, Linux DEB/RPM, Android and iOS Simulator.
 No sync protocol or server changes are required.
+
+Windows installers also accept large CI build numbers while preserving the full
+application version and update identity.

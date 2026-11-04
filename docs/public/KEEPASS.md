@@ -142,7 +142,7 @@ WebDAV. Действия относятся к базе, по которой в�
 к её родителю или ко всем группам. Обе операции автоматически сохраняются,
 включая базы через WebDAV; защита от внешних изменений файла остаётся активной.
 
-## Корзина: очистка и окончательное удаление (1.0.5)
+## Корзина: очистка и окончательное удаление (1.0.6)
 
 Системная корзина KDBX обозначена значком корзины. Выберите её или папку внутри
 неё и нажмите **Очистить корзину** над списком. Команда доступна также через
@@ -228,7 +228,7 @@ A normal folder containing the system recycle bin can be renamed but cannot
 be deleted, avoiding a move into its own descendant. Both operations autosave to local files or WebDAV and retain external-change
 protection. After deletion, navigation returns to the parent or all groups.
 
-## English: recycle bin (1.0.5)
+## English: recycle bin (1.0.6)
 
 The actual KDBX recycle bin has a trash icon. Select it or a recycled folder and
 use **Empty recycle bin**, or open the bin's **⋯** / right-click menu. On phones,

@@ -78,8 +78,9 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Version bump failed' }
     }
     $BuildVersion = "$BuildVersion".Trim()
-    if ($BuildVersion -notmatch '^(\d+\.\d+\.\d+)\+(\d+)$') { throw 'Invalid build version' }
-    $FileVersion = "$($Matches[1]).$($Matches[2])"
+    $FileVersion = & python (Join-Path $Src 'client\scripts\windows-file-version.py') $BuildVersion
+    if ($LASTEXITCODE -ne 0) { throw 'Invalid Windows build version' }
+    $FileVersion = "$FileVersion".Trim()
     Write-Host "==> ConsoleCrypt $BuildVersion ($Mode, Windows x64)"
     Set-Location (Join-Path $Src 'client\flutter')
     if (-not $PackageOnly) {
@@ -94,7 +95,9 @@ try {
         $builtExe = Get-Item (Join-Path $Built 'ConsoleCrypt.exe')
         $info = $builtExe.VersionInfo
         $actualVersion = "$($info.FileMajorPart).$($info.FileMinorPart).$($info.FileBuildPart).$($info.FilePrivatePart)"
-        if ($actualVersion -ne $FileVersion) { throw 'Existing runner has a different build version' }
+        if ($actualVersion -ne $FileVersion -or $info.FileVersion -ne $BuildVersion -or $info.ProductVersion -ne $BuildVersion) {
+            throw 'Existing runner has a different build version'
+        }
     }
     $AppOut = Join-Path $Out 'ConsoleCrypt'
     $ExpectedAppOut = [IO.Path]::GetFullPath((Join-Path $Repo 'dist\windows\ConsoleCrypt'))

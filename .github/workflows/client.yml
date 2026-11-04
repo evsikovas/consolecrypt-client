@@ -35,6 +35,7 @@ jobs:
         run: python3 client/scripts/verify-github-tag.py --allow-main-candidate
       - name: Test release boundaries
         run: |
+          python3 -m unittest discover -s client/scripts -p 'test_windows_file_version.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_github_release.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_announce_telegram.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_wait_release_website.py' -v
