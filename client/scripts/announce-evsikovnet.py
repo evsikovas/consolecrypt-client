@@ -71,6 +71,14 @@ def payload(release: dict) -> dict:
     if release.get("draft") or release.get("prerelease") or not re.fullmatch(r"v\d+\.\d+\.\d+", tag):
         sys.exit(f"{tag or 'release'} is not a published stable release")
     published = dt.datetime.fromisoformat(release["published_at"].replace("Z", "+00:00"))
+    downloads = [
+        {"platform": platform, "label": label, "url": f"https://consolecrypt.dev/download#{anchor}"}
+        for platform, label, anchor in DOWNLOADS
+    ]
+    simulator_name = rf"ConsoleCrypt-{re.escape(tag[1:])}\+[1-9]\d*-ios-simulator-universal\.zip"
+    if any(re.fullmatch(simulator_name, asset.get("name", "")) for asset in release.get("assets", [])):
+        downloads.append({"platform": "ios", "label": "Simulator для Mac, не iPhone — на consolecrypt.dev",
+                          "url": "https://consolecrypt.dev/download#ios"})
     return {
         "project_id": PROJECT_ID,
         "version": tag[1:],
@@ -78,10 +86,7 @@ def payload(release: dict) -> dict:
         "notes_md": russian_notes(release.get("body") or "")[:100_000],
         "released_at": published.astimezone(dt.timezone.utc).strftime("%Y-%m-%d"),
         "published": True,
-        "downloads": [
-            {"platform": platform, "label": label, "url": f"https://consolecrypt.dev/download#{anchor}"}
-            for platform, label, anchor in DOWNLOADS
-        ],
+        "downloads": downloads,
     }
 
 

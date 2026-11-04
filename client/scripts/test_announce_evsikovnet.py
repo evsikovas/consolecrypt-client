@@ -54,6 +54,16 @@ class EvsikovNetTests(unittest.TestCase):
         self.assertEqual([d['platform'] for d in body['downloads']], ['macos', 'windows', 'windows', 'linux', 'linux', 'android'])
         self.assertTrue(all(d['url'].startswith('https://consolecrypt.dev/download#') for d in body['downloads']))
 
+    def test_simulator_link_requires_the_exact_releases_simulator_asset(self):
+        asset = {'name': 'ConsoleCrypt-9.9.9+62015-ios-simulator-universal.zip'}
+        body = announce.payload(dict(RELEASE, assets=[asset]))
+        self.assertEqual(len(body['downloads']), 7)
+        self.assertEqual(body['downloads'][-1]['platform'], 'ios')
+        self.assertIn('Simulator для Mac, не iPhone', body['downloads'][-1]['label'])
+        self.assertEqual(body['downloads'][-1]['url'], 'https://consolecrypt.dev/download#ios')
+        for name in ['ConsoleCrypt-9.9.8+62015-ios-simulator-universal.zip', 'ConsoleCrypt.ipa']:
+            self.assertEqual(len(announce.payload(dict(RELEASE, assets=[{'name': name}]))['downloads']), 6)
+
     def test_drafts_prereleases_and_other_tags_are_refused(self):
         for change in ({'draft': True}, {'prerelease': True}, {'tag_name': 'v9.9.9-rc1'}):
             with self.assertRaises(SystemExit):
