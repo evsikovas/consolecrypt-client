@@ -146,29 +146,42 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
             pad,
           ),
           child: column
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+              ? Column(
                   children: [
-                    Padding(
-                      padding: EdgeInsets.only(top: macTitlebar ? GlassSizes.toolbarBand : 0),
-                      child: _TerminalTabs(
-                        state: state,
-                        active: active,
-                        onNewTab: _newTab,
-                        placement: placement,
-                        // The terminal keeps at least 360 px beside the column
-                        // (the shell sizes MediaQuery to the content area).
-                        maxColumnWidth: MediaQuery.sizeOf(context).width - 2 * pad - 360 - GlassTabColumn.handleWidth,
+                    // Keep the native titlebar in window coordinates. A toolbar
+                    // beside a folded tab column would start under the traffic
+                    // lights, even though it clears the column itself.
+                    if (macTitlebar)
+                      GlassToolbar(
+                        leadingInset: GlassScope.of(context).trafficLightsLeading,
+                        leading: [if (active.host != null) _TerminalSftpButton(tab: active)],
+                        trailing: [_SessionToolbar(tab: active)],
                       ),
-                    ),
                     Expanded(
-                      child: Column(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _SessionBar(tab: active),
-                          SizedBox(height: minimal ? 0 : GlassSpacing.s8),
-                          _SessionBanners(tab: active),
-                          card,
+                          _TerminalTabs(
+                            state: state,
+                            active: active,
+                            onNewTab: _newTab,
+                            placement: placement,
+                            // The terminal keeps at least 360 px beside the column
+                            // (the shell sizes MediaQuery to the content area).
+                            maxColumnWidth:
+                                MediaQuery.sizeOf(context).width - 2 * pad - 360 - GlassTabColumn.handleWidth,
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (!macTitlebar) _SessionBar(tab: active),
+                                SizedBox(height: minimal ? 0 : GlassSpacing.s8),
+                                _SessionBanners(tab: active),
+                                card,
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -339,12 +352,6 @@ class _SessionBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (ref.watch(terminalMinimalModeProvider)) {
-      if (AppPlatform.isMacOS && GlassScope.of(context).unifiedTitlebar) {
-        return GlassToolbar(
-          leading: [if (tab.host != null) _TerminalSftpButton(tab: tab)],
-          trailing: [_SessionToolbar(tab: tab)],
-        );
-      }
       return SizedBox(
         height: GlassSizes.tabTrack,
         child: Row(

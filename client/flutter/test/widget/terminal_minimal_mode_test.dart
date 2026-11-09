@@ -19,6 +19,7 @@ import '../helpers/test_app.dart';
 Future<(MockBackend, ProviderContainer)> pumpMinimalTerminal(
   WidgetTester tester, {
   TerminalTabPlacement placement = TerminalTabPlacement.top,
+  bool collapsed = false,
   Size size = const Size(1440, 900),
 }) async {
   final backend = testBackend();
@@ -26,7 +27,11 @@ Future<(MockBackend, ProviderContainer)> pumpMinimalTerminal(
   await backend.debugSignInDemoAndUnlock();
   final settings = backend.services.settings;
   await settings.updateLocal(
-    settings.currentLocal.copyWith(terminalTabPlacement: placement, themeMode: AppThemeMode.dark),
+    settings.currentLocal.copyWith(
+      terminalTabPlacement: placement,
+      terminalTabColumnCollapsed: collapsed,
+      themeMode: AppThemeMode.dark,
+    ),
   );
   await pumpApp(tester, backend, size: size, locale: AppLocale.ru);
   final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
@@ -55,6 +60,63 @@ Future<void> minimalKeys(WidgetTester tester, LogicalKeyboardKey key, {bool shif
 }
 
 void main() {
+  testWidgets('macOS minimal: actions clear native buttons with folded, resized and top tabs', (tester) async {
+    final messenger = tester.binding.defaultBinaryMessenger;
+    const native = MethodChannel('consolecrypt/window');
+    const plugin = MethodChannel('macos_window_utils/window_manipulator');
+    var leading = 118.0;
+    messenger.setMockMethodCallHandler(plugin, (_) async => null);
+    messenger.setMockMethodCallHandler(
+      native,
+      (call) async => call.method == 'getTrafficLightsLeading' ? leading : null,
+    );
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(plugin, null);
+      messenger.setMockMethodCallHandler(native, null);
+    });
+    final (backend, container) = await pumpMinimalTerminal(
+      tester,
+      placement: TerminalTabPlacement.left,
+      collapsed: true,
+    );
+    final pane = tester.state(find.byType(TerminalPane).first);
+    await minimalKeys(tester, LogicalKeyboardKey.keyM, shift: true);
+    void expectClear() {
+      final action = tester.getRect(find.byKey(const ValueKey('terminal-sftp')));
+      expect(action.left, greaterThanOrEqualTo(leading));
+      expect(action.top, lessThan(52), reason: 'SFTP remains in the unified toolbar');
+      expect(tester.state(find.byType(TerminalPane).first), same(pane));
+      expect(tester.takeException(), isNull);
+    }
+
+    expectClear();
+    leading = 132;
+    tester.view.physicalSize = const Size(1000, 800);
+    await settle(tester);
+    expectClear();
+    final settings = backend.services.settings;
+    await settings.updateLocal(settings.currentLocal.copyWith(terminalTabColumnCollapsed: false));
+    await settle(tester);
+    expectClear();
+    final handle = find.byKey(const ValueKey('glass-tab-column-resize'));
+    await tester.drag(handle, const Offset(100, 0));
+    await settle(tester);
+    expectClear();
+    await settings.updateLocal(settings.currentLocal.copyWith(terminalTabColumnCollapsed: true));
+    await settle(tester);
+    expectClear();
+    await settings.updateLocal(settings.currentLocal.copyWith(terminalTabPlacement: TerminalTabPlacement.top));
+    await settle(tester);
+    expectClear();
+    await minimalKeys(tester, LogicalKeyboardKey.keyK);
+    expect(find.byKey(const ValueKey('command-palette')), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await settle(tester);
+    expectClear();
+    await tester.pumpWidget(const SizedBox.shrink());
+    await settle(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   for (final placement in TerminalTabPlacement.values) {
     testWidgets('minimal ${placement.name}: live panes survive, palette works, chrome returns', (tester) async {
       final (_, container) = await pumpMinimalTerminal(tester, placement: placement);

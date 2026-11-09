@@ -1,4 +1,4 @@
-# ConsoleCrypt 1.1.2
+# ConsoleCrypt 1.1.3
 
 ## Русский
 
@@ -13,6 +13,10 @@
   при переходе во весь экран. При выходе возвращается её прежнее состояние.
   Обработка применяется к обычному полноэкранному окну и сохраняет
   восстановление окна после полноэкранного RDP.
+- **Минималистичный терминал на macOS:** кнопка SFTP и остальные действия
+  размещаются в общей верхней полосе с нативным отступом для системных кнопок.
+  Сворачивание и растягивание левой панели вкладок больше не сдвигают действия
+  под кнопки окна. При смене положения вкладок сессии и палитра сохраняются.
 - **Проверки:** регрессия чтения WAL проверяет размеры страниц и границы
   буфера; исходная функция служит отрицательным контролем. Аудит проверяет
   хеши исправленного C-кода, заголовков, Rust-обёртки и build script.
@@ -36,6 +40,10 @@ Security and macOS fullscreen fixes.
 - **macOS:** the native toolbar no longer reserves an extra band above the
   application in fullscreen. Its previous visibility is restored on exit.
   This covers ordinary OS fullscreen while preserving RDP window restoration.
+- **Minimal terminal on macOS:** SFTP and session actions use a window-wide
+  toolbar with the native traffic-light inset. Folding or resizing the left
+  tab column no longer moves actions under the window buttons. Sessions and
+  the command palette remain available when moving tabs to the top.
 - **Checks:** the WAL regression exercises page sizes and buffer boundaries,
   using the original reader as a negative control. The audit verifies hashes
   of the patched C sources, headers, Rust wrapper and build script.
