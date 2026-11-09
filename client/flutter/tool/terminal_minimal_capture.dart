@@ -31,7 +31,8 @@ void main() {
     final backend = testBackend();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
-    setTestLocale(backend, AppLocale.ru);
+    const language = String.fromEnvironment('CC_MINIMAL_LOCALE', defaultValue: 'ru');
+    setTestLocale(backend, language == 'en' ? AppLocale.en : AppLocale.ru);
     await backend.services.settings.updateLocal(
       backend.services.settings.currentLocal.copyWith(
         themeMode: AppThemeMode.dark,
