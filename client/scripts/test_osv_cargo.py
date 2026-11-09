@@ -120,6 +120,18 @@ class OsvCargoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             osv_cargo.verify_backports(self.root)
 
+    def test_native_digest_uses_the_same_case_sensitive_order_on_every_platform(self):
+        self.public_backport()
+        source = self.root / 'local'
+        for name in ['Z.c', 'a.c', 'build.rs']:
+            (source / name).write_bytes(b'// reviewed\n')
+        import hashlib
+        expected = hashlib.sha256()
+        for name in ['Cargo.toml', 'Z.c', 'a.c', 'build.rs', 'src/lib.rs']:
+            expected.update(name.encode() + b'\0')
+            expected.update((source / name).read_bytes().replace(b'\r\n', b'\n') + b'\0')
+        self.assertEqual(osv_cargo.source_digest(source, native_sources=True), expected.hexdigest())
+
     def public_backport(self):
         source = self.root / 'local'
         (source / 'src').mkdir(parents=True)

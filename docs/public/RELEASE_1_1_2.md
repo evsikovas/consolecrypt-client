@@ -1,4 +1,4 @@
-# ConsoleCrypt 1.1.1
+# ConsoleCrypt 1.1.2
 
 ## Русский
 

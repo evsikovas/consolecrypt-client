@@ -49,7 +49,9 @@ def source_digest(source, native_sources=False):
     if native_sources:
         for pattern in ['**/*.rs', '**/*.c', '**/*.h', '**/*.cc', '**/*.cpp', '**/*.hpp']:
             paths.update(source.glob(pattern))
-    paths = sorted(paths)
+    # WindowsPath sorts case-insensitively; PosixPath does not. Use the same
+    # relative, case-sensitive spelling on every release runner.
+    paths = sorted(paths, key=lambda path: path.relative_to(source).parts)
     for path in paths:
         digest.update(path.relative_to(source).as_posix().encode() + b'\0')
         digest.update(path.read_bytes().replace(b'\r\n', b'\n') + b'\0')

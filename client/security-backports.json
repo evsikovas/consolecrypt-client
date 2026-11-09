@@ -86,7 +86,7 @@
     "package_version": "0.38.2",
     "patch_manifest": "client/rust/Cargo.toml",
     "source": "client/rust/storage-core/vendor/libsqlite3-sys",
-    "source_sha256": "e41bd7d1c3d0f421eed88c188c6e53c66b161cbcf8ae25fe3c5cf7513f46ce8d",
+    "source_sha256": "0dbe62116090320583eccfaf341d6fe6982d3a0655eb76b084eeae61b1f1149d",
     "native_sources": true,
     "upstream_fix": "https://github.com/sqlite/sqlite/commit/e5bf119821f25be1d7f10ef0a2edbe175289166e",
     "upstream_crate_sha256": "f1d20bef17f513b9b3004532233187769cd072d790971f4e4da0e346eb6401e8",
