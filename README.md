@@ -17,10 +17,24 @@ your own sync server, or use the public ConsoleCrypt server.
 
 *Hosts and groups in ConsoleCrypt. The screenshot uses demonstration data.*
 
+## Current release: 1.1.3
+
+[Release and verified installers](https://github.com/evsikovas/consolecrypt-client/releases/tag/v1.1.3) ·
+[Release notes](docs/public/RELEASE_1_1_3.md)
+
+This update fixes the SQLite/SQLCipher WAL reader issue
+**CVE-2026-119375 (RUSTSEC-2026-0459)** with the upstream patch in both bundled
+engines. On macOS it removes the extra fullscreen toolbar band and keeps SFTP
+and session actions clear of the window buttons in the minimal terminal.
+Existing database and sync formats are unchanged; the sync server needs no
+upgrade for this release. See [Security](SECURITY.md) for the backport and audit policy.
+
 ## Features
 
-- **Passwords (1.0):** KDBX 3/4 databases, WebDAV, autosave, folders, a password
-  generator and entry-first command-palette copying. Mobile imports keep an
+- **Passwords:** KDBX 3/4 databases, WebDAV, autosave, group renaming and deletion,
+  entry moves, recycle-bin emptying and a password generator. Search with
+  Ctrl+K / Cmd+K, choose an entry, then choose the field to copy; the shared
+  secret clipboard clears on the configured schedule. Mobile imports keep an
   encrypted in-app copy with explicit export. [Guide](docs/public/KEEPASS.md).
 - **Local AI:** optional model installation on Windows, macOS and Linux x64
   (CPU); configured AI APIs remain available on mobile. [Guide](docs/public/LOCAL_AI.md).
@@ -32,6 +46,10 @@ your own sync server, or use the public ConsoleCrypt server.
   from your device to the target host.
 - **Local terminals:** zsh on macOS; PowerShell, cmd and individual
   WSL distributions on Windows, alongside SSH tabs. [Guide](docs/public/LOCAL_TERMINALS.md).
+- **Minimal terminal (desktop):** Ctrl+Shift+M / Cmd+Shift+M hides the main
+  navigation, keeping terminal tabs on the left or top. Live sessions and the
+  command palette remain available. Open SFTP from a connected SSH tab
+  or its context menu. Available on Windows, macOS and Linux.
 - **RDP:** Windows remote desktops through IronRDP, parallel session tabs,
   full-screen mode, text clipboard sharing, and redirection of a selected folder
   with separate write permission. Works with a standard Microsoft RDP server;
@@ -42,7 +60,11 @@ your own sync server, or use the public ConsoleCrypt server.
 - **Hosts and groups:** saved SSH/RDP connections, credentials, search by name
   or address, and a host picker accessible from the global “+” button.
 - **SFTP:** file transfer and preview, editing in an external desktop application,
-  and a configurable default editor.
+  and a configurable default editor. Settings sections can be collapsed.
+- **Databases:** saved connections, SQL editing and results, with slim
+  horizontal and vertical scrollbars that expand on hover.
+- **Docker:** containers and volumes on saved SSH hosts, logs, terminal
+  sessions, Compose and restorable port forwards.
 - **Kubernetes:** encrypted connections, live resources, YAML, logs, Pod shells,
   port forwarding, Helm and GitOps, with a native production policy and explicit
   consent for AI context. [Guide](docs/public/KUBERNETES.md).
@@ -68,8 +90,8 @@ your own sync server, or use the public ConsoleCrypt server.
 | macOS Intel / Apple Silicon | Universal DMG | Move the application to Applications |
 | Windows x64 | EXE / portable ZIP | Run the installer or extract the ZIP |
 | Linux x64 | DEB / RPM | Requires a graphical session and an unlocked persistent Secret Service keyring |
-| Android ARM64 | APK | Mobile preview, Android 11+ |
-| iOS | Universal Simulator ZIP | Required 1.0 CI build and launch on Mac; not an iPhone installer |
+| Android ARM64 | APK; separate RuStore APK / AAB | Mobile preview, Android 11+ |
+| iOS | Universal Simulator ZIP | Built and launched on Mac in CI; not an iPhone installer |
 
 Compare the downloaded file's SHA-256 with `SHA256SUMS-VERSION.txt` in the release.
 Install Linux packages with `sudo apt install ./package.deb` or
