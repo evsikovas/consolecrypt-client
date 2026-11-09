@@ -147,8 +147,16 @@ class PageScaffold extends StatelessWidget {
   }
 }
 
-/// Content card with a heading (§4.6): [ContentSurface], title3 heading,
-/// optional secondary icon, subtitle and trailing action.
+/// Enable collapsible headers within Settings without changing other pages.
+class SectionCardCollapseScope extends InheritedWidget {
+  const SectionCardCollapseScope({required super.child, super.key});
+  static bool enabled(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<SectionCardCollapseScope>() != null;
+  @override
+  bool updateShouldNotify(SectionCardCollapseScope oldWidget) => false;
+}
+
+/// Content card with a heading (§4.6), optional subtitle and trailing action.
 class SectionCard extends StatefulWidget {
   const SectionCard({
     required this.title,
@@ -179,7 +187,8 @@ class _SectionCardState extends State<SectionCard> {
   @override
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
-    final expanded = !widget.collapsible || _expanded;
+    final collapsible = widget.collapsible || SectionCardCollapseScope.enabled(context);
+    final expanded = !collapsible || _expanded;
     final title = widget.title;
     final icon = widget.icon;
     final trailing = widget.trailing;
@@ -196,7 +205,7 @@ class _SectionCardState extends State<SectionCard> {
             child: Text(title, style: tokens.typography.title3.copyWith(color: tokens.palette.label)),
           ),
         ),
-        if (widget.collapsible)
+        if (collapsible)
           Icon(
             expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
             size: 18,
@@ -211,7 +220,7 @@ class _SectionCardState extends State<SectionCard> {
           Row(
             children: [
               Expanded(
-                child: widget.collapsible
+                child: collapsible
                     ? Semantics(
                         expanded: expanded,
                         child: InkWell(

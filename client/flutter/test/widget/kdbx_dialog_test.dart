@@ -80,6 +80,76 @@ void main() {
     expect(finder, findsOneWidget);
   }
 
+  testWidgets('root entries are a filter; real folders start at depth zero and trash is separate', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(1600, 1100));
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final manager = container.read(passwordManagerProvider);
+    final session = (await tester.runAsync(
+      () => manager.open(KdbxSource.local(fixturePath), password: SecretText('fixture-password')),
+    ))!;
+    final root = session.data['root']! as String;
+    late String parent;
+    late String child;
+    late String other;
+    late String discarded;
+    await tester.runAsync(() async {
+      await manager.request(session, 'group', {'name': 'Parent'});
+      parent = session.rows('groups').singleWhere((g) => g['label'] == 'Parent')['id']! as String;
+      await manager.request(session, 'group', {'name': 'Child', 'parent': parent});
+      child = session.rows('groups').singleWhere((g) => g['label'] == 'Child')['id']! as String;
+      await manager.request(session, 'group', {'name': 'Discarded'});
+      discarded = session.rows('groups').singleWhere((g) => g['label'] == 'Discarded')['id']! as String;
+      await manager.request(session, 'deleteGroup', {'id': discarded});
+      // Created AFTER the bin in the KDBX tree: still displayed before it.
+      await manager.request(session, 'group', {'name': 'Other folder'});
+      other = session.rows('groups').singleWhere((g) => g['label'] == 'Other folder')['id']! as String;
+      for (final pair in [('Root only', root), ('Child only', child)]) {
+        await manager.request(session, 'put', {
+          'Title': pair.$1,
+          'UserName': 'demo',
+          'Password': 'demo-only',
+          'URL': '',
+          'Notes': '',
+          'group': pair.$2,
+        });
+      }
+    });
+    final bin = session.data['recycleBin']! as String;
+    final originalParents = {for (final g in session.rows('groups')) g['id']: g['parent']};
+    container.read(routerProvider).go(AppRoutes.passwords);
+    await settle(tester);
+    Finder tile(String id) => find.byKey(ValueKey('keepass-group-$id'));
+    final rootTile = tester.widget<ListTile>(tile(root));
+    expect((rootTile.leading! as Icon).icon, Icons.inbox_outlined);
+    expect(find.byKey(ValueKey('keepass-group-menu-$root')), findsNothing);
+    expect(
+      tester.getRect(tile(root)).bottom,
+      lessThan(tester.getRect(find.byKey(const ValueKey('keepass-folder-tree-heading'))).top),
+    );
+    expect(tester.getRect(tile(parent)).left, tester.getRect(tile(root)).left);
+    expect(tester.getRect(tile(child)).left, tester.getRect(tile(parent)).left + 14);
+    expect(tester.getRect(tile(bin)).left, tester.getRect(tile(parent)).left);
+    expect(
+      tester.getRect(tile(other)).bottom,
+      lessThanOrEqualTo(tester.getRect(find.byKey(const ValueKey('keepass-trash-divider'))).top),
+    );
+    expect(tester.getRect(tile(discarded)).left, tester.getRect(tile(bin)).left + 14);
+    expect(find.descendant(of: tile(bin), matching: find.text('Recycle bin')), findsOneWidget);
+    await tapKey(tester, 'keepass-group-$root');
+    final rootEntry = session.rows('entries').singleWhere((e) => e['title'] == 'Root only')['id'];
+    final childEntry = session.rows('entries').singleWhere((e) => e['title'] == 'Child only')['id'];
+    expect(find.byKey(ValueKey('keepass-entry-$rootEntry')), findsOneWidget);
+    expect(find.byKey(ValueKey('keepass-entry-$childEntry')), findsNothing);
+    await tapKey(tester, 'keepass-group-all');
+    expect(find.byKey(ValueKey('keepass-entry-$childEntry')), findsOneWidget);
+    expect({for (final g in session.rows('groups')) g['id']: g['parent']}, originalParents);
+    expect(session.data['dirty'], isFalse);
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}));
+
   testWidgets(
     'group actions rename, confirm recycling and autosave nested records on desktop and phone',
     (tester) async {
@@ -978,6 +1048,7 @@ void main() {
     await settle(tester);
     final row = find.byKey(ValueKey('keepass-source-${a!.source.id}'));
     Future<void> menu() async {
+      if (row.evaluate().isEmpty) await tapKey(tester, 'keepass-unlock-others');
       await tester.tap(row, buttons: kSecondaryMouseButton, kind: ui.PointerDeviceKind.mouse);
       await settle(tester);
     }
@@ -1005,6 +1076,7 @@ void main() {
     expect(manager.sessions.containsKey(a.source.id), isFalse);
     expect(manager.current(b), isTrue);
     expect(manager.selected, b.source.id);
+    expect(row, findsNothing);
     await menu();
     await tapKey(tester, 'keepass-source-remove');
     await tapKey(tester, 'confirm-cancel');
@@ -1037,7 +1109,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Test entry'));
     await settle(tester);
-    expect(tester.getSize(find.byKey(const ValueKey('keepass-detail-Password'))).height, lessThanOrEqualTo(68));
+    expect(tester.getSize(find.byKey(const ValueKey('keepass-detail-Password'))).height, lessThanOrEqualTo(54));
     await tapKey(tester, 'keepass-edit-entry');
     await waitFor(tester, find.byKey(const ValueKey('keepass-add-field')));
     await tapKey(tester, 'keepass-add-field');
@@ -1054,6 +1126,49 @@ void main() {
     expect(value, findsNothing);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('opened WebDAV database has visible device unlock and FIDO2 actions beside settings', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend);
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final manager = container.read(passwordManagerProvider);
+    final local = (await tester.runAsync(
+      () => manager.open(KdbxSource.local(fixturePath), password: SecretText('fixture-password')),
+    ))!;
+    const config = PasswordVaultConnection(
+      id: 'dav-unlock-menu',
+      name: 'WebDAV database',
+      url: 'https://dav.example/Passwords.kdbx',
+    );
+    container.read(routerProvider).go(AppRoutes.passwords);
+    await settle(tester);
+    final settings = container.read(vaultSettingsProvider).value!;
+    await container.read(settingsServiceProvider).updateVault(settings.copyWith(passwordVaults: [config]));
+    final remote = KdbxSource.dav(config);
+    // Reuse only a synthetic fixture worker: this verifies remote-source UI,
+    // never contacts WebDAV or invokes a real authenticator.
+    manager.sessions.remove(local.source.id);
+    manager.sessions[remote.id] = PasswordVaultSession(remote, local.client, local.data, '"fixture"');
+    manager.selected = remote.id;
+    manager.notify();
+    container.read(routerProvider).go(AppRoutes.passwords);
+    await settle(tester);
+    final menu = find.byKey(ValueKey('keepass-source-menu-${remote.id}'));
+    final gear = find.byKey(ValueKey('keepass-source-settings-${remote.id}'));
+    expect(menu, findsOneWidget);
+    expect(gear, findsOneWidget);
+    expect(tester.getRect(menu).right, lessThan(tester.getRect(gear).left));
+    await tester.tap(menu);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('keepass-source-hello')), findsOneWidget);
+    expect(find.byKey(const ValueKey('keepass-source-security_key')), findsOneWidget);
+    expect(find.byKey(const ValueKey('keepass-source-settings')), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS}));
 
   testWidgets('entry context opens the clicked card, moves with autosave and deletes only after confirmation', (
     tester,
@@ -1221,7 +1336,7 @@ void main() {
     expect(find.text('Visible note\nSecond line'), findsOneWidget);
     expect(find.text('still-hidden-password'), findsNothing);
     final block = find.byKey(const ValueKey('keepass-detail-Password'));
-    expect(tester.getSize(block).height, lessThanOrEqualTo(68));
+    expect(tester.getSize(block).height, lessThanOrEqualTo(54));
     for (final scale in [1.0, 1.3]) {
       final service = container.read(settingsServiceProvider);
       await service.updateLocal(service.currentLocal.copyWith(uiFontScale: scale));
@@ -1232,7 +1347,8 @@ void main() {
         final add = tester.getRect(find.byKey(const ValueKey('keepass-add-database')));
         expect(header.contains(add.topLeft), isTrue);
         expect(header.contains(add.bottomRight), isTrue);
-        for (final source in [session.source, remote]) {
+        expect(find.byKey(ValueKey('keepass-source-${remote.id}')), findsNothing);
+        for (final source in [session.source]) {
           final row = tester.getRect(find.byKey(ValueKey('keepass-source-${source.id}')));
           final control = tester.getRect(
             find.byKey(ValueKey('keepass-source-${source.remote ? 'settings' : 'menu'}-${source.id}')),
@@ -1244,11 +1360,20 @@ void main() {
           expect(row.contains(control.bottomRight), isTrue);
           expect(title.right + 6, lessThanOrEqualTo(control.left));
         }
+        await tapKey(tester, 'keepass-unlock-others');
+        final remoteRow = tester.getRect(find.byKey(ValueKey('keepass-source-${remote.id}')));
+        final remoteGear = tester.getRect(find.byKey(ValueKey('keepass-source-settings-${remote.id}')));
+        final remoteMenu = tester.getRect(find.byKey(ValueKey('keepass-source-menu-${remote.id}')));
+        expect(remoteRow.contains(remoteGear.topLeft), isTrue);
+        expect(remoteRow.contains(remoteGear.bottomRight), isTrue);
+        expect(remoteMenu.right, lessThan(remoteGear.left));
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await settle(tester);
         final field = tester.getRect(block);
         final copy = tester.getRect(find.byKey(const ValueKey('keepass-detail-copy-Password')));
         expect(field.contains(copy.topLeft), isTrue);
         expect(field.contains(copy.bottomRight), isTrue);
-        expect(field.height, lessThanOrEqualTo(78));
+        expect(field.height, lessThanOrEqualTo(66));
         expect(tester.takeException(), isNull);
       }
     }
@@ -1339,6 +1464,8 @@ void main() {
     await settle(tester);
     final manager = container.read(passwordManagerProvider);
     final source = KdbxSource.dav(connection);
+    expect(find.byKey(ValueKey('keepass-source-${source.id}')), findsNothing);
+    await tapKey(tester, 'keepass-unlock-others');
     await tester.tap(
       find.byKey(ValueKey('keepass-source-${source.id}')),
       buttons: kSecondaryMouseButton,
@@ -1351,4 +1478,74 @@ void main() {
     expect(manager.sources, isEmpty);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets(
+    'only unlocked databases are listed and the small lock picker restores a locked database',
+    (tester) async {
+      final backend = testBackend();
+      addTearDown(backend.dispose);
+      await backend.debugSignInDemoAndUnlock();
+      await pumpApp(tester, backend, size: AppPlatform.isMobile ? const Size(390, 844) : const Size(1440, 900));
+      final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+      final manager = container.read(passwordManagerProvider);
+      final pathB = '${temp.path}/Other.kdbx';
+      File(fixturePath).copySync(pathB);
+      final a = (await tester.runAsync(
+        () => manager.open(KdbxSource.local(fixturePath), password: SecretText('fixture-password')),
+      ))!;
+      final b = (await tester.runAsync(
+        () => manager.open(KdbxSource.local(pathB), password: SecretText('fixture-password')),
+      ))!;
+      container.read(routerProvider).go(AppRoutes.passwords);
+      await settle(tester);
+      expect(find.byKey(const ValueKey('keepass-unlock-others')), findsNothing);
+      manager.lock(a.source);
+      await settle(tester);
+      final rowA = find.byKey(ValueKey('keepass-source-${a.source.id}'));
+      expect(rowA, findsNothing);
+      final trigger = find.byKey(const ValueKey('keepass-unlock-others'));
+      expect(tester.getSize(trigger).height, lessThanOrEqualTo(AppPlatform.isMobile ? 48 : 32));
+      await tester.tap(trigger);
+      await settle(tester);
+      expect(rowA, findsOneWidget);
+      expect(
+        find.descendant(of: find.byKey(const ValueKey('keepass-locked-sources')), matching: find.text('Other.kdbx')),
+        findsNothing,
+      );
+      expect(manager.selected, b.source.id);
+      await tester.tap(rowA);
+      await settle(tester);
+      expect(find.byKey(const ValueKey('keepass-locked-sources')), findsNothing);
+      await enterKey(tester, 'keepass-password', 'fixture-password');
+      await tapKey(tester, 'keepass-submit');
+      for (var i = 0; i < 400 && !manager.sessions.containsKey(a.source.id); i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 25)));
+        await tester.pump(const Duration(milliseconds: 25));
+      }
+      await settle(tester);
+      expect(manager.sessions.containsKey(a.source.id), isTrue);
+      expect(manager.selected, a.source.id);
+      expect(manager.current(b), isTrue);
+      expect(trigger, findsNothing);
+      for (final session in manager.sessions.values.toList()) {
+        manager.lock(session.source);
+      }
+      await settle(tester);
+      expect(rowA, findsNothing);
+      await tapKey(tester, 'keepass-unlock-others');
+      expect(rowA, findsOneWidget);
+      await backend.vault.lock();
+      await settle(tester);
+      expect(rowA, findsNothing);
+      expect(find.text('Other.kdbx'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.windows,
+      TargetPlatform.macOS,
+      TargetPlatform.linux,
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
 }

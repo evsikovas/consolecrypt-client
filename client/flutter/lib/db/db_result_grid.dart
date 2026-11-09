@@ -9,6 +9,7 @@ import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_result_controller.dart';
 import 'package:consolecrypt/db/db_result_edits.dart';
+import 'package:consolecrypt/db/db_result_scrollbars.dart';
 import 'package:consolecrypt/db/db_value_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -1057,119 +1058,124 @@ class _DbResultGridState extends State<DbResultGrid> {
               _toolbar(records, bounds.maxWidth),
               Container(height: 1, color: tokens.surfaces.separator),
               Expanded(
-                child: records
-                    ? ListView.builder(
-                        key: const ValueKey('db-result-records'),
-                        controller: _vertical,
-                        padding: const EdgeInsets.all(GlassSpacing.s8),
-                        itemCount: _count,
-                        itemBuilder: (context, index) => _record(_row(index), columns),
-                      )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(
-                            width: pinnedTotal,
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: numberWidth,
-                                      height: _headerHeight,
-                                      decoration: BoxDecoration(
-                                        color: tokens.surfaces.fillField,
-                                        border: Border(right: _line, bottom: _line),
-                                      ),
-                                    ),
-                                    for (final column in pinned) _header(column, pinWidth(column)),
-                                  ],
-                                ),
-                                Expanded(
-                                  child: _PinnedRows(
-                                    controller: _vertical,
-                                    rowCount: _count,
-                                    extent: _rowHeight,
-                                    builder: (index) {
-                                      final row = _row(index);
-                                      return ColoredBox(
-                                        color: rowColor(row, index),
-                                        child: Row(
-                                          children: [
-                                            _number(row, numberWidth),
-                                            for (final column in pinned) _cell(row, column, width: pinWidth(column)),
-                                          ],
+                child: DbResultScrollbars(
+                  vertical: _vertical,
+                  horizontal: _horizontal,
+                  records: records,
+                  child: records
+                      ? ListView.builder(
+                          key: const ValueKey('db-result-records'),
+                          controller: _vertical,
+                          padding: const EdgeInsets.all(GlassSpacing.s8),
+                          itemCount: _count,
+                          itemBuilder: (context, index) => _record(_row(index), columns),
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              width: pinnedTotal,
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: numberWidth,
+                                        height: _headerHeight,
+                                        decoration: BoxDecoration(
+                                          color: tokens.surfaces.fillField,
+                                          border: Border(right: _line, bottom: _line),
                                         ),
-                                      );
-                                    },
+                                      ),
+                                      for (final column in pinned) _header(column, pinWidth(column)),
+                                    ],
                                   ),
-                                ),
-                              ],
+                                  Expanded(
+                                    child: _PinnedRows(
+                                      controller: _vertical,
+                                      rowCount: _count,
+                                      extent: _rowHeight,
+                                      builder: (index) {
+                                        final row = _row(index);
+                                        return ColoredBox(
+                                          color: rowColor(row, index),
+                                          child: Row(
+                                            children: [
+                                              _number(row, numberWidth),
+                                              for (final column in pinned) _cell(row, column, width: pinWidth(column)),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              key: const ValueKey('db-result-horizontal'),
-                              controller: _horizontal,
-                              scrollDirection: Axis.horizontal,
-                              child: SizedBox(
-                                width: (total < available ? available : total).toDouble(),
-                                child: Column(
-                                  children: [
-                                    SizedBox(
-                                      height: _headerHeight,
-                                      child: Stack(
-                                        children: [
-                                          Positioned.fill(
-                                            child: DecoratedBox(
-                                              decoration: BoxDecoration(
-                                                color: tokens.surfaces.fillField,
-                                                border: Border(bottom: _line),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                key: const ValueKey('db-result-horizontal'),
+                                controller: _horizontal,
+                                scrollDirection: Axis.horizontal,
+                                child: SizedBox(
+                                  width: (total < available ? available : total).toDouble(),
+                                  child: Column(
+                                    children: [
+                                      SizedBox(
+                                        height: _headerHeight,
+                                        child: Stack(
+                                          children: [
+                                            Positioned.fill(
+                                              child: DecoratedBox(
+                                                decoration: BoxDecoration(
+                                                  color: tokens.surfaces.fillField,
+                                                  border: Border(bottom: _line),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          for (final column in visible)
-                                            Positioned(
-                                              left: offsets[column],
-                                              top: 0,
-                                              width: width(column),
-                                              child: _header(column, width(column)),
-                                            ),
-                                        ],
+                                            for (final column in visible)
+                                              Positioned(
+                                                left: offsets[column],
+                                                top: 0,
+                                                width: width(column),
+                                                child: _header(column, width(column)),
+                                              ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    Expanded(
-                                      child: ListView.builder(
-                                        key: const ValueKey('db-result-grid'),
-                                        controller: _vertical,
-                                        itemExtent: _rowHeight,
-                                        itemCount: _count,
-                                        itemBuilder: (context, index) {
-                                          final row = _row(index);
-                                          return ColoredBox(
-                                            color: rowColor(row, index),
-                                            child: Stack(
-                                              children: [
-                                                for (final column in visible)
-                                                  Positioned(
-                                                    left: offsets[column],
-                                                    width: width(column),
-                                                    top: 0,
-                                                    child: _cell(row, column),
-                                                  ),
-                                              ],
-                                            ),
-                                          );
-                                        },
+                                      Expanded(
+                                        child: ListView.builder(
+                                          key: const ValueKey('db-result-grid'),
+                                          controller: _vertical,
+                                          itemExtent: _rowHeight,
+                                          itemCount: _count,
+                                          itemBuilder: (context, index) {
+                                            final row = _row(index);
+                                            return ColoredBox(
+                                              color: rowColor(row, index),
+                                              child: Stack(
+                                                children: [
+                                                  for (final column in visible)
+                                                    Positioned(
+                                                      left: offsets[column],
+                                                      width: width(column),
+                                                      top: 0,
+                                                      child: _cell(row, column),
+                                                    ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                ),
               ),
               if (widget.result.hasMore && widget.onMore != null)
                 Align(

@@ -52,7 +52,11 @@ def verify(root):
     require(root, 'client/flutter/android/app/src/main/kotlin/io/consolecrypt/consolecrypt/MainActivity.kt',
             ['File(noBackupFilesDir, "consolecrypt")', '"install" ->'], ['updates_disabled', '"consolecrypt-dev"'])
     require(root, 'client/flutter/android/app/src/main/AndroidManifest.xml',
-            ['android:label="ConsoleCrypt"', 'android.permission.REQUEST_INSTALL_PACKAGES', '${applicationId}.updates'], ['ConsoleCrypt Dev'])
+            ['android:label="ConsoleCrypt"'], ['ConsoleCrypt Dev', 'android.permission.REQUEST_INSTALL_PACKAGES', '${applicationId}.updates'])
+    require(root, 'client/flutter/android/app/src/direct/AndroidManifest.xml',
+            ['android.permission.REQUEST_INSTALL_PACKAGES', '${applicationId}.updates'], [])
+    require(root, 'client/flutter/android/app/src/rustore/AndroidManifest.xml',
+            ['android.permission.REQUEST_INSTALL_PACKAGES', 'tools:node="remove"'], [])
     require(root, 'client/flutter/windows/CMakeLists.txt', ['set(BINARY_NAME "ConsoleCrypt")'], ['ConsoleCryptDev'])
     require(root, 'client/packaging/windows/ConsoleCrypt.iss',
             ['AppId={{07A40F0D-CB43-48CB-B1E1-EE0F23785475}', 'DefaultDirName={localappdata}\\Programs\\ConsoleCrypt'], ['ConsoleCryptDev'])

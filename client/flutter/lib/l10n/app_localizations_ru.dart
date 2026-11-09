@@ -14205,6 +14205,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get keepassUnlock => 'Разблокировать базу';
 
   @override
+  String get keepassUnlockOthers => 'Разблокировать другие базы';
+
+  @override
+  String get updateRuStoreHelp =>
+      'Эта версия обновляется через RuStore. Проверить и установить обновление можно в магазине приложений.';
+
+  @override
+  String get updateOpenRuStore => 'Открыть RuStore';
+
+  @override
+  String get terminalOpenSftp => 'Открыть SFTP';
+
+  @override
   String get keepassDatabases => 'Базы паролей';
 
   @override
@@ -14251,7 +14264,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get keepassExport => 'Сохранить локальную копию';
 
   @override
-  String get keepassAllGroups => 'Все группы';
+  String get keepassAllGroups => 'Все записи';
 
   @override
   String get keepassPaletteHelp => 'Найдите запись, затем выберите поле для копирования.';
@@ -14426,4 +14439,31 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get keepassPurgeEntryHelp =>
       'Запись будет окончательно удалена из базы KDBX. Отменить это действие в базе нельзя. Изменение сохранится автоматически.';
+
+  @override
+  String get terminalMinimalMode => 'Минимализм';
+
+  @override
+  String get terminalMinimalExit => 'Выйти из минимализма';
+
+  @override
+  String get terminalMinimalOptions => 'Расположение вкладок и инструменты';
+
+  @override
+  String get terminalMinimalTabsTop => 'Вкладки сверху';
+
+  @override
+  String get terminalMinimalTabsLeft => 'Вкладки слева';
+
+  @override
+  String get keepassEntryViews => 'Записи';
+
+  @override
+  String get keepassUngroupedHelp => 'Записи в корне базы, без группы.';
+
+  @override
+  String get keepassRecycleBin => 'Корзина';
+
+  @override
+  String get sftpDefaultEditorTitle => 'Редактор по умолчанию для SFTP';
 }

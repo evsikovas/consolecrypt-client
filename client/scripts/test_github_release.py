@@ -116,6 +116,29 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             release.prepare(self.artifacts, self.output, '0.4.0')
 
+    def test_one_point_one_requires_store_apk_and_bundle_and_excludes_private_files(self):
+        for folder in self.artifacts.iterdir():
+            receipt = folder / 'ConsoleCrypt.version'
+            receipt.write_text(receipt.read_text().replace('0.4.0+', '1.1.0+'))
+            for package in folder.glob('ConsoleCrypt-0.4.0+*'):
+                package.rename(package.with_name(package.name.replace('0.4.0+', '1.1.0+')))
+        ios = self.artifacts / 'ios-preview'
+        ios.mkdir()
+        (ios / 'ConsoleCrypt.version').write_text('1.1.0+14015')
+        (ios / 'ConsoleCrypt-1.1.0+14015-ios-simulator-universal.zip').write_bytes(b'simulator')
+        with self.assertRaises(ValueError):
+            release.prepare(self.artifacts, self.output, '1.1.0')
+        store = self.artifacts / 'android-rustore'
+        store.mkdir()
+        (store / 'ConsoleCrypt-rustore.version').write_text('1.1.0+14014')
+        (store / 'private.jks').write_bytes(b'must never publish')
+        for extension in ('apk', 'aab'):
+            (store / f'ConsoleCrypt-1.1.0+14014-rustore-arm64.{extension}').write_bytes(extension.encode())
+        names = release.prepare(self.artifacts, self.output, '1.1.0')
+        self.assertEqual(len(names), 9)
+        self.assertIn('ConsoleCrypt-1.1.0+14014-rustore-arm64.aab', names)
+        self.assertNotIn('private.jks', {p.name for p in self.output.iterdir()})
+
     def test_symlink_cannot_publish_external_file(self):
         apk = self.artifacts / 'android/ConsoleCrypt-android-arm64.apk'
         apk.unlink()

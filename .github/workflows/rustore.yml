@@ -1,0 +1,101 @@
+name: Android RuStore packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'Unique versionCode above the source floor and all previous Android uploads'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      build_number:
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consolecrypt-rustore
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'evsikovas/consolecrypt-client' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 180
+    env:
+      ANDROID_HOME: ${{ vars.ANDROID_HOME }}
+      JAVA_HOME: ${{ vars.JAVA_HOME }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          clean: false
+          persist-credentials: false
+      - name: Load the native build toolchain
+        env:
+          REQUESTED_BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          source client/scripts/ci-macos-tools.sh
+          python3 client/scripts/verify-github-tag.py --allow-main-candidate
+          if [[ -n "$REQUESTED_BUILD_NUMBER" ]]; then
+            python3 - <<'PY'
+          import os
+          value=os.environ['REQUESTED_BUILD_NUMBER']
+          if not value.isascii() or not value.isdecimal() or int(value)<1:
+              raise SystemExit('Invalid Android build number')
+          with open(os.environ['GITHUB_ENV'],'a') as output:
+              output.write(f'CC_BUILD_NUMBER={value}\n')
+          PY
+          else
+            python3 client/scripts/github-build-number.py android
+          fi
+      - name: Prepare private release signing
+        env:
+          ANDROID_APP_KEYSTORE_BASE64: ${{ secrets.ANDROID_APP_KEYSTORE_BASE64 }}
+          ANDROID_APP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_APP_KEYSTORE_PASSWORD }}
+          ANDROID_APP_KEY_ALIAS: ${{ secrets.ANDROID_APP_KEY_ALIAS }}
+          ANDROID_APP_KEY_PASSWORD: ${{ secrets.ANDROID_APP_KEY_PASSWORD }}
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: python3 client/scripts/prepare-android-store-signing.py
+      - name: Verify store-only update behavior
+        run: |
+          cd client/flutter
+          flutter pub get
+          flutter test --no-pub --flavor rustore test/widget/rustore_updates_test.dart
+      - name: Build RuStore AAB and APK from source
+        id: package
+        run: bash client/scripts/build-android-rustore.sh
+      - name: Verify store artifacts and signatures
+        run: |
+          curl --fail --location --retry 3 https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar --output "$RUNNER_TEMP/cc-bundletool.jar"
+          printf '%s  %s\n' a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29 "$RUNNER_TEMP/cc-bundletool.jar" | shasum -a 256 --check
+          version="$(python3 -c 'import pathlib,re; print(re.search(r"^version:\s*(\S+)", pathlib.Path("client/flutter/pubspec.yaml").read_text(), re.M)[1])')"
+          folder="dist/android/rustore-$version"
+          python3 client/scripts/verify-rustore.py --apk "$folder/ConsoleCrypt-$version-rustore-arm64.apk" --aab "$folder/ConsoleCrypt-$version-rustore-arm64.aab" --sdk "$ANDROID_HOME" --jdk "$JAVA_HOME" --bundletool "$RUNNER_TEMP/cc-bundletool.jar" --app-cert "$CC_ANDROID_APP_CERT" --upload-cert "$CC_ANDROID_UPLOAD_CERT" --build "$CC_BUILD_NUMBER"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-rustore
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+          path: ${{ steps.package.outputs.path }}/
+      - name: Remove this job's private signing files
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os,pathlib,shutil
+          value=os.environ.get('CC_ANDROID_PRIVATE_DIRECTORY')
+          if value:
+              target=pathlib.Path(value).resolve()
+              root=pathlib.Path(os.environ['RUNNER_TEMP']).resolve()
+              if target.parent != root or not target.name.startswith('cc-android-signing-'):
+                  raise SystemExit('Refusing unsafe signing cleanup path')
+              shutil.rmtree(target)
+          PY

@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -207,6 +208,9 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(terminalMinimalModeProvider, (_, _) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _activate());
+    });
     final tab = widget.tab;
     final fontSize = ref.watch(localSettingsProvider.select((s) => s.value?.terminalFontSize ?? 13));
     final font = ref.watch(terminalFontProvider);

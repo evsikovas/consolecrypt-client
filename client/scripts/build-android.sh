@@ -20,8 +20,8 @@ signer_home="${ANDROID_USER_HOME:-$HOME/.android}"
 cd -- "$client_dir/flutter"
 build_version="$(python3 "$client_dir/scripts/bump-version.py" --root "$repo_dir")"
 echo "==> version $build_version"
-flutter build apk --release --target-platform android-arm64 --dart-define=CC_MOCK=false
-apk='build/app/outputs/flutter-apk/app-release.apk'
+flutter build apk --release --flavor direct --target-platform android-arm64 --dart-define=CC_MOCK=false
+apk='build/app/outputs/flutter-apk/app-direct-release.apk'
 "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
 "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"
 # Check every native library, including Flutter, SQLCipher/OpenSSL in the

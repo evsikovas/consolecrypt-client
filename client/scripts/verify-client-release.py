@@ -38,12 +38,23 @@ PACKAGES = {
     "linux-x64.rpm": ("linux", "rpm"),
     "android-arm64.apk": ("android", "apk"),
     "ios-simulator-universal.zip": ("ios", "simulator-zip"),
+    "rustore-arm64.apk": ("android", "rustore-apk"),
+    "rustore-arm64.aab": ("android", "rustore-aab"),
 }
 FEEDS = {"stable.json", "legacy-stable.json", "linux-stable.json"}
 
 
 class ReleaseError(ValueError):
     pass
+
+
+def expected_packages(version):
+    expected = set(PACKAGES)
+    if int(version.split('.')[0]) < 1:
+        expected.remove('ios-simulator-universal.zip')
+    if tuple(map(int, version.split('.'))) < (1, 1, 0):
+        expected -= {'rustore-arm64.apk', 'rustore-arm64.aab'}
+    return expected
 
 
 def parse_checksums(text: str, version: str) -> dict[str, str]:
@@ -103,9 +114,7 @@ def validate(release: dict, checksum_text: str) -> dict:
             "name": name, "size": asset["size"], "sha256": digest,
             "url": f"https://github.com/{REPOSITORY}/releases/download/{tag}/" + quote(name, safe="-._"),
         })
-    expected = set(PACKAGES)
-    if int(version.split('.')[0]) < 1:
-        expected.remove('ios-simulator-universal.zip')
+    expected = expected_packages(version)
     if seen != expected or set(checksums) != {item["name"] for item in installers}:
         raise ReleaseError("The installer or checksum set is incomplete or has extra files")
     installers.sort(key=lambda item: list(PACKAGES).index(item["suffix"]))

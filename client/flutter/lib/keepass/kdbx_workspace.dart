@@ -160,20 +160,55 @@ class KdbxWorkspace extends StatelessWidget {
     ];
   }
 
-  Future<void> _sourceContext(BuildContext context, KdbxSource source, Offset position) async {
+  Future<void> _sourceContext(
+    BuildContext context,
+    KdbxSource source,
+    Offset position, {
+    ValueChanged<String>? onAction,
+  }) async {
     final action = await showGlassMenu<String>(
       context: context,
       anchor: Rect.fromLTWH(position.dx, position.dy, 0, 0),
       entries: _sourceEntries(context, source),
     );
-    if (context.mounted && action != null) onSourceAction(source, action);
+    if (context.mounted && manager.valid && action != null) {
+      if (onAction != null) {
+        onAction(action);
+      } else {
+        onSourceAction(source, action);
+      }
+    }
   }
 
-  Widget _sourceTile(BuildContext context, KdbxSource source) => GestureDetector(
-    onSecondaryTapDown: busy ? null : (details) => unawaited(_sourceContext(context, source, details.globalPosition)),
+  Widget _sourceMenu(BuildContext context, KdbxSource source, {ValueChanged<String>? onAction}) =>
+      GlassMenuButton<String>(
+        entries: _sourceEntries(context, source),
+        onSelected: (action) {
+          if (!manager.valid) return;
+          if (onAction != null) {
+            onAction(action);
+          } else {
+            onSourceAction(source, action);
+          }
+        },
+        builder: (context, open) => GlassIconButton(
+          key: ValueKey('keepass-source-menu-${source.id}'),
+          icon: Icons.more_horiz_rounded,
+          size: 28,
+          iconSize: 18,
+          style: GlassIconButtonStyle.plain,
+          tooltip: context.l10n.keepassMore,
+          onPressed: busy ? null : open,
+        ),
+      );
+
+  Widget _sourceTile(BuildContext context, KdbxSource source, {ValueChanged<String>? onAction}) => GestureDetector(
+    onSecondaryTapDown: busy
+        ? null
+        : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
     onLongPressStart: busy || !AppPlatform.isMobile
         ? null
-        : (details) => unawaited(_sourceContext(context, source, details.globalPosition)),
+        : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
     child: ListTile(
       key: ValueKey('keepass-source-${source.id}'),
       dense: true,
@@ -198,30 +233,91 @@ class KdbxWorkspace extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: source.remote ? const Text('WebDAV') : null, // l10n-ignore: protocol.
-      onTap: busy ? null : () => onSource(source),
+      onTap: busy ? null : () => onAction != null ? onAction('open') : onSource(source),
       trailing: source.remote
-          ? GlassIconButton(
-              key: ValueKey('keepass-source-settings-${source.id}'),
-              icon: Icons.settings_outlined,
-              size: 28,
-              iconSize: 18,
-              style: GlassIconButtonStyle.plain,
-              tooltip: context.l10n.commonEdit,
-              onPressed: busy ? null : () => onEditSource(source),
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _sourceMenu(context, source, onAction: onAction),
+                const SizedBox(width: 4),
+                GlassIconButton(
+                  key: ValueKey('keepass-source-settings-${source.id}'),
+                  icon: Icons.settings_outlined,
+                  size: 28,
+                  iconSize: 18,
+                  style: GlassIconButtonStyle.plain,
+                  tooltip: context.l10n.commonEdit,
+                  onPressed: busy ? null : () => onAction != null ? onAction('settings') : onEditSource(source),
+                ),
+              ],
             )
-          : GlassMenuButton<String>(
-              entries: _sourceEntries(context, source),
-              onSelected: (action) => onSourceAction(source, action),
-              builder: (context, open) => GlassIconButton(
-                key: ValueKey('keepass-source-menu-${source.id}'),
-                icon: Icons.more_horiz_rounded,
-                size: 28,
-                iconSize: 18,
-                style: GlassIconButtonStyle.plain,
-                tooltip: context.l10n.keepassMore,
-                onPressed: busy ? null : open,
-              ),
-            ),
+          : _sourceMenu(context, source, onAction: onAction),
+    ),
+  );
+
+  Widget _unlockOthers(BuildContext context) => Builder(
+    builder: (buttonContext) => GlassIconButton(
+      key: const ValueKey('keepass-unlock-others'),
+      icon: Icons.lock_open_rounded,
+      size: 28,
+      iconSize: 18,
+      style: GlassIconButtonStyle.plain,
+      tooltip: context.l10n.keepassUnlockOthers,
+      onPressed: busy
+          ? null
+          : () async {
+              final result = await showGlassPopover<(KdbxSource, String)>(
+                context: buttonContext,
+                anchor: glassAnchorRect(buttonContext),
+                width: 340,
+                builder: (pickerContext) => ValueListenableBuilder<bool>(
+                  valueListenable: manager.validity,
+                  builder: (context, valid, _) => !valid
+                      ? const SizedBox.shrink()
+                      : StreamBuilder<int>(
+                          stream: manager.changes,
+                          builder: (context, _) => Column(
+                            key: const ValueKey('keepass-locked-sources'),
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                                child: Text(
+                                  context.l10n.keepassUnlockOthers,
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                ),
+                              ),
+                              Flexible(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(maxHeight: 300),
+                                  child: ListView(
+                                    shrinkWrap: true,
+                                    children: [
+                                      for (final source in manager.sources.where(
+                                        (s) => !manager.sessions.containsKey(s.id),
+                                      ))
+                                        _sourceTile(
+                                          context,
+                                          source,
+                                          onAction: (action) => Navigator.of(pickerContext).pop((source, action)),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                ),
+              );
+              if (context.mounted &&
+                  manager.valid &&
+                  result != null &&
+                  manager.sources.any((s) => s.id == result.$1.id)) {
+                onSourceAction(result.$1, result.$2);
+              }
+            },
     ),
   );
 
@@ -229,22 +325,25 @@ class KdbxWorkspace extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     mainAxisSize: MainAxisSize.min,
     children: [
-      if (!welcome)
-        Padding(
-          key: const ValueKey('keepass-databases-header'),
-          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-          child: Row(
-            children: [
-              Expanded(child: Text(context.l10n.keepassDatabases, style: Theme.of(context).textTheme.titleSmall)),
-              _addMenu(context),
-            ],
-          ),
+      Padding(
+        key: const ValueKey('keepass-databases-header'),
+        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+        child: Row(
+          children: [
+            Expanded(child: Text(context.l10n.keepassDatabases, style: Theme.of(context).textTheme.titleSmall)),
+            if (manager.sources.any((s) => !manager.sessions.containsKey(s.id))) _unlockOthers(context),
+            if (!welcome) _addMenu(context),
+          ],
         ),
+      ),
       Flexible(
         child: ListView(
           shrinkWrap: welcome,
           padding: const EdgeInsets.symmetric(vertical: 4),
-          children: [for (final source in manager.sources) _sourceTile(context, source)],
+          children: [
+            for (final source in manager.sources.where((s) => manager.sessions.containsKey(s.id)))
+              _sourceTile(context, source),
+          ],
         ),
       ),
     ],
@@ -383,7 +482,6 @@ class KdbxWorkspace extends StatelessWidget {
                 if (manager.sources.isNotEmpty) ...[
                   const SizedBox(height: 28),
                   const Divider(),
-                  Text(l.keepassDatabases, style: Theme.of(context).textTheme.titleSmall),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 240),
                     child: _sources(context, welcome: true),
@@ -484,6 +582,7 @@ class KdbxWorkspace extends StatelessWidget {
   Widget _folder(BuildContext context, {required String id, required String label, int depth = 0, bool all = false}) =>
       DragTarget<KdbxEntryDrag>(
         onWillAcceptWithDetails: (details) =>
+            !all &&
             !busy &&
             details.data.source == session!.source.id &&
             session!.rows('entries').any((e) => e['id'] == details.data.entry && e['group'] != id),
@@ -510,7 +609,9 @@ class KdbxWorkspace extends StatelessWidget {
                 selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
                 leading: Icon(
                   all
-                      ? Icons.folder_copy_outlined
+                      ? Icons.view_list_outlined
+                      : id == session!.data['root']
+                      ? Icons.inbox_outlined
                       : id == session!.data['recycleBin']
                       ? Icons.delete_outline_rounded
                       : Icons.folder_outlined,
@@ -530,11 +631,15 @@ class KdbxWorkspace extends StatelessWidget {
   Widget _sidebar(BuildContext context) {
     final l = context.l10n;
     final groups = session!.rows('groups');
-    int depth(KdbxData row) {
+    final root = session!.data['root']! as String;
+    final bin = session!.data['recycleBin'];
+    final folders = groups.where((row) => row['id'] != root && row['id'] != bin && row['recycled'] != true);
+    final trash = bin == root ? null : groups.where((row) => row['id'] == bin).firstOrNull;
+    int depth(KdbxData row, Object? stop) {
       var n = 0;
       var parent = row['parent'];
       final seen = <Object?>{};
-      while (parent != null && seen.add(parent)) {
+      while (parent != null && parent != stop && seen.add(parent)) {
         final ancestor = groups.where((g) => g['id'] == parent).firstOrNull;
         if (ancestor == null) break;
         n++;
@@ -546,22 +651,40 @@ class KdbxWorkspace extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(l.keepassGroups, style: Theme.of(context).textTheme.titleSmall),
-        ),
         Expanded(
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              _folder(context, id: session!.data['root']! as String, label: l.keepassAllGroups, all: true),
-              for (final row in groups)
-                _folder(
-                  context,
-                  id: row['id']! as String,
-                  label: row['id'] == session!.data['root'] ? l.keepassUngrouped : row['label']! as String,
-                  depth: depth(row),
-                ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(l.keepassEntryViews, style: Theme.of(context).textTheme.titleSmall),
+              ),
+              _folder(context, id: root, label: l.keepassAllGroups, all: true),
+              Tooltip(
+                message: l.keepassUngroupedHelp,
+                child: _folder(context, id: root, label: l.keepassUngrouped),
+              ),
+              const Divider(key: ValueKey('keepass-folder-tree-divider'), height: 18),
+              Padding(
+                key: const ValueKey('keepass-folder-tree-heading'),
+                padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                child: Text(l.keepassGroups, style: Theme.of(context).textTheme.titleSmall),
+              ),
+              for (final row in folders)
+                _folder(context, id: row['id']! as String, label: row['label']! as String, depth: depth(row, root)),
+              if (trash != null) ...[
+                const Divider(key: ValueKey('keepass-trash-divider'), height: 18),
+                _folder(context, id: bin! as String, label: l.keepassRecycleBin),
+                for (final row in groups.where(
+                  (row) => row['recycled'] == true && row['id'] != bin && row['id'] != root,
+                ))
+                  _folder(
+                    context,
+                    id: row['id']! as String,
+                    label: row['label']! as String,
+                    depth: 1 + depth(row, bin),
+                  ),
+              ],
             ],
           ),
         ),
@@ -690,12 +813,12 @@ class KdbxWorkspace extends StatelessWidget {
     }
     Widget field(String key, String label, {String? value}) => Container(
       key: ValueKey('keepass-detail-$key'),
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-      constraints: const BoxConstraints(minHeight: 60),
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.fromLTRB(10, 4, 6, 4),
+      constraints: BoxConstraints(minHeight: AppPlatform.isMobile ? 52 : 48),
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).dividerColor),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
@@ -704,7 +827,7 @@ class KdbxWorkspace extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: Theme.of(context).textTheme.labelMedium),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 SelectableText(
                   value ?? '••••••••',
                   style: Theme.of(context).textTheme.bodyLarge,
@@ -806,7 +929,7 @@ class KdbxWorkspace extends StatelessWidget {
           Expanded(
             child: GlassMenuButton<String>(
               entries: [
-                for (final source in manager.sources)
+                for (final source in manager.sources.where((s) => manager.sessions.containsKey(s.id)))
                   GlassMenuItem(
                     key: ValueKey('keepass-compact-source-${source.id}'),
                     value: source.id,
@@ -831,27 +954,60 @@ class KdbxWorkspace extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
+          if (manager.sources.any((s) => !manager.sessions.containsKey(s.id))) ...[
+            _unlockOthers(context),
+            const SizedBox(width: 6),
+          ],
           GlassMenuButton<String>(
             entries: [
               GlassMenuItem(
                 value: 'all',
                 label: l.keepassAllGroups,
                 checked: group == null,
-                icon: Icons.folder_copy_outlined,
+                icon: Icons.view_list_outlined,
               ),
-              for (final row in session!.rows('groups'))
+              GlassMenuItem(
+                key: ValueKey('keepass-compact-group-${session!.data['root']}'),
+                value: session!.data['root']! as String,
+                label: l.keepassUngrouped,
+                checked: group == session!.data['root'],
+                icon: Icons.inbox_outlined,
+              ),
+              const GlassMenuDivider(),
+              for (final row
+                  in session!
+                      .rows('groups')
+                      .where((row) => row['id'] != session!.data['root'] && row['recycled'] != true))
                 GlassMenuItem(
                   key: ValueKey('keepass-compact-group-${row['id']}'),
                   value: row['id']! as String,
-                  label: row['id'] == session!.data['root'] ? l.keepassUngrouped : row['name']! as String,
+                  label: row['name']! as String,
                   checked: group == row['id'],
-                  icon: row['id'] == session!.data['recycleBin'] ? Icons.delete_outline_rounded : Icons.folder_outlined,
+                  icon: Icons.folder_outlined,
                 ),
+              if (session!.data['recycleBin'] != session!.data['root'] &&
+                  session!.rows('groups').any((row) => row['id'] == session!.data['recycleBin'])) ...[
+                const GlassMenuDivider(),
+                for (final row in session!.rows('groups').where((row) => row['recycled'] == true))
+                  GlassMenuItem(
+                    key: ValueKey('keepass-compact-group-${row['id']}'),
+                    value: row['id']! as String,
+                    label: row['id'] == session!.data['recycleBin'] ? l.keepassRecycleBin : row['name']! as String,
+                    checked: group == row['id'],
+                    icon: row['id'] == session!.data['recycleBin']
+                        ? Icons.delete_outline_rounded
+                        : Icons.folder_outlined,
+                  ),
+              ],
             ],
             onSelected: (id) => onGroup(id == 'all' ? null : id),
             builder: (context, open) => GlassIconButton(
               key: const ValueKey('keepass-compact-groups'),
-              icon: group == session!.data['recycleBin'] ? Icons.delete_outline_rounded : Icons.folder_outlined,
+              icon: group == session!.data['root']
+                  ? Icons.inbox_outlined
+                  : group == session!.data['recycleBin']
+                  ? Icons.delete_outline_rounded
+                  : Icons.folder_outlined,
               tooltip: l.keepassGroups,
               style: GlassIconButtonStyle.plain,
               onPressed: busy ? null : open,

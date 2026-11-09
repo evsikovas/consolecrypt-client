@@ -20,6 +20,7 @@ import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
@@ -84,8 +85,14 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
       _sidebar.setBesideTabs(visible && column);
     });
     final l10n = context.l10n;
-    final pad = AppPlatform.isMobile ? 6.0 : pagePadding(context);
-    final Widget body;
+    final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
+    final macTitlebar = minimal && AppPlatform.isMacOS && GlassScope.of(context).unifiedTitlebar;
+    final pad = minimal
+        ? 4.0
+        : AppPlatform.isMobile
+        ? 6.0
+        : pagePadding(context);
+    Widget body;
     if (state.tabs.isEmpty) {
       body = Material(
         type: MaterialType.transparency,
@@ -106,6 +113,17 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
           ),
         ),
       );
+      if (minimal) {
+        body = Column(
+          children: [
+            if (macTitlebar)
+              const GlassToolbar(trailing: [_TerminalMinimalButton()])
+            else
+              const Align(alignment: Alignment.centerRight, child: _TerminalMinimalButton()),
+            Expanded(child: body),
+          ],
+        );
+      }
     } else {
       final active = state.active!;
       final card = Expanded(
@@ -117,26 +135,38 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
       body = Material(
         type: MaterialType.transparency,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(pad, GlassSpacing.s8, pad, pad),
+          padding: EdgeInsets.fromLTRB(
+            pad,
+            macTitlebar
+                ? 0
+                : minimal
+                ? 4
+                : GlassSpacing.s8,
+            pad,
+            pad,
+          ),
           child: column
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _TerminalTabs(
-                      state: state,
-                      active: active,
-                      onNewTab: _newTab,
-                      placement: placement,
-                      // The terminal keeps at least 360 px beside the column
-                      // (the shell sizes MediaQuery to the content area).
-                      maxColumnWidth: MediaQuery.sizeOf(context).width - 2 * pad - 360 - GlassTabColumn.handleWidth,
+                    Padding(
+                      padding: EdgeInsets.only(top: macTitlebar ? GlassSizes.toolbarBand : 0),
+                      child: _TerminalTabs(
+                        state: state,
+                        active: active,
+                        onNewTab: _newTab,
+                        placement: placement,
+                        // The terminal keeps at least 360 px beside the column
+                        // (the shell sizes MediaQuery to the content area).
+                        maxColumnWidth: MediaQuery.sizeOf(context).width - 2 * pad - 360 - GlassTabColumn.handleWidth,
+                      ),
                     ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _SessionBar(tab: active),
-                          const SizedBox(height: GlassSpacing.s8),
+                          SizedBox(height: minimal ? 0 : GlassSpacing.s8),
                           _SessionBanners(tab: active),
                           card,
                         ],
@@ -147,8 +177,16 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _TerminalTabs(state: state, active: active, onNewTab: _newTab, placement: placement),
-                    const SizedBox(height: GlassSpacing.s8),
+                    if (macTitlebar)
+                      GlassToolbar(
+                        leadingInset: GlassScope.of(context).trafficLightsLeading,
+                        leadingMaxWidth: 0,
+                        padding: const EdgeInsets.only(right: 40),
+                        center: _TerminalTabs(state: state, active: active, onNewTab: _newTab, placement: placement),
+                      )
+                    else
+                      _TerminalTabs(state: state, active: active, onNewTab: _newTab, placement: placement),
+                    SizedBox(height: minimal ? 4 : GlassSpacing.s8),
                     _SessionBanners(tab: active),
                     card,
                     if (AppPlatform.isMobile) _MobileTerminalKeys(tab: active),
@@ -159,7 +197,16 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
     }
     // Streaming output repaints every frame: all chrome stays static while
     // the terminal is visible (§3 rule 1, §6.6).
-    return GlassBlurSuppressor(budget: GlassScope.of(context).budget, child: body);
+    return GlassBlurSuppressor(
+      budget: GlassScope.of(context).budget,
+      child: minimal
+          ? ColoredBox(
+              key: const ValueKey('terminal-minimal-workspace'),
+              color: _terminalBackground(ref, context),
+              child: body,
+            )
+          : body,
+    );
   }
 }
 
@@ -245,7 +292,7 @@ class _TerminalTabs extends ConsumerWidget {
         ),
       );
     }
-    return GlassTabStrip(
+    final strip = GlassTabStrip(
       activeIndex: activeIndex,
       tabs: tabs,
       onSelect: controller.activate,
@@ -254,6 +301,14 @@ class _TerminalTabs extends ConsumerWidget {
       onAdd: onNewTab,
       onReorder: controller.moveTab,
       trailing: AppPlatform.isMobile ? null : _SessionToolbar(tab: active),
+    );
+    if (AppPlatform.isMobile || active.host == null) return strip;
+    return Row(
+      children: [
+        _TerminalSftpButton(tab: active),
+        const SizedBox(width: GlassSpacing.s4),
+        Expanded(child: strip),
+      ],
     );
   }
 }
@@ -283,6 +338,24 @@ class _SessionBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(terminalMinimalModeProvider)) {
+      if (AppPlatform.isMacOS && GlassScope.of(context).unifiedTitlebar) {
+        return GlassToolbar(
+          leading: [if (tab.host != null) _TerminalSftpButton(tab: tab)],
+          trailing: [_SessionToolbar(tab: tab)],
+        );
+      }
+      return SizedBox(
+        height: GlassSizes.tabTrack,
+        child: Row(
+          children: [
+            if (tab.host != null) _TerminalSftpButton(tab: tab),
+            const Spacer(),
+            _SessionToolbar(tab: tab),
+          ],
+        ),
+      );
+    }
     final tokens = GlassTokens.of(context);
     final subtitleMode =
         ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabSubtitle)) ?? TerminalTabSubtitle.name;
@@ -293,6 +366,7 @@ class _SessionBar extends ConsumerWidget {
       child: Row(
         children: [
           const SizedBox(width: GlassSpacing.s4),
+          if (tab.host != null) ...[_TerminalSftpButton(tab: tab), const SizedBox(width: GlassSpacing.s4)],
           Expanded(
             child: Text.rich(
               TextSpan(
@@ -320,6 +394,40 @@ class _SessionBar extends ConsumerWidget {
   }
 }
 
+Future<void> _openTerminalSftp(BuildContext context, WidgetRef ref, TerminalTab tab) async {
+  final host = tab.host;
+  if (host == null ||
+      !ref.read(terminalTabsProvider).tabs.contains(tab) ||
+      ref.read(appStageProvider) != AppStage.unlocked) {
+    return;
+  }
+  final profile = ref.read(activeProfileProvider)?.id;
+  await runWithFeedback(context, () async {
+    await ref.read(sftpControllerProvider.notifier).connect(host);
+    if (context.mounted &&
+        profile == ref.read(activeProfileProvider)?.id &&
+        ref.read(appStageProvider) == AppStage.unlocked) {
+      context.go(AppRoutes.sftp);
+    }
+  });
+}
+
+class _TerminalSftpButton extends ConsumerWidget {
+  const _TerminalSftpButton({required this.tab});
+  final TerminalTab tab;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => GlassIconButton(
+    key: const ValueKey('terminal-sftp'),
+    icon: Icons.folder_copy_rounded,
+    tooltip: context.l10n.terminalOpenSftp,
+    style: GlassIconButtonStyle.plain,
+    size: GlassSizes.tab,
+    iconSize: GlassSizes.iconRow,
+    onPressed: () => _openTerminalSftp(context, ref, tab),
+  );
+}
+
 Future<void> _tabMenu(BuildContext context, WidgetRef ref, TerminalTab tab, int index, Offset position) async {
   final l10n = context.l10n;
   final controller = ref.read(terminalTabsProvider.notifier);
@@ -328,6 +436,15 @@ Future<void> _tabMenu(BuildContext context, WidgetRef ref, TerminalTab tab, int 
     context: context,
     anchor: position & const Size(1, 1),
     entries: [
+      if (tab.host != null) ...[
+        GlassMenuItem(
+          key: const ValueKey('terminal-tab-sftp'),
+          value: 'sftp',
+          label: l10n.terminalOpenSftp,
+          icon: Icons.folder_copy_rounded,
+        ),
+        const GlassMenuDivider(),
+      ],
       GlassMenuItem(
         key: const ValueKey('terminal-tab-rename'),
         value: 'rename',
@@ -355,6 +472,8 @@ Future<void> _tabMenu(BuildContext context, WidgetRef ref, TerminalTab tab, int 
   );
   if (!context.mounted || action == null) return;
   switch (action) {
+    case 'sftp':
+      await _openTerminalSftp(context, ref, tab);
     case 'rename':
       final name = await showTextInputDialog(context, title: l10n.terminalTabRenameTitle, initial: tab.displayTitle);
       if (name != null) controller.rename(tab, name);
@@ -380,53 +499,138 @@ class _SessionToolbar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
     return GlassToolbarGroup(
       children: [
-        GlassIconButton(
-          key: const ValueKey('terminal-snippets'),
-          icon: Icons.code_rounded,
-          tooltip: l10n.terminalSnippets,
-          style: GlassIconButtonStyle.plain,
-          size: GlassSizes.tab,
-          iconSize: GlassSizes.iconRow,
-          onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.snippets),
-        ),
-        GlassIconButton(
-          key: const ValueKey('terminal-ask-ai'),
-          icon: Icons.auto_awesome_rounded,
-          tooltip: l10n.terminalAskAi,
-          style: GlassIconButtonStyle.plain,
-          size: GlassSizes.tab,
-          iconSize: GlassSizes.iconRow,
-          onPressed: () {
-            final selection = tab.selectedText;
-            final attachment = ref.read(terminalAttachmentProvider.notifier);
-            if (selection == null) {
-              attachment.clear();
-            } else {
-              attachment.attach(tab, selection);
-            }
-            ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.ai);
-          },
-        ),
-        if (tab.host case final host?)
+        if (minimal) _MinimalTerminalMenu(tab: tab),
+        if (!minimal) ...[
           GlassIconButton(
-            key: const ValueKey('terminal-sftp'),
-            icon: Icons.folder_copy_rounded,
-            tooltip: l10n.navSftp,
+            key: const ValueKey('terminal-snippets'),
+            icon: Icons.code_rounded,
+            tooltip: l10n.terminalSnippets,
             style: GlassIconButtonStyle.plain,
             size: GlassSizes.tab,
             iconSize: GlassSizes.iconRow,
-            onPressed: () async {
-              await ref.read(sftpControllerProvider.notifier).connect(host);
-              if (context.mounted) context.go(AppRoutes.sftp);
+            onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.snippets),
+          ),
+          GlassIconButton(
+            key: const ValueKey('terminal-ask-ai'),
+            icon: Icons.auto_awesome_rounded,
+            tooltip: l10n.terminalAskAi,
+            style: GlassIconButtonStyle.plain,
+            size: GlassSizes.tab,
+            iconSize: GlassSizes.iconRow,
+            onPressed: () {
+              final selection = tab.selectedText;
+              final attachment = ref.read(terminalAttachmentProvider.notifier);
+              if (selection == null) {
+                attachment.clear();
+              } else {
+                attachment.attach(tab, selection);
+              }
+              ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.ai);
             },
           ),
-        if (!AppPlatform.isMobile) _SplitMenu(tab: tab),
+          if (AppPlatform.isMobile && tab.host != null) _TerminalSftpButton(tab: tab),
+        ],
+        if (!AppPlatform.isMobile) ...[_SplitMenu(tab: tab), const _TerminalMinimalButton()],
       ],
     );
   }
 }
+
+class _TerminalMinimalButton extends ConsumerWidget {
+  const _TerminalMinimalButton();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final minimal = ref.watch(terminalMinimalModeProvider);
+    final command = commandFor(AppCommandId.toggleTerminalMinimalMode, ref.watch(appCommandsProvider));
+    final label = minimal ? context.l10n.terminalMinimalExit : context.l10n.terminalMinimalMode;
+    return GlassIconButton(
+      key: const ValueKey('terminal-minimal-toggle'),
+      icon: minimal ? Icons.fullscreen_exit_rounded : Icons.filter_center_focus_rounded,
+      tooltip: command.shortcutLabel.isEmpty
+          ? label
+          : context.l10n.shellActionWithShortcut(label, command.shortcutLabel),
+      style: GlassIconButtonStyle.plain,
+      size: GlassSizes.tab,
+      iconSize: GlassSizes.iconRow,
+      onPressed: () => ref.read(terminalMinimalModeProvider.notifier).toggle(),
+    );
+  }
+}
+
+class _MinimalTerminalMenu extends ConsumerWidget {
+  const _MinimalTerminalMenu({required this.tab});
+  final TerminalTab tab;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final placement = ref.watch(localSettingsProvider).value?.terminalTabPlacement ?? TerminalTabPlacement.top;
+    return GlassMenuButton<String>(
+      key: const ValueKey('terminal-minimal-menu'),
+      entries: [
+        GlassMenuItem(
+          value: 'top',
+          label: l.terminalMinimalTabsTop,
+          icon: placement == TerminalTabPlacement.top ? Icons.check : Icons.tab_rounded,
+        ),
+        GlassMenuItem(
+          value: 'left',
+          label: l.terminalMinimalTabsLeft,
+          icon: placement == TerminalTabPlacement.left ? Icons.check : Icons.view_sidebar_outlined,
+        ),
+        const GlassMenuDivider(),
+        GlassMenuItem(value: 'snippets', label: l.terminalSnippets, icon: Icons.code_rounded),
+        GlassMenuItem(value: 'ai', label: l.terminalAskAi, icon: Icons.auto_awesome_rounded),
+        if (tab.host != null) GlassMenuItem(value: 'sftp', label: l.terminalOpenSftp, icon: Icons.folder_copy_rounded),
+      ],
+      onSelected: (value) async {
+        if (value == 'top' || value == 'left') {
+          final settings = ref.read(settingsServiceProvider);
+          unawaited(
+            runWithFeedback(
+              context,
+              () => settings.updateLocal(
+                settings.currentLocal.copyWith(
+                  terminalTabPlacement: value == 'top' ? TerminalTabPlacement.top : TerminalTabPlacement.left,
+                ),
+              ),
+            ),
+          );
+        } else if (value == 'ai') {
+          final selection = tab.selectedText;
+          final attachment = ref.read(terminalAttachmentProvider.notifier);
+          if (selection == null) {
+            attachment.clear();
+          } else {
+            attachment.attach(tab, selection);
+          }
+          ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.ai);
+        } else if (value == 'sftp') {
+          await _openTerminalSftp(context, ref, tab);
+        } else {
+          ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.snippets);
+        }
+      },
+      builder: (context, open) => GlassIconButton(
+        icon: Icons.tune_rounded,
+        tooltip: l.terminalMinimalOptions,
+        style: GlassIconButtonStyle.plain,
+        size: GlassSizes.tab,
+        iconSize: GlassSizes.iconRow,
+        onPressed: open,
+      ),
+    );
+  }
+}
+
+Color _terminalBackground(WidgetRef ref, BuildContext context) => AppTheme.terminalTheme(
+  Theme.of(context).brightness,
+  scheme: ref.watch(localSettingsProvider.select((s) => s.value?.terminalColorScheme ?? TerminalColorScheme.system)),
+  custom: ref.watch(localSettingsProvider.select((s) => s.value?.customTerminalColors)),
+).background;
 
 /// Split the focused pane right or down (up to [TerminalTabsController.maxPanes]
 /// per tab), or close it.
@@ -504,6 +708,7 @@ class _TerminalCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = GlassTokens.of(context);
+    final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
     final scheme = ref.watch(
       localSettingsProvider.select((s) => s.value?.terminalColorScheme ?? TerminalColorScheme.system),
     );
@@ -513,10 +718,12 @@ class _TerminalCard extends ConsumerWidget {
       key: const ValueKey('terminal-card'),
       decoration: ShapeDecoration(
         color: theme.background,
-        shape: GlassRadii.shape(tokens.radii.card).copyWith(side: BorderSide(color: tokens.surfaces.hairlineCard)),
+        shape: minimal
+            ? const RoundedRectangleBorder()
+            : GlassRadii.shape(tokens.radii.card).copyWith(side: BorderSide(color: tokens.surfaces.hairlineCard)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: minimal ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : const EdgeInsets.all(10),
         child: IndexedStack(
           index: state.activeIndex.clamp(0, state.tabs.length - 1),
           sizing: StackFit.expand,

@@ -1,13 +1,16 @@
 import 'dart:async';
 
 import 'package:consolecrypt/app/app_info.dart';
+import 'package:consolecrypt/app/distribution.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/settings.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/updates/update_controller.dart';
+import 'package:consolecrypt/updates/update_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -121,6 +124,32 @@ class UpdateSettingsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
+    if (AppPlatform.isAndroid && isRuStoreDistribution) {
+      return SectionCard(
+        key: const ValueKey('settings-updates'),
+        title: l.updatesTitle,
+        icon: Icons.system_update_alt_rounded,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.updateCurrentVersion(kAppFullVersion)),
+            const SizedBox(height: GlassSpacing.s8),
+            Text(l.updateRuStoreHelp),
+            const SizedBox(height: GlassSpacing.s8),
+            GlassButton(
+              key: const ValueKey('updates-rustore'),
+              label: l.updateOpenRuStore,
+              icon: Icons.open_in_new_rounded,
+              onPressed: () => runWithFeedback(context, () async {
+                if (!await ref.read(updateOpenUrlProvider)(ruStoreApplicationPage)) {
+                  throw const UpdateException('browser');
+                }
+              }),
+            ),
+          ],
+        ),
+      );
+    }
     if (AppPlatform.isIOS) {
       return SectionCard(
         key: const ValueKey('settings-updates'),

@@ -204,6 +204,10 @@ class MainActivity : FlutterActivity() {
             }
         }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/updates").setMethodCallHandler { call, result ->
+            if (BuildConfig.FLAVOR == "rustore") {
+                result.error("store_updates_only", "Updates are managed by RuStore", null)
+                return@setMethodCallHandler
+            }
             val cache = File(cacheDir, "updates")
             when (call.method) {
                 "cacheDirectory" -> if (cache.isDirectory || cache.mkdirs()) result.success(cache.absolutePath)

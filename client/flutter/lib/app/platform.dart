@@ -1,3 +1,4 @@
+import 'package:consolecrypt/app/distribution.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -13,7 +14,7 @@ abstract final class AppPlatform {
   static bool get isAndroid => defaultTargetPlatform == TargetPlatform.android;
 
   /// iOS updates are installed through Apple's distribution mechanisms.
-  static bool get supportsDirectUpdates => isMacOS || isWindows || defaultTargetPlatform == TargetPlatform.android;
+  static bool get supportsDirectUpdates => isMacOS || isWindows || (isAndroid && !isRuStoreDistribution);
 
   static bool get isMobile =>
       defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;

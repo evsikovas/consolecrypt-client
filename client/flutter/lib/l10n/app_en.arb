@@ -18938,6 +18938,18 @@
   "keepassDavRedirectError": "WebDAV redirected the request. Use the final file URL.",
   "keepassDavIoError": "Could not access the WebDAV file. Check the address, network and permissions.",
   "keepassUnlock": "Unlock database",
+  "keepassUnlockOthers": "Unlock other databases",
+  "updateRuStoreHelp": "This version is updated through RuStore. Check for and install updates in the app store.",
+  "@updateRuStoreHelp": {"description": "Store-distributed Android builds must update only through RuStore"},
+  "updateOpenRuStore": "Open RuStore",
+  "@updateOpenRuStore": {"description": "Open the application's RuStore listing"},
+  "@keepassUnlockOthers": {
+    "description": "Button and picker title for remembered, locked password databases"
+  },
+  "terminalOpenSftp": "Open SFTP",
+  "@terminalOpenSftp": {
+    "description": "Open the SSH terminal tab's server in the SFTP browser"
+  },
   "keepassDatabases": "Databases",
   "keepassHello": "Biometrics / device PIN",
   "keepassSecurityKey": "FIDO2 security key",
@@ -18953,7 +18965,7 @@
   "keepassValue": "Value",
   "keepassFieldAdd": "Add field",
   "keepassExport": "Save local copy",
-  "keepassAllGroups": "All groups",
+  "keepassAllGroups": "All entries",
   "keepassPaletteHelp": "Find an entry, then choose a field to copy.",
   "keepassPaletteBack": "Back to all commands",
   "keepassOpenManager": "Open password manager",
@@ -19274,5 +19286,41 @@
   "keepassPurgeEntryHelp": "The entry will be permanently deleted from the KDBX database. This cannot be undone in the database. The change saves automatically.",
   "@keepassPurgeEntryHelp": {
     "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "terminalMinimalMode": "Minimalism",
+  "@terminalMinimalMode": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "terminalMinimalExit": "Exit minimalism",
+  "@terminalMinimalExit": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "terminalMinimalOptions": "Terminal layout and tools",
+  "@terminalMinimalOptions": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "terminalMinimalTabsTop": "Tabs at the top",
+  "@terminalMinimalTabsTop": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "terminalMinimalTabsLeft": "Tabs on the left",
+  "@terminalMinimalTabsLeft": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "keepassEntryViews": "Entries",
+  "@keepassEntryViews": {
+    "description": "Password manager navigation: separate entry filters, folders and recycle bin."
+  },
+  "keepassUngroupedHelp": "Entries stored at the database root, without a folder.",
+  "@keepassUngroupedHelp": {
+    "description": "Password manager navigation: separate entry filters, folders and recycle bin."
+  },
+  "keepassRecycleBin": "Recycle bin",
+  "@keepassRecycleBin": {
+    "description": "Password manager navigation: separate entry filters, folders and recycle bin."
+  },
+  "sftpDefaultEditorTitle": "Default editor for SFTP",
+  "@sftpDefaultEditorTitle": {
+    "description": "Settings section heading for the default SFTP editor."
   }
 }

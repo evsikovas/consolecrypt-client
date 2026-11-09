@@ -33,6 +33,8 @@ ROWS = {
     "linux-x64.rpm": ("Linux x64", "RPM"),
     "android-arm64.apk": ("Android ARM64", "APK"),
     "ios-simulator-universal.zip": ("iOS Simulator на Mac (не iPhone)", "Simulator ZIP"),
+    "rustore-arm64.apk": ("Android ARM64 · RuStore", "APK"),
+    "rustore-arm64.aab": ("Android ARM64 · RuStore", "AAB"),
 }
 SITE_FILES = ["download.html", "index.html", "assets/en.js"]
 
@@ -86,7 +88,7 @@ def old_builds(html: str, old: str) -> dict[str, int]:
     builds = {}
     for suffix in ROWS:
         found = set(re.findall(rf"ConsoleCrypt-{re.escape(old)}%2B(\d+)-{re.escape(suffix)}", html))
-        if not found and suffix == 'ios-simulator-universal.zip':
+        if not found and (suffix == 'ios-simulator-universal.zip' or suffix.startswith('rustore-')):
             continue  # First 1.0 release adds this download after verification.
         if len(found) != 1:
             raise SystemExit(f"download.html: expected one {suffix} link of {old}, found {sorted(found)}")

@@ -29,6 +29,7 @@ import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
 import 'package:consolecrypt/notes/notes_reminders.dart';
 import 'package:consolecrypt/sftp/edit_flows.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/vault/device_unlock_offer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -169,6 +170,11 @@ class _AppShellState extends ConsumerState<AppShell> {
   void didUpdateWidget(AppShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.requestedTool != widget.requestedTool) _openRequestedTool();
+    if (oldWidget.location == AppRoutes.terminal && widget.location != AppRoutes.terminal) {
+      scheduleMicrotask(() {
+        if (mounted && widget.location != AppRoutes.terminal) ref.read(terminalMinimalModeProvider.notifier).leave();
+      });
+    }
   }
 
   void _openRequestedTool() {
@@ -206,7 +212,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     // then spans the window above the icon rail (§4.1).
     final toolbarOnTop = compact && trafficLights;
     final branch = ShellBranch.values[navigationShell.currentIndex];
-    final sidebarWidth = (compact ? GlassSizes.sidebarCompactWidth : GlassSizes.sidebarWidth) + inset;
+    final minimal = branch == ShellBranch.terminal && ref.watch(terminalMinimalModeProvider);
+    final sidebarLayoutWidth = (compact ? GlassSizes.sidebarCompactWidth : GlassSizes.sidebarWidth) + inset;
+    final sidebarWidth = minimal ? 0.0 : sidebarLayoutWidth;
     const band = GlassSizes.toolbarBand;
     final tools = ref.watch(workspaceToolsProvider);
     final integratedTools =
@@ -227,41 +235,51 @@ class _AppShellState extends ConsumerState<AppShell> {
             final contentLeft = sidebarWidth;
             const railWidth = 60.0;
             final panelOpen = tools.selected != null;
-            final rightInset = integratedTools ? 0.0 : inset;
-            final railSpace = integratedTools && panelOpen ? 0.0 : railWidth;
+            final top = minimal ? 0.0 : band;
+            final rightInset = minimal || integratedTools ? 0.0 : inset;
+            final railSpace = minimal || integratedTools && panelOpen ? 0.0 : railWidth;
             final available = (w - sidebarWidth - railSpace - rightInset).clamp(0.0, double.infinity);
             final docked = available >= (integratedTools ? 960 : 1000);
             final panelWidth = docked ? tools.width.clamp(360.0, available - 600.0) : 420.0.clamp(0.0, available);
-            final panelRight = integratedTools ? 0.0 : railWidth + inset;
+            final panelRight = minimal || integratedTools ? 0.0 : railWidth + inset;
             final panelSpace = docked && panelOpen ? panelWidth + 8 : 0.0;
             final contentWidth = available - panelSpace;
             final sidebarRect = toolbarOnTop
-                ? Rect.fromLTWH(0, band - inset, sidebarWidth, h - band + inset)
-                : Rect.fromLTWH(0, 0, sidebarWidth, h);
+                ? Rect.fromLTWH(0, band - inset, sidebarLayoutWidth, h - band + inset)
+                : Rect.fromLTWH(0, 0, sidebarLayoutWidth, h);
             final toolbarRect = toolbarOnTop
                 ? Rect.fromLTWH(0, 0, w - railWidth - inset, band)
                 : Rect.fromLTWH(contentLeft, 0, available, band);
-            final contentRect = Rect.fromLTWH(contentLeft, band, contentWidth, h - band);
+            final contentRect = Rect.fromLTWH(contentLeft, top, contentWidth, h - top);
             return Stack(
               children: [
                 Positioned.fromRect(
                   rect: sidebarRect,
-                  child: _Sidebar(
-                    navigationShell: navigationShell,
-                    overlayTools: !docked,
-                    compact: compact,
-                    style: style,
-                    reserveTrafficLights: trafficLights && !toolbarOnTop,
+                  child: Offstage(
+                    offstage: minimal,
+                    child: ExcludeFocus(
+                      excluding: minimal,
+                      child: _Sidebar(
+                        navigationShell: navigationShell,
+                        overlayTools: !docked,
+                        compact: compact,
+                        style: style,
+                        reserveTrafficLights: trafficLights && !toolbarOnTop,
+                      ),
+                    ),
                   ),
                 ),
                 Positioned.fromRect(
                   rect: contentRect,
                   child: MediaQuery(
-                    data: MediaQuery.of(context).copyWith(size: Size(contentWidth, h - band)),
+                    data: MediaQuery.of(context).copyWith(size: Size(contentWidth, h - top)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const _ShellBanners(),
+                        Offstage(
+                          offstage: minimal,
+                          child: ExcludeFocus(excluding: minimal, child: const _ShellBanners()),
+                        ),
                         // Offers to recover SFTP edit sessions left by a crash / quit (once per unlock).
                         Expanded(
                           child: ExcludeFocus(
@@ -274,17 +292,20 @@ class _AppShellState extends ConsumerState<AppShell> {
                   ),
                 ),
                 Positioned(
-                  top: band,
+                  top: top,
                   bottom: 0,
                   right: rightInset,
                   width: railWidth,
                   child: Offstage(
-                    offstage: integratedTools && panelOpen,
-                    child: WorkspaceToolRail(integrated: integratedTools),
+                    offstage: minimal || integratedTools && panelOpen,
+                    child: ExcludeFocus(
+                      excluding: minimal,
+                      child: WorkspaceToolRail(integrated: integratedTools),
+                    ),
                   ),
                 ),
                 Positioned.fromRect(
-                  rect: Rect.fromLTWH(contentLeft, band, available, h - band),
+                  rect: Rect.fromLTWH(contentLeft, top, available, h - top),
                   child: panelOpen && !docked
                       ? ModalBarrier(
                           key: const ValueKey('workspace-tools-barrier'),
@@ -296,14 +317,14 @@ class _AppShellState extends ConsumerState<AppShell> {
                       : const SizedBox.shrink(),
                 ),
                 Positioned(
-                  top: band,
+                  top: minimal && trafficLights ? band : top,
                   bottom: integratedTools ? 0 : inset,
                   right: panelRight,
                   width: panelWidth,
                   child: WorkspaceToolPanel(key: ValueKey(profileId), integrated: integratedTools, branch: branch),
                 ),
                 Positioned(
-                  top: band + 12,
+                  top: top + 12,
                   bottom: inset + 12,
                   right: panelRight + panelWidth,
                   width: 8,
@@ -311,15 +332,19 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ),
                 Positioned.fromRect(
                   rect: toolbarRect,
-                  child: _ShellToolbar(
-                    // Recreate native passthrough regions when the band moves.
-                    key: ValueKey('toolbar-$toolbarOnTop-$compact-$floating'),
-                    branch: branch,
-                    location: location,
-                    compact: compact,
-                    canCollapse: !narrowWindow,
-                    leadingInset: toolbarOnTop ? scope.trafficLightsLeading - GlassSpacing.s12 : 0,
-                  ),
+                  // Unmount the native macOS passthrough regions too; hidden
+                  // toolbar rectangles must not intercept minimal-mode drags.
+                  child: minimal
+                      ? const SizedBox.shrink()
+                      : _ShellToolbar(
+                          // Recreate native passthrough regions when the band moves.
+                          key: ValueKey('toolbar-$toolbarOnTop-$compact-$floating'),
+                          branch: branch,
+                          location: location,
+                          compact: compact,
+                          canCollapse: !narrowWindow,
+                          leadingInset: toolbarOnTop ? scope.trafficLightsLeading - GlassSpacing.s12 : 0,
+                        ),
                 ),
               ],
             );

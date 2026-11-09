@@ -10,6 +10,7 @@ import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/services.dart';
@@ -30,6 +31,7 @@ enum AppCommandId {
   nextTerminalPane,
   previousTerminalTab,
   nextTerminalTab,
+  toggleTerminalMinimalMode,
 }
 
 /// A key combination: the platform primary modifier (⌘ on macOS, Ctrl
@@ -179,6 +181,7 @@ final class AppCommand {
     AppCommandId.nextTerminalPane => l.terminalNextPane,
     AppCommandId.previousTerminalTab => l.terminalPreviousTab,
     AppCommandId.nextTerminalTab => l.terminalNextTab,
+    AppCommandId.toggleTerminalMinimalMode => l.terminalMinimalMode,
   };
 }
 
@@ -198,17 +201,19 @@ const appCommands = [
   AppCommand(AppCommandId.nextTerminalPane, ShortcutBinding(LogicalKeyboardKey.bracketRight)),
   AppCommand(AppCommandId.previousTerminalTab, ShortcutBinding(LogicalKeyboardKey.arrowLeft)),
   AppCommand(AppCommandId.nextTerminalTab, ShortcutBinding(LogicalKeyboardKey.arrowRight)),
+  AppCommand(AppCommandId.toggleTerminalMinimalMode, ShortcutBinding(LogicalKeyboardKey.keyM, shift: true)),
 ];
 
 /// Commands with the user's overrides (`id → encoded binding`, empty =
 /// turned off); unknown or invalid values fall back to the factory one.
 List<AppCommand> resolveAppCommands(Map<String, String> overrides) => [
   for (final command in appCommands)
-    switch (overrides[command.id.name]) {
-      null => command,
-      '' => AppCommand(command.id, null),
-      final value => AppCommand(command.id, ShortcutBinding.decode(value) ?? command.binding),
-    },
+    if (!AppPlatform.isMobile || command.id != AppCommandId.toggleTerminalMinimalMode)
+      switch (overrides[command.id.name]) {
+        null => command,
+        '' => AppCommand(command.id, null),
+        final value => AppCommand(command.id, ShortcutBinding.decode(value) ?? command.binding),
+      },
 ];
 
 final appCommandsProvider = Provider<List<AppCommand>>(
@@ -269,6 +274,10 @@ final class AppCommandDispatcher {
     final router = _ref.read(routerProvider);
     final context = rootNavigatorKey.currentContext;
     switch (id) {
+      case AppCommandId.toggleTerminalMinimalMode:
+        if (!AppPlatform.isMobile && router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
+          _ref.read(terminalMinimalModeProvider.notifier).toggle();
+        }
       case AppCommandId.commandPalette:
         if (context != null) unawaited(showCommandPalette(context));
       case AppCommandId.newTerminalTab:

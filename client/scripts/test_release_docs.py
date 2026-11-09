@@ -20,7 +20,7 @@ def load(name):
 verify = load('verify-client-release')
 update = load('update-release-docs')
 REPO = verify.REPOSITORY
-SUFFIXES = [suffix for suffix in verify.PACKAGES if suffix != 'ios-simulator-universal.zip']
+SUFFIXES = [suffix for suffix in verify.PACKAGES if suffix in verify.expected_packages('0.9.3')]
 BUILDS = {'macos': 46011, 'windows': 46012, 'linux': 46013, 'android': 46014, 'ios': 46015}
 
 
@@ -35,7 +35,7 @@ def release(version='0.9.3'):
         })
 
     for index, suffix in enumerate(verify.PACKAGES):
-        if suffix == 'ios-simulator-universal.zip' and int(version.split('.')[0]) < 1:
+        if suffix not in verify.expected_packages(version):
             continue
         name = f'ConsoleCrypt-{version}+{BUILDS[verify.PACKAGES[suffix][0]]}-{suffix}'
         digest = f'{index:x}' * 64
@@ -92,6 +92,16 @@ class VerifyReleaseTests(unittest.TestCase):
         self.assertEqual(len(result['installers']), 7)
         self.assertEqual(result['builds']['ios'], BUILDS['ios'])
         data['assets'] = [a for a in data['assets'] if 'ios-simulator' not in a['name']]
+        with self.assertRaises(verify.ReleaseError):
+            verify.validate(data, sums)
+
+    def test_one_point_one_requires_both_store_packages_and_matching_android_builds(self):
+        data, sums = release('1.1.0')
+        result = verify.validate(data, sums)
+        self.assertEqual(len(result['installers']), 9)
+        self.assertEqual({i['package'] for i in result['installers'] if i['platform'] == 'android'},
+                         {'apk', 'rustore-apk', 'rustore-aab'})
+        data['assets'] = [a for a in data['assets'] if not a['name'].endswith('rustore-arm64.aab')]
         with self.assertRaises(verify.ReleaseError):
             verify.validate(data, sums)
 

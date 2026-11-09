@@ -232,6 +232,11 @@ jobs:
             dist/android/ConsoleCrypt-android-arm64.apk.sha256
             dist/android/ConsoleCrypt.version
 
+  android_rustore:
+    needs: validate
+    uses: ./.github/workflows/rustore.yml
+    secrets: inherit
+
   # iOS Simulator is a required 1.0 release artifact, not an iPhone installer.
   # Build and launch it in an isolated, throwaway Simulator before publishing.
   ios:
@@ -266,7 +271,7 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     outputs:
       published: ${{ steps.release.outputs.published }}
-    needs: [validate, macos, windows, linux, android, ios]
+    needs: [validate, macos, windows, linux, android, android_rustore, ios]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:

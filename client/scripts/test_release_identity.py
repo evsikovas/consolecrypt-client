@@ -19,6 +19,8 @@ FILES = (
     'client/flutter/rust_builder/ios/Classes/CcBridgePlugin.swift',
     'client/flutter/android/app/build.gradle.kts',
     'client/flutter/android/app/src/main/AndroidManifest.xml',
+    'client/flutter/android/app/src/direct/AndroidManifest.xml',
+    'client/flutter/android/app/src/rustore/AndroidManifest.xml',
     'client/flutter/android/app/src/main/kotlin/io/consolecrypt/consolecrypt/MainActivity.kt',
     'client/flutter/windows/CMakeLists.txt', 'client/packaging/windows/ConsoleCrypt.iss',
     'client/flutter/linux/CMakeLists.txt', 'client/packaging/linux/consolecrypt.desktop',

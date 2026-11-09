@@ -45,7 +45,7 @@ class _SftpSettingsSectionState extends ConsumerState<SftpSettingsSection> {
     final settings = ref.read(settingsServiceProvider);
     return SectionCard(
       key: const ValueKey('settings-sftp'),
-      title: l.navSftp,
+      title: l.sftpDefaultEditorTitle,
       icon: Icons.folder_open_rounded,
       subtitle: l.sftpDefaultEditorHelp,
       child: Column(

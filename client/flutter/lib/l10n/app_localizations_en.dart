@@ -13874,6 +13874,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepassUnlock => 'Unlock database';
 
   @override
+  String get keepassUnlockOthers => 'Unlock other databases';
+
+  @override
+  String get updateRuStoreHelp =>
+      'This version is updated through RuStore. Check for and install updates in the app store.';
+
+  @override
+  String get updateOpenRuStore => 'Open RuStore';
+
+  @override
+  String get terminalOpenSftp => 'Open SFTP';
+
+  @override
   String get keepassDatabases => 'Databases';
 
   @override
@@ -13920,7 +13933,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepassExport => 'Save local copy';
 
   @override
-  String get keepassAllGroups => 'All groups';
+  String get keepassAllGroups => 'All entries';
 
   @override
   String get keepassPaletteHelp => 'Find an entry, then choose a field to copy.';
@@ -14096,4 +14109,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get keepassPurgeEntryHelp =>
       'The entry will be permanently deleted from the KDBX database. This cannot be undone in the database. The change saves automatically.';
+
+  @override
+  String get terminalMinimalMode => 'Minimalism';
+
+  @override
+  String get terminalMinimalExit => 'Exit minimalism';
+
+  @override
+  String get terminalMinimalOptions => 'Terminal layout and tools';
+
+  @override
+  String get terminalMinimalTabsTop => 'Tabs at the top';
+
+  @override
+  String get terminalMinimalTabsLeft => 'Tabs on the left';
+
+  @override
+  String get keepassEntryViews => 'Entries';
+
+  @override
+  String get keepassUngroupedHelp => 'Entries stored at the database root, without a folder.';
+
+  @override
+  String get keepassRecycleBin => 'Recycle bin';
+
+  @override
+  String get sftpDefaultEditorTitle => 'Default editor for SFTP';
 }

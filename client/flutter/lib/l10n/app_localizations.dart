@@ -24380,6 +24380,30 @@ abstract class AppLocalizations {
   /// **'Unlock database'**
   String get keepassUnlock;
 
+  /// Button and picker title for remembered, locked password databases
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock other databases'**
+  String get keepassUnlockOthers;
+
+  /// Store-distributed Android builds must update only through RuStore
+  ///
+  /// In en, this message translates to:
+  /// **'This version is updated through RuStore. Check for and install updates in the app store.'**
+  String get updateRuStoreHelp;
+
+  /// Open the application's RuStore listing
+  ///
+  /// In en, this message translates to:
+  /// **'Open RuStore'**
+  String get updateOpenRuStore;
+
+  /// Open the SSH terminal tab's server in the SFTP browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open SFTP'**
+  String get terminalOpenSftp;
+
   /// Password manager: keepassDatabases
   ///
   /// In en, this message translates to:
@@ -24473,7 +24497,7 @@ abstract class AppLocalizations {
   /// Password manager: keepassAllGroups
   ///
   /// In en, this message translates to:
-  /// **'All groups'**
+  /// **'All entries'**
   String get keepassAllGroups;
 
   /// Password manager: keepassPaletteHelp
@@ -24793,6 +24817,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The entry will be permanently deleted from the KDBX database. This cannot be undone in the database. The change saves automatically.'**
   String get keepassPurgeEntryHelp;
+
+  /// Desktop terminal minimalism mode control.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimalism'**
+  String get terminalMinimalMode;
+
+  /// Desktop terminal minimalism mode control.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit minimalism'**
+  String get terminalMinimalExit;
+
+  /// Desktop terminal minimalism mode control.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal layout and tools'**
+  String get terminalMinimalOptions;
+
+  /// Desktop terminal minimalism mode control.
+  ///
+  /// In en, this message translates to:
+  /// **'Tabs at the top'**
+  String get terminalMinimalTabsTop;
+
+  /// Desktop terminal minimalism mode control.
+  ///
+  /// In en, this message translates to:
+  /// **'Tabs on the left'**
+  String get terminalMinimalTabsLeft;
+
+  /// Password manager navigation: separate entry filters, folders and recycle bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries'**
+  String get keepassEntryViews;
+
+  /// Password manager navigation: separate entry filters, folders and recycle bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries stored at the database root, without a folder.'**
+  String get keepassUngroupedHelp;
+
+  /// Password manager navigation: separate entry filters, folders and recycle bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Recycle bin'**
+  String get keepassRecycleBin;
+
+  /// Settings section heading for the default SFTP editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Default editor for SFTP'**
+  String get sftpDefaultEditorTitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

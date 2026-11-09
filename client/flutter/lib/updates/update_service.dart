@@ -4,6 +4,7 @@ import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:consolecrypt/app/app_info.dart';
+import 'package:consolecrypt/app/distribution.dart';
 import 'package:crypto/crypto.dart' as digest;
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -366,6 +367,7 @@ class UpdateService {
   }
 
   Future<UpdateRelease?> check() async {
+    if (isRuStoreDistribution) throw const UpdateException('store');
     if (platform == 'unsupported') throw const UpdateException('platform');
     final client = _client();
     try {
@@ -412,6 +414,7 @@ class UpdateService {
   }
 
   Future<File> download(UpdateRelease release, void Function(double) progress) async {
+    if (isRuStoreDistribution) throw const UpdateException('store');
     final client = _client();
     RandomAccessFile? output;
     Directory? folder;
@@ -547,6 +550,7 @@ class UpdateService {
     String? macosSavePrompt,
   }) async {
     if (release.platform != platform) throw const UpdateException('platform');
+    if (isRuStoreDistribution) throw const UpdateException('store');
     if (platform == 'windows-x64') {
       if (!await canInstallInPlace()) throw const UpdateException('portable');
       return _installWindows(file, release);

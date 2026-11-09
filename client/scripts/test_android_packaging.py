@@ -32,7 +32,7 @@ class AndroidPackagingTest(unittest.TestCase):
         self.executable(self.binaries / 'flutter', '''#!/bin/sh
 set -eu
 mkdir -p build/app/outputs/flutter-apk
-printf 'new test artifact' > build/app/outputs/flutter-apk/app-release.apk
+printf 'new test artifact' > build/app/outputs/flutter-apk/app-direct-release.apk
 ''')
         self.environment = os.environ.copy()
         android_user = self.base / 'android-user'

@@ -18,6 +18,8 @@ def prepare(artifacts, output, version):
     platforms = ['macos', 'windows', 'linux', 'android']
     if int(version.split('.')[0]) >= 1:
         platforms.append('ios-preview')
+    if tuple(map(int, version.split('.'))) >= (1, 1, 0):
+        platforms.append('android-rustore')
     for platform in platforms:
         folder = artifacts / platform
         receipts = list(folder.glob('*.version'))
@@ -35,6 +37,8 @@ def prepare(artifacts, output, version):
             'linux': [(f'{prefix}-linux-x64.deb', f'{prefix}-linux-x64.deb'),
                       (f'{prefix}-linux-x64.rpm', f'{prefix}-linux-x64.rpm')],
             'ios-preview': [(f'{prefix}-ios-simulator-universal.zip', f'{prefix}-ios-simulator-universal.zip')],
+            'android-rustore': [(f'{prefix}-rustore-arm64.apk', f'{prefix}-rustore-arm64.apk'),
+                               (f'{prefix}-rustore-arm64.aab', f'{prefix}-rustore-arm64.aab')],
         }[platform]
         for source_name, destination_name in names:
             source = folder / source_name

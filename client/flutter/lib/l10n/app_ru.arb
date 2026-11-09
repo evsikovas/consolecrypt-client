@@ -7036,6 +7036,10 @@
   "keepassDavRedirectError": "WebDAV перенаправил запрос. Укажите конечный адрес файла.",
   "keepassDavIoError": "Не удалось обратиться к файлу WebDAV. Проверьте адрес, сеть и права доступа.",
   "keepassUnlock": "Разблокировать базу",
+  "keepassUnlockOthers": "Разблокировать другие базы",
+  "updateRuStoreHelp": "Эта версия обновляется через RuStore. Проверить и установить обновление можно в магазине приложений.",
+  "updateOpenRuStore": "Открыть RuStore",
+  "terminalOpenSftp": "Открыть SFTP",
   "keepassDatabases": "Базы паролей",
   "keepassHello": "Биометрия / PIN устройства",
   "keepassSecurityKey": "Физический ключ FIDO2",
@@ -7051,7 +7055,7 @@
   "keepassValue": "Значение",
   "keepassFieldAdd": "Добавить поле",
   "keepassExport": "Сохранить локальную копию",
-  "keepassAllGroups": "Все группы",
+  "keepassAllGroups": "Все записи",
   "keepassPaletteHelp": "Найдите запись, затем выберите поле для копирования.",
   "keepassPaletteBack": "Назад ко всем командам",
   "keepassOpenManager": "Открыть менеджер паролей",
@@ -7267,5 +7271,41 @@
   "keepassPurgeEntryHelp": "Запись будет окончательно удалена из базы KDBX. Отменить это действие в базе нельзя. Изменение сохранится автоматически.",
   "@keepassPurgeEntryHelp": {
     "description": "KDBX recycle bin action or irreversible deletion confirmation."
+  },
+  "terminalMinimalMode": "Минимализм",
+  "@terminalMinimalMode": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "terminalMinimalExit": "Выйти из минимализма",
+  "@terminalMinimalExit": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "terminalMinimalOptions": "Расположение вкладок и инструменты",
+  "@terminalMinimalOptions": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "terminalMinimalTabsTop": "Вкладки сверху",
+  "@terminalMinimalTabsTop": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "terminalMinimalTabsLeft": "Вкладки слева",
+  "@terminalMinimalTabsLeft": {
+    "description": "Desktop terminal minimalism mode control."
+  },
+  "keepassEntryViews": "Записи",
+  "@keepassEntryViews": {
+    "description": "Password manager navigation: separate entry filters, folders and recycle bin."
+  },
+  "keepassUngroupedHelp": "Записи в корне базы, без группы.",
+  "@keepassUngroupedHelp": {
+    "description": "Password manager navigation: separate entry filters, folders and recycle bin."
+  },
+  "keepassRecycleBin": "Корзина",
+  "@keepassRecycleBin": {
+    "description": "Password manager navigation: separate entry filters, folders and recycle bin."
+  },
+  "sftpDefaultEditorTitle": "Редактор по умолчанию для SFTP",
+  "@sftpDefaultEditorTitle": {
+    "description": "Settings section heading for the default SFTP editor."
   }
 }

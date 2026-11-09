@@ -1,9 +1,22 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Store builds must use an explicitly supplied private key. Never fall back
+// to the runner's historical preview signer for a RuStore release.
+val signingPropertiesPath = System.getenv("CC_ANDROID_SIGNING_PROPERTIES")
+val releaseSigning = Properties().apply {
+    if (!signingPropertiesPath.isNullOrBlank()) {
+        file(signingPropertiesPath).inputStream().use { load(it) }
+    }
+}
+val hasReleaseSigning = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    .all { !releaseSigning.getProperty(it).isNullOrBlank() }
 
 android {
     namespace = "io.consolecrypt.consolecrypt"
@@ -31,6 +44,23 @@ android {
         versionName = flutter.versionName
     }
 
+    buildFeatures { buildConfig = true }
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("direct") { dimension = "distribution" }
+        create("rustore") { dimension = "distribution" }
+    }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("privateRelease") {
+                storeFile = file(releaseSigning.getProperty("storeFile"))
+                storePassword = releaseSigning.getProperty("storePassword")
+                keyAlias = releaseSigning.getProperty("keyAlias")
+                keyPassword = releaseSigning.getProperty("keyPassword")
+            }
+        }
+    }
+
     // The APK is ARM64 only; plugins such as CameraX also ship 32-bit ARM and
     // x86 libraries that verify-android-apk.py refuses.
     packaging {
@@ -41,11 +71,17 @@ android {
 
     buildTypes {
         release {
-            // Preview APK only. Production distribution requires a private release key.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Preserve direct-preview update compatibility; RuStore is guarded below.
+            signingConfig = signingConfigs.getByName(if (hasReleaseSigning) "privateRelease" else "debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.project == project && it.name.contains("rustore", ignoreCase = true) &&
+            it.name.contains("release", ignoreCase = true) } && !hasReleaseSigning) {
+        throw GradleException("RuStore release requires CC_ANDROID_SIGNING_PROPERTIES with a private release key")
     }
 }
 

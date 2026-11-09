@@ -5,6 +5,7 @@ import 'package:consolecrypt/db/db_models.dart';
 import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_result_controller.dart';
 import 'package:consolecrypt/db/db_result_grid.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -38,6 +39,52 @@ class _Service implements DbQueryService {
 }
 
 void main() {
+  testWidgets('desktop SQL thumbs stay thin, expand on hover and drag in both directions', (tester) async {
+    final result = DbResultSet(
+      index: 0,
+      columns: List.generate(12, (i) => DbColumn(name: 'column-$i', typeName: 'text')),
+    );
+    result.rows.addAll(
+      List.generate(100, (r) => List.generate(12, (c) => DbCell(DbCellKind.text, 'row-$r-column-$c'))),
+    );
+    await _pumpGrid(tester, result);
+    final vertical = tester.widget<ListView>(find.byKey(const ValueKey('db-result-grid'))).controller!;
+    final horizontal = tester
+        .widget<SingleChildScrollView>(find.byKey(const ValueKey('db-result-horizontal')))
+        .controller!;
+    Finder raw(ScrollController controller) =>
+        find.byWidgetPredicate((w) => w is RawScrollbar && w.controller == controller);
+    final v = tester.state<RawScrollbarState>(raw(vertical));
+    final h = tester.state<RawScrollbarState>(raw(horizontal));
+    expect(_thumbThickness(v), 3);
+    expect(_thumbThickness(h), 3);
+    final area = tester.getRect(find.byKey(const ValueKey('db-result-scrollbar-vertical')));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: area.center);
+    await mouse.moveTo(Offset(area.right - 4, area.top + 18));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(_thumbThickness(v), 10);
+    await mouse.down(Offset(area.right - 5, area.top + 18));
+    await mouse.moveBy(const Offset(0, 100));
+    await mouse.up();
+    await settle(tester);
+    expect(vertical.offset, greaterThan(0));
+    await mouse.moveTo(Offset(area.left + 18, area.bottom - 4));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(_thumbThickness(h), 10);
+    await mouse.down(Offset(area.left + 18, area.bottom - 5));
+    await mouse.moveBy(const Offset(160, 0));
+    await mouse.up();
+    await settle(tester);
+    expect(horizontal.offset, greaterThan(0));
+    await mouse.moveTo(area.center);
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(_thumbThickness(v), 3);
+    expect(_thumbThickness(h), 3);
+    await mouse.removePointer();
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}));
+
   test('numeric sort never collapses adjacent integers or exact decimal fractions', () {
     for (final values in [
       ['18446744073709551614', '18446744073709551615'],
@@ -204,6 +251,12 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+}
+
+double _thumbThickness(RawScrollbarState state) {
+  // Verify actual painted geometry after real hover events, not theme inputs.
+  // ignore: invalid_use_of_protected_member
+  return state.scrollbarPainter.thickness;
 }
 
 Future<void> _pumpGrid(

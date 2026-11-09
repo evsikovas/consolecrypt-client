@@ -158,6 +158,7 @@ class AppCommandsScope extends ConsumerWidget {
               item(AppCommandId.commandPalette),
               item(AppCommandId.snippets),
               item(AppCommandId.toggleSidebar),
+              item(AppCommandId.toggleTerminalMinimalMode),
               item(AppCommandId.splitTerminalRight),
               item(AppCommandId.splitTerminalDown),
               item(AppCommandId.nextTerminalPane),

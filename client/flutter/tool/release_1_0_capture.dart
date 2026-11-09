@@ -172,6 +172,19 @@ void main() {
     await settle(tester);
     await tester.tap(entry);
     await shot('passwords-workspace');
+    if (captureCase == 'passwords-open-only' || captureCase == 'passwords-locked-picker') {
+      final closed = KdbxSource.local('${temp.path}/Archive.kdbx');
+      await tester.runAsync(() async {
+        await File(session.source.path).copy(closed.path);
+        await manager.remember(closed);
+      });
+      await settle(tester);
+      await shot('passwords-open-only');
+      await tapKey(tester, 'keepass-unlock-others');
+      await shot('passwords-locked-picker');
+      expect(tester.takeException(), isNull);
+      return;
+    }
     final folder = session.rows('groups').firstWhere((g) => g['label'] == folderName)['id'];
     await tapKey(tester, 'keepass-group-menu-$folder');
     await shot('passwords-group-menu');
