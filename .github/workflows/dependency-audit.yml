@@ -52,6 +52,8 @@ jobs:
         run: python3 -m unittest discover -s client/scripts -p 'test_dependency_audit.py' -v
       - name: Test the Cargo GHSA/OSV gate
         run: python3 -m unittest discover -s client/scripts -p 'test_osv_cargo.py' -v
+      - name: Test bundled SQLite and SQLCipher WAL fix
+        run: python3 -m unittest discover -s client/scripts -p 'test_sqlite_wal_backport.py' -v
       - name: Install pinned cargo-deny and osv-scanner
         run: |
           python3 client/scripts/dependency-audit.py install "$RUNNER_TEMP/audit-tools" cargo-deny osv-scanner

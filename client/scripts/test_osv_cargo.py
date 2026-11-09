@@ -96,6 +96,30 @@ class OsvCargoTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             osv_cargo.verify_backports(self.root)
 
+    def test_native_backport_digest_covers_build_script_c_and_headers(self):
+        self.public_backport()
+        source = self.root / 'local'
+        (source / 'build.rs').write_text('// reviewed build\n')
+        (source / 'engine.c').write_text('// reviewed fix\n')
+        (source / 'engine.h').write_text('// reviewed interface\n')
+        records_path = self.root / 'client/security-backports.json'
+        records = json.loads(records_path.read_text())
+        records['public'].update(native_sources=True,
+            source_sha256=osv_cargo.source_digest(source, native_sources=True))
+        records_path.write_text(json.dumps(records))
+        osv_cargo.verify_backports(self.root)
+        for name in ['build.rs', 'engine.c', 'engine.h']:
+            path = source / name
+            original = path.read_bytes()
+            path.write_bytes(original + b'// unreviewed\n')
+            with self.assertRaises(ValueError):
+                osv_cargo.verify_backports(self.root)
+            path.write_bytes(original)
+        # New native build inputs also invalidate the reviewed digest.
+        (source / 'extra.c').write_text('// new unreviewed file\n')
+        with self.assertRaises(ValueError):
+            osv_cargo.verify_backports(self.root)
+
     def public_backport(self):
         source = self.root / 'local'
         (source / 'src').mkdir(parents=True)

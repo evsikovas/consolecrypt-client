@@ -138,6 +138,29 @@ final class AccessibilityBridge: NSObject {
 }
 
 
+/// The empty unified toolbar positions the window buttons in windowed mode.
+/// AppKit otherwise keeps its full-height band above Flutter in fullscreen.
+/// Keep the toolbar instance and its visibility so ordinary OS fullscreen and
+/// RDP fullscreen can share the same restoration path.
+final class FullscreenToolbar {
+  private var saved: (toolbar: NSToolbar, visible: Bool)?
+
+  func hide(in window: NSWindow) {
+    guard let toolbar = window.toolbar else { return }
+    if saved?.toolbar !== toolbar {
+      saved = (toolbar, toolbar.isVisible)
+    }
+    toolbar.isVisible = false
+  }
+
+  func restore(in window: NSWindow) {
+    if let saved = saved, window.toolbar === saved.toolbar {
+      saved.toolbar.isVisible = saved.visible
+    }
+    saved = nil
+  }
+}
+
 /// Reconciles asynchronous AppKit transitions, including a lock or route
 /// disposal while entry is still animating. Does not replace NSWindow.delegate.
 final class FullscreenBridge: NSObject {
@@ -153,6 +176,7 @@ final class FullscreenBridge: NSObject {
   private var minimizePending = false
   private var transitionGeneration = 0
   private var attempts = 0
+  private let fullscreenToolbar = FullscreenToolbar()
 
   init(messenger: FlutterBinaryMessenger, window: NSWindow) {
     self.window = window
@@ -223,6 +247,9 @@ final class FullscreenBridge: NSObject {
   deinit { NotificationCenter.default.removeObserver(self) }
 
   @objc private func willTransition(_ notification: Notification) {
+    if notification.name == NSWindow.willEnterFullScreenNotification, let window = window {
+      fullscreenToolbar.hide(in: window)
+    }
     if leased && target == nil && notification.name == NSWindow.willExitFullScreenNotification {
       originalFullscreen = false // Honour a user's OS-level exit as well.
     }
@@ -250,6 +277,13 @@ final class FullscreenBridge: NSObject {
 
   private func reconcile() {
     guard !transitioning, let window = window else { return }
+    // Also run on the watchdog path: a cancelled AppKit transition must not
+    // leave a normal window without its toolbar. Do not replace its delegate.
+    if window.styleMask.contains(.fullScreen) {
+      fullscreenToolbar.hide(in: window)
+    } else {
+      fullscreenToolbar.restore(in: window)
+    }
     if let desired = target, window.styleMask.contains(.fullScreen) != desired {
       guard attempts < 2 else { target = nil; minimizePending = false; return }
       attempts += 1

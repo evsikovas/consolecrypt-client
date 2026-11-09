@@ -38,10 +38,18 @@ def policy(root, today):
     return result
 
 
-def source_digest(source):
-    """Hash build manifests and Rust sources, independent of checkout line endings."""
+def source_digest(source, native_sources=False):
+    """Hash reviewed inputs, independent of checkout line endings.
+
+    Native backports must also cover build scripts and bundled C/C++ headers,
+    not just the Rust wrapper around the vulnerable engine.
+    """
     digest = hashlib.sha256()
-    paths = sorted([source / 'Cargo.toml', *(source / 'src').rglob('*.rs')])
+    paths = {source / 'Cargo.toml', *(source / 'src').rglob('*.rs')}
+    if native_sources:
+        for pattern in ['**/*.rs', '**/*.c', '**/*.h', '**/*.cc', '**/*.cpp', '**/*.hpp']:
+            paths.update(source.glob(pattern))
+    paths = sorted(paths)
     for path in paths:
         digest.update(path.relative_to(source).as_posix().encode() + b'\0')
         digest.update(path.read_bytes().replace(b'\r\n', b'\n') + b'\0')
@@ -58,7 +66,7 @@ def verify_backports(root):
         if source != (root / record['source']).resolve():
             raise ValueError('security backport is not wired into the build')
         if 'source_sha256' in record:
-            valid = source_digest(source) == record['source_sha256']
+            valid = source_digest(source, record.get('native_sources', False)) == record['source_sha256']
         else:
             content = (source / record['file']).read_bytes().replace(b'\r\n', b'\n')
             valid = hashlib.sha256(content).hexdigest() == record['sha256']

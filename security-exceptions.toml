@@ -1,6 +1,14 @@
 # Version-based scanners cannot remove an upstream risk with no patched release.
 # The reachable RSA operations and controls are documented in SECURITY.md.
 [[exception]]
+id = "RUSTSEC-2026-0459"
+package = "libsqlite3-sys"
+requires_backport = "libsqlite3-sys"
+owner = "Alexander Evsikov (@evsikovas)"
+expires = "2026-12-09"
+reason = "SQLite upstream WAL zero-initialization fix is applied to BOTH bundled SQLite and SQLCipher. Only the hash-verified local 0.38.2 backport is covered; registry copies remain blocked. Replace when upstream ships patched SQLCipher. See SECURITY.md and client/security-backports.json."
+
+[[exception]]
 id = "RUSTSEC-2023-0071"
 package = "rsa"
 owner = "Alexander Evsikov (@evsikovas)"

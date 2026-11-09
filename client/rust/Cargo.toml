@@ -33,6 +33,7 @@ ashpd = { path = "rdp-core/vendor/ashpd" }
 iso7816 = { path = "rdp-core/vendor/iso7816" }
 ironrdp-connector = { path = "rdp-core/vendor/ironrdp-connector" }
 portable-pty = { path = "terminal-core/vendor/portable-pty" }
+libsqlite3-sys = { path = "storage-core/vendor/libsqlite3-sys" }
 
 [workspace.package]
 version = "0.1.0"

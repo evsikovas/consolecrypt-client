@@ -47,6 +47,7 @@ jobs:
           python3 -m unittest discover -s client/scripts -p 'test_linux_cleanup.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_dependency_audit.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_osv_cargo.py' -v
+          python3 -m unittest discover -s client/scripts -p 'test_sqlite_wal_backport.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_export_source.py' -v
           python3 -m unittest discover -s client/scripts/tests -p 'test_kubernetes_ci.py' -v
       # Hosted runner only: a vulnerable, yanked, banned or unlicensed dependency

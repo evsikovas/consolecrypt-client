@@ -86,6 +86,7 @@ BUILD_VERSION="$(python3 "$REPO/client/scripts/bump-version.py" --root "$REPO" -
 echo "==> version $BUILD_VERSION"
 python3 -m unittest discover -s "$SRC/client/scripts" -p 'test_macos_updates.py' -v
 python3 -m unittest discover -s "$SRC/client/scripts" -p 'test_macos_processes.py' -v
+python3 -m unittest discover -s "$SRC/client/scripts" -p 'test_macos_fullscreen.py' -v
 flutter pub get
 # CocoaPods' post-install hook reads the engine before `flutter build` can
 # populate it. Fresh hosted runners have only the SDK/test engine at this point.

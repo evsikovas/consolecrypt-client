@@ -81,5 +81,15 @@
     "source": "client/flutter/vendor/security/irondash_message_channel_derive",
     "source_sha256": "8610d7ff2157d19635937fbdb875a73bbc9969d0032fb46d0a0ffc1f308763d0",
     "public_crates_io_upstream": true
+  },
+  "libsqlite3-sys": {
+    "package_version": "0.38.2",
+    "patch_manifest": "client/rust/Cargo.toml",
+    "source": "client/rust/storage-core/vendor/libsqlite3-sys",
+    "source_sha256": "e41bd7d1c3d0f421eed88c188c6e53c66b161cbcf8ae25fe3c5cf7513f46ce8d",
+    "native_sources": true,
+    "upstream_fix": "https://github.com/sqlite/sqlite/commit/e5bf119821f25be1d7f10ef0a2edbe175289166e",
+    "upstream_crate_sha256": "f1d20bef17f513b9b3004532233187769cd072d790971f4e4da0e346eb6401e8",
+    "public_crates_io_upstream": true
   }
 }
