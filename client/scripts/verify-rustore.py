@@ -11,6 +11,18 @@ import subprocess
 import xml.etree.ElementTree as ET
 import zipfile
 
+FORBIDDEN_PERMISSIONS = {
+    'android.permission.REQUEST_INSTALL_PACKAGES',
+    'android.permission.RECORD_AUDIO',
+    'android.permission.READ_EXTERNAL_STORAGE',
+    'android.permission.WRITE_EXTERNAL_STORAGE',
+}
+
+
+def verify_store_permissions(names):
+    unexpected = FORBIDDEN_PERMISSIONS.intersection(names)
+    assert not unexpected, f'Unneeded or forbidden store permissions: {sorted(unexpected)}'
+
 
 def run(program, *args):
     result = subprocess.run([str(program), *map(str, args)], capture_output=True, text=True,
@@ -53,7 +65,7 @@ def main():
     assert actual and actual[1].lower() == fingerprint(args.app_cert), 'APK signer mismatch'
     assert 'Android Debug' not in signature, 'Debug signing is forbidden for the store'
     permissions = run(aapt, 'dump', 'permissions', args.apk)
-    assert 'REQUEST_INSTALL_PACKAGES' not in permissions, 'Forbidden APK install permission'
+    verify_store_permissions(re.findall(r'android\.permission\.[A-Z_]+', permissions))
     badging = run(aapt, 'dump', 'badging', args.apk)
     assert "name='io.consolecrypt.consolecrypt'" in badging, 'Unexpected Android application ID'
     assert f"versionCode='{args.build}'" in badging, 'Incorrect APK versionCode'
@@ -65,7 +77,7 @@ def main():
     android = '{http://schemas.android.com/apk/res/android}'
     assert xml.get('package') == 'io.consolecrypt.consolecrypt'
     assert xml.get(android + 'versionCode') == str(args.build)
-    assert all(node.get(android + 'name') != 'android.permission.REQUEST_INSTALL_PACKAGES' for node in xml.findall('uses-permission'))
+    verify_store_permissions(node.get(android + 'name') for node in xml.findall('uses-permission'))
     app = xml.find('application')
     assert app is not None and app.get(android + 'debuggable', 'false') == 'false'
     assert all(node.get(android + 'authorities') != 'io.consolecrypt.consolecrypt.updates' for node in app.findall('provider'))

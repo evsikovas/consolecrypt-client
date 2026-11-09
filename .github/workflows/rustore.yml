@@ -66,9 +66,10 @@ jobs:
         run: python3 client/scripts/prepare-android-store-signing.py
       - name: Verify store-only update behavior
         run: |
+          python3 -m unittest discover -s client/scripts -p test_rustore_permissions.py -v
           cd client/flutter
           flutter pub get
-          flutter test --no-pub --flavor rustore test/widget/rustore_updates_test.dart
+          flutter test --no-pub --flavor rustore test/widget/rustore_updates_test.dart test/widget/recovery_qr_image_test.dart test/unit/recovery_qr_test.dart test/widget/import_key_file_test.dart
       - name: Build RuStore AAB and APK from source
         id: package
         run: bash client/scripts/build-android-rustore.sh
