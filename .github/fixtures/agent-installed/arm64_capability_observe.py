@@ -1,7 +1,9 @@
-"""One disposable ARM pre-exec discriminator; never an installed Agent acceptance.
+"""Disposable ARM pre-exec A/B experiment; never an installed Agent acceptance.
 
 Reuses the pinned production profile/command custody and the reviewed finite
-journal observer. It never changes AppArmor, sysctls, capabilities, or sandboxes.
+journal observer. Only a fresh named AppArmor profile on our own user@10002
+manager may change between A and B. No existing profile, sysctl, capability
+setting, executable attachment, or production sandbox argument is changed.
 The sole executable substitution is /usr/bin/true after the original sandbox
 arguments. Exit zero here is NOT a successful production namespace probe.
 """
@@ -23,6 +25,7 @@ import sys
 import threading
 import time
 import types
+import uuid
 
 UID = 10002
 NAME = 'consolecrypt-agent'
@@ -30,6 +33,7 @@ UNIT = 'cc-agent-collector-prerequisite.service'
 PROVISION_SHA = '9b03e2af5e66c0b2dcd2e6f1618a27182e311e92b00ced89766dcbbca4c50d10'
 GUEST_SHA = '302f88020c99f6ab25354704d9ed81ae33ab9430cd6782a357fb212ff72ca141'
 private_capture = {}
+journal_after_cursor = None
 
 
 def need(value, code):
@@ -86,11 +90,19 @@ def install_observer(guest):
     except BaseException:
         persist_journal_query();journal_state['stage']='queryExit';raise
 ''' + source[end:]
+    anchor = "    argv=['/usr/bin/journalctl'"
+    need(source.count(anchor) == 1, 'diag_cursor_fields_anchor')
+    source = source.replace(anchor, "    fields.append('__CURSOR')\n" + anchor, 1)
+    anchor = "    journal_state['expected']=tuple(argv)"
+    need(source.count(anchor) == 1, 'diag_cursor_query_anchor')
+    source = source.replace(anchor, "    if journal_after_cursor is not None:argv.append('--after-cursor='+journal_after_cursor)\n" + anchor, 1)
     exec(compile(source, 'pinned-reviewed-journal-observer', 'exec'), globals())
 
 
-def profile_fact(raw):
+def profile_fact(raw, owned_profile=None):
     value = raw.decode('ascii', 'replace').strip()
+    if owned_profile is not None and value in (owned_profile, owned_profile + ' (unconfined)', owned_profile + ' (enforce)'):
+        return 'ownedNamed'
     if value == 'unconfined':
         return 'unconfined'
     if value == 'unprivileged_userns' or value.startswith('unprivileged_userns ('):
@@ -98,7 +110,7 @@ def profile_fact(raw):
     return 'other'
 
 
-def manager_facts(pid):
+def manager_facts(pid, owned_profile=None):
     status = read(pathlib.Path('/proc') / str(pid) / 'status', 16384).decode('ascii')
     rows = {line.split(':', 1)[0]: line.split(':', 1)[1].strip() for line in status.splitlines() if ':' in line}
     need(rows['Uid'].split() == [str(UID)] * 4 and rows['Gid'].split() == [str(UID)] * 4, 'diag_manager_identity')
@@ -107,7 +119,7 @@ def manager_facts(pid):
         need(re.fullmatch('[0-9a-f]{16}', rows[field]) is not None, 'diag_capability_shape')
         result[field] = int(rows[field], 16)
     try:
-        result['apparmorProfile'] = profile_fact(read(pathlib.Path('/proc') / str(pid) / 'attr/current', 4096))
+        result['apparmorProfile'] = profile_fact(read(pathlib.Path('/proc') / str(pid) / 'attr/current', 4096), owned_profile)
     except OSError:
         result['apparmorProfile'] = 'unavailable'
     return result
@@ -117,6 +129,7 @@ def kernel_facts():
     facts = {}
     for key, path in (
         ('restrictUnprivilegedUserns', '/proc/sys/kernel/apparmor_restrict_unprivileged_userns'),
+        ('restrictUnprivilegedUnconfined', '/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined'),
         ('unprivilegedUsernsClone', '/proc/sys/kernel/unprivileged_userns_clone'),
         ('maxUserNamespaces', '/proc/sys/user/max_user_namespaces'),
     ):
@@ -159,9 +172,183 @@ def sandbox_argv(provision):
     return argv[:-6] + ['/usr/bin/true']
 
 
+def ab_candidate(baseline):
+    kernel, manager, journal = (baseline.get(key, {}) for key in ('kernel', 'manager', 'journal'))
+    return (baseline.get('observationCompleted') is True
+            and baseline.get('managerEnvironmentOriginalEquality') is True
+            and baseline.get('preexecExit') == 218
+            and journal.get('validated') is True and journal.get('capabilityStages') == ['boundingDrop']
+            and kernel.get('apparmorEnabled') is True and kernel.get('restrictUnprivilegedUserns') == 1
+            and kernel.get('restrictUnprivilegedUnconfined') == 1
+            and kernel.get('unprivilegedUsernsClone') == 1
+            and manager.get('apparmorProfile') == 'unconfined')
+
+
+def profile_body(name):
+    need(re.fullmatch(r'cc-agent-arm64-ab-[0-9a-f]{32}', name) is not None, 'diag_profile_name')
+    # Named only: no executable attachment and no capability/network rules.
+    return ('abi <abi/4.0>,\nprofile ' + name + ' flags=(unconfined) {\n  userns,\n}\n').encode('ascii')
+
+
+def profile_state(name):
+    profile_body(name)  # Validate before using the generated name as a selector.
+    rows = read('/sys/kernel/security/apparmor/profiles', 131072).decode('utf-8', 'strict').splitlines()
+    selected = [line for line in rows if line == name or line.startswith(name + ' (')]
+    need(len(selected) <= 1, 'diag_profile_duplicate')
+    if not selected:
+        return None
+    return 'expected' if selected[0] in (name + ' (unconfined)', name + ' (enforce)') else 'unexpected'
+
+
+def parser_argv(operation, path):
+    need(operation in ('add', 'remove'), 'diag_parser_operation')
+    return ['/usr/sbin/apparmor_parser', '--config-file=/dev/null', '--skip-cache',
+            '--abort-on-error', '--base=/etc/apparmor.d', '--' + operation, str(path)]
+
+
+def publish_registered(path, raw, created_files):
+    need(not path.exists() and not path.is_symlink(), 'diag_profile_file_collision')
+    module.publish(path, raw)
+    info = path.lstat()
+    created_files.append((path, info.st_dev, info.st_ino, hashlib.sha256(raw).hexdigest()))
+
+
+def remove_registered(path, created_files):
+    selected = [item for item in created_files if item[0] == path]
+    if not selected:
+        need(not path.exists() and not path.is_symlink(), 'diag_profile_file_unowned')
+        return
+    need(len(selected) == 1, 'diag_profile_file_duplicate')
+    _, dev, ino, digest = selected[0]
+    info = path.lstat()
+    need((info.st_dev, info.st_ino) == (dev, ino)
+         and hashlib.sha256(module.root_file(path, 16384, 0o644)).hexdigest() == digest, 'diag_profile_file_changed')
+    path.unlink()
+    created_files.remove(selected[0])
+
+
+def load_temporary_profile(state, created_files):
+    need(profile_state(state['name']) is None, 'diag_profile_already_loaded')
+    module.root_file(pathlib.Path('/usr/sbin/apparmor_parser'), 32 * 1024 * 1024, 0o755)
+    abi = module.root_file(pathlib.Path('/etc/apparmor.d/abi/4.0'), 131072, 0o644)
+    state['abiSha256'] = hashlib.sha256(abi).hexdigest()
+    publish_registered(state['profileFile'], profile_body(state['name']), created_files)
+    state['addAttempted'] = True
+    try:
+        original_command(parser_argv('add', state['profileFile']), seconds=15)
+    finally:
+        # Fresh absent name + our single --add attempt establishes ownership,
+        # including a parser failure after the kernel accepted that one profile.
+        state['loadedObserved'] = profile_state(state['name']) is not None
+    need(state['loadedObserved'] and profile_state(state['name']) == 'expected', 'diag_profile_load_readback')
+    need(hashlib.sha256(module.root_file(pathlib.Path('/etc/apparmor.d/abi/4.0'), 131072, 0o644)).hexdigest()
+         == state['abiSha256'], 'diag_profile_abi_changed')
+
+
+def baseline_cursor():
+    rows = private_capture.get('namespace-probe.journal', b'').splitlines()
+    need(bool(rows), 'diag_baseline_journal_empty')
+    cursor = json.loads(rows[-1]).get('__CURSOR')
+    need(type(cursor) is str and re.fullmatch(r'[A-Za-z0-9;=_-]{1,512}', cursor) is not None, 'diag_baseline_cursor')
+    return cursor
+
+
+def retire_temporary_profile(state, created_files, expected_dropins, original_apparmor, stopped, report):
+    need(stopped, 'diag_profile_retire_manager_live')
+    try:
+        remove_registered(state['dropin'], created_files)
+        module.system('daemon-reload')
+        restored = module.show('user@10002.service', ['DropInPaths', 'AppArmorProfile'])
+        need(set(restored['DropInPaths'].split()) == expected_dropins
+             and len(restored['DropInPaths'].split()) == len(expected_dropins)
+             and restored['AppArmorProfile'] == original_apparmor, 'diag_profile_restore_readback')
+        need(hashlib.sha256(module.root_file(state['originalDropin'], 16384, 0o644)).hexdigest()
+             == state['originalDropinSha256'], 'diag_original_profile_changed')
+        report['originalUnitPolicyRestored'] = True
+    finally:
+        if state['addAttempted'] and profile_state(state['name']) is not None:
+            need(state['loadedObserved'], 'diag_profile_load_ownership_unknown')
+            raw = module.root_file(state['profileFile'], 16384, 0o644)
+            need(raw == profile_body(state['name']), 'diag_profile_source_changed')
+            original_command(parser_argv('remove', state['profileFile']), seconds=15)
+        need(profile_state(state['name']) is None, 'diag_profile_unload_readback')
+        report['temporaryProfileAbsent'] = True
+
+
+def stop_owned_manager():
+    original_command(['/usr/bin/systemctl', '--system', '--no-pager', '--no-ask-password',
+                      'stop', 'user@10002.service', 'user-runtime-dir@10002.service'], seconds=30)
+    for unit in ('user@10002.service', 'user-runtime-dir@10002.service'):
+        need(module.show(unit, ['ActiveState', 'MainPID']) == {'ActiveState': 'inactive', 'MainPID': '0'}, 'diag_cleanup_manager')
+    need(not pathlib.Path('/run/user/10002').exists() and not pathlib.Path('/run/user/10002').is_symlink(), 'diag_cleanup_runtime')
+    group = pathlib.Path('/sys/fs/cgroup/user.slice/user-10002.slice')
+    for path in group.rglob('cgroup.procs') if group.exists() else ():
+        need(not read(path, 65536).strip(), 'diag_cleanup_cgroup')
+
+
+def observe_phase(provision, expected_dropins, owned_identity, owned_profile=None, baseline=None):
+    global namespace_observed, journal_state, probe_argv
+    namespace_observed = {}
+    journal_state = dict(stage='notStarted', expected=(), snapshot={}, raw=b'', persisted=False, queryCount=0)
+    private_capture.clear()
+    report = {}
+    manager = module.show('user@10002.service', ['ActiveState', 'MainPID', 'InvocationID', 'ControlGroup', 'DropInPaths'])
+    need(manager['ActiveState'] == 'active' and manager['ControlGroup'] == '/user.slice/user-10002.slice/user@10002.service', 'diag_manager_start')
+    need(len(manager['DropInPaths'].split()) == len(expected_dropins)
+         and set(manager['DropInPaths'].split()) == expected_dropins, 'diag_manager_dropin')
+    with module.retained_manager(manager, UID):
+        need(identity() == owned_identity, 'diag_identity_changed')
+        systemd = pathlib.Path('/usr/lib/systemd/systemd')
+        module.root_file(systemd, 32 * 1024 * 1024, 0o755)
+        executable = (pathlib.Path('/proc') / manager['MainPID'] / 'exe').stat()
+        need((executable.st_dev, executable.st_ino) == (systemd.stat().st_dev, systemd.stat().st_ino), 'diag_manager_executable')
+        report['manager'] = manager_facts(int(manager['MainPID']), owned_profile)
+        if owned_profile is not None:
+            need(report['manager']['apparmorProfile'] == 'ownedNamed', 'diag_named_profile_not_applied')
+        report['kernel'] = kernel_facts()
+        if baseline is not None:
+            need(report['kernel'] == baseline['kernel'], 'diag_kernel_facts_changed')
+            need(all(report['manager'][key] == baseline['manager'][key]
+                     for key in ('CapBnd', 'CapPrm', 'CapEff', 'CapAmb')), 'diag_manager_capabilities_changed')
+        actual = module.fields(original_command(['/usr/bin/systemctl', '--user', 'show-environment'], uid=UID, gid=UID))
+        expected = module.environment(UID)
+        if 'DBUS_SESSION_BUS_ADDRESS' in actual:
+            expected['DBUS_SESSION_BUS_ADDRESS'] = 'unix:path=/run/user/10002/bus'
+        need(actual == expected, 'diag_manager_environment')
+        report['managerEnvironmentOriginalEquality'] = True
+        missing = original_command(['/usr/bin/systemctl', '--user', 'show', UNIT, '--property=LoadState'], uid=UID, gid=UID, exact_missing=True)
+        need(missing == b'LoadState=not-found\n', 'diag_probe_collision')
+        probe_argv = sandbox_argv(provision)
+        report['productionSandboxArgvSha256'] = hashlib.sha256(json.dumps(probe_argv[:-1], separators=(',', ':')).encode()).hexdigest()
+        report['completeArgvSha256'] = hashlib.sha256(json.dumps(probe_argv, separators=(',', ':')).encode()).hexdigest()
+        public = io.StringIO()
+        with contextlib.redirect_stderr(public):
+            try:
+                need(namespace_command(probe_argv, uid=UID, gid=UID, seconds=10) == b'', 'diag_true_output')
+                namespace_observed['exit'] = 0
+            except ValueError as error:
+                need(error.args == ('collector_control_exit',) and 'exit' in namespace_observed, 'diag_original_probe_error')
+            capture_namespace_journal()
+        need(len(public.getvalue().encode()) <= 8192, 'diag_projection_cap')
+        for line in public.getvalue().splitlines():
+            need(len(line) <= 4096, 'diag_projection_line')
+            if line.startswith('CC_AGENT_NAMESPACE_JOURNAL '):
+                report['journal'] = json.loads(line.split(' ', 1)[1])
+            elif line.startswith('CC_AGENT_NAMESPACE_PROCESS '):
+                report['originalProcess'] = json.loads(line.split(' ', 1)[1])
+            else:
+                raise ValueError('diag_projection_prefix')
+        need(journal_state['queryCount'] == 1 and journal_state['stage'] == 'complete', 'diag_single_journal')
+        report['preexecExit'] = namespace_observed['exit']
+        report['journalQueryCount'] = 1
+        report['observationCompleted'] = True
+    report['managerInvocationId'] = manager['InvocationID']
+    return report
+
+
 def main():
-    global module, original_command, namespace_observed, journal_state, probe_argv
-    need(sys.argv[1:] == ['--execute-disposable-arm-preexec-only'], 'diag_explicit_mode')
+    global module, original_command, namespace_observed, journal_state, probe_argv, journal_after_cursor
+    need(sys.argv[1:] == ['--execute-disposable-arm-apparmor-ab-only'], 'diag_explicit_mode')
     need(os.getuid() == 0 and platform.machine() == 'aarch64'
          and os.environ.get('GITHUB_ACTIONS') == 'true'
          and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted', 'diag_disposable_arm_only')
@@ -175,15 +362,17 @@ def main():
     module = types.ModuleType('owned_production_collector_provision')
     module.__file__ = str(here.parents[2] / 'agent/delivery/collector_provision.py')
     exec(compile(provision, module.__file__, 'exec'), module.__dict__)
-    module.END = time.monotonic() + 180
+    module.END = time.monotonic() + 140
     module.select_profile(dict(format='cc-agent-installed-disk-collector-profile/v1', uid=UID, gid=UID))
     original_command = module.command
     namespace_observed = {}
     journal_state = dict(stage='notStarted', expected=(), snapshot={}, raw=b'', persisted=False, queryCount=0)
     install_observer(guest)
-    report = dict(format='cc-arm64-preexec-capability-observation/v1', installedAcceptance=False,
+    report = dict(format='cc-arm64-preexec-apparmor-ab-observation/v1', installedAcceptance=False,
                   productionNamespaceProbePassed=False, executable='/usr/bin/true', cleanupJoined=False,
-                  observationCompleted=False, AppArmorPolicyChanged=False, sysctlsChanged=False)
+                  observationCompleted=False, causalExperimentCompleted=False, causalEffectObserved=False,
+                  temporaryProfileLoaded=False, temporaryProfileAbsent=True,
+                  originalUnitPolicyRestored=True, existingProfilesChanged=False, sysctlsChanged=False)
     created_dirs, created_files = [], []
     owned_identity = None
     group_created = False
@@ -191,6 +380,8 @@ def main():
     group_attempted = False
     user_attempted = False
     user_removed = False
+    temporary = None
+    journal_after_cursor = None
     roots = [pathlib.Path(p) for p in ('/etc/consolecrypt-agent', '/var/lib/consolecrypt-agent',
              '/run/consolecrypt-agent', '/etc/systemd/system/user@10002.service.d')]
     def directory(path, private=False):
@@ -217,7 +408,7 @@ def main():
             if path.exists() or path.is_symlink():
                 module.root_file(path, 16384, 0o644)
                 vendor_dropins.add(str(path))
-        existing = module.show('user@10002.service', ['FragmentPath', 'DropInPaths'])
+        existing = module.show('user@10002.service', ['FragmentPath', 'DropInPaths', 'AppArmorProfile'])
         need(existing['FragmentPath'] == '/usr/lib/systemd/system/user@.service'
              and len(existing['DropInPaths'].split()) == len(vendor_dropins)
              and set(existing['DropInPaths'].split()) == vendor_dropins, 'diag_foreign_dropin')
@@ -247,50 +438,39 @@ def main():
         module.system('daemon-reload')
         manager_started = True  # Own creation/readback precedes the start attempt.
         module.system('start', 'user@10002.service')
-        manager = module.show('user@10002.service', ['ActiveState', 'MainPID', 'InvocationID', 'ControlGroup', 'DropInPaths'])
-        need(manager['ActiveState'] == 'active' and manager['ControlGroup'] == '/user.slice/user-10002.slice/user@10002.service', 'diag_manager_start')
         expected_dropins = vendor_dropins | {'/etc/systemd/system/user@10002.service.d/60-consolecrypt-agent.conf'}
-        need(len(manager['DropInPaths'].split()) == len(expected_dropins)
-             and set(manager['DropInPaths'].split()) == expected_dropins, 'diag_manager_dropin')
-        with module.retained_manager(manager, UID):
-            need(identity() == owned_identity, 'diag_identity_changed')
-            systemd = pathlib.Path('/usr/lib/systemd/systemd')
-            module.root_file(systemd, 32 * 1024 * 1024, 0o755)
-            executable = (pathlib.Path('/proc') / manager['MainPID'] / 'exe').stat()
-            need((executable.st_dev, executable.st_ino) == (systemd.stat().st_dev, systemd.stat().st_ino), 'diag_manager_executable')
-            report['manager'] = manager_facts(int(manager['MainPID']))
-            report['kernel'] = kernel_facts()
-            actual = module.fields(original_command(['/usr/bin/systemctl', '--user', 'show-environment'], uid=UID, gid=UID))
-            expected = module.environment(UID)
-            if 'DBUS_SESSION_BUS_ADDRESS' in actual:
-                expected['DBUS_SESSION_BUS_ADDRESS'] = 'unix:path=/run/user/10002/bus'
-            need(actual == expected, 'diag_manager_environment')
-            report['managerEnvironmentOriginalEquality'] = True
-            missing = original_command(['/usr/bin/systemctl', '--user', 'show', UNIT, '--property=LoadState'], uid=UID, gid=UID, exact_missing=True)
-            need(missing == b'LoadState=not-found\n', 'diag_probe_collision')
-            probe_argv = sandbox_argv(provision)
-            report['productionSandboxArgvSha256'] = hashlib.sha256(json.dumps(probe_argv[:-1], separators=(',', ':')).encode()).hexdigest()
-            public = io.StringIO()
-            with contextlib.redirect_stderr(public):
-                try:
-                    need(namespace_command(probe_argv, uid=UID, gid=UID, seconds=10) == b'', 'diag_true_output')
-                    namespace_observed['exit'] = 0
-                except ValueError as error:
-                    need(error.args == ('collector_control_exit',) and 'exit' in namespace_observed, 'diag_original_probe_error')
-                capture_namespace_journal()
-            need(len(public.getvalue().encode()) <= 8192, 'diag_projection_cap')
-            for line in public.getvalue().splitlines():
-                need(len(line) <= 4096, 'diag_projection_line')
-                if line.startswith('CC_AGENT_NAMESPACE_JOURNAL '):
-                    report['journal'] = json.loads(line.split(' ', 1)[1])
-                elif line.startswith('CC_AGENT_NAMESPACE_PROCESS '):
-                    report['originalProcess'] = json.loads(line.split(' ', 1)[1])
-                else:
-                    raise ValueError('diag_projection_prefix')
-            need(journal_state['queryCount'] == 1 and journal_state['stage'] == 'complete', 'diag_single_journal')
-            report['preexecExit'] = namespace_observed['exit']
-            report['journalQueryCount'] = 1
-            report['observationCompleted'] = True
+        report['baseline'] = observe_phase(provision, expected_dropins, owned_identity)
+        if ab_candidate(report['baseline']):
+            # A true causal experiment, not an inference of AppArmor causality.
+            # Unsupported parser/ABI/profile operation fails explicitly; no fallback.
+            journal_after_cursor = baseline_cursor()
+            name = 'cc-agent-arm64-ab-' + uuid.uuid4().hex
+            dropin = roots[3] / '70-consolecrypt-arm64-userns.conf'
+            original_dropin = roots[3] / '60-consolecrypt-agent.conf'
+            temporary = dict(name=name, profileFile=roots[0] / (name + '.apparmor'), dropin=dropin,
+                             originalDropin=original_dropin,
+                             originalDropinSha256=hashlib.sha256(assets[original_dropin]).hexdigest(),
+                             addAttempted=False, loadedObserved=False)
+            report['temporaryProfileAbsent'] = False
+            load_temporary_profile(temporary, created_files)
+            report['temporaryProfileLoaded'] = True
+            stop_owned_manager()
+            report['originalUnitPolicyRestored'] = False
+            publish_registered(dropin, ('[Service]\nAppArmorProfile=' + name + '\n').encode('ascii'), created_files)
+            module.system('daemon-reload')
+            module.system('start', 'user@10002.service')
+            report['namedProfile'] = observe_phase(provision, expected_dropins | {str(dropin)}, owned_identity,
+                                                    owned_profile=name, baseline=report['baseline'])
+            need(report['namedProfile']['managerInvocationId'] != report['baseline']['managerInvocationId'], 'diag_manager_not_restarted')
+            need(report['namedProfile']['completeArgvSha256'] == report['baseline']['completeArgvSha256'], 'diag_ab_argv_changed')
+            report['causalExperimentCompleted'] = True
+            report['causalEffectObserved'] = report['namedProfile']['preexecExit'] == 0
+            report['journalQueriesTotal'] = report['baseline']['journalQueryCount'] + report['namedProfile']['journalQueryCount']
+        else:
+            report['abSkippedReason'] = ('unprivilegedProfileTransitionRestrictionNotEnabled'
+                                         if report['baseline']['kernel'].get('restrictUnprivilegedUnconfined') != 1
+                                         else 'baselineOutsideAppArmorCandidate')
+        report['observationCompleted'] = True
     except BaseException as error:
         report['errorClass'] = type(error).__name__ if type(error).__name__ in ('ValueError', 'OSError', 'KeyError', 'AssertionError', 'TimeoutExpired', 'FileNotFoundError', 'PermissionError') else 'Other'
         code = error.args[0] if len(error.args) == 1 and type(error.args[0]) is str else ''
@@ -298,18 +478,16 @@ def main():
     finally:
         try:
             # Separate reserved cleanup time; no collector/grant is created here.
-            module.END = time.monotonic() + 45
+            module.END = time.monotonic() + 75
             if owned_identity is not None:
                 need(identity() == owned_identity, 'diag_cleanup_identity')
+                stopped = False
                 if manager_started:
-                    original_command(['/usr/bin/systemctl', '--system', '--no-pager', '--no-ask-password',
-                                      'stop', 'user@10002.service', 'user-runtime-dir@10002.service'], seconds=30)
-                    for unit in ('user@10002.service', 'user-runtime-dir@10002.service'):
-                        need(module.show(unit, ['ActiveState', 'MainPID']) == {'ActiveState': 'inactive', 'MainPID': '0'}, 'diag_cleanup_manager')
-                    need(not pathlib.Path('/run/user/10002').exists() and not pathlib.Path('/run/user/10002').is_symlink(), 'diag_cleanup_runtime')
-                    group = pathlib.Path('/sys/fs/cgroup/user.slice/user-10002.slice')
-                    for path in group.rglob('cgroup.procs') if group.exists() else ():
-                        need(not read(path, 65536).strip(), 'diag_cleanup_cgroup')
+                    stop_owned_manager()
+                    stopped = True
+                if temporary is not None:
+                    retire_temporary_profile(temporary, created_files, expected_dropins,
+                                             existing['AppArmorProfile'], stopped, report)
                 for path, dev, ino, digest in reversed(created_files):
                     info = path.lstat()
                     need((info.st_dev, info.st_ino) == (dev, ino)
@@ -356,8 +534,10 @@ def main():
                         continue
                     raise ValueError('diag_cleanup_group_remains')
             report['cleanupJoined'] = True
-        except BaseException:
+        except BaseException as error:
             report['cleanupJoined'] = False
+            code = error.args[0] if len(error.args) == 1 and type(error.args[0]) is str else ''
+            report['cleanupErrorCode'] = code if re.fullmatch(r'(?:diag|collector)_[a-z_]{1,80}', code) else 'unclassified'
         private_capture.clear()
         print(json.dumps(report, sort_keys=True), flush=True)
     return 0 if report['observationCompleted'] and report['cleanupJoined'] else 1

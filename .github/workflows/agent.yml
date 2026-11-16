@@ -76,15 +76,15 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.sha }}
-      - name: Observe one exact production sandbox before executable entry
+      - name: Compare baseline and one owned named AppArmor userns profile
         timeout-minutes: 4
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' '777aee539ef95d3844e3a36db872a5fd6969b461163ff18ea4299ef2a61fcdcd  .github/fixtures/agent-installed/arm64_capability_observe.py' | sha256sum --check --strict
+          printf '%s\n' '6e289922e571a27a725eb95653a39ca6af1319f09f53f572a0572195706c8404  .github/fixtures/agent-installed/arm64_capability_observe.py' | sha256sum --check --strict
           sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT \
             /usr/bin/python3.12 -I -B .github/fixtures/agent-installed/arm64_capability_observe.py \
-            --execute-disposable-arm-preexec-only | tee "$RUNNER_TEMP/cc-arm64-capability-result.json"
+            --execute-disposable-arm-apparmor-ab-only | tee "$RUNNER_TEMP/cc-arm64-capability-result.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
