@@ -234,12 +234,17 @@ jobs:
           import os,stat,sys
           from pathlib import Path
           temp=Path(sys.argv[1]);source=temp/'cc-arm64-installed-result'
-          if not source.exists():sys.exit(0)
           target=temp/'cc-arm64-public-result';target.mkdir(mode=0o755)
           names=('RESULT.json','group.log','user.log',*(f'{i:02d}-role.log' for i in range(1,8)),*(f'cleanup-{i}.log' for i in range(3)))
+          producer=temp/'cc-arm64-prometheus/artifacts'
+          producer_names=('compiler-version.log','module-download-result.json',
+              'module-metadata-result.json','module-metadata-stderr.log','module-metadata.log',
+              'module-metadata-offline-result.json','module-metadata-offline-stderr.log','module-metadata-offline.log',
+              'module-graph-result.json','module-graph-stderr.log','module-graph.log')
+          inputs=[(source/name,name)for name in names]
+          inputs.extend((producer/name,'producer-'+name)for name in producer_names)
           total=0
-          for name in names:
-              path=source/name
+          for path,name in inputs:
               if not path.exists():continue
               assert path.resolve(strict=True)==path
               with path.open('rb') as stream:
@@ -265,6 +270,17 @@ jobs:
             ${{ runner.temp }}/cc-arm64-public-result/user.log
             ${{ runner.temp }}/cc-arm64-public-result/0?-role.log
             ${{ runner.temp }}/cc-arm64-public-result/cleanup-?.log
+            ${{ runner.temp }}/cc-arm64-public-result/producer-compiler-version.log
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-download-result.json
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-metadata-result.json
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-metadata-stderr.log
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-metadata.log
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-metadata-offline-result.json
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-metadata-offline-stderr.log
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-metadata-offline.log
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-graph-result.json
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-graph-stderr.log
+            ${{ runner.temp }}/cc-arm64-public-result/producer-module-graph.log
 
 # Installed jobs require explicit manual selection or the exact reviewed test branch push.
 # Observe candidate job and its non-approval flags remain unchanged.

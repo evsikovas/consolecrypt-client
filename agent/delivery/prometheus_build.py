@@ -437,6 +437,29 @@ def run(argv, cwd, env, label, until, output, cache, scratch, inputs_bytes, limi
     return read(log, 16 * 1024**2)
 
 
+def query_module_metadata(command, sums, cache, env, label):
+    """Reuse the existing official-Go graph metadata H1 check, never ZIPs."""
+    wanted={(path,version[:-7]):checksum for (path,version),checksum in sums.items()
+            if version.endswith("/go.mod")}
+    need(len(wanted)==484,"original graph metadata checksum set")
+    argv=["list","-m","-json","-mod=readonly",*[p+"@"+v for p,v in sorted(wanted)]]
+    need(sum(len(part.encode())+1 for part in argv)<=64*1024,"graph metadata argv bound")
+    raw=command(argv,label,env)
+    need(len(raw)<=4*1024**2,"graph metadata JSON bound")
+    seen=set()
+    escape=lambda value:"".join("!"+c.lower()if c.isupper()else c for c in value)
+    for row in json_stream(raw):
+        pair=(row.get("Path"),row.get("Version"))
+        need(pair in wanted and pair not in seen and not row.get("Error")
+             and row.get("Replace")is None,"actual graph metadata tuple/error")
+        need(row.get("GoModSum")==wanted[pair],"fresh official graph GoModSum mismatch")
+        path,version=pair
+        expected=cache/"modcache/cache/download"/escape(path)/"@v"/(escape(version)+".mod")
+        need(row.get("GoMod")==str(expected),"actual graph metadata cache path")
+        seen.add(pair)
+    need(seen==set(wanted),"missing original graph metadata result")
+
+
 def produce(output,source_archive=None,go_archive=None,module_cache=None,offline=False,target="x86_64-unknown-linux-gnu"):
     need(sys.platform == "linux" and os.uname().machine in {"x86_64","aarch64"}, "pinned compiler requires native Linux build host")
     need(os.getuid()==os.geteuid()!=0,"unprivileged build user")
@@ -492,7 +515,12 @@ def produce(output,source_archive=None,go_archive=None,module_cache=None,offline
         need(not row.get("Error") and (row.get("Path"), row.get("Version")) == original
             and row.get("Sum") == sums[path, version]
             and row.get("GoModSum") == sums[path, version + "/go.mod"], "fresh official BOTH module sums")
+    # The fresh path must fetch the original metadata-only go.sum entries,
+    # just as the accepted imported-cache path does. Official Go checks each
+    # H1; these484 metadata tuples never enlarge the251 source ZIP set.
+    query_module_metadata(command,sums,cache,env,"module-metadata")
     offline = {**env, "GOPROXY": "off", "GOSUMDB": "off"}
+    query_module_metadata(command,sums,cache,offline,"module-metadata-offline")
     # Unlike JSON module-info enrichment, this official MVS graph does not
     # query .info/Time for metadata-only labels outside source go.sum tuples.
     command(["mod", "graph"], "module-graph", offline)
