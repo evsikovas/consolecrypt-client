@@ -38,7 +38,7 @@ def fixed_argv(directory, wal_root, status_port):
          and uuid.UUID(wal_root.parent.name).version == 8, 'disk_wal_root')
     need(type(status_port) is int and 1024 <= status_port <= 65535, 'disk_status_port')
     return [str(BINARY), '--agent', '--storage.agent.hard-budget',
-            '--storage.agent.path=' + str(wal_root), '--storage.agent.wal-compression=false',
+            '--storage.agent.path=' + str(wal_root), '--no-storage.agent.wal-compression',
             '--config.file=' + str(directory / 'scrape.json'),
             '--web.listen-address=127.0.0.1:' + str(status_port), '--log.level=error']
 

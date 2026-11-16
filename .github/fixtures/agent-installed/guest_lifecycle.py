@@ -136,6 +136,26 @@ def namespace_command(argv,**kwargs):
                 optionalBusPresent=optional in actual,optionalBusMatches=actual.get(optional)==bus,
                 knownExtra={k:k in extra for k in known})
             if actual!=expected:
+                unknown=extra-set(known)
+                names_ok=len(unknown)<=2 and all(re.fullmatch(r'[A-Z_][A-Z0-9_]{0,63}',name)for name in unknown)
+                value['unknownNamesObserved']=names_ok
+                value['unknownNames']=sorted(unknown)if names_ok else []
+                value['managerExecEnvironment']={'observed':False}
+                try:
+                    caller=sys._getframe(1)
+                    assert caller.f_code is module.provision.__code__ and caller.f_locals['uid']==caller.f_locals['gid']==10002
+                    proc=caller.f_locals['pidroot'];before=proc.stat()
+                    assert str(proc)=='/proc/'+caller.f_locals['manager']['MainPID'] and before.st_uid==10002
+                    with(proc/'environ').open('rb')as stream:
+                        assert os.fstat(stream.fileno()).st_uid==10002
+                        exec_raw=stream.read(16385)
+                    assert len(exec_raw)<=16384 and exec_raw.endswith(b'\0')
+                    exec_keys={item.split(b'=',1)[0].decode('ascii')for item in exec_raw.split(b'\0')if item}
+                    after=proc.stat();assert after.st_uid==10002 and (before.st_dev,before.st_ino)==(after.st_dev,after.st_ino)
+                    value['managerExecEnvironment']=dict(observed=True,sameOwnedProcessDirectory=True,
+                        sshAuthSockPresent='SSH_AUTH_SOCK'in exec_keys,
+                        unknownNamesPresent={name:name in exec_keys for name in sorted(unknown)}if names_ok else {})
+                except Exception:pass
                 value['knownKeyringUnits']={}
                 for suffix in ('service','socket'):
                     unit='gnome-keyring-daemon.'+suffix

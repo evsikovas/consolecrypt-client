@@ -95,7 +95,8 @@ class FixedDiskSpec(unittest.TestCase):
         entry = importlib.util.module_from_spec(spec); spec.loader.exec_module(entry)
         argv = entry.fixed_argv(entry.ROOT / SESSION,
             Path('/var/lib/consolecrypt-agent/metrics-disk') / COLLECTOR / 'wal', 19090)
-        self.assertIn('--storage.agent.wal-compression=false', argv)
+        self.assertIn('--no-storage.agent.wal-compression', argv)
+        self.assertNotIn('--storage.agent.wal-compression=false', argv)
         self.assertFalse(any('disableOnDiskQueue' in arg or arg.endswith('=none') for arg in argv))
         with self.assertRaises(ValueError):
             entry.fixed_argv(Path('/tmp/foreign'), Path('/tmp/wal'), 19090)
