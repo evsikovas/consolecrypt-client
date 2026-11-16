@@ -287,8 +287,8 @@ except BaseException as error:
     value=subprocess.run(['/usr/bin/python3','-I','-B','-c',script],capture_output=True,close_fds=True,timeout=65)
     assert len(value.stdout)+len(value.stderr)<=65536,'bounded fixed provision output'
     if value.returncode:
-        lines=[line for line in value.stderr.decode('utf-8',errors='replace').splitlines()if line.startswith(('CC_AGENT_COLLECTOR_PROVISION_FAILURE ','CC_AGENT_NAMESPACE_PROCESS ','CC_AGENT_NAMESPACE_JOURNAL '))]
-        assert len(lines)<=3
+        lines=[line for line in value.stderr.decode('utf-8',errors='replace').splitlines()if line.startswith(('CC_AGENT_COLLECTOR_PROVISION_FAILURE ','CC_AGENT_NAMESPACE_PROCESS ','CC_AGENT_NAMESPACE_JOURNAL ','CC_AGENT_MANAGER_ENVIRONMENT_OBSERVATION '))]
+        assert len(lines)<=4
         for line in lines:
             assert len(line)<=4096
             print(line,flush=True)
