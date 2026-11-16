@@ -3,6 +3,7 @@ Conservative Cargo resolution is not an exact native/stdlib linkage SBOM.
 """
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import stat
@@ -18,6 +19,53 @@ def digest(raw):
 
 def encoded(value):
     return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode()
+
+
+def module_notice_provenance(full):
+    """Keep the complete observation on the same-binary vmagent primary."""
+    if "buildInfoObservationRef" in full:
+        raise ValueError("original complete source provenance required")
+    child=dict(full)
+    if "buildInfoObservation" in child:
+        observation=child.pop("buildInfoObservation")
+        if type(observation)is not dict:
+            raise ValueError("complete build information observation required")
+        child["buildInfoObservationRef"]=dict(component="vmagent",sha256=digest(encoded(observation)))
+    return child
+
+
+def notice_budget_diagnostic(components, required_bytes, has_disk):
+    # Counts only: never source names, paths, text, credentials or their hashes.
+    kinds={}
+    allowed={"rust-local-path-dependency","rust-pinned-git-dependency","rust-lock-dependency",
+        "patched-vendored-rust-dependency","bundled-native-library","vendor-source-only-not-bundled-binary",
+        "bundled-python-wheel","bundled-agent-binary","bundled-collector-binary","bundled-go-module",
+        "bundled-go-stdlib","bundled-agent-source","source-overlay-not-bundled-binary"}
+    for component in components:
+        kind=component.get("kind")
+        if type(kind)is not str or kind not in allowed:kind="other"
+        row=kinds.setdefault(kind,dict(components=0,componentJsonBytes=0,noticeReferences=0))
+        row["components"]+=1;row["componentJsonBytes"]+=len(encoded(component))
+        row["noticeReferences"]+=len(component.get("notices",[]))
+    value=dict(version=1,requiredBytes=required_bytes,limitBytes=256*1024,
+        components=len(components),diskCollectorPresent=int(has_disk),kinds=kinds)
+    raw=encoded(value)
+    if len(raw)>16384:return value
+    try:print("CC_AGENT_NOTICE_INVENTORY_BUDGET "+raw.decode().strip(),file=sys.stderr,flush=True)
+    except(OSError,ValueError):pass
+    if os.environ.get("GITHUB_ACTIONS")!="true":return value
+    temp=Path(os.environ.get("RUNNER_TEMP",""))
+    try:
+        if not temp.is_absolute()or temp.resolve(strict=True)!=temp or not temp.is_dir():return value
+        path=temp/"cc-agent-notice-inventory-budget.json"
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,"O_NOFOLLOW",0)|getattr(os,"O_CLOEXEC",0),0o600)
+        try:
+            info=os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode)or info.st_nlink!=1:return value
+            with os.fdopen(fd,"wb",closefd=False)as stream:stream.write(raw);stream.flush();os.fsync(fd)
+        finally:os.close(fd)
+    except(OSError,ValueError):pass
+    return value
 
 
 def read(path, limit=32 * 1024 * 1024):
@@ -243,6 +291,10 @@ def generate(agent, cache, descriptor, *, dependency_metadata=None):
             row["source_notice_provenance"] = material_value["sourceNoticeProvenance"]
     if material_value["buildInfoSha256"] != collector["buildInfoSha256"]:
         raise ValueError("actual collector buildinfo changed")
+    # Each child already binds this same binary and source record. Its compact
+    # reference resolves to the full observation on the existing vmagent row;
+    # the independently verified signed materials record stays untouched.
+    child_provenance=module_notice_provenance(material_value["sourceNoticeProvenance"])
     # Combine complete texts into bounded notice files; never trim a license to
     # fit the package count. Each original material retains its own SHA below.
     groups = [(row["path"] + "@" + row["version"], row, "bundled-go-module")
@@ -265,7 +317,7 @@ def generate(agent, cache, descriptor, *, dependency_metadata=None):
         components.append(dict(name=name, kind=kind, archive_sha256=row["archiveSha256"],
             actual_binary_sha256=collector["sha256"], build_info_sha256=collector["buildInfoSha256"],
             material_source_sha256={item["path"]: item["sha256"] for item in row["materials"]},
-            notices=combined, source_notice_provenance=material_value["sourceNoticeProvenance"], license_compatibility_certified=False))
+            notices=combined, source_notice_provenance=child_provenance, license_compatibility_certified=False))
     if "prometheus" in descriptor:
         import prometheus_materials
         components.append(prometheus_materials.component(agent, descriptor["prometheus"], source, notice))
@@ -303,6 +355,9 @@ def generate(agent, cache, descriptor, *, dependency_metadata=None):
                 "Go module/standard-library full materials are collected from actual buildinfo and verified sources; final legal compatibility/corresponding-source review remains required"],
         external_not_bundled=["system CPython","optional external exporter executables and dependencies"])
     files[INVENTORY]=encoded(inventory)
+    if len(files[INVENTORY])>256*1024:
+        try:notice_budget_diagnostic(components,len(files[INVENTORY]),"prometheus"in descriptor)
+        except Exception:pass # Optional diagnostic cannot replace the original denial.
     validate_notice_inventory(files,required=True)
     if len(explicit)+len(files)+2>512:raise ValueError("existing package count exceeded")
     for p,(h,limit) in observed.items():

@@ -244,6 +244,7 @@ jobs:
           inputs=[(source/name,name)for name in names]
           inputs.extend((producer/name,'producer-'+name)for name in producer_names)
           inputs.append((temp/'cc-arm64-packet/COMPILER_RESULT.json','compiler-result.json'))
+          inputs.append((temp/'cc-agent-notice-inventory-budget.json','notice-inventory-budget.json'))
           total=0
           for path,name in inputs:
               if not path.exists():continue
@@ -283,6 +284,7 @@ jobs:
             ${{ runner.temp }}/cc-arm64-public-result/producer-module-graph-stderr.log
             ${{ runner.temp }}/cc-arm64-public-result/producer-module-graph.log
             ${{ runner.temp }}/cc-arm64-public-result/compiler-result.json
+            ${{ runner.temp }}/cc-arm64-public-result/notice-inventory-budget.json
 
 # Installed jobs require explicit manual selection or the exact reviewed test branch push.
 # Observe candidate job and its non-approval flags remain unchanged.
