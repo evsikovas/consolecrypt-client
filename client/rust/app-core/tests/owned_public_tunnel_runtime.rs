@@ -27,3 +27,20 @@ async fn original_revoke_completion_cannot_extend_deadline_or_cross_unlock() {
 async fn saved_agent_destination_save_retires_old_scope_without_minting_grant() {
     cc_app_core::__test_harness_saved_destination_source_scope().await;
 }
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[tokio::test]
+async fn original_pump_joins_when_control_proof_is_unknown() {
+    cc_app_core::__test_harness_local_join_without_control_proof().await;
+}
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[tokio::test]
+async fn cancelled_original_join_restores_same_pending_pump() {
+    cc_app_core::__test_harness_cancel_pending_join_preserves_handle().await;
+}
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[tokio::test]
+async fn cancelled_control_wait_preserves_actual_original_join() {
+    cc_app_core::__test_harness_cancel_control_preserves_join_witness().await;
+}

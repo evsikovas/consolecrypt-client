@@ -194,34 +194,45 @@ impl AgentTunnelRouteOperation {
     }
 }
 
+// Cancellation preserves custody of the SAME pending original JoinHandle.
+struct PumpJoinCustody<'a> {state:&'a Mutex<State>,handle:Option<JoinHandle<()>>}
+impl Drop for PumpJoinCustody<'_> {
+    fn drop(&mut self) {
+        if let Some(handle)=self.handle.take() {
+            // Approval is one-use: no replacement task can enter this slot.
+            let mut state=self.state.lock().unwrap_or_else(|poisoned|poisoned.into_inner());
+            state.task=Some(handle);
+        }
+    }
+}
+async fn join_pump_then_control(state:&Mutex<State>,end:Instant,
+    control:impl std::future::Future<Output=AppResult<()>>,
+)->AppResult<bool> {
+    let handle=state.lock().map_err(|_|unknown())?.task.take();
+    let mut custody=PumpJoinCustody {state,handle};
+    if let Some(handle)=custody.handle.as_mut() {
+        match tokio::time::timeout_at(tokio::time::Instant::from_std(end),handle).await {
+            Ok(Ok(()))=>{
+                // No await between consuming the completed handle and recording
+                // its actual join: cancellation during control cannot lose it.
+                custody.handle.take();
+                state.lock().unwrap_or_else(|poisoned|poisoned.into_inner()).joined=true;
+            },
+            Ok(Err(_))=>{custody.handle.take();},
+            Err(_)=>{}, // Drop restores the SAME pending handle before control.
+        }
+    }
+    drop(custody);
+    Ok(matches!(tokio::time::timeout_at(tokio::time::Instant::from_std(end),control).await,Ok(Ok(()))))
+}
 async fn joined_original(shared:&Shared)->AppResult<String> {
-        let mut done=shared.done.subscribe();let end=Instant::now()+Duration::from_secs(5);
-        let waited=tokio::time::timeout_at(tokio::time::Instant::from_std(end),async {
-            while !*done.borrow(){done.changed().await.map_err(|_|unknown())?;}
-            shared.control.wait_closed(end).await
-        }).await;
-        // Actually join the owned pump task; a done flag is not a join witness.
-        let handle=if matches!(waited,Ok(Ok(()))) {
-            shared.state.lock().map_err(|_|unknown())?.task.take()
-        }else{None};
-        let joined=match handle {
-            Some(mut handle)=>match tokio::time::timeout_at(tokio::time::Instant::from_std(end),&mut handle).await {
-                Ok(Ok(()))=>{shared.state.lock().map_err(|_|unknown())?.joined=true;true},
-                Ok(Err(_))=>false,
-                Err(_)=>{shared.state.lock().map_err(|_|unknown())?.task=Some(handle);false}
-            },
-            None=>{
-                let state=shared.state.lock().map_err(|_|unknown())?;
-                // Before approval no task existed. Still require actual SSH
-                // closure; after any consumed approval only a real join counts.
-                matches!(waited,Ok(Ok(())))&&(state.joined||(!state.consumed&&!state.busy))
-            },
-        };
+        let end=Instant::now()+Duration::from_secs(5);
+        let control_closed=join_pump_then_control(&shared.state,end,shared.control.wait_closed(end)).await?;
         let state=shared.state.lock().map_err(|_|unknown())?;
         serde_json::to_string(&json!({"version":1,"phase":state.view["phase"],
             "remoteDrainObserved":false,"countersExact":false,"nativeAccountingOnly":true,
             "sentBytes":state.view["sentBytes"],"receivedBytes":state.view["receivedBytes"],"actorAdmission":state.view["actorAdmission"],
-            "cleanupState":if joined&&!state.orphaned&&!state.busy&&(state.view["cleanupState"]=="closedObserved"||!state.consumed){"closedObserved"}else{"unknown"}})).map_err(|_|unknown())
+            "cleanupState":if control_closed&&(state.joined||(!state.consumed&&!state.busy))&&!state.orphaned&&!state.busy&&(state.view["cleanupState"]=="closedObserved"||!state.consumed){"closedObserved"}else{"unknown"}})).map_err(|_|unknown())
 }
 
 #[cfg(any(test, all(feature = "test-harness", target_os = "linux")))]
@@ -229,6 +240,10 @@ pub(crate) struct OriginalTunnelJoinObserver {shared:Arc<Shared>}
 #[cfg(any(test, all(feature = "test-harness", target_os = "linux")))]
 impl OriginalTunnelJoinObserver {
     pub(crate) async fn joined_json(&self)->AppResult<String> {joined_original(&self.shared).await}
+    /// Read-only actual local await witness; never proves remote retirement.
+    pub(crate) fn local_pump_joined(&self)->bool {
+        self.shared.state.lock().is_ok_and(|state|state.joined)
+    }
 }
 
 
@@ -277,5 +292,65 @@ impl AppCore {
             shared.context.runtime.spawn(async move{scope.cancelled().await;if let Some(shared)=weak.upgrade(){shared.cancel();}});
             Ok(AgentTunnelRouteOperation{shared,custody:automatic::Custody::new()})
         }).await
+    }
+}
+
+#[cfg(any(test,all(feature="test-harness",target_os="linux")))]
+fn join_test_state(handle:JoinHandle<()>)->Mutex<State> {
+    Mutex::new(State {ready:None,route:None,task:Some(handle),audit:None,view:json!({}),
+        consumed:true,busy:false,orphaned:false,joined:false})
+}
+#[cfg(any(test,all(feature="test-harness",target_os="linux")))]
+impl AppCore {
+    pub(crate) async fn __owned_local_join_without_control_proof() {
+        let completed=Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let child_completed=completed.clone();
+        let state=join_test_state(tokio::spawn(async move {
+            tokio::task::yield_now().await;
+            child_completed.store(true,std::sync::atomic::Ordering::SeqCst);
+        }));
+        let closed=join_pump_then_control(&state,Instant::now()+Duration::from_secs(1),async {
+            assert!(completed.load(std::sync::atomic::Ordering::SeqCst));
+            assert!(state.lock().unwrap().joined);
+            Err(unknown())
+        }).await.unwrap();
+        let state=state.lock().unwrap();
+        assert!(state.task.is_none());assert!(state.joined);assert!(!closed);
+    }
+    pub(crate) async fn __owned_cancel_pending_join_preserves_handle() {
+        use std::future::Future;
+        let (release,wait)=oneshot::channel::<()>();
+        let handle=tokio::spawn(async move {wait.await.unwrap();});
+        let original_id=handle.id();let state=join_test_state(handle);
+        let end=Instant::now()+Duration::from_secs(1);
+        let mut joined=Box::pin(join_pump_then_control(&state,end,async {Err(unknown())}));
+        std::future::poll_fn(|cx| {
+            assert!(joined.as_mut().poll(cx).is_pending());std::task::Poll::Ready(())
+        }).await;
+        drop(joined); // Same cancellation that previously detached the pump.
+        {
+            let state=state.lock().unwrap();
+            assert_eq!(state.task.as_ref().unwrap().id(),original_id);assert!(!state.joined);
+        }
+        release.send(()).unwrap();
+        assert!(!join_pump_then_control(&state,end,async {Err(unknown())}).await.unwrap());
+        let state=state.lock().unwrap();assert!(state.task.is_none());assert!(state.joined);
+    }
+    pub(crate) async fn __owned_cancel_control_preserves_join_witness() {
+        use std::future::Future;
+        let state=join_test_state(tokio::spawn(async {}));
+        let entered=std::sync::atomic::AtomicBool::new(false);
+        let mut joined=Box::pin(join_pump_then_control(&state,Instant::now()+Duration::from_secs(1),async {
+            assert!(state.lock().unwrap().joined);
+            entered.store(true,std::sync::atomic::Ordering::SeqCst);
+            std::future::pending::<AppResult<()>>().await
+        }));
+        std::future::poll_fn(|cx| {
+            assert!(joined.as_mut().poll(cx).is_pending());
+            if entered.load(std::sync::atomic::Ordering::SeqCst) {std::task::Poll::Ready(())}
+            else {std::task::Poll::Pending}
+        }).await;
+        drop(joined);
+        let state=state.lock().unwrap();assert!(state.joined);assert!(state.task.is_none());
     }
 }

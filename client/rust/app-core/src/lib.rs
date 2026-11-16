@@ -461,3 +461,14 @@ pub async fn __test_harness_revocation_deadline_generation() { AppCore::__owned_
 #[cfg(all(feature="test-harness",target_os="linux"))]
 #[doc(hidden)]
 pub async fn __test_harness_saved_destination_source_scope() { AppCore::__owned_saved_destination_source_scope().await; }
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[doc(hidden)]
+pub async fn __test_harness_local_join_without_control_proof() { AppCore::__owned_local_join_without_control_proof().await; }
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[doc(hidden)]
+pub async fn __test_harness_cancel_pending_join_preserves_handle() { AppCore::__owned_cancel_pending_join_preserves_handle().await; }
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[doc(hidden)]
+pub async fn __test_harness_cancel_control_preserves_join_witness() { AppCore::__owned_cancel_control_preserves_join_witness().await; }

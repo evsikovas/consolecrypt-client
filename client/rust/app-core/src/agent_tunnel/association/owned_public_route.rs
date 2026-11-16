@@ -106,6 +106,7 @@ async fn monitoring_read_case(app:&AppCore,frame:&Value,association:&str,source:
     // than attributing the already-used route's denial solely to its TTL.
     let mut short=intent;short["ttlSeconds"]=json!(4);short["idleSeconds"]=json!(4);
     let expiring=checked(app.clone().agent_tunnel_route_prepare_json(&short.to_string()).await)?;
+    let expiry_observer=expiring.original_join_observer();
     let pending=value(checked(expiring.approve_once().await)?)?;
     require(pending["phase"]=="listening"&&pending["actorAdmission"]==false&&pending["routeId"]!=listening["routeId"])?;
     let expires=checked(chrono::DateTime::parse_from_rfc3339(checked(pending["grantExpiresUtc"].as_str().ok_or(()))?))?.timestamp();
@@ -114,8 +115,10 @@ async fn monitoring_read_case(app:&AppCore,frame:&Value,association:&str,source:
         Ok::<_,()>(())
     }).await)??;
     require(app.monitoring_read(monitoring_request(source,1,checked(pending["routeId"].as_str().ok_or(()))?)).await.is_err())?;
-    let expired=value(checked(expiring.joined_json().await)?)?;
-    require(expired["phase"]=="unknown"&&expired["cleanupState"]=="closedObserved"&&expired["actorAdmission"]==false
+    let expired=value(checked(expiry_observer.joined_json().await)?)?;
+    let local_joined=expiry_observer.local_pump_joined();
+    require(expired["phase"]=="unknown"&&expired["cleanupState"]=="unknown"&&local_joined&&expired["actorAdmission"]==false
+        &&expired["remoteDrainObserved"]==false
         &&target.connections.load(std::sync::atomic::Ordering::SeqCst)==1
         &&target.requests.load(std::sync::atomic::Ordering::SeqCst)==1)?;
     let audit=value(checked(app.clone().agent_tunnel_access_audit_json(&frame.to_string()).await)?)?;
