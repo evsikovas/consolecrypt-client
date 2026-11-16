@@ -19,6 +19,40 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.sha }}
+      - name: Observe fixed installer trust ancestry without changing the host
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          /usr/bin/python3.12 -I -B - <<'PY'
+          import json,os,stat,sys
+          from pathlib import Path
+          assert sys.platform=='linux' and os.uname().machine=='aarch64'
+          fixed={'root':'/','etc':'/etc','trustDirectory':'/etc/consolecrypt-agent-release',
+                 'trustDocument':'/etc/consolecrypt-agent-release/trust.json',
+                 'trustKey':'/etc/consolecrypt-agent-release/public-key.json','usr':'/usr',
+                 'usrLocal':'/usr/local','usrLocalLibexec':'/usr/local/libexec',
+                 'verifierDirectory':'/usr/local/libexec/consolecrypt-agent-release',
+                 'verifier':'/usr/local/libexec/consolecrypt-agent-release/cc-agent-identity',
+                 'opt':'/opt','var':'/var','varCache':'/var/cache',
+                 'candidateDirectory':'/var/cache/consolecrypt-agent','home':'/home',
+                 'runnerHome':'/home/runner','runnerWork':'/home/runner/work','runnerTemp':'/home/runner/work/_temp'}
+          rows={}
+          for label,path in fixed.items():
+              try:
+                  info=Path(path).lstat()
+                  rows[label]=dict(exists=True,uid=info.st_uid,gid=info.st_gid,mode=stat.S_IMODE(info.st_mode),
+                      links=info.st_nlink,directory=stat.S_ISDIR(info.st_mode),regular=stat.S_ISREG(info.st_mode),
+                      symlink=stat.S_ISLNK(info.st_mode),rootOwnerNoGroupOtherWrite=info.st_uid==0 and not bool(info.st_mode&0o022))
+              except FileNotFoundError:rows[label]=dict(exists=False)
+              except OSError as error:rows[label]=dict(observationFailed=True,errno=error.errno)
+          value=dict(format='cc-arm-fixed-trust-ancestor-observation/v1',readOnly=True,
+              architecture=os.uname().machine,platform=sys.platform,observerUid=os.getuid(),observerEuid=os.geteuid(),
+              compilerExecuted=False,serviceStarted=False,installedAcceptanceExecuted=False,
+              independentRuntimePinApproval=False,fixedParents=rows)
+          raw=json.dumps(value,sort_keys=True,separators=(',',':'))
+          assert len(raw.encode())<=8192
+          print('CC_AGENT_ARM_FIXED_TRUST_ANCESTORS '+raw,flush=True)
+          PY
       - name: Observe the fixed interpreter without approving a runtime pin
         timeout-minutes: 1
         shell: bash
