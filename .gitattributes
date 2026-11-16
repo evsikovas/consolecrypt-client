@@ -7,3 +7,5 @@
 *.ico binary
 *.icns binary
 *.jar binary
+/agent/delivery/collector_namespace_probe.py text eol=lf
+/agent/delivery/collector_disk_namespace_probe.py text eol=lf

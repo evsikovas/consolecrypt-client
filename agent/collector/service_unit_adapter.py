@@ -18,7 +18,7 @@ for _n in ("service_unit_entry.py","service_unit_spec.py","service_binding.py","
     if not stat.S_ISREG(_s.st_mode)or _s.st_uid!=0 or _s.st_nlink!=1 or stat.S_IMODE(_s.st_mode)!=0o644:raise ValueError("service_package")
 sys.path.insert(0,str(PACKAGE))
 from disk_unit_adapter import OwnedUnit,atomic_record,command,identity,need,object_pairs,proc_start,regular,manager_environment
-from service_unit_entry import ROOT,BINARY,binding_types,private_config,read_text
+from service_unit_entry import ROOT,BINARY,binding_types,private_config,read_text,_record_start_failure,_failure_no_late_producer
 from service_unit_spec import ServiceUnitSpec
 cancelled=False
 
@@ -111,6 +111,7 @@ def run(session, digest):
     spec = ServiceUnitSpec.from_private_handoff(session, config["binding"]["original"]["collector_id"], digest, remaining)
     unit = ServiceOwnedUnit(spec, directory, directory_identity, config["binarySha256"], config["statusPort"], config.get('runtime'))
     terminal = {"format": "cc-disk-unit-result/v1", "outcome": "unknown", "lossUnknown": True, "cleanup": None}
+    failure = None; stage = "manager_environment"
     try:
         atomic_record(directory, "launch-owner.json", {
             "format": "cc-disk-launch-owner/v1", "session": session, "configSha256": digest,
@@ -120,12 +121,15 @@ def run(session, digest):
         _, manager_raw = command(["/usr/bin/systemctl", "--user", "show-environment"], time.monotonic() + 1)
         manager_environment(manager_raw)
         # No replacement/adoption: refuse ANY unit at this fresh UUID name.
+        stage = "unit_absent"
         code, before = command(["/usr/bin/systemctl", "--user", "--no-pager", "show", spec.name, "--property=LoadState"], time.monotonic() + 1, missing=True)
         need(before.strip() == b"LoadState=not-found", "disk_existing_unit")
         # Preprovisioned user-manager/delegation/sandbox support is mandatory;
         # failure to establish it cannot be fixed or elevated by this adapter.
+        stage = "unit_start"
         unit.attempted = True
         command(spec.start_argv(), time.monotonic() + 10)
+        stage = "unit_running"
         start_end = min(time.monotonic() + 10, time.monotonic() + (config["createdBoottimeNs"] + 10_000_000_000 - time.clock_gettime_ns(time.CLOCK_BOOTTIME)) / 1e9)
         while True:
             try:
@@ -161,10 +165,29 @@ def run(session, digest):
                     if pending == b"STOP\n":
                         terminal["outcome"] = "stopRequested";return terminal
     except BaseException as error:
+        failure = error
         terminal["errorCode"] = str(error) if type(error) is ValueError and re.fullmatch("disk_[a-z_]+", str(error)) else "disk_unknown"
     finally:
-        try:terminal["cleanup"] = unit.close(time.monotonic() + 10)
+        close_end = time.monotonic() + 10
+        observed_unit = None
+        if failure is not None and unit.attempted:
+            try:
+                # Read same exact owned unit BEFORE stop; one call consumes the
+                # original ten-second cleanup budget, never a fresh extension.
+                from disk_unit_spec import parse_show
+                _, status_raw = command(spec.show_argv(),min(close_end,time.monotonic()+.5),missing=True)
+                observed_unit = parse_show(status_raw,spec,check_limits=False)
+            except BaseException:pass
+        try:terminal["cleanup"] = unit.close(close_end)
         except BaseException:terminal["cleanup"] = dict(unit.cleanup_state, unknown=True)
+        cleanup = terminal["cleanup"] or {}
+        no_late_producer = _failure_no_late_producer(unit.attempted,cleanup)
+        if failure is not None and no_late_producer:
+            _record_start_failure(directory,"adapter",stage,failure,observed_unit)
+            try:
+                unit.remember_public_file("prometheus-exit.json")
+                terminal["cleanup"]["retainedPublicFiles"] = [unit.retained_public_files[name] for name in sorted(unit.retained_public_files)]
+            except BaseException:pass
         terminal["entryStoppedObserved"] = unit.entry_stopped
         for fd in (unit.entry_namespace_fd, unit.adapter_namespace_fd):
             if fd is not None: os.close(fd)

@@ -133,5 +133,168 @@ class ServiceWorkerDiagnostics(unittest.TestCase):
         self.assertEqual(observed.code(),"unknown")
 
 
+
+class ServiceStartFailureDiagnostics(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import ast
+        import json,os,re,stat
+        # Execute only the actual inert helpers; no installed package imports,
+        # unit, Actor or worker is constructed by these component tests.
+        body=ast.parse((COLLECTOR/'service_unit_entry.py').read_bytes())
+        keep=[node for node in body.body if
+            isinstance(node,ast.FunctionDef) and node.name in ('_closed_start_failure','_record_start_failure','_entry_start_failure','_failure_no_late_producer') or
+            isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id in ('_START_STAGE','_START_DIAGNOSTIC_ALLOWED','_START_STAGES','_START_CODES','_START_STATES') for t in node.targets)]
+        cls.ns=dict(json=json,os=os,re=re,stat=stat,Path=Path,sys=sys)
+        exec(compile(ast.Module(body=keep,type_ignores=[]),'actual-closed-start-helpers','exec'),cls.ns)
+
+    def test_first_gate_static_code_errno_and_unit_state_are_retained_without_echo(self):
+        closed=self.ns['_closed_start_failure']
+        value=closed('entry','binary',ValueError('disk_binary_changed'))
+        self.assertEqual((value['source'],value['stage'],value['code']),('entry','binary','disk_binary_changed'))
+        self.assertIsNone(value['errno'])
+        value=closed('adapter','unit_start',PermissionError(13,'secret-sentinel'),
+            {'Result':'exit-code','ExecMainStatus':'226','ControlGroup':'/secret-sentinel','SubState':'secret-sentinel'})
+        self.assertEqual(value['errno'],13);self.assertEqual(value['unit'],{'Result':'exit-code','ExecMainStatus':226})
+        self.assertNotIn('secret-sentinel',str(value))
+
+    def test_unknown_malformed_and_unbounded_error_text_never_enters_record(self):
+        for error in (ValueError('secret-sentinel'),RuntimeError('secret-sentinel'*10000),OSError(99999,'secret-sentinel')):
+            value=self.ns['_closed_start_failure']('secret-sentinel','secret-sentinel',error)
+            self.assertEqual(value['source'],'unknown');self.assertEqual(value['stage'],'unknown')
+            self.assertEqual(value['code'],'unknown');self.assertIsNone(value['errno'])
+            self.assertNotIn('secret-sentinel',str(value));self.assertLess(len(str(value)),2048)
+
+    def test_failure_writer_creates_only_existing_leaf_with_exact600_and_never_overwrites(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import stat,os
+        directory=Path('/run/consolecrypt-agent/disk/'+'1'*32)
+        uid=os.getuid() if hasattr(os,'getuid') else 10002
+        folder=SimpleNamespace(st_mode=stat.S_IFDIR|0o700,st_uid=uid,st_dev=7,st_ino=8)
+        leaf=SimpleNamespace(st_mode=stat.S_IFREG|0o600,st_uid=uid,st_dev=7,st_ino=9,st_nlink=1,st_size=0)
+        output=bytearray()
+        def write(fd,raw):output.extend(raw);leaf.st_size=len(output);return len(raw)
+        with patch.object(self.ns['os'],'getuid',return_value=uid,create=True),patch.object(Path,'lstat',return_value=folder), \
+             patch.object(self.ns['os'],'open',side_effect=[10,11]) as opened,patch.object(self.ns['os'],'fstat',side_effect=[folder,leaf,leaf]), \
+             patch.object(self.ns['os'],'stat',return_value=leaf),patch.object(self.ns['os'],'write',side_effect=write), \
+             patch.object(self.ns['os'],'fchmod',create=True) as chmod,patch.object(self.ns['os'],'fsync'),patch.object(self.ns['os'],'close'), \
+             patch.object(self.ns['os'],'O_DIRECTORY',0,create=True),patch.object(self.ns['os'],'O_NOFOLLOW',0,create=True),patch.object(self.ns['os'],'O_CLOEXEC',0,create=True):
+            self.assertTrue(self.ns['_record_start_failure'](directory,'entry','binary',ValueError('disk_binary_changed')))
+            self.assertEqual(opened.call_args_list[1].args[0],'prometheus-exit.json')
+            self.assertTrue(opened.call_args_list[1].args[1]&os.O_EXCL);chmod.assert_called_once_with(11,0o600)
+            self.assertLessEqual(len(output),2048)
+        with patch.object(self.ns['os'],'getuid',return_value=uid,create=True),patch.object(Path,'lstat',return_value=folder), \
+             patch.object(self.ns['os'],'open',side_effect=[10,FileExistsError]),patch.object(self.ns['os'],'fstat',return_value=folder), \
+             patch.object(self.ns['os'],'write') as write,patch.object(self.ns['os'],'close'), \
+             patch.object(self.ns['os'],'O_DIRECTORY',0,create=True),patch.object(self.ns['os'],'O_NOFOLLOW',0,create=True),patch.object(self.ns['os'],'O_CLOEXEC',0,create=True):
+            self.assertFalse(self.ns['_record_start_failure'](directory,'entry','binary',ValueError('disk_binary_changed')))
+            write.assert_not_called()
+
+    def test_failure_format_cannot_be_accepted_as_real_process_exit(self):
+        import ast,json
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        body=ast.parse((COLLECTOR/'disk_unit_adapter.py').read_bytes())
+        actual=next(n for c in body.body if isinstance(c,ast.ClassDef) and c.name=='OwnedUnit' for n in c.body if isinstance(n,ast.FunctionDef) and n.name=='observe_entry_exit')
+        raw=json.dumps(self.ns['_closed_start_failure']('entry','binary',ValueError('disk_binary_changed'))).encode()
+        ns=dict(regular=lambda *a,**k:(99,raw),os=self.ns['os'],json=json,object_pairs=lambda p:dict(p))
+        exec(compile(ast.Module(body=[actual],type_ignores=[]),'actual-exit-validator','exec'),ns)
+        unit=SimpleNamespace(directory=Path('/unused'),entry_stopped=True)
+        with patch.object(self.ns['os'],'getuid',return_value=10002,create=True),patch.object(self.ns['os'],'close'):
+            ns['observe_entry_exit'](unit)
+        self.assertFalse(unit.entry_stopped)
+
+    def test_owned_close_errors_cannot_replace_first_failure_or_escape_observer(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import stat,os
+        directory=Path('/run/consolecrypt-agent/disk/'+'1'*32)
+        uid=os.getuid() if hasattr(os,'getuid') else 10002
+        folder=SimpleNamespace(st_mode=stat.S_IFDIR|0o700,st_uid=uid,st_dev=7,st_ino=8)
+        leaf=SimpleNamespace(st_mode=stat.S_IFREG|0o600,st_uid=uid,st_dev=7,st_ino=9,st_nlink=1,st_size=0)
+        with patch.object(self.ns['os'],'getuid',return_value=uid,create=True),patch.object(Path,'lstat',return_value=folder), \
+             patch.object(self.ns['os'],'open',side_effect=[10,11]),patch.object(self.ns['os'],'fstat',side_effect=[folder,leaf]), \
+             patch.object(self.ns['os'],'stat',return_value=leaf),patch.object(self.ns['os'],'write',side_effect=OSError(5,'secret-write-error')), \
+             patch.object(self.ns['os'],'fchmod',create=True),patch.object(self.ns['os'],'unlink'), \
+             patch.object(self.ns['os'],'close',side_effect=OSError(9,'secret-close-error')) as close, \
+             patch.object(self.ns['os'],'O_DIRECTORY',0,create=True),patch.object(self.ns['os'],'O_NOFOLLOW',0,create=True),patch.object(self.ns['os'],'O_CLOEXEC',0,create=True):
+            self.assertFalse(self.ns['_record_start_failure'](directory,'entry','binary',ValueError('disk_binary_changed')))
+            self.assertEqual([call.args[0] for call in close.call_args_list],[11,10])
+
+    def test_failed_publication_removes_only_same_fresh_unpublished_leaf(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import stat,os
+        directory=Path('/run/consolecrypt-agent/disk/'+'1'*32)
+        uid=os.getuid() if hasattr(os,'getuid') else 10002
+        folder=SimpleNamespace(st_mode=stat.S_IFDIR|0o700,st_uid=uid,st_dev=7,st_ino=8)
+        leaf=SimpleNamespace(st_mode=stat.S_IFREG|0o600,st_uid=uid,st_dev=7,st_ino=9,st_nlink=1,st_size=0)
+        for replacement in (False,True):
+            named=SimpleNamespace(st_dev=7,st_ino=99) if replacement else leaf
+            with patch.object(self.ns['os'],'getuid',return_value=uid,create=True),patch.object(Path,'lstat',return_value=folder), \
+                 patch.object(self.ns['os'],'open',side_effect=[10,11]),patch.object(self.ns['os'],'fstat',side_effect=[folder,leaf]), \
+                 patch.object(self.ns['os'],'stat',return_value=named),patch.object(self.ns['os'],'write',side_effect=OSError(5,'secret-write-error')), \
+                 patch.object(self.ns['os'],'fchmod',create=True),patch.object(self.ns['os'],'close'),patch.object(self.ns['os'],'unlink') as unlink, \
+                 patch.object(self.ns['os'],'O_DIRECTORY',0,create=True),patch.object(self.ns['os'],'O_NOFOLLOW',0,create=True),patch.object(self.ns['os'],'O_CLOEXEC',0,create=True):
+                self.assertFalse(self.ns['_record_start_failure'](directory,'entry','binary',ValueError('disk_binary_changed')))
+                if replacement:unlink.assert_not_called()
+                else:unlink.assert_called_once_with('prometheus-exit.json',dir_fd=10)
+
+    def test_no_diagnostic_producer_while_original_unit_or_child_may_still_write_exit(self):
+        from unittest.mock import patch
+        actual=self.ns['_failure_no_late_producer']
+        done=dict(unitStopped=True,cgroupEmpty=True,leaderExited=True)
+        self.assertTrue(actual(False,{}));self.assertTrue(actual(True,done))
+        for key in done:
+            self.assertFalse(actual(True,dict(done,**{key:False})))
+        self.assertFalse(actual(True,dict(done,unknown=True)))
+        self.assertFalse(actual(True,{}))
+        previous=self.ns['_START_DIAGNOSTIC_ALLOWED'];self.ns['_START_DIAGNOSTIC_ALLOWED']=False
+        try:
+            with patch.dict(self.ns,{'_record_start_failure':unittest.mock.Mock()}) as current:
+                self.ns['_entry_start_failure'](ValueError,ValueError('disk_binary_changed'),None)
+                current['_record_start_failure'].assert_not_called()
+        finally:self.ns['_START_DIAGNOSTIC_ALLOWED']=previous
+
+    def test_actual_adapter_preserves_first_error_when_stop_also_fails(self):
+        import ast,json,re,stat
+        from types import SimpleNamespace
+        from unittest.mock import Mock,patch
+        source=ast.parse((COLLECTOR/'service_unit_adapter.py').read_bytes())
+        run=next(n for n in source.body if isinstance(n,ast.FunctionDef) and n.name=='run')
+        session='1'*32;raw=b'{}';digest=hashlib.sha256(raw).hexdigest()
+        config=dict(session=session,unit='cc-agent-disk-'+session+'.service',ownerPid=7,ownerStartTicks=8,
+            deadlineBoottimeNs=30_000_000_000,createdBoottimeNs=1_000_000_000,expiresUnixNs=40_000_000_000,
+            binding={'original':{'collector_id':'unused'}},binarySha256='a'*64,statusPort=19109)
+        class Selector:
+            def __enter__(self):return self
+            def __exit__(self,*args):pass
+            def register(self,*args):pass
+            def select(self,*args):return []
+        class Unit:
+            attempted=False;entry_stopped=False;entry_namespace_fd=adapter_namespace_fd=child_pidfd=pidfd=None
+            cleanup_state={};retained_public_files={}
+            def __init__(self,*args):pass
+            def remember_public_file(self,name):self.retained_public_files[name]={'name':name,'dev':1,'ino':2,'mode':384}
+            def close(self,end):raise RuntimeError('secret-stop-failure')
+        first=ValueError('disk_manager_environment');record=Mock(return_value=True)
+        fakeos=SimpleNamespace(fstat=lambda fd:SimpleNamespace(st_mode=stat.S_IFIFO,st_uid=10002,st_dev=1,st_ino=fd),
+            getuid=lambda:10002,getpid=lambda:12,getppid=lambda:7,pidfd_open=lambda pid:9,close=lambda fd:None)
+        ns=dict(re=re,ROOT=Path('/run/consolecrypt-agent/disk'),identity=lambda m:(1,2,3,4,5,6),
+            regular=lambda *a,**k:(10,raw),os=fakeos,hashlib=hashlib,private_config=lambda *a:config,
+            need=lambda value,code:None if value else (_ for _ in ()).throw(ValueError(code)),
+            stat=stat,proc_start=lambda pid:8,time=SimpleNamespace(CLOCK_BOOTTIME=7,clock_gettime_ns=lambda *a:1_000_000_000,
+            time_ns=lambda:0,monotonic=lambda:0),binding_types=lambda:(Mock(),Mock(return_value=Mock())),
+            selectors=SimpleNamespace(DefaultSelector=Selector,EVENT_READ=1),ServiceUnitSpec=SimpleNamespace(from_private_handoff=lambda *a:Mock()),
+            ServiceOwnedUnit=Unit,atomic_record=Mock(),command=Mock(side_effect=first),
+            _record_start_failure=record,_failure_no_late_producer=self.ns['_failure_no_late_producer'])
+        exec(compile(ast.Module(body=[run],type_ignores=[]),'actual-adapter-run','exec'),ns)
+        with patch.object(Path,'lstat',return_value=Mock()):result=ns['run'](session,digest)
+        self.assertEqual(result['errorCode'],'disk_manager_environment')
+        self.assertIs(record.call_args.args[3],first)
+        self.assertTrue(result['cleanup']['unknown'])
+        self.assertNotIn('secret-stop-failure',str(result))
+
 if __name__ == "__main__":
     unittest.main()

@@ -16,6 +16,93 @@ import sys
 import time
 import uuid
 
+
+# Failure-only observation in an EXISTING allowed public leaf. This different
+# format cannot satisfy either preexec or authenticated process-exit admission.
+_START_STAGE = "module"
+_START_DIAGNOSTIC_ALLOWED = True
+_START_STAGES = ('module', 'package', 'imports', 'platform', 'input', 'uid', 'namespace', 'directory', 'config_open', 'config', 'boot', 'start_window', 'deadline', 'owner', 'namespace_proof', 'target', 'mount', 'cgroup', 'invocation', 'scrape', 'binary', 'binding', 'preexec', 'argv', 'manager_environment', 'unit_absent', 'unit_start', 'unit_running')
+_START_CODES = ('disk_argv', 'disk_binary', 'disk_binary_bound', 'disk_binary_changed', 'disk_binary_digest', 'disk_binary_parent', 'disk_binding', 'disk_binding_changed', 'disk_binding_code', 'disk_binding_digest', 'disk_binding_write', 'disk_boot', 'disk_caps_changed', 'disk_cgroup', 'disk_cgroup_identity', 'disk_cgroup_type', 'disk_cgroup_unit', 'disk_child_changed', 'disk_child_exec', 'disk_child_identity', 'disk_child_membership', 'disk_child_parent', 'disk_cleanup_deadline', 'disk_cleanup_directory', 'disk_cleanup_entries', 'disk_cleanup_leaf', 'disk_cleanup_unknown', 'disk_closed', 'disk_collector', 'disk_collector_id', 'disk_config', 'disk_config_canonical', 'disk_config_changed', 'disk_config_digest', 'disk_config_hash', 'disk_config_integer', 'disk_control_deadline', 'disk_control_exit', 'disk_control_output', 'disk_deadline', 'disk_directory', 'disk_duplicate', 'disk_entry_not_execed', 'disk_events', 'disk_existing_unit', 'disk_expired', 'disk_file_changed', 'disk_float', 'disk_handoff', 'disk_handoff_hash', 'disk_handoff_unit', 'disk_host_namespace', 'disk_id', 'disk_initial_membership', 'disk_input', 'disk_invocation', 'disk_kernel_bound', 'disk_kernel_limits', 'disk_launch_owner', 'disk_leader_not_captured', 'disk_legacy_platform', 'disk_live_cgroup_missing', 'disk_manager_environment', 'disk_manifest_address', 'disk_manifest_binding', 'disk_memory', 'disk_mount', 'disk_mount_identity', 'disk_mount_options', 'disk_mount_size', 'disk_namespace', 'disk_namespace_bound', 'disk_native_layout', 'disk_native_probe_already_held', 'disk_never_bound_unit', 'disk_original_namespace', 'disk_original_parent', 'disk_original_parent_changed', 'disk_original_window', 'disk_owned_membership', 'disk_owner', 'disk_owner_changed', 'disk_owner_kind', 'disk_owner_uid', 'disk_package', 'disk_parent', 'disk_pid_changed', 'disk_pid_dead', 'disk_pid_replaced', 'disk_pid_uid', 'disk_pipe_replaced', 'disk_platform', 'disk_port', 'disk_preexec_identity', 'disk_prior_resource_failure', 'disk_private_control', 'disk_private_namespace', 'disk_private_pipes', 'disk_process_changed', 'disk_process_exited', 'disk_process_uid', 'disk_prometheus_not_execed', 'disk_readiness_deadline', 'disk_readonly_system', 'disk_receiver', 'disk_record_bound', 'disk_record_exists', 'disk_record_leaf', 'disk_record_write', 'disk_regular', 'disk_resource_events', 'disk_resource_failed', 'disk_root', 'disk_root_changed', 'disk_root_entries', 'disk_runtime', 'disk_runtime_binary', 'disk_runtime_metadata', 'disk_runtime_readback', 'disk_scrape_hash', 'disk_selected_binary', 'disk_selected_changed', 'disk_selected_helper', 'disk_selected_platform', 'disk_selected_version', 'disk_session', 'disk_session_changed', 'disk_session_lock', 'disk_start_denied', 'disk_start_unknown', 'disk_start_window', 'disk_status_port', 'disk_stop_request', 'disk_terminal_bound', 'disk_uid', 'disk_unbound_nonempty', 'disk_unit_exit_policy', 'disk_unit_identity', 'disk_unit_limits', 'disk_unit_observation', 'disk_unit_replaced', 'disk_unknown', 'disk_user_namespace', 'disk_wal_changed', 'disk_wal_root', 'service_binding', 'service_collector', 'service_config_digest', 'service_disk_binding', 'service_disk_binding_changed', 'service_disk_digest', 'service_disk_expiry', 'service_disk_id', 'service_disk_revision', 'service_entry', 'service_original_window', 'service_package', 'service_policy_expiry', 'service_runtime', 'service_session', 'service_user_namespace')
+_START_STATES = frozenset(("active", "inactive", "failed", "activating", "deactivating",
+    "running", "dead", "exited", "start", "start-post", "stop", "stop-sigterm", "stop-sigkill",
+    "success", "exit-code", "signal", "core-dump", "timeout", "oom-kill", "resources",
+    "start-limit-hit", "not-found", "loaded", "error", "unknown"))
+
+def _closed_start_failure(source, stage, error, unit=None):
+    code = str(error) if type(error) is ValueError and str(error) in _START_CODES else "unknown"
+    number = error.errno if isinstance(error, OSError) else None
+    number = number if type(number) is int and 0 <= number <= 4095 else None
+    safe = {}
+    if type(unit) is dict:
+        for key in ("LoadState", "ActiveState", "SubState", "Result", "ExecMainCode", "ExecMainStatus"):
+            value = unit.get(key)
+            if type(value) is str and value in _START_STATES:safe[key] = value
+            elif type(value) is str and value.isascii() and value.isdecimal() and len(value) <= 10:
+                safe[key] = int(value)
+    return {"format":"cc-collector-service-start-failure/v1",
+        "source":source if source in ("adapter", "entry") else "unknown",
+        "stage":stage if stage in _START_STAGES else "unknown", "code":code, "errno":number,
+        "unit":safe}
+
+def _record_start_failure(directory, source, stage, error, unit=None):
+    # Never replace an original process-exit receipt or an earlier failure.
+    # O_EXCL, held directory/leaf identities, UID/mode/nlink, and <=2KiB apply.
+    parent_fd = fd = None; leaf = None; published = False
+    try:
+        if directory.parent != Path("/run/consolecrypt-agent/disk") or re.fullmatch("[0-9a-f]{32}", directory.name) is None:return False
+        m = directory.lstat()
+        if not stat.S_ISDIR(m.st_mode) or m.st_uid != os.getuid() or stat.S_IMODE(m.st_mode) != 0o700:return False
+        parent_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        held = os.fstat(parent_fd)
+        if (m.st_dev,m.st_ino) != (held.st_dev,held.st_ino):return False
+        raw = json.dumps(_closed_start_failure(source,stage,error,unit),sort_keys=True,separators=(",",":"),ensure_ascii=True).encode("ascii")
+        if len(raw) > 2048:return False
+        fd = os.open("prometheus-exit.json",os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,0o600,dir_fd=parent_fd)
+        os.fchmod(fd,0o600)
+        leaf = os.fstat(fd)
+        if not stat.S_ISREG(leaf.st_mode) or leaf.st_uid != os.getuid() or leaf.st_nlink != 1:return False
+        pending = memoryview(raw)
+        while pending:
+            count = os.write(fd,pending)
+            if count <= 0:return False
+            pending = pending[count:]
+        os.fsync(fd)
+        after = os.stat("prometheus-exit.json",dir_fd=parent_fd,follow_symlinks=False)
+        actual = os.fstat(fd)
+        published = ((after.st_dev,after.st_ino) == (leaf.st_dev,leaf.st_ino) == (actual.st_dev,actual.st_ino)
+            and actual.st_nlink == 1 and actual.st_uid == os.getuid() and stat.S_IMODE(actual.st_mode) == 0o600
+            and actual.st_size == len(raw)
+            and (directory.lstat().st_dev,directory.lstat().st_ino) == (held.st_dev,held.st_ino))
+        return published
+    except BaseException:return False # Observation can never replace the primary error.
+    finally:
+        if fd is not None and leaf is not None and not published:
+            try:
+                named = os.stat("prometheus-exit.json",dir_fd=parent_fd,follow_symlinks=False)
+                if (named.st_dev,named.st_ino) == (leaf.st_dev,leaf.st_ino):
+                    os.unlink("prometheus-exit.json",dir_fd=parent_fd)
+            except BaseException:pass
+        if fd is not None:
+            try:os.close(fd)
+            except BaseException:pass
+        if parent_fd is not None:
+            try:os.close(parent_fd)
+            except BaseException:pass
+
+def _entry_start_failure(kind, error, traceback):
+    try:
+        if _START_DIAGNOSTIC_ALLOWED and len(sys.argv) == 3 and sys.argv[1].startswith("--session="):
+            _record_start_failure(Path("/run/consolecrypt-agent/disk") / sys.argv[1][10:],"entry",_START_STAGE,error)
+    except BaseException:pass
+
+if __name__ == "__main__":sys.excepthook = _entry_start_failure
+
+def _failure_no_late_producer(attempted, cleanup):
+    return (attempted is False or type(cleanup) is dict
+        and cleanup.get("unitStopped") is True and cleanup.get("cgroupEmpty") is True
+        and cleanup.get("leaderExited") is True and cleanup.get("unknown") is not True)
+
+_START_STAGE = "package"
 PACKAGE=Path("/opt/consolecrypt-agent-install/opt/consolecrypt-agent/collector")
 def _root_view():
     uid,gid=os.getuid(),os.getgid()
@@ -34,6 +121,7 @@ for _n in ("disk_unit_entry.py","disk_binding.py","service_binding.py"):
     _s=(PACKAGE/_n).lstat()
     if not stat.S_ISREG(_s.st_mode)or _s.st_uid!=_root or _s.st_nlink!=1 or stat.S_IMODE(_s.st_mode)!=0o644:raise ValueError("service_package")
 sys.path.insert(0,str(PACKAGE))
+_START_STAGE = "imports"
 from disk_unit_entry import (ROOT,BINARY,MAX_MEMORY,TMPFS_BYTES,atomic_record,binding_types as _old_binding_types,
     fixed_argv,identity,monitor_process,mount_id,namespace_current,namespace_proof,need,object_pairs,
     pinned_binary,process_identity,read_text,regular,set_unit_root_view,runtime_record)
@@ -74,29 +162,41 @@ def private_config(raw, session):
 
 
 def gate(session, config_hash):
+    global _START_STAGE
+    _START_STAGE = "platform"
     need(sys.platform == "linux" and os.uname().machine in {'x86_64', 'aarch64'}, "disk_platform")
+    _START_STAGE = "input"
     need(re.fullmatch("[0-9a-f]{32}", session) and uuid.UUID(hex=session).version == 4
          and re.fullmatch("[0-9a-f]{64}", config_hash), "disk_input")
+    _START_STAGE = "uid"
     uid = os.getuid()
     need(uid != 0 and os.geteuid() == uid, "disk_uid")
+    _START_STAGE = "namespace"
     set_unit_root_view()
+    _START_STAGE = "directory"
     directory = ROOT / session
     st = directory.lstat()
     need(stat.S_ISDIR(st.st_mode) and st.st_uid == uid and stat.S_IMODE(st.st_mode) == 0o700, "disk_directory")
     proof = None; binary_fd = None; disk = None; completed = False
+    _START_STAGE = "config_open"
     config_fd, raw = regular(directory / "session.json", uid=uid, mode=0o400, cap=65536)
     try:
         need(hashlib.sha256(raw).hexdigest() == config_hash, "disk_config_hash")
+        _START_STAGE = "config"
         value = private_config(raw, session)
         need(value.get('runtime') is not None or os.uname().machine == 'x86_64', 'disk_legacy_platform')
+        _START_STAGE = "boot"
         need(value["bootId"] == read_text(Path("/proc/sys/kernel/random/boot_id")), "disk_boot")
         for key in ("createdBoottimeNs", "deadlineBoottimeNs", "expiresUnixNs"):
             need(type(value[key]) is int, "disk_deadline")
+        _START_STAGE = "start_window"
         now_boot = time.clock_gettime_ns(time.CLOCK_BOOTTIME)
         need(0 <= now_boot - value["createdBoottimeNs"] < 10_000_000_000
              and 0 < value["deadlineBoottimeNs"] - value["createdBoottimeNs"] <= MAX_LIFETIME_NS, "disk_start_window")
+        _START_STAGE = "deadline"
         left = value["deadlineBoottimeNs"] - now_boot
         need(0 < left <= MAX_LIFETIME_NS and time.time_ns() < value["expiresUnixNs"] <= time.time_ns() + MAX_LIFETIME_NS, "disk_expired")
+        _START_STAGE = "owner"
         need(type(value["ownerPid"]) is int and value["ownerPid"] > 1
              and type(value["ownerStartTicks"]) is int and value["ownerStartTicks"] > 0
              and re.fullmatch("[0-9a-f]{64}", value["manifestSha256"]), "disk_owner")
@@ -104,12 +204,15 @@ def gate(session, config_hash):
         need(owner.stat().st_uid == uid, "disk_owner_uid")
         owner_stat = read_text(owner / "stat").rsplit(") ", 1)[1].split()
         need(owner_stat[0] != "Z" and int(owner_stat[19]) == value["ownerStartTicks"], "disk_owner_changed")
+        _START_STAGE = "namespace_proof"
         proof = namespace_proof(value["ownerPid"], value["ownerStartTicks"], uid)
+        _START_STAGE = "target"
         need(type(value["statusPort"]) is int and 1024 <= value["statusPort"] <= 65535, "disk_port")
         need(type(value["receiver"]) is str and re.fullmatch(r"http://127\.0\.0\.1:[1-9][0-9]{0,4}/api/v1/(?:write|push)", value["receiver"])
              and 1 <= int(value["receiver"].split(":")[2].split("/")[0]) <= 65535, "disk_receiver")
         # No claim that loopback itself prevents HTTP redirects. A separately
         # verified nonredirecting installed receiver is a mandatory admission prerequisite.
+        _START_STAGE = "mount"
         mount = []
         roots = []
         actual_mount, actual_root = mount_id(directory), mount_id(Path("/"))
@@ -126,6 +229,7 @@ def gate(session, config_hash):
         fs = os.statvfs(directory)
         need(fs.f_blocks * fs.f_frsize == TMPFS_BYTES and 0 < fs.f_files <= 4096
              and ROOT.stat().st_dev == st.st_dev, "disk_mount_size")
+        _START_STAGE = "cgroup"
         c = read_text(Path("/proc/self/cgroup"))
         need(c.startswith("0::/") and "\n" not in c and ".." not in c, "disk_cgroup")
         cpath = c[3:];need(cpath.rsplit("/", 1)[-1] == value["unit"], "disk_cgroup_unit")
@@ -139,12 +243,16 @@ def gate(session, config_hash):
             need(all(len(pair) == 2 for pair in pairs) and len(pairs) == len({x[0] for x in pairs}), "disk_events")
             events = dict(pairs);need(required <= set(events) and all(re.fullmatch("[0-9]+", n) for n in events.values()), "disk_events")
             need(all(int(events[k]) == 0 for k in required), "disk_prior_resource_failure")
+        _START_STAGE = "invocation"
         invocation = os.environ.get("INVOCATION_ID", "")
         need(re.fullmatch("[0-9a-f]{32}", invocation), "disk_invocation")
+        _START_STAGE = "scrape"
         scrape_fd, scrape = regular(directory / "scrape.json", uid=uid, mode=0o400, cap=65536)
         os.close(scrape_fd)
         need(hashlib.sha256(scrape).hexdigest() == value["scrapeSha256"], "disk_scrape_hash")
+        _START_STAGE = "binary"
         binary_fd = pinned_binary(value["binarySha256"], value.get('runtime'))
+        _START_STAGE = "binding"
         DiskBinding, BoundDiskRoot = binding_types()
         disk = BoundDiskRoot(DiskBinding(**value["binding"]))
         # The actual Permit-owning outside adapter binds a genuinely empty
@@ -158,10 +266,12 @@ def gate(session, config_hash):
                    "pid": os.getpid(), "cgroup": cpath, "binarySha256": value["binarySha256"],
                    "mountId": int(a[0]), "kernelLimits": expected,
                    "manifestSha256": value["manifestSha256"], "configSha256": config_hash}
+        _START_STAGE = "preexec"
         atomic_record(directory, "preexec.json", receipt)
         need(value["deadlineBoottimeNs"] > time.clock_gettime_ns(time.CLOCK_BOOTTIME)
              and value["expiresUnixNs"] > time.time_ns()
              and time.clock_gettime_ns(time.CLOCK_BOOTTIME) < value["createdBoottimeNs"] + 10_000_000_000, "disk_expired")
+        _START_STAGE = "argv"
         argv = fixed_argv(directory, disk.path / 'wal', value['statusPort'])
         os.chdir(directory)
         need(namespace_current(proof), "disk_original_namespace")
@@ -188,6 +298,7 @@ def cancel_signal(*_):
 
 
 def supervise(session, config_hash):
+    global _START_DIAGNOSTIC_ALLOWED
     binary_fd, argv, namespace, disk = gate(session, config_hash)
     directory = ROOT / session;uid = os.getuid()
     config_fd = owner_fd = adapter_fd = child_fd = None
@@ -224,6 +335,7 @@ def supervise(session, config_hash):
         # held descriptor only; the same original capped unit contains both.
         disk.release_native_probe()
         need(original_live(), "disk_expired")
+        _START_DIAGNOSTIC_ALLOWED = False # No diagnostic leaf once a real exit producer can exist.
         child = subprocess.Popen(argv, executable="/proc/self/fd/" + str(binary_fd),
                                  pass_fds=(binary_fd,), close_fds=True, shell=False,
                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

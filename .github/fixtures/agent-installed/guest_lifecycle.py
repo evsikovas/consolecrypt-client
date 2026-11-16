@@ -628,6 +628,62 @@ def node_record(path):
     finally:os.close(fd)
 
 
+
+def _collector_start_failure(directory):
+    # Different failure format only; never an exec/cleanup/admission receipt.
+    try:
+        path = directory/'prometheus-exit.json'
+        fd = os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC)
+        try:
+            before = os.fstat(fd)
+            if not stat.S_ISREG(before.st_mode) or before.st_uid != 10002 or before.st_nlink != 1 or stat.S_IMODE(before.st_mode) != 0o600 or not 0 < before.st_size <= 2048:return None
+            raw = os.read(fd,2049)
+            ident = lambda m:(m.st_dev,m.st_ino,m.st_mode,m.st_uid,m.st_nlink,m.st_size,m.st_mtime_ns,m.st_ctime_ns)
+            if len(raw) != before.st_size or ident(before) != ident(os.fstat(fd)) or ident(before) != ident(path.lstat()):return None
+        finally:os.close(fd)
+        value = json.loads(raw)
+        if type(value) is not dict or set(value) != {'format','source','stage','code','errno','unit'}:return None
+        if value['format'] != 'cc-collector-service-start-failure/v1' or value['source'] not in ('entry','adapter','unknown'):return None
+        if value['stage'] not in ('module', 'package', 'imports', 'platform', 'input', 'uid', 'namespace', 'directory', 'config_open', 'config', 'boot', 'start_window', 'deadline', 'owner', 'namespace_proof', 'target', 'mount', 'cgroup', 'invocation', 'scrape', 'binary', 'binding', 'preexec', 'argv', 'manager_environment', 'unit_absent', 'unit_start', 'unit_running', 'unknown') or value['code'] not in ('disk_argv', 'disk_binary', 'disk_binary_bound', 'disk_binary_changed', 'disk_binary_digest', 'disk_binary_parent', 'disk_binding', 'disk_binding_changed', 'disk_binding_code', 'disk_binding_digest', 'disk_binding_write', 'disk_boot', 'disk_caps_changed', 'disk_cgroup', 'disk_cgroup_identity', 'disk_cgroup_type', 'disk_cgroup_unit', 'disk_child_changed', 'disk_child_exec', 'disk_child_identity', 'disk_child_membership', 'disk_child_parent', 'disk_cleanup_deadline', 'disk_cleanup_directory', 'disk_cleanup_entries', 'disk_cleanup_leaf', 'disk_cleanup_unknown', 'disk_closed', 'disk_collector', 'disk_collector_id', 'disk_config', 'disk_config_canonical', 'disk_config_changed', 'disk_config_digest', 'disk_config_hash', 'disk_config_integer', 'disk_control_deadline', 'disk_control_exit', 'disk_control_output', 'disk_deadline', 'disk_directory', 'disk_duplicate', 'disk_entry_not_execed', 'disk_events', 'disk_existing_unit', 'disk_expired', 'disk_file_changed', 'disk_float', 'disk_handoff', 'disk_handoff_hash', 'disk_handoff_unit', 'disk_host_namespace', 'disk_id', 'disk_initial_membership', 'disk_input', 'disk_invocation', 'disk_kernel_bound', 'disk_kernel_limits', 'disk_launch_owner', 'disk_leader_not_captured', 'disk_legacy_platform', 'disk_live_cgroup_missing', 'disk_manager_environment', 'disk_manifest_address', 'disk_manifest_binding', 'disk_memory', 'disk_mount', 'disk_mount_identity', 'disk_mount_options', 'disk_mount_size', 'disk_namespace', 'disk_namespace_bound', 'disk_native_layout', 'disk_native_probe_already_held', 'disk_never_bound_unit', 'disk_original_namespace', 'disk_original_parent', 'disk_original_parent_changed', 'disk_original_window', 'disk_owned_membership', 'disk_owner', 'disk_owner_changed', 'disk_owner_kind', 'disk_owner_uid', 'disk_package', 'disk_parent', 'disk_pid_changed', 'disk_pid_dead', 'disk_pid_replaced', 'disk_pid_uid', 'disk_pipe_replaced', 'disk_platform', 'disk_port', 'disk_preexec_identity', 'disk_prior_resource_failure', 'disk_private_control', 'disk_private_namespace', 'disk_private_pipes', 'disk_process_changed', 'disk_process_exited', 'disk_process_uid', 'disk_prometheus_not_execed', 'disk_readiness_deadline', 'disk_readonly_system', 'disk_receiver', 'disk_record_bound', 'disk_record_exists', 'disk_record_leaf', 'disk_record_write', 'disk_regular', 'disk_resource_events', 'disk_resource_failed', 'disk_root', 'disk_root_changed', 'disk_root_entries', 'disk_runtime', 'disk_runtime_binary', 'disk_runtime_metadata', 'disk_runtime_readback', 'disk_scrape_hash', 'disk_selected_binary', 'disk_selected_changed', 'disk_selected_helper', 'disk_selected_platform', 'disk_selected_version', 'disk_session', 'disk_session_changed', 'disk_session_lock', 'disk_start_denied', 'disk_start_unknown', 'disk_start_window', 'disk_status_port', 'disk_stop_request', 'disk_terminal_bound', 'disk_uid', 'disk_unbound_nonempty', 'disk_unit_exit_policy', 'disk_unit_identity', 'disk_unit_limits', 'disk_unit_observation', 'disk_unit_replaced', 'disk_unknown', 'disk_user_namespace', 'disk_wal_changed', 'disk_wal_root', 'service_binding', 'service_collector', 'service_config_digest', 'service_disk_binding', 'service_disk_binding_changed', 'service_disk_digest', 'service_disk_expiry', 'service_disk_id', 'service_disk_revision', 'service_entry', 'service_original_window', 'service_package', 'service_policy_expiry', 'service_runtime', 'service_session', 'service_user_namespace', 'unknown'):return None
+        if value['errno'] is not None and (type(value['errno']) is not int or not 0 <= value['errno'] <= 4095):return None
+        if type(value['unit']) is not dict or not set(value['unit']) <= {'LoadState','ActiveState','SubState','Result','ExecMainCode','ExecMainStatus'}:return None
+        for item in value['unit'].values():
+            if not (type(item) is int and 0 <= item <= 4294967295 or type(item) is str and item in ('active', 'inactive', 'failed', 'activating', 'deactivating', 'running', 'dead', 'exited', 'start', 'start-post', 'stop', 'stop-sigterm', 'stop-sigkill', 'success', 'exit-code', 'signal', 'core-dump', 'timeout', 'oom-kill', 'resources', 'start-limit-hit', 'not-found', 'loaded', 'error', 'unknown')):return None
+        if json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=True).encode('ascii') != raw:return None
+        return value
+    except Exception:return None
+
+
+def _collector_failed_unit(directory,end):
+    # SAME validated private namespace yields one fixed unit name. Read only;
+    # no dispatch, restart, grant, journal payload or fresh observation deadline.
+    fields=('LoadState','ActiveState','SubState','Result','ExecMainCode','ExecMainStatus')
+    states={'active','inactive','failed','activating','deactivating','running','dead','exited',
+        'start','start-post','stop','stop-sigterm','stop-sigkill','success','exit-code','signal',
+        'core-dump','timeout','oom-kill','resources','start-limit-hit','not-found','loaded','error','unknown'}
+    remaining=end-time.monotonic()
+    if remaining<=0 or re.fullmatch('[0-9a-f]{32}',directory.name)is None:return {'observed':False}
+    try:
+        value=subprocess.run(['/usr/bin/systemctl','--user','--no-pager','show',
+            'cc-agent-disk-'+directory.name+'.service','--property='+','.join(fields)],
+            stdin=subprocess.DEVNULL,capture_output=True,close_fds=True,
+            user=10002,group=10002,extra_groups=[],
+            env={'LANG':'C','XDG_RUNTIME_DIR':'/run/user/10002',
+                'DBUS_SESSION_BUS_ADDRESS':'unix:path=/run/user/10002/bus'},timeout=min(.5,remaining))
+        if value.returncode!=0 or len(value.stdout)+len(value.stderr)>4096:return {'observed':False}
+        rows=[line.split('=',1)for line in value.stdout.decode('ascii').splitlines()]
+        if len(rows)!=len(fields)or any(len(row)!=2 for row in rows)or len({row[0]for row in rows})!=len(rows):return {'observed':False}
+        row=dict(rows)
+        if set(row)!=set(fields):return {'observed':False}
+        safe={}
+        for key,item in row.items():
+            if item in states:safe[key]=item
+            elif item.isascii()and item.isdecimal()and len(item)<=10 and int(item)<=4294967295:safe[key]=int(item)
+            elif not item:safe[key]='unknown'
+            else:return {'observed':False}
+        return {'observed':True,'status':safe}
+    except Exception:return {'observed':False}
+
 def _collector_failure_facts(end):
     # Read-only bounded facts from the SAME failed service before guest cleanup.
     # No worker, signed request, manager restart or raw journal persistence.
@@ -688,6 +744,9 @@ def _collector_failure_facts(end):
                         stages[name]=stat.S_ISREG(item.st_mode)and item.st_uid==10002 and item.st_nlink==1
                     except FileNotFoundError:stages[name]=False
                 facts['namespace']={'observed':True,'stageFiles':stages}
+                facts['namespace']['unit'] = _collector_failed_unit(directory,end)
+                failure = _collector_start_failure(directory)
+                if failure is not None:facts['namespace']['startFailure'] = failure
         elif not names:facts['namespace']={'observed':True,'directoryPresent':False}
     except Exception:pass
     remaining=end-time.monotonic()
