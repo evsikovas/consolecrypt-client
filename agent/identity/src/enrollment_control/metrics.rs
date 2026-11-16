@@ -25,80 +25,92 @@ const VMAGENT_SHA: &str = "2039bc05b6ad5c96b34b72801908896bf8a6a7bcab8ae32120cbb
 fn digest(raw: &[u8]) -> Hash {
     Hash::from_bytes(Sha256::digest(raw).into())
 }
-// Only four SOURCE-FIXED installed runtime leaves, never a caller path.
-fn root_digest(path: &Path) -> Result<Hash> {
-    let cap = if path == Path::new(VMAGENT) {
-        32 * 1024 * 1024
-    } else if path == Path::new(PYTHON) {
-        16 * 1024 * 1024
-    } else if [ADAPTER, ENTRY, SPEC].iter().any(|p| path == Path::new(p)) {
-        65536
-    } else if let Some(cap)=runtime::extra_cap(path) {
-        cap
-    } else {
-        return Err(Error::ScopeDenied);
-    };
-    for parent in path.ancestors().skip(1) {
-        let m = fs::symlink_metadata(parent).map_err(|_| Error::Storage)?;
-        if !m.is_dir() || m.file_type().is_symlink() || m.uid() != 0 || m.mode() & 0o022 != 0 {
+// An original root-owned runtime leaf, retained for this Catalog only.
+// Selection/catalog DATA never creates authority and a changed pin is not renewed.
+type RootIdentity = (u64, u64, u32, u32, u32, u64, u64, i64, i64, i64, i64);
+fn root_identity(m: &fs::Metadata) -> RootIdentity {
+    (m.dev(), m.ino(), m.uid(), m.gid(), m.mode(), m.nlink(), m.len(),
+     m.mtime(), m.mtime_nsec(), m.ctime(), m.ctime_nsec())
+}
+#[derive(Clone)]
+struct RootPin {
+    path: PathBuf,
+    file: std::sync::Arc<File>,
+    identity: RootIdentity,
+    hash: Hash,
+}
+impl RootPin {
+    fn parents(path: &Path) -> Result<()> {
+        for parent in path.ancestors().skip(1) {
+            let m = fs::symlink_metadata(parent).map_err(|_| Error::Storage)?;
+            if !m.is_dir() || m.file_type().is_symlink() || m.uid() != 0 || m.mode() & 0o022 != 0 {
+                return Err(Error::Storage);
+            }
+        }
+        Ok(())
+    }
+    fn capture(path: &Path, expected: Hash) -> Result<Self> {
+        Self::load(path, Some(expected))
+    }
+    fn load(path: &Path, expected: Option<Hash>) -> Result<Self> {
+        let cap = root_file_cap(path)?;
+        Self::parents(path)?;
+        let before = fs::symlink_metadata(path).map_err(|_| Error::Storage)?;
+        if !before.is_file() || before.file_type().is_symlink() || before.uid() != 0
+            || before.nlink() != 1 || before.mode() & 0o7022 != 0
+            || before.len() == 0 || before.len() > cap {
             return Err(Error::Storage);
         }
+        Self::capture_file(path, &before, cap, expected)
     }
-    let before = fs::symlink_metadata(path).map_err(|_| Error::Storage)?;
-    if !before.is_file()
-        || before.file_type().is_symlink()
-        || before.uid() != 0
-        || before.nlink() != 1
-        || before.mode() & 0o7022 != 0
-        || before.len() == 0
-        || before.len() > cap
-    {
-        return Err(Error::Storage);
-    }
-    let identity = |m: &fs::Metadata| {
-        (
-            m.dev(),
-            m.ino(),
-            m.uid(),
-            m.mode(),
-            m.nlink(),
-            m.len(),
-            m.mtime(),
-            m.mtime_nsec(),
-            m.ctime(),
-            m.ctime_nsec(),
-        )
-    };
-    let mut f = OpenOptions::new()
-        .read(true)
-        .custom_flags(NOFOLLOW | NONBLOCK | CLOEXEC)
-        .open(path)
-        .map_err(|_| Error::Storage)?;
-    if identity(&before) != identity(&f.metadata().map_err(|_| Error::Storage)?) {
-        return Err(Error::Storage);
-    }
-    let mut hasher = Sha256::new();
-    let mut chunk = [0u8; 65536];
-    let mut n = 0u64;
-    loop {
-        let got = f.read(&mut chunk).map_err(|_| Error::Storage)?;
-        if got == 0 {
-            break;
+    // Called only after the fixed-path/root guards above. Kept separate so the
+    // actual held-FD custody can be exercised on owned component test files.
+    fn capture_file(path: &Path, before: &fs::Metadata, cap: u64, expected: Option<Hash>) -> Result<Self> {
+        let mut file = OpenOptions::new().read(true)
+            .custom_flags(NOFOLLOW | NONBLOCK | CLOEXEC).open(path).map_err(|_| Error::Storage)?;
+        if root_identity(before) != root_identity(&file.metadata().map_err(|_| Error::Storage)?) {
+            return Err(Error::Storage);
         }
-        n += got as u64;
-        if n > cap {
-            return Err(Error::Quota);
+        let mut hasher = Sha256::new(); let mut count = 0u64; let mut chunk = [0u8; 65536];
+        loop {
+            let n = file.read(&mut chunk).map_err(|_| Error::Storage)?;
+            if n == 0 { break; }
+            count = count.checked_add(n as u64).ok_or(Error::Quota)?;
+            if count > cap { return Err(Error::Quota); }
+            hasher.update(&chunk[..n]);
         }
-        hasher.update(&chunk[..got]);
+        Self::finish(path, before, file, count, Hash::from_bytes(hasher.finalize().into()), expected)
     }
-    if n != before.len()
-        || identity(&before) != identity(&f.metadata().map_err(|_| Error::Storage)?)
-        || identity(&before) != identity(&fs::symlink_metadata(path).map_err(|_| Error::Storage)?)
-    {
-        return Err(Error::Storage);
+    fn finish(path: &Path, before: &fs::Metadata, file: File, count: u64, hash: Hash, expected: Option<Hash>) -> Result<Self> {
+        if count != before.len() || expected.is_some_and(|value| value != hash)
+            || root_identity(before) != root_identity(&file.metadata().map_err(|_| Error::Storage)?)
+            || root_identity(before) != root_identity(&fs::symlink_metadata(path).map_err(|_| Error::Storage)?) {
+            return Err(Error::Storage);
+        }
+        Ok(Self { path: path.to_path_buf(), file: std::sync::Arc::new(file), identity: root_identity(before), hash })
     }
-    Ok(Hash::from_bytes(hasher.finalize().into()))
+    fn check_identity(&self) -> Result<()> {
+        if self.identity != root_identity(&self.file.metadata().map_err(|_| Error::Storage)?)
+            || self.identity != root_identity(&fs::symlink_metadata(&self.path).map_err(|_| Error::Storage)?) {
+            return Err(Error::Storage);
+        }
+        Ok(())
+    }
+    fn check(&self) -> Result<()> {
+        Self::parents(&self.path)?;
+        self.check_identity()
+    }
 }
+
+fn root_file_cap(path: &Path) -> Result<u64> {
+    if path == Path::new(VMAGENT) { Ok(32 * 1024 * 1024) }
+    else if path == Path::new(PYTHON) { Ok(16 * 1024 * 1024) }
+    else if [ADAPTER, ENTRY, SPEC].iter().any(|p| path == Path::new(p)) { Ok(65536) }
+    else { runtime::extra_cap(path).ok_or(Error::ScopeDenied) }
+}
+// Initial observations which do not need to keep custody use the same bounded
+// scanner; Catalog pins retain the original descriptor instead of re-opening.
+fn root_digest(path: &Path) -> Result<Hash> { Ok(RootPin::load(path, None)?.hash) }
 
 fn json_body(value: &Value) -> Result<Vec<u8>> {
     let mut b = canonical(value)?;
@@ -270,7 +282,7 @@ struct Catalog {
     manifest: Value,
     hash: Hash,
     raw: Vec<u8>,
-    fixed: Vec<(PathBuf, Hash)>,
+    fixed: Vec<RootPin>,
     disk: Option<disk::Installed>,
 }
 impl Catalog {
@@ -298,19 +310,16 @@ impl Catalog {
         // per-release verifier data, selected+stable held-FD ELF/SHA identity.
         let(vmagent_hash,selected_pins)=if v2 {runtime::selected(&value.manifest)?}
             else {runtime::legacy()?;(decode(json!(VMAGENT_SHA))?,Vec::new())};
-        let mut fixed = vec![
+        let mut selected = vec![
             (PathBuf::from(VMAGENT), vmagent_hash),
             (PathBuf::from(ADAPTER), value.adapter_sha256),
             (PathBuf::from(ENTRY), value.entry_sha256),
             (PathBuf::from(SPEC), value.spec_sha256),
             (PathBuf::from(PYTHON), value.interpreter_sha256),
         ];
-        fixed.extend(selected_pins);
-        for (path, expected) in &fixed {
-            if root_digest(path)? != *expected {
-                return Err(Error::Storage);
-            }
-        }
+        selected.extend(selected_pins);
+        let fixed = selected.into_iter().map(|(path, expected)| RootPin::capture(&path, expected))
+            .collect::<Result<Vec<_>>>()?;
         let hash = digest(&json_body(&value.manifest)?);
         check_collector_id(value.collector_id, hash)?;
         Ok(Self {
@@ -331,11 +340,7 @@ impl Catalog {
         {
             return Err(Error::Storage);
         }
-        for (path, expected) in &self.fixed {
-            if root_digest(path)? != *expected {
-                return Err(Error::Storage);
-            }
-        }
+        for pin in &self.fixed { pin.check()?; }
         if let Some(disk) = &self.disk {
             return disk.check();
         }
@@ -1795,3 +1800,7 @@ mod service_handoff_control;
 pub(crate) mod service_lifetime_control;
 #[path="metrics/service_lifetime_material.rs"]
 mod service_lifetime_material;
+
+#[cfg(test)]
+#[path="metrics/root_pin_tests.rs"]
+mod root_pin_tests;

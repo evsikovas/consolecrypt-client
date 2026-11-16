@@ -302,6 +302,7 @@ def environment(uid):
 def files(uid, gid):
     env = environment(uid)
     manager = ("[Service]\nPAMName=\nEnvironment=\nEnvironmentFile=\nPassEnvironment=\n"
+               "UnsetEnvironment=SGX_AESM_ADDR\n"
                + "Environment=" + " ".join(k + "=" + v for k, v in sorted(env.items()))
                + "\nDelegate=cpu memory pids\nMemoryMax=671088640\nMemorySwapMax=0\n"
                  "TasksMax=96\nCPUQuota=100%\nRestart=no\nUMask=0077\nIPAddressDeny=any\nIPAddressAllow=localhost\n")
@@ -318,6 +319,8 @@ def files(uid, gid):
             '/run/consolecrypt-agent/volatile', ROOT.as_posix())
     return {Path("/etc/systemd/system/user@" + str(uid) + ".service.d/60-consolecrypt-agent.conf"): manager.encode(),
             Path(XDG + "/systemd/user.conf"): user.encode(),
+            # A root-owned empty regular unit masks only this dedicated UID's SSH agent.
+            Path(XDG + "/systemd/user/gpg-agent-ssh.socket"): b"",
             Path("/etc/systemd/system") / MOUNT: mount.encode()}
 
 

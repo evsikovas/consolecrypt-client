@@ -668,29 +668,49 @@ def service_request(command,kind,filename):
         return value
 
 
-def metric_values(port):
+class _MetricSamplesNotReady(Exception):
+    """Only the lazy sample CounterVec is absent; no zero is invented."""
+
+
+def parse_metric_values(raw):
     import math
+    wanted={'prometheus_agent_samples_appended_total','prometheus_agent_hard_charged_bytes',
+        'prometheus_agent_hard_loss_unknown','prometheus_agent_hard_unavailable',
+        'prometheus_agent_hard_byte_evicted_segments_total','prometheus_agent_hard_age_evicted_segments_total',
+        'prometheus_agent_hard_oldest_segment_residence_seconds'}
+    sample='prometheus_agent_samples_appended_total';values={};sample_types=set();total=0.0
+    for line in raw.decode('ascii').splitlines():
+        if line.startswith('#'):continue
+        fields=line.split()
+        if not fields:continue
+        name=fields[0].split('{',1)[0]
+        if name in wanted:
+            assert len(fields)==2
+            number=float(fields[1]);assert math.isfinite(number)and number>=0
+            if name==sample:
+                # Maintained db.go CounterVec has exactly this type label.
+                match=re.fullmatch(r'prometheus_agent_samples_appended_total\{type="(float|histogram)"\}',fields[0])
+                assert match is not None and match[1]not in sample_types
+                sample_types.add(match[1]);total+=number;assert math.isfinite(total)
+            else:
+                assert fields[0]==name and name not in values
+                values[name]=number
+    assert set(values)==wanted-{sample}
+    assert values['prometheus_agent_hard_loss_unknown']in(0,1)and values['prometheus_agent_hard_unavailable']in(0,1)
+    assert values['prometheus_agent_hard_charged_bytes']<=536870912
+    assert values['prometheus_agent_hard_oldest_segment_residence_seconds']<=7200
+    if not sample_types:raise _MetricSamplesNotReady('sample CounterVec not observed')
+    values[sample]=total;assert set(values)==wanted
+    return values
+
+
+def metric_values(port):
     c=http.client.HTTPConnection('127.0.0.1',port,timeout=3)
     try:
         c.request('GET','/metrics');response=c.getresponse();raw=response.read(2*1024*1024+1)
         assert response.status==200 and len(raw)<=2*1024*1024
     finally:c.close()
-    wanted={'prometheus_agent_samples_appended_total','prometheus_agent_hard_charged_bytes',
-        'prometheus_agent_hard_loss_unknown','prometheus_agent_hard_unavailable',
-        'prometheus_agent_hard_byte_evicted_segments_total','prometheus_agent_hard_age_evicted_segments_total',
-        'prometheus_agent_hard_oldest_segment_residence_seconds'}
-    values={}
-    for line in raw.decode('ascii').splitlines():
-        if line.startswith('#'):continue
-        fields=line.split()
-        if fields and fields[0]in wanted:
-            assert len(fields)==2 and fields[0]not in values
-            number=float(fields[1]);assert math.isfinite(number)and number>=0;values[fields[0]]=number
-    assert set(values)==wanted
-    assert values['prometheus_agent_hard_loss_unknown']in(0,1)and values['prometheus_agent_hard_unavailable']in(0,1)
-    assert values['prometheus_agent_hard_charged_bytes']<=536870912
-    assert values['prometheus_agent_hard_oldest_segment_residence_seconds']<=7200
-    return values
+    return parse_metric_values(raw)
 
 
 def node_record(path):
@@ -935,7 +955,7 @@ def disk_service():
         while time.monotonic()<end:
             assert observed.alive()
             try:values=metric_values(handoff['statusPort'])
-            except(ConnectionError,OSError):time.sleep(.1);continue
+            except(ConnectionError,OSError,_MetricSamplesNotReady):time.sleep(.1);continue
             if state['failedRequests']>0 and values['prometheus_agent_samples_appended_total']>=192 and values['prometheus_agent_hard_charged_bytes']>0:
                 before=values;break
             time.sleep(.1)

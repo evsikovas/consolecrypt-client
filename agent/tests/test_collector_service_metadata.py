@@ -296,5 +296,68 @@ class ServiceStartFailureDiagnostics(unittest.TestCase):
         self.assertTrue(result['cleanup']['unknown'])
         self.assertNotIn('secret-stop-failure',str(result))
 
+class CollectorManagerProfileAssets(unittest.TestCase):
+    @staticmethod
+    def profile():
+        import ast
+        from pathlib import PurePosixPath
+        source = (COLLECTOR.parent / 'delivery/collector_provision.py').read_bytes()
+        tree = ast.parse(source)
+        names = {'HOME', 'XDG', 'ROOT', 'MOUNT', 'PROFILE', 'DISK'}
+        nodes = [node for node in tree.body if isinstance(node, ast.Assign) and
+                 len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in names]
+        functions = {'need', 'pairs', 'decode', 'encode', 'environment', 'files'}
+        nodes += [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in functions]
+        import json
+        scope = dict(Path=PurePosixPath, hashlib=hashlib, json=json)
+        exec(compile(ast.Module(body=nodes, type_ignores=[]), 'actual-provision-profile', 'exec'), scope)
+        return tree, scope
+
+    def test_owned_manager_excludes_sgx_and_masks_only_private_ssh_socket(self):
+        from pathlib import PurePosixPath
+        _, scope = self.profile()
+        private = PurePosixPath(scope['XDG'])
+        mask = private / 'systemd/user/gpg-agent-ssh.socket'
+        manager = PurePosixPath('/etc/systemd/system/user@10002.service.d/60-consolecrypt-agent.conf')
+        for disk in (False, True):
+            scope['DISK'] = disk
+            assets = scope['files'](10002, 10002)
+            self.assertEqual(set(assets), {manager, private / 'systemd/user.conf', mask,
+                             PurePosixPath('/etc/systemd/system') / scope['MOUNT']})
+            self.assertEqual(assets[mask], b'')
+            self.assertEqual(assets[manager].count(b'UnsetEnvironment=SGX_AESM_ADDR\n'), 1)
+            self.assertEqual(assets[manager].count(b'UnsetEnvironment='), 1)
+            self.assertNotIn(PurePosixPath('/etc/systemd/user/gpg-agent-ssh.socket'), assets)
+            self.assertEqual(set(scope['environment'](10002)), {'HOME','USER','LOGNAME','SHELL','PATH','LANG',
+                             'XDG_RUNTIME_DIR','XDG_CONFIG_HOME','SYSTEMD_ENVIRONMENT_GENERATOR_PATH'})
+
+    def test_four_asset_descriptor_preserves_fail_closed_stale_profile(self):
+        import ast
+        import copy
+        from pathlib import PurePosixPath
+        tree, scope = self.profile()
+        scope.update(uid=10002, gid=10002, assets=scope['files'](10002, 10002))
+        provision = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'provision')
+        descriptor = next(node for node in provision.body if isinstance(node, ast.Assign) and
+                          any(isinstance(target, ast.Name) and target.id == 'descriptor' for target in node.targets))
+        owner = next(node for node in provision.body if isinstance(node, ast.If) and node.body and
+                     isinstance(node.body[0], ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'record'
+                     for target in node.body[0].targets))
+        exec(compile(ast.Module(body=[copy.deepcopy(descriptor)], type_ignores=[]), 'actual-profile-descriptor', 'exec'), scope)
+        current = scope['descriptor']
+        mask = PurePosixPath(scope['XDG']) / 'systemd/user/gpg-agent-ssh.socket'
+        self.assertEqual(current['assets'][str(mask)], hashlib.sha256(b'').hexdigest())
+        old_assets = {str(path): hashlib.sha256(raw.replace(b'UnsetEnvironment=SGX_AESM_ADDR\n', b'')).hexdigest()
+                      for path, raw in scope['assets'].items() if path != mask}
+        stale = dict(current, assets=old_assets, state='ready')
+        check = compile(ast.Module(body=copy.deepcopy(owner.body[:2]), type_ignores=[]), 'actual-profile-owner-check', 'exec')
+        for rejected in (stale, dict(current, state='configured')):
+            scope['previous'] = scope['encode'](rejected)
+            with self.assertRaisesRegex(ValueError, '^collector_partial_state$'):
+                exec(check, scope)
+        scope['previous'] = scope['encode'](dict(current, state='ready'))
+        exec(check, scope)
+
+
 if __name__ == "__main__":
     unittest.main()

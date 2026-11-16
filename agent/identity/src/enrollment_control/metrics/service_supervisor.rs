@@ -322,6 +322,19 @@ pub(super) fn actual_now() -> Result<Now> {
     Ok(CollectorServiceClockObservation::observe_local()?.now())
 }
 
+// A fresh process stamp follows expensive unchanged validation. This never
+// refreshes the Node-signed material deadline or expiry.
+fn launch_stamp_after_validation(
+    validate: impl FnOnce() -> Result<()>,
+    clock: impl FnOnce() -> Result<u64>,
+    deadline: u64,
+) -> Result<u64> {
+    validate()?;
+    let created = clock()?;
+    if created >= deadline { return Err(Error::Expired); }
+    Ok(created)
+}
+
 fn run_one(
     actor: &mut Actor<SqliteJournalStore>,
     catalog: &Catalog,
@@ -364,7 +377,7 @@ fn run_one(
         let expires = material.expires;
         // This is a fresh PROCESS launch stamp, not a refreshed signed policy
         // deadline. Every start uses the exact original Node-signed BOOTTIME end.
-        let created = boottime_ns()?;
+        let created = launch_stamp_after_validation(|| runtime.check(catalog), boottime_ns, deadline)?;
         let boot = boot_id()?;
         if ResourceId::new(&boot)? != observed.claim.body.clock.boot_id || created >= deadline {
             return Err(Error::Expired);
@@ -395,7 +408,6 @@ fn run_one(
         }
         let raw = private_value(&value)?;
         files.write("session.json", &raw)?;
-        runtime.check(catalog)?;
         original_config(config_raw, &config.owner_pin, pin_raw)?;
         actor.check_collector_service(
             &permit,
@@ -582,3 +594,30 @@ pub(crate) fn run_fixed_collector_service(args: &[String]) -> Result<()> {
 mod protocol_fixture_owner;
 #[cfg(feature="owned-lifetime-protocol-proof")]
 pub(crate) use protocol_fixture_owner::run_owned_protocol_component;
+
+#[cfg(test)]
+mod launch_stamp_tests {
+    use super::*;
+    use std::cell::Cell;
+    #[test]
+    fn process_launch_stamp_follows_expensive_validation_without_extending_signed_end() {
+        let observed=Cell::new(1_000_000_000u64);let deadline=60_000_000_000u64;
+        let old_stamp=observed.get();
+        let created=launch_stamp_after_validation(|| { observed.set(25_000_000_000);Ok(()) },||Ok(observed.get()),deadline).unwrap();
+        let entry_now=observed.get()+500_000_000;
+        assert!(entry_now-old_stamp>=10_000_000_000,"old placement spends the entire window on validation");
+        assert!(entry_now-created<10_000_000_000,"same ten-second window follows validation");
+        assert_eq!(created,25_000_000_000);assert_eq!(deadline,60_000_000_000);
+        assert!(created<deadline);assert_eq!(deadline-created,35_000_000_000);
+    }
+    #[test]
+    fn process_launch_stamp_validation_failure_or_original_expiry_cannot_renew() {
+        let sampled=Cell::new(false);
+        let denied=launch_stamp_after_validation(||Err(Error::Storage),||{sampled.set(true);Ok(1)},60);
+        assert!(matches!(denied,Err(Error::Storage)));assert!(!sampled.get());
+        for clock in [60,61] {
+            assert!(matches!(launch_stamp_after_validation(||Ok(()),||Ok(clock),60),Err(Error::Expired)));
+        }
+        assert!(matches!(launch_stamp_after_validation(||Ok(()),||Err(Error::InvalidTime),60),Err(Error::InvalidTime)));
+    }
+}

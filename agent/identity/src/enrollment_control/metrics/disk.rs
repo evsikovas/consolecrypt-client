@@ -12,10 +12,10 @@ const ENTRY:&str="/opt/consolecrypt-agent-install/opt/consolecrypt-agent/collect
 const SPEC:&str="/opt/consolecrypt-agent-install/opt/consolecrypt-agent/collector/disk_unit_spec.py";
 const BINDING:&str="/opt/consolecrypt-agent-install/opt/consolecrypt-agent/collector/disk_binding.py";
 
-type Identity=(u64,u64,u32,u32,u64,u64,i64,i64,i64,i64);
-fn identity(m:&fs::Metadata)->Identity {(m.dev(),m.ino(),m.mode(),m.uid(),m.nlink(),m.len(),m.mtime(),m.mtime_nsec(),m.ctime(),m.ctime_nsec())}
+type Identity=(u64,u64,u32,u32,u32,u64,u64,i64,i64,i64,i64);
+fn identity(m:&fs::Metadata)->Identity {(m.dev(),m.ino(),m.mode(),m.uid(),m.gid(),m.nlink(),m.len(),m.mtime(),m.mtime_nsec(),m.ctime(),m.ctime_nsec())}
 #[derive(Clone)]
-struct Pin {path:PathBuf,identity:Identity}
+struct Pin {path:PathBuf,file:std::sync::Arc<File>,identity:Identity}
 impl Pin {
     fn capture(path:&str,expected:Hash)->Result<Self> {
         let cap=match path {BINARY=>256*1024*1024,PYTHON=>16*1024*1024,ADAPTER|ENTRY|SPEC|BINDING=>65536,_=>return Err(Error::ScopeDenied)};
@@ -32,14 +32,15 @@ impl Pin {
         if count!=before.len()||Hash::from_bytes(hash.finalize().into())!=expected
             ||identity(&before)!=identity(&file.metadata().map_err(|_|Error::Storage)?)
             ||identity(&before)!=identity(&fs::symlink_metadata(&path).map_err(|_|Error::Storage)?){return Err(Error::Storage)}
-        Ok(Self {path,identity:identity(&before)})
+        Ok(Self {path,file:std::sync::Arc::new(file),identity:identity(&before)})
     }
     fn parents(path:&Path)->Result<()> {
         for parent in path.ancestors().skip(1) {let m=fs::symlink_metadata(parent).map_err(|_|Error::Storage)?;
             if !m.is_dir()||m.file_type().is_symlink()||m.uid()!=0||m.mode()&0o022!=0{return Err(Error::Storage)}}Ok(())
     }
     fn check(&self)->Result<()> {Self::parents(&self.path)?;
-        if identity(&fs::symlink_metadata(&self.path).map_err(|_|Error::Storage)?)!=self.identity{return Err(Error::Storage)}Ok(())}
+        if identity(&self.file.metadata().map_err(|_|Error::Storage)?)!=self.identity
+            ||identity(&fs::symlink_metadata(&self.path).map_err(|_|Error::Storage)?)!=self.identity{return Err(Error::Storage)}Ok(())}
 }
 #[derive(Deserialize)]
 #[serde(rename_all="camelCase",deny_unknown_fields)]
@@ -83,7 +84,7 @@ pub(super) fn load()->Result<Option<Catalog>> {
     let fixed=if v2 {
         let(actual,pins)=runtime::selected_disk(&value.manifest)?;
         if actual!=value.prometheus_sha256{return Err(Error::WrongClaim)}
-        pins
+        pins.into_iter().map(|(path,expected)| RootPin::capture(&path,expected)).collect::<Result<Vec<_>>>()?
     }else{
         if rustix::system::uname().machine().to_bytes()!=b"x86_64"{return Err(Error::CapabilityDenied)}
         Vec::new()
