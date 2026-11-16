@@ -55,7 +55,7 @@ def select_profile(config):
     ROOT = Path('/run/consolecrypt-agent/disk')
     MOUNT = r'run-consolecrypt\x2dagent-disk.mount'
     PROBE = Path('/usr/local/libexec/consolecrypt-agent-install/collector_disk_namespace_probe.py')
-    PROBE_SHA256 = '7d61c0c31cccd7207326ffac4d4a256b2cba54ad06e5289fa30f4eba8d8758ba'
+    PROBE_SHA256 = '8c29f2b131804063c085a701c201ec7a975c9b7b0476d5a43624b4d69f957c3b'
     PROFILE = 'ubuntu24-systemd255-disk-v1'
     for path in (Path('/etc/consolecrypt-agent/collector-volatile.json'),
                  Path('/etc/consolecrypt-agent/collector-provisioned.json')):
