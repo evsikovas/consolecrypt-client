@@ -258,11 +258,30 @@ pub(super) fn full_sync_file(file: &CapFile) -> io::Result<()> {
     rustix::fs::fcntl_fullfsync(file).map_err(resolution_error)
 }
 
-// These declarations use Apple's public sys/acl.h. The opaque allocation is
+// These declarations use Apple's public sys/acl.h, sys/fcntl.h and sys/stat.h.
+// The opaque ACL allocation is
 // owned by Acl and released with acl_free on every branch. No ACL struct layout
 // or ACE evaluator is copied into Rust, and no production ACL setter exists.
 unsafe extern "C" {
+    #[cfg(test)]
     fn acl_get_fd_np(fd: libc::c_int, kind: libc::c_int) -> *mut c_void;
+    fn filesec_init() -> *mut c_void;
+    fn filesec_free(security: *mut c_void);
+    fn filesec_get_property(
+        security: *mut c_void,
+        property: libc::c_int,
+        value: *mut c_void,
+    ) -> libc::c_int;
+    fn filesec_query_property(
+        security: *mut c_void,
+        property: libc::c_int,
+        present: *mut libc::c_int,
+    ) -> libc::c_int;
+    #[cfg_attr(
+        any(target_arch = "x86", target_arch = "x86_64"),
+        link_name = "fstatx_np$INODE64"
+    )]
+    fn fstatx_np(fd: libc::c_int, stat: *mut libc::stat, security: *mut c_void) -> libc::c_int;
     fn acl_init(count: libc::c_int) -> *mut c_void;
     fn acl_valid(acl: *mut c_void) -> libc::c_int;
     fn acl_size(acl: *mut c_void) -> libc::ssize_t;
@@ -301,11 +320,91 @@ impl Drop for Acl {
         }
     }
 }
+// Public SDK filesec_property_t values from sys/fcntl.h. The filesec itself
+// remains opaque and is released on every branch; no security setter is used.
+const FILESEC_OWNER: libc::c_int = 1;
+const FILESEC_GROUP: libc::c_int = 2;
+const FILESEC_MODE: libc::c_int = 4;
+const FILESEC_ACL: libc::c_int = 5;
+struct FileSecurity(NonNull<c_void>);
+impl Drop for FileSecurity {
+    fn drop(&mut self) {
+        // SAFETY: uniquely owned filesec_init allocation, never cloned.
+        unsafe { filesec_free(self.0.as_ptr()) };
+    }
+}
 pub(super) fn verify_empty_acl(fd: impl AsFd) -> io::Result<()> {
-    // ACL_TYPE_EXTENDED=0x100 in Apple's public sys/acl.h. Compare the actual
-    // SDK-exported bytes with SDK-created empty security, including flags;
-    // never mistake Darwin acl_get_entry's EINVAL for proof of no entries.
-    let actual = Acl::new(unsafe { acl_get_fd_np(fd.as_fd().as_raw_fd(), 0x100) })?;
+    // acl_get_fd_np collapses an absent ACL property and a failed stat into
+    // NULL. Read the retained descriptor into a fresh SDK filesec instead;
+    // never interpret an errno value alone as proof of empty security.
+    // SAFETY: libc creates an opaque allocation owned by FileSecurity.
+    let security = FileSecurity(NonNull::new(unsafe { filesec_init() }).ok_or_else(unsupported)?);
+    let mut stat = std::mem::MaybeUninit::<libc::stat>::zeroed();
+    let mut owner: libc::uid_t = 0;
+    let mut group: libc::gid_t = 0;
+    let mut mode: libc::mode_t = 0;
+    // SAFETY: this live borrowed descriptor and all output pointers have their
+    // public SDK types. The filesec stays live until both ACL observations end.
+    // Require populated metadata too: an incomplete SDK stat must not look
+    // like an intentionally absent ACL in a freshly initialized filesec.
+    unsafe {
+        if fstatx_np(
+            fd.as_fd().as_raw_fd(),
+            stat.as_mut_ptr(),
+            security.0.as_ptr(),
+        ) != 0
+            || filesec_get_property(
+                security.0.as_ptr(),
+                FILESEC_OWNER,
+                std::ptr::addr_of_mut!(owner).cast(),
+            ) != 0
+            || filesec_get_property(
+                security.0.as_ptr(),
+                FILESEC_GROUP,
+                std::ptr::addr_of_mut!(group).cast(),
+            ) != 0
+            || filesec_get_property(
+                security.0.as_ptr(),
+                FILESEC_MODE,
+                std::ptr::addr_of_mut!(mode).cast(),
+            ) != 0
+        {
+            return Err(unsupported());
+        }
+    }
+    // SAFETY: fstatx_np succeeded and all three SDK metadata properties were
+    // populated from its stat output, not left unset after a partial failure.
+    let stat = unsafe { stat.assume_init() };
+    if stat.st_ino == 0 || (owner, group, mode) != (stat.st_uid, stat.st_gid, stat.st_mode) {
+        return Err(unsupported());
+    }
+    let mut present: libc::c_int = -1;
+    // SAFETY: opaque SDK allocation remains live; present is a writable int.
+    if unsafe { filesec_query_property(security.0.as_ptr(), FILESEC_ACL, &mut present) } != 0
+        || present < 0
+    {
+        return Err(unsupported());
+    }
+    if present == 0 {
+        // Explicit SDK absence after a complete successful descriptor stat.
+        return Ok(());
+    }
+    let mut pointer = std::ptr::null_mut::<c_void>();
+    // SAFETY: FILESEC_ACL returns a separately owned acl_t through this pointer.
+    let result = unsafe {
+        filesec_get_property(
+            security.0.as_ptr(),
+            FILESEC_ACL,
+            std::ptr::addr_of_mut!(pointer).cast(),
+        )
+    };
+    let actual = NonNull::new(pointer).map(Acl);
+    if result != 0 {
+        return Err(unsupported());
+    }
+    let actual = actual.ok_or_else(unsupported)?;
+    // Present ACLs must still match SDK-created empty security byte-for-byte,
+    // including flags. Malformed, nonempty or unknown security remains denied.
     let empty = Acl::new(unsafe { acl_init(0) })?;
     if actual.export()? != empty.export()? {
         return Err(unsupported());
