@@ -300,6 +300,34 @@ def execute(args):
              and group.gr_gid == 10002 and group.gr_mem == [], 'exact dedicated identity readback required')
         return user,group
     try:
+        # This disposable hosted image ships /opt root-owned0777. Prepare
+        # this one measured host precondition before any product publication;
+        # the shipping installer's complete root-ancestry policy stays intact.
+        opt_path = Path('/opt')
+        opt_root = Path('/').lstat()
+        need(stat.S_ISDIR(opt_root.st_mode) and opt_root.st_uid == opt_root.st_gid == 0
+             and not opt_root.st_mode & 0o022, 'controlled physical root ancestor required')
+        opt_fd = os.open(opt_path,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        try:
+            opt_before = os.fstat(opt_fd)
+            opt_identity = lambda m: (m.st_dev,m.st_ino,m.st_uid,m.st_gid,m.st_nlink,m.st_size,m.st_mtime_ns)
+            need(stat.S_ISDIR(opt_before.st_mode) and opt_before.st_uid == opt_before.st_gid == 0
+                 and stat.S_IMODE(opt_before.st_mode) in (0o755,0o777)
+                 and opt_identity(opt_path.lstat()) == opt_identity(opt_before)
+                 and opt_path.lstat().st_mode == opt_before.st_mode, 'exact measured disposable host parent required')
+            if stat.S_IMODE(opt_before.st_mode) == 0o777:os.fchmod(opt_fd,0o755)
+            opt_after = os.fstat(opt_fd)
+            need(opt_identity(opt_after) == opt_identity(opt_before) == opt_identity(opt_path.lstat())
+                 and stat.S_IMODE(opt_after.st_mode) == stat.S_IMODE(opt_path.lstat().st_mode) == 0o755,
+                 'stable controlled disposable host parent required')
+            report['hostTrustParent'] = dict(uid=opt_after.st_uid,gid=opt_after.st_gid,
+                modeBefore=stat.S_IMODE(opt_before.st_mode),mode=stat.S_IMODE(opt_after.st_mode),
+                changed=opt_before.st_mode != opt_after.st_mode,samePhysicalInode=True)
+        finally:os.close(opt_fd)
+        # The original fresh-state check preceded the measured0777 narrowing.
+        # Recheck its two /opt children after their parent becomes controlled.
+        for opt_child in (FIXTURE,Path('/opt/consolecrypt-agent-install')):
+            need(not opt_child.exists() and not opt_child.is_symlink(), 'fresh controlled product paths required')
         command(['/usr/sbin/groupadd','--gid','10002','consolecrypt-agent'],output/'group.log',20)
         created_group = grp.getgrnam('consolecrypt-agent')
         need(created_group == grp.getgrgid(10002) and created_group.gr_gid == 10002
