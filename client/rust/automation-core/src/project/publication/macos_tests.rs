@@ -7,6 +7,62 @@ use std::{
     os::unix::fs::{MetadataExt, PermissionsExt},
 };
 
+// This module is cfg(test). Probe only the newly owned fixture after its
+// mandatory guard failed; never print paths, pointers, ACEs or exported bytes.
+// Each probe is a fresh observation, not a replacement for the failed guard.
+fn owned_acl_export(label: &str, acquire: impl FnOnce() -> *mut c_void) -> Option<Vec<u8>> {
+    // SAFETY: callers acquire a libc-owned ACL from the live owned directory
+    // or acl_init. Acl frees it on every branch. errno is thread-local; the
+    // buffer is bounded exactly as in the production guard and never printed.
+    unsafe {
+        *libc::__error() = 0;
+        let pointer = acquire();
+        let error = *libc::__error();
+        eprintln!(
+            "owned-acl-probe {label} acquire_null={} errno={error}",
+            pointer.is_null()
+        );
+        let acl = Acl::new(pointer).ok()?;
+        *libc::__error() = 0;
+        let valid = acl_valid(acl.0.as_ptr());
+        let error = *libc::__error();
+        eprintln!("owned-acl-probe {label} valid={valid} errno={error}");
+        if valid != 0 {
+            return None;
+        }
+        *libc::__error() = 0;
+        let size = acl_size(acl.0.as_ptr());
+        let error = *libc::__error();
+        eprintln!("owned-acl-probe {label} size={size} errno={error}");
+        if !(1..=8192).contains(&size) {
+            return None;
+        }
+        let mut bytes = vec![0u8; size as usize];
+        *libc::__error() = 0;
+        let copied = acl_copy_ext(bytes.as_mut_ptr().cast(), acl.0.as_ptr(), size);
+        let error = *libc::__error();
+        eprintln!("owned-acl-probe {label} copied={copied} errno={error}");
+        (copied == size).then_some(bytes)
+    }
+}
+fn diagnose_owned_acl(directory: &Dir) {
+    // SAFETY: the fixture retains this descriptor throughout the read-only probe.
+    let actual = owned_acl_export("actual", || unsafe {
+        acl_get_fd_np(directory.as_raw_fd(), 0x100)
+    });
+    // SAFETY: acl_init returns a new libc allocation owned by the probe.
+    let empty = owned_acl_export("sdk-empty", || unsafe { acl_init(0) });
+    match (actual, empty) {
+        (Some(actual), Some(empty)) => eprintln!(
+            "owned-acl-probe compared=true actual_size={} empty_size={} equal={}",
+            actual.len(),
+            empty.len(),
+            actual == empty
+        ),
+        _ => eprintln!("owned-acl-probe compared=false"),
+    }
+}
+
 struct Owned {
     directory: Dir,
     path: std::path::PathBuf,
@@ -25,7 +81,11 @@ impl Owned {
         let directory = Dir::open_ambient_dir(&path, cap_std::ambient_authority()).unwrap();
         supported(&directory)
             .expect("actual writable local APFS required; unsupported is NOT a skip");
-        verify_empty_acl(&directory).expect("owned fixture must begin with empty extended ACL");
+        let acl_result = verify_empty_acl(&directory);
+        if acl_result.is_err() {
+            diagnose_owned_acl(&directory);
+        }
+        acl_result.expect("owned fixture must begin with empty extended ACL");
         Self {
             directory,
             path,
