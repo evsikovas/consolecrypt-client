@@ -28,7 +28,46 @@ _START_STATES = frozenset(("active", "inactive", "failed", "activating", "deacti
     "success", "exit-code", "signal", "core-dump", "timeout", "oom-kill", "resources",
     "start-limit-hit", "not-found", "loaded", "error", "unknown"))
 
-def _closed_start_failure(source, stage, error, unit=None):
+
+_START_MOUNT = None
+_MOUNT_NUMBERS = ('fdMountId','rootFdMountId','matchedFdIdRows','acceptedPathRows','matchedRootIdRows',
+    'rootPathRows','sessionPathRows','fsBytes','fsFiles','directoryDevMajor','directoryDevMinor','rootDevMajor','rootDevMinor')
+_MOUNT_BOOLEANS = ('fdPathIsRoot','fdPathIsSession','fdPathIsOther','fdFsTmpfs','rootReadOnly','rootDirectorySameDev',
+    'rw','nosuid','nodev','noexec','noswap')
+
+def _closed_mount_witness(value):
+    if type(value)is not dict or set(value)!=set(_MOUNT_NUMBERS+_MOUNT_BOOLEANS):return None
+    if any(value[k]is not None and (type(value[k])is not int or not 0<=value[k]<=2**64-1)for k in _MOUNT_NUMBERS):return None
+    if any(value[k]is not None and type(value[k])is not bool for k in _MOUNT_BOOLEANS):return None
+    return dict(value)
+
+def _mount_failure_witness(rows,actual_mount,actual_root,root,directory,directory_stat):
+    # SAME already-read mountinfo, no raw path/options leave this helper. Only
+    # metadata reads; failures remain absent/unknown, never authority or zero.
+    try:
+        if len(rows)>4096:return None
+        selected=[(a,z)for a,z in rows if a[0]==actual_mount]
+        roots=[a for a,z in rows if a[0]==actual_root and a[4]=='/']
+        item=selected[0]if len(selected)==1 else None
+        flags=(set(item[0][5].split(','))|set(item[1][2].split(',')))if item is not None else None
+        filesystem=os.statvfs(directory);root_stat=root.stat()
+        value=dict(fdMountId=int(actual_mount),rootFdMountId=int(actual_root),matchedFdIdRows=len(selected),
+            acceptedPathRows=sum(a[4]in(str(root),str(directory))for a,z in selected),matchedRootIdRows=len(roots),
+            rootPathRows=sum(a[4]==str(root)for a,z in rows),sessionPathRows=sum(a[4]==str(directory)for a,z in rows),
+            fdPathIsRoot=item[0][4]==str(root)if item is not None else None,
+            fdPathIsSession=item[0][4]==str(directory)if item is not None else None,
+            fdPathIsOther=item[0][4]not in(str(root),str(directory))if item is not None else None,
+            fdFsTmpfs=item[1][0]=='tmpfs'if item is not None else None,
+            rootReadOnly='ro'in roots[0][5].split(',')if len(roots)==1 else None,
+            fsBytes=filesystem.f_blocks*filesystem.f_frsize,fsFiles=filesystem.f_files,
+            directoryDevMajor=os.major(directory_stat.st_dev),directoryDevMinor=os.minor(directory_stat.st_dev),
+            rootDevMajor=os.major(root_stat.st_dev),rootDevMinor=os.minor(root_stat.st_dev),
+            rootDirectorySameDev=root_stat.st_dev==directory_stat.st_dev)
+        for name in ('rw','nosuid','nodev','noexec','noswap'):value[name]=name in flags if flags is not None else None
+        return _closed_mount_witness(value)
+    except BaseException:return None
+
+def _closed_start_failure(source, stage, error, unit=None, mount=None):
     code = str(error) if type(error) is ValueError and str(error) in _START_CODES else "unknown"
     number = error.errno if isinstance(error, OSError) else None
     number = number if type(number) is int and 0 <= number <= 4095 else None
@@ -39,12 +78,16 @@ def _closed_start_failure(source, stage, error, unit=None):
             if type(value) is str and value in _START_STATES:safe[key] = value
             elif type(value) is str and value.isascii() and value.isdecimal() and len(value) <= 10:
                 safe[key] = int(value)
-    return {"format":"cc-collector-service-start-failure/v1",
+    record = {"format":"cc-collector-service-start-failure/v1",
         "source":source if source in ("adapter", "entry") else "unknown",
         "stage":stage if stage in _START_STAGES else "unknown", "code":code, "errno":number,
         "unit":safe}
+    if mount is not None:
+        witness=_closed_mount_witness(mount)
+        if witness is not None:record["mount"]=witness
+    return record
 
-def _record_start_failure(directory, source, stage, error, unit=None):
+def _record_start_failure(directory, source, stage, error, unit=None, mount=None):
     # Never replace an original process-exit receipt or an earlier failure.
     # O_EXCL, held directory/leaf identities, UID/mode/nlink, and <=2KiB apply.
     parent_fd = fd = None; leaf = None; published = False
@@ -55,7 +98,7 @@ def _record_start_failure(directory, source, stage, error, unit=None):
         parent_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
         held = os.fstat(parent_fd)
         if (m.st_dev,m.st_ino) != (held.st_dev,held.st_ino):return False
-        raw = json.dumps(_closed_start_failure(source,stage,error,unit),sort_keys=True,separators=(",",":"),ensure_ascii=True).encode("ascii")
+        raw = json.dumps(_closed_start_failure(source,stage,error,unit,mount),sort_keys=True,separators=(",",":"),ensure_ascii=True).encode("ascii")
         if len(raw) > 2048:return False
         fd = os.open("prometheus-exit.json",os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,0o600,dir_fd=parent_fd)
         os.fchmod(fd,0o600)
@@ -92,7 +135,7 @@ def _record_start_failure(directory, source, stage, error, unit=None):
 def _entry_start_failure(kind, error, traceback):
     try:
         if _START_DIAGNOSTIC_ALLOWED and len(sys.argv) == 3 and sys.argv[1].startswith("--session="):
-            _record_start_failure(Path("/run/consolecrypt-agent/disk") / sys.argv[1][10:],"entry",_START_STAGE,error)
+            _record_start_failure(Path("/run/consolecrypt-agent/disk") / sys.argv[1][10:],"entry",_START_STAGE,error,mount=globals().get("_START_MOUNT"))
     except BaseException:pass
 
 if __name__ == "__main__":sys.excepthook = _entry_start_failure
@@ -162,7 +205,7 @@ def private_config(raw, session):
 
 
 def gate(session, config_hash):
-    global _START_STAGE
+    global _START_STAGE, _START_MOUNT
     _START_STAGE = "platform"
     need(sys.platform == "linux" and os.uname().machine in {'x86_64', 'aarch64'}, "disk_platform")
     _START_STAGE = "input"
@@ -215,13 +258,16 @@ def gate(session, config_hash):
         _START_STAGE = "mount"
         mount = []
         roots = []
+        observed_mount_rows = []
         actual_mount, actual_root = mount_id(directory), mount_id(Path("/"))
         for line in read_text(Path("/proc/self/mountinfo"), 262144).splitlines():
             first, last = line.split(" - ", 1);a, z = first.split(), last.split()
+            observed_mount_rows.append((a,z))
             if a[0] == actual_mount and a[4] in (str(ROOT), str(directory)):
                 mount.append((a, z))
             if a[0] == actual_root and a[4] == "/":
                 roots.append(a)
+        _START_MOUNT = _mount_failure_witness(observed_mount_rows,actual_mount,actual_root,ROOT,directory,st)
         need(len(mount) == 1, "disk_mount")
         a, z = mount[0];options = set(a[5].split(",")) | set(z[2].split(","))
         need(z[0] == "tmpfs" and {"rw", "nosuid", "nodev", "noexec", "noswap"} <= options, "disk_mount_options")

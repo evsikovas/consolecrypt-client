@@ -405,7 +405,20 @@ def _read_active_tls(inner, owned, actual_ssl, maximum):
         inner.checkpoint()
         if inner.ssl is not actual_ssl:
             raise TunnelUnavailable()
+        # Linearize this original read against the maintained loss monitor.
+        # Only an actual WantRead/no-data observation may request retirement;
+        # payload, TLS alert, pending bytes and every denied cause stay Unknown.
+        carrier = inner.carrier
+        if type(carrier) is not WssCarrier:
+            _check_carrier(carrier, owned)
+        else:
+            with carrier._cv:
+                if wanted_read and data is None and _observe_transport_loss(carrier, inner, owned, actual_ssl):
+                    raise _BoundTransportLoss()
+                _check_carrier(carrier, owned)
         return data
+    except _BoundTransportLoss:
+        raise
     except CarrierNetworkLoss:
         if wanted_read and _observe_transport_loss(inner.carrier, inner, owned, actual_ssl):
             raise _BoundTransportLoss() from None
@@ -511,7 +524,6 @@ def run_child():
                 owned.adopt_idle(request['idleExpiresAt'])
                 try:
                     data = _read_active_tls(inner, owned, actual_ssl, maximum)
-                    _check_carrier(carrier, owned)
                 except _BoundTransportLoss:
                     # This is not EOF/drain/Permit. Keep original pipes alive
                     # and await the exact parent's stop after target shutdown.

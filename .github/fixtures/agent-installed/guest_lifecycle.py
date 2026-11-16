@@ -126,7 +126,7 @@ def namespace_command(argv,**kwargs):
                    'CONFIGURATION_DIRECTORY','LANGUAGE','LC_ALL','XDG_SESSION_CLASS',
                    'XDG_SESSION_ID','XDG_SESSION_TYPE','XDG_DATA_DIRS','XDG_CONFIG_DIRS',
                    'XDG_SEAT','XDG_VTNR','TERM','DISPLAY','WAYLAND_DISPLAY','XAUTHORITY',
-                   'SSH_AUTH_SOCK','DBUS_STARTER_ADDRESS','DBUS_STARTER_BUS_TYPE')
+                   'SSH_AUTH_SOCK','GNOME_KEYRING_CONTROL','SSH_AGENT_PID','DBUS_STARTER_ADDRESS','DBUS_STARTER_BUS_TYPE')
             value=dict(format='cc-collector-manager-environment-observation/v1',readOnly=True,
                 uid=10002,gid=10002,actualKeys=len(actual),expectedKeys=len(expected),
                 originalEquality=actual==expected,missingExpected=len(set(expected)-set(actual)),
@@ -135,6 +135,28 @@ def namespace_command(argv,**kwargs):
                 expected={k:dict(present=k in actual,matches=actual.get(k)==expected[k])for k in fixed},
                 optionalBusPresent=optional in actual,optionalBusMatches=actual.get(optional)==bus,
                 knownExtra={k:k in extra for k in known})
+            if actual!=expected:
+                value['knownKeyringUnits']={}
+                for suffix in ('service','socket'):
+                    unit='gnome-keyring-daemon.'+suffix
+                    item={'observed':False};value['knownKeyringUnits'][suffix]=item
+                    try:
+                        props='LoadState,ActiveState,FragmentPath,ControlGroup'+(',MainPID'if suffix=='service'else '')
+                        row=module.fields(original_command(['/usr/bin/systemctl','--user','show',unit,'--property='+props],uid=10002,gid=10002,seconds=.75,cap=4096))
+                        cg='/user.slice/user-10002.slice/user@10002.service/'
+                        item.update(observed=True,loaded=row.get('LoadState')=='loaded',active=row.get('ActiveState')=='active',
+                            knownFragment=row.get('FragmentPath')in('/usr/lib/systemd/user/'+unit,'/lib/systemd/user/'+unit),
+                            controlGroupUnderOwnedManager=row.get('ControlGroup','').startswith(cg))
+                        pid=row.get('MainPID','0')
+                        if suffix=='service'and pid.isdecimal()and 0<int(pid)<2**31:
+                            proc=pathlib.Path('/proc',pid);before=proc.stat();exe=(proc/'exe').stat()
+                            known=pathlib.Path('/usr/bin/gnome-keyring-daemon').stat()
+                            with(proc/'cgroup').open('rb')as stream:groups=stream.read(4097)
+                            assert len(groups)<=4096
+                            item.update(processUidMatches=before.st_uid==proc.stat().st_uid==10002,
+                                executableMatchesKnownDaemon=(exe.st_dev,exe.st_ino)==(known.st_dev,known.st_ino),
+                                processControlGroupMatches=groups==('0::'+row.get('ControlGroup','')+'\n').encode())
+                    except Exception:pass
             encoded=json.dumps(value,sort_keys=True,separators=(',',':'))
             assert len(encoded.encode())<=8192
             print('CC_AGENT_MANAGER_ENVIRONMENT_OBSERVATION '+encoded,file=sys.stderr,flush=True)
@@ -675,13 +697,22 @@ def _collector_start_failure(directory):
             if len(raw) != before.st_size or ident(before) != ident(os.fstat(fd)) or ident(before) != ident(path.lstat()):return None
         finally:os.close(fd)
         value = json.loads(raw)
-        if type(value) is not dict or set(value) != {'format','source','stage','code','errno','unit'}:return None
+        if type(value) is not dict or set(value) not in ({'format','source','stage','code','errno','unit'},{'format','source','stage','code','errno','unit','mount'}):return None
         if value['format'] != 'cc-collector-service-start-failure/v1' or value['source'] not in ('entry','adapter','unknown'):return None
         if value['stage'] not in ('module', 'package', 'imports', 'platform', 'input', 'uid', 'namespace', 'directory', 'config_open', 'config', 'boot', 'start_window', 'deadline', 'owner', 'namespace_proof', 'target', 'mount', 'cgroup', 'invocation', 'scrape', 'binary', 'binding', 'preexec', 'argv', 'manager_environment', 'unit_absent', 'unit_start', 'unit_running', 'unknown') or value['code'] not in ('disk_argv', 'disk_binary', 'disk_binary_bound', 'disk_binary_changed', 'disk_binary_digest', 'disk_binary_parent', 'disk_binding', 'disk_binding_changed', 'disk_binding_code', 'disk_binding_digest', 'disk_binding_write', 'disk_boot', 'disk_caps_changed', 'disk_cgroup', 'disk_cgroup_identity', 'disk_cgroup_type', 'disk_cgroup_unit', 'disk_child_changed', 'disk_child_exec', 'disk_child_identity', 'disk_child_membership', 'disk_child_parent', 'disk_cleanup_deadline', 'disk_cleanup_directory', 'disk_cleanup_entries', 'disk_cleanup_leaf', 'disk_cleanup_unknown', 'disk_closed', 'disk_collector', 'disk_collector_id', 'disk_config', 'disk_config_canonical', 'disk_config_changed', 'disk_config_digest', 'disk_config_hash', 'disk_config_integer', 'disk_control_deadline', 'disk_control_exit', 'disk_control_output', 'disk_deadline', 'disk_directory', 'disk_duplicate', 'disk_entry_not_execed', 'disk_events', 'disk_existing_unit', 'disk_expired', 'disk_file_changed', 'disk_float', 'disk_handoff', 'disk_handoff_hash', 'disk_handoff_unit', 'disk_host_namespace', 'disk_id', 'disk_initial_membership', 'disk_input', 'disk_invocation', 'disk_kernel_bound', 'disk_kernel_limits', 'disk_launch_owner', 'disk_leader_not_captured', 'disk_legacy_platform', 'disk_live_cgroup_missing', 'disk_manager_environment', 'disk_manifest_address', 'disk_manifest_binding', 'disk_memory', 'disk_mount', 'disk_mount_identity', 'disk_mount_options', 'disk_mount_size', 'disk_namespace', 'disk_namespace_bound', 'disk_native_layout', 'disk_native_probe_already_held', 'disk_never_bound_unit', 'disk_original_namespace', 'disk_original_parent', 'disk_original_parent_changed', 'disk_original_window', 'disk_owned_membership', 'disk_owner', 'disk_owner_changed', 'disk_owner_kind', 'disk_owner_uid', 'disk_package', 'disk_parent', 'disk_pid_changed', 'disk_pid_dead', 'disk_pid_replaced', 'disk_pid_uid', 'disk_pipe_replaced', 'disk_platform', 'disk_port', 'disk_preexec_identity', 'disk_prior_resource_failure', 'disk_private_control', 'disk_private_namespace', 'disk_private_pipes', 'disk_process_changed', 'disk_process_exited', 'disk_process_uid', 'disk_prometheus_not_execed', 'disk_readiness_deadline', 'disk_readonly_system', 'disk_receiver', 'disk_record_bound', 'disk_record_exists', 'disk_record_leaf', 'disk_record_write', 'disk_regular', 'disk_resource_events', 'disk_resource_failed', 'disk_root', 'disk_root_changed', 'disk_root_entries', 'disk_runtime', 'disk_runtime_binary', 'disk_runtime_metadata', 'disk_runtime_readback', 'disk_scrape_hash', 'disk_selected_binary', 'disk_selected_changed', 'disk_selected_helper', 'disk_selected_platform', 'disk_selected_version', 'disk_session', 'disk_session_changed', 'disk_session_lock', 'disk_start_denied', 'disk_start_unknown', 'disk_start_window', 'disk_status_port', 'disk_stop_request', 'disk_terminal_bound', 'disk_uid', 'disk_unbound_nonempty', 'disk_unit_exit_policy', 'disk_unit_identity', 'disk_unit_limits', 'disk_unit_observation', 'disk_unit_replaced', 'disk_unknown', 'disk_user_namespace', 'disk_wal_changed', 'disk_wal_root', 'service_binding', 'service_collector', 'service_config_digest', 'service_disk_binding', 'service_disk_binding_changed', 'service_disk_digest', 'service_disk_expiry', 'service_disk_id', 'service_disk_revision', 'service_entry', 'service_original_window', 'service_package', 'service_policy_expiry', 'service_runtime', 'service_session', 'service_user_namespace', 'unknown'):return None
         if value['errno'] is not None and (type(value['errno']) is not int or not 0 <= value['errno'] <= 4095):return None
         if type(value['unit']) is not dict or not set(value['unit']) <= {'LoadState','ActiveState','SubState','Result','ExecMainCode','ExecMainStatus'}:return None
         for item in value['unit'].values():
             if not (type(item) is int and 0 <= item <= 4294967295 or type(item) is str and item in ('active', 'inactive', 'failed', 'activating', 'deactivating', 'running', 'dead', 'exited', 'start', 'start-post', 'stop', 'stop-sigterm', 'stop-sigkill', 'success', 'exit-code', 'signal', 'core-dump', 'timeout', 'oom-kill', 'resources', 'start-limit-hit', 'not-found', 'loaded', 'error', 'unknown')):return None
+        if 'mount' in value:
+            witness=value['mount']
+            numbers=('fdMountId','rootFdMountId','matchedFdIdRows','acceptedPathRows','matchedRootIdRows',
+                'rootPathRows','sessionPathRows','fsBytes','fsFiles','directoryDevMajor','directoryDevMinor','rootDevMajor','rootDevMinor')
+            booleans=('fdPathIsRoot','fdPathIsSession','fdPathIsOther','fdFsTmpfs','rootReadOnly','rootDirectorySameDev',
+                'rw','nosuid','nodev','noexec','noswap')
+            if type(witness)is not dict or set(witness)!=set(numbers+booleans):return None
+            if any(witness[k]is not None and(type(witness[k])is not int or not 0<=witness[k]<=2**64-1)for k in numbers):return None
+            if any(witness[k]is not None and type(witness[k])is not bool for k in booleans):return None
         if json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=True).encode('ascii') != raw:return None
         return value
     except Exception:return None

@@ -262,7 +262,12 @@ def object_pairs(pairs):
 
 def read_text(path, cap=8192):
     with path.open("rb", buffering=0) as source:
-        raw = source.read(cap + 1)
+        raw = bytearray()
+        while len(raw) <= cap:
+            block = source.read(min(65536, cap + 1 - len(raw)))
+            if not block:
+                break
+            raw.extend(block)
     need(len(raw) <= cap, "disk_kernel_bound")
     return raw.decode("ascii").strip()
 

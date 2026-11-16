@@ -455,6 +455,23 @@ def execute(args):
         except BaseException as cleanup:
             report['passed'] = False
             report['cleanupErrorClass'] = type(cleanup).__name__
+            # Bounded static provenance only; preserve this original cleanup error.
+            try:
+                known = ('cleanup dedicated identity changed', 'bounded cleanup unit observation',
+                         'known unit required for cleanup', 'existing role/host command failed',
+                         'owned command process group not joined', 'command leader exited with descendants',
+                         'bounded role log required', 'owned service processes remain')
+                code = cleanup.args[0] if type(cleanup) is ValueError and len(cleanup.args) == 1 and type(cleanup.args[0]) is str and cleanup.args[0] in known else 'unclassified'
+                frames = []
+                closed = {execute.__code__: 'execute', command.__code__: 'command', need.__code__: 'need'}
+                tb = cleanup.__traceback__
+                while tb is not None:
+                    if tb.tb_frame.f_code in closed:
+                        frames.append(dict(function=closed[tb.tb_frame.f_code], line=tb.tb_lineno))
+                    tb = tb.tb_next
+                report['cleanupFailure'] = dict(code=code, frames=frames[-8:], readOnly=True)
+            except BaseException:
+                pass
         (output/'RESULT.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
     need(report['passed'] and report['cleanupJoined'], 'actual ARM lifecycle/cleanup did not pass')
 
