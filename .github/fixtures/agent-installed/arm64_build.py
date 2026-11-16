@@ -19,7 +19,7 @@ HERE = Path(__file__).resolve().parent
 TARGET = 'aarch64-unknown-linux-gnu'
 # Reviewed collector afterimage in ARM_CI_FIX.json (644c3810397381c8...).
 # Main's parser-only ARM branch cannot consume the native official-Go record.
-COLLECTOR_MATERIALS_SHA256 = 'e9fb4133eb68df0a432c688d82fd859a55efa4be7e91a0d30aabca23717c66d8'
+COLLECTOR_MATERIALS_SHA256 = 'f529131dfd912f5cb339e9251a65008116094f591b86d32d1b9157d5ea30570f'
 FIXTURES = {
     'synthetic_node_authority': '7f403db17f36d26ad4c084b2dda0e794f7b7b6b81cb010f2de500241c766da02',
     'synthetic_exporter_authority': '755e16a4355a8606f653caa2fbfb99a30e28727e8d3770579239cdf91e597601',
