@@ -107,6 +107,39 @@ def save_private(name,retained):
     finally:os.close(fd)
 
 def namespace_command(argv,**kwargs):
+    manager_env=(argv==['/usr/bin/systemctl','--user','show-environment']
+                 and kwargs.get('uid')==kwargs.get('gid')==10002)
+    if manager_env:
+        result=original_command(argv,**kwargs)
+        try:
+            actual=module.fields(result);expected=module.environment(10002)
+            fixed=('HOME','USER','LOGNAME','SHELL','PATH','LANG','XDG_RUNTIME_DIR',
+                   'XDG_CONFIG_HOME','SYSTEMD_ENVIRONMENT_GENERATOR_PATH')
+            assert set(expected)==set(fixed)and type(actual)is dict
+            optional='DBUS_SESSION_BUS_ADDRESS'
+            bus='unix:path=/run/user/10002/bus'
+            if optional in actual:expected[optional]=bus
+            extra=set(actual)-set(expected)
+            known=('MEMORY_PRESSURE_WATCH','MEMORY_PRESSURE_WRITE','SYSTEMD_EXEC_PID',
+                   'INVOCATION_ID','JOURNAL_STREAM','NOTIFY_SOCKET','CREDENTIALS_DIRECTORY',
+                   'RUNTIME_DIRECTORY','STATE_DIRECTORY','LOGS_DIRECTORY','CACHE_DIRECTORY',
+                   'CONFIGURATION_DIRECTORY','LANGUAGE','LC_ALL','XDG_SESSION_CLASS',
+                   'XDG_SESSION_ID','XDG_SESSION_TYPE','XDG_DATA_DIRS','XDG_CONFIG_DIRS',
+                   'XDG_SEAT','XDG_VTNR','TERM','DISPLAY','WAYLAND_DISPLAY','XAUTHORITY',
+                   'SSH_AUTH_SOCK','DBUS_STARTER_ADDRESS','DBUS_STARTER_BUS_TYPE')
+            value=dict(format='cc-collector-manager-environment-observation/v1',readOnly=True,
+                uid=10002,gid=10002,actualKeys=len(actual),expectedKeys=len(expected),
+                originalEquality=actual==expected,missingExpected=len(set(expected)-set(actual)),
+                changedExpected=sum(k in actual and actual[k]!=v for k,v in expected.items()),
+                unexpectedKeys=len(extra),unknownKeyCount=len(extra-set(known)),
+                expected={k:dict(present=k in actual,matches=actual.get(k)==expected[k])for k in fixed},
+                optionalBusPresent=optional in actual,optionalBusMatches=actual.get(optional)==bus,
+                knownExtra={k:k in extra for k in known})
+            encoded=json.dumps(value,sort_keys=True,separators=(',',':'))
+            assert len(encoded.encode())<=8192
+            print('CC_AGENT_MANAGER_ENVIRONMENT_OBSERVATION '+encoded,file=sys.stderr,flush=True)
+        except Exception:pass # Optional observation cannot replace the original command result.
+        return result
     fixed=(argv[0]=='/usr/bin/systemd-run'and '--unit=cc-agent-collector-prerequisite.service'in argv
            and argv[-6:]==['/usr/bin/python3.12','-I','-B',str(module.PROBE),'10002','10002']
            and kwargs.get('uid')==kwargs.get('gid')==10002)
