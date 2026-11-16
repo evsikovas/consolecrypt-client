@@ -104,6 +104,26 @@ fn token(text: &str) -> Result<InvitationToken> {
 }
 
 fn root_file(path: &Path) -> Result<Vec<u8>> {
+    root_file_with_cap(path, MAX_WIRE_BYTES)
+}
+// Physical installed scripts are not protocol frames. Only these four signed
+// runtime paths may use the same 64KiB cap as the shipping provisioner.
+fn root_service_script(path: &Path) -> Result<Vec<u8>> {
+    match path.to_str() {
+        Some("/opt/consolecrypt-agent-install/opt/consolecrypt-agent/collector/service_unit_adapter.py"
+            | "/opt/consolecrypt-agent-install/opt/consolecrypt-agent/collector/service_unit_entry.py"
+            | "/opt/consolecrypt-agent-install/opt/consolecrypt-agent/collector/service_unit_spec.py"
+            | "/opt/consolecrypt-agent-install/opt/consolecrypt-agent/collector/service_binding.py") => root_file_with_cap(path, 65536),
+        _ => Err(Error::ScopeDenied),
+    }
+}
+fn root_file_body(reader: &mut impl Read, cap: usize) -> Result<Vec<u8>> {
+    let mut raw = Vec::new();
+    reader.take(cap as u64 + 1).read_to_end(&mut raw).map_err(|_| Error::Storage)?;
+    if raw.len() > cap { return Err(Error::Storage); }
+    Ok(raw)
+}
+fn root_file_with_cap(path: &Path, cap: usize) -> Result<Vec<u8>> {
     crate::durable::absolute(path)?;
     for p in path.ancestors() {
         let m = fs::symlink_metadata(p).map_err(|_| Error::Storage)?;
@@ -114,15 +134,14 @@ fn root_file(path: &Path) -> Result<Vec<u8>> {
     let mut f = OpenOptions::new().read(true).custom_flags(NOFOLLOW | NONBLOCK | CLOEXEC)
         .open(path).map_err(|_| Error::Storage)?;
     let m = f.metadata().map_err(|_| Error::Storage)?;
-    if !m.is_file() || m.nlink() != 1 || m.len() > MAX_WIRE_BYTES as u64
+    if !m.is_file() || m.nlink() != 1 || m.len() > cap as u64
         || m.uid() != 0 || m.mode() & 0o022 != 0 { return Err(Error::Storage); }
-    let mut raw = Vec::new();
-    Read::by_ref(&mut f).take(MAX_WIRE_BYTES as u64 + 1).read_to_end(&mut raw).map_err(|_| Error::Storage)?;
+    let raw = root_file_body(&mut f, cap)?;
     let after = fs::symlink_metadata(path).map_err(|_| Error::Storage)?;
     let held = f.metadata().map_err(|_| Error::Storage)?;
     let identity = |x: &fs::Metadata| (x.dev(), x.ino(), x.len(), x.nlink(), x.uid(), x.mode(),
         x.mtime(), x.mtime_nsec(), x.ctime(), x.ctime_nsec());
-    if raw.len() > MAX_WIRE_BYTES || identity(&m) != identity(&after)
+    if raw.len() > cap || identity(&m) != identity(&after)
         || identity(&m) != identity(&held) { return Err(Error::Storage); }
     Ok(raw)
 }
@@ -500,3 +519,30 @@ pub(crate) use metrics::{RegisteredCredentialWriter,RegisteredServiceNamespace};
 pub fn run_managed_exporter_exec(args:&[String])->Result<()> {exporters::exec(args)}
 
 pub(crate) use metrics::service_supervisor::run_fixed_collector_service;
+
+#[cfg(test)]
+mod service_script_cap_tests {
+    use super::*;
+    #[test]
+    fn installed_service_entry_larger_than_wire_uses_only_fixed_script_cap() {
+        let entry = include_bytes!("../../collector/service_unit_entry.py");
+        assert!(entry.len() > MAX_WIRE_BYTES && entry.len() <= 65536);
+        assert!(matches!(root_file_body(&mut std::io::Cursor::new(entry.as_slice()), MAX_WIRE_BYTES), Err(Error::Storage)));
+        assert_eq!(root_file_body(&mut std::io::Cursor::new(entry.as_slice()), 65536).unwrap(), entry.to_vec());
+        assert!(matches!(root_service_script(Path::new("/etc/consolecrypt-agent/enrollment-control.json")), Err(Error::ScopeDenied)));
+    }
+    #[test]
+    fn script_body_bound_rejects_oversize_and_read_error_without_raising_wire_limit() {
+        let exact = vec![b'x'; 65536];
+        assert_eq!(root_file_body(&mut std::io::Cursor::new(&exact), 65536).unwrap(), exact);
+        assert!(matches!(root_file_body(&mut std::io::Cursor::new(vec![b'x'; 65537]), 65536), Err(Error::Storage)));
+        struct Denied;
+        impl Read for Denied {
+            fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+            }
+        }
+        assert!(matches!(root_file_body(&mut Denied, 65536), Err(Error::Storage)));
+        assert_eq!(MAX_WIRE_BYTES, 16384);
+    }
+}

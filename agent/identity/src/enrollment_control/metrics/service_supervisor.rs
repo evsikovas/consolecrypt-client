@@ -73,7 +73,7 @@ impl Runtime {
             {
                 return Err(Error::Storage);
             }
-            let body = root_file(&path)?;
+            let body = root_service_script(&path)?;
             if digest(&body) != expected
                 || physical(&before)
                     != physical(&fs::symlink_metadata(&path).map_err(|_| Error::Storage)?)
