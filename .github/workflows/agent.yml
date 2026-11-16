@@ -54,12 +54,13 @@ jobs:
     timeout-minutes: 20
     env:
       CARGO_BUILD_JOBS: '2'
-      CARGO_TARGET_DIR: ${{ runner.temp }}/cc-agent-identity-target
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Test the locked Agent identity crate
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/cc-agent-identity-target
         run: cargo test --locked --manifest-path agent/identity/Cargo.toml --all-targets
 
   native-arm-python-observe:

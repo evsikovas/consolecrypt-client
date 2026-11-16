@@ -48,26 +48,28 @@ jobs:
     runs-on: ${{ matrix.runner }}
     env:
       CARGO_BUILD_JOBS: '2'
-      CARGO_TARGET_DIR: ${{ runner.temp }}/cc-agent-release-target
-      CC_RELEASE_WORK: ${{ runner.temp }}/cc-agent-release-${{ matrix.target }}
       CC_RELEASE_VERSION: ${{ inputs.release_version }}
       CC_RELEASE_DISPLAY_VERSION: ${{ inputs.display_version }}
       CC_RELEASE_INCLUDE_DISK: ${{ inputs.include_disk_collector }}
       CC_REVIEWED_RUNTIME_PINS_JSON: ${{ inputs.supervisor_runtime_pins }}
       CC_RELEASE_PLATFORM: ${{ matrix.release }}
       CC_SUPERVISOR_RUNTIME_PIN: ${{ github.workspace }}/agent/delivery/runtime-pins/${{ matrix.release }}.json
-      CC_NORMAL_DISK_INPUT: ${{ runner.temp }}/cc-agent-normal-prometheus-${{ matrix.target }}/input.json
       CC_AGENT_RELEASE_APPROVED_FLOOR: ${{ vars.CC_AGENT_RELEASE_APPROVED_FLOOR }}
       CC_AGENT_RELEASE_EXPECTED_PUBLIC_KEY: ${{ vars.CC_AGENT_RELEASE_EXPECTED_PUBLIC_KEY }}
     steps:
       - name: Require the dedicated release secret and independently reviewed public pin
         env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/cc-agent-release-target
+          CC_RELEASE_WORK: ${{ runner.temp }}/cc-agent-release-${{ matrix.target }}
+          CC_NORMAL_DISK_INPUT: ${{ runner.temp }}/cc-agent-normal-prometheus-${{ matrix.target }}/input.json
           CC_AGENT_RELEASE_ED25519_SEED_HEX: ${{ secrets.CC_AGENT_RELEASE_ED25519_SEED_HEX }}
         shell: bash
         run: |
           test -n "$CC_AGENT_RELEASE_ED25519_SEED_HEX" || { echo 'Dedicated Agent release secret is missing; no fallback is permitted.' >&2; exit 1; }
           test -n "$CC_AGENT_RELEASE_EXPECTED_PUBLIC_KEY" || { echo 'Reviewed Agent release public key is missing.' >&2; exit 1; }
           test -n "$CC_AGENT_RELEASE_APPROVED_FLOOR" || { echo 'Reviewed monotonic release floor is missing.' >&2; exit 1; }
+          printf 'CARGO_TARGET_DIR=%s\nCC_RELEASE_WORK=%s\nCC_NORMAL_DISK_INPUT=%s\n' \
+            "$CARGO_TARGET_DIR" "$CC_RELEASE_WORK" "$CC_NORMAL_DISK_INPUT" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
