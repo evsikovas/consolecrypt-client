@@ -17,6 +17,12 @@ Map<String, dynamic> _arb(String locale) =>
 
 Iterable<String> _messageKeys(Map<String, dynamic> arb) => arb.keys.where((k) => !k.startsWith('@'));
 
+/// Argument identifiers are locale-neutral; literal English still needs review.
+/// A plural case such as `one{item}` is text, not a simple argument.
+bool _hasEnglishLiteral(String message) => RegExp('[a-z]{4,}').hasMatch(
+  message.replaceAll(RegExp(r'(?<!\w)\{\s*[A-Za-z_]\w*\s*\}'), ''),
+);
+
 /// `{name}` / `{name, plural|select, …}` arguments of an ICU message. In a
 /// plural or select, a brace right after a word opens a case (`other{…}`),
 /// not an argument.
@@ -107,9 +113,16 @@ void main() {
     });
 
     test('Russian is actually translated (not a copy of the English template)', () {
-      final same = _messageKeys(en).where((k) => en[k] == ru[k] && RegExp('[a-z]{4,}').hasMatch(en[k] as String));
+      final same = _messageKeys(en).where((k) => en[k] == ru[k] && _hasEnglishLiteral(en[k] as String));
       // Technical/brand-only strings may legitimately be identical.
       expect(same.length, lessThan(40), reason: same.join(', '));
+    });
+
+    test('translation heuristic ignores arguments but retains English literals and plural text', () {
+      expect(_hasEnglishLiteral('{domain}: {state}'), isFalse);
+      expect(_hasEnglishLiteral('{domain}: status {state}'), isTrue);
+      expect(_hasEnglishLiteral('{count, plural, one{item} other{items}}'), isTrue);
+      expect(_hasEnglishLiteral('Ready: {count}'), isTrue);
     });
   });
 
@@ -119,6 +132,11 @@ void main() {
       expect(l10nRu.timeDaysAgo(2), '2 дня назад');
       expect(l10nRu.timeDaysAgo(5), '5 дней назад');
       expect(l10nRu.timeDaysAgo(21), '21 день назад');
+      expect(l10nRu.automationFolderMemberCount(1), '1 SSH-хост в папке');
+      expect(l10nRu.automationFolderMemberCount(2), '2 SSH-хоста в папке');
+      expect(l10nRu.automationFolderMemberCount(5), '5 SSH-хостов в папке');
+      expect(l10nEn.automationFolderMemberCount(1), '1 SSH host in this folder');
+      expect(l10nEn.automationFolderMemberCount(2), '2 SSH hosts in this folder');
       expect(l10nRu.timeInDays(3), 'через 3 дня');
       expect(l10nRu.timeInDays(11), 'через 11 дней');
       expect(l10nRu.shellApprovalBannerTitle(1), '1 запрос на подтверждение устройства');

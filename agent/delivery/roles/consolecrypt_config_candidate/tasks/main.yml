@@ -1,0 +1,417 @@
+---
+- name: Clear every prior invocation observation before validating options
+  ansible.builtin.set_fact:
+    cc_config_candidate_result: null
+    cc_config_candidate_failure: null
+    _cc_config_helper_attempted: false
+    _cc_config_stage_eligible: false
+    _cc_config_transport: {}
+    _cc_config_transport_before: {}
+    _cc_config_transport_owned: {results: []}
+    _cc_config_transport_hashes: {results: []}
+    _cc_config_transport_after: {}
+    _cc_config_transport_entries: {files: []}
+    _cc_config_transport_cleanup_files: {results: []}
+    _cc_config_candidate_result: {}
+    _cc_config_decoder_pin: {}
+    _cc_config_normalized_command: {}
+    _cc_config_normalized: null
+  no_log: true
+
+- name: Validate explicit opt-in within initialized reporting boundary
+  block:
+    - name: Require explicit candidate-only opt-in
+      ansible.builtin.assert:
+        that:
+          - cc_config_candidate_enabled is boolean
+          - cc_config_candidate_initialize is boolean
+  rescue:
+    - name: Classify invalid opt-in without evaluating it as a conditional
+      ansible.builtin.set_fact:
+        cc_config_candidate_failure:
+          format: cc-config-candidate-error/v1
+          outcome: rejected
+          reason: role_preflight_rejected
+          change_state: not_changed
+          changed: false
+  no_log: true
+
+- name: Record immutable stage eligibility after boolean validation
+  ansible.builtin.set_fact:
+    _cc_config_stage_eligible: '{{ cc_config_candidate_enabled is sameas true and cc_config_candidate_failure is none }}'
+  no_log: true
+
+- name: Stage only public immutable configuration candidates
+  when: _cc_config_stage_eligible
+  become: false
+  no_log: true
+  block:
+    - name: Require reviewed public inputs and separate physical transport parent
+      ansible.builtin.assert:
+        that:
+          - cc_config_candidate_root is match('^/[^\n\r]+$')
+          - cc_config_candidate_transport_parent is match('^/[^\n\r]+$')
+          - cc_config_candidate_profile is mapping
+          - cc_config_candidate_agent_id is none or cc_config_candidate_agent_id is string
+          - cc_config_candidate_fleet is sequence
+          - ansible_play_hosts_all | length == 1 or cc_config_candidate_fleet | length >= ansible_play_hosts_all | length
+          - cc_config_candidate_protected_roots is sequence
+          - cc_config_candidate_bundle_sha256 is match('^[0-9a-f]{64}$')
+          - cc_config_candidate_bootstrap_sha256 is match('^[0-9a-f]{64}$')
+
+    - name: Validate complete public fleet through shared model on controller
+      ansible.builtin.command:
+        argv: ['{{ cc_config_candidate_controller_python }}', '-I', '-B', '{{ cc_config_candidate_controller_renderer }}']
+        stdin: '{{ {"manifest": cc_config_candidate_profile, "fleet": cc_config_candidate_fleet} | to_json }}'
+        stdin_add_newline: false
+      delegate_to: localhost
+      become: false
+      check_mode: false
+      changed_when: false
+      no_log: true
+
+    - name: Validate actual target interpreter and transport geometry before copying code
+      ansible.builtin.command:
+        argv:
+          - '{{ cc_config_candidate_python }}'
+          - -I
+          - -S
+          - -B
+          - -c
+          - |
+            import sys,json,os,stat
+            from pathlib import Path
+            assert sys.version_info >= (3,11)
+            parent=Path(sys.argv[1]); root=Path(sys.argv[2]); protected=json.loads(sys.argv[3])
+            assert type(protected) is list and parent.is_absolute() and root.is_absolute()
+            for p in [parent,root,*map(Path,protected)]:
+                assert p.is_absolute() and '..' not in p.parts
+                for item in [p,*p.parents]:
+                    if item.exists() or item.is_symlink():
+                        assert not stat.S_ISLNK(item.lstat().st_mode)
+            info=parent.lstat()
+            assert stat.S_ISDIR(info.st_mode) and info.st_uid==os.getuid() and stat.S_IMODE(info.st_mode)==0o700
+            for p in [root,*map(Path,protected)]:
+                assert not (p==parent or p in parent.parents or parent in p.parents)
+          - '{{ cc_config_candidate_transport_parent }}'
+          - '{{ cc_config_candidate_root }}'
+          - '{{ cc_config_candidate_protected_roots | to_json }}'
+      check_mode: false
+      changed_when: false
+      no_log: true
+
+    - name: Execute pinned target transport and cleanup
+      block:
+        - name: Create own temporary public-code transport directory on target
+          ansible.builtin.tempfile:
+            state: directory
+            path: '{{ cc_config_candidate_transport_parent }}'
+            prefix: cc-config-transport-
+          register: _cc_config_transport
+          check_mode: false
+          changed_when: false
+
+        - name: Record actual newly owned transport directory identity
+          ansible.builtin.stat:
+            path: '{{ _cc_config_transport.path }}'
+            follow: false
+            get_checksum: false
+          register: _cc_config_transport_before
+          check_mode: false
+
+        - name: Clear ownership snapshots from any earlier role invocation
+          ansible.builtin.set_fact:
+            _cc_config_transport_owned: {results: []}
+
+        - name: Copy explicit bootstrap and reviewed validation bundle to target
+          ansible.builtin.copy:
+            src: '{{ item.source }}'
+            dest: '{{ _cc_config_transport.path }}/{{ item.name }}'
+            mode: '0600'
+          loop:
+            - {source: '{{ cc_config_candidate_bootstrap }}', name: bootstrap.py}
+            - {source: '{{ cc_config_candidate_bundle }}', name: validation.zip}
+          check_mode: false
+          changed_when: false
+
+        - name: Measure actual target bytes before executing bootstrap
+          ansible.builtin.stat:
+            path: '{{ _cc_config_transport.path }}/{{ item }}'
+            follow: false
+            checksum_algorithm: sha256
+          loop: [bootstrap.py, validation.zip]
+          register: _cc_config_transport_hashes
+          check_mode: false
+
+        - name: Write bounded public profile transport input
+          ansible.builtin.copy:
+            content: '{{ cc_config_candidate_profile | to_json }}'
+            dest: '{{ _cc_config_transport.path }}/input.json'
+            mode: '0600'
+          check_mode: false
+          changed_when: false
+          no_log: true
+
+        - name: Snapshot successfully copied own transport files before execution
+          ansible.builtin.stat:
+            path: '{{ _cc_config_transport.path }}/{{ item }}'
+            follow: false
+            checksum_algorithm: sha256
+          loop: [bootstrap.py, validation.zip, input.json]
+          register: _cc_config_transport_owned
+          check_mode: false
+
+        - name: Require measured regular single-link private transport files
+          ansible.builtin.assert:
+            that:
+              - item.stat.isreg | default(false)
+              - not item.stat.islnk | default(true)
+              - item.stat.nlink == 1
+              - item.stat.uid == _cc_config_transport_before.stat.uid
+              - item.stat.mode == '0600'
+              - item.stat.checksum is match('^[0-9a-f]{64}$')
+          loop: '{{ _cc_config_transport_owned.results }}'
+
+        - name: Require exact regular bootstrap and bundle SHA pins
+          ansible.builtin.assert:
+            that:
+              - _cc_config_transport_hashes.results[0].stat.isreg | default(false)
+              - not _cc_config_transport_hashes.results[0].stat.islnk | default(true)
+              - _cc_config_transport_hashes.results[0].stat.checksum == cc_config_candidate_bootstrap_sha256
+              - _cc_config_transport_hashes.results[1].stat.isreg | default(false)
+              - not _cc_config_transport_hashes.results[1].stat.islnk | default(true)
+              - _cc_config_transport_hashes.results[1].stat.checksum == cc_config_candidate_bundle_sha256
+
+        - name: Record helper command attempt before execution
+          ansible.builtin.set_fact:
+            _cc_config_helper_attempted: true
+
+        - name: Validate and stage immutable candidate through actual target helper
+          ansible.builtin.command:
+            argv: >-
+              {{ [cc_config_candidate_python, '-I', '-S', '-B', _cc_config_transport.path + '/bootstrap.py',
+              '--bundle', _cc_config_transport.path + '/validation.zip', '--bundle-sha256', cc_config_candidate_bundle_sha256,
+              '--bootstrap-sha256', cc_config_candidate_bootstrap_sha256, '--root', cc_config_candidate_root,
+              '--profile', _cc_config_transport.path + '/input.json', '--expected-agent-id',
+              (cc_config_candidate_agent_id | default('none', true)), '--expected-host-id', cc_config_candidate_host_id,
+              '--protected-roots', (cc_config_candidate_protected_roots | to_json)]
+              + (['--initialize'] if cc_config_candidate_initialize else []) + (['--check'] if ansible_check_mode else []) }}
+            strip_empty_ends: false
+          register: _cc_config_candidate_result
+          check_mode: false
+          failed_when: false
+          changed_when: false
+          no_log: true
+
+        - name: Recheck independently pinned decoder before executing it
+          ansible.builtin.stat:
+            path: '{{ _cc_config_transport.path }}/bootstrap.py'
+            follow: false
+            checksum_algorithm: sha256
+          register: _cc_config_decoder_pin
+          check_mode: false
+
+        - name: Require independently verified bounded result decoder
+          ansible.builtin.assert:
+            that:
+              - _cc_config_decoder_pin.stat.isreg | default(false)
+              - not _cc_config_decoder_pin.stat.islnk | default(true)
+              - _cc_config_decoder_pin.stat.nlink == 1
+              - _cc_config_decoder_pin.stat.checksum == cc_config_candidate_bootstrap_sha256
+              - _cc_config_decoder_pin.stat.inode == _cc_config_transport_owned.results[0].stat.inode
+              - _cc_config_decoder_pin.stat.dev == _cc_config_transport_owned.results[0].stat.dev
+              - _cc_config_candidate_result.stdout | default('') | length <= 65536
+          no_log: true
+
+        - name: Normalize received result through pinned isolated decoder
+          ansible.builtin.command:
+            argv: ['{{ cc_config_candidate_python }}', '-I', '-S', '-B', '{{ _cc_config_transport.path }}/bootstrap.py',
+              '--bootstrap-sha256', '{{ cc_config_candidate_bootstrap_sha256 }}', '--decode-result',
+              '--result-rc', '{{ _cc_config_candidate_result.rc | default(-1) | string }}']
+            stdin: '{{ _cc_config_candidate_result.stdout | default("") }}'
+            stdin_add_newline: false
+            strip_empty_ends: false
+          register: _cc_config_normalized_command
+          check_mode: false
+          failed_when: false
+          changed_when: false
+          no_log: true
+
+        - name: Require successful bounded decoder transport
+          ansible.builtin.assert:
+            that:
+              - _cc_config_normalized_command.rc == 0
+              - _cc_config_normalized_command.stdout | length <= 65536
+          no_log: true
+
+        - name: Parse only normalized trusted decoder output
+          ansible.builtin.set_fact:
+            _cc_config_normalized: '{{ _cc_config_normalized_command.stdout | from_json }}'
+          no_log: true
+
+        - name: Require exact normalized success or error shape
+          ansible.builtin.assert:
+            that:
+              - _cc_config_normalized is mapping
+              - _cc_config_normalized_command.stdout.isascii()
+              - >-
+                _cc_config_normalized_command.stdout ==
+                ((_cc_config_normalized | to_json(ensure_ascii=True, sort_keys=True, separators=[',', ':'])) + '\n')
+              - >-
+                ((_cc_config_normalized.keys() | list | sort) ==
+                (['changed','would_init','would_create','root_instance','candidate_digest','candidate_path','profile_digest','runtime_digest'] | sort)
+                and _cc_config_normalized.changed is boolean
+                and _cc_config_normalized.would_init is boolean and _cc_config_normalized.would_create is boolean
+                and _cc_config_normalized.changed == _cc_config_normalized.would_create
+                and _cc_config_normalized.profile_digest is match('^[0-9a-f]{64}$')
+                and _cc_config_normalized.runtime_digest is match('^[0-9a-f]{64}$')
+                and ((_cc_config_normalized.would_init and _cc_config_normalized.changed
+                and _cc_config_normalized.root_instance is none and _cc_config_normalized.candidate_digest is none
+                and _cc_config_normalized.candidate_path is none)
+                or (not _cc_config_normalized.would_init
+                and _cc_config_normalized.root_instance is match('^[0-9a-f]{32}$')
+                and _cc_config_normalized.candidate_digest is match('^[0-9a-f]{64}$')
+                and _cc_config_normalized.candidate_path is string and _cc_config_normalized.candidate_path.startswith('/'))))
+                or ((_cc_config_normalized.keys() | list | sort) ==
+                (['format','outcome','reason','change_state','changed'] | sort)
+                and _cc_config_normalized.format == 'cc-config-candidate-error/v1'
+                and _cc_config_normalized_command.stdout | length <= 512
+                and ((_cc_config_normalized.outcome == 'rejected' and _cc_config_normalized.change_state == 'not_changed'
+                and _cc_config_normalized.changed is sameas false
+                and _cc_config_normalized.reason in ['input_rejected','root_rejected','candidate_budget','validator_rejected','role_preflight_rejected'])
+                or (_cc_config_normalized.outcome == 'unknown' and _cc_config_normalized.change_state == 'unknown'
+                and _cc_config_normalized.changed is none
+                and _cc_config_normalized.reason in ['inventory_unknown','initialization_unknown','publication_unknown',
+                'temporary_cleanup_unknown','transport_cleanup_unknown','io_unknown','internal_unknown','helper_protocol_unknown'])))
+          no_log: true
+
+        - name: Expose normalized fixed failure classification
+          ansible.builtin.set_fact:
+            cc_config_candidate_failure: '{{ _cc_config_normalized }}'
+          when: _cc_config_normalized.format | default('') == 'cc-config-candidate-error/v1'
+          no_log: true
+
+        - name: Expose candidate path and digests without claiming live application
+          ansible.builtin.set_fact:
+            cc_config_candidate_result: '{{ _cc_config_normalized }}'
+          when: _cc_config_normalized.format | default('') != 'cc-config-candidate-error/v1'
+          changed_when: _cc_config_normalized.changed
+          no_log: true
+
+      rescue:
+        - name: Classify unvalidated command or transport preflight failure safely
+          ansible.builtin.set_fact:
+            cc_config_candidate_failure:
+              format: cc-config-candidate-error/v1
+              outcome: '{{ "unknown" if _cc_config_helper_attempted else "rejected" }}'
+              reason: '{{ "helper_protocol_unknown" if _cc_config_helper_attempted else "role_preflight_rejected" }}'
+              change_state: '{{ "unknown" if _cc_config_helper_attempted else "not_changed" }}'
+              changed: '{{ none if _cc_config_helper_attempted else false }}'
+          no_log: true
+
+      always:
+        - name: Finish transport cleanup before the public outcome
+          no_log: true
+          block:
+            - name: Recheck exact owned transport directory before cleanup
+              ansible.builtin.stat:
+                path: '{{ _cc_config_transport.path }}'
+                follow: false
+                get_checksum: false
+              register: _cc_config_transport_after
+              when: _cc_config_transport is defined and _cc_config_transport.path is defined
+              check_mode: false
+
+            - name: Refuse foreign or linked transport replacement
+              ansible.builtin.assert:
+                that:
+                  - _cc_config_transport_after.stat.isdir | default(false)
+                  - not _cc_config_transport_after.stat.islnk | default(true)
+                  - _cc_config_transport_after.stat.inode == _cc_config_transport_before.stat.inode
+                  - _cc_config_transport_after.stat.dev == _cc_config_transport_before.stat.dev
+              when: _cc_config_transport is defined and _cc_config_transport.path is defined
+
+            - name: Refuse cleanup without complete successful ownership snapshots
+              ansible.builtin.assert:
+                that:
+                  - _cc_config_transport_owned is defined
+                  - _cc_config_transport_owned.results | length == 3
+                  - not (_cc_config_transport_owned.failed | default(false))
+              when: _cc_config_transport is defined and _cc_config_transport.path is defined
+
+            - name: Inspect only immediate own temporary transport entries
+              ansible.builtin.find:
+                paths: '{{ _cc_config_transport.path }}'
+                recurse: false
+                hidden: true
+                file_type: any
+              register: _cc_config_transport_entries
+              when: _cc_config_transport is defined and _cc_config_transport.path is defined
+              check_mode: false
+
+            - name: Refuse unexpected transport cleanup objects
+              ansible.builtin.assert:
+                that:
+                  - _cc_config_transport_entries.files | map(attribute='path') | map('basename') | difference(['bootstrap.py', 'validation.zip', 'input.json']) | length == 0
+              when: _cc_config_transport is defined and _cc_config_transport.path is defined
+
+            - name: Recheck every measured transport file before any deletion
+              ansible.builtin.stat:
+                path: '{{ _cc_config_transport.path }}/{{ item }}'
+                follow: false
+                checksum_algorithm: sha256
+              loop: [bootstrap.py, validation.zip, input.json]
+              register: _cc_config_transport_cleanup_files
+              when: _cc_config_transport is defined and _cc_config_transport.path is defined
+              check_mode: false
+
+            - name: Preserve unknown replaced linked or modified transport entries
+              ansible.builtin.assert:
+                that:
+                  - item.stat.isreg | default(false)
+                  - not item.stat.islnk | default(true)
+                  - item.stat.nlink == 1
+                  - item.stat.uid == _cc_config_transport_before.stat.uid
+                  - item.stat.mode == '0600'
+                  - item.stat.inode == _cc_config_transport_owned.results[transport_index].stat.inode
+                  - item.stat.dev == _cc_config_transport_owned.results[transport_index].stat.dev
+                  - item.stat.checksum == _cc_config_transport_owned.results[transport_index].stat.checksum
+              loop: '{{ _cc_config_transport_cleanup_files.results }}'
+              loop_control:
+                index_var: transport_index
+              when: _cc_config_transport is defined and _cc_config_transport.path is defined
+
+            - name: Remove only exact own temporary transport directory
+              ansible.builtin.file:
+                path: '{{ _cc_config_transport.path }}'
+                state: absent
+              when: _cc_config_transport is defined and _cc_config_transport.path is defined
+              check_mode: false
+              changed_when: false
+          rescue:
+            - name: Preserve unknown transport and publish only fixed cleanup reason
+              ansible.builtin.set_fact:
+                cc_config_candidate_failure:
+                  format: cc-config-candidate-error/v1
+                  outcome: unknown
+                  reason: transport_cleanup_unknown
+                  change_state: unknown
+                  changed: null
+              no_log: true
+
+  rescue:
+    - name: Classify rejected role preflight without raw output
+      ansible.builtin.set_fact:
+        cc_config_candidate_failure: >-
+          {{ cc_config_candidate_failure if cc_config_candidate_failure | default(none) is not none else
+          {'format':'cc-config-candidate-error/v1','outcome':'unknown' if _cc_config_helper_attempted | default(false) else 'rejected',
+          'reason':'helper_protocol_unknown' if _cc_config_helper_attempted | default(false) else 'role_preflight_rejected',
+          'change_state':'unknown' if _cc_config_helper_attempted | default(false) else 'not_changed',
+          'changed':none if _cc_config_helper_attempted | default(false) else false} }}
+      no_log: true
+
+- name: Report fixed candidate failure after transport cleanup
+  ansible.builtin.fail:
+    msg: '{{ cc_config_candidate_failure }}'
+  when: cc_config_candidate_failure is not none
+  changed_when: cc_config_candidate_failure.outcome == 'unknown'

@@ -4,6 +4,11 @@ name: macOS preview build
 # Stable installers, update feeds and releases remain tag-only (client.yml).
 on:
   workflow_dispatch:
+    inputs:
+      native_checks_only:
+        description: Run owned macOS import and affected native checks without building a client
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,7 +19,7 @@ concurrency:
 
 jobs:
   macos:
-    if: github.repository == 'evsikovas/consolecrypt-client'
+    if: github.repository == 'evsikovas/consolecrypt-client' && !inputs.native_checks_only
     runs-on: ${{ fromJSON(vars.MACOS_BUILD_RUNNER || '["macos-26"]') }}
     timeout-minutes: 150
     steps:
@@ -44,3 +49,147 @@ jobs:
           path: |
             dist/macos/ConsoleCrypt-*-macos-universal-preview.dmg
             dist/macos/SHA256SUMS-macos-preview.txt
+
+  native-checks:
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.event_name == 'workflow_dispatch' && inputs.native_checks_only
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 90
+    env:
+      RUSTUP_TOOLCHAIN: '1.98.1'
+      CARGO_BUILD_JOBS: '1'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_INCREMENTAL: '0'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target/macos-native-check
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Require the reviewed branch and original native macOS runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/ci/platform-final-r17
+          test "$RUNNER_NAME" = cc-macos-arm64
+          test "$(uname -s)" = Darwin
+          test "$(uname -m)" = arm64
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          export PATH="$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          printf '%s\n' "$HOME/.cargo/bin" /opt/homebrew/bin /usr/local/bin >> "$GITHUB_PATH"
+          xcode-select -p
+          python3 -I -B -c 'import sys; assert sys.version_info >= (3,11)'
+          rustup toolchain install 1.98.1 --profile minimal
+      - name: Run existing Darwin publication and affected native regressions
+        timeout-minutes: 75
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-automation-core --lib \
+            project::publication::namespace::macos::tests:: -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/cc-macos-publication.log"
+          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
+            automation_projects::portable::gateway::import::tests:: -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/cc-macos-import-guards.log"
+          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
+            automation_projects::metadata_sync::tests:: -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/cc-macos-metadata.log"
+          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
+            automation_jobs::admission_audit::tests:: -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/cc-macos-admission.log"
+          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
+            monitoring_runtime::exporter_reads::tests:: -- --test-threads=1 \
+            --skip monitoring_runtime::exporter_reads::tests::live_node:: \
+            --skip monitoring_runtime::exporter_reads::tests::live_cadvisor:: 2>&1 | tee "$RUNNER_TEMP/cc-macos-exporter-guards.log"
+          # Bind the already compiled libtest used below. This builds no client.
+          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
+            --no-run --message-format=json > "$RUNNER_TEMP/cc-macos-libtest.jsonl"
+      - name: Run the existing genuine export and explicit import acceptance once
+        id: import_positive
+        timeout-minutes: 4
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I -B - <<'PY'
+          import hashlib,json,os,stat,subprocess,uuid
+          from pathlib import Path
+          temp=Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
+          counts={'publication':7,'import-guards':3,'metadata':6,'admission':7,'exporter-guards':12}
+          for name,count in counts.items():
+              path=temp/('cc-macos-'+name+'.log');assert path.stat().st_size<=16*1024**2
+              text=path.read_text();assert f'test result: ok. {count} passed; 0 failed; 0 ignored;' in text
+          log=temp/'cc-macos-libtest.jsonl';assert log.stat().st_size<=16*1024**2
+          rows=[json.loads(line) for line in log.read_text().splitlines()]
+          binaries=[Path(r['executable']) for r in rows if r.get('reason')=='compiler-artifact' and r.get('executable') and r['target']['name']=='cc_app_core' and r['profile']['test']]
+          assert len(binaries)==1 and [r['success'] for r in rows if r.get('reason')=='build-finished']==[True]
+          binary=binaries[0].resolve(strict=True)
+          assert binary.is_relative_to(Path(os.environ['CARGO_TARGET_DIR']).resolve(strict=True))
+          def fingerprint():
+              with binary.open('rb') as stream:
+                  header=stream.read(8);assert header[:4]==bytes.fromhex('cffaedfe') and int.from_bytes(header[4:8],'little')==0x100000c
+                  stream.seek(0);return hashlib.file_digest(stream,'sha256').hexdigest()
+          before=fingerprint();token=str(uuid.uuid4());root=temp/('owned-'+token)
+          run_id=os.environ['GITHUB_RUN_ID'];attempt=os.environ['GITHUB_RUN_ATTEMPT']
+          assert run_id.isdigit() and attempt.isdigit()
+          control=temp/('cc-macos-import-control-'+run_id+'-'+attempt+'.json')
+          assert not control.exists()
+          root.mkdir(mode=0o700)
+          assert root.resolve(strict=True)==root and stat.S_IMODE(root.stat().st_mode)==0o700
+          owner=root/'owner.json'
+          with owner.open('x') as stream:json.dump({'token':token,'label':'portable-import-acceptance'},stream)
+          env={**os.environ,'CC_IMPORT_ACCEPTANCE_ROOT':str(root),'CC_IMPORT_ACCEPTANCE_TOKEN':token}
+          with control.open('x') as stream:json.dump({'root':str(root),'token':token,'runId':run_id,'attempt':attempt},stream)
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as stream:stream.write('control='+str(control)+'\n')
+          test='automation_projects::portable::gateway::import::acceptance_tests::genuine_native_import_accepts_then_reopens_edits_and_preserves_original'
+          try:
+              run=subprocess.run([str(binary),'--exact',test,'--ignored','--nocapture','--test-threads=1'],cwd=Path(os.environ['GITHUB_WORKSPACE'])/'client/rust',env=env,capture_output=True,timeout=120)
+          except subprocess.TimeoutExpired as error:
+              (temp/'cc-macos-import-positive.log').write_bytes(((error.stdout or b'')+(error.stderr or b''))[:256*1024])
+              raise
+          output=run.stdout+run.stderr;assert len(output)<=256*1024
+          (temp/'cc-macos-import-positive.log').write_bytes(output)
+          assert run.returncode==0 and b'1 passed; 0 failed; 0 ignored;' in output
+          assert b'portable_import_acceptance: genuineExport=true explicitAccept=true' in output
+          assert fingerprint()==before
+          with (temp/'cc-macos-native-result.json').open('x') as stream:
+              json.dump({'commit':os.environ['GITHUB_SHA'],'nativeArchitecture':'arm64','normalClientBuilt':False,'regressionsPassed':35,'genuineImportPassed':1,'nativeLibtestSha256':before,'ownedImportRootRemoved':False},stream)
+          PY
+      - name: Remove only this invocation's owned synthetic import root
+        if: always() && steps.import_positive.outputs.control != ''
+        env:
+          CC_IMPORT_CONTROL: ${{ steps.import_positive.outputs.control }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I -B - <<'PY'
+          import json,os,shutil,uuid
+          from pathlib import Path
+          temp=Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
+          run_id=os.environ['GITHUB_RUN_ID'];attempt=os.environ['GITHUB_RUN_ATTEMPT']
+          assert run_id.isdigit() and attempt.isdigit()
+          control=Path(os.environ['CC_IMPORT_CONTROL'])
+          assert control==temp/('cc-macos-import-control-'+run_id+'-'+attempt+'.json')
+          value=json.loads(control.read_text());token=value['token'];assert str(uuid.UUID(token))==token
+          assert value['runId']==run_id and value['attempt']==attempt
+          root=Path(value['root']);assert root==temp/('owned-'+token) and root.resolve(strict=True)==root
+          assert json.loads((root/'owner.json').read_text())=={'token':token,'label':'portable-import-acceptance'}
+          count=0
+          for directory,dirs,files in os.walk(root,followlinks=False):
+              for name in dirs+files:
+                  path=Path(directory)/name;count+=1;assert count<=20000 and not path.is_symlink()
+          shutil.rmtree(root);assert not root.exists()
+          result=temp/'cc-macos-native-result.json'
+          if result.exists():
+              value=json.loads(result.read_text());value['ownedImportRootRemoved']=True
+              result.write_text(json.dumps(value)+'\n')
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: macos-native-checks-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            ${{ runner.temp }}/cc-macos-publication.log
+            ${{ runner.temp }}/cc-macos-import-guards.log
+            ${{ runner.temp }}/cc-macos-metadata.log
+            ${{ runner.temp }}/cc-macos-admission.log
+            ${{ runner.temp }}/cc-macos-exporter-guards.log
+            ${{ runner.temp }}/cc-macos-import-positive.log
+            ${{ runner.temp }}/cc-macos-native-result.json

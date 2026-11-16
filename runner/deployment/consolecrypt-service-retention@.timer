@@ -1,0 +1,10 @@
+[Unit]
+Description=ConsoleCrypt raw retention deadline checks %i
+[Timer]
+OnCalendar=hourly
+AccuracySec=1s
+RandomizedDelaySec=0
+Persistent=true
+Unit=consolecrypt-service-retention@%i.service
+[Install]
+WantedBy=timers.target

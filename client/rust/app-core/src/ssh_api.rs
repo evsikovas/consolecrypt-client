@@ -500,6 +500,7 @@ pub(crate) async fn auto_start_tunnels(
         .await;
         if let Err(e) = result {
             tracing::warn!(tunnel_id = %t.id, error = %e, "auto-start tunnel failed");
+            u.notices.tunnel(t.id, CriticalTunnelStateDto::Failed);
             ctx.emit(AppEvent::TunnelFailed {
                 tunnel_id: t.id.to_string(),
                 reason: e.to_string(),

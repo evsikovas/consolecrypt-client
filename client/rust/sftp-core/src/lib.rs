@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWrite, AsyncWriteExt};
 use tokio::sync::Notify;
 
 /// SFTP errors.
@@ -482,6 +482,46 @@ impl SftpClient {
             .map_err(|e| map_err(path, e))?;
         f.write_all(data).await.map_err(|e| io_to_sftp(path, e))?;
         f.shutdown().await.map_err(|e| io_to_sftp(path, e))
+    }
+
+    /// Bounded, acknowledged range for a scoped transport. The caller owns the
+    /// transfer cursor; this method never retries a possibly applied write.
+    pub async fn write_range(&self, path: &str, offset: u64, data: &[u8], truncate: bool) -> Result<(), SftpError> {
+        if data.len() > 128 * 1024 || offset.checked_add(data.len() as u64).is_none_or(|end| end > 100 * 1024 * 1024)
+            || (truncate && offset != 0) {
+            return Err(io_to_sftp(path, std::io::Error::new(std::io::ErrorKind::InvalidInput, "bounded range exceeded")));
+        }
+        let flags = if truncate { OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE } else { OpenFlags::WRITE };
+        let mut file = self.inner.open_with_flags(path, flags).await.map_err(|e| map_err(path, e))?;
+        let outcome = async {
+            file.seek(std::io::SeekFrom::Start(offset)).await?;
+            file.write_all(data).await?;
+            file.flush().await
+        }.await;
+        let closed = file.shutdown().await;
+        outcome.and(closed).map_err(|e| io_to_sftp(path, e))
+    }
+
+    /// Read at most 128 KiB without allocating according to a remote file's
+    /// declared size. Remote files larger than the project transfer budget fail.
+    pub async fn read_range(&self, path: &str, offset: u64, maximum: usize) -> Result<(Vec<u8>, u64), SftpError> {
+        if maximum == 0 || maximum > 128 * 1024 || offset > 100 * 1024 * 1024 {
+            return Err(io_to_sftp(path, std::io::Error::new(std::io::ErrorKind::InvalidInput, "bounded range exceeded")));
+        }
+        let mut file = self.inner.open(path).await.map_err(|e| map_err(path, e))?;
+        let outcome = async {
+            let total = file.metadata().await.map_err(|e| map_err(path, e))?.size
+                .ok_or_else(|| io_to_sftp(path, std::io::Error::other("file size unavailable")))?;
+            if total > 100 * 1024 * 1024 || offset > total {
+                return Err(io_to_sftp(path, std::io::Error::other("bounded file size exceeded")));
+            }
+            file.seek(std::io::SeekFrom::Start(offset)).await.map_err(|e| io_to_sftp(path, e))?;
+            let mut bytes = Vec::with_capacity(maximum);
+            (&mut file).take(maximum as u64).read_to_end(&mut bytes).await.map_err(|e| io_to_sftp(path, e))?;
+            Ok((bytes, total))
+        }.await;
+        let _ = file.shutdown().await;
+        outcome
     }
 
     /// Stream any reader to a remote file.

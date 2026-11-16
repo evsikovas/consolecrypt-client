@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:consolecrypt/core/bridge/local_auth_channel.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/vault_key_alarm.dart';
 import 'package:consolecrypt/core/services/errors.dart';
+import 'package:consolecrypt/core/services/job_notice_events.dart';
+import 'package:consolecrypt/core/services/runtime_notice_adapter.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
+import 'package:consolecrypt/src/rust/api/automation.dart' as rs_automation;
 import 'package:consolecrypt/src/rust/api/credentials.dart' as rs_cred;
 import 'package:consolecrypt/src/rust/api/inventory.dart' as rs_inv;
 import 'package:consolecrypt/src/rust/api/profiles.dart' as rs_prof;
@@ -126,6 +130,9 @@ final class RustBackend {
   /// Called after the vault locked or the profile changed.
   final List<void Function()> onSessionReset = [];
 
+  final jobNoticeEvents = JobNoticeEventAdapter();
+  final runtimeNoticeEvents = RuntimeNoticeEventAdapter();
+
   StreamSubscription<String>? _events;
   StreamSubscription<String>? _prompts;
   Timer? _approvalPoll;
@@ -145,7 +152,15 @@ final class RustBackend {
   /// The last profile is reopened only when opted in: profile opening can
   /// display an OS keychain prompt. Otherwise the welcome screen offers it.
   Future<void> start() async {
-    _events = rs_app.coreEvents().listen((json) => unawaited(_onEvent(json)), onError: (Object _) {});
+    _events = rs_app.coreEvents().listen(
+      (json) => unawaited(_onEvent(json)),
+      onError: (Object _) {
+        _retireGlobalCoreStream();
+      },
+      onDone: () {
+        _retireGlobalCoreStream(closed: true);
+      },
+    );
     _prompts = rs_app.corePrompts().listen((json) => unawaited(_onPrompt(json)), onError: (Object _) {});
     await LocalAuthChannel.instance.reportToCore();
     _legacyKitPending.addAll(await _readStringList(kitPendingKey));
@@ -234,6 +249,8 @@ final class RustBackend {
   }
 
   Future<void> _refresh() async {
+    final originalNoticeEpoch = jobNoticeEvents.epoch;
+    final originalRuntimeNoticeEpoch = runtimeNoticeEvents.epoch;
     final wasUnlocked = isUnlocked;
     final previousActive = activeInfo?['id'];
     _profileInfos = decodeList(await guard(rs_prof.profilesList));
@@ -270,6 +287,15 @@ final class RustBackend {
       }
     }
     _publishState();
+    jobNoticeEvents.acceptScope(
+      originalEpoch: originalNoticeEpoch,
+      profileId: activeInfo?['id'] as String?,
+      unlocked: isUnlocked,
+    );
+    runtimeNoticeEvents.acceptScope(
+      originalEpoch: originalRuntimeNoticeEpoch,
+      nativeProfile: draftProfile == null ? active : null,
+    );
     if (wasUnlocked && !isUnlocked || active?['id'] != previousActive) {
       clearInventory();
       for (final f in onSessionReset) {
@@ -569,14 +595,45 @@ final class RustBackend {
 
   // ---- events & prompts ---------------------------------------------------------------
 
+  // A GLOBAL feed loss can hide a lock/unlock boundary. Retire the original
+  // local observers synchronously; domain-only gaps below do not use this path.
+  void _retireGlobalCoreStream({bool closed = false}) {
+    if (_disposed) return;
+    jobNoticeEvents.retireGlobalStream(closed: closed);
+    runtimeNoticeEvents.retireGlobalStream(closed: closed);
+  }
+
   Future<void> _onEvent(String json) async {
     if (_disposed) return;
     final Json e;
     try {
-      e = decodeObject(json);
+      final decoded = jsonDecode(json);
+      if (decoded is! Map<String, dynamic> || decoded['type'] is! String || (decoded['type'] as String).isEmpty) {
+        _retireGlobalCoreStream();
+        return;
+      }
+      e = decoded.cast<String, Object?>();
     } on FormatException {
+      _retireGlobalCoreStream();
       return;
     }
+    // This must happen synchronously before any event-driven refresh await.
+    // _onEvent is deliberately unawaited by the one existing global stream.
+    if (e['type'] == 'lagged') {
+      _retireGlobalCoreStream();
+    } else if (const {
+      'profiles_changed',
+      'vault_locked',
+      'vault_unlocked',
+      'signed_out',
+      'reauth_required',
+      'account_disabled',
+    }.contains(e['type'])) {
+      jobNoticeEvents.boundary();
+      runtimeNoticeEvents.boundary(unlockPending: e['type'] == 'vault_unlocked');
+    }
+    jobNoticeEvents.ingest(e);
+    runtimeNoticeEvents.ingest(e);
     try {
       switch (e['type']) {
         case 'profiles_changed' || 'recovery_changed':
@@ -680,6 +737,11 @@ final class RustBackend {
         await rs_app.promptAnswerPassword(requestId: pw['request_id']! as String);
       } else if (p['Passphrase'] case final Map<Object?, Object?> pp) {
         await rs_app.promptAnswerPassphrase(requestId: pp['request_id']! as String);
+      } else if (p['AutomationTransition'] case final Map<Object?, Object?> transition) {
+        await rs_automation.automationAnswerTransition(
+          requestId: transition['request_id']! as String,
+          decision: 'abort',
+        );
       }
     } on Object {
       // Already answered or timed out.
@@ -736,19 +798,32 @@ final class RustBackend {
 
   /// Locks and closes the profile (SQLCipher closed synchronously) — call
   /// before the process exits.
-  Future<void> shutdown() async {
+  Future<void> shutdown({String? preparedExit}) async {
+    // Keep prompt routing, polling and every service alive until the user has
+    // accepted the native job transition. A rejected exit is a live app.
+    if (preparedExit == null) {
+      await guard(() => rs_app.coreShutdown());
+    } else {
+      try {
+        await guard(() => rs_automation.automationCommitExit(token: preparedExit));
+      } on AppException catch (error) {
+        if (error.code != AppErrorCode.notFound) rethrow;
+        // Expired approval must repeat the normal native gate, never bypass it.
+        await guard(() => rs_app.coreShutdown());
+      }
+    }
     _stopApprovalPoll();
     _runtimePoll?.cancel();
-    try {
-      await rs_app.coreShutdown();
-    } on Object {
-      // Exiting anyway.
-    }
   }
 
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    // Fence BOTH projections synchronously. A paused listener can delay a
+    // broadcast controller's close; it must not leave the other owner alive.
+    final jobNoticesClosed = jobNoticeEvents.dispose();
+    final runtimeNoticesClosed = runtimeNoticeEvents.dispose();
+    await Future.wait([jobNoticesClosed, runtimeNoticesClosed]);
     _stopApprovalPoll();
     _runtimePoll?.cancel();
     await _events?.cancel();

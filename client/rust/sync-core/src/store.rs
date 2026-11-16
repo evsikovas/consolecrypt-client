@@ -101,23 +101,74 @@ impl ObjectStore {
     /// Create or update an object (id = `payload.object.id()`): encrypt for
     /// the next revision and store + queue it in one transaction.
     pub async fn put(&self, payload: ObjectPayload) -> Result<LocalMutationOutcome, SyncError> {
+        self.put_checked(payload, |write| write(), |_| Ok(())).await
+    }
+
+    /// Existing encrypted/outbox mutation with a trusted Native local fence.
+    /// `with_guard` runs on the SAME worker and wraps db.write THROUGH COMMIT;
+    /// `check_tx` sees the actual IMMEDIATE transaction before record_local_put.
+    /// Both callbacks must be bounded synchronous local work, with no resolver,
+    /// network, await, storage reentry or blocking acquisition of outside locks.
+    /// A skipped/repeated action cannot fabricate an outcome or write twice.
+    /// If a guard errors AFTER committing, the mutation cannot be rolled back:
+    /// emit its actual event once and return uncertainty, never a rejected claim.
+    pub async fn put_checked<G, C>(
+        &self,
+        payload: ObjectPayload,
+        with_guard: G,
+        check_tx: C,
+    ) -> Result<LocalMutationOutcome, SyncError>
+    where
+        G: FnOnce(&mut dyn FnMut() -> Result<(), SyncError>) -> Result<(), SyncError>
+            + Send
+            + 'static,
+        C: FnOnce(&cc_storage_core::Tx<'_>) -> Result<(), SyncError> + Send + 'static,
+    {
         let object_id = payload.object.id();
         let kek = payload.object.kind().kek_class();
         let codec = self.inner.codec.clone();
         let vault_id = self.inner.vault_id;
-        let outcome = self
+        let (guard_result, committed, repeated) = self
             .inner
             .storage
-            .write(move |tx| {
-                tx.record_local_put::<SyncError, _>(vault_id, object_id, Some(kek), |revision| {
-                    let body = codec.encrypt(object_id, revision, &payload)?;
-                    check_size(&body)?;
-                    Ok(body)
-                })
+            .call(move |db| {
+                let mut pending = Some((payload, check_tx));
+                let mut committed = None;
+                let mut repeated = false;
+                let guard_result = with_guard(&mut || {
+                    let Some((payload, check)) = pending.take() else {
+                        repeated = true;
+                        return Err(SyncError::Invalid("checked write already attempted".into()));
+                    };
+                    let outcome = db.write(|tx| {
+                        check(tx)?;
+                        tx.record_local_put::<SyncError, _>(
+                            vault_id,
+                            object_id,
+                            Some(kek),
+                            |revision| {
+                                let body = codec.encrypt(object_id, revision, &payload)?;
+                                check_size(&body)?;
+                                Ok(body)
+                            },
+                        )
+                    })?;
+                    committed = Some(outcome);
+                    Ok(())
+                });
+                Ok::<_, SyncError>((guard_result, committed, repeated))
             })
             .await?;
-        self.after_local(object_id, &outcome, false);
-        Ok(outcome)
+        if let Some(outcome) = committed {
+            self.after_local(object_id, &outcome, false);
+            if guard_result.is_err() || repeated {
+                return Err(SyncError::Invalid("checked write outcome uncertain".into()));
+            }
+            Ok(outcome)
+        } else {
+            guard_result?;
+            Err(SyncError::Invalid("checked write was not committed".into()))
+        }
     }
 
     /// Atomically save a small dependency graph, such as a Kubernetes context,

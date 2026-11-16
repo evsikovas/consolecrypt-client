@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: consolecrypt_agent_collector_service
+  author: ConsoleCrypt
+  description: Explicit fixed installed finite collector prerequisite
+  license: Proprietary
+  min_ansible_version: '2.20'
+dependencies: []

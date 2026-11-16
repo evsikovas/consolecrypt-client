@@ -31,6 +31,7 @@ class GlassSidebar extends StatelessWidget {
     this.style = GlassSidebarStyle.floating,
     this.compact = false,
     this.reserveTrafficLights,
+    this.navigationWrapper,
   });
 
   /// Nav items ([GlassSidebarItem]s, section labels).
@@ -46,6 +47,10 @@ class GlassSidebar extends StatelessWidget {
 
   /// Defaults to `true` on macOS.
   final bool? reserveTrafficLights;
+
+  /// Optional interaction wrapper for the list and its free area. The profile
+  /// header and critical footer keep their independent context actions.
+  final Widget Function(Widget child)? navigationWrapper;
 
   @override
   Widget build(BuildContext context) {
@@ -70,9 +75,11 @@ class GlassSidebar extends StatelessWidget {
               child: header,
             ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
-              children: children,
+            child: _navigation(
+              ListView(
+                padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
+                children: children,
+              ),
             ),
           ),
           if (footer != null) Padding(padding: const EdgeInsets.all(GlassSpacing.s8), child: footer),
@@ -93,6 +100,8 @@ class GlassSidebar extends StatelessWidget {
       child: SizedBox(width: width, child: panel),
     );
   }
+
+  Widget _navigation(Widget child) => navigationWrapper?.call(child) ?? child;
 }
 
 /// Sidebar navigation item (§4.1): height 32, radius `r.row` (concentric

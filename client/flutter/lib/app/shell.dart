@@ -7,12 +7,14 @@ import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app_info.dart';
 import 'package:consolecrypt/app/brand.dart';
 import 'package:consolecrypt/app/commands.dart';
+import 'package:consolecrypt/app/critical_notice_view.dart';
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/navigation_customization.dart';
+import 'package:consolecrypt/app/navigation_registry.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/sidebar_state.dart';
-import 'package:consolecrypt/app/symbols.dart';
 import 'package:consolecrypt/app/workspace_tools.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -27,6 +29,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/hosts/connection_picker.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
+import 'package:consolecrypt/monitoring/monitoring_pinned_view.dart';
 import 'package:consolecrypt/notes/notes_reminders.dart';
 import 'package:consolecrypt/sftp/edit_flows.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
@@ -36,57 +39,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+export 'package:consolecrypt/app/navigation_registry.dart' show shellBranchLabel;
+
 part 'mobile_shell.dart';
-
-final class _NavItem {
-  const _NavItem(this.branch, this.icon, {this.syncedOnly = false});
-
-  final ShellBranch branch;
-  final IconData icon;
-
-  /// Devices apply to synced profiles only (ADR-0106).
-  final bool syncedOnly;
-}
-
-/// Sidebar / toolbar label of a shell branch.
-String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branch) {
-  ShellBranch.hosts => l.navHosts,
-  ShellBranch.groups => l.navGroups,
-  ShellBranch.credentials => l.navCredentials,
-  ShellBranch.passwords => l.navPasswords,
-  ShellBranch.knownHosts => l.settingsKnownHostsTitle,
-  ShellBranch.terminal => l.navTerminal,
-  ShellBranch.sftp => l.navSftp,
-  ShellBranch.tunnels => l.navTunnels,
-  ShellBranch.devices => l.navDevices,
-  ShellBranch.sync => l.navSync,
-  ShellBranch.backups => l.navBackups,
-  ShellBranch.settings => l.navSettings,
-  ShellBranch.sharing => l.sharingTitle,
-  ShellBranch.rdp => l.rdpTitle,
-  ShellBranch.kubernetes => l.kubeTitle,
-  ShellBranch.databases => l.dbTitle,
-  ShellBranch.docker => l.dockerTitle,
-};
-
-const _navItems = [
-  _NavItem(ShellBranch.hosts, Icons.dns_rounded),
-  _NavItem(ShellBranch.credentials, Icons.key_rounded),
-  _NavItem(ShellBranch.passwords, Icons.password_rounded),
-  _NavItem(ShellBranch.knownHosts, Icons.verified_user_outlined),
-  _NavItem(ShellBranch.sharing, Icons.people_outline_rounded, syncedOnly: true),
-  _NavItem(ShellBranch.terminal, Icons.terminal_rounded),
-  _NavItem(ShellBranch.rdp, Icons.desktop_windows_outlined),
-  if (kubernetesEnabled) _NavItem(ShellBranch.kubernetes, Icons.hub_outlined),
-  if (databasesEnabled) _NavItem(ShellBranch.databases, Icons.storage_rounded),
-  if (dockerEnabled) _NavItem(ShellBranch.docker, Icons.view_in_ar_outlined),
-  _NavItem(ShellBranch.sftp, Icons.folder_copy_rounded),
-  _NavItem(ShellBranch.tunnels, Icons.swap_horiz_rounded),
-  _NavItem(ShellBranch.devices, Icons.devices_rounded, syncedOnly: true),
-  _NavItem(ShellBranch.sync, Icons.sync_rounded),
-  _NavItem(ShellBranch.backups, Icons.save_alt_rounded),
-  _NavItem(ShellBranch.settings, Icons.settings_rounded),
-];
 
 // Older /groups links still open the group browser inside the Hosts section.
 ShellBranch _navigationBranch(ShellBranch branch) => branch == ShellBranch.groups ? ShellBranch.hosts : branch;
@@ -280,6 +235,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                           offstage: minimal,
                           child: ExcludeFocus(excluding: minimal, child: const _ShellBanners()),
                         ),
+                        if (minimal) const CriticalNoticeAttentionBar(),
+                        const MonitoringPinGlobalBar(),
                         // Offers to recover SFTP edit sessions left by a crash / quit (once per unlock).
                         Expanded(
                           child: ExcludeFocus(
@@ -380,8 +337,17 @@ class _Sidebar extends ConsumerWidget {
         ? ref.watch(kubeGitOpsAlertsProvider.select((alerts) => alerts.values.fold(0, (sum, count) => sum + count)))
         : 0;
     final l10n = context.l10n;
-    final items = _navItems.where((i) => !i.syncedOnly || (profile?.isSynced ?? false)).toList();
+    final preferences = ref.watch(navigationPreferencesProvider);
+    final items = ref
+        .watch(availableNavigationSectionsProvider)
+        .where(
+          (i) =>
+              (!i.syncedOnly || (profile?.isSynced ?? false)) &&
+              (preferences?.visible(i.id, defaultVisible: i.defaultPinned) ?? i.defaultPinned),
+        )
+        .toList();
     return GlassSidebar(
+      navigationWrapper: (child) => NavigationContextArea(child: child),
       style: style,
       compact: compact,
       reserveTrafficLights: reserveTrafficLights,
@@ -396,16 +362,26 @@ class _Sidebar extends ConsumerWidget {
             ),
       footer: _SidebarFooter(compact: compact),
       children: [
+        GlassSidebarItem(
+          key: const ValueKey('nav-all-sections'),
+          icon: Icons.apps_rounded,
+          label: l10n.navigationAllSections,
+          compact: compact,
+          onPressed: () => showAllNavigationSections(
+            context,
+            onSelect: (branch) {
+              if (overlayTools) ref.read(workspaceToolsProvider.notifier).close();
+              navigationShell.goBranch(branch.index);
+            },
+          ),
+        ),
         for (final item in items) ...[
           if (item.branch == ShellBranch.terminal || item.branch == ShellBranch.sync)
             const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Divider(height: 1)),
           GlassSidebarItem(
             key: ValueKey('nav-${item.branch.name}'),
             icon: item.icon,
-            // RDP and Docker use the same icon as on phones and inside their screens.
-            leading: item.branch == ShellBranch.rdp || item.branch == ShellBranch.docker
-                ? Icon(item.icon)
-                : AppSymbolIcon(AppSymbol.values.byName(item.branch.name)),
+            leading: navigationSectionIcon(item),
             label: shellBranchLabel(item.branch, l10n),
             compact: compact,
             selected: _navigationBranch(ShellBranch.values[navigationShell.currentIndex]) == item.branch,
@@ -776,42 +752,50 @@ class _ShellToolbar extends ConsumerWidget {
     // One tinted action per view (§4.2): editors own theirs ("Save"), so
     // the toolbar's New connection steps back to plain glass there.
     final pageHasPrimary = location.startsWith('${AppRoutes.hosts}/');
-    return GlassToolbar(
-      leadingInset: leadingInset,
-      leadingMaxWidth: 220,
-      leading: [
-        GlassToolbarGroup(
-          children: [
-            if (canCollapse)
-              GlassIconButton(
-                key: const ValueKey('toggle-sidebar'),
-                icon: Icons.view_sidebar_rounded,
-                tooltip: sidebarToggleTooltip(l10n, collapsed: compact, ref.watch(appCommandsProvider)),
-                style: GlassIconButtonStyle.plain,
-                onPressed: () => ref.read(sidebarCollapsedProvider.notifier).toggle(),
-              ),
-            GlassToolbarTitle(title),
-          ],
+    return LayoutBuilder(
+      builder: (context, constraints) => GlassToolbar(
+        leadingInset: leadingInset,
+        leadingMaxWidth: 220,
+        // Tiny desktop windows keep palette and actions usable; their title is
+        // already available in the window/sidebar and must not consume the last
+        // pixels needed by the search capsule.
+        leading: constraints.maxWidth < 300
+            ? const []
+            : [
+                GlassToolbarGroup(
+                  children: [
+                    if (canCollapse)
+                      GlassIconButton(
+                        key: const ValueKey('toggle-sidebar'),
+                        icon: Icons.view_sidebar_rounded,
+                        tooltip: sidebarToggleTooltip(l10n, collapsed: compact, ref.watch(appCommandsProvider)),
+                        style: GlassIconButtonStyle.plain,
+                        onPressed: () => ref.read(sidebarCollapsedProvider.notifier).toggle(),
+                      ),
+                    GlassToolbarTitle(title),
+                  ],
+                ),
+              ],
+        center: _SearchCapsule(
+          backdrop: live,
+          placeholder: l10n.shellSearchPlaceholder,
+          shortcut: palette.shortcutLabel,
+          onPressed: () => dispatcher.invoke(AppCommandId.commandPalette),
         ),
-      ],
-      center: _SearchCapsule(
-        backdrop: live,
-        placeholder: l10n.shellSearchPlaceholder,
-        shortcut: palette.shortcutLabel,
-        onPressed: () => dispatcher.invoke(AppCommandId.commandPalette),
+        trailing: [
+          GlassIconButton(
+            key: const ValueKey('new-connection'),
+            icon: Icons.add_rounded,
+            size: 40,
+            style: pageHasPrimary ? GlassIconButtonStyle.glass : GlassIconButtonStyle.prominent,
+            tooltip: l10n.shellNewConnection,
+            onPressed: () => showConnectionPicker(context, ref),
+          ),
+          const CriticalNoticeButton(),
+          if (!compact) const SyncStatusPill(shortLabel: true),
+          const _OverflowMenu(),
+        ],
       ),
-      trailing: [
-        GlassIconButton(
-          key: const ValueKey('new-connection'),
-          icon: Icons.add_rounded,
-          size: 40,
-          style: pageHasPrimary ? GlassIconButtonStyle.glass : GlassIconButtonStyle.prominent,
-          tooltip: l10n.shellNewConnection,
-          onPressed: () => showConnectionPicker(context, ref),
-        ),
-        if (!compact) const SyncStatusPill(shortLabel: true),
-        const _OverflowMenu(),
-      ],
     );
   }
 }

@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: consolecrypt_config_candidate
+  author: ConsoleCrypt
+  description: Opt-in public immutable configuration candidate staging only
+  license: proprietary-prototype
+  min_ansible_version: '2.20'
+dependencies: []

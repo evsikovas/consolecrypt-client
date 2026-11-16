@@ -1,0 +1,120 @@
+// Synthetic closed source-contract data for parser/UI causality only.
+// Actual Native audit serializer/Runner acceptance are separate pending gates.
+import 'package:consolecrypt/automation/automation_service.dart';
+
+const jobId = '10000000-0000-4000-8000-000000000001',
+    projectId = '20000000-0000-4000-8000-000000000002',
+    runnerId = '30000000-0000-4000-8000-000000000003',
+    deviceId = '40000000-0000-4000-8000-000000000004',
+    profileId = '50000000-0000-4000-8000-000000000005';
+String hostId(int i) => '60000000-0000-4000-8000-${(i + 1).toRadixString(16).padLeft(12, '0')}';
+AutomationJson fixture({int count = 2, bool production = false}) => {
+  'version': 1,
+  'job_id': jobId,
+  'project_id': projectId,
+  'runner_id': runnerId,
+  'manifest_digest': 'a' * 64,
+  'host_ids': [for (var i = 0; i < count; i++) hostId(i)],
+  'state': 'unknown',
+  'accepted_at': 1700000000,
+  'updated_at': 1700000002,
+  'notification_revision': 1,
+  'correlation_provenance': {
+    'version': 1,
+    'jobId': jobId,
+    'profileId': profileId,
+    'deviceId': deviceId,
+    'projectId': projectId,
+    'projectRevision': 7,
+    'runnerId': runnerId,
+    'revisionObjectId': '70000000-0000-4000-8000-000000000007',
+    'revisionDigest': 'b' * 64,
+  },
+  'manifest': {
+    'version': 1,
+    'job_id': jobId,
+    'project_id': projectId,
+    'tenant_id': profileId,
+    'runner_id': runnerId,
+    'revision_digest': 'b' * 64,
+    'environment_digest': 'd' * 64,
+    'issued_at': 1700000000,
+    'mode': 'apply',
+    'playbook': 'playbook.yml',
+    'policy': {'production': production},
+    'targets': [
+      for (var i = 0; i < count; i++)
+        {
+          'host_id': hostId(i),
+          'route_digest': 'c' * 64,
+          'alias': 'cc_$i',
+          'address': 'HIDDEN_ADDRESS',
+          'username': 'HIDDEN_LOGIN',
+          'credential_refs': ['HIDDEN_CREDENTIAL_REF'],
+        },
+    ],
+  },
+  'admission_audit': {
+    'version': 1,
+    'status': 'recorded',
+    'jobId': jobId,
+    'manifestDigest': 'a' * 64,
+    'signerId': deviceId,
+    'scope': 'jobs.execute',
+    'projectId': projectId,
+    'revisionDigest': 'b' * 64,
+    'runnerId': runnerId,
+    'issuedAt': 1700000000,
+    'production': production,
+    'ownerEvidenceDigest': production ? 'e' * 64 : null,
+    'targets': [
+      for (var i = 0; i < count; i++) {'hostId': hostId(i), 'routeDigest': 'c' * 64},
+    ],
+  },
+  'runner_result': {
+    'version': 1,
+    'job_id': jobId,
+    'manifest_digest': 'a' * 64,
+    'state': 'unknown',
+    'sequence': 14,
+    'output_bytes': 2048,
+    'output_truncated': false,
+    'accepted_at': '2023-11-14T22:13:20Z',
+    'updated_at': '2023-11-14T22:13:22Z',
+    'result': {
+      'exit_code': -15,
+      'timed_out': false,
+      'cancel_requested': true,
+      'remote_changes_may_be_partial': true,
+      'elapsed_ms': 2000,
+      'runner_execution': {
+        'version': 1,
+        'clockSource': 'runner-wall',
+        'scope': 'runner-process',
+        'spawnObservedUtc': '2023-11-14T22:13:20Z',
+        'exitObservedUtc': '2023-11-14T22:13:22Z',
+        'elapsedMonotonicMs': 2000,
+      },
+      'summary': {
+        'status': 'failed',
+        'exit_code': -15,
+        'stats': {
+          'ok': {'cc_0': 1},
+        },
+      },
+    },
+    'environment': {
+      'version': 1,
+      'environment_digest': 'd' * 64,
+      'identity': {
+        'system': 'Linux',
+        'machine': 'x86_64',
+        'python': '3.12.3',
+        'helper': '0.1.0',
+        'packages': {
+          'ansible-core': {'actual': '2.20.1'},
+        },
+      },
+    },
+  },
+};

@@ -22,6 +22,11 @@ mod device_key_apple;
 #[cfg(all(feature = "os-keychain", target_os = "windows"))]
 mod device_key_windows;
 mod dirs;
+mod disk;
+#[cfg(windows)]
+mod windows_readonly;
+#[cfg(windows)]
+pub use windows_readonly::{WindowsPrerequisiteContext, WindowsTokenElevation, windows_prerequisite_context};
 #[cfg(all(feature = "os-keychain", target_os = "linux"))]
 mod linux_secret_service;
 mod mark;
@@ -49,6 +54,7 @@ pub use device_key_windows::WindowsHelloDeviceKeys;
 pub use dirs::{
     validate_profile_id, AppDirs, DirsError, ProfilePaths, DATA_DIR_ENV, MAX_PROFILE_ID_LEN,
 };
+pub use disk::available_disk_space;
 #[cfg(all(feature = "os-keychain", target_os = "linux"))]
 pub use linux_secret_service::{OsSecureStore, DEFAULT_SERVICE};
 pub use mark::{is_marked_downloaded, mark_downloaded, mark_downloaded_in};

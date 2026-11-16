@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:consolecrypt/ai/code_blocks.dart';
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/navigation_customization.dart';
+import 'package:consolecrypt/app/navigation_registry.dart';
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -856,6 +859,28 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         onSelect: () {
           _close();
           router.go(AppRoutes.settings);
+        },
+      ),
+      for (final section in ref.watch(availableNavigationSectionsProvider))
+        if (section.branch != ShellBranch.settings &&
+            (!section.syncedOnly || (ref.read(activeProfileProvider)?.isSynced ?? false)))
+          _Item(
+            group: _Group.actions,
+            icon: section.icon,
+            title: shellBranchLabel(section.branch, l10n),
+            onSelect: () {
+              _close();
+              router.go(navigationBranchRoute(section.branch));
+            },
+          ),
+      _Item(
+        group: _Group.actions,
+        icon: Icons.tune_rounded,
+        title: l10n.navigationCustomize,
+        onSelect: () {
+          final parent = rootNavigatorKey.currentContext;
+          _close();
+          if (parent != null) unawaited(showNavigationCustomization(parent));
         },
       ),
       _Item(

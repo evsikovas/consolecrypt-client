@@ -114,6 +114,93 @@ async fn read_until(rx: &mut broadcast::Receiver<Bytes>, needle: &str) -> String
     acc
 }
 
+/// Exercise the same visible ConPTY + terminal manager path as Runner setup,
+/// without invoking sudo, WSL, a package manager, or any user's shell profile.
+#[cfg(windows)]
+#[tokio::test]
+async fn prerequisite_terminal_accepts_hidden_input_without_ai_command_history() {
+    use crate::local::{LocalCommand, open_command};
+    let system = std::path::PathBuf::from(std::env::var_os("SystemRoot").unwrap());
+    let (manager, _) = manager(false);
+    let opened = open_command(
+        LocalCommand {
+            executable: system.join("System32/WindowsPowerShell/v1.0/powershell.exe"),
+            arguments: vec![
+                "-NoLogo".into(), "-NoProfile".into(), "-Command".into(),
+                "$s=Read-Host 'CC_SYNTHETIC_SUDO' -AsSecureString; Write-Output ('CC_ACCEPTED_' + $s.Length); $s.Dispose(); exit 0".into(),
+            ],
+            directory: system.clone(),
+            environment: std::env::vars_os().filter(|(key, _)| {
+                ["SystemRoot", "WINDIR", "PATH", "TEMP", "TMP"].iter()
+                    .any(|allowed| key.to_string_lossy().eq_ignore_ascii_case(allowed))
+            }).collect(),
+        },
+        TerminalSize { cols: 100, rows: 30 },
+    ).await.unwrap();
+    let id = manager
+        .open_channel(
+            TerminalTarget::Local {
+                profile_id: "runner-prerequisites".into(),
+                shell: "powershell".into(),
+                display_name: "Synthetic prerequisite acceptance".into(),
+                distribution: None,
+            },
+            "Synthetic prerequisite acceptance".into(),
+            TerminalSize {
+                cols: 100,
+                rows: 30,
+            },
+            opened,
+        )
+        .await
+        .unwrap();
+    let mut attachment = manager.attach(id).unwrap();
+    let completion = tokio::time::timeout(Duration::from_secs(20), async {
+        let mut output = String::from_utf8_lossy(&attachment.snapshot).into_owned();
+        let mut sent = false;
+        loop {
+            if output.contains("CC_SYNTHETIC_SUDO") && !sent {
+                manager.write(id, b"fixture-only-input\r").await.unwrap();
+                sent = true;
+            }
+            if output.contains("CC_ACCEPTED_18") {
+                break;
+            }
+            let bytes = attachment.output.recv().await.unwrap();
+            output.push_str(&String::from_utf8_lossy(&bytes));
+            if bytes.windows(4).any(|part| part == b"\x1b[6n") {
+                manager.write(id, b"\x1b[1;1R").await.unwrap();
+            }
+        }
+        assert!(
+            !output.contains("fixture-only-input"),
+            "secure input must not echo"
+        );
+        assert_eq!(manager.last_command(id), None);
+    })
+    .await;
+    manager.remove(id).await.unwrap();
+    completion.expect("interactive prerequisite input did not complete");
+}
+
+#[tokio::test]
+async fn private_ssh_bootstrap_clears_and_suppresses_ai_context() {
+    let (manager, _) = manager(false);
+    let id = manager.open(plan(), TerminalSize::default()).await.unwrap();
+    manager.write(id, b"echo baseline\r").await.unwrap();
+    assert_eq!(manager.last_command(id).as_deref(), Some("echo baseline"));
+    manager.suppress_command_tracking(id).unwrap();
+    assert_eq!(manager.last_command(id), None);
+    manager
+        .write(id, b"fixture-only-sudo-input\r")
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(30)).await;
+    assert_eq!(manager.last_command(id), None);
+    assert_eq!(manager.last_error(id), None);
+    manager.remove(id).await.unwrap();
+}
+
 #[tokio::test]
 async fn open_write_resize_attach_and_exit() {
     let (m, resizes) = manager(false);
@@ -365,10 +452,12 @@ async fn pending_resize_is_installed_and_shutdown_fences_late_opens() {
     manager.shutdown().await;
     let late = manager.spawn_open(plan(), TerminalSize::default());
     assert!(manager.status(late).unwrap().is_terminal());
-    assert!(manager
-        .open_local("macos:zsh", TerminalSize::default())
-        .await
-        .is_err());
+    assert!(
+        manager
+            .open_local("macos:zsh", TerminalSize::default())
+            .await
+            .is_err()
+    );
 }
 
 #[tokio::test]
@@ -392,6 +481,7 @@ async fn shutdown_between_preparation_and_registration_cannot_publish_connected(
             size: TerminalSize::default(),
             scrollback: Scrollback::new(1024),
             tracker: CommandTracker::new(),
+            tracking_suppressed: false,
         }),
     });
     let (channel, mut remote) = ShellChannel::pair(1);

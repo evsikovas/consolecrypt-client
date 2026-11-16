@@ -1,0 +1,8 @@
+---
+# Explicit one-time node-local key provisioning; never automatic enrollment.
+cc_agent_identity_provision: false
+cc_agent_identity_binary: ''
+cc_agent_identity_binary_sha256: ''
+cc_agent_identity_state_dir: ''
+cc_agent_identity_agent_id: ''
+cc_agent_identity_fleet_ids: {}

@@ -1,0 +1,7 @@
+---
+- name: Explicit installed Agent enrollment role
+  hosts: consolecrypt_agents
+  become: true
+  gather_facts: true
+  roles:
+    - role: consolecrypt_agent_enrollment

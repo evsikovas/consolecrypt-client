@@ -27,6 +27,7 @@ Future<void> pumpApp(
   AppLocale locale = AppLocale.en,
   Size size = const Size(1600, 1000),
   List<Override> overrides = const [],
+  bool captureBoundary = false,
 }) async {
   setTestLocale(backend, locale);
   tester.view.physicalSize = size;
@@ -36,7 +37,9 @@ Future<void> pumpApp(
     ProviderScope(
       overrides: [appServicesProvider.overrideWithValue(backend.services), ...overrides],
       retry: (_, _) => null,
-      child: const ConsoleCryptApp(),
+      child: captureBoundary
+          ? const RepaintBoundary(key: ValueKey('automation-proof-root'), child: ConsoleCryptApp())
+          : const ConsoleCryptApp(),
     ),
   );
   await settle(tester);
@@ -53,6 +56,15 @@ Future<void> settle(WidgetTester tester, {int steps = 12}) async {
 
 Future<void> tapKey(WidgetTester tester, String key) async {
   final finder = find.byKey(ValueKey(key));
+  if (finder.evaluate().isEmpty && const {
+    'monitoring-auto-enabled', 'monitoring-auto-interval', 'monitoring-observation-rolling',
+    'monitoring-observation-pin', 'monitoring-observation-unpin',
+  }.contains(key)) {
+    final settings = find.byKey(const ValueKey('monitoring-auto-settings'));
+    if (settings.evaluate().isNotEmpty) {
+      await tester.ensureVisible(settings); await tester.tap(settings); await settle(tester);
+    }
+  }
   if (finder.evaluate().isEmpty) await _revealInSidebar(tester, finder);
   await tester.ensureVisible(finder);
   await tester.pump();

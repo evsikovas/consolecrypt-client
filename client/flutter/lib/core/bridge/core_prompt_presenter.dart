@@ -37,6 +37,8 @@ class _CorePromptPresenterState extends ConsumerState<CorePromptPresenter> {
   List<CorePrompt> _pending = const [];
   final _secret = TextEditingController();
   bool _busy = false;
+  final _waitingTransitions = <String>{};
+  final _acknowledgedTransitions = <String>{};
 
   @override
   void didChangeDependencies() {
@@ -47,7 +49,14 @@ class _CorePromptPresenterState extends ConsumerState<CorePromptPresenter> {
     _service = service;
     if (service != null) {
       _detach = service.attachPresenter();
-      _sub = service.watchPending().listen((p) => setState(() => _pending = p));
+      _sub = service.watchPending().listen(
+        (p) => setState(() {
+          _pending = p;
+          final ids = p.map((item) => item.requestId).toSet();
+          _waitingTransitions.retainWhere(ids.contains);
+          _acknowledgedTransitions.retainWhere(ids.contains);
+        }),
+      );
     }
   }
 
@@ -56,6 +65,8 @@ class _CorePromptPresenterState extends ConsumerState<CorePromptPresenter> {
     _sub = null;
     _detach?.call();
     _detach = null;
+    _waitingTransitions.clear();
+    _acknowledgedTransitions.clear();
   }
 
   @override
@@ -88,9 +99,31 @@ class _CorePromptPresenterState extends ConsumerState<CorePromptPresenter> {
     unawaited(_run((s) => s.answerSecret(p.requestId, cancel || value.isEmpty ? null : SecretText(value))));
   }
 
+  void _answerTransition(AutomationTransitionCorePrompt prompt, String decision) {
+    final service = _service;
+    if (service is! AutomationTransitionPromptService) return;
+    final transitions = service as AutomationTransitionPromptService;
+    if (decision != 'abort') setState(() => _waitingTransitions.add(prompt.requestId));
+    unawaited(() async {
+      try {
+        await transitions.answerAutomationTransition(prompt.requestId, decision);
+      } on Object {
+        // Native cancellation/timeout keeps the profile open. No fallback exit.
+      } finally {
+        if (mounted) setState(() => _waitingTransitions.remove(prompt.requestId));
+      }
+    }());
+  }
+
   @override
   Widget build(BuildContext context) {
-    final prompt = _pending.firstOrNull;
+    // A running worker may still need its host-key/password prompt. Waiting
+    // for it must not hide that question behind the transition progress card.
+    final prompt =
+        _pending
+            .where((p) => !(p is AutomationTransitionCorePrompt && _waitingTransitions.contains(p.requestId)))
+            .firstOrNull ??
+        _pending.firstOrNull;
     return Stack(
       children: [
         widget.child,
@@ -115,6 +148,83 @@ class _CorePromptPresenterState extends ConsumerState<CorePromptPresenter> {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
     switch (prompt) {
+      case AutomationTransitionCorePrompt():
+        final waiting = _waitingTransitions.contains(prompt.requestId);
+        final uncertain = prompt.unknownCount > 0;
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.automationTransitionTitle, style: theme.textTheme.titleSmall),
+              const SizedBox(height: 12),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${l.automationTransitionJobs}: ${prompt.jobCount}'),
+                      Text(l.automationTransitionHint),
+                      if (uncertain) ...[
+                        if (prompt.unknownCount > 0) Text('${l.automationTransitionUnknown}: ${prompt.unknownCount}'),
+                        CheckboxListTile(
+                          key: const ValueKey('automation-transition-ack-unknown'),
+                          contentPadding: EdgeInsets.zero,
+                          value: _acknowledgedTransitions.contains(prompt.requestId),
+                          onChanged: waiting
+                              ? null
+                              : (value) => setState(() {
+                                  if (value == true) {
+                                    _acknowledgedTransitions.add(prompt.requestId);
+                                  } else {
+                                    _acknowledgedTransitions.remove(prompt.requestId);
+                                  }
+                                }),
+                          title: Text(l.automationTransitionAcceptUnknown),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      if (waiting) ...[
+                        const LinearProgressIndicator(),
+                        const SizedBox(height: 8),
+                        Text(l.automationTransitionWaiting),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  TextButton(
+                    key: const ValueKey('automation-transition-abort'),
+                    onPressed: () => _answerTransition(prompt, 'abort'),
+                    child: Text(l.automationTransitionStay),
+                  ),
+                  if (!waiting) ...[
+                    OutlinedButton(
+                      key: const ValueKey('automation-transition-wait'),
+                      onPressed: uncertain ? null : () => _answerTransition(prompt, 'wait'),
+                      child: Text(l.automationTransitionWait),
+                    ),
+                    FilledButton(
+                      key: const ValueKey('automation-transition-cancel-jobs'),
+                      onPressed: uncertain && !_acknowledgedTransitions.contains(prompt.requestId)
+                          ? null
+                          : () => _answerTransition(prompt, uncertain ? 'cancel_jobs_accept_unknown' : 'cancel_jobs'),
+                      child: Text(l.automationTransitionCancelJobs),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        );
       case HostKeyCorePrompt():
         final host = prompt.hostName == null ? prompt.hostPattern : '${prompt.hostName} (${prompt.hostPattern})';
         return Column(

@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: consolecrypt_agent_identity
+  author: ConsoleCrypt
+  description: Explicit node-local dedicated key provisioning without enrollment
+  min_ansible_version: '2.20'
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+dependencies: []

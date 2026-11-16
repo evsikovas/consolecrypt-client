@@ -1,0 +1,7 @@
+---
+- name: Explicitly prepare or start the installed finite outbound control carrier
+  hosts: consolecrypt_agents
+  become: true
+  gather_facts: true
+  roles:
+    - consolecrypt_agent_outbound_control

@@ -1,0 +1,35 @@
+[Unit]
+Description=ConsoleCrypt original delegated service %i
+After=local-fs.target
+[Service]
+Type=exec
+User=consolecrypt-service
+Group=consolecrypt-service
+UMask=0077
+StateDirectory=consolecrypt-service/%i
+StateDirectoryMode=0700
+RuntimeDirectory=consolecrypt-service/%i
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=no
+ExecStart=/opt/cc-runtime/bin/python -I -B /opt/consolecrypt/deployment/service_daemon.py %i
+ExecStop=/opt/cc-runtime/bin/python -I -B /opt/consolecrypt/deployment/service_control.py --stop %i
+StandardInput=null
+StandardOutput=null
+StandardError=journal
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+LimitCORE=0
+LimitNOFILE=512
+TasksMax=256
+MemoryMax=2G
+TimeoutStopSec=190
+Restart=no
+# Task namespace support must pass the existing actual SVC06 boundary preflight.
+# No syscall/user-namespace restriction is relaxed or silently retried here.
+
+[Install]
+WantedBy=multi-user.target

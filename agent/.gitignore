@@ -1,0 +1,17 @@
+target/
+**/target/
+.cache/
+**/__pycache__/
+*.pyc
+evidence/
+state/
+private/
+dist/
+artifacts/
+*.elf
+*.test
+*.sqlite
+*.sqlite3
+*.db
+.env
+.env.*

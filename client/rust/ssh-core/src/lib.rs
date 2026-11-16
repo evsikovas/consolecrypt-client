@@ -24,6 +24,8 @@ pub mod agent;
 pub mod client;
 pub mod error;
 pub mod keys;
+mod diagnostic;
+pub use diagnostic::{DiagnosticCapture,DiagnosticMaskError};
 pub mod known_hosts;
 pub mod memory;
 pub mod openssh;

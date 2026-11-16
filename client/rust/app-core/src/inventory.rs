@@ -655,14 +655,34 @@ impl AppCore {
     }
 
     pub async fn save_vault_settings(&self, s: VaultSettingsDto) -> AppResult<VaultSettingsDto> {
-        let mut s = s;
-        if s.id.trim().is_empty() {
-            if let Ok(existing) = self.get_vault_settings().await {
-                s.id = existing.id;
-            }
-        }
-        self.save_dto(s, WorkingSet::vault_settings, VaultObject::VaultSettings)
-            .await
+        // Serialize source-catalog preservation with monitoring CRUD and fence
+        // this bounded writer transaction to the original profile/unlock.
+        // save_dto cannot run under this guard: it obtains session() again.
+        let (owner, u) = self.unlocked().await?;
+        let _profile = self.hold_session(&owner).await?;
+        let _unlock = owner.hold_unlocked(&u).await?;
+        let ws = u.working();
+        let newest = ws.all_vault_settings().into_iter().max_by_key(|s| s.updated_at);
+        // A sync conflict can produce two settings IDs. Editing an older DTO
+        // must preserve the same newest singleton catalog used by source CRUD,
+        // rather than promote the older ID's stale/absent catalog.
+        let monitoring = newest.as_ref().and_then(|s| s.monitoring.clone());
+        let automation = newest.as_ref().and_then(|s| s.automation.clone());
+        let (id, existing) = if s.id.trim().is_empty() {
+            (newest.as_ref().map(|s| s.id).unwrap_or_else(ObjectId::new), newest)
+        } else {
+            let id = parse_id("id", &s.id)?;
+            let existing = ws.vault_settings(id).ok_or_else(|| AppError::not_found("vault settings", id))?;
+            (id, Some(existing))
+        };
+        let mut model = s.to_model(id, existing.as_ref())?;
+        model.monitoring = monitoring;
+        model.automation = automation;
+        let object = VaultObject::VaultSettings(model);
+        validate_refs(ws, &object)?;
+        u.writer.put(object).await?;
+        let stored = ws.vault_settings(id).ok_or_else(|| AppError::internal("settings vanished after save"))?;
+        Ok(VaultSettingsDto::from_model(&stored))
     }
 
     // ---- AI provider configs ---------------------------------------------------

@@ -834,6 +834,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cc-agent-node-wire"
+version = "0.1.0"
+dependencies = [
+ "ed25519-dalek",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "cc-ai-core"
 version = "0.1.0"
 dependencies = [
@@ -866,12 +879,16 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "bytes",
+ "cc-agent-node-wire",
  "cc-ai-core",
+ "cc-automation-core",
  "cc-crypto-core",
  "cc-db-core",
  "cc-docker-core",
+ "cc-host-mapping",
  "cc-k8s-core",
  "cc-models",
+ "cc-monitoring-core",
  "cc-platform-core",
  "cc-protocol",
  "cc-rdp-core",
@@ -888,6 +905,7 @@ dependencies = [
  "dunce",
  "flate2",
  "futures",
+ "hex",
  "libc",
  "log",
  "pem 3.0.6",
@@ -913,8 +931,38 @@ dependencies = [
  "url",
  "uuid",
  "windows-sys 0.61.2",
+ "x509-parser",
  "zeroize",
  "zip",
+]
+
+[[package]]
+name = "cc-automation-core"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "cap-fs-ext",
+ "cap-std",
+ "cc-crypto-core",
+ "cc-models",
+ "cc-sftp-core",
+ "cc-ssh-core",
+ "flate2",
+ "hex",
+ "libc",
+ "rustix",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "unicode-normalization",
+ "url",
+ "uuid",
+ "windows-sys 0.61.2",
+ "zeroize",
 ]
 
 [[package]]
@@ -971,6 +1019,7 @@ dependencies = [
  "argon2",
  "base64 0.22.1",
  "bip39",
+ "cc-agent-node-wire",
  "cc-models",
  "cc-protocol",
  "chacha20poly1305",
@@ -1052,6 +1101,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cc-host-mapping"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "cc-k8s-core"
 version = "0.1.0"
 dependencies = [
@@ -1112,6 +1170,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cc-monitoring-core"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "bytes",
+ "cc-host-mapping",
+ "chrono",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "rcgen",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-rustls",
+ "url",
+ "webpki-roots",
+ "zeroize",
+]
+
+[[package]]
 name = "cc-pipe-security"
 version = "0.1.0"
 dependencies = [
@@ -1145,6 +1226,7 @@ dependencies = [
  "tokio",
  "windows",
  "windows-native-keyring-store",
+ "windows-sys 0.61.2",
  "zbus",
  "zeroize",
 ]
@@ -1307,6 +1389,7 @@ dependencies = [
  "reqwest",
  "rustls",
  "rustls-platform-verifier",
+ "semver",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -1319,6 +1402,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+ "x509-parser",
  "zeroize",
 ]
 
@@ -1361,6 +1445,7 @@ dependencies = [
 name = "cc-vault-core"
 version = "0.1.0"
 dependencies = [
+ "cc-agent-node-wire",
  "cc-crypto-core",
  "cc-models",
  "cc-platform-core",
@@ -5818,6 +5903,7 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",

@@ -50,7 +50,11 @@ impl AppCore {
     /// untouched; [`AppCore::reauthenticate`] signs in again. Emits
     /// [`AppEvent::SignedOut`].
     pub async fn logout(&self) -> AppResult<()> {
+        let _reader_auth_transition = self.reader_auth_transition();
         let s = self.session().await?;
+        if let Some(api) = s.api_opt() {
+            api.invalidate_reader_auth();
+        }
         if s.kind().await? != ProfileKind::Synced {
             return Err(AppError::LocalProfile);
         }
@@ -74,7 +78,11 @@ impl AppCore {
     /// on a protocol 1.7 server, those of trusted devices when this device is
     /// still new (quarantine); the result says how many were kept.
     pub async fn logout_all_sessions(&self) -> AppResult<LogoutAllDto> {
+        let _reader_auth_transition = self.reader_auth_transition();
         let s = self.session().await?;
+        if let Some(api) = s.api_opt() {
+            api.invalidate_reader_auth();
+        }
         if s.kind().await? != ProfileKind::Synced {
             return Err(AppError::LocalProfile);
         }

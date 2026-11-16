@@ -62,6 +62,7 @@ pub struct AppConfig {
     pub max_parallel_transfers: usize,
     /// Run due scheduled backups in the core while unlocked (ADR-0106).
     pub backup_scheduler: bool,
+    pub(crate) extra_server_trust: Option<cc_sync_core::api::ApiServerTrust>,
 }
 
 impl AppConfig {
@@ -83,6 +84,7 @@ impl AppConfig {
             edit_exclude_from_backup: true,
             max_parallel_transfers: 3,
             backup_scheduler: true,
+            extra_server_trust: None,
         }
     }
 
@@ -127,5 +129,14 @@ pub fn current_platform() -> Platform {
         Platform::Ios
     } else {
         Platform::Linux
+    }
+}
+
+impl AppConfig {
+    /// Explicit process-local PUBLIC CA config for this exact server only.
+    /// No file/env lookup, hosttrust mutation or invalid-certificate override.
+    /// Normal registration/login/me use the same configured trust.
+    pub fn with_server_public_ca_der(mut self,server_url:&str,certificates:Vec<Vec<u8>>)->crate::AppResult<Self>{
+        self.extra_server_trust=Some(cc_sync_core::api::ApiServerTrust::from_public_ca_der(server_url,certificates)?);Ok(self)
     }
 }

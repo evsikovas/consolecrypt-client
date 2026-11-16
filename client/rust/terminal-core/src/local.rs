@@ -4,6 +4,9 @@
 use crate::{OpenedShell, ShellLifetime, TerminalError, TerminalSize};
 use serde::{Deserialize, Serialize};
 
+mod wsl_discovery;
+pub use wsl_discovery::WslDiscoveryStatus;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LocalShellKind {
@@ -26,6 +29,8 @@ pub struct LocalShellProfile {
 pub struct LocalShellProfiles {
     pub profiles: Vec<LocalShellProfile>,
     pub unavailable_reason: Option<String>,
+    /// Observation from this discovery only; never infers installation or permissions.
+    pub wsl_discovery: Option<WslDiscoveryStatus>,
 }
 
 #[derive(Debug)]
@@ -62,21 +67,28 @@ impl LaunchProfile {
     }
 }
 
-async fn discover() -> Result<Vec<LaunchProfile>, TerminalError> {
+struct Discovery {
+    profiles: Vec<LaunchProfile>,
+    wsl_discovery: Option<WslDiscoveryStatus>,
+}
+
+async fn discover() -> Result<Discovery, TerminalError> {
     #[cfg(target_os = "macos")]
     {
-        Ok(vec![LaunchProfile::new(
-            "macos:zsh",
-            LocalShellKind::Zsh,
-            "zsh",
-            "zsh",
-            "/bin/zsh",
-            &["-il"],
-        )])
+        Ok(Discovery {
+            profiles: vec![LaunchProfile::new(
+                "macos:zsh",
+                LocalShellKind::Zsh,
+                "zsh",
+                "zsh",
+                "/bin/zsh",
+                &["-il"],
+            )],
+            wsl_discovery: None,
+        })
     }
     #[cfg(target_os = "windows")]
     {
-        use tokio::io::AsyncReadExt;
         let system = std::env::var_os("SystemRoot")
             .map(std::path::PathBuf::from)
             .ok_or_else(|| TerminalError::Open("Windows system directory is unavailable".into()))?
@@ -117,102 +129,84 @@ async fn discover() -> Result<Vec<LaunchProfile>, TerminalError> {
         }
         profiles.retain(|p| p.program.is_file());
         let wsl = system.join("wsl.exe");
-        if wsl.is_file() {
-            use std::os::windows::process::CommandExt;
-            let mut command = std::process::Command::new(&wsl);
-            command
-                .args(["--list", "--quiet"])
-                .creation_flags(0x08000000);
-            let mut command = tokio::process::Command::from(command);
-            command
-                .kill_on_drop(true)
-                .stdin(std::process::Stdio::null())
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::null());
-            if let Ok(mut child) = command.spawn() {
-                let result = tokio::time::timeout(std::time::Duration::from_secs(5), async {
-                    let mut bytes = Vec::new();
-                    child
-                        .stdout
-                        .take()
-                        .expect("piped stdout")
-                        .take(128 * 1024 + 1)
-                        .read_to_end(&mut bytes)
-                        .await?;
-                    if bytes.len() > 128 * 1024 {
-                        return Err(std::io::Error::other("WSL profile list too large"));
-                    }
-                    let status = child.wait().await?;
-                    Ok::<_, std::io::Error>((status, bytes))
-                })
-                .await;
-                if let Ok(Ok((status, bytes))) = result {
-                    if status.success() {
-                        for name in decode_wsl_names(&bytes) {
-                            let mut profile = LaunchProfile::new(
-                                &format!("wsl:{name}"),
-                                LocalShellKind::Wsl,
-                                &format!("WSL · {name}"),
-                                "sh",
-                                &wsl,
-                                &["--distribution", &name, "--cd", "~"],
-                            );
-                            profile.info.distribution = Some(name);
-                            profiles.push(profile);
+        let observed = match std::fs::metadata(&wsl) {
+            Ok(metadata) if metadata.is_file() => {
+                use std::os::windows::process::CommandExt;
+                let mut command = std::process::Command::new(&wsl);
+                command
+                    .args(["--list", "--quiet"])
+                    .creation_flags(0x08000000);
+                let mut command = tokio::process::Command::from(command);
+                command
+                    .kill_on_drop(true)
+                    .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::null());
+                match command.spawn() {
+                    Ok(mut child) => {
+                        let stdout = child.stdout.take().expect("piped stdout");
+                        let observed = wsl_discovery::read_list(
+                            stdout,
+                            async { child.wait().await.map(|status| status.success()) },
+                            std::time::Duration::from_secs(5),
+                        )
+                        .await;
+                        if !observed.succeeded() {
+                            let _ = child.kill().await;
                         }
+                        observed
                     }
-                } else {
-                    let _ = child.kill().await;
+                    Err(_) => wsl_discovery::WslList::failed(WslDiscoveryStatus::SpawnFailed),
                 }
             }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                wsl_discovery::WslList::failed(WslDiscoveryStatus::ExecutableMissing)
+            }
+            _ => wsl_discovery::WslList::failed(WslDiscoveryStatus::IoFailed),
+        };
+        for name in observed.names {
+            let mut profile = LaunchProfile::new(
+                &format!("wsl:{name}"),
+                LocalShellKind::Wsl,
+                &format!("WSL · {name}"),
+                "sh",
+                &wsl,
+                &["--distribution", &name, "--cd", "~"],
+            );
+            profile.info.distribution = Some(name);
+            profiles.push(profile);
         }
-        Ok(profiles)
+        Ok(Discovery {
+            profiles,
+            wsl_discovery: Some(observed.status),
+        })
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    Ok(Vec::new())
+    Ok(Discovery {
+        profiles: Vec::new(),
+        wsl_discovery: None,
+    })
 }
 
-/// `wsl --list --quiet` emits UTF-16LE on many Windows releases, UTF-8 on
-/// others. Preserve exact distro names and pass them as one argv element.
-#[cfg(any(target_os = "windows", test))]
-fn decode_wsl_names(bytes: &[u8]) -> Vec<String> {
-    let text =
-        if bytes.starts_with(&[0xff, 0xfe]) || bytes.iter().skip(1).step_by(2).any(|b| *b == 0) {
-            let bytes = bytes.strip_prefix(&[0xff, 0xfe]).unwrap_or(bytes);
-            String::from_utf16_lossy(
-                &bytes
-                    .as_chunks::<2>()
-                    .0
-                    .iter()
-                    .map(|b| u16::from_le_bytes([b[0], b[1]]))
-                    .collect::<Vec<_>>(),
-            )
-        } else {
-            String::from_utf8_lossy(bytes).into_owned()
-        };
-    let mut names = Vec::new();
-    for name in text.trim_start_matches('\u{feff}').lines().map(str::trim) {
-        if !name.is_empty()
-            && !name.chars().any(char::is_control)
-            && !names.iter().any(|s| s == name)
-        {
-            names.push(name.to_owned());
-        }
-    }
-    names
-}
+#[cfg(test)]
+use wsl_discovery::decode_wsl_names;
 
 pub async fn profiles() -> Result<LocalShellProfiles, TerminalError> {
-    let profiles: Vec<_> = discover().await?.into_iter().map(|p| p.info).collect();
+    Ok(project_profiles(discover().await?))
+}
+
+fn project_profiles(discovered: Discovery) -> LocalShellProfiles {
+    let profiles: Vec<_> = discovered.profiles.into_iter().map(|p| p.info).collect();
     let unavailable_reason = if profiles.is_empty() {
         Some("unsupported_platform".into())
     } else {
         None
     };
-    Ok(LocalShellProfiles {
+    LocalShellProfiles {
         profiles,
         unavailable_reason,
-    })
+        wsl_discovery: discovered.wsl_discovery,
+    }
 }
 
 pub async fn open(
@@ -221,6 +215,7 @@ pub async fn open(
 ) -> Result<(LocalShellProfile, OpenedShell), TerminalError> {
     let profile = discover()
         .await?
+        .profiles
         .into_iter()
         .find(|p| p.info.id == profile_id)
         .ok_or_else(|| TerminalError::Open("local shell profile is unavailable".into()))?;
@@ -310,11 +305,11 @@ mod transport {
     use super::*;
     use bytes::Bytes;
     use cc_ssh_core::{ShellChannel, ShellEvent, ShellInput};
-    use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
     use std::io::{Read, Write};
     use std::sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
+        atomic::{AtomicBool, AtomicU64, Ordering},
     };
     use std::time::{Duration, Instant};
 
@@ -739,14 +734,45 @@ mod transport {
 mod tests {
     use super::*;
     #[test]
+    fn failed_wsl_discovery_preserves_existing_shell_profiles() {
+        for status in [
+            WslDiscoveryStatus::ExecutableMissing,
+            WslDiscoveryStatus::SpawnFailed,
+            WslDiscoveryStatus::TimedOut,
+            WslDiscoveryStatus::IoFailed,
+            WslDiscoveryStatus::OutputTooLarge,
+            WslDiscoveryStatus::NonzeroExit,
+        ] {
+            let result = project_profiles(Discovery {
+                profiles: vec![LaunchProfile::new(
+                    "windows:cmd",
+                    LocalShellKind::Cmd,
+                    "Command Prompt",
+                    "cmd",
+                    "owned-placeholder",
+                    &[],
+                )],
+                wsl_discovery: Some(status),
+            });
+            assert_eq!(result.profiles[0].id, "windows:cmd");
+            assert_eq!(result.profiles.len(), 1);
+            assert_eq!(result.unavailable_reason, None);
+            assert_eq!(result.wsl_discovery, Some(status));
+        }
+    }
+
+    #[test]
     fn exact_wsl_names_from_utf16_and_utf8() {
         let text = "Ubuntu\r\nDebian\r\nDistro with space\r\nUbuntu\r\n";
         let utf16: Vec<_> = text.encode_utf16().flat_map(u16::to_le_bytes).collect();
         assert_eq!(
-            decode_wsl_names(&utf16),
+            decode_wsl_names(&utf16).unwrap(),
             vec!["Ubuntu", "Debian", "Distro with space"]
         );
-        assert_eq!(decode_wsl_names(text.as_bytes()), decode_wsl_names(&utf16));
+        assert_eq!(
+            decode_wsl_names(text.as_bytes()).unwrap(),
+            decode_wsl_names(&utf16).unwrap()
+        );
     }
 
     #[cfg(unix)]
@@ -825,9 +851,11 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(exit, Some(7));
-        assert!(String::from_utf8(output)
-            .unwrap()
-            .contains("\x1b[31mПривет 世界\x1b[0m"));
+        assert!(
+            String::from_utf8(output)
+                .unwrap()
+                .contains("\x1b[31mПривет 世界\x1b[0m")
+        );
     }
 
     #[cfg(unix)]
@@ -1071,6 +1099,7 @@ mod tests {
         let mut profile = discover()
             .await
             .unwrap()
+            .profiles
             .into_iter()
             .find(|p| p.info.id == id)
             .unwrap();

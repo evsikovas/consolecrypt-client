@@ -1,0 +1,15 @@
+[Unit]
+Description=Explicit bounded ConsoleCrypt Agent enrollment transport
+
+[Socket]
+ListenStream=/run/consolecrypt-agent-managed-control/control.sock
+Accept=yes
+SocketUser=consolecrypt-agent
+SocketGroup=consolecrypt-agent
+SocketMode=0600
+DirectoryMode=0755
+MaxConnections=4
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

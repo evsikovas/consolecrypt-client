@@ -35,6 +35,7 @@ struct Inner {
     chat: Mutex<VecDeque<String>>,
     required_key: Mutex<Option<String>>,
     embeddings: AtomicUsize,
+    chat_gate: Mutex<Option<Arc<tokio::sync::Notify>>>,
 }
 
 /// Handle to a running mock endpoint.
@@ -70,6 +71,13 @@ impl MockLlm {
     /// Queue the content of the next chat reply (default `{}`).
     pub fn push_chat(&self, content: impl Into<String>) {
         self.inner.chat.lock().unwrap().push_back(content.into());
+    }
+
+    /// Hold the next provider response while cancellation/lock is exercised.
+    pub fn block_chat(&self) -> Arc<tokio::sync::Notify> {
+        let gate = Arc::new(tokio::sync::Notify::new());
+        *self.inner.chat_gate.lock().unwrap() = Some(gate.clone());
+        gate
     }
 
     /// Answer 401 unless `Authorization: Bearer <key>` is sent.
@@ -179,6 +187,10 @@ async fn chat(State(m): State<MockLlm>, headers: HeaderMap, body: String) -> Res
         .unwrap_or_default();
     let model = v["model"].as_str().map(str::to_owned);
     m.capture("/v1/chat/completions", &headers, &body, text, model.clone());
+    let gate = m.inner.chat_gate.lock().unwrap().take();
+    if let Some(gate) = gate {
+        gate.notified().await;
+    }
     if !m.authorized(&headers) {
         return unauthorized();
     }

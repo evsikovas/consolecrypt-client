@@ -1,0 +1,105 @@
+{
+  "format": "cc-reader-replay-targetset-failure-precision/v1",
+  "status": "EXACT_SUPPLEMENT_PENDING_ROOT_REVIEW_NO_CODE",
+  "created_at_utc": "2026-11-12T15:25:56.828334+00:00",
+  "base_plan_sha256": "c93b75b1c722f5032304b42819d21b6f52a35a9c3d1e1b8f3a8c0f842f2c5d76",
+  "worker_contract_sha256": "5b43988c44e9caa53d112b68387e2166a76f50a47f7d3dc1cf1f05e0a1354c32",
+  "vectors_sha256": "ff397070c9b3573c8d8d0682b5e6b7e6575f88948c1e20284250bf3e0e08cb4b",
+  "runtime_exact_descriptor_sha256": "a7deef94b58640b6bb92a79c216de895afdede8778e92c5e642ae15b7803f798",
+  "failure_frame": {
+    "exact_keys": [
+      "ok",
+      "code"
+    ],
+    "ok": "exactJSONfalse",
+    "code": "exactcaseASCIIclosedReaderError fromWORKER_CONTRACT; no null/metadata/error/details/path/rawexception/extra keys",
+    "wire_example": "{\"ok\":false,\"code\":\"Replay\"}\n",
+    "encoding": "CompactASCIIJSONoneLF, <=4096BINCLLF; oneframeonly, stdoutwrite/flushuncertainty closesno secondframe.",
+    "phase_precision": "Afterbegin ANYerror =>typedunavailable503/nodata regardlessknownauthority403classification atbegin. Unknown/repeated/out-of-order custodyhandle/phase mapsLostHandle; existingentry wrongcontext terminaldrop mapsWrongDevice/WrongAssociation/WrongTarget/WrongOperation. Missingregisteredassoc/challenge atbegin mapsNotFound. No newSignedwirefields fromerrors.",
+    "bad_signed_input": "RawBundle base64 string insideprivateframe insulatesnestedparse; SignedJSON duplicate/depth/body InvalidWire ordinarynonfataldenial. Outerprivateprotocol error Protocolfatal. ActualfixedOSclockerror ClockUnavailablefatal; signedtimestamp InvalidTime503nonfatal preservingotherhandles."
+  },
+  "ReaderTargetSet": {
+    "exact_keys": [
+      "format",
+      "targets"
+    ],
+    "format": "cc-reader-target-set/v1",
+    "targets": "EXACTLY2 ReaderTargetDescriptor objects in fixedorder heartbeatRead THENhistoryRead; previousmax2wording tightened torequired2. Empty/single/extra/reversed/duplicate/unknownaction rejectedbeforeNode/ReaderDBI/O; no normalization/implicit default resource.",
+    "consistency": "SameagentId/configuredHostId acrossentries; nesteddescriptorIDs equalouterIDs; actionresourceID equalscorrespondingdescriptorID; distinctHB/history resources; fixedOScollectionResource distinctHB/history/defaultLocalHistoryUUID. Kind/action/schema/retention/query/bytecaps eachclosed asWorkerContract; issuerpinContext/NativeProfile areseparate, notinferredfromUUID.",
+    "scope": "Onlytrustedstartupconfig; Rootruntimebuildsorderedpair fromactualManifest+BoundHistoryReader.binding. Nativeissuer/device getexactindividualtargetdescriptor toapprove/recomputehash. Peractionhash isauthoritycommitment; wholeSet hasnoextraauthoritymeaning.",
+    "example": {
+      "format": "cc-reader-target-set/v1",
+      "targets": [
+        {
+          "format": "cc-reader-target/v1",
+          "agentId": "44444444-4444-4444-8444-444444444444",
+          "configuredHostId": "33333333-3333-4333-8333-333333333333",
+          "action": "heartbeatRead",
+          "resourceId": "d72f407f-4f4a-56fd-b732-565dcee9fa8a",
+          "dataset": {
+            "kind": "heartbeatV1",
+            "schemaVersion": 1,
+            "descriptor": {
+              "agent_id": "44444444-4444-4444-8444-444444444444",
+              "host_id": "33333333-3333-4333-8333-333333333333",
+              "heartbeat_resource_id": "d72f407f-4f4a-56fd-b732-565dcee9fa8a",
+              "history_kind": "heartbeat",
+              "schema_version": 1
+            }
+          },
+          "maxResponseBytes": 65536,
+          "maxQueryPoints": 0
+        },
+        {
+          "format": "cc-reader-target/v1",
+          "agentId": "44444444-4444-4444-8444-444444444444",
+          "configuredHostId": "33333333-3333-4333-8333-333333333333",
+          "action": "historyRead",
+          "resourceId": "66666666-6666-4666-8666-666666666666",
+          "dataset": {
+            "kind": "fixedOsHistoryV1",
+            "schemaVersion": 1,
+            "descriptor": {
+              "agent_id": "44444444-4444-4444-8444-444444444444",
+              "host_id": "33333333-3333-4333-8333-333333333333",
+              "history_resource_id": "66666666-6666-4666-8666-666666666666",
+              "collection_resource_id": "55555555-5555-4555-8555-555555555555",
+              "plan_sha256": "abababababababababababababababababababababababababababababababab",
+              "agent_reserved_bytes": 32768,
+              "snapshot_reserved_bytes": 65536,
+              "total_max_bytes": 98304,
+              "max_points": 5760,
+              "max_age_seconds": 86400,
+              "history_kind": "fixed_os_snapshot",
+              "schema_version": 1
+            }
+          },
+          "maxResponseBytes": 262144,
+          "maxQueryPoints": 100
+        }
+      ]
+    },
+    "example_canonical_utf8": "{\"format\":\"cc-reader-target-set/v1\",\"targets\":[{\"action\":\"heartbeatRead\",\"agentId\":\"44444444-4444-4444-8444-444444444444\",\"configuredHostId\":\"33333333-3333-4333-8333-333333333333\",\"dataset\":{\"descriptor\":{\"agent_id\":\"44444444-4444-4444-8444-444444444444\",\"heartbeat_resource_id\":\"d72f407f-4f4a-56fd-b732-565dcee9fa8a\",\"history_kind\":\"heartbeat\",\"host_id\":\"33333333-3333-4333-8333-333333333333\",\"schema_version\":1},\"kind\":\"heartbeatV1\",\"schemaVersion\":1},\"format\":\"cc-reader-target/v1\",\"maxQueryPoints\":0,\"maxResponseBytes\":65536,\"resourceId\":\"d72f407f-4f4a-56fd-b732-565dcee9fa8a\"},{\"action\":\"historyRead\",\"agentId\":\"44444444-4444-4444-8444-444444444444\",\"configuredHostId\":\"33333333-3333-4333-8333-333333333333\",\"dataset\":{\"descriptor\":{\"agent_id\":\"44444444-4444-4444-8444-444444444444\",\"agent_reserved_bytes\":32768,\"collection_resource_id\":\"55555555-5555-4555-8555-555555555555\",\"history_kind\":\"fixed_os_snapshot\",\"history_resource_id\":\"66666666-6666-4666-8666-666666666666\",\"host_id\":\"33333333-3333-4333-8333-333333333333\",\"max_age_seconds\":86400,\"max_points\":5760,\"plan_sha256\":\"abababababababababababababababababababababababababababababababab\",\"schema_version\":1,\"snapshot_reserved_bytes\":65536,\"total_max_bytes\":98304},\"kind\":\"fixedOsHistoryV1\",\"schemaVersion\":1},\"format\":\"cc-reader-target/v1\",\"maxQueryPoints\":100,\"maxResponseBytes\":262144,\"resourceId\":\"66666666-6666-4666-8666-666666666666\"}]}"
+  },
+  "replay_rules": [
+    "EveryReaderledgerEntry carriestrustedlocalrecorded.at, validatednondecreasing andbounded. Replay validates historical signedReader association/grant/proof/freshness/revocation at THATevent.at, nevercurrentOSNow; currentOSNow used onlyafterrestoration foractiveadmission/check andclockfloor.",
+    "InstallAssociation eventstoresFULLReaderTargetDescriptor body alongsideSignedAssociation. Recomputeclosedtargethash andcompareisssignedcommitment, meaning/schema/retention/query/envelopecaps fullyrevalidated; descriptorisnotunsignedauthoritysnapshot becauseissuersignature commitsitsdigest.",
+    "Historicalreplay MUSTNOT callliveNodeobserver/currentruntimeTarget. Otherwiselegitimateexpiry/Nodekeyrotation/revocation laterwouldmakeolderhistoryunrestorable. ReaderhistoryprovesReaderauthority/signatures/oneuse/transitions, not retrospectivecurrentNodehealth.",
+    "ConcreteNode liveness/certBODY/Context/roles isALWAYScheckedforcurrentassociationinstall/challenge/begin/check/finalize pre/post I/O asappropriate. IfReadercommit succeedsbutpostNodecheckfails =>noPermit/grantmaybespent; currentNodeupdates donot eraseReaderhistory. No crossDBatomicclaim.",
+    "ReaderGenesis bindsindependentissuerpin+Node trustorigin, not permanently currenttargetset hash. Latertrustedruntime/target configchanges grantnobodyrights; currentuse needsnewexplicitissuerSignedAssociation matchingnewdataset/resource/hash. OldtargetBODY remainsinoldinstall event; oldconsume/replay andalltombstones persist; no reinit/reset/migrate.",
+    "Expiredhistoricalchallenge remainsretainedtombstone; pendingquotacount excludesexpired aftervalidfreshOSobservation withoutdeletinghistory. No expiredNonce/operation reuse orautoentropy.",
+    "operationtombstone key=(deviceId,operationId), consumedproofnonce key=(deviceId,deviceEpoch,nonce32), grantUUIDglobal, challengeId/globalserverNonce256b uniqueallretained. Allshared4096 lifetimecapacity; duplicates/zeroRNG/collision rejectedbeforecommit/no redraw."
+  ],
+  "key_role_precision": "Read-onlyNodeobserver enforcescurrentReaderissuer/devicekeys distinctverifiedretainedNode owner/Agent/pendingrolehistory beforecurrentreaderuse. It doesNOTclaim oldNode rotate_owner consultsReaderledger orpreventsafuturecross-store rolecollision. IfNodeadmin laterchoosesReaderkey, newReaderchecks failclosed; no newNodeglobalpolicy silentlyadded.",
+  "implementation_invariants": [
+    "NoReaderPermit fromreplay/publicmetadata alone. Onlyactualcurrent ReaderActorbegin+atomicconsume+Node/head/time postchecks returnopaquePermit.",
+    "CallerJSON/times/targetdigest equality nevercreatesauthority; installedissuerSignedassociation andpurposeDevicePoP required.",
+    "Replay-storedfulltargetbody signedhashbinding allows historicalschema reverify whilecurrentappliedtargetdeniesoldmeaning.",
+    "CurrentReaderauthority head referslatestinstalledsignedcontrols, notglobalrevocationwitness orguaranteeofprotectedHTTPpeer."
+  ],
+  "pending_root_decisions": [
+    "Confirmexact2-target wrapper/phaseError shapes andrecorded-time historicalreplay rules asabove beforeCryptoimplementation.",
+    "Ed25519goldenvectors/actualSQLite/crash+Nativefixturetests remainaftercodeapproval; existingpublicbytevectors notcryptoPASS."
+  ],
+  "no_product_code_build_keys_network": true
+}

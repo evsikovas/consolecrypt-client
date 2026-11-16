@@ -87,19 +87,7 @@ final class RustTerminalService
   @override
   Future<LocalShellProfiles> listLocalProfiles() async {
     final j = decodeObject(await guard(rs_ssh.terminalLocalProfiles));
-    return LocalShellProfiles(
-      profiles: [
-        for (final p in (j['profiles'] as List? ?? const []).cast<Map<String, dynamic>>())
-          LocalShellProfile(
-            id: p['id'] as String,
-            kind: p['kind'] as String,
-            label: p['label'] as String,
-            shell: p['shell'] as String,
-            distribution: p['distribution'] as String?,
-          ),
-      ],
-      unavailableReason: j['unavailable_reason'] as String?,
-    );
+    return LocalShellProfiles.fromJson(j);
   }
 
   @override
@@ -139,6 +127,7 @@ final class RustTerminalService
           'flux-context',
           'helm-rollback',
           'kubernetes-context',
+          'runner-prerequisites',
         }.contains(metadata['profile_id'])) {
       throw const AppException(AppErrorCode.validation, 'Terminal cannot be adopted');
     }

@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "source": "Actual Node enrollment-control golden producer; nine byte-exact public files",
+  "sourceManifest": {
+    "path": "monitoring-e2\\agent\\integration\\evidence\\agent-next-union\\attempt3\\cc-enrollment-golden\\GOLDEN_MANIFEST.jsonl",
+    "sha256": "0ec1a4e94d8ff52fcd49a108fef105f571db15830d92296e26c3479c1a8dbf06"
+  },
+  "sourceEvidence": {
+    "goldenReportPath": "monitoring-e2\\agent\\integration\\evidence\\agent-next-union\\attempt3\\GOLDEN_REPORT.json",
+    "goldenReportSha256": "11fa34f0143af922bc47eb5eceba0f8ac3eb451b0cc940a776fa1920e6f627ba",
+    "actualLibtest": {
+      "path": "/agent-target/debug/deps/cc_agent_identity_policy-d4d87cddbab6bbae",
+      "sha256": "8bae587f709767b335d7d378409d46c9b4e5e18f6f421ab4dd8f679b927a89a5",
+      "bytes": 15019680
+    },
+    "goldenPassed": 1,
+    "rustPassed": 210,
+    "rustIgnored": 4,
+    "wholeAttemptPassed": false,
+    "independentClosingSha256PrefixSuppliedByRoot": "ca84e9ed"
+  },
+  "files": [
+    {
+      "name": "GOLDEN_MANIFEST.jsonl",
+      "sha256": "0ec1a4e94d8ff52fcd49a108fef105f571db15830d92296e26c3479c1a8dbf06",
+      "bytes": 2292
+    },
+    {
+      "name": "01-probe.request.jsonl",
+      "sha256": "21af1b00cc7436707a7fd525853fc00ecd5bc61564ec79ac72eae761e26fd5b7",
+      "bytes": 117
+    },
+    {
+      "name": "01-probe.reply.jsonl",
+      "sha256": "e45ad8b39a27b59d8e7f29ba3c7df67ef068d02857eaa9b24183ca1f0275fb13",
+      "bytes": 691
+    },
+    {
+      "name": "02-stageOffer.request.jsonl",
+      "sha256": "c0a8a9f2c1d7b1b92173e4e2f3cb4a3be3aa65fc32da704617dc4976906394bd",
+      "bytes": 1195
+    },
+    {
+      "name": "02-stageOffer.reply.jsonl",
+      "sha256": "8d9ecefea3a389bb1f60159ce9ed788e702690065d98bf22a67c51f0487d80a9",
+      "bytes": 1234
+    },
+    {
+      "name": "03-applyCertificate.request.jsonl",
+      "sha256": "9ca6649b18c72e5481f82c8bd45fc76c1fae81c949d891504b85b3f4559b81c6",
+      "bytes": 1381
+    },
+    {
+      "name": "03-applyCertificate.reply.jsonl",
+      "sha256": "f48d38e5adec8301370616450cfea84dcfb70fac9ebdbc019249b052a7a25c61",
+      "bytes": 1335
+    },
+    {
+      "name": "04-observeCertificate.request.jsonl",
+      "sha256": "c5c6d9ad2473fc240d7d0e40a08a3304e2783de32086334d22fdf17a7f304c8d",
+      "bytes": 561
+    },
+    {
+      "name": "04-observeCertificate.reply.jsonl",
+      "sha256": "459eedcd001a7932ac2df6d12e1f83136917ea60ff4f4f00f68a937d369ee500",
+      "bytes": 1337
+    }
+  ],
+  "boundaries": [
+    "Synthetic owned fixture owner key/token are deliberately public and expired; Node private key and actual journal were not exported.",
+    "Observed timestamp is used only to verify this recorded transcript; never SystemTime or live authorization.",
+    "No SSH authentication, live Agent reachability, current original DeviceIdentity or Native admission is established by this test.",
+    "No external include or runtime workspace dependency: all fixture bytes are repository-owned beside the Rust test.",
+    "Original upstream attempt has Rust210+golden1 PASS but whole Python gate failed; this test does not relabel that attempt green."
+  ]
+}

@@ -22,6 +22,8 @@ enum AppSymbol {
   kubernetes,
   databases,
   notes,
+  automation,
+  monitoring,
 }
 
 class AppSymbolIcon extends StatelessWidget {
@@ -66,6 +68,14 @@ class _SymbolPainter extends CustomPainter {
         line(7, 17.5, 7.1, 17.5);
         line(15, 6.5, 17, 6.5);
         line(15, 17.5, 17, 17.5);
+      case AppSymbol.automation:
+        box(3, 3, 18, 18, 3);
+        path(const [Offset(7, 8), Offset(10, 11), Offset(7, 14)]);
+        line(13, 15, 17, 15);
+        line(13, 8, 17, 8);
+      case AppSymbol.monitoring:
+        box(3, 3, 18, 18, 3);
+        path(const [Offset(5, 13), Offset(8, 13), Offset(10, 8), Offset(13, 17), Offset(16, 11), Offset(19, 11)]);
       case AppSymbol.groups:
         box(9, 2, 6, 5, 1.5);
         box(2, 17, 6, 5, 1.5);

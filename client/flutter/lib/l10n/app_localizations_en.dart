@@ -10,6 +10,129 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get metricsAiTitle => 'Explain selected monitoring data';
+
+  @override
+  String get metricsAiSelectionHint =>
+      'Choose specific samples or active alerts. Queries, addresses, credentials, annotations and raw errors are excluded. Review the cleaned context before sending. The built-in model may require fewer selected samples.';
+
+  @override
+  String get metricsAiQuestion => 'Question about this selection';
+
+  @override
+  String get metricsAiSelectSample => 'Select sample';
+
+  @override
+  String get metricsAiSelectAlert => 'Select active alert';
+
+  @override
+  String get metricsAiExplain => 'Explain observations';
+
+  @override
+  String get metricsAiPropose => 'Propose a playbook';
+
+  @override
+  String get metricsAiPrepare => 'Prepare preview';
+
+  @override
+  String get metricsAiPreview => 'Exact sanitized context';
+
+  @override
+  String get metricsAiExternalConsent => 'Send this preview to the selected external AI provider';
+
+  @override
+  String get metricsAiReadonly => 'Read-only proposal. Nothing is saved, queried, connected or executed.';
+
+  @override
+  String get metricsAiFailed =>
+      'The review could not be completed. Check the current source and AI provider, then prepare a fresh preview.';
+
+  @override
+  String get metricsAiContextChanged =>
+      'The profile, source, selected data or AI provider changed. Open a fresh review.';
+
+  @override
+  String get metricsAiSelectionLimit =>
+      'Select up to 8 series with 32 samples each and up to 8 active alerts. Context is limited to 32 KiB.';
+
+  @override
+  String get metricsAiNoProvider => 'Configure and select an AI provider to prepare a review.';
+
+  @override
+  String get metricsAiNoSelection => 'Select at least one sample or active alert.';
+
+  @override
+  String get metricsAiUnavailable => 'Monitoring AI review is unavailable in this backend.';
+
+  @override
+  String get correlationFocusedHostHint =>
+      'This host was selected from Monitoring. Connecting remains a separate action.';
+
+  @override
+  String get correlationContextChanged =>
+      'The original monitoring context changed. Select the host again from Monitoring.';
+
+  @override
+  String get correlationHostActionsHint =>
+      'Open the chooser for this exact saved host. Existing connections remain open.';
+
+  @override
+  String get correlationSshChooser => 'Select in Terminal';
+
+  @override
+  String get correlationDockerChooser => 'Select in Docker';
+
+  @override
+  String get monitoringPin15Seconds => '15 seconds';
+
+  @override
+  String get monitoringObservationTitle => 'Automatic observation';
+
+  @override
+  String get monitoringObservationAuto => 'Auto refresh after an explicit read';
+
+  @override
+  String get monitoringObservationAutoHelp =>
+      'A successful manual read starts refreshes in this section. Editing or applying a period does not start a query. The pause is counted after each completed read.';
+
+  @override
+  String get monitoringObservationRolling => 'Move the selected preset lookback with time';
+
+  @override
+  String get monitoringObservationRollingHelp =>
+      'Only an explicitly selected preset can roll. Custom UTC bounds remain fixed; turn this option off before reading a custom interval.';
+
+  @override
+  String get monitoringObservationFixed => 'Keep the exact selected UTC bounds for every refresh.';
+
+  @override
+  String get monitoringObservationManualLimit =>
+      'Another observation is pinned. New reads remain manual; stop or unpin it before starting another automatic observation.';
+
+  @override
+  String get monitoringObservationPinAccepted => 'Pin the accepted observation';
+
+  @override
+  String get monitoringObservationUnpin => 'Keep in this section only';
+
+  @override
+  String get monitoringObservationCurrentValues => 'Current values; no range history is collected.';
+
+  @override
+  String get monitoringObservationRangeValues => 'Values for the actual requested UTC interval';
+
+  @override
+  String get monitoringObservationSnapshot => 'Observation request';
+
+  @override
+  String monitoringObservationSource(String name) {
+    return 'Observation · $name';
+  }
+
+  @override
+  String get monitoringObservationAutoStopped => 'Automatic refresh stopped. Last accepted snapshot.';
+
+  @override
   String get keepassMobileFilesHelp =>
       'Local files are imported into the app and saved there automatically. Use Save a local copy to export changes to Files. WebDAV saves directly to the remote database.';
 
@@ -14136,4 +14259,6007 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sftpDefaultEditorTitle => 'Default editor for SFTP';
+
+  @override
+  String get navigationAllSections => 'All sections';
+
+  @override
+  String get navigationCustomize => 'Customize sidebar';
+
+  @override
+  String get navigationCustomizeHint =>
+      'Pinned sections on this device for the current profile. Hidden sections remain available in All sections.';
+
+  @override
+  String get navigationRestore => 'Restore default sidebar';
+
+  @override
+  String get navigationFutureVersion =>
+      'These sidebar settings were created by a newer ConsoleCrypt version. Update the app to edit them.';
+
+  @override
+  String get automationTitle => 'Automation';
+
+  @override
+  String get automationUnavailable => 'Automation is unavailable in this build.';
+
+  @override
+  String get automationNewProject => 'New project';
+
+  @override
+  String get automationOpenFolder => 'Open folder';
+
+  @override
+  String get automationProjects => 'Projects';
+
+  @override
+  String get automationNewFile => 'New file (path in project)';
+
+  @override
+  String get automationChooseFile => 'Choose a project and a file to edit.';
+
+  @override
+  String get automationProjectHint =>
+      'Create and edit playbooks without installing Ansible. Files stay on this device.';
+
+  @override
+  String get automationNoProjects => 'No projects yet.';
+
+  @override
+  String get automationNewerSchema => 'This catalog was created by a newer version. Editing is unavailable.';
+
+  @override
+  String get automationUnsaved => 'Save changes to this file?';
+
+  @override
+  String get automationDiscard => 'Discard';
+
+  @override
+  String get automationFileChanged =>
+      'The file changed outside ConsoleCrypt. Your edits remain in the editor. Compare changes before saving again.';
+
+  @override
+  String get automationRunners => 'Runner environments';
+
+  @override
+  String get automationRunnerDetails => 'Components and isolation';
+
+  @override
+  String get automationRunnerComponents => 'Components';
+
+  @override
+  String get automationRunnerIsolation => 'Environment checks';
+
+  @override
+  String get automationRunnerReady => 'Environment ready';
+
+  @override
+  String get automationRunnerNeedsSetup => 'Preparation required';
+
+  @override
+  String get automationRemoteNonRootHint =>
+      'Choose an SSH connection using a regular Linux account, not root. Prepare system packages with sudo in the terminal; the Runner environment itself is installed without root.';
+
+  @override
+  String get automationSetupExecutableHome =>
+      'A home filesystem that permits loading executable libraries (not noexec)';
+
+  @override
+  String get automationRunnerHint =>
+      'Connect a prepared local environment or Linux server. Diagnostics do not install components or run a playbook.';
+
+  @override
+  String get automationNoRunners => 'No saved Runner environments.';
+
+  @override
+  String get automationRemoteRunner => 'Remote Linux Runner';
+
+  @override
+  String get automationLocalRunner => 'Local Runner';
+
+  @override
+  String get automationDiagnose => 'Check environment';
+
+  @override
+  String get automationAddRunner => 'Add environment';
+
+  @override
+  String get automationDependencyLock => 'Dependencies match the lock file';
+
+  @override
+  String get automationNonRoot => 'Running without root';
+
+  @override
+  String get automationFilesystemIsolation => 'Filesystem isolation';
+
+  @override
+  String get automationNetworkIsolation => 'Network isolation';
+
+  @override
+  String get automationProcessIsolation => 'Process isolation';
+
+  @override
+  String get automationProbeOnly =>
+      'These are environment diagnostics. Execution requires separate project and target validation and job approval.';
+
+  @override
+  String get automationPreparedEnvironment =>
+      'Specify an existing prepared environment. Paths must be absolute and belong to the selected Linux/macOS node, not Windows.';
+
+  @override
+  String get automationDistribution => 'Choose a WSL distribution';
+
+  @override
+  String get automationLinuxUser => 'Linux user (not root)';
+
+  @override
+  String get automationChooseRunnerHost => 'Choose the Runner SSH host';
+
+  @override
+  String get automationPythonPath => 'Environment Python path';
+
+  @override
+  String get automationModulePath => 'Runner module directory';
+
+  @override
+  String get automationStatePath => 'Private Runner state directory';
+
+  @override
+  String get automationRequiredFields => 'Complete the fields and select the connection environment.';
+
+  @override
+  String get automationDisconnectRunner => 'Disconnect Runner channel';
+
+  @override
+  String get automationForgetRunner => 'Remove connection profile';
+
+  @override
+  String get automationCheckReady => 'Ready';
+
+  @override
+  String get automationCheckUnavailable => 'Unavailable';
+
+  @override
+  String get automationRun => 'Validate and run';
+
+  @override
+  String get automationJobs => 'Jobs';
+
+  @override
+  String get automationRunSetup => 'Job settings';
+
+  @override
+  String get automationChooseRunner => 'Choose a Runner';
+
+  @override
+  String get automationPlaybook => 'Playbook';
+
+  @override
+  String get automationTargets => 'Job targets';
+
+  @override
+  String get automationVariables => 'Variables (JSON object)';
+
+  @override
+  String get automationTags => 'Task tags, comma-separated';
+
+  @override
+  String get automationSkipTags => 'Skip tags';
+
+  @override
+  String get automationTimeout => 'Timeout, seconds';
+
+  @override
+  String get automationForks => 'Parallel tasks (1–5)';
+
+  @override
+  String get automationCancelOnLock => 'Cancel when the vault locks';
+
+  @override
+  String get automationCheckMode => 'Check mode';
+
+  @override
+  String get automationApplyMode => 'Apply mode';
+
+  @override
+  String get automationCheckWarning => 'Check can also change a server: individual tasks can ignore check mode.';
+
+  @override
+  String get automationDiff => 'Include diffs in results (may contain sensitive data)';
+
+  @override
+  String get automationValidate => 'Validate project and targets';
+
+  @override
+  String get automationReview => 'Review job';
+
+  @override
+  String get automationConfirm => 'Confirm execution';
+
+  @override
+  String get automationReviewHint =>
+      'This exact snapshot will execute. Changes to files, targets or environment require a new review.';
+
+  @override
+  String get automationValidationFailed => 'Validation failed. Update the project and validate again.';
+
+  @override
+  String get automationRevision => 'Project snapshot';
+
+  @override
+  String get automationEnvironment => 'Environment';
+
+  @override
+  String get automationShowVariables => 'Show variables';
+
+  @override
+  String get automationHideVariables => 'Hide variables';
+
+  @override
+  String get automationReviewExpires => 'Review expires at';
+
+  @override
+  String get automationRunFields =>
+      'Choose a Runner, playbook and at least one SSH host. Variables must be a JSON object.';
+
+  @override
+  String get automationNoJobs => 'No jobs yet';
+
+  @override
+  String get automationCancelJob => 'Cancel job';
+
+  @override
+  String get automationUnknownWarning =>
+      'The outcome is unknown: commands may still be running and changes may be partial. Overlapping jobs remain blocked until reconciliation.';
+
+  @override
+  String get automationAcknowledgeUnknown => 'Acknowledge possible changes';
+
+  @override
+  String get automationAcknowledgeConfirm =>
+      'I have checked the targets and understand the risk of partial changes. Allow new jobs.';
+
+  @override
+  String get automationHistoryHint =>
+      'The queue is stored in your encrypted profile. Unfinished jobs are not replayed after restart.';
+
+  @override
+  String get automationStateQueued => 'Queued';
+
+  @override
+  String get automationStateDispatching => 'Dispatching';
+
+  @override
+  String get automationStateRunning => 'Running';
+
+  @override
+  String get automationStateSucceeded => 'Succeeded';
+
+  @override
+  String get automationStateFailed => 'Failed';
+
+  @override
+  String get automationStateCancelled => 'Cancelled';
+
+  @override
+  String get automationStateInterrupted => 'Interrupted';
+
+  @override
+  String get automationStateUnknown => 'Unknown outcome';
+
+  @override
+  String get automationStateAcknowledged => 'Acknowledged';
+
+  @override
+  String get automationEvents => 'Tasks and events';
+
+  @override
+  String get automationShowEvents => 'Open events';
+
+  @override
+  String get automationMoreEvents => 'Next events';
+
+  @override
+  String get automationPreviousEvents => 'Previous events';
+
+  @override
+  String get automationFollowEvents => 'Follow execution';
+
+  @override
+  String get automationOutputLimited => 'Output is truncated by the configured limit.';
+
+  @override
+  String get automationNoEvents => 'No events yet';
+
+  @override
+  String get automationRoute => 'SSH route';
+
+  @override
+  String get automationOrigin => 'Connect to targets from';
+
+  @override
+  String get automationLocalOrigin => 'This computer';
+
+  @override
+  String get automationRemoteOrigin => 'Remote Runner';
+
+  @override
+  String get automationReviewDetails => 'Snapshot technical details';
+
+  @override
+  String get automationKeepRunningOnLock => 'On lock, an already running job continues until its access expires.';
+
+  @override
+  String get automationAiSelectedContext => 'File context: remove unwanted parts before sending';
+
+  @override
+  String get automationAiTitle => 'Create or edit playbook with AI';
+
+  @override
+  String get automationAiExactRequest => 'Exact model request';
+
+  @override
+  String get automationAiChanges => 'Changes';
+
+  @override
+  String get automationAiBefore => 'Before';
+
+  @override
+  String get automationAiAfter => 'After';
+
+  @override
+  String get automationAiAcceptChanges => 'Accept changes';
+
+  @override
+  String get automationAiRejectChanges => 'Reject';
+
+  @override
+  String get automationAiDraftStale =>
+      'The file or project changed while AI was preparing its answer. The draft was not applied. Open the intended file and compare again.';
+
+  @override
+  String get automationAiTask => 'Describe the task and result checks';
+
+  @override
+  String get automationAiIncludeFile => 'Include the open file text';
+
+  @override
+  String get automationAiContextHint =>
+      'Only your task and the selected file are sent. Review the text: filtering cannot detect every secret.';
+
+  @override
+  String get automationAiPreview => 'Preview context';
+
+  @override
+  String get automationAiPreviewHint =>
+      'This is the complete filtered request. Return to the task to change it; only the button below sends it.';
+
+  @override
+  String get automationAiGenerate => 'Send to selected AI';
+
+  @override
+  String get automationAiDraftHint =>
+      'This is a proposal. Review changes, required variables and dependencies. Saving, checks and execution are separate steps.';
+
+  @override
+  String get automationAiUseDraft => 'Insert into editor';
+
+  @override
+  String get automationAiOnDevice => 'On this device';
+
+  @override
+  String get automationAiNetworkProvider => 'Network provider';
+
+  @override
+  String get automationGitLocalChanges => 'There are local changes relative to the imported commit.';
+
+  @override
+  String get automationGitReady => 'Import complete';
+
+  @override
+  String get automationGitImport => 'Import from Git';
+
+  @override
+  String get automationGitName => 'Project name';
+
+  @override
+  String get automationGitHint =>
+      'The selected Runner downloads a public HTTPS repository. Files are saved in this profile; importing executes nothing. Submodules and Git credentials are not connected yet.';
+
+  @override
+  String get automationGitUrl => 'HTTPS repository URL';
+
+  @override
+  String get automationGitReference => 'Branch or tag';
+
+  @override
+  String get automationGitCustomCa => 'Use a custom certificate authority';
+
+  @override
+  String get automationGitCa => 'Public CA certificate in PEM (no private key)';
+
+  @override
+  String get automationGitFields => 'Enter a name, HTTPS URL, branch or tag, and a Runner.';
+
+  @override
+  String get automationGitReceiving => 'Receiving and verifying files…';
+
+  @override
+  String get automationGitFailed =>
+      'Import did not complete. Check the URL, branch or tag, certificate, and Git on the Runner. A partial project cannot be executed.';
+
+  @override
+  String get automationRetryJob => 'Prepare a new run';
+
+  @override
+  String get automationRetryOrigin => 'Previous job';
+
+  @override
+  String get automationRetryUnavailable => 'The project or playbook is no longer available for a new run.';
+
+  @override
+  String get automationRetryWarning =>
+      'This is a new job. Review the previous result: changes may already have been applied. Select Runner, targets and variables again; validation and confirmation are required.';
+
+  @override
+  String get automationGroups => 'Ansible groups';
+
+  @override
+  String get automationGroupName => 'Group name';
+
+  @override
+  String get automationGroupsHint =>
+      'Groups belong to this project and do not change host folders. A host can belong to multiple groups. A job can access only targets explicitly selected for that run.';
+
+  @override
+  String get automationGroupsInvalid =>
+      'Use a unique group name up to 96 characters: ASCII letters, digits, hyphen or underscore; start with a letter or underscore. Names all, ungrouped and _meta are reserved. Maximum 64 groups.';
+
+  @override
+  String get automationGroupMissing => 'Host is no longer available; uncheck it to remove its group membership.';
+
+  @override
+  String get automationInventorySavedSearch => 'Search saved SSH hosts';
+
+  @override
+  String get automationInventorySources => 'Inventory sources';
+
+  @override
+  String get automationEditRunnerHint =>
+      'Saving disconnects an idle Runner. Active jobs must finish first; reconnect and check the edited environment afterwards.';
+
+  @override
+  String get automationAiTruncated =>
+      'The model stopped before completing the playbook. Try a smaller change or less file context; no files were saved.';
+
+  @override
+  String get automationAiInvalidResponse =>
+      'The model did not return a complete playbook proposal in the required format. Try a smaller task or another model. No files were saved or executed.';
+
+  @override
+  String get automationAiModelMissing => 'The selected model was not found. Check the provider model setting.';
+
+  @override
+  String get automationAiProviderRejected =>
+      'The AI provider rejected generation. Check its model and context settings; no files were saved.';
+
+  @override
+  String automationAiHttpError(String status) {
+    return 'The AI provider returned HTTP $status. Check its model, context size and request settings. No files were saved.';
+  }
+
+  @override
+  String get automationInventorySourcesHint =>
+      'Choose saved ConsoleCrypt hosts and folders, project inventory files, or both. Preview does not run tasks on target servers. Each run receives only the targets you explicitly select.';
+
+  @override
+  String get automationRunnerSshRouteHint =>
+      'Select a saved SSH host. Its jump hosts and host key checks also apply to the Runner. Target connections start from the selected Runner; a tunnel on this computer\'s localhost may not be reachable there.';
+
+  @override
+  String get automationInventoryHint =>
+      'Choose project files and a Runner to read them. Preview runs nothing on target servers. Bind each required entry to a saved SSH host; a job receives only targets explicitly selected for that run.';
+
+  @override
+  String get automationInventoryFiles => 'INI/YAML files or directories (1 to 8 sources, up to 128 files)';
+
+  @override
+  String get automationInventoryDraftHint =>
+      'Choosing different sources resets draft bindings. Saved configuration changes only after Save.';
+
+  @override
+  String get automationInventoryPreview => 'Preview';
+
+  @override
+  String get automationInventoryChanged =>
+      'The project or configuration changed. Close this dialog and reopen inventory sources.';
+
+  @override
+  String get automationInventoryFailed => 'Could not prepare inventory. Check the source and Runner environment.';
+
+  @override
+  String get automationInventoryMissingFile => 'File is no longer in this project; remove it from the selection.';
+
+  @override
+  String get automationInventoryMode => 'Inventory targets';
+
+  @override
+  String get automationInventoryExternalOnly => 'Only explicitly bound source entries';
+
+  @override
+  String get automationInventoryMixed => 'Source and selected saved hosts';
+
+  @override
+  String get automationInventoryBound => 'Explicit bindings';
+
+  @override
+  String get automationInventoryBind => 'Bind to SSH host';
+
+  @override
+  String get automationInventoryUnbound => 'Not bound to a host';
+
+  @override
+  String get automationInventoryMissingHost => 'Saved host is unavailable — choose another or remove the binding';
+
+  @override
+  String get automationInventoryRebind => 'Source changed — bind this entry again';
+
+  @override
+  String get automationInventoryUseSaved =>
+      'Use the saved host address, port and user when they differ from the source';
+
+  @override
+  String get automationInventorySearch => 'Search alias, address or user';
+
+  @override
+  String get automationInventoryBack => 'Back to source selection';
+
+  @override
+  String get automationInventoryClear => 'Disconnect external inventory';
+
+  @override
+  String get automationInventoryClearHint =>
+      'Remove only this project’s bindings and source selection? Project files and saved hosts remain. Future runs will use selected ConsoleCrypt hosts.';
+
+  @override
+  String get automationInventoryPrevious => 'Previous';
+
+  @override
+  String get automationInventoryNext => 'Next';
+
+  @override
+  String get automationInventoryConflicts => 'Bindings need attention';
+
+  @override
+  String get automationInventoryConflictsHint =>
+      'Up to 50 issues are shown. Fix them and press Save again to check the remaining bindings. Changes have not been saved yet.';
+
+  @override
+  String get automationInventorySourceMissing => 'Entry is no longer in the selected sources';
+
+  @override
+  String get automationInventoryRouteInvalid => 'Saved host has no valid SSH route or user';
+
+  @override
+  String get automationInventoryEndpointMismatch =>
+      'Source parameters differ from the saved host. Review them and explicitly choose to use the saved route.';
+
+  @override
+  String get automationInventorySavedRoute => 'Saved route';
+
+  @override
+  String get automationInventoryShowEntry => 'Show entry';
+
+  @override
+  String get automationInventoryResolved => 'Captured inventory files';
+
+  @override
+  String get automationGitDiff => 'Project changes';
+
+  @override
+  String get automationGitDiffHint =>
+      'Compare the reviewed snapshot with the original Git tree. Nothing is reset or pushed to Git.';
+
+  @override
+  String get automationGitDiffTruncated =>
+      'Showing the first 32,768 characters. Open the project editor for the full file.';
+
+  @override
+  String get automationGitDiffOriginal => 'Original Git tree';
+
+  @override
+  String get automationGitDiffCurrent => 'Current snapshot';
+
+  @override
+  String get automationGitDiffBinary =>
+      'Binary, directory or file larger than 256 KiB changed. Contents are not previewed.';
+
+  @override
+  String get automationGitDiffReviewed => 'Changes reviewed';
+
+  @override
+  String get automationGitDiffAdded => 'Added';
+
+  @override
+  String get automationGitDiffDeleted => 'Deleted';
+
+  @override
+  String get automationGitDiffModified => 'Modified (contents, type or permissions)';
+
+  @override
+  String get automationOpenEditor => 'Open in external editor';
+
+  @override
+  String get automationReloadFile => 'Reload file from disk';
+
+  @override
+  String get automationEditorSaveHint =>
+      'Save your changes before opening an external editor. After saving there, use Reload file from disk. Running a job requires a separate review and confirmation.';
+
+  @override
+  String get automationRunnerUpdateForInputs =>
+      'Update the selected Runner and reconnect: this version does not support the required checks for this project.';
+
+  @override
+  String get automationResultHosts => 'Results for approved hosts';
+
+  @override
+  String get automationResultOk => 'OK';
+
+  @override
+  String get automationResultChanged => 'Changed';
+
+  @override
+  String get automationResultFailed => 'Failed';
+
+  @override
+  String get automationResultUnreachable => 'Unreachable';
+
+  @override
+  String get automationResultSkipped => 'Skipped';
+
+  @override
+  String get automationResultExitCode => 'Exit code';
+
+  @override
+  String get automationResultMissing => 'no data';
+
+  @override
+  String get automationResultMissingHint =>
+      'Only approved targets are shown. A missing report does not mean a successful zero.';
+
+  @override
+  String get automationResultNoHosts =>
+      'This legacy record has no approved alias list. Technical details are available below.';
+
+  @override
+  String get automationResultPartial =>
+      'Some changes may have completed; cancellation or disconnection does not roll them back.';
+
+  @override
+  String get automationResultEnvironment => 'Execution environment versions';
+
+  @override
+  String get automationResultEnvironmentHint => 'Recorded when the job was accepted.';
+
+  @override
+  String get automationResultEnvironmentMissing =>
+      'No environment receipt bound to this manifest is available. Current versions do not replace historical evidence.';
+
+  @override
+  String get automationResultDetails => 'Result technical details';
+
+  @override
+  String get automationAiRequirementsTitle => 'Review project requirements';
+
+  @override
+  String get automationAiRequirementsHint =>
+      'Requirements are saved first, then the playbook. Regeneration retains existing constraints. Dependencies must be separately installed and pinned in the lock file; nothing is downloaded or executed now.';
+
+  @override
+  String get automationAiRequirementsPartial =>
+      'Requirements have been saved; the playbook has not. Your draft remains in the editor. Resolve the conflict and save again; other edits are never rolled back.';
+
+  @override
+  String get automationTransitionTitle => 'Jobs are still active';
+
+  @override
+  String get automationTransitionJobs => 'Jobs';
+
+  @override
+  String get automationTransitionHint =>
+      'New jobs are temporarily paused. Wait for completion, or cancel the jobs and finish this action. Changes already made are not automatically rolled back.';
+
+  @override
+  String get automationTransitionWaiting =>
+      'Waiting for workers to finish and clean up. You can stay in the app; cancellation already requested is not reversed.';
+
+  @override
+  String get automationTransitionStay => 'Stay in app';
+
+  @override
+  String get automationTransitionWait => 'Wait for completion';
+
+  @override
+  String get automationTransitionCancelJobs => 'Cancel jobs and finish';
+
+  @override
+  String get automationTransitionUnknown => 'Jobs with unknown outcomes';
+
+  @override
+  String get automationTransitionHistoryUnavailable =>
+      'The job registry is unavailable or uses a newer format. The absence of unfinished jobs cannot be confirmed.';
+
+  @override
+  String get automationTransitionAcceptUnknown =>
+      'I understand: commands may still be running and changes may be partial. Closing will not mark these jobs successful or cancelled; their status needs separate review.';
+
+  @override
+  String get automationSetupHint =>
+      'Choose a location and find an environment. Connect an existing Runner or install a separate one.';
+
+  @override
+  String get automationDetectRunner => 'Find environment';
+
+  @override
+  String get automationInstallRunner => 'Install Runner';
+
+  @override
+  String get automationInstallRunnerPlan =>
+      'Create a new environment in the selected Linux user’s directory. Download pinned Ansible, Runner, lint and dependencies from PyPI with SHA-256 verification, then check versions and isolation. Internet is required. System Python, OS packages, WSL distributions and existing Runners are unchanged. Setup may take up to 14 minutes. No playbook runs.';
+
+  @override
+  String get automationSetupMissing => 'Prerequisites needed';
+
+  @override
+  String get automationSetupPython => 'Linux x64 and Python 3.12 or 3.14';
+
+  @override
+  String get automationSetupNotFound =>
+      'No ConsoleCrypt environments found. Install a new one or configure an existing environment manually.';
+
+  @override
+  String get automationSetupManual => 'Advanced: configure manually';
+
+  @override
+  String get automationSetupBusy => 'Checking or installing the environment. The result will appear here.';
+
+  @override
+  String get automationSetupFailed =>
+      'Runner setup failed. Check PyPI access and system prerequisites, then scan again. Existing environments were not replaced.';
+
+  @override
+  String get automationSetupSystemHelp =>
+      'Use the button below to run this command in the selected environment’s terminal and enter your sudo password there. Scan again after installation. You can also copy the command.';
+
+  @override
+  String get automationSetupRunTerminal => 'Run in environment';
+
+  @override
+  String get automationInventorySavedHosts => 'ConsoleCrypt hosts';
+
+  @override
+  String get automationInventoryFilesOnly => 'Project files';
+
+  @override
+  String get automationInventorySavedHint =>
+      'Choose hosts or add them from a folder. The current host list is saved; future folder members are not added automatically. Effective routes are checked before execution.';
+
+  @override
+  String get automationInventoryFolder => 'Add hosts from folder';
+
+  @override
+  String get automationNewPlaybook => 'New playbook';
+
+  @override
+  String get automationCreateRole => 'Create role';
+
+  @override
+  String get automationOtherFile => 'Other file';
+
+  @override
+  String get automationPlaybookPathHint => 'Use a project-relative playbook path ending in .yml or .yaml.';
+
+  @override
+  String get automationRoleNameHint =>
+      'Role name: lowercase letters, digits and underscores; start with a letter, up to 64 characters.';
+
+  @override
+  String get automationValidationTimedOut => 'The check exceeded its time limit.';
+
+  @override
+  String get automationValidationNoOutput => 'The check returned no diagnostic output.';
+
+  @override
+  String get monitoringSources => 'Sources';
+
+  @override
+  String get monitoringAddSource => 'Add source';
+
+  @override
+  String get monitoringEditSource => 'Edit source';
+
+  @override
+  String get monitoringDeleteSource => 'Delete connection';
+
+  @override
+  String get monitoringDeleteHint => 'Delete this connection? Query history remains only for this session.';
+
+  @override
+  String get monitoringKeepSource => 'Keep connection';
+
+  @override
+  String get monitoringConfirmDelete => 'Confirm delete';
+
+  @override
+  String get monitoringReadOnly => 'This source catalog is read-only.';
+
+  @override
+  String get monitoringName => 'Name';
+
+  @override
+  String get monitoringEndpoint => 'HTTP(S) endpoint';
+
+  @override
+  String get monitoringEndpointHelp => 'Endpoint credentials, query strings and fragments are rejected.';
+
+  @override
+  String get monitoringCustomCa => 'Custom TLS CA certificate';
+
+  @override
+  String get monitoringCaPem => 'PEM certificate (optional)';
+
+  @override
+  String get monitoringSaveSource => 'Save connection';
+
+  @override
+  String get monitoringProbe => 'Probe capabilities';
+
+  @override
+  String get monitoringNotChecked => 'Compatibility not checked';
+
+  @override
+  String get monitoringSupported => 'Both API endpoints supported';
+
+  @override
+  String get monitoringUnsupported => 'Compatibility not confirmed';
+
+  @override
+  String get monitoringExplore => 'Explore metrics';
+
+  @override
+  String get monitoringExpression => 'PromQL expression';
+
+  @override
+  String get monitoringRange => 'History (query_range)';
+
+  @override
+  String get monitoringLastMinutes => 'Last minutes';
+
+  @override
+  String get monitoringStep => 'Step, seconds';
+
+  @override
+  String get monitoringQueryLimits =>
+      'Limits: 100 series · 1,000 points/series · 100,000 total points · 15s per HTTP request. Excess range density is bounded by the native adapter; effective step is shown with results.';
+
+  @override
+  String get monitoringQueryRange => 'Query history';
+
+  @override
+  String get monitoringQueryCurrent => 'Query current values';
+
+  @override
+  String get monitoringCancel => 'Cancel request';
+
+  @override
+  String get monitoringMetadata => 'Metrics and label values';
+
+  @override
+  String get monitoringLabel => 'Label (__name__ lists metric names)';
+
+  @override
+  String get monitoringLoadValues => 'Load values';
+
+  @override
+  String get monitoringMetadataLimits =>
+      'At most 1,000 values; bounded cache: 16 requests, 60s TTL. No unbounded discovery.';
+
+  @override
+  String get monitoringPartialMetadata => 'Partial metadata response';
+
+  @override
+  String get monitoringFilterValues => 'Filter loaded values';
+
+  @override
+  String get monitoringHistory => 'Query history (this session)';
+
+  @override
+  String get monitoringHistoryHint => 'Selecting a previous query fills the editor. It does not send a request.';
+
+  @override
+  String get monitoringTitle => 'Monitoring';
+
+  @override
+  String get monitoringIntro =>
+      'Connect a metrics source, check its capabilities and explore current or historical values.';
+
+  @override
+  String get monitoringOperationFailed => 'Unable to complete the monitoring operation.';
+
+  @override
+  String get monitoringPartialResult => 'Partial result — data may be incomplete.';
+
+  @override
+  String get monitoringNoData => 'No data returned. Empty series are not zero.';
+
+  @override
+  String get monitoringGaps => 'Gaps and non-finite values break the line; no missing value is replaced with zero.';
+
+  @override
+  String get monitoringCredential => 'Saved credential';
+
+  @override
+  String get monitoringChooseCredential => 'Choose a saved credential';
+
+  @override
+  String get monitoringMissingCredential => 'Saved credential is unavailable';
+
+  @override
+  String get monitoringCredentialHelp => 'Choose a saved credential. Passwords and tokens are not entered here.';
+
+  @override
+  String get monitoringMetricsPrivacy =>
+      'Metrics use the source connection security; they are not end-to-end encrypted by ConsoleCrypt.';
+
+  @override
+  String get monitoringSelectorHelp =>
+      'PromQL selectors filter results; they do not grant or restrict access to the source.';
+
+  @override
+  String get monitoringDirect => 'Direct connection';
+
+  @override
+  String get monitoringSavedTunnel => 'Saved tunnel reference';
+
+  @override
+  String get monitoringTunnelUnavailable =>
+      'This saved tunnel route is retained. Monitoring tunnel transport is not available yet; choose a direct connection to query now.';
+
+  @override
+  String get monitoringNoAuth => 'No authentication';
+
+  @override
+  String get monitoringBearerAuth => 'Bearer credential';
+
+  @override
+  String get monitoringBasicAuth => 'Basic credential';
+
+  @override
+  String get monitoringUnavailable => 'Monitoring is unavailable in this backend.';
+
+  @override
+  String get monitoringHttpAuth => 'Bearer authentication requires HTTPS. Change the endpoint before saving.';
+
+  @override
+  String get monitoringSupportedEndpoint => 'Supported';
+
+  @override
+  String get monitoringUnsupportedEndpoint => 'Not supported';
+
+  @override
+  String get monitoringCurrent => 'current';
+
+  @override
+  String get monitoringHistorical => 'history';
+
+  @override
+  String get monitoringCached => 'cached';
+
+  @override
+  String get monitoringSuccess => 'Success';
+
+  @override
+  String get monitoringError => 'Error';
+
+  @override
+  String monitoringWarning(String value) {
+    return 'Warning: $value';
+  }
+
+  @override
+  String monitoringInfo(String value) {
+    return 'Info: $value';
+  }
+
+  @override
+  String monitoringEndpointStatus(String endpoint, String status, String http) {
+    return '$endpoint · $status · HTTP $http';
+  }
+
+  @override
+  String monitoringValueCount(String count, String cached) {
+    return '$count values $cached';
+  }
+
+  @override
+  String monitoringHistoryEntry(String time, String source, String mode, String expression) {
+    return '$time · $source · $mode · $expression';
+  }
+
+  @override
+  String monitoringResultStatus(String status, String http) {
+    return '$status · HTTP $http';
+  }
+
+  @override
+  String monitoringEffectiveStep(String value) {
+    return 'Effective step: ${value}s';
+  }
+
+  @override
+  String monitoringSeries(String number) {
+    return 'Series $number';
+  }
+
+  @override
+  String monitoringSamples(String count) {
+    return '$count samples';
+  }
+
+  @override
+  String monitoringFailureDetails(String code, String http, String message) {
+    return '$code · HTTP $http: $message';
+  }
+
+  @override
+  String get monitoringErrorConfig => 'Check the endpoint, TLS CA and saved references.';
+
+  @override
+  String get monitoringErrorQuery => 'Check the PromQL expression and time range.';
+
+  @override
+  String get monitoringErrorAuth => 'The saved credential is unavailable or access is not authorized.';
+
+  @override
+  String get monitoringErrorTransport => 'Connection or TLS verification failed.';
+
+  @override
+  String get monitoringErrorTimeout => 'The source request timed out.';
+
+  @override
+  String get monitoringErrorLimit => 'The request exceeded a monitoring limit.';
+
+  @override
+  String get monitoringErrorSourceChanged => 'The source changed. Reload the saved connection before retrying.';
+
+  @override
+  String get monitoringErrorCancelled => 'Request cancelled.';
+
+  @override
+  String get monitoringErrorResponse => 'The source returned an unsupported or invalid response.';
+
+  @override
+  String get monitoringErrorServer => 'The source returned an error.';
+
+  @override
+  String get automationPrerequisiteRescan =>
+      'The environment or remote account changed. Scan the Runner again before opening the prerequisites terminal.';
+
+  @override
+  String get automationPrerequisiteRouteUnavailable =>
+      'A prerequisites terminal is unavailable for this route. Open a regular terminal for the host, install the required components there, then scan the Runner again.';
+
+  @override
+  String get automationPrerequisiteCommandRejected =>
+      'The prerequisites command could not be verified. No command was executed. Scan the Runner again to get the current requirements.';
+
+  @override
+  String get automationUpdateRunner => 'Update Runner';
+
+  @override
+  String get automationRunnerNeedsUpdate => 'This Runner needs an update for the current target checks.';
+
+  @override
+  String get automationRunnerUpdatePlanHint =>
+      'The update creates a compatible Runner in a new, separate directory. Existing environments are preserved. Save the new paths to the Runner profile after installation.';
+
+  @override
+  String get automationExecutionConsole => 'Execution';
+
+  @override
+  String get automationExecutionReadOnly => 'Read-only task log';
+
+  @override
+  String get automationExecutionExpand => 'Expand execution console';
+
+  @override
+  String get automationExecutionCollapse => 'Collapse execution console';
+
+  @override
+  String get automationExecutionResize => 'Resize execution console';
+
+  @override
+  String get automationExecutionTechnical => 'Technical event details';
+
+  @override
+  String get automationReviewPlaybookTitle => 'Playbook and mode';
+
+  @override
+  String get automationReviewRunnerTitle => 'Runner and origin';
+
+  @override
+  String get automationReviewLimitsTitle => 'Run policy';
+
+  @override
+  String get automationReviewApplyHint => 'Apply executes tasks and can change the selected servers.';
+
+  @override
+  String automationReviewTargetCount(String count) {
+    return 'Selected: $count';
+  }
+
+  @override
+  String get automationEventDiagnostics => 'Event / module diagnostics';
+
+  @override
+  String get automationEventCensored => 'The task hid this output (no_log).';
+
+  @override
+  String get automationReviewParallelism => 'Parallelism';
+
+  @override
+  String get automationConfigureRunner => 'Configure / update Runner';
+
+  @override
+  String get automationRunnerRevalidate =>
+      'Validate again to reconnect to the selected Runner and prepare a new review.';
+
+  @override
+  String get automationExecutionOutput => 'Output';
+
+  @override
+  String get automationExecutionTechnicalInformation => 'Technical information';
+
+  @override
+  String get automationExecutionFollowLog => 'Follow task log';
+
+  @override
+  String get automationOpenOutput => 'Open output';
+
+  @override
+  String get automationJobDetails => 'Job details';
+
+  @override
+  String get automationConfigTitle => 'Ansible settings';
+
+  @override
+  String get automationConfigPolicy =>
+      'Hosts and groups, parallelism and trusted SSH keys are managed by ConsoleCrypt. host_key_checking=False does not disable Native host verification.';
+
+  @override
+  String get automationConfigPrecedence =>
+      'These are project defaults. Playbook keywords and variables can override them.';
+
+  @override
+  String get automationConfigComplex => 'Ambiguous or complex INI: use the advanced editor. The text has not changed.';
+
+  @override
+  String get automationConfigGathering => 'Fact gathering';
+
+  @override
+  String get automationConfigGatherHelp =>
+      'Implicit gathers for each play; explicit requires the play to request facts; smart reuses facts within a run.';
+
+  @override
+  String get automationConfigImplicit => 'Implicit';
+
+  @override
+  String get automationConfigExplicit => 'Explicit';
+
+  @override
+  String get automationConfigSmart => 'Smart';
+
+  @override
+  String get automationConfigFatal => 'Stop all hosts on failure';
+
+  @override
+  String get automationConfigFatalHelp => 'Default any_errors_fatal policy; playbook error handling still applies.';
+
+  @override
+  String get automationConfigTimeout => 'Task action timeout, seconds';
+
+  @override
+  String get automationConfigTimeoutHelp =>
+      '0 disables the Ansible action timeout. It excludes templating and the complete loop; the ConsoleCrypt job deadline still applies.';
+
+  @override
+  String get automationConfigInvalidTimeout => 'Enter a whole number from 0.';
+
+  @override
+  String get automationConfigInherited => 'Not configured in this file';
+
+  @override
+  String get automationConfigCustom => 'Custom value: choose a replacement or advanced editor';
+
+  @override
+  String get automationConfigPreserve =>
+      'Only the settings you change will be updated. Comments and other settings are preserved.';
+
+  @override
+  String get automationConfigYes => 'Yes';
+
+  @override
+  String get automationConfigNo => 'No';
+
+  @override
+  String get automationConfigReset => 'Reset form changes';
+
+  @override
+  String get automationConfigAdvanced => 'Advanced editor';
+
+  @override
+  String get automationConfigCancel => 'Cancel';
+
+  @override
+  String get automationConfigApply => 'Apply changes';
+
+  @override
+  String get automationPasswordsHidden => 'Passwords hidden. Reveal them to edit.';
+
+  @override
+  String get automationPasswordsVisible => 'Passwords are visible.';
+
+  @override
+  String get monitoringErrorCatalogVersion =>
+      'This source catalog version is not supported. Update ConsoleCrypt before editing.';
+
+  @override
+  String automationEditorExpandLines(int count) {
+    return 'Expand task or block ($count lines)';
+  }
+
+  @override
+  String automationEditorCollapseLines(int count) {
+    return 'Collapse task or block ($count lines)';
+  }
+
+  @override
+  String get automationEditorLimit => 'The editor supports files up to 1 MiB. This edit was not applied.';
+
+  @override
+  String get automationAiRequirementsInvalid =>
+      'Cannot merge project requirements. Check the format and dependency pins in .consolecrypt-requirements.json and use this exact lowercase filename. Your draft remains in the editor.';
+
+  @override
+  String get monitoringBindings => 'Host bindings';
+
+  @override
+  String get monitoringBindingHelp =>
+      'Choose a saved host and enter exact label values manually. Labels filter metrics; they do not grant access or prove exporter ownership.';
+
+  @override
+  String get monitoringBindingAdd => 'Add binding';
+
+  @override
+  String get monitoringBindingEdit => 'Edit binding';
+
+  @override
+  String get monitoringBindingName => 'Binding name';
+
+  @override
+  String get monitoringBindingHost => 'Saved host';
+
+  @override
+  String get monitoringBindingChooseHost => 'Choose host';
+
+  @override
+  String get monitoringBindingSelector => 'Exact label selector';
+
+  @override
+  String get monitoringBindingLabel => 'Label';
+
+  @override
+  String get monitoringBindingValue => 'Exact value';
+
+  @override
+  String get monitoringBindingAddLabel => 'Add label';
+
+  @override
+  String get monitoringBindingRemoveLabel => 'Remove label';
+
+  @override
+  String get monitoringBindingSave => 'Save binding';
+
+  @override
+  String get monitoringBindingDelete => 'Delete binding';
+
+  @override
+  String get monitoringBindingDeleteHint => 'Delete this named binding? The saved host and source remain unchanged.';
+
+  @override
+  String get monitoringBindingCurrent => 'References current';
+
+  @override
+  String get monitoringBindingCurrentHelp =>
+      'Current references describe saved metadata only. Metric availability has not been checked.';
+
+  @override
+  String get monitoringBindingStale => 'Source changed — review binding';
+
+  @override
+  String get monitoringBindingMissingSource => 'Source unavailable';
+
+  @override
+  String get monitoringBindingMissingHost => 'Host unavailable';
+
+  @override
+  String get monitoringBindingEmpty =>
+      'No bindings for this source. Create one explicitly; hosts are never assigned automatically.';
+
+  @override
+  String get monitoringBindingRevision => 'Source revision';
+
+  @override
+  String get monitoringBindingPinnedRevision => 'Reviewed source revision';
+
+  @override
+  String get monitoringBindingReviewHint =>
+      'Saving explicitly reviews the displayed source revision and exact selector. It does not query metrics or verify data availability.';
+
+  @override
+  String get monitoringBindingSourceInUse =>
+      'This source has host bindings. Explicitly delete those bindings before deleting the source.';
+
+  @override
+  String get monitoringBindingInvalid =>
+      'Enter a name, choose a saved host, and specify 1–32 unique exact labels. Metric name selectors are not supported.';
+
+  @override
+  String get monitoringBindingChanged => 'The binding or source changed. Reload the catalog and review it again.';
+
+  @override
+  String get monitoringBindingInspect => 'Inspect metrics';
+
+  @override
+  String get monitoringBindingIdentity => 'Check identity';
+
+  @override
+  String get monitoringBindingLoadPanel => 'Load panel';
+
+  @override
+  String get monitoringBindingPanel => 'Metric panel';
+
+  @override
+  String get monitoringBindingEnd => 'Interval end (ISO 8601 with time zone)';
+
+  @override
+  String get monitoringBindingWindowHelp =>
+      'Identity is checked at the selected interval end. Each panel request repeats this check and probes required metrics. A match does not prove exporter ownership or identity throughout the interval.';
+
+  @override
+  String get monitoringBindingResolved => 'One candidate matched';
+
+  @override
+  String get monitoringBindingMissing => 'No matching candidate at the selected time';
+
+  @override
+  String get monitoringBindingAmbiguous => 'Multiple candidates matched — refine the binding';
+
+  @override
+  String get monitoringBindingUnavailable => 'Identity or panel check unavailable';
+
+  @override
+  String get monitoringBindingPanelReady => 'Panel data received';
+
+  @override
+  String get monitoringBindingPanelPartial => 'Partial panel result';
+
+  @override
+  String get monitoringBindingPanelNoData => 'No samples for the selected interval';
+
+  @override
+  String get monitoringBindingDiscoveryFailed => 'Identity query failed. Review the error and source connection.';
+
+  @override
+  String get monitoringBindingDiscoveryInvalid =>
+      'Identity data is incomplete or unsuitable for an exact match. No metric panel was queried.';
+
+  @override
+  String get monitoringBindingProbeFailed => 'Required metric availability could not be confirmed.';
+
+  @override
+  String get monitoringBindingMissingMetrics => 'Required metrics are absent';
+
+  @override
+  String get monitoringBindingSelectorConflict => 'The exact selector conflicts with this panel template.';
+
+  @override
+  String get monitoringBindingQueryBudget => 'This panel exceeds the allowed query budget.';
+
+  @override
+  String get monitoringBindingLimits =>
+      'Up to 100 series, 100 000 points and 16 MiB per panel; the full operation is limited to 35 seconds. Limits and missing or non-finite samples remain explicit.';
+
+  @override
+  String get monitoringBindingCandidates => 'Identity observations';
+
+  @override
+  String get monitoringBindingOriginalIndices => 'Original candidate indices';
+
+  @override
+  String get monitoringBindingDiscoveryDetails => 'Identity query details';
+
+  @override
+  String get monitoringBindingProbeDetails => 'Metric availability check';
+
+  @override
+  String get monitoringPanelHostOverview => 'Host overview';
+
+  @override
+  String get monitoringPanelCpu => 'CPU';
+
+  @override
+  String get monitoringPanelMemory => 'Memory';
+
+  @override
+  String get monitoringPanelFilesystem => 'Filesystems';
+
+  @override
+  String get monitoringPanelDiskIo => 'Disk I/O';
+
+  @override
+  String get monitoringPanelNetwork => 'Network';
+
+  @override
+  String get monitoringPanelDocker => 'Docker containers';
+
+  @override
+  String get monitoringPanelPostgreSql => 'PostgreSQL';
+
+  @override
+  String get monitoringPanelRedis => 'Redis';
+
+  @override
+  String get monitoringPanelNginx => 'Nginx';
+
+  @override
+  String get monitoringUnitPercent => 'Percent';
+
+  @override
+  String get monitoringUnitBytes => 'Bytes';
+
+  @override
+  String get monitoringUnitBytesPerSecond => 'Bytes/s';
+
+  @override
+  String get monitoringUnitCpuCores => 'CPU cores';
+
+  @override
+  String get monitoringUnitConnections => 'Connections';
+
+  @override
+  String get monitoringUnitTransactionsPerSecond => 'Transactions/s';
+
+  @override
+  String get monitoringUnitOperationsPerSecond => 'Operations/s';
+
+  @override
+  String get monitoringUnitRequestsPerSecond => 'Requests/s';
+
+  @override
+  String get monitoringMetricCpuBusy =>
+      'Busy CPU percentage averaged across logical CPUs, using the five-minute idle counter rate.';
+
+  @override
+  String get monitoringMetricMemoryUsedPercent => 'Total memory minus MemAvailable, as a percentage of total memory.';
+
+  @override
+  String get monitoringMetricMemoryAvailable => 'MemAvailable estimate in bytes.';
+
+  @override
+  String get monitoringMetricFilesystemUnavailablePercent =>
+      'Space unavailable to unprivileged users, including reserved blocks, per mount. This is not simply used space.';
+
+  @override
+  String get monitoringMetricDiskRead =>
+      'Read bytes per second per device; five-minute counter rate accounts for resets.';
+
+  @override
+  String get monitoringMetricDiskWrite =>
+      'Written bytes per second per device; five-minute counter rate accounts for resets.';
+
+  @override
+  String get monitoringMetricNetworkReceive =>
+      'Received bytes per second per interface, including loopback; reset-aware five-minute rate.';
+
+  @override
+  String get monitoringMetricNetworkTransmit =>
+      'Transmitted bytes per second per interface, including loopback; reset-aware five-minute rate.';
+
+  @override
+  String get monitoringMetricContainerCpu =>
+      'Container CPU in cores, not host percentage. Five-minute rate, nonempty image label, container identity preserved.';
+
+  @override
+  String get monitoringMetricContainerMemory =>
+      'Container working-set bytes with a nonempty image label; container identity preserved.';
+
+  @override
+  String get monitoringMetricPostgresConnections => 'Current PostgreSQL backends per database.';
+
+  @override
+  String get monitoringMetricPostgresCommits =>
+      'Committed transactions per second per database; reset-aware five-minute counter rate.';
+
+  @override
+  String get monitoringMetricRedisMemory => 'Redis used memory in bytes.';
+
+  @override
+  String get monitoringMetricRedisClients => 'Current connected Redis clients.';
+
+  @override
+  String get monitoringMetricRedisCommands => 'Redis commands per second; reset-aware five-minute counter rate.';
+
+  @override
+  String get monitoringMetricNginxConnections => 'Current active Nginx connections.';
+
+  @override
+  String get monitoringMetricNginxRequests => 'Nginx requests per second; reset-aware five-minute counter rate.';
+
+  @override
+  String get monitoringBindingRefresh => 'Reload catalog';
+
+  @override
+  String get automationCleanupTitle => 'Old managed Runner environments';
+
+  @override
+  String get automationCleanupScan => 'Scan managed environments';
+
+  @override
+  String get automationCleanupScope =>
+      'The scan inspects the ConsoleCrypt managed-environments location. Only verified managed directories can be approved for deletion. Scan and review do not delete files.';
+
+  @override
+  String get automationCleanupEmpty => 'No managed environments found in this location.';
+
+  @override
+  String get automationCleanupReview => 'Review deletion';
+
+  @override
+  String get automationCleanupConfirmTitle => 'Delete the reviewed Runner environment?';
+
+  @override
+  String get automationCleanupConfirm => 'Delete this environment';
+
+  @override
+  String get automationCleanupCurrentProfile =>
+      'Only the current profile was checked. Other profiles were not checked and may still reference these directories. Ownership across profiles is unknown.';
+
+  @override
+  String get automationCleanupStateNotice =>
+      'Deletion includes the helper, Python environment and Runner state or work data inside each exact directory shown below.';
+
+  @override
+  String get automationCleanupExpiry =>
+      'This one-use approval is valid for no more than 60 seconds. The directory and current references are checked again before deletion.';
+
+  @override
+  String get automationCleanupNodes => 'Filesystem entries';
+
+  @override
+  String get automationCleanupBytes => 'Bytes in the reviewed tree';
+
+  @override
+  String get automationCleanupUnknownCount => 'Not available';
+
+  @override
+  String get automationCleanupQuarantine => 'Quarantined directory';
+
+  @override
+  String get automationCleanupIdentity => 'Verified environment identity';
+
+  @override
+  String get automationCleanupTechnical => 'Receipt details';
+
+  @override
+  String get automationCleanupSuccess =>
+      'Reviewed environment removed. Counts describe removed filesystem entries and bytes, not free disk space.';
+
+  @override
+  String get automationCleanupInterrupted =>
+      'Interrupted deletion can leave a quarantined or partially removed directory. Scan again and review a new plan; deletion is never retried automatically.';
+
+  @override
+  String get automationCleanupUnsupported =>
+      'Cleanup is read only here: the app cannot verify a protected managed directory for this environment. Scanning is supported for verified non-root Linux, WSL or SSH environments.';
+
+  @override
+  String get automationCleanupSelected => 'Currently selected environment — choose another Runner before cleanup.';
+
+  @override
+  String get automationCleanupRegistered => 'Referenced by a saved Runner in the current profile.';
+
+  @override
+  String get automationCleanupBusy => 'Used by a connection, review or unfinished job in the current profile.';
+
+  @override
+  String get automationCleanupChanged =>
+      'The environment or current selection changed. Scan again and review a new plan.';
+
+  @override
+  String get automationCleanupExpired => 'The deletion plan expired. Scan again and review a new plan.';
+
+  @override
+  String get automationCleanupUnsafe =>
+      'The directory, receipt, ownership or filesystem boundary could not be verified. Deletion is unavailable.';
+
+  @override
+  String get automationCleanupBudget =>
+      'The cleanup scan exceeded its filesystem or time limit. Deletion is unavailable; scan again after resolving the limit.';
+
+  @override
+  String get automationCleanupCatalogUnavailable =>
+      'Current profile references could not be checked. Unlock and refresh the Runner list before scanning again.';
+
+  @override
+  String get automationCleanupNonRoot => 'Use the non-root account that owns the managed Runner directory.';
+
+  @override
+  String get automationCleanupFailed =>
+      'Cleanup could not be completed. Scan again before preparing another deletion plan.';
+
+  @override
+  String get automationCleanupCurrentInterpreter =>
+      'Used by the interpreter running this check; deletion is unavailable.';
+
+  @override
+  String get automationInventoryExportAction => 'Export inventory…';
+
+  @override
+  String get automationInventoryExportTitle => 'Export Ansible inventory';
+
+  @override
+  String get automationInventoryExportDisclosure =>
+      'Exports only the selected hosts\' addresses, ports and SSH usernames, plus explicitly selected Ansible groups. No passwords, keys, credential references or arbitrary variables are included. Only direct connections are supported.';
+
+  @override
+  String get automationInventoryExportStaticHint =>
+      'This is an ordinary static file, without authenticity or live revocation guarantees. External Ansible needs independently configured credentials and SSH host-key trust; the file grants no ConsoleCrypt access.';
+
+  @override
+  String get automationInventoryExportHosts => 'Saved hosts';
+
+  @override
+  String get automationInventoryExportHostsHint => 'Choose 1–32 hosts allowed by this project\'s inventory.';
+
+  @override
+  String get automationInventoryExportGroups => 'Ansible groups';
+
+  @override
+  String get automationInventoryExportGroupsHint =>
+      'Optional: up to 64 existing project groups. Selecting a group never adds hosts.';
+
+  @override
+  String get automationInventoryExportNoHosts => 'No allowed saved SSH hosts are available.';
+
+  @override
+  String get automationInventoryExportNoGroups => 'The project has no Ansible groups.';
+
+  @override
+  String automationInventoryExportSelected(int hosts, int groups) {
+    return 'Selected: $hosts hosts · $groups groups';
+  }
+
+  @override
+  String get automationInventoryExportExternalOnly =>
+      'Export is unavailable for external-only inventory. Configure saved hosts explicitly before exporting.';
+
+  @override
+  String get automationInventoryExportChanged =>
+      'The project or saved hosts changed. Reload the selection and export again.';
+
+  @override
+  String get automationInventoryExportSelectionInvalid =>
+      'Choose only existing saved hosts allowed by the current project inventory.';
+
+  @override
+  String get automationInventoryExportGroupsInvalid =>
+      'The selected Ansible groups are no longer valid for this export. Reload the selection.';
+
+  @override
+  String get automationInventoryExportRouteUnsupported =>
+      'A selected host uses a jump host, proxy, tunnel or another unsupported SSH option. This export supports direct connections only.';
+
+  @override
+  String get automationInventoryExportEndpointUnsupported =>
+      'A selected host\'s address or SSH username cannot be safely represented in the static inventory.';
+
+  @override
+  String get automationInventoryExportTooLarge =>
+      'The issued inventory exceeds the 256 KiB export limit. Select fewer hosts or groups.';
+
+  @override
+  String get automationInventoryExportFailed =>
+      'The inventory could not be exported. Reload the selection and try again.';
+
+  @override
+  String get automationInventoryExportSave => 'Save JSON…';
+
+  @override
+  String get automationInventoryExportSaved => 'Static inventory saved.';
+
+  @override
+  String get automationSetupBootstrapFailed =>
+      'The built-in Runner setup could not start. Update ConsoleCrypt and try detection again. Existing environments were not changed.';
+
+  @override
+  String get automationSetupCommandTooLarge =>
+      'The Runner setup command exceeds the supported size. Update ConsoleCrypt and try again.';
+
+  @override
+  String get automationCleanupBootstrapFailed =>
+      'The built-in environment scanner could not start. Update ConsoleCrypt and scan again. No environments were removed.';
+
+  @override
+  String get automationCleanupCommandTooLarge =>
+      'The environment scan command exceeds the supported size. No environments were removed.';
+
+  @override
+  String get automationProjectMenu => 'Project';
+
+  @override
+  String get monitoringTimeWindow => 'Shared time window';
+
+  @override
+  String get monitoringTimeSharedHint =>
+      'Apply a fixed UTC window shared by queries and panels. Presets use the current time when selected. Editing or applying a window does not run queries.';
+
+  @override
+  String get monitoringTimePreset => 'Time preset';
+
+  @override
+  String get monitoringTime15Minutes => '15 minutes';
+
+  @override
+  String get monitoringTime1Hour => '1 hour';
+
+  @override
+  String get monitoringTime6Hours => '6 hours';
+
+  @override
+  String get monitoringTime1Day => '1 day';
+
+  @override
+  String get monitoringTime7Days => '7 days';
+
+  @override
+  String get monitoringTimeCustom => 'Custom UTC window';
+
+  @override
+  String get monitoringTimeStart => 'Start (UTC, ISO 8601 with Z)';
+
+  @override
+  String get monitoringTimeEnd => 'End (UTC, ISO 8601 with Z)';
+
+  @override
+  String get monitoringTimeInvalidStart => 'Enter a valid UTC start timestamp, for example 2026-11-11T10:00:00Z.';
+
+  @override
+  String get monitoringTimeInvalidEnd => 'Enter a valid UTC end timestamp, for example 2026-11-11T11:00:00Z.';
+
+  @override
+  String get monitoringTimeInvalidOrder => 'The start must be earlier than the end.';
+
+  @override
+  String get monitoringTimeInvalidStep => 'Enter a finite interval greater than zero seconds.';
+
+  @override
+  String get monitoringTimeUnapplied => 'Apply the edited time window before requesting data.';
+
+  @override
+  String get monitoringTimeApply => 'Apply time window';
+
+  @override
+  String monitoringTimeAxisRange(String start, String end) {
+    return 'Requested UTC axis: $start → $end';
+  }
+
+  @override
+  String get monitoringTimeNow => 'Reset preset to now';
+
+  @override
+  String get monitoringAddCredential => 'Add credentials';
+
+  @override
+  String get monitoringBasicUsernameHelp => 'Basic authentication needs a saved password credential with a username.';
+
+  @override
+  String get monitoringHttpBasicPlaintext =>
+      'HTTP sends the username, password and metrics without encryption. Use it only on a trusted network.';
+
+  @override
+  String get automationRunnerDeleteCandidate => 'Review deletion of this environment';
+
+  @override
+  String get automationRunnerClearSelection => 'Clear environment selection';
+
+  @override
+  String get automationRunnerSelectionProtectedHint =>
+      'The selected environment is protected. Choose another environment or clear the selection before reviewing deletion. Saved Runner references remain protected.';
+
+  @override
+  String get automationRunnerCandidateUnavailable =>
+      'This exact environment could not be matched to one verified managed candidate. Scan again; no other environment will be selected for deletion.';
+
+  @override
+  String get monitoringChartUnknownUnit => 'unit not specified';
+
+  @override
+  String monitoringChartUnit(String unit) {
+    return 'Unit: $unit';
+  }
+
+  @override
+  String monitoringChartDuplicateSeries(String label, String number) {
+    return '$label · duplicate $number';
+  }
+
+  @override
+  String monitoringChartInvalidUtc(String seconds) {
+    return 'UTC unavailable ($seconds s)';
+  }
+
+  @override
+  String get monitoringChartInteractionHelp =>
+      'Hover, tap, or use Left/Right to inspect a point. Esc clears the inspection.';
+
+  @override
+  String monitoringChartValueRange(String low, String high, String unit) {
+    return 'Visible Y range: $low – $high $unit';
+  }
+
+  @override
+  String get monitoringChartAllHidden => 'All series are hidden. Show a series to draw it.';
+
+  @override
+  String get monitoringChartNoFinite =>
+      'No finite samples in this time window. Missing and nonfinite values are not drawn as zero.';
+
+  @override
+  String monitoringChartInspectionUtc(String time) {
+    return 'UTC: $time';
+  }
+
+  @override
+  String get monitoringChartNoSampleNearCursor => 'No sample near this time. Values are not interpolated across gaps.';
+
+  @override
+  String get monitoringChartMissingValue => 'No data at this time';
+
+  @override
+  String monitoringChartDuplicateSamples(String count) {
+    return 'Multiple samples at this time ($count); inspect the sample table.';
+  }
+
+  @override
+  String monitoringChartVisible(String count, String total) {
+    return 'Visible series: $count of $total';
+  }
+
+  @override
+  String get monitoringChartShowAll => 'Show all';
+
+  @override
+  String get monitoringChartSampleTable => 'Sample table';
+
+  @override
+  String get monitoringChartZoomIn => 'Zoom in';
+
+  @override
+  String get monitoringChartZoomOut => 'Zoom out';
+
+  @override
+  String get monitoringChartPanEarlier => 'Earlier';
+
+  @override
+  String get monitoringChartPanLater => 'Later';
+
+  @override
+  String get monitoringChartResetZoom => 'Reset zoom';
+
+  @override
+  String monitoringChartViewport(String start, String end) {
+    return 'Visible UTC: $start – $end';
+  }
+
+  @override
+  String get monitoringChartLoadedOnly =>
+      'Zoom shows already loaded data. It does not send a request or change the query interval.';
+
+  @override
+  String get monitoringChartZoomShortcuts =>
+      'With chart focus: Ctrl + wheel or +/− zooms, Ctrl + Left/Right pans, Ctrl + 0 resets. Ordinary wheel scrolls the page.';
+
+  @override
+  String get monitoringAlertsTitle => 'Alerts and alerting rules';
+
+  @override
+  String get monitoringAlertsRead => 'Read alerts';
+
+  @override
+  String get monitoringRulesRead => 'Read alerting rules';
+
+  @override
+  String get monitoringAlertsHint =>
+      'Read current status from the selected source. The backend evaluates rules; local evaluation and notifications are not enabled.';
+
+  @override
+  String get monitoringAlertsNotRead => 'Use a read action to load current source status.';
+
+  @override
+  String get monitoringAlertInactive => 'Inactive';
+
+  @override
+  String get monitoringAlertPending => 'Pending';
+
+  @override
+  String get monitoringAlertFiring => 'Firing';
+
+  @override
+  String get monitoringAlertUnknown => 'Unknown';
+
+  @override
+  String get monitoringRuleHealthOk => 'Evaluation OK';
+
+  @override
+  String get monitoringRuleHealthError => 'Evaluation error';
+
+  @override
+  String get monitoringAlertLabels => 'Labels';
+
+  @override
+  String get monitoringAlertAnnotations => 'Annotations';
+
+  @override
+  String get monitoringAlertValue => 'Value';
+
+  @override
+  String get monitoringAlertActiveAt => 'Active since';
+
+  @override
+  String get monitoringAlertKeepFiringSince => 'Kept firing since';
+
+  @override
+  String get monitoringRuleExpression => 'Rule expression (display only)';
+
+  @override
+  String get monitoringRuleTiming => 'Evaluation metadata (seconds / UTC)';
+
+  @override
+  String get monitoringAlertBackendFile => 'Backend file (display only)';
+
+  @override
+  String get monitoringAlertEmpty => 'No records returned.';
+
+  @override
+  String get monitoringAlertContinuation => 'Partial groups returned. Continuation is not loaded automatically.';
+
+  @override
+  String get monitoringAlertUnsupportedFields => 'Unrecognized fields (names only)';
+
+  @override
+  String get monitoringAlertRecord => 'Alert';
+
+  @override
+  String get monitoringAlertRule => 'Alerting rule';
+
+  @override
+  String get monitoringAlertGroup => 'Rule group';
+
+  @override
+  String get monitoringSavedPanels => 'Saved PromQL panels';
+
+  @override
+  String get monitoringSavedPanelIntro => 'Definitions are stored in encrypted settings; measurements are not saved.';
+
+  @override
+  String get monitoringSavedPanelNew => 'New panel';
+
+  @override
+  String get monitoringSavedPanelTitle => 'Panel title';
+
+  @override
+  String get monitoringSavedPanelSave => 'Save panel';
+
+  @override
+  String get monitoringSavedPanelEdit => 'Edit / review source';
+
+  @override
+  String get monitoringSavedPanelDelete => 'Delete definition';
+
+  @override
+  String get monitoringSavedPanelDeleteConfirm => 'Confirm deletion of this saved definition';
+
+  @override
+  String get monitoringSavedPanelCurrent => 'Source revision reviewed';
+
+  @override
+  String get monitoringSavedPanelStale => 'Source changed: review and save before reading';
+
+  @override
+  String get monitoringSavedPanelMissing => 'Source unavailable: choose a source and review';
+
+  @override
+  String get monitoringSavedPanelHint => 'User unit hint (does not convert values)';
+
+  @override
+  String get monitoringSavedPanelHintUnknown => 'Unknown';
+
+  @override
+  String get monitoringSavedPanelHintPercent => 'Percent';
+
+  @override
+  String get monitoringSavedPanelHintBytes => 'Bytes';
+
+  @override
+  String get monitoringSavedPanelHintBytesPerSecond => 'Bytes per second';
+
+  @override
+  String get monitoringSavedPanelHintSeconds => 'Seconds';
+
+  @override
+  String get monitoringSavedPanelHintCount => 'Count';
+
+  @override
+  String get monitoringSavedPanelHintPerSecond => 'Per second';
+
+  @override
+  String get monitoringSavedPanelReview =>
+      'Saving explicitly reviews this expression against the currently selected source and its revision.';
+
+  @override
+  String get monitoringSavedPanelEmpty => 'No saved panels';
+
+  @override
+  String get monitoringPinCurrent => 'Pin current values';
+
+  @override
+  String get monitoringPinReplace => 'Replace pinned query';
+
+  @override
+  String get monitoringPinStop => 'Stop and clear';
+
+  @override
+  String get monitoringPinInterval => 'Pause between requests';
+
+  @override
+  String get monitoringPin30Seconds => '30 seconds';
+
+  @override
+  String get monitoringPin1Minute => '1 minute';
+
+  @override
+  String get monitoringPin5Minutes => '5 minutes';
+
+  @override
+  String get monitoringPinInstantOnly =>
+      'Pinning supports current values only. Range and saved-panel observations are not pinned here.';
+
+  @override
+  String get monitoringPinMemoryOnly =>
+      'An explicit pin continues across sections while the app is open and this profile is unlocked. App pause/close or profile lock stops it. Nothing restarts automatically. The selected pause begins after each request finishes.';
+
+  @override
+  String get monitoringPinIdle => 'No pinned observation';
+
+  @override
+  String get monitoringPinChecking => 'Checking the saved source revision…';
+
+  @override
+  String get monitoringPinReading => 'Reading current values…';
+
+  @override
+  String get monitoringPinWaiting => 'Observation is pinned';
+
+  @override
+  String get monitoringPinBackoff => 'Refresh failed; waiting before a bounded retry';
+
+  @override
+  String get monitoringPinStopped => 'Observation stopped';
+
+  @override
+  String get monitoringPinScopeStopped => 'Observation stopped because the profile was locked or changed.';
+
+  @override
+  String get monitoringPinSourceStopped => 'The saved source changed. Review it and pin again explicitly.';
+
+  @override
+  String get monitoringPinPausedStopped => 'Observation stopped when the app was paused. Pin again to resume.';
+
+  @override
+  String get monitoringPinClosedStopped => 'Observation stopped for app closure. It will not restart automatically.';
+
+  @override
+  String get monitoringPinRetryStopped =>
+      'Observation stopped after three failed refreshes. Review the error and pin again.';
+
+  @override
+  String get monitoringPinRejected => 'Observation stopped. Review the source and query before pinning again.';
+
+  @override
+  String get monitoringPinInvalid => 'Choose a saved source and a nonempty current-value query.';
+
+  @override
+  String monitoringPinCurrentValues(String source) {
+    return 'Pinned current values · $source';
+  }
+
+  @override
+  String get monitoringPinQuerySnapshot => 'Pinned query snapshot';
+
+  @override
+  String monitoringPinLastSuccess(String time) {
+    return 'Last successful query, UTC: $time';
+  }
+
+  @override
+  String monitoringPinNext(String time) {
+    return 'Next attempt, UTC: $time';
+  }
+
+  @override
+  String monitoringPinActiveInterval(String interval) {
+    return 'Pause for this observation: $interval';
+  }
+
+  @override
+  String monitoringPinGlobal(String source) {
+    return 'Current values · $source';
+  }
+
+  @override
+  String get monitoringPinStale => 'These values are from the last successful query; the refresh failed.';
+
+  @override
+  String get monitoringPinRefresh => 'Refresh pinned values';
+
+  @override
+  String get monitoringSavedPanelSyncAdmission =>
+      'Saving panels to a synced vault requires verified server compatibility admission. Use a local profile until this is available.';
+
+  @override
+  String get monitoringPreviousRefreshing =>
+      'Refreshing. Previous accepted values remain visible until this request completes.';
+
+  @override
+  String get monitoringPreviousStale =>
+      'The refresh failed. These are previous accepted values, not current measurements.';
+
+  @override
+  String monitoringReadLastSuccess(String time) {
+    return 'Last successful read, UTC: $time';
+  }
+
+  @override
+  String get monitoringFailedAttempt => 'Latest failed attempt';
+
+  @override
+  String get monitoringFailedAttemptHelp =>
+      'This failed Native response is separate from the previous successful values. Partial data and diagnostics remain visible here.';
+
+  @override
+  String get noticesTitle => 'Notifications';
+
+  @override
+  String get noticesSessionHelp =>
+      'Job, connection and pinned monitoring events for this profile. This session list clears when the vault locks or the profile changes.';
+
+  @override
+  String get noticesRefreshJobs => 'Refresh job states';
+
+  @override
+  String get noticesClear => 'Clear list';
+
+  @override
+  String get noticesStreamUnavailable => 'Background job events are unavailable. Refresh job states manually.';
+
+  @override
+  String get noticesRefreshNeeded => 'Some events may be missing. Refresh job states.';
+
+  @override
+  String get noticesRefreshFailed => 'Could not refresh job states.';
+
+  @override
+  String get noticesInvalidResponse =>
+      'This job catalog could not be read safely. Update the app or check the profile.';
+
+  @override
+  String get noticesContextChanged => 'The profile or event scope changed. Refresh again.';
+
+  @override
+  String get noticesEmpty => 'No observed critical events in this session.';
+
+  @override
+  String get noticesNew => 'New';
+
+  @override
+  String get noticesMarkRead => 'Mark as read';
+
+  @override
+  String get noticesDismiss => 'Dismiss notification';
+
+  @override
+  String get noticesDetails => 'Technical reference';
+
+  @override
+  String get noticesJobId => 'Job ID';
+
+  @override
+  String get noticesSourceId => 'Source ID';
+
+  @override
+  String get noticesRevision => 'Revision';
+
+  @override
+  String get noticesCancelling => 'Cancelling';
+
+  @override
+  String noticesJobState(String state) {
+    return 'Job: $state';
+  }
+
+  @override
+  String noticesObservedUtc(String time) {
+    return 'Observed, UTC: $time';
+  }
+
+  @override
+  String noticesUnread(String count) {
+    return 'Unread notifications: $count';
+  }
+
+  @override
+  String get noticesOpenMonitoring => 'Open Monitoring';
+
+  @override
+  String get noticesPinReadFailure => 'Pinned observation: refresh failed';
+
+  @override
+  String get noticesPinSourceChanged => 'Pinned observation stopped: source changed';
+
+  @override
+  String get noticesPinRetryLimit => 'Pinned observation stopped after three failed attempts';
+
+  @override
+  String get noticesPinPaused => 'Pinned observation stopped when the app paused';
+
+  @override
+  String get noticesPinClosed => 'Pinned observation stopped when the app closed';
+
+  @override
+  String get noticesPinManual => 'Pinned observation stopped by you';
+
+  @override
+  String get noticesPinRecovered => 'Pinned observation recovered';
+
+  @override
+  String grafanaImportModeHint(String mode) {
+    return 'Original Grafana query mode: $mode. This is a review hint only; choose Current or Range manually after saving.';
+  }
+
+  @override
+  String get grafanaImportReplaceWarning =>
+      'Importing a selected panel will replace this editor draft. Canceling the import keeps the current title and query. Nothing is saved automatically.';
+
+  @override
+  String get grafanaImportReplace => 'Allow replacing this draft';
+
+  @override
+  String get grafanaImportKeepDraft => 'Keep current draft';
+
+  @override
+  String get grafanaImportTitle => 'Import from Grafana';
+
+  @override
+  String get grafanaImportIntro =>
+      'Review a local dashboard JSON. Choose one supported query and an existing source. Continue only fills the panel editor; Save remains a separate action.';
+
+  @override
+  String get grafanaImportJson => 'Dashboard JSON (up to 2 MiB)';
+
+  @override
+  String get grafanaImportFile => 'Choose JSON file';
+
+  @override
+  String get grafanaImportInspect => 'Inspect';
+
+  @override
+  String grafanaImportCounts(int supported, int unsupported) {
+    return 'Supported: $supported. Unsupported: $unsupported.';
+  }
+
+  @override
+  String grafanaImportVariableNames(String names) {
+    return 'Variable names retained in the original input: $names';
+  }
+
+  @override
+  String get grafanaImportUntitled => 'Untitled panel';
+
+  @override
+  String get grafanaImportChoose => 'Choose this panel';
+
+  @override
+  String get grafanaImportSelected => 'Selected panel';
+
+  @override
+  String get grafanaImportSource => 'Choose an existing source';
+
+  @override
+  String get grafanaImportSourceHint =>
+      'Select a ConsoleCrypt source explicitly. Grafana datasource names and UIDs do not identify a source here.';
+
+  @override
+  String grafanaImportDatasourceHint(String hint) {
+    return 'Grafana datasource hint: $hint';
+  }
+
+  @override
+  String grafanaImportUnitHint(String hint) {
+    return 'Unverified Grafana unit: $hint. The editor starts with unknown units.';
+  }
+
+  @override
+  String get grafanaImportContinue => 'Fill panel editor';
+
+  @override
+  String get grafanaImportInvalidJson => 'The input is not valid JSON.';
+
+  @override
+  String get grafanaImportTooLarge => 'The input exceeds 2 MiB.';
+
+  @override
+  String get grafanaImportTooDeep => 'The input exceeds the supported nesting limit.';
+
+  @override
+  String get grafanaImportDuplicateKey => 'Duplicate JSON keys are not supported.';
+
+  @override
+  String get grafanaImportInvalidDashboard => 'Required dashboard fields are missing or invalid.';
+
+  @override
+  String get grafanaImportUnsupportedSchema =>
+      'This dashboard schema is not supported. The original input is unchanged.';
+
+  @override
+  String get grafanaImportInvalidPanel => 'Required panel fields are missing or invalid.';
+
+  @override
+  String get grafanaImportTooManyPanels => 'The input contains more than 512 panel entries.';
+
+  @override
+  String get grafanaImportUnsupportedPanel => 'This panel type is not supported.';
+
+  @override
+  String get grafanaImportUnsupportedDatasource => 'An explicit Prometheus datasource is required.';
+
+  @override
+  String get grafanaImportMissingExpression => 'A bounded literal PromQL expression is required.';
+
+  @override
+  String get grafanaImportMultipleTargets => 'Multiple-query panels are not supported.';
+
+  @override
+  String get grafanaImportHiddenTarget => 'Hidden queries are not imported.';
+
+  @override
+  String get grafanaImportVariables => 'Variables and macros are not substituted or executed.';
+
+  @override
+  String get grafanaImportTransformations => 'Query transformations are not imported.';
+
+  @override
+  String get grafanaImportRepeat => 'Repeated panels are not imported.';
+
+  @override
+  String get grafanaImportTimeOverride => 'Panel time overrides are not imported.';
+
+  @override
+  String get grafanaImportLegacyAlert => 'Legacy alert definitions are not imported.';
+
+  @override
+  String get grafanaImportUnitHintOnly => 'Grafana units are unverified display metadata.';
+
+  @override
+  String get grafanaImportPresentation =>
+      'Only the selected query and title are copied. Layout, thresholds, legends, execution mode and time range are not recreated. Unsupported content remains in the original input.';
+
+  @override
+  String get grafanaImportInvalidUtf8 => 'The file is not valid UTF-8.';
+
+  @override
+  String get grafanaImportReadFailed => 'Could not read the selected file.';
+
+  @override
+  String get grafanaOpenTitle => 'Open in Grafana';
+
+  @override
+  String get grafanaOpenIntro => 'Enter the address separately, then review it before opening your browser.';
+
+  @override
+  String get grafanaOpenAddress => 'Grafana HTTP(S) address';
+
+  @override
+  String get grafanaOpenReview => 'Review address';
+
+  @override
+  String get grafanaOpenReviewed => 'Address to open';
+
+  @override
+  String get grafanaOpenBrowserSession =>
+      'Your browser session is used. ConsoleCrypt passwords and tokens are not added to this address.';
+
+  @override
+  String get grafanaOpenInvalid =>
+      'Enter an explicit HTTP(S) address with a host and no embedded login or control characters.';
+
+  @override
+  String get grafanaOpenFailed => 'Could not open the browser.';
+
+  @override
+  String noticesRuntimeState(String domain, String state) {
+    return '$domain: $state';
+  }
+
+  @override
+  String get noticesRuntimeOffline => 'Offline';
+
+  @override
+  String get noticesRuntimeError => 'Sync error';
+
+  @override
+  String get noticesRuntimeStopped => 'Stopped';
+
+  @override
+  String get noticesRuntimeDeviceRevoked => 'Device access revoked';
+
+  @override
+  String get noticesRuntimeReauthRequired => 'Sign in again';
+
+  @override
+  String get noticesRuntimeAccountDisabled => 'Account disabled';
+
+  @override
+  String get noticesRuntimeNotTrusted => 'Device approval required';
+
+  @override
+  String get noticesRuntimeVaultGone => 'Synced vault unavailable';
+
+  @override
+  String get noticesRuntimeUpgradeRequired => 'Client update required';
+
+  @override
+  String get noticesRuntimeIdle => 'No active sync operation';
+
+  @override
+  String get noticesRuntimeRunning => 'Tunnel running';
+
+  @override
+  String get noticesRuntimeFailed => 'Connection failed';
+
+  @override
+  String get noticesRuntimeConnected => 'Connected';
+
+  @override
+  String get noticesRuntimeClosed => 'Session closed';
+
+  @override
+  String get noticesRuntimeRecordId => 'Record ID';
+
+  @override
+  String get noticesRuntimeUnsupported =>
+      'This backend does not provide scoped connection notices. Job and monitoring notices remain available.';
+
+  @override
+  String get noticesRuntimeUnavailable =>
+      'The connection event stream is closed. Existing observations are historical; restart ConsoleCrypt to establish a new observer.';
+
+  @override
+  String get noticesRuntimeIncomplete =>
+      'Some connection events may be missing. Updating jobs does not restore their history; check the corresponding section.';
+
+  @override
+  String get noticesRuntimeHelp =>
+      'Observed connection state only. Opening the section does not reconnect, restart or retry anything. A closed session does not prove a command succeeded.';
+
+  @override
+  String get grafanaImportPaste => 'Paste JSON';
+
+  @override
+  String get grafanaImportClear => 'Clear JSON';
+
+  @override
+  String get grafanaImportPreview =>
+      'Large JSON is shown as a bounded read-only preview. The exact original will be inspected unchanged. Clear it to enter another JSON or paste a replacement.';
+
+  @override
+  String grafanaImportLength(int count) {
+    return 'Input length: $count';
+  }
+
+  @override
+  String get grafanaImportInspecting => 'Inspecting JSON in the background… You can cancel.';
+
+  @override
+  String grafanaImportMoreVariables(int count) {
+    return 'And $count more variable names in the original JSON.';
+  }
+
+  @override
+  String get grafanaImportNotInspected => 'This dashboard format is unsupported. Its panels have not been inspected.';
+
+  @override
+  String grafanaImportEnvelope(String apiVersion, String kind, String schemaVersion) {
+    return 'Detected format · apiVersion: $apiVersion · kind: $kind · schemaVersion: $schemaVersion';
+  }
+
+  @override
+  String get grafanaImportNotDeclared => 'not declared';
+
+  @override
+  String monitoringDeleteNamedSource(String name) {
+    return 'Delete connection “$name”?';
+  }
+
+  @override
+  String get monitoringDeleteCredentialsKept => 'Only this connection is removed. Saved credentials are kept.';
+
+  @override
+  String get monitoringSavedPanelSourceInUse =>
+      'This connection is referenced by saved panels. Explicitly delete those panels before deleting the connection.';
+
+  @override
+  String get automationFolderDirectHint =>
+      'Link this group to a host folder, or copy its current members once. Subfolders are excluded. Run targets are selected separately.';
+
+  @override
+  String get automationFolderSelect => 'ConsoleCrypt host folder';
+
+  @override
+  String get automationFolderMissing => 'Folder is unavailable';
+
+  @override
+  String get automationFolderUnavailable =>
+      'The folder composition is unavailable. Select a valid folder or unlink it. A new review is required before running.';
+
+  @override
+  String automationFolderMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count SSH hosts in this folder',
+      one: '$count SSH host in this folder',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get automationFolderLink => 'Link folder';
+
+  @override
+  String get automationFolderSnapshot => 'Copy current members';
+
+  @override
+  String get automationFolderUnlink => 'Unlink folder';
+
+  @override
+  String get automationFolderChanged =>
+      'The folder, project or composition changed. Reload the groups and review the mapping again.';
+
+  @override
+  String automationFolderLinkedName(String name) {
+    return 'Linked folder: $name';
+  }
+
+  @override
+  String get monitoringSavedPanelPreview => 'Show graph';
+
+  @override
+  String get monitoringSavedPanelPreviewHelp =>
+      'Choose a period and request the graph. The draft does not need to be saved.';
+
+  @override
+  String get grafanaImportCompactHint => 'Offline review only. Continue fills the editor; saving remains separate.';
+
+  @override
+  String grafanaImportReviewDetails(int count) {
+    return 'Review notes ($count)';
+  }
+
+  @override
+  String get grafanaImportPanelDetails => 'Panel details';
+
+  @override
+  String get grafanaImportSelectionDetails => 'Selected query details';
+
+  @override
+  String get grafanaImportUnsupportedBadge => 'Unsupported';
+
+  @override
+  String get correlationTimelineTitle => 'Jobs for the selected host';
+
+  @override
+  String get correlationTimelineRead => 'Read host jobs';
+
+  @override
+  String get correlationTimelineWholeJob =>
+      'The state describes the whole job, not a verified result for this host. Opening context does not run anything.';
+
+  @override
+  String correlationTimelineJob(String id) {
+    return 'Job $id';
+  }
+
+  @override
+  String correlationTimelineRevision(String digest) {
+    return 'Source revision digest: $digest';
+  }
+
+  @override
+  String correlationTimelineAdmitted(String time) {
+    return 'Application admission time: $time';
+  }
+
+  @override
+  String correlationTimelineUpdated(String time) {
+    return 'Latest recorded state update: $time';
+  }
+
+  @override
+  String correlationTimelineRunnerQueued(String time) {
+    return 'Runner-reported queue time: $time';
+  }
+
+  @override
+  String correlationTimelineRunnerUpdated(String time) {
+    return 'Runner-reported latest state time: $time';
+  }
+
+  @override
+  String correlationTimelineReceived(String time) {
+    return 'History received: $time';
+  }
+
+  @override
+  String get correlationTimelineInitiatorUnknown => 'Initiator: not recorded in this history.';
+
+  @override
+  String get correlationTimelineExecutionUnknown =>
+      'Execution start and finish are unknown; admission is not execution time.';
+
+  @override
+  String correlationTimelinePosition(String start, String end) {
+    return 'Clock-aligned admission interval: $start — $end. This is not execution duration.';
+  }
+
+  @override
+  String get correlationTimelineClockUnknown =>
+      'Clock alignment is unknown. No position on the metric time axis is assumed.';
+
+  @override
+  String get correlationTimelineOutside => 'Admission falls outside the selected period; no position is shown.';
+
+  @override
+  String get correlationTimelineMissingTime => 'Admission time is missing; no position is shown.';
+
+  @override
+  String get correlationTimelineChoose => 'Review this job context';
+
+  @override
+  String correlationTimelineWindow(String start, String end, String zone) {
+    return 'Captured metric period: $start — $end ($zone)';
+  }
+
+  @override
+  String get correlationTimelineTimeUnknown => 'Unknown';
+
+  @override
+  String get correlationTimelineFailed =>
+      'Job history could not be read in this context. Check the selected host and source, then read again.';
+
+  @override
+  String get correlationTimelineNotRead => 'Read history explicitly for this host and captured metric period.';
+
+  @override
+  String get correlationTimelineEmpty => 'No saved jobs target this host in the available history.';
+
+  @override
+  String get correlationTimelineTruncated => 'Only the latest 128 matching jobs are shown.';
+
+  @override
+  String get correlationDisconnectBeforeConnect =>
+      'The existing Docker connection remains open. Close this chooser and use its normal Disconnect action before connecting to the selected host.';
+
+  @override
+  String get correlationProjectFocusHint =>
+      'This exact project was selected from an approved job context. Opening remains a separate action; the current editor and run draft are preserved.';
+
+  @override
+  String get correlationProjectChanged =>
+      'The original job or project revision changed. Select it again from Monitoring; the current editor was preserved.';
+
+  @override
+  String get grafanaConstantsTitle => 'Manual constant values';
+
+  @override
+  String get grafanaConstantsHint =>
+      'Values start empty. Query variables are unsupported. Select each manual value deliberately, then review the resolved query.';
+
+  @override
+  String grafanaConstantUse(String name) {
+    return 'Use a manual value for $name';
+  }
+
+  @override
+  String get grafanaConstantValue => 'Manual value (up to 512 UTF-8 bytes)';
+
+  @override
+  String get grafanaConstantExplicitEmpty => 'An empty label value is explicitly selected.';
+
+  @override
+  String get grafanaConstantsReview => 'Review resolved query';
+
+  @override
+  String get grafanaConstantMissing => 'Provide an explicit manual value for every constant used by this panel.';
+
+  @override
+  String get grafanaConstantInvalidValues =>
+      'A manual value is invalid. Use a bounded literal without control characters or variable references.';
+
+  @override
+  String get grafanaConstantBudget => 'The manual values or resolved query exceed the supported limits.';
+
+  @override
+  String get grafanaConstantUnsupported =>
+      'This panel uses unsupported variables or substitution context. Its original report remains unchanged.';
+
+  @override
+  String grafanaConstantsReviewed(int count) {
+    return 'Reviewed manual constants: $count. The original import report remains unchanged.';
+  }
+
+  @override
+  String get grafanaConstantModeHint =>
+      'Original Current/Range mode is a review hint. Choose the read mode explicitly after prefilling; no query runs during import.';
+
+  @override
+  String get awxTitle => 'AWX / Automation Controller';
+
+  @override
+  String get awxLocalSettings =>
+      'Connection settings stay on this device and profile. AWX controls its own access, inventories and credentials.';
+
+  @override
+  String get awxRefreshConnections => 'Refresh connections';
+
+  @override
+  String get awxAddConnection => 'Add connection';
+
+  @override
+  String get awxEditConnection => 'Edit connection';
+
+  @override
+  String get awxDeleteConnection => 'Delete connection…';
+
+  @override
+  String get awxDeleteTitle => 'Delete this AWX connection?';
+
+  @override
+  String get awxDeleteHint => 'This removes the local connection settings. AWX jobs and saved credentials are kept.';
+
+  @override
+  String get awxCancel => 'Cancel';
+
+  @override
+  String get awxConfirmDelete => 'Delete connection';
+
+  @override
+  String get awxConnections => 'Connections';
+
+  @override
+  String get awxNoConnections => 'No connection selected.';
+
+  @override
+  String get awxReadOnly => 'These connection settings are read-only in this version.';
+
+  @override
+  String get awxTemplates => 'Available templates';
+
+  @override
+  String get awxSearch => 'Template search';
+
+  @override
+  String get awxReadTemplates => 'Read templates';
+
+  @override
+  String get awxPrevious => 'Previous';
+
+  @override
+  String get awxNext => 'Next';
+
+  @override
+  String get awxNoTemplates => 'Read the templates available to this AWX account.';
+
+  @override
+  String get awxParameters => 'Launch parameters';
+
+  @override
+  String get awxJobType => 'Job type';
+
+  @override
+  String get awxInherit => 'Use AWX default';
+
+  @override
+  String get awxApply => 'Run (apply changes)';
+
+  @override
+  String get awxCheck => 'Check (dry run)';
+
+  @override
+  String get awxLimit => 'Limit';
+
+  @override
+  String get awxJobTags => 'Job tags';
+
+  @override
+  String get awxSkipTags => 'Skip tags';
+
+  @override
+  String get awxExtraVars => 'Extra variables (JSON)';
+
+  @override
+  String get awxInvalidParameters =>
+      'Fix the parameters before preparing a review. Only a bounded JSON object is accepted; duplicate keys are rejected.';
+
+  @override
+  String get awxPrepare => 'Prepare launch review';
+
+  @override
+  String get awxExactReview => 'Exact launch review';
+
+  @override
+  String get awxReviewHint =>
+      'Only the parameters below will be submitted. Preparing this review has not launched a job. AWX policies and permissions still apply.';
+
+  @override
+  String get awxExpiresUtc => 'Review expires (UTC)';
+
+  @override
+  String get awxLaunch => 'Launch this AWX job';
+
+  @override
+  String get awxUncertain =>
+      'AWX may have accepted the launch. Do not retry automatically. Check the original AWX jobs before explicitly preparing another launch.';
+
+  @override
+  String get awxJob => 'AWX job';
+
+  @override
+  String get awxRefreshJob => 'Refresh job';
+
+  @override
+  String get awxEvents => 'Job events';
+
+  @override
+  String get awxReadEvents => 'Read next events';
+
+  @override
+  String get awxOriginalResource => 'Open original AWX resource';
+
+  @override
+  String get awxIgnoredParameters =>
+      'AWX ignored one or more submitted fields. Check the original AWX resource; the requested values may not have been applied.';
+
+  @override
+  String get awxEventTruncated => 'This event was truncated.';
+
+  @override
+  String get awxStatus => 'State';
+
+  @override
+  String get awxUnavailable => 'AWX is not available through this client yet.';
+
+  @override
+  String get awxConfiguration => 'Check the HTTPS connection and credential reference.';
+
+  @override
+  String get awxInvalidInput => 'Check the connection or launch parameters.';
+
+  @override
+  String get awxChanged => 'The original connection or template changed. Refresh and prepare a new review.';
+
+  @override
+  String get awxCanceled => 'The read was canceled.';
+
+  @override
+  String get awxExpired => 'The review or connection session expired. Prepare a new review.';
+
+  @override
+  String get awxTransport => 'AWX could not be reached. Retry reads explicitly.';
+
+  @override
+  String get awxResponse => 'The AWX response is unsupported or invalid.';
+
+  @override
+  String get awxBudget => 'The AWX response exceeded the supported limit.';
+
+  @override
+  String get awxForbidden => 'This AWX account does not have permission for the action.';
+
+  @override
+  String get awxUnauthorized => 'AWX rejected authentication. Check the saved credential reference.';
+
+  @override
+  String get awxNeedsAwxInput =>
+      'This template needs credentials, inventory, passwords or survey input. Configure them in AWX; this client will not launch it.';
+
+  @override
+  String get awxUnsupportedPrompts =>
+      'This template does not accept one or more requested parameter overrides. Review it in AWX.';
+
+  @override
+  String get awxUnknown => 'The AWX operation could not be completed.';
+
+  @override
+  String get awxRetired => 'This view no longer belongs to the original unlocked profile. Reopen AWX to continue.';
+
+  @override
+  String get awxCancelRead => 'Cancel read';
+
+  @override
+  String get awxEmptyUsesDefault => 'Empty optional fields use AWX defaults.';
+
+  @override
+  String get awxJobNew => 'New';
+
+  @override
+  String get awxJobPending => 'Pending';
+
+  @override
+  String get awxJobWaiting => 'Waiting';
+
+  @override
+  String get awxJobRunning => 'Running';
+
+  @override
+  String get awxJobSuccessful => 'Successful';
+
+  @override
+  String get awxJobFailed => 'Failed';
+
+  @override
+  String get awxJobError => 'Error';
+
+  @override
+  String get awxJobCanceled => 'Canceled';
+
+  @override
+  String get awxReviewConnection => 'AWX connection';
+
+  @override
+  String get awxHttpsConnectionHelp =>
+      'AWX requires HTTPS. Choose a saved credential reference; redirects are not followed.';
+
+  @override
+  String get awxTab => 'AWX';
+
+  @override
+  String get awxResourceOpenFailed => 'Could not open the original AWX resource.';
+
+  @override
+  String get automationDependencyTitle => 'Project dependencies';
+
+  @override
+  String get automationDependencyKind => 'Type';
+
+  @override
+  String get automationDependencyRole => 'Role';
+
+  @override
+  String get automationDependencyCollection => 'Collection';
+
+  @override
+  String get automationDependencyName => 'Name';
+
+  @override
+  String get automationDependencyVersion => 'Exact version';
+
+  @override
+  String get automationDependencyUrl => 'Archive HTTPS URL';
+
+  @override
+  String get automationDependencySha256 => 'Archive SHA-256';
+
+  @override
+  String get automationDependencyRunner => 'Runner';
+
+  @override
+  String get automationDependencyReviewSource => 'Review source';
+
+  @override
+  String get automationDependencyDownload => 'Download reviewed archive';
+
+  @override
+  String get automationDependencyReviewChanges => 'Review changes';
+
+  @override
+  String get automationDependencyInstall => 'Install dependency';
+
+  @override
+  String get automationDependencyFirstOnly =>
+      'Only the first dependency is supported. Adding to an installed set and updates are not yet available.';
+
+  @override
+  String get automationDependencyManagedOnly =>
+      'Installation is currently available only for a supported managed project. Folder and Git projects are preserved.';
+
+  @override
+  String get automationDependencyProfileUnsupported =>
+      'This project location does not support installation. The original project files are preserved.';
+
+  @override
+  String get automationDependencyExcludedEntries =>
+      'This project contains Git control entries. Installation for this project is not supported.';
+
+  @override
+  String get automationDependencyPlatformUnsupported => 'Dependency installation is not supported in this environment.';
+
+  @override
+  String get automationDependencyNetworkNotice =>
+      'Downloading contacts this reviewed HTTPS source. The checksum identifies archive content; it does not establish the publisher or make the code trusted.';
+
+  @override
+  String get automationDependencyPreparing => 'Preparing a verified project candidate';
+
+  @override
+  String get automationDependencyPublished => 'Installed in a new project revision. No playbook was run.';
+
+  @override
+  String get automationDependencyUncertain =>
+      'The installation outcome needs review. Do not repeat the install. Check the current project state.';
+
+  @override
+  String get automationDependencyCancelRequested => 'Cancellation requested';
+
+  @override
+  String get automationDependencyErrorInvalidInput => 'Check the exact archive URL, name, version, and SHA-256.';
+
+  @override
+  String get automationDependencyErrorChanged => 'The project, Runner, or profile changed. Open a new source review.';
+
+  @override
+  String get automationDependencyErrorBusy =>
+      'Another operation is in progress. Close this review and open a new one later.';
+
+  @override
+  String get automationDependencyErrorUnavailable =>
+      'Dependency preparation is unavailable. Check the project and Runner.';
+
+  @override
+  String get automationPortableExportAction => 'Export encrypted package...';
+
+  @override
+  String get automationPortableInspectAction => 'Review encrypted package...';
+
+  @override
+  String get automationPortableExportTitle => 'Export encrypted project package';
+
+  @override
+  String get automationPortableInspectTitle => 'Review encrypted project package';
+
+  @override
+  String get automationPortablePassword => 'Separate package password';
+
+  @override
+  String get automationPortableConfirmPassword => 'Confirm package password';
+
+  @override
+  String get automationPortableWarning =>
+      'Only selected saved files are packaged. They can contain hardcoded passwords or other private data. Known control files are excluded; file contents are not automatically cleaned.';
+
+  @override
+  String get automationPortableExcluded => 'Excluded from the package';
+
+  @override
+  String get automationPortableExport => 'Save package';
+
+  @override
+  String get automationPortableInspect => 'Review package';
+
+  @override
+  String get automationPortableSaved => 'Encrypted package saved. Project files were not changed.';
+
+  @override
+  String get automationPortableFailed => 'The package operation could not be completed.';
+
+  @override
+  String get automationPortableInspectionOnly =>
+      'The package was authenticated for review. Creating a project from it is not available yet; no project was imported.';
+
+  @override
+  String automationPortableSummary(int files, int bytes, int exclusions) {
+    return '$files files, $bytes bytes, $exclusions exclusions';
+  }
+
+  @override
+  String get automationPortablePreparing => 'Preparing package review...';
+
+  @override
+  String get automationPortableUnavailable => 'Project package operations are unavailable in this backend.';
+
+  @override
+  String get automationPortableInspectWarning =>
+      'The package is decrypted only for review. Project files and settings are not changed.';
+
+  @override
+  String get automationPortableUseSaved => 'Use saved files';
+
+  @override
+  String correlationTimelineInitiatorDevice(String deviceId) {
+    return 'Initiator device: $deviceId';
+  }
+
+  @override
+  String correlationTimelineUploadedSnapshot(String snapshotId) {
+    return 'Uploaded snapshot ID: $snapshotId';
+  }
+
+  @override
+  String correlationTimelineProjectRevision(int revision) {
+    return 'Project revision at admission: $revision';
+  }
+
+  @override
+  String get correlationTimelineProvenanceUnavailable => 'Saved device and snapshot details are unavailable.';
+
+  @override
+  String get correlationTimelineAdmissionFacts => 'Device and snapshot recorded when the job was approved.';
+
+  @override
+  String get correlationTimelineRunnerProcess => 'Runner process observations';
+
+  @override
+  String correlationTimelineRunnerSpawnObserved(String time) {
+    return 'Process spawn observed: $time';
+  }
+
+  @override
+  String correlationTimelineRunnerExitObserved(String time) {
+    return 'Process exit observed: $time';
+  }
+
+  @override
+  String correlationTimelineRunnerEnvelopeMs(int milliseconds) {
+    return 'Duration including process launch and cleanup: $milliseconds ms (monotonic clock)';
+  }
+
+  @override
+  String get correlationTimelineRunnerClockUnknown => 'Runner clock alignment to the metric timeline is unknown.';
+
+  @override
+  String get correlationTimelineRunnerClockReversed =>
+      'Runner wall clock moved backwards between observations; this interval is not aligned to metrics.';
+
+  @override
+  String get correlationTimelineRunnerObservationUnavailable => 'Runner process timing is unavailable.';
+
+  @override
+  String get correlationTimelineTargetExecutionUnknown => 'Execution timing on the targets is not confirmed.';
+
+  @override
+  String get correlationTimelineRunnerWallClock => 'Observation timestamps use the Runner wall clock.';
+
+  @override
+  String get automationPortableImportTitle => 'Import a new project';
+
+  @override
+  String get automationPortableImportWarning =>
+      'Files may contain passwords or private data. Choose connection and inventory/Runner settings separately for the new project. Import does not run files.';
+
+  @override
+  String get automationPortableImportChooseFile => 'Choose package';
+
+  @override
+  String get automationPortableImportNoFile => 'No package selected';
+
+  @override
+  String get automationPortableImportName => 'New project name';
+
+  @override
+  String get automationPortableImportPrepare => 'Review package';
+
+  @override
+  String get automationPortableImportAccept => 'Import';
+
+  @override
+  String get automationPortableImportPreparing => 'Preparing review…';
+
+  @override
+  String get automationPortableImportAccepting => 'Creating the reviewed project…';
+
+  @override
+  String get automationPortableImportPreviewOnly => 'The new project will be created only after confirmation.';
+
+  @override
+  String get automationPortableImportNormalizedName => 'Reviewed project name';
+
+  @override
+  String get automationPortableImportFutureId => 'New project ID';
+
+  @override
+  String get automationPortableImportLimitedReview =>
+      'This review is time-limited. Its validity is checked again when confirming.';
+
+  @override
+  String get automationPortableImportInstalled => 'New project created.';
+
+  @override
+  String get automationPortableImportUnavailable => 'Import is unavailable in this environment.';
+
+  @override
+  String get automationPortableImportInvalidInput =>
+      'Choose a package, enter a project name and its separate password.';
+
+  @override
+  String get automationPortableImportChanged =>
+      'The original context changed. Close this window and open import again.';
+
+  @override
+  String get automationPortableImportSourceChanged => 'The selected package changed. Review the file again.';
+
+  @override
+  String get automationPortableImportUnsupported => 'This package cannot be imported here.';
+
+  @override
+  String get automationPortableImportBusy => 'Another import is using the available slot. Close its review first.';
+
+  @override
+  String get automationPortableImportExpired => 'This review is no longer valid. Start a new review explicitly.';
+
+  @override
+  String get automationPortableImportResponse => 'The review response could not be verified.';
+
+  @override
+  String get automationPortableImportFailed => 'The import operation could not be completed.';
+
+  @override
+  String get automationPortableImportRecoveryRequired =>
+      'The import outcome is uncertain. Check the projects before trying again.';
+
+  @override
+  String get automationPortableImportPlatformUnsupported =>
+      'Creating a project from a package is not supported on this platform yet.';
+
+  @override
+  String get automationPortableImportLocationUnavailable => 'A protected location for the new project is unavailable.';
+
+  @override
+  String get automationPortableImportTreeUnsupported => 'The package structure cannot be imported.';
+
+  @override
+  String get automationPortableImportCapacityReached =>
+      'The concurrent import limit has been reached. Close other reviews.';
+
+  @override
+  String get noticesLegacyIntegrityWarning => 'Object integrity verification failed';
+
+  @override
+  String get noticesLegacyServerRollback => 'Server rollback detected';
+
+  @override
+  String get noticesLegacySecretConflict => 'Secret data conflict requires review';
+
+  @override
+  String get noticesLegacyConflictCopy => 'A conflict copy was created';
+
+  @override
+  String get noticesLegacyDeviceRegistered => 'A new device signed in';
+
+  @override
+  String get noticesLegacyApprovalRequested => 'Device approval requested';
+
+  @override
+  String get noticesLegacyRecoveryChanged => 'Recovery settings changed on another device';
+
+  @override
+  String get noticesLegacyKeyConflict => 'A vault key conflict was reported';
+
+  @override
+  String get noticesLegacyInvalidLog => 'Team membership log verification failed';
+
+  @override
+  String get noticesLegacyLogRollback => 'Team membership log rollback detected';
+
+  @override
+  String get noticesLegacyTeamRemoved => 'Access to the team was removed';
+
+  @override
+  String get noticesLegacyEditConflict => 'Remote file conflict requires review';
+
+  @override
+  String get noticesLegacyEditRecovery => 'Unsaved working copies are available';
+
+  @override
+  String get noticesLegacyEditSynced => 'Working copy synchronized';
+
+  @override
+  String get noticesLegacyCompleted => 'Completed';
+
+  @override
+  String get noticesLegacyEditError => 'Working copy synchronization failed';
+
+  @override
+  String get noticesLegacyBackupFailed => 'Backup failed';
+
+  @override
+  String get noticesLegacyTransferFailed => 'File transfer failed';
+
+  @override
+  String get automationVaultUse => 'Use Ansible Vault';
+
+  @override
+  String get automationVaultDisclosure =>
+      'Choose a saved password explicitly. Connecting saves only its reference in this project. The password stays in ConsoleCrypt and is passed only to this reviewed job.';
+
+  @override
+  String get automationVaultChoose => 'Choose a Vault password';
+
+  @override
+  String get automationVaultAdd => 'Add credential';
+
+  @override
+  String get automationVaultConnect => 'Connect to project';
+
+  @override
+  String get automationVaultConnected => 'Vault password selected; validate the project before running.';
+
+  @override
+  String get correlationChartNominal =>
+      'Dashed marks: job admission on the client clock; offset is unknown. This is not target execution time.';
+
+  @override
+  String get correlationTimeZone => 'Display time zone';
+
+  @override
+  String get correlationLocalTime => 'Local time (system time zone)';
+
+  @override
+  String get correlationUtcTime => 'UTC';
+
+  @override
+  String get automationTaskResults => 'Task results';
+
+  @override
+  String get automationTaskPageHelp =>
+      'Recorded task results in this journal page only. Missing values stay unknown. Reading or reconnecting never executes a task.';
+
+  @override
+  String get automationTaskUnnamed => 'Unnamed task';
+
+  @override
+  String get automationTaskUnchanged => 'Unchanged';
+
+  @override
+  String automationTaskEventReference(String sequence, String timestamp) {
+    return 'Event #$sequence · $timestamp';
+  }
+
+  @override
+  String automationTaskIdentity(String id) {
+    return 'Task ID: $id';
+  }
+
+  @override
+  String automationTaskModule(String module) {
+    return 'Module: $module';
+  }
+
+  @override
+  String automationTaskHostState(String host, String state) {
+    return '$host · $state';
+  }
+
+  @override
+  String get automationTaskHostFilter => 'Filter hosts in this page';
+
+  @override
+  String get automationTaskRefresh => 'Refresh page';
+
+  @override
+  String get automationTaskReadFailed =>
+      'Could not read this journal page. Reconnect the original Runner and refresh to resume the same cursor.';
+
+  @override
+  String automationTaskEventPage(String first, String last) {
+    return 'Events $first–$last';
+  }
+
+  @override
+  String get automationTaskNoMatchingResults => 'No recorded task results match this page and host filter.';
+
+  @override
+  String get automationTaskReadFinishing => 'Finishing the previous journal read…';
+
+  @override
+  String get automationTaskFirstPage => 'Start of journal';
+
+  @override
+  String get monitoringExporterTitle => 'Verify exporter and link host';
+
+  @override
+  String get monitoringExporterHint =>
+      'Run the reviewed installation template through Automation first. Choose the original host, successful job and saved Prometheus source. These observations do not attest host identity. Saving and opening a panel are separate explicit actions.';
+
+  @override
+  String get monitoringExporterLoadJobs => 'Load completed jobs';
+
+  @override
+  String get monitoringExporterJob => 'Successful exporter task';
+
+  @override
+  String get monitoringExporterKind => 'Exporter';
+
+  @override
+  String get monitoringExporterJobLabel => 'Reviewed job label';
+
+  @override
+  String get monitoringExporterInstance => 'Reviewed instance label';
+
+  @override
+  String get monitoringExporterChanged => 'Review changed or unavailable. Verify the original selection again.';
+
+  @override
+  String get monitoringExporterObserved =>
+      'Prometheus reports the target up and required samples fresh. This does not prove installation or host identity.';
+
+  @override
+  String get monitoringExporterUnavailable => 'No complete fresh observation. No binding will be saved.';
+
+  @override
+  String get monitoringExporterVerify => 'Verify fresh series';
+
+  @override
+  String get monitoringExporterNodeTemplate => 'New node_exporter template project';
+
+  @override
+  String get monitoringExporterCadvisorTemplate => 'New cAdvisor template project';
+
+  @override
+  String get monitoringExporterTemplateIncomplete =>
+      'Exporter template could not be fully written. The new project may be incomplete; inspect its files before validation or execution. No installation was started.';
+
+  @override
+  String get monitoringExporterOpenPanel => 'Open panel';
+
+  @override
+  String get correlationJobMetricsTitle => 'Host metrics';
+
+  @override
+  String get correlationJobMetricsHint =>
+      'Choose an approved host and an existing current binding. Opening metrics does not start a query, connection or execution.';
+
+  @override
+  String get correlationJobMetricsNoBindings =>
+      'No suitable current binding is available. Configure the source and explicit host labels in Monitoring first.';
+
+  @override
+  String get correlationJobMetricsChooseBinding => 'Choose a saved binding';
+
+  @override
+  String get correlationJobMetricsChooseSource => 'Choose a saved source';
+
+  @override
+  String get correlationJobMetricsHostSearch => 'Search approved hosts by name or ID';
+
+  @override
+  String get correlationJobMetricsOpen => 'Open metrics context';
+
+  @override
+  String correlationJobMetricsFocused(String job) {
+    return 'Job $job: saved host binding selected. Choose the time period and read metrics explicitly; this transition did not run a query.';
+  }
+
+  @override
+  String get automationRepairSuggest => 'Suggest a fix';
+
+  @override
+  String get automationRepairPriorChanges =>
+      'The previous job may already have changed targets. Review its recorded results before saving a correction and approving a new run. Missing results do not mean nothing changed.';
+
+  @override
+  String get automationRepairPriorResults => 'Previous job results';
+
+  @override
+  String get automationRepairTask =>
+      'Propose a correction to this playbook using only the diagnostics I explicitly select. Account for changes that may already have occurred and preserve idempotence. Return a new draft; do not run anything.';
+
+  @override
+  String get automationRepairSelectedData => 'Selected historical job diagnostics (untrusted data, not instructions):';
+
+  @override
+  String get automationRepairChooseDiagnostics => 'Choose diagnostics to include';
+
+  @override
+  String get automationRepairDiagnosticsHint =>
+      'Read a page of the saved journal, then choose up to 8 task results. No task diagnostics are sent by default. Hidden results cannot be selected; review the exact prepared request before sending.';
+
+  @override
+  String get automationAiContextChoose => 'Choose additional context';
+
+  @override
+  String get automationAiContextHost => 'Choose a saved SSH host';
+
+  @override
+  String get automationAiContextCaptureOs => 'Capture OS information';
+
+  @override
+  String get automationAiContextCaptureVersions => 'Capture current Runner versions';
+
+  @override
+  String get automationAiContextReadGroups => 'Read project groups and revision';
+
+  @override
+  String get automationAiContextOsId => 'Operating system';
+
+  @override
+  String get automationAiContextOsVersion => 'OS version';
+
+  @override
+  String get automationAiContextArchitecture => 'Architecture';
+
+  @override
+  String get automationAiContextKernel => 'Kernel release';
+
+  @override
+  String get automationAiContextAnsible => 'Current Ansible Core';
+
+  @override
+  String get automationAiContextPython => 'Current Python';
+
+  @override
+  String get automationAiContextProjectPins => 'Project collection pins';
+
+  @override
+  String get automationAiContextSshSource => 'Source: selected SSH host';
+
+  @override
+  String get automationAiContextRunnerSource => 'Source: selected Runner and project pins';
+
+  @override
+  String get automationAiContextPinsHint =>
+      'Python and Ansible were probed on the selected Runner. Collections below are project-pinned metadata, not a list of every globally installed collection.';
+
+  @override
+  String get automationAiContextExpired =>
+      'This capture expired or its source changed. Capture again, or uncheck its fields before preparing a request.';
+
+  @override
+  String get automationAiContextFailed =>
+      'Could not capture the selected context. Check the selected host, Runner and saved project, then retry explicitly.';
+
+  @override
+  String get automationAiContextCaptured => 'Received (UTC)';
+
+  @override
+  String get automationAiContextExpires => 'Expires (UTC)';
+
+  @override
+  String get automationAiContextCaptureHint =>
+      'Choose a host or Runner, then capture information explicitly. Only checked fields are included in the prepared request. Capture does not run a playbook or contact an AI provider.';
+
+  @override
+  String get automationAiContextUnavailable =>
+      'Additional context is unavailable for this view. Open a saved project in the unlocked profile and start this action again.';
+
+  @override
+  String get automationTargetSettings => 'Connection inheritance';
+
+  @override
+  String get automationTargetSettingsHint =>
+      'Read-only preview of this ConsoleCrypt host and its folder settings. Editing opens the existing host settings. The actual route and access are checked from the selected Runner during the final run review.';
+
+  @override
+  String get automationTargetSettingsProblem =>
+      'Some settings could not be verified. Review the host and inherited settings; final validation can reject unresolved or unsupported routes.';
+
+  @override
+  String get automationTargetAlias => 'Ansible alias';
+
+  @override
+  String get automationReviewChanged =>
+      'The previous review is no longer usable. Check the current inputs and validate again before confirming.';
+
+  @override
+  String get automationReviewProjectRevision => 'Project revision';
+
+  @override
+  String get automationReviewInventorySnapshot => 'Inventory snapshot digest';
+
+  @override
+  String get automationReviewRunnerId => 'Runner ID';
+
+  @override
+  String get automationReviewPrivileges => 'Execution accounts and privileges';
+
+  @override
+  String get automationReviewPrivilegesUnknown =>
+      'The targets list shows the reviewed login accounts. Privilege escalation required by playbooks, roles or commands is not verified; review the project before execution. Check mode does not remove these privileges.';
+
+  @override
+  String get automationWslDiscoveryEmpty => 'No registered WSL distributions were found.';
+
+  @override
+  String get automationWslDiscoveryFailed =>
+      'Could not read WSL distributions. Refresh the list or check WSL in Windows.';
+
+  @override
+  String get automationWslDiscoveryHint =>
+      'Choose a distribution for this Runner. Enable WSL and install a distribution separately in Windows, then refresh. Administrator approval or a restart may be required; running a playbook never changes Windows features.';
+
+  @override
+  String get automationWslRefresh => 'Refresh WSL distributions';
+
+  @override
+  String get automationRunnerHelperVersion => 'Runner helper version';
+
+  @override
+  String get automationRunnerProbeUnavailable =>
+      'The installation returned no displayable component diagnostics. Diagnose the saved Runner to inspect its current environment.';
+
+  @override
+  String get automationSetupPythonMissing =>
+      'The selected Linux environment has no usable /usr/bin/python3. Configure supported Python with venv separately, or connect a prepared environment, then run diagnostics again.';
+
+  @override
+  String get monitoringSshRoute => 'Via saved SSH host';
+
+  @override
+  String get monitoringSshRouteChoose => 'Choose SSH host';
+
+  @override
+  String get monitoringSshRouteMissing => 'SSH host unavailable — choose another';
+
+  @override
+  String get monitoringSshRouteHint =>
+      'Uses this host\'s saved SSH route, including jump hosts. Only the built-in SSH backend is supported. Selection and saving do not open a connection or run a query.';
+
+  @override
+  String get monitoringCollectorMissingIntro =>
+      'The selected source did not return the required series. This may be a scrape, selector, or exporter issue.';
+
+  @override
+  String get monitoringCollectorNode =>
+      'Verify the existing node_exporter scrape and the saved Host binding for this panel.';
+
+  @override
+  String get monitoringCollectorContainers =>
+      'Container panels read existing cAdvisor or kubelet series. For Kubernetes, use the cluster collection; do not install cAdvisor on each Pod.';
+
+  @override
+  String get monitoringCollectorPostgres =>
+      'Verify the existing PostgreSQL exporter scrape and the saved Host binding.';
+
+  @override
+  String get monitoringCollectorRedis => 'Verify the existing Redis exporter scrape and the saved Host binding.';
+
+  @override
+  String get monitoringCollectorNginx => 'Verify the existing nginx exporter scrape and the saved Host binding.';
+
+  @override
+  String get monitoringCollectorKubernetesUsage =>
+      'In Kubernetes, choose a cluster to read node and Pod CPU/memory from its existing metrics API, when available. These usage readings are separate from this Prometheus container panel.';
+
+  @override
+  String get monitoringCollectorOpenKubernetes => 'Open Kubernetes metrics';
+
+  @override
+  String get automationReviewValuesPrivate =>
+      'Values and credential references are hidden. This list describes the prepared request; it does not reveal variable contents.';
+
+  @override
+  String get automationReviewNoVariables => 'No extra variables';
+
+  @override
+  String automationReviewVariableCount(String count) {
+    return 'Extra variables: $count';
+  }
+
+  @override
+  String get automationReviewVariableNamePrivate => 'Private variable name';
+
+  @override
+  String get automationReviewValuePrivate => 'Value hidden';
+
+  @override
+  String get automationReviewNotVerified => 'Not verified';
+
+  @override
+  String get automationReviewEscalation => 'Privilege escalation';
+
+  @override
+  String get automationReviewAccounts => 'Reviewed login accounts';
+
+  @override
+  String get automationWslExecutableMissing => 'The WSL executable was not found at the system path.';
+
+  @override
+  String get automationWslSpawnFailed => 'The WSL executable could not be started.';
+
+  @override
+  String get automationWslTimedOut => 'WSL distribution discovery timed out.';
+
+  @override
+  String get automationWslReadFailed => 'Could not read the WSL distribution list.';
+
+  @override
+  String get automationWslOutputTooLarge => 'The WSL distribution list exceeded the safe size limit.';
+
+  @override
+  String get automationWslNonzeroExit => 'WSL distribution discovery exited unsuccessfully.';
+
+  @override
+  String get automationWslDiscoveryUnknown => 'WSL distribution discovery status is unknown. Refresh to check again.';
+
+  @override
+  String get automationReviewDeclaredTitle => 'Declared escalation settings';
+
+  @override
+  String get automationReviewDeclaredHelp =>
+      'These are informational hints reported by isolated validation. Effective privileges remain unverified: roles, includes and runtime variables may change them. Account values are hidden.';
+
+  @override
+  String automationReviewDeclaredSite(String play, String location) {
+    return 'Play $play · $location';
+  }
+
+  @override
+  String automationReviewDeclaredFlags(String become, String user, String method) {
+    return 'become: $become; become_user: $user; become_method: $method';
+  }
+
+  @override
+  String get automationReviewDeclaredAbsent => 'Not declared here';
+
+  @override
+  String get automationReviewDeclaredEnabled => 'Declared on';
+
+  @override
+  String get automationReviewDeclaredDisabled => 'Declared off';
+
+  @override
+  String get automationReviewDeclaredDynamic => 'Dynamic; unresolved';
+
+  @override
+  String get automationReviewDeclaredTruncated =>
+      'The declaration list is incomplete because a scan limit was reached.';
+
+  @override
+  String get automationReviewDeclaredEmpty =>
+      'No explicit escalation directives were found in the scanned nodes. Effective privileges remain unverified.';
+
+  @override
+  String get monitoringPanelSyncLocal => 'Local profile: saved panels stay in this profile.';
+
+  @override
+  String get monitoringPanelSyncUnavailable => 'Panel synchronization status is unavailable in this context.';
+
+  @override
+  String get monitoringPanelSyncFloorMissing =>
+      'A released minimum client version for preserving panels has not been declared.';
+
+  @override
+  String get monitoringPanelSyncPending =>
+      'Synchronization admission is still unverified; the observed policy is not permission to save.';
+
+  @override
+  String get monitoringPanelSyncDevicesUnavailable => 'Compatibility of the account devices has not been verified.';
+
+  @override
+  String monitoringPanelSyncBlocked(String count) {
+    return 'Incompatible or unknown active devices: $count.';
+  }
+
+  @override
+  String get monitoringPanelSyncNotChecked => 'Server compatibility has not been checked.';
+
+  @override
+  String get monitoringPanelSyncUnsupported => 'This server does not support the panel compatibility check.';
+
+  @override
+  String get monitoringPanelSyncServiceUnavailable => 'The compatibility check is currently unavailable.';
+
+  @override
+  String get monitoringPanelSyncTimedOut => 'The compatibility check timed out.';
+
+  @override
+  String get monitoringPanelSyncAccess => 'The current authenticated access could not confirm compatibility.';
+
+  @override
+  String get monitoringPanelSyncUpgrade => 'A compatible client version is required by this server.';
+
+  @override
+  String get monitoringPanelSyncQuarantined => 'Account compatibility is quarantined and requires review.';
+
+  @override
+  String get monitoringPanelSyncInvalid => 'The server compatibility response could not be accepted.';
+
+  @override
+  String get monitoringPanelSyncAccountUnset => 'The account minimum client version has not been configured.';
+
+  @override
+  String monitoringPanelSyncReleasedFloor(String version) {
+    return 'Released preservation floor: $version';
+  }
+
+  @override
+  String monitoringPanelSyncAccountFloor(String version) {
+    return 'Account minimum client version: $version';
+  }
+
+  @override
+  String get monitoringPanelSyncCheckFailed =>
+      'Could not check compatibility in the original context. Check again explicitly.';
+
+  @override
+  String get monitoringPanelSyncCheck => 'Check compatibility';
+
+  @override
+  String get monitoringPanelSyncChecking => 'Checking compatibility…';
+
+  @override
+  String get monitoringPanelSyncObserved => 'Last explicit compatibility check';
+
+  @override
+  String get automationOwnerConfirmationTitle => 'Additional production approval';
+
+  @override
+  String get automationOwnerConfirmationHint =>
+      'Confirm this reviewed job with your vault passphrase. This is an additional agreement by the vault owner, not approval by a second person.';
+
+  @override
+  String get automationOwnerManifestDigest => 'Reviewed manifest fingerprint';
+
+  @override
+  String get automationOwnerConfirmAndRun => 'Confirm and run';
+
+  @override
+  String get automationOwnerConfirmationUnavailable =>
+      'Additional approval is unavailable for this review. Update the Runner and check the project again.';
+
+  @override
+  String get automationOwnerReviewConfirm => 'Approve production run';
+
+  @override
+  String get automationWslPreparationTitle => 'Prepare WSL';
+
+  @override
+  String get automationWslPreparationNotice =>
+      'Windows features and distribution installation may need administrator permission, a download and a Windows restart. Nothing runs automatically here. Save your work before restarting.';
+
+  @override
+  String get automationWslPreparationInspectTitle => '1. Check installed distributions';
+
+  @override
+  String get automationWslPreparationInspect =>
+      'Run this in PowerShell. An empty list or a discovery error does not prove that Windows features are disabled. If a suitable WSL2 distribution already exists, keep it and continue with step 3.';
+
+  @override
+  String get automationWslPreparationInstallTitle => '2. Install Ubuntu 24.04 if needed';
+
+  @override
+  String get automationWslPreparationInstall =>
+      'Only if you need a new distribution: open PowerShell as administrator and run this command. Follow Windows prompts and restart yourself if requested. Existing distributions are not replaced by ConsoleCrypt.';
+
+  @override
+  String get automationWslPreparationUserTitle => '3. Prepare the Linux account';
+
+  @override
+  String get automationWslPreparationUser =>
+      'Open the installed distribution from the Windows Start menu. Complete first-run setup and create a regular Linux user with a password. ConsoleCrypt does not request or save the sudo password.';
+
+  @override
+  String get automationWslPreparationRunnerTitle => '4. Return and check the environment';
+
+  @override
+  String get automationWslPreparationRunner =>
+      'Close this guide, refresh the distribution list, explicitly select your distribution and choose Find environment. Missing packages are shown separately. Use Run in environment to install prerequisites, then repeat detection and explicitly install or select Runner.';
+
+  @override
+  String get automationServiceConnectionMode => 'Persistent Linux Runner';
+
+  @override
+  String get automationServiceConnectionIdentity => 'Installed service identity (UUID)';
+
+  @override
+  String get automationServiceConnectionHint =>
+      'Choose the saved SSH host and the identity ID from the installed ConsoleCrypt service. Its schedule and trust are reviewed separately when preparing a delegation.';
+
+  @override
+  String get automationServiceConnectionManageHint =>
+      'Prepare a scheduled delegation to connect, inspect status or revoke access.';
+
+  @override
+  String get automationServiceDelegate => 'Delegate a schedule';
+
+  @override
+  String get automationServiceUseDelegation => 'This Runner is a service. Use a separate schedule review.';
+
+  @override
+  String get automationServiceUnavailable => 'Service delegation is unavailable in this session.';
+
+  @override
+  String get automationServiceScheduleTitle => 'Service schedule';
+
+  @override
+  String get automationServiceContinuationDisclosure =>
+      'After confirmation, the service may continue when this dialog closes or the vault is locked, until the approved expiry. Offline revocation may be delayed until then. Production targets and Ansible Vault inputs are unavailable for this purpose.';
+
+  @override
+  String get automationServiceRunSelectionRequired =>
+      'Choose a playbook, targets and valid run options for a new schedule. Service status and revocation are available separately.';
+
+  @override
+  String get automationServiceZone => 'Schedule time zone';
+
+  @override
+  String get automationServiceHour => 'Hour';
+
+  @override
+  String get automationServiceMinute => 'Minute';
+
+  @override
+  String get automationServiceWeekdays => 'Days of the week';
+
+  @override
+  String get automationServiceValidity => 'Permission window';
+
+  @override
+  String automationServiceValidityHours(String hours) {
+    return '$hours hours';
+  }
+
+  @override
+  String get automationServiceMaxJobs => 'Maximum total jobs';
+
+  @override
+  String get automationServiceMaxDaily => 'Maximum jobs per UTC day';
+
+  @override
+  String get automationServicePreview => 'Review delegation';
+
+  @override
+  String get automationServiceConfirm => 'Confirm delegation';
+
+  @override
+  String get automationServiceExpiry => 'Permission expires (UTC)';
+
+  @override
+  String automationServiceConsentWindow(String seconds) {
+    return 'Confirm within $seconds seconds. Expiry is checked again when confirming.';
+  }
+
+  @override
+  String get automationServiceCredentials => 'Selected encrypted credential capsules';
+
+  @override
+  String get automationServiceKeys => 'Service identity and key fingerprints';
+
+  @override
+  String get automationServiceIdentity => 'Existing service identity';
+
+  @override
+  String get automationServiceOrigin => 'Service-local Linux execution';
+
+  @override
+  String get automationServiceUnknown =>
+      'Delivery is uncertain. Do not retry confirmation. Read the service status before taking another action.';
+
+  @override
+  String get automationServiceAcknowledged =>
+      'The service acknowledged this delegation. This does not mean a job is running.';
+
+  @override
+  String get automationServiceBlocked =>
+      'Blocked locally. Remote revocation is not confirmed; an offline service may continue until expiry.';
+
+  @override
+  String get automationServiceStatus => 'Observed service state';
+
+  @override
+  String get automationServiceReadStatus => 'Read status';
+
+  @override
+  String get automationServiceRevoke => 'Revoke permission';
+
+  @override
+  String get automationServiceConfirmRevoke => 'Confirm revocation';
+
+  @override
+  String automationServiceRevokeReview(String runner) {
+    return 'Revoke permission for $runner? Remote work may have partial effects; offline revocation is not immediate.';
+  }
+
+  @override
+  String get automationServiceDataOnly => 'Status is an observation, not permission to run or proof of completion.';
+
+  @override
+  String get automationServiceChanged => 'The prepared context is unavailable or changed. Review it again explicitly.';
+
+  @override
+  String get automationServiceReviewExpired => 'The confirmation window expired. Prepare a new review explicitly.';
+
+  @override
+  String get automationServiceUnbound => 'No delegation is attached';
+
+  @override
+  String get automationServicePending => 'A setup review is pending';
+
+  @override
+  String get automationServiceEnrolled => 'Delegation is recorded by the service';
+
+  @override
+  String get automationServiceRestored => 'The service restored its recorded delegation';
+
+  @override
+  String get automationServiceRevocationRecorded =>
+      'Revocation is recorded by the service; this does not attest that an in-flight target task has stopped.';
+
+  @override
+  String get automationServiceRemoteUnknown => 'Remote service state is unknown';
+
+  @override
+  String get automationServiceScheduleSemantics =>
+      'One job at a time. Grace: 60 seconds. Missing local times and missed slots are skipped; repeated local times use the first occurrence.';
+
+  @override
+  String get agentReaderOpen => 'Linux Agent';
+
+  @override
+  String get agentReaderTitle => 'Linux Agent · read-only telemetry';
+
+  @override
+  String get agentReaderPurpose =>
+      'This path reads telemetry only. It cannot run jobs or commands. Select saved references; Native checks their current revisions and the original unlock.';
+
+  @override
+  String get agentReaderBinding => 'Saved host binding';
+
+  @override
+  String get agentReaderKnownHost => 'Saved SSH server key';
+
+  @override
+  String get agentReaderAction => 'Action';
+
+  @override
+  String get agentReaderOffer => 'Prepare enrollment offer';
+
+  @override
+  String get agentReaderCertificate => 'Prepare enrollment certificate';
+
+  @override
+  String get agentReaderIssuer => 'Initialize Reader issuer';
+
+  @override
+  String get agentReaderAssociation => 'Install Reader association';
+
+  @override
+  String get agentReaderRead => 'Read telemetry once';
+
+  @override
+  String get agentReaderRevoke => 'Revoke Reader access';
+
+  @override
+  String get agentReaderReconcile => 'Reconcile known authority head';
+
+  @override
+  String get agentReaderReview => 'Prepare review';
+
+  @override
+  String get agentReaderConfirm => 'Confirm this exact action';
+
+  @override
+  String get agentReaderStatus => 'Read current status';
+
+  @override
+  String get agentReaderCancel => 'Cancel action';
+
+  @override
+  String get agentReaderOwnerPin => 'Choose public OwnerPin file';
+
+  @override
+  String get agentReaderHello => 'Choose public Node identity file';
+
+  @override
+  String get agentReaderSignedOffer => 'Choose signed offer file';
+
+  @override
+  String get agentReaderSignedClaim => 'Choose signed claim file';
+
+  @override
+  String get agentReaderSelectionFile => 'Choose provisioned association file';
+
+  @override
+  String get agentReaderOriginalDevice => 'Revoke this original device across its Reader associations';
+
+  @override
+  String get agentReaderExpiry => 'Requested expiry (UTC)';
+
+  @override
+  String get agentReaderDeadline =>
+      'Review and temporary exports expire within the original 60-second deadline. This deadline cannot be renewed.';
+
+  @override
+  String get agentReaderNoActorAck =>
+      'An exported signature is not installed Node state. Actor application has not been observed.';
+
+  @override
+  String get agentReaderStatusMeaning =>
+      'Status is authenticated metadata and a local record, not a new approval or remote application acknowledgment.';
+
+  @override
+  String get agentReaderReviewDetails => 'Exact public review metadata';
+
+  @override
+  String get agentReaderUnknown =>
+      'The result is unknown. Do not repeat this action automatically. Read status separately.';
+
+  @override
+  String get agentReaderFailed => 'The action is unavailable, expired, rejected or its original context changed.';
+
+  @override
+  String get agentReaderExports =>
+      'Public artifact and private invitation are separate files. Invitation contents are never displayed. Keep this review open until the explicit transfer finishes. Copies are irreversible; a partial or unknown transfer can leave private files at the explicitly chosen destinations.';
+
+  @override
+  String get agentReaderTransfer => 'Save exported files';
+
+  @override
+  String get agentReaderTransferUnavailable =>
+      'Secure file transfer is unavailable in this build. No file contents will be opened or copied.';
+
+  @override
+  String get agentReaderConsume => 'Show the received dataset';
+
+  @override
+  String get agentReaderDataset => 'Received telemetry snapshot';
+
+  @override
+  String get agentReaderClock =>
+      'Timestamps use the Agent clock (UTC); clock offset is unknown. Missing values remain unknown.';
+
+  @override
+  String get agentReaderOnline =>
+      'History is available only while the Agent is online; it does not prove complete coverage.';
+
+  @override
+  String get agentReaderPartial => 'The response is truncated or older records were evicted.';
+
+  @override
+  String get agentReaderEarlier => 'Earlier records';
+
+  @override
+  String get agentReaderLater => 'Later records';
+
+  @override
+  String get agentReaderNewAction => 'Start a separate review';
+
+  @override
+  String get agentReaderObservedAck =>
+      'Reader application was acknowledged in this operation. This is not Node certificate installation.';
+
+  @override
+  String get agentReaderReconciled =>
+      'Only an already known equal authority chain was reconciled; no new application was performed.';
+
+  @override
+  String get agentReaderIssuerReady => 'The local Reader issuer exists; this does not grant telemetry access.';
+
+  @override
+  String get agentReaderUptime => 'Agent uptime (seconds)';
+
+  @override
+  String get agentReaderCollection => 'Collector state';
+
+  @override
+  String get agentReaderPublicDest => 'signed-agent-artifact.json';
+
+  @override
+  String get agentReaderInvitationDest => 'agent-invitation-token.hex';
+
+  @override
+  String get agentReaderNoChoices =>
+      'Saved source, host binding and SSH key are required. Add them through their existing editors first.';
+
+  @override
+  String get agentReaderTransferCompleted =>
+      'The explicit files were saved. Copies cannot be recalled; Node application remains unobserved.';
+
+  @override
+  String get agentReaderClockRollback =>
+      'The Agent recorded a wall-clock rollback and paused history writes. Existing records do not establish clock agreement.';
+
+  @override
+  String get monitoringPanelSyncDeviceReasons => 'Why active devices are blocked';
+
+  @override
+  String monitoringPanelSyncCheckedDevices(String count) {
+    return 'Checked active devices: $count. Inactive time does not mean revocation.';
+  }
+
+  @override
+  String get monitoringPanelSyncUnknownDeviceVersion => 'The client version is unknown.';
+
+  @override
+  String get monitoringPanelSyncInvalidDeviceVersion => 'The reported client version cannot be validated.';
+
+  @override
+  String get monitoringPanelSyncPrereleaseDeviceVersion =>
+      'A prerelease client is not a released preservation version.';
+
+  @override
+  String get monitoringPanelSyncOlderDeviceVersion => 'The client is older than the required preservation version.';
+
+  @override
+  String agentReaderReviewRemaining(String seconds) {
+    return 'Review time remaining: $seconds s.';
+  }
+
+  @override
+  String get monitoringPanelPolicyOpen => 'Review account compatibility';
+
+  @override
+  String get monitoringPanelPolicyTitle => 'Panel synchronization policy';
+
+  @override
+  String get monitoringPanelPolicyScope =>
+      'This account policy applies to all your personal vaults. It does not authorize another device or change its version.';
+
+  @override
+  String get monitoringPanelPolicyNoWriter =>
+      'Policy confirmation and checkpoint checks do not enable panel uploads. Local panel editing remains separate.';
+
+  @override
+  String get monitoringPanelPolicyExplicitRead =>
+      'Read the current server policy only when you choose the action below.';
+
+  @override
+  String get monitoringPanelPolicyRead => 'Read current policy';
+
+  @override
+  String get monitoringPanelPolicyConfirm => 'Confirm account policy';
+
+  @override
+  String get monitoringPanelPolicyRecheck => 'Recheck encrypted checkpoint';
+
+  @override
+  String monitoringPanelPolicyAccount(String id) {
+    return 'Account: $id';
+  }
+
+  @override
+  String monitoringPanelPolicyRevision(String revision) {
+    return 'Policy revision: $revision';
+  }
+
+  @override
+  String monitoringPanelPolicyRoster(String digest) {
+    return 'Device roster digest: $digest';
+  }
+
+  @override
+  String monitoringPanelPolicyOffered(String version) {
+    return 'Server offered minimum client version: $version';
+  }
+
+  @override
+  String monitoringPanelPolicyCheckpoint(String id, String epoch, String sequence) {
+    return 'Vault checkpoint: $id; epoch $epoch; sequence $sequence';
+  }
+
+  @override
+  String monitoringPanelPolicyCatalog(String id, String object, String schema, String revision) {
+    return 'Panel catalog: $id; object revision $object; schema $schema; revision $revision';
+  }
+
+  @override
+  String monitoringPanelPolicyRemaining(String seconds) {
+    return 'Review time remaining: $seconds s.';
+  }
+
+  @override
+  String get monitoringPanelPolicyConfirmed =>
+      'The server confirmed the account policy. Panel uploads remain disabled. Rechecking requires a separate new review.';
+
+  @override
+  String get monitoringPanelPolicyRecaptured =>
+      'The encrypted checkpoint was rechecked. This observation does not enable panel uploads.';
+
+  @override
+  String get monitoringPanelPolicyUnavailable => 'The current policy is unavailable. No confirmation was sent.';
+
+  @override
+  String get monitoringPanelPolicyInvalid => 'The policy response is unsupported or does not match this profile.';
+
+  @override
+  String get monitoringPanelPolicyExpired => 'This review expired. Read the policy again explicitly.';
+
+  @override
+  String get monitoringPanelPolicyRetired => 'The original profile or panel context changed. This review is closed.';
+
+  @override
+  String get monitoringPanelPolicyUnknownOutcome =>
+      'The outcome is unknown. This action is spent and will not be retried automatically. Close this view and check the actual policy separately.';
+
+  @override
+  String get agentReaderReadUnavailable =>
+      'Telemetry is currently unavailable. The Agent may be offline or access may be unavailable. No new dataset was loaded. Start a separate review to try again.';
+
+  @override
+  String get agentReaderReadExpired =>
+      'This read expired. Start a separate review; it will not be retried automatically.';
+
+  @override
+  String get automationOutputRetired =>
+      'The source reports that detailed output was removed after its retention period. The job result is retained.';
+
+  @override
+  String get automationWslWizardReadOnly =>
+      'Read-only diagnostics. Nothing is installed, elevated, restarted or made the default.';
+
+  @override
+  String get automationWslWizardWindows => '1. Current Windows observations';
+
+  @override
+  String automationWslWizardSubsystem(String state) {
+    return 'Windows Subsystem for Linux: $state';
+  }
+
+  @override
+  String automationWslWizardVirtualMachine(String state) {
+    return 'Virtual Machine Platform: $state';
+  }
+
+  @override
+  String get automationWslWizardFeatureEnabled => 'Enabled';
+
+  @override
+  String get automationWslWizardFeatureDisabled => 'Disabled';
+
+  @override
+  String get automationWslWizardFeatureEnablePending => 'Enable pending';
+
+  @override
+  String get automationWslWizardFeatureDisablePending => 'Disable pending';
+
+  @override
+  String get automationWslWizardElevationRequired => 'Unknown: reading this feature requires an elevated process';
+
+  @override
+  String get automationWslWizardElevated => 'This process is elevated. Inspection remains read-only.';
+
+  @override
+  String get automationWslWizardNotElevated => 'This process is not elevated. Feature state is unknown.';
+
+  @override
+  String get automationWslWizardElevationUnknown => 'Process elevation could not be observed.';
+
+  @override
+  String get automationWslWizardRebootPresent =>
+      'Windows reported pending-restart indicators. They do not identify every restart requirement.';
+
+  @override
+  String get automationWslWizardRebootNotObserved =>
+      'No indicators were observed in the checked registry locations. This does not guarantee that a restart is unnecessary.';
+
+  @override
+  String get automationWslWizardRebootUnknown => 'Restart indicators could not be fully read.';
+
+  @override
+  String automationWslWizardCaptured(String time) {
+    return 'Windows read-only snapshot, captured at $time (UTC).';
+  }
+
+  @override
+  String get automationWslWizardUnavailable =>
+      'Windows feature inspection is unavailable for this original session. Manual instructions remain available.';
+
+  @override
+  String get automationWslWizardInspect => 'Inspect Windows (read-only)';
+
+  @override
+  String get automationWslWizardEnvironment => '2. Choose and inspect an existing distribution';
+
+  @override
+  String get automationWslWizardDiscoveryUnknown =>
+      'Discovery has not established available WSL distributions. Refresh to inspect again.';
+
+  @override
+  String get automationWslWizardInspectLinux => 'Inspect selected environment (read-only)';
+
+  @override
+  String get automationWslWizardLinuxReport => 'Observed environment facts';
+
+  @override
+  String automationWslWizardMissing(String name) {
+    return 'Missing prerequisite: $name';
+  }
+
+  @override
+  String get automationWslWizardNoPrepared => 'No current prepared Runner environment was reported.';
+
+  @override
+  String get automationWslWizardSelectPrepared => 'Choose an observed prepared environment';
+
+  @override
+  String get automationWslWizardUsePrepared => 'Use this environment in the form';
+
+  @override
+  String get automationWslWizardPreparedNotice =>
+      'This only fills the Runner form. Saving and connecting remain separate explicit actions.';
+
+  @override
+  String get automationWslWizardReviewPlan => 'Review manual preparation plan';
+
+  @override
+  String get automationWslWizardPlan => '3. Manual preparation and return';
+
+  @override
+  String get automationWslWizardPlanUnknown =>
+      'Some Windows observations are unknown. Obtain a fresh read-only inspection after any manual administrative work; unknown does not mean disabled.';
+
+  @override
+  String get automationWslWizardPlanKnown =>
+      'Use the observed feature states above to choose the corresponding manual step. No change is executed here.';
+
+  @override
+  String get automationWslWizardPlanManual =>
+      'If a component is disabled, use the explicit Windows installation instructions below. If a transition is pending, finish the Windows operation and restart only when Windows requests it. Keep an already prepared distribution; do not change its default.';
+
+  @override
+  String get automationWslWizardTerminalNotice =>
+      'Choose a shell to open without sending any command. Perform only the manual steps you reviewed.';
+
+  @override
+  String get automationWslWizardChooseTerminal => 'Choose an existing local terminal';
+
+  @override
+  String get automationWslWizardOpenTerminal => 'Open selected terminal';
+
+  @override
+  String get automationWslWizardRecheck =>
+      'After manual preparation, return here and repeat Windows inspection, distribution discovery and the selected environment check.';
+
+  @override
+  String get automationWslWizardFailed => 'The inspection or handoff did not complete. No readiness is inferred.';
+
+  @override
+  String get localAiStopUnconfirmed =>
+      'The local model process exit has not been confirmed. Starting another model is blocked. Retry Stop; model data may remain in that process until it exits.';
+
+  @override
+  String get monitoringSourceAccessPolicy =>
+      'PromQL selectors filter results, not access. If this account must not read the whole source, use a backend tenant or gateway that checks its scope on the server. Limit allowed query APIs through that gateway or the credential’s backend policy. ConsoleCrypt does not reduce the privileges of an unrestricted token.';
+
+  @override
+  String get agentTunnelTlsExpired =>
+      'The client TLS certificate has expired. The Agent connection is unavailable. Renewal and identity replacement are not supported in this version.';
+
+  @override
+  String get agentTunnelTlsUnavailable =>
+      'The client TLS identity is unavailable or its custody could not be confirmed. ConsoleCrypt will not automatically recreate, replace, or re-enroll it.';
+
+  @override
+  String get agentReaderCollectionRunning => 'Running';
+
+  @override
+  String get agentReaderCollectionDisabled => 'Disabled';
+
+  @override
+  String get agentReaderCollectionStopped => 'Stopped';
+
+  @override
+  String get agentReaderCollectionNotRunning => 'Not running';
+
+  @override
+  String get agentReaderCollectionStarting => 'Starting';
+
+  @override
+  String get agentReaderCollectionDegraded => 'Degraded';
+
+  @override
+  String get agentReaderCollectionBlocked => 'Blocked';
+
+  @override
+  String get agentReaderCollectionRecorded =>
+      'These states describe collection at the recorded times, not current Agent health. For older records, “Not running” does not identify the cause.';
+
+  @override
+  String get agentReaderVersion => 'Agent version';
+
+  @override
+  String get automationServiceResultsRead => 'Read recorded service results';
+
+  @override
+  String get automationServiceResultsUnavailable =>
+      'Recorded service results are unavailable or their context changed. No new results were loaded. Read again explicitly to retry.';
+
+  @override
+  String get automationServiceResultsRecorded =>
+      'Recorded terminal results from the selected service. This does not prove current target state or that all changes completed.';
+
+  @override
+  String get automationServiceResultsEmpty => 'No matching terminal jobs were recorded.';
+
+  @override
+  String get automationServiceResultsPartial =>
+      'The target outcome is unknown; changes may be partial. The Runner result below does not prove task success.';
+
+  @override
+  String get automationServiceResultsRunner => 'Recorded Runner result';
+
+  @override
+  String get automationServiceResultsTarget => 'Target outcome';
+
+  @override
+  String get automationServiceResultsKnown => 'Recorded; see job outcome';
+
+  @override
+  String get automationServiceResultsDue => 'Scheduled time (UTC)';
+
+  @override
+  String get automationServiceResultsUpdated => 'Result recorded (UTC)';
+
+  @override
+  String get automationServiceResultsCancelled => 'Cancellation requested';
+
+  @override
+  String get automationServiceResultsTimedOut => 'Timeout recorded';
+
+  @override
+  String get agentAssociationOpen => 'Agent association';
+
+  @override
+  String get agentAssociationDisclosure =>
+      'Use a saved Native SSH host with an already trusted SSH key. Probe reads fixed Agent metadata; offer and certificate approval are separate explicit steps. These records do not grant Tunnel or telemetry access.';
+
+  @override
+  String get agentAssociationReadStatus => 'Read local status';
+
+  @override
+  String get agentAssociationSavedHost => 'Saved SSH host';
+
+  @override
+  String get agentAssociationChooseHost => 'Select a saved host';
+
+  @override
+  String get agentAssociationProbe => 'Probe Agent over SSH';
+
+  @override
+  String get agentAssociationUnenrolled => 'No local association recorded';
+
+  @override
+  String get agentAssociationAssociated => 'Association recorded';
+
+  @override
+  String get agentAssociationUnknown => 'Unknown or incomplete';
+
+  @override
+  String get agentAssociationUnknownDetail =>
+      'The outcome is unknown or incomplete. An offer or certificate may have reached the Agent. No automatic retry, rollback or renewed consent is performed. Read local status explicitly.';
+
+  @override
+  String get agentAssociationExpired => 'The original review expired. A new local status read does not renew it.';
+
+  @override
+  String get agentAssociationCancelRequested =>
+      'Cancellation requested. This does not prove channel closure or reverse a request already sent to the Agent.';
+
+  @override
+  String get agentAssociationIdentityStored =>
+      'An existing client TLS identity is recorded. Native checks its key and certificate again before use; it is not Agent trust.';
+
+  @override
+  String get agentAssociationIdentityUnavailable =>
+      'The existing client TLS identity is unavailable, pending or expired. Probe cannot create or replace it. Separate explicit identity setup is required.';
+
+  @override
+  String get agentAssociationOfferReview => 'Review the enrollment offer';
+
+  @override
+  String get agentAssociationCertificateReview => 'Review the claimed Agent before issuing a certificate';
+
+  @override
+  String agentAssociationRemaining(String seconds) {
+    return 'Original review: $seconds s remaining';
+  }
+
+  @override
+  String get agentAssociationNode => 'Agent ID';
+
+  @override
+  String get agentAssociationNodeFingerprint => 'Observed Agent key fingerprint';
+
+  @override
+  String get agentAssociationOwner => 'Original owner identity';
+
+  @override
+  String get agentAssociationOwnerEpoch => 'Owner epoch';
+
+  @override
+  String get agentAssociationCheckpoint => 'Checkpoint';
+
+  @override
+  String get agentAssociationTlsCertificate => 'Certificate digest';
+
+  @override
+  String get agentAssociationClaim => 'Verified claim digest';
+
+  @override
+  String get agentAssociationLifetime => 'Requested certificate lifetime';
+
+  @override
+  String agentAssociationLifetimeSeconds(String seconds) {
+    return '$seconds seconds';
+  }
+
+  @override
+  String get agentAssociationApproveOffer => 'Approve this offer once';
+
+  @override
+  String get agentAssociationApproveCertificate => 'Issue this certificate once';
+
+  @override
+  String get agentAssociationAssociatedDetail =>
+      'Association was recorded after the original Agent transaction. This is not Tunnel admission or proof of running telemetry.';
+
+  @override
+  String get agentAssociationDevice => 'Original device ID';
+
+  @override
+  String get agentAssociationSigningKey => 'Original owner signing-key SHA-256';
+
+  @override
+  String get agentAssociationPublicKey => 'Observed Agent public key';
+
+  @override
+  String get agentAssociationNodeEpoch => 'Agent key epoch';
+
+  @override
+  String get agentAssociationNodeContext => 'Observed Node context (separate identity domain)';
+
+  @override
+  String get agentAssociationCleanupWaiting => 'Waiting for Native cleanup observation…';
+
+  @override
+  String get agentAssociationCleanupUnknown =>
+      'Native cleanup could not be confirmed. This does not establish a closed channel or reverse Agent changes.';
+
+  @override
+  String get agentAssociationCleanupObserved =>
+      'Native cleanup was observed; this does not undo Agent changes or prove remote drain.';
+
+  @override
+  String get agentAssociationIdentityPrepare => 'Review new client TLS identity';
+
+  @override
+  String get agentAssociationIdentityConfirm => 'Create this client identity once';
+
+  @override
+  String get agentAssociationIdentityCreateDisclosure =>
+      'Create a new Native-managed P256 client key and certificate for this original owner. The fixed certificate policy is approximately 30 UTC days. Existing, pending, unavailable or expired identities are never replaced. This does not enroll an Agent.';
+
+  @override
+  String get agentAssociationIdentityCreated =>
+      'Client identity stored. No Agent association was created. Read local status explicitly before a separate SSH probe.';
+
+  @override
+  String get agentAssociationTlsIdentity => 'Client TLS identity ID';
+
+  @override
+  String get agentAssociationActualExpiry => 'Actual certificate expiry (UTC)';
+
+  @override
+  String monitoringMetadataCacheTtl(String seconds) {
+    return 'Label values are cached on this client for up to $seconds seconds.';
+  }
+
+  @override
+  String get monitoringClearMetadataCache => 'Clear label-value cache';
+
+  @override
+  String get monitoringMetadataCacheCleared => 'Local label-value cache cleared. Load values explicitly to read again.';
+
+  @override
+  String get agentRevokeAccess => 'Revoke access';
+
+  @override
+  String get agentRevokeDisclosure =>
+      'Review the original Agent, owner, certificate and checkpoint. Confirmation records a local block before sending revocation. A lost outcome is unknown; no automatic retry.';
+
+  @override
+  String get agentRevokeUnavailable => 'Revocation review is unavailable or its original context changed.';
+
+  @override
+  String get agentRevokeUnknown =>
+      'Revocation outcome is unknown. Local blocking may already be recorded; remote revocation has not been confirmed. No automatic retry.';
+
+  @override
+  String get agentRevokeActorRevision => 'Agent actor revision';
+
+  @override
+  String get agentRevokeObserved =>
+      'Certificate revocation was observed and recorded on the original Agent. Existing connection termination is tracked separately.';
+
+  @override
+  String get agentRevokeReview => 'Review revocation';
+
+  @override
+  String get agentRevokeConfirm => 'Confirm revocation';
+
+  @override
+  String get automationResultDetailsFiltered =>
+      'This view shows supported recorded metadata. Raw or extra fields are withheld here; the stored job outcome is unchanged.';
+
+  @override
+  String get automationResultDetailsUnknown => 'No supported detailed control evidence is available in this record.';
+
+  @override
+  String get automationAuditTitle => 'Admission audit';
+
+  @override
+  String get automationAuditDisclosure =>
+      'Historical admission metadata grants no access. Route digests describe approved routes; this view does not record tunnel activity or claim an immutable log.';
+
+  @override
+  String get automationAuditUnavailable =>
+      'Audit metadata is unavailable, does not match this job or exceeds supported bounds.';
+
+  @override
+  String get automationAuditLegacy => 'This legacy job has no recorded initiating-device metadata.';
+
+  @override
+  String get automationAuditRunnerUnrecorded => 'The Runner did not record admission metadata for this job.';
+
+  @override
+  String get automationAuditNotObserved => 'Runner admission metadata has not been observed.';
+
+  @override
+  String get automationAuditInitiatingDevice => 'Initiating signing device';
+
+  @override
+  String get automationAuditJobId => 'Job ID';
+
+  @override
+  String get automationAuditProjectId => 'Project ID';
+
+  @override
+  String get automationAuditRunnerId => 'Runner ID';
+
+  @override
+  String get automationAuditRevision => 'Approved revision digest';
+
+  @override
+  String get automationAuditManifest => 'Manifest digest';
+
+  @override
+  String get automationAuditPurpose => 'Recorded operation purpose';
+
+  @override
+  String get automationAuditIssuedUtc => 'Signed manifest issue time (UTC)';
+
+  @override
+  String get automationAuditOwnerEvidence => 'Additional owner confirmation digest';
+
+  @override
+  String automationAuditTargets(String count) {
+    return 'Exact recorded targets: $count';
+  }
+
+  @override
+  String get automationAuditTargetId => 'Approved Host ID';
+
+  @override
+  String get automationAuditRouteDigest => 'Approved route digest';
+
+  @override
+  String get automationCadvisorReviewTitle => 'Review cAdvisor host access';
+
+  @override
+  String get automationCadvisorHostAccess =>
+      'The install mode requests privilege escalation (become: true) and starts a privileged Docker container. It exposes host filesystems and /dev/kmsg to the container. Review the actual escalation account for the chosen targets.';
+
+  @override
+  String get automationCadvisorDockerAccess =>
+      'The template accesses the host Docker API at unix:///var/run/docker.sock; /var/run is also mounted into the container. A read-only filesystem mount does not make the Docker API read-only or limit its privileges.';
+
+  @override
+  String get automationCadvisorSourceOnly =>
+      'This action only adds the inspect-mode project source. Inspect still needs access to the host Docker API. It does not install or start cAdvisor. Installation requires a separate run review, an exact image digest, a port and explicit install parameters.';
+
+  @override
+  String get automationCadvisorDeclaration =>
+      'The install source requires this host-access declaration. The variable is informational and grants no permissions:';
+
+  @override
+  String get automationCadvisorAddSource => 'Accept and add source';
+
+  @override
+  String get automationDeploymentTitle => 'Deployment environments and SSH references';
+
+  @override
+  String get automationDeploymentHint =>
+      'This project stores credential references for each environment. Select existing SSH hosts and credentials explicitly, including every target and jump host. Runner and proxy authentication remain separate. No password or key is copied.';
+
+  @override
+  String get automationDeploymentUnavailable =>
+      'The original project credential context is unavailable or changed. Close and reopen settings or the run form before making a new selection.';
+
+  @override
+  String get automationDeploymentLegacy =>
+      'No project credential policy: the existing Host credential configuration applies.';
+
+  @override
+  String get automationDeploymentChoose => 'Choose a deployment environment explicitly';
+
+  @override
+  String get automationDeploymentNew => 'New environment';
+
+  @override
+  String get automationDeploymentAdd => 'Add environment';
+
+  @override
+  String get automationDeploymentProduction => 'Production environment: additional owner confirmation is required.';
+
+  @override
+  String get automationDeploymentProductionHint =>
+      'An environment cannot remove production risk already recorded on a target or group. Native checks the combined risk again during preparation and confirmation.';
+
+  @override
+  String get automationDeploymentAddReference => 'Choose host and credential reference';
+
+  @override
+  String get automationDeploymentReferenceMissing => 'Referenced credential unavailable';
+
+  @override
+  String get automationDeploymentReuse =>
+      'You may explicitly reuse the same existing credential across projects or environments. This does not change the global Host credential. Missing target or jump-host references block preparation.';
+
+  @override
+  String get automationDeploymentRemoveTitle => 'Remove project credential policy';
+
+  @override
+  String get automationDeploymentRemoveHint =>
+      'Saving this removal returns the project to its existing Host credential configuration. Previously admitted jobs keep their original frozen references and deadlines.';
+
+  @override
+  String get automationDeploymentFrozenReferences => 'Native frozen host → credential references';
+
+  @override
+  String get automationDeploymentRefresh => 'Read project context again';
+
+  @override
+  String get automationDeploymentErrorRequired =>
+      'Choose a deployment environment explicitly before preparing this project.';
+
+  @override
+  String get automationDeploymentErrorChanged =>
+      'The original project or credential selection changed. Reopen the run form or project settings, read the current context and review the selection again.';
+
+  @override
+  String get automationDeploymentErrorMissing =>
+      'Add an existing credential reference for every actual target and jump host in this environment. Then prepare a new review; global Host credentials are not substituted automatically.';
+
+  @override
+  String get automationDeploymentErrorShared =>
+      'Shared Host or credential overrides are unsupported in this flow. Use the original issuer/sharing workflow, or explicitly choose supported personal hosts and credentials.';
+
+  @override
+  String get automationDeploymentErrorSchema =>
+      'This project credential policy has an unsupported schema and is read-only. Keep it unchanged and open it with a compatible client.';
+
+  @override
+  String get automationDeploymentErrorBusy =>
+      'Project preparation is in progress. Let it finish or explicitly cancel its review, then reopen credential settings. No automatic retry is made.';
+
+  @override
+  String get agentRotationTitle => 'Rotate Node key (1 → 2)';
+
+  @override
+  String get agentRotationReconcileTitle => 'Review existing key selection';
+
+  @override
+  String get agentRotationDisclosure =>
+      'Read the saved Node over its original SSH route, then explicitly prepare a candidate. Candidate preparation creates a new Node key and records a local access block. A separate confirmation switches the key. Scope stays tunnel.open, capabilities stay unchanged and certificate expiry cannot increase.';
+
+  @override
+  String get agentRotationReconcileDisclosure =>
+      'This reviews only an already accepted, stored proposal. It creates no key or proposal, signs no new certificate and extends no expiry. Native verifies the original proofs on the same Node. Confirm the observed selection explicitly.';
+
+  @override
+  String get agentRotationUnavailable =>
+      'The original Node, stored proposal or owner context is unavailable or changed. Close this review and read saved status explicitly.';
+
+  @override
+  String get agentRotationUnknown =>
+      'Key selection was not observed. Access may remain locally blocked. Read saved status explicitly; reconciliation can use only the already accepted stored proposal. Do not repeat normal rotation.';
+
+  @override
+  String get agentRotationObserved =>
+      'Native recorded key-selection readback. This is not a data permit or proof that a tunnel is open.';
+
+  @override
+  String get agentRotationLocalBlocked =>
+      'Native recorded a local access block. This does not prove remote key selection or revocation.';
+
+  @override
+  String get agentRotationReview => 'Read original Node review';
+
+  @override
+  String get agentRotationPrepareCandidate => 'Prepare candidate and block locally';
+
+  @override
+  String get agentRotationConfirm => 'Confirm key selection';
+
+  @override
+  String get agentRotationPrevious => 'Previous Node epoch / fingerprint';
+
+  @override
+  String get agentRotationProposed => 'Proposed Node epoch / fingerprint';
+
+  @override
+  String get agentRotationProposal => 'Native rotation proposal ID';
+
+  @override
+  String get automationMetadataTitle => 'Project settings sync';
+
+  @override
+  String get automationMetadataHint =>
+      'Sync settings and references separately from project files. Imported references cannot run a playbook.';
+
+  @override
+  String get automationMetadataUnknown =>
+      'Saving was not confirmed. Refresh to check the current catalog before trying again.';
+
+  @override
+  String get automationMetadataPublished => 'Project settings saved to the encrypted sync catalog.';
+
+  @override
+  String get automationMetadataLocal =>
+      'This is a local profile. Use a synced profile to share project settings between devices.';
+
+  @override
+  String get automationMetadataCompatibility =>
+      'Settings sync requires a compatible version on every device. This catalog is currently read-only.';
+
+  @override
+  String get automationMetadataReadOnly =>
+      'This catalog was created by a newer version. Update ConsoleCrypt to change it.';
+
+  @override
+  String get automationMetadataConflict =>
+      'Project settings have a sync conflict. Resolve it before publishing changes.';
+
+  @override
+  String get automationMetadataChanged => 'The project or profile changed. Open its settings again.';
+
+  @override
+  String get automationMetadataUnavailable => 'Could not read project settings. Refresh to try again.';
+
+  @override
+  String get automationMetadataEmpty => 'No synced project references yet.';
+
+  @override
+  String get automationMetadataRevision => 'Revision';
+
+  @override
+  String get automationMetadataFiles => 'Files';
+
+  @override
+  String get automationMetadataUnresolved => 'Unavailable references';
+
+  @override
+  String get automationMetadataRecordHint =>
+      'Settings and references only. Open the project files separately to run a playbook.';
+
+  @override
+  String get automationMetadataRefresh => 'Refresh catalog';
+
+  @override
+  String get automationMetadataPublish => 'Sync project settings';
+
+  @override
+  String get agentInstallTitle => 'Install or update Linux Agent';
+
+  @override
+  String get agentInstallSourceOnly =>
+      'Create a deployment project first. Creating it does not install or start an Agent. Review its files, select a Runner and explicitly confirm the ordinary signed Run before changing the target.';
+
+  @override
+  String get agentInstallTrustGuide =>
+      'A target administrator must preprovision the release policy, pinned public signer, fixed Rust verifier and a noninteractive consolecrypt-agent account at these fixed locations. Missing or changed trust is refused. This form cannot import a signer or approve a signature.';
+
+  @override
+  String get agentInstallNoGrants =>
+      'Software delivery does not enroll an owner, grant any of the six Agent scopes, enable collectors or establish hardware budgets. Existing configuration and access require their separate review.';
+
+  @override
+  String get agentInstallNoTargets =>
+      'No eligible saved personal SSH hosts were returned. Add a saved SSH host first. Host-key verification still belongs to the later ordinary Run.';
+
+  @override
+  String get agentInstallOperation => 'Deployment operation';
+
+  @override
+  String get agentInstallOperationInstall => 'Install signed release';
+
+  @override
+  String get agentInstallOperationUpdate => 'Update signed release';
+
+  @override
+  String get agentInstallOperationRollback => 'Roll back to a known verified release';
+
+  @override
+  String get agentInstallOperationRemove => 'Remove software; preserve data';
+
+  @override
+  String get agentInstallOperationStatus => 'Read installed software status';
+
+  @override
+  String get agentInstallPublicFiles =>
+      'Select the public signed release ZIP (at most 32 MiB) and its signed JSON manifest. Native copies their exact bytes into this new project. No URL, executable path or destination is configurable.';
+
+  @override
+  String get agentInstallChooseArtifact => 'Choose signed release ZIP';
+
+  @override
+  String get agentInstallChooseManifest => 'Choose signed release manifest';
+
+  @override
+  String get agentInstallStart => 'Request start during the later deployment Run';
+
+  @override
+  String get agentInstallStartHint =>
+      'Off by default. Starting requires existing valid Agent configuration and its separate owner/key setup. Desired software version or a PID does not prove the running version.';
+
+  @override
+  String get agentInstallRemoveHint =>
+      'The reviewed remove operation removes software only and preserves Agent state and collected data. It does not revoke access or securely erase copies.';
+
+  @override
+  String get agentInstallPrivilegeReview =>
+      'The fixed playbook declares become:true and manages fixed system software, files and the systemd unit. Effective escalation and target login accounts are disclosed by the later Native Run review; this form does not grant root.';
+
+  @override
+  String get agentInstallCreate => 'Create deployment project';
+
+  @override
+  String get agentInstallOpen => 'Open project for review';
+
+  @override
+  String get agentInstallProjectCreated =>
+      'The owned source project was created. Nothing has been installed or executed.';
+
+  @override
+  String get agentInstallUnverified =>
+      'Observed source digests only. Release signature and target policy have not been verified here; the fixed target verifier performs that check during the explicit deployment Run.';
+
+  @override
+  String get agentInstallRuntimeUnknown =>
+      'Actual running Agent version: Unknown. Enrollment, connection and collection state: not established by this action.';
+
+  @override
+  String get agentInstallOutcomeUnknown =>
+      'Project creation did not return a verified result. Inspect the project list before starting a fresh explicit creation. No automatic retry or target execution was made.';
+
+  @override
+  String get agentTunnelTitle => 'Open Agent tunnel';
+
+  @override
+  String get agentTunnelDisclosure =>
+      'Choose a temporary TCP tunnel between loopback addresses. Review and confirm it explicitly. Opening this window does not open a tunnel. Delivery and remote completion are not confirmed.';
+
+  @override
+  String get agentTunnelListenIp => 'Local listen address';
+
+  @override
+  String get agentTunnelListenPort => 'Local listen port (0 = assigned by OS)';
+
+  @override
+  String get agentTunnelDestinationIp => 'Agent loopback destination';
+
+  @override
+  String get agentTunnelDestinationPort => 'Destination port';
+
+  @override
+  String get agentTunnelTtl => 'Lifetime, seconds (1–60)';
+
+  @override
+  String get agentTunnelIdle => 'Idle timeout, seconds (1–30, within lifetime)';
+
+  @override
+  String get agentTunnelChoicesInvalid =>
+      'Choose valid loopback ports and time limits. Idle timeout cannot exceed the lifetime.';
+
+  @override
+  String get agentTunnelLastObserved => 'Last reported state';
+
+  @override
+  String get agentTunnelCertificate => 'Association certificate SHA-256';
+
+  @override
+  String get agentTunnelBoundAddress => 'Observed local bound address';
+
+  @override
+  String get agentTunnelLimitsTime => 'Lifetime / idle timeout, seconds';
+
+  @override
+  String get agentTunnelLimitsFrames => 'Channels / maximum frame bytes';
+
+  @override
+  String get agentTunnelLimitsPending => 'Pending frames: per channel / total';
+
+  @override
+  String get agentTunnelLimitsQueued => 'Queued bytes: per channel / total';
+
+  @override
+  String get agentTunnelLimitsBytes => 'Byte budget: per channel / total';
+
+  @override
+  String get agentTunnelActorAdmission => 'Agent accepted the tunnel';
+
+  @override
+  String get agentTunnelCounters => 'Bytes sent / received (lower bounds)';
+
+  @override
+  String get agentTunnelNoDeliveryClaim =>
+      'Listening does not mean connected. Agent admission does not prove application delivery or remote completion. Byte counts cover this client only and may be incomplete. Session resumption is unavailable.';
+
+  @override
+  String get agentTunnelAuditTitle => 'Local access history';
+
+  @override
+  String get agentTunnelAuditDisclosure =>
+      'Read up to 128 local observations explicitly. This is not an immutable log or a remote delivery receipt. Only this association is shown.';
+
+  @override
+  String get agentTunnelAuditRead => 'Read access history';
+
+  @override
+  String get agentTunnelAuditEmpty => 'No local observations for this association.';
+
+  @override
+  String get agentTunnelAuditObserved => 'Observed at (UTC)';
+
+  @override
+  String get agentTunnelReview => 'Review tunnel';
+
+  @override
+  String get agentTunnelApprove => 'Open tunnel';
+
+  @override
+  String get agentTunnelStop => 'Request tunnel stop';
+
+  @override
+  String get agentTunnelAbortAndObserve => 'Cancel and check closure';
+
+  @override
+  String get agentTunnelLocalClosed => 'Local connection closed. Remote delivery and completion are not confirmed.';
+
+  @override
+  String get agentTunnelReviewPhase => 'Awaiting confirmation';
+
+  @override
+  String get agentTunnelStarting => 'Starting';
+
+  @override
+  String get agentTunnelListening => 'Waiting for a local connection';
+
+  @override
+  String get agentTunnelConnecting => 'Connecting';
+
+  @override
+  String get agentTunnelConnected => 'Connected';
+
+  @override
+  String get agentTunnelStopRequested => 'Stop requested; completion is unknown';
+
+  @override
+  String get agentTunnelUnknown => 'Tunnel state is unknown. Closure and delivery are not confirmed.';
+
+  @override
+  String get agentTunnelOpenRequested => 'Open requested';
+
+  @override
+  String get monitoringNodeSourceTitle => 'Monitoring-node project';
+
+  @override
+  String get monitoringNodeSourceOnly =>
+      'Create installation or configuration-recovery source for one saved SSH target. This does not run a playbook, allocate storage or grant Agent capabilities. Inspect the created project and confirm its normal run separately.';
+
+  @override
+  String get monitoringNodeSourcePrerequisites =>
+      'Current template: Ubuntu 24.04, x86_64. Actual target checks require at least 2 CPU cores, 2048 MiB RAM and an already mounted separate volume with the planned capacity and free space. The playbook does not partition or mount disks. Installation selects fixed Prometheus 3.16.0; this is not a running-version observation.';
+
+  @override
+  String get monitoringNodeSourcePrivileges =>
+      'The playbook requires elevated credentials to install software and manage configuration and services. Select credentials and confirm the normal run separately. Metrics on the node are outside vault end-to-end encryption. Restrict node and backup access separately.';
+
+  @override
+  String get monitoringNodeSourceInstall => 'Prepare installation';
+
+  @override
+  String get monitoringNodeSourceRestore => 'Prepare configuration recovery';
+
+  @override
+  String get monitoringNodeSourceCpu => 'Planned CPU cores (2–64)';
+
+  @override
+  String get monitoringNodeSourceMemory => 'Planned RAM, MiB (2048–262144)';
+
+  @override
+  String get monitoringNodeSourceDisk => 'Planned volume, GiB (10–10000)';
+
+  @override
+  String get monitoringNodeSourceDays => 'Retention, days (1–365)';
+
+  @override
+  String get monitoringNodeSourceRetention => 'Metrics retention budget, GiB';
+
+  @override
+  String get monitoringNodeSourceSamples => 'Expected samples per second';
+
+  @override
+  String get monitoringNodeSourceReceiver => 'Enable the reviewed remote-write receiver setting';
+
+  @override
+  String get monitoringNodeSourceAlertmanager => 'Use existing loopback Alertmanager on port 9093';
+
+  @override
+  String get monitoringNodeSourceEstimate =>
+      'Plan estimate: 2 bytes × samples/second × retention seconds. Retention must fit within 80% of the volume. Index, head, WAL, compaction and filesystem overhead are excluded; capacity and performance have not been measured.';
+
+  @override
+  String get monitoringNodeSourcePlanInvalid =>
+      'Check the plan bounds and storage budget: at least 2 cores and 2048 MiB RAM; metrics must fit within the retention budget and 80% of the volume.';
+
+  @override
+  String get monitoringNodeSourceRestoreDisclosure =>
+      'Recovery uses the verified configuration backup at the fixed location. It can change configuration and service state during the later reviewed run. It does not restore, erase or verify all metrics data or all copies.';
+
+  @override
+  String get monitoringNodeSourceRuntimeUnknown =>
+      'Project created. Installation, running version and metrics availability have not been checked. Nothing has run.';
+
+  @override
+  String get agentMetricsEnrollmentTitle => 'Register Agent for metrics';
+
+  @override
+  String get agentMetricsEnrollmentDisclosure =>
+      'This separate registration issues only a metrics.collect certificate. Review the advertised catalog, targets and limits before each confirmation. It does not upgrade a Tunnel or Reader certificate, start collection or configure a receiver. Delivery is not guaranteed.';
+
+  @override
+  String get agentMetricsTitle => 'Collect Agent metrics';
+
+  @override
+  String get agentMetricsPrepare => 'Review collection';
+
+  @override
+  String get agentMetricsApprove => 'Start collection';
+
+  @override
+  String get agentMetricsRefresh => 'Refresh status';
+
+  @override
+  String get agentMetricsStop => 'Request collection stop';
+
+  @override
+  String get agentMetricsObserveCleanup => 'Check local cleanup';
+
+  @override
+  String get agentMetricsDuration => 'Permission duration, seconds (30-300)';
+
+  @override
+  String get agentMetricsDisclosure =>
+      '30–300 seconds. RAM buffers are lost on a crash. No automatic renewal or delivery guarantee.';
+
+  @override
+  String get agentMetricsEnrollmentRequired =>
+      'Requires a separately enrolled MetricsOnly association at key epoch 1. Tunnel/Reader certificates are not upgraded; collection after an unsupported key rotation remains unavailable.';
+
+  @override
+  String get agentMetricsOriginalRetired => 'Profile or source changed. This session is no longer available.';
+
+  @override
+  String get agentMetricsUnavailable => 'Collection is unavailable in this context. No retry or renewal was made.';
+
+  @override
+  String get agentMetricsUnknown =>
+      'Collection outcome or data loss is unknown. Local cleanup is not a delivery receipt.';
+
+  @override
+  String get agentMetricsCleanupObserved => 'Local cleanup was observed. Metrics delivery and loss remain unknown.';
+
+  @override
+  String get agentMetricsReview => 'Collection review — not started';
+
+  @override
+  String get agentMetricsStarting => 'Start requested; awaiting confirmation';
+
+  @override
+  String get agentMetricsRunning => 'Agent confirmed collection started';
+
+  @override
+  String get agentMetricsStopped => 'Agent reported the original collector stopped; data delivery is not proved';
+
+  @override
+  String get agentMetricsStopRequested => 'Stop requested; an actual stopped/cleanup observation is still required.';
+
+  @override
+  String get agentMetricsScope => 'Certificate scope';
+
+  @override
+  String get agentMetricsCollectorId => 'Collector catalog ID';
+
+  @override
+  String get agentMetricsManifestSha => 'Approved manifest SHA-256';
+
+  @override
+  String get agentMetricsMode => 'Actual catalog mode';
+
+  @override
+  String get agentMetricsLabels => 'Site / environment';
+
+  @override
+  String get agentMetricsInterval => 'Scrape interval';
+
+  @override
+  String get agentMetricsReceiver => 'Receiver address on Agent host (not editable here)';
+
+  @override
+  String get agentMetricsActualExpiry => 'Permission expires (UTC); approval does not extend it';
+
+  @override
+  String get agentMetricsBounds => 'Memory / temporary state limits (bytes)';
+
+  @override
+  String get agentMetricsBuffer => 'Volatile buffer bytes / maximum age';
+
+  @override
+  String get agentMetricsTarget => 'Approved target';
+
+  @override
+  String get agentMetricsTargetLimits => 'Samples / series / response bytes / labels';
+
+  @override
+  String get agentMetricsDisclosureDetails =>
+      'This is a temporary volatile remote_write collection session, using only the approved catalog and an operator-controlled loopback receiver on the Agent host. Unacknowledged data can be lost. There is no crash replay, automatic renewal, strict remote-write delivery or delivery guarantee. This action does not create a receiver or change enrollment.';
+
+  @override
+  String get agentMetricsDeliveryDetails => 'Collection and receiver restrictions';
+
+  @override
+  String get agentMetricsIdentityDetails => 'Agent identity, catalog and limits';
+
+  @override
+  String get agentTunnelReviewDetails => 'Identity, certificate and byte limits';
+
+  @override
+  String get agentTunnelActualExpiry => 'Tunnel expires (UTC)';
+
+  @override
+  String get monitoringObservationAutoOff => 'Auto refresh off';
+
+  @override
+  String get agentTunnelResumeOriginal => 'Automatic restoration for this destination';
+
+  @override
+  String get agentTunnelResumeUnavailable =>
+      'Transport restoration is unavailable in this version. Lost TCP bytes are never replayed; the lease is not extended.';
+
+  @override
+  String get agentTunnelResumeRead => 'Read saved preference';
+
+  @override
+  String get agentTunnelResumeSavedOn =>
+      'Saved preference: on. Select the checkbox explicitly to include it in this review.';
+
+  @override
+  String get agentTunnelResumeSavedOff =>
+      'Saved preference: off or no current entry. Reading this does not grant access.';
+
+  @override
+  String get agentTunnelResumeSelectedOn => 'Selected for this lease';
+
+  @override
+  String get agentTunnelResumeSelectedOff => 'Off';
+
+  @override
+  String get agentTunnelResumeUnsupported => 'This version cannot read saved preferences. The default remains off.';
+
+  @override
+  String get agentTunnelResumeHelp =>
+      'Only the reviewed original lease. No replay of lost TCP bytes, no extension, and no guarantee of successful recovery.';
+
+  @override
+  String get agentTunnelResumeTransportSelected =>
+      'Restoration may be attempted within this original lease. Success is not guaranteed; lost TCP bytes are not replayed and expiry does not change.';
+
+  @override
+  String get agentTunnelResumeTransportOff =>
+      'Restoration is available but is off for this lease. Lost TCP bytes are not replayed; expiry does not change.';
+
+  @override
+  String get agentMetricsModePending =>
+      '30–300 second permission. Buffer storage and limits are shown after review preparation. No automatic renewal or delivery guarantee.';
+
+  @override
+  String get agentMetricsDiskDisclosure =>
+      '30–300 second permission. Disk buffer: up to 512 MiB / 2 hours. No automatic recovery, renewal, or delivery guarantee.';
+
+  @override
+  String get agentMetricsDiskBuffer =>
+      'Disk buffer: up to 512 MiB, at most 2 hours. This does not extend the permission.';
+
+  @override
+  String get agentMetricsDiskDetails =>
+      'Fixed disk-backed buffer on the Agent. Recovery is not automatic; replay requires a fresh grant. Unacknowledged data may be lost and loss is unknown. No strict remote-write delivery guarantee. Only the approved catalog and operator-controlled loopback receiver are used; enrollment is unchanged.';
+
+  @override
+  String get hostAgentMenu => 'Prepare Linux Agent action';
+
+  @override
+  String get hostAgentObservedUnknown =>
+      'Installed Agent version and update availability have not been read. Preparing a project does not inspect, install or update an Agent.';
+
+  @override
+  String get hostAgentTargetChanged =>
+      'This SSH host changed or is unavailable. Close this window and open the action again from that host.';
+
+  @override
+  String hostAgentReturn(String host) {
+    return 'Return to $host';
+  }
+
+  @override
+  String get hostAgentProjectUnavailable =>
+      'The created project is unavailable in the original workspace. Open it explicitly from Projects.';
+
+  @override
+  String get agentMetricsDelivery => 'Delivery route';
+
+  @override
+  String get agentMetricsConfiguredReceiver => 'Configured local receiver on the Agent host';
+
+  @override
+  String get agentMetricsCancelLocalRequest => 'Cancel local request';
+
+  @override
+  String get agentOutboundTitle => 'Outbound connection…';
+
+  @override
+  String get agentOutboundSummary =>
+      'Allow this Agent to receive connection requests through the server while direct inbound access is unavailable. This registers a carrier; each tunnel still requires its own approval.';
+
+  @override
+  String get agentOutboundOptIn => 'Prepare outbound access for this Agent';
+
+  @override
+  String get agentOutboundLifetime => 'Requested registration duration';
+
+  @override
+  String get agentOutboundOneHour => '1 hour (default)';
+
+  @override
+  String get agentOutboundSixHours => '6 hours';
+
+  @override
+  String get agentOutboundOneDay => '24 hours';
+
+  @override
+  String get agentOutboundCaps =>
+      'Fixed local SSH endpoint: 127.0.0.1:22. Up to 64 connections and 512 MiB of allocated encrypted traffic; no automatic renewal.';
+
+  @override
+  String get agentOutboundCappedLifetime =>
+      'Maximum duration now (Agent certificate and sign-in session may shorten it)';
+
+  @override
+  String agentOutboundSeconds(int seconds) {
+    return '$seconds seconds';
+  }
+
+  @override
+  String agentOutboundReviewRemaining(int seconds) {
+    return 'Review expires in $seconds s';
+  }
+
+  @override
+  String get agentOutboundExpiry => 'Actual registration expiry (UTC)';
+
+  @override
+  String get agentOutboundConfigured =>
+      'Registration recorded. This does not confirm that a future connection will succeed.';
+
+  @override
+  String get agentOutboundDetails => 'Technical identity';
+
+  @override
+  String get agentOutboundAssociation => 'Association ID';
+
+  @override
+  String get agentOutboundAgent => 'Agent ID';
+
+  @override
+  String get agentOutboundOwnerAccount => 'Owner account ID';
+
+  @override
+  String get agentOutboundExpired => 'Review expired. No further approval is available here.';
+
+  @override
+  String get agentOutboundUnknown =>
+      'Registration outcome or cleanup is unknown. Do not assume access is enabled or disabled.';
+
+  @override
+  String get agentOutboundJoining => 'Waiting for the original connection to close…';
+
+  @override
+  String get agentOutboundClosed => 'Original bootstrap connection closed.';
+
+  @override
+  String get agentOutboundReview => 'Review registration';
+
+  @override
+  String get agentOutboundConfirm => 'Register outbound connection';
+
+  @override
+  String get agentCollectorServiceTitle => 'Finite metrics service';
+
+  @override
+  String get agentCollectorServiceSummary =>
+      'Permission lasts up to 24 hours and continues when this client locks or closes. It does not renew automatically.';
+
+  @override
+  String get agentCollectorServiceReviewPhase => 'Review service configuration';
+
+  @override
+  String get agentCollectorServiceConfiguring => 'Recording service configuration…';
+
+  @override
+  String get agentCollectorServiceRecorded => 'Service configuration recorded.';
+
+  @override
+  String get agentCollectorServiceUnknown =>
+      'The configuration outcome is unknown. A service may already have been recorded.';
+
+  @override
+  String get agentCollectorServiceCancelled =>
+      'Local request cancelled. This does not confirm that a recorded service has stopped.';
+
+  @override
+  String get agentCollectorServiceRuntimeUnknown =>
+      'Whether collection is running has not been observed. Delivery is not guaranteed.';
+
+  @override
+  String get agentCollectorServiceExpiry => 'Permission expires (UTC)';
+
+  @override
+  String get agentCollectorServiceLimits => 'At most 32 starts, one at a time; memory budget 512 MiB.';
+
+  @override
+  String get agentCollectorServiceDisk =>
+      'Disk buffer: 512 MiB, data residence up to 2 hours. Data loss remains possible.';
+
+  @override
+  String get agentCollectorServiceReboot =>
+      'Valid only for the same OS boot. After an OS reboot, fresh approval is required.';
+
+  @override
+  String get agentCollectorServiceTechnical => 'Technical identity and catalog';
+
+  @override
+  String get agentCollectorServiceAgent => 'Agent ID';
+
+  @override
+  String get agentCollectorServiceIdentity => 'Service ID';
+
+  @override
+  String get agentCollectorServiceHash => 'Service policy digest';
+
+  @override
+  String get agentCollectorServiceManifest => 'Collector manifest digest';
+
+  @override
+  String get agentCollectorServicePolicyRevision => 'Policy revision';
+
+  @override
+  String get agentCollectorServiceRevocationEpoch => 'Revocation epoch';
+
+  @override
+  String get agentCollectorServiceBootId => 'OS boot ID';
+
+  @override
+  String get agentCollectorServiceBootCreated => 'Boot clock at configuration (ns)';
+
+  @override
+  String get agentCollectorServiceBootDeadline => 'Original boot-clock deadline (ns)';
+
+  @override
+  String get agentCollectorServiceRecordedAt => 'Configuration recorded (UTC)';
+
+  @override
+  String get agentCollectorServiceOriginalChanged =>
+      'The original profile, Host or review changed. Open a new review explicitly.';
+
+  @override
+  String get agentCollectorServiceCloseDisclosure => 'Closing this review does not stop an already configured service.';
+
+  @override
+  String get agentCollectorServiceCatalogObserved => 'Read-only catalog received. Configuration has not been changed.';
+
+  @override
+  String get agentCollectorServiceReadCatalog => 'Read service catalog';
+
+  @override
+  String get agentCollectorServicePrepare => 'Review finite service';
+
+  @override
+  String get agentCollectorServiceRefresh => 'Refresh review';
+
+  @override
+  String get agentCollectorServiceConfirm => 'Confirm service configuration';
+
+  @override
+  String get agentCollectorServiceConsent =>
+      'Allow this service to continue after the client locks or closes, within the displayed expiry and limits.';
+
+  @override
+  String agentCollectorServiceRemaining(int seconds) {
+    return 'Confirm within $seconds s';
+  }
+
+  @override
+  String get agentCollectorServiceExpired => 'Review expired. A new explicit review is required.';
+
+  @override
+  String get agentCollectorServiceCancelLocal => 'Cancel local request';
+
+  @override
+  String get agentCollectorServiceJoining => 'Waiting for the caller connection to close…';
+
+  @override
+  String get agentCollectorServiceCallerClosed => 'Caller connection closed. This does not establish service state.';
+
+  @override
+  String get agentCollectorServiceCleanupUnknown =>
+      'Caller connection cleanup is unknown. Service state has not been established.';
+
+  @override
+  String get agentCollectorServiceMayRemainActive =>
+      'The service may remain active until its permission expires. Closing this window does not revoke it.';
+
+  @override
+  String get agentCollectorServiceUnavailable =>
+      'The saved service state or catalog could not be verified. New configuration is unavailable; no retry was started.';
+
+  @override
+  String get agentCollectorServiceSavedTitle => 'Saved service observation';
+
+  @override
+  String get agentCollectorServiceReadSavedStatus => 'Read saved service status';
+
+  @override
+  String get agentCollectorServiceLocalRecorded => 'A configuration receipt is saved locally.';
+
+  @override
+  String get agentCollectorServiceLocalUnknown =>
+      'The local configuration outcome remains unknown. This observation does not repair it.';
+
+  @override
+  String get agentCollectorServiceRemoteRecorded => 'The Agent has recorded this service policy.';
+
+  @override
+  String get agentCollectorServiceRemoteRevoked =>
+      'The Agent recorded the access revocation. Process state remains unknown.';
+
+  @override
+  String get agentCollectorServiceNoRevocationObserved =>
+      'No revocation was recorded in this observation. The displayed permission expiry still applies.';
+
+  @override
+  String get agentCollectorServiceSavedUnknown =>
+      'The saved service could not be observed. No configuration was created, renewed or adopted.';
+
+  @override
+  String get agentCollectorServiceRevokeTitle => 'Revoke service access';
+
+  @override
+  String get agentCollectorServiceRevokePrepare => 'Review revocation';
+
+  @override
+  String get agentCollectorServiceRevokeConfirm => 'Confirm revocation';
+
+  @override
+  String get agentCollectorServiceRevokeDisclosure =>
+      'This revokes the selected saved service policy. A local block is separate from an Agent-confirmed revocation. Neither observes a process stop. Cancel closes only this request channel.';
+
+  @override
+  String get agentCollectorServiceRevokeConsent => 'Revoke access for this exact service policy';
+
+  @override
+  String get agentCollectorServiceRevokeLocalBlocked =>
+      'Further use is blocked locally. Remote revocation requires a separate confirmed observation.';
+
+  @override
+  String get agentCollectorServiceRevokeUnknown =>
+      'The remote revocation outcome is unknown. This attempt cannot be repeated automatically. Process state remains unknown.';
+
+  @override
+  String get agentCollectorServiceSavedStale =>
+      'The saved state may have changed. Read it again explicitly to observe it; no policy is created or renewed.';
+
+  @override
+  String get agentCollectorServiceReadCredentials => 'Choose saved sign-in records';
+
+  @override
+  String get agentCollectorServiceCredentialNone => 'No sign-in';
+
+  @override
+  String get agentCollectorServiceCredentialScrape => 'Sign-in for selected metrics source';
+
+  @override
+  String get agentCollectorServiceCredentialReceiver => 'Sign-in for the configured receiver';
+
+  @override
+  String get agentCollectorServiceCredentialsDisclosure =>
+      'Optional saved password records for this source and receiver only. No sign-in is selected by default. The final review binds their exact revisions.';
+
+  @override
+  String get agentCollectorServiceCredentialsReview => 'Selected saved records and revisions';
+
+  @override
+  String get agentCollectorServiceCredentialsUnavailable =>
+      'Saved sign-in choices are unavailable. No credential was selected automatically.';
+
+  @override
+  String get agentCollectorServiceLifetimeChoice => 'Allow selected sign-ins for service restarts';
+
+  @override
+  String get agentCollectorServiceLifetimeDisclosure =>
+      'Off by default: credentials authorize one start. If selected, the Agent may retain encrypted copies for restarts until the reviewed expiry. No automatic renewal or credential refresh.';
+
+  @override
+  String get agentCollectorServiceLifetimeReview => 'Finite credential delegation for service restarts';
+
+  @override
+  String get agentCollectorServiceCredentialRetention => 'Encrypted credential retention until';
+
+  @override
+  String get agentCollectorServiceCredentialPurpose => 'Credential authorization purpose';
+
+  @override
+  String get agentCollectorServiceLifetimeConsent =>
+      'Allow this service to continue after the client locks or closes, and allow only the listed sign-ins for restarts until the displayed expiry and within the reviewed limits.';
+
+  @override
+  String get agentMetricsRuntime => 'Collector software';
+
+  @override
+  String get agentMetricsPlatform => 'Platform';
+
+  @override
+  String get agentMetricsRuntimeBinarySha => 'Collector binary SHA-256';
+
+  @override
+  String get agentMetricsRuntimeBinaryBytes => 'Collector binary bytes';
+
+  @override
+  String get agentMetricsRuntimeVolatileOnly =>
+      'Temporary RAM collection only. Persistent collection and restart services are unavailable for this collector.';
+
+  @override
+  String get agentMetricsRuntimeMetadataOnly =>
+      'Software details from the catalogue do not confirm that collection is running.';
+
+  @override
+  String get agentTunnelAttachSaved => 'Return to the original tunnel';
+
+  @override
+  String get agentTunnelLookupFirst => 'Check for the original tunnel before preparing a new review.';
+
+  @override
+  String get agentTunnelOriginalMissing =>
+      'No matching original tunnel remains in this session. You can explicitly review a new one.';
+
+  @override
+  String get agentTunnelLeaveOriginal => 'Leave until the original expiry';
+
+  @override
+  String get agentTunnelLeaveHint =>
+      'Keeps this approved tunnel only until the expiry shown above, in this session. Profile lock, revocation and Stop still apply. Normal Close requests cancellation.';
+
+  @override
+  String get agentExporterTitle => 'Managed exporter';
+
+  @override
+  String get agentExporterPrerequisites => 'Check the Agent and managed exporter prerequisites before reviewing a run.';
+
+  @override
+  String get agentExporterReview => 'Review exporter run';
+
+  @override
+  String get agentExporterStart => 'Start exporter';
+
+  @override
+  String get agentExporterStop => 'Request exporter stop';
+
+  @override
+  String get agentExporterStartObserved =>
+      'The Agent observed the original exporter start. This is the last observation, not a fresh health check.';
+
+  @override
+  String get agentExporterStopRequested =>
+      'Stop requested; the original process exit and cleanup still need to be observed.';
+
+  @override
+  String get agentExporterStopped => 'The Agent observed the original exporter stop. Data delivery is not proved.';
+
+  @override
+  String get agentExporterUnknown => 'Outcome or cleanup unknown. No automatic retry or renewed permission.';
+
+  @override
+  String get agentExporterFiniteDisclosure =>
+      'Without root, for 30–300 seconds including setup and review. Requires a separately installed exporter. No automatic renewal or delivery guarantee. Closing requests cancellation; cleanup can remain unknown.';
+
+  @override
+  String get agentExporterArtifact => 'Installed artifact metadata';
+
+  @override
+  String get agentExporterExecutingVersion => 'Executing version';
+
+  @override
+  String get agentExporterSeconds => 's';
+
+  @override
+  String get agentExporterOriginalExpiry => 'Original expiry';
+
+  @override
+  String get agentExporterTechnical => 'Technical identity';
+
+  @override
+  String get agentExporterCleanupObserved => 'Cleanup of the original operation was observed.';
+
+  @override
+  String get agentExporterCheck => 'Check prerequisites';
+
+  @override
+  String get agentExporterEnroll => 'Connect for exporter control';
+
+  @override
+  String get agentExporterEnrollmentDisclosure =>
+      'Connect a fresh Agent for exporter control only. Existing tunnel or metrics connections cannot be upgraded. A stored client identity and separately installed managed exporter are required. A certificate does not mean the exporter is running.';
+
+  @override
+  String get agentExporterSources => 'CPU and memory';
+
+  @override
+  String get agentTunnelHostChanged =>
+      'This Agent entry does not match the current Host. Refresh status and check the Host before opening a tunnel.';
+
+  @override
+  String get automationCadvisorInstallAction => 'Prepare cAdvisor installation';
+
+  @override
+  String get automationCadvisorInstallTitle => 'cAdvisor v0.60.6 installation parameters';
+
+  @override
+  String get automationCadvisorInstallImageDigest => 'Reviewed image manifest SHA256 (64 lowercase hex characters)';
+
+  @override
+  String get automationCadvisorInstallImageId => 'Reviewed Docker image ID (sha256:…)';
+
+  @override
+  String get automationCadvisorInstallPort => 'Loopback port (1024–65535)';
+
+  @override
+  String get automationCadvisorInstallOwner => 'Ownership label: this new project ID';
+
+  @override
+  String get automationCadvisorInstallConsent =>
+      'I reviewed privileged mode, /dev/kmsg, the fixed host mounts and Docker API access.';
+
+  @override
+  String get automationCadvisorInstallDraft =>
+      'The exact reviewed image must already exist on the host. This only fills the ordinary run composer. Select the Runner and hosts, choose Apply, validate and explicitly confirm the Native review. Creating a project does not install cAdvisor or update the Agent manifest.';
+
+  @override
+  String get automationCadvisorInstallContinue => 'Open run composer';
+
+  @override
+  String get automationCadvisorInstallInvalid =>
+      'Check the image digests and port. Only the unchanged shipped cAdvisor template in the original project revision can use this setup.';
+
+  @override
+  String get monitoringAgentRoute => 'Connection for this query';
+
+  @override
+  String get monitoringAgentRouteHint =>
+      'Uses the last observed retained Agent tunnel once, until its original expiry. Availability is checked when used. No reconnect, renewal or automatic polling; the saved source is unchanged.';
+
+  @override
+  String get monitoringAgentRouteSavedSource => 'Saved source connection';
+
+  @override
+  String get monitoringAgentRouteUnavailable =>
+      'No matching retained tunnel is available in this session. Open an Agent tunnel and explicitly leave it until its original expiry first.';
+
+  @override
+  String get monitoringAgentRouteExpires => 'Original expiry (UTC)';
+
+  @override
+  String get monitoringAgentRouteEndpointMismatch =>
+      'The source URL must use this exact numeric destination and port. Its URL, TLS and credentials are not changed automatically.';
+
+  @override
+  String get agentMetricsRuntimeDiskMetadata =>
+      'Disk collector software metadata from the catalog. This review does not install or attest a binary. The Node must verify the actual installed artifact; a platform label does not prove that it is available or running.';
+
+  @override
+  String get automationCadvisorLifecycleTitle => 'Manifest-bound cAdvisor lifecycle';
+
+  @override
+  String get automationCadvisorLifecycleDraft =>
+      'Choose exactly one saved Host in the ordinary run composer. The component manifest is bound to that Host and reviewed Ansible jobs; the Agent receives no Docker socket or root rights. Start, stop and removal require the original owner and complete container ID from its installation result. Stop before removal. Every operation needs its own Native review and confirmation. This draft does not install or collect metrics, or update the Agent scrape catalog.';
+
+  @override
+  String get automationCadvisorLifecycleOperation => 'Operation';
+
+  @override
+  String get automationCadvisorLifecycleInspect => 'Inspect original component';
+
+  @override
+  String get automationCadvisorLifecycleInstall => 'Install a new component';
+
+  @override
+  String get automationCadvisorLifecycleStart => 'Start original component';
+
+  @override
+  String get automationCadvisorLifecycleStop => 'Stop original component';
+
+  @override
+  String get automationCadvisorLifecycleRemove => 'Remove stopped original component';
+
+  @override
+  String get automationCadvisorLifecycleOwner => 'Owner label UUID (keep the original for later operations)';
+
+  @override
+  String get automationCadvisorLifecycleContainer => 'Original container ID (64 lowercase hex characters)';
+
+  @override
+  String get automationCadvisorLifecycleOneHost =>
+      'Select exactly one saved SSH Host to bind this cAdvisor component manifest.';
+
+  @override
+  String get hostAgentCadvisorAnsible => 'cAdvisor through Ansible';
+
+  @override
+  String hostAgentLastObservedVersion(String version, String time) {
+    return 'Last observed Agent version: $version · read at $time';
+  }
+
+  @override
+  String get hostAgentLastObservedHint =>
+      'From the same authenticated heartbeat and configured Host. This past observation does not confirm current readiness, update availability or a completed installation.';
+  @override
+  String get monitoringAgentDestinationHint => "The Agent route saves its association, SSH host and loopback destination; the source URL, TLS and authentication stay unchanged. Saving changes invalidates the previous tunnel approval. Open and approve a new matching Agent tunnel before reading; this reference grants no access and never reconnects automatically.";
 }

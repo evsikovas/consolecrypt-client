@@ -14,6 +14,7 @@
 //!   use `#[serde(default)]` so older clients keep working.
 
 pub mod ai;
+pub mod automation;
 pub mod credential;
 pub mod database;
 pub mod group;

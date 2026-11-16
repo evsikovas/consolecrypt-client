@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: consolecrypt_agent_profile
+  author: ConsoleCrypt
+  description: Validate and render public Agent profiles without managing external exporters
+  min_ansible_version: '2.20'
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+dependencies: []

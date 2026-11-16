@@ -1,5 +1,7 @@
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/symbols.dart';
+import 'package:consolecrypt/automation/automation_agent_installer.dart';
+import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -9,6 +11,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/view_mode_toggle.dart';
 import 'package:consolecrypt/groups/group_dialogs.dart';
 import 'package:consolecrypt/groups/group_tree.dart';
+import 'package:consolecrypt/hosts/agent_lifecycle_entry.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
 import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
@@ -634,6 +637,7 @@ class _GroupCard extends StatelessWidget {
 
 enum _HostAction {
   connect,
+  agent,
   notes,
   group,
   sftp,
@@ -761,6 +765,11 @@ class _HostTile extends ConsumerWidget {
                 icon: Icons.drive_file_move_rounded,
               ),
             const GlassMenuDivider(),
+            if (!host.isRdp && team == null && !host.metadata.containsKey('cc.shared.share') &&
+                !host.metadata.containsKey('cc.shared.instance') &&
+                ref.watch(automationServiceProvider) is AutomationAgentInstallerService)
+              GlassMenuItem(key: ValueKey('host-agent-menu-${host.id.value}'), value: _HostAction.agent,
+                label: l10n.hostAgentMenu, icon: Icons.install_desktop_outlined),
             if (!host.isRdp)
               GlassMenuItem(value: _HostAction.sftp, label: l10n.hostsOpenSftp, icon: Icons.folder_copy_rounded),
             if (ref.watch(activeProfileProvider)?.isSynced == true)
@@ -822,6 +831,8 @@ class _HostTile extends ConsumerWidget {
             switch (v) {
               case _HostAction.connect:
                 await connectToHost(context, ref, host);
+              case _HostAction.agent:
+                await showHostAgentLifecycle(context, ref, host);
               case _HostAction.notes:
                 showHostNotes(ref, host);
               case _HostAction.share:

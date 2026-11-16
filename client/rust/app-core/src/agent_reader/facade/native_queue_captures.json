@@ -1,0 +1,95 @@
+[
+  {
+    "phase": "healthy",
+    "collection": {
+      "state": "running",
+      "backend": "prom-agent-hardmode-v1",
+      "native_queue": {
+        "age_evicted_segments_total": 0,
+        "byte_evicted_segments_total": 0,
+        "charged_evicted_wal_bytes_total": 0,
+        "confirmed_accepted_requests_total": null,
+        "confirmed_accepted_samples_total": null,
+        "global_unacknowledged_loss_unknown": false,
+        "last_validated_root_charge_bytes": 262144,
+        "oldest_retained_segment_residence_seconds": 1.000370724,
+        "physical_evicted_segments_total": 0,
+        "receiver_permanent_rejected_samples_total": null,
+        "sample_nonrecoverable_failures_total": 0,
+        "sample_pre_send_drops_total": null,
+        "sample_retry_attempts_total": 1,
+        "sample_send_attempts_total": 2,
+        "shard_pending_samples": 0,
+        "source_max_enqueued_timestamp_seconds": 1794568850.0,
+        "source_max_reported_sent_timestamp_seconds": 1794568850.0,
+        "sticky_unavailable": false,
+        "system_disk_low_available_rejections_total": 0,
+        "system_disk_observation_invalid_rejections_total": 0,
+        "unacknowledged_delivery_lag_seconds": null,
+        "unacknowledged_samples_lost_total": null
+      }
+    }
+  },
+  {
+    "phase": "degraded",
+    "collection": {
+      "state": "degraded",
+      "backend": "prom-agent-hardmode-v1",
+      "native_queue": {
+        "age_evicted_segments_total": 0,
+        "byte_evicted_segments_total": 0,
+        "charged_evicted_wal_bytes_total": 0,
+        "confirmed_accepted_requests_total": null,
+        "confirmed_accepted_samples_total": null,
+        "global_unacknowledged_loss_unknown": true,
+        "last_validated_root_charge_bytes": 262144,
+        "oldest_retained_segment_residence_seconds": 1.118804162,
+        "physical_evicted_segments_total": 0,
+        "receiver_permanent_rejected_samples_total": null,
+        "sample_nonrecoverable_failures_total": 0,
+        "sample_pre_send_drops_total": null,
+        "sample_retry_attempts_total": 1,
+        "sample_send_attempts_total": 2,
+        "shard_pending_samples": 0,
+        "source_max_enqueued_timestamp_seconds": 1794568850.0,
+        "source_max_reported_sent_timestamp_seconds": 1794568850.0,
+        "sticky_unavailable": true,
+        "system_disk_low_available_rejections_total": 1,
+        "system_disk_observation_invalid_rejections_total": 0,
+        "unacknowledged_delivery_lag_seconds": null,
+        "unacknowledged_samples_lost_total": null
+      }
+    }
+  },
+  {
+    "phase": "empty_registry",
+    "collection": {
+      "state": "unknown",
+      "backend": "prom-agent-hardmode-v1",
+      "native_queue": {
+        "age_evicted_segments_total": null,
+        "byte_evicted_segments_total": null,
+        "charged_evicted_wal_bytes_total": null,
+        "confirmed_accepted_requests_total": null,
+        "confirmed_accepted_samples_total": null,
+        "global_unacknowledged_loss_unknown": null,
+        "last_validated_root_charge_bytes": null,
+        "oldest_retained_segment_residence_seconds": null,
+        "physical_evicted_segments_total": null,
+        "receiver_permanent_rejected_samples_total": null,
+        "sample_nonrecoverable_failures_total": null,
+        "sample_pre_send_drops_total": null,
+        "sample_retry_attempts_total": null,
+        "sample_send_attempts_total": null,
+        "shard_pending_samples": null,
+        "source_max_enqueued_timestamp_seconds": null,
+        "source_max_reported_sent_timestamp_seconds": null,
+        "sticky_unavailable": null,
+        "system_disk_low_available_rejections_total": null,
+        "system_disk_observation_invalid_rejections_total": null,
+        "unacknowledged_delivery_lag_seconds": null,
+        "unacknowledged_samples_lost_total": null
+      }
+    }
+  }
+]

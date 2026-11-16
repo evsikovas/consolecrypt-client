@@ -1,12 +1,16 @@
+import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/services/ai_service.dart';
+import 'package:consolecrypt/core/services/approved_exit_actions.dart';
 import 'package:consolecrypt/core/services/auth_service.dart';
 import 'package:consolecrypt/core/services/backup_service.dart';
 import 'package:consolecrypt/core/services/devices_service.dart';
 import 'package:consolecrypt/core/services/enrollment_service.dart';
 import 'package:consolecrypt/core/services/file_dialog_service.dart';
 import 'package:consolecrypt/core/services/inventory_service.dart';
+import 'package:consolecrypt/core/services/job_notice_events.dart';
 import 'package:consolecrypt/core/services/profile_service.dart';
 import 'package:consolecrypt/core/services/prompt_service.dart';
+import 'package:consolecrypt/core/services/runtime_notice_adapter.dart';
 import 'package:consolecrypt/core/services/settings_service.dart';
 import 'package:consolecrypt/core/services/sftp_browser_service.dart';
 import 'package:consolecrypt/core/services/sftp_service.dart';
@@ -20,9 +24,11 @@ import 'package:consolecrypt/core/services/vault_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
+import 'package:consolecrypt/monitoring/monitoring_service.dart';
 import 'package:consolecrypt/notes/note_service.dart';
 
 export 'package:consolecrypt/core/services/ai_service.dart';
+export 'package:consolecrypt/core/services/approved_exit_actions.dart';
 export 'package:consolecrypt/core/services/auth_service.dart';
 export 'package:consolecrypt/core/services/backup_service.dart';
 export 'package:consolecrypt/core/services/devices_service.dart';
@@ -82,9 +88,14 @@ final class AppServices {
     this.kubernetes,
     this.databases,
     this.docker,
+    this.automation,
+    this.monitoring,
+    this.jobNotices,
+    this.runtimeNotices,
     this.notes,
     this.developer,
     this.onDispose,
+    this.approvedExitActions,
   });
 
   final ProfileService profiles;
@@ -100,6 +111,10 @@ final class AppServices {
   final SyncService sync;
   final SettingsService settings;
   final BackupService backups;
+  final AutomationService? automation;
+  final MonitoringBackend? monitoring;
+  final JobNoticeEvents? jobNotices;
+  final RuntimeNoticeEvents? runtimeNotices;
   final FileDialogService files;
 
   /// SFTP browser + edit sessions (SFTP_BROWSER_SPEC). Optional while a
@@ -127,6 +142,7 @@ final class AppServices {
   final NoteService? notes;
   final DeveloperControls? developer;
   final Future<void> Function()? onDispose;
+  final ApprovedExitActions? approvedExitActions;
 
   bool get isMock => developer != null;
 

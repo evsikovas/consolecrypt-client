@@ -1,0 +1,44 @@
+[Unit]
+Description=ConsoleCrypt finite outbound pinned SSH carrier
+After=network.target ssh.service
+Requires=ssh.service
+ConditionPathExists=/etc/consolecrypt-agent/tunnel-transport.json
+ConditionPathExists=/etc/consolecrypt-agent/tunnel-relay-ca.pem
+ConditionPathExists=/var/lib/consolecrypt-agent/tunnel/control/bootstrap.json
+
+[Service]
+Type=simple
+User=consolecrypt-agent
+Group=consolecrypt-agent
+WorkingDirectory=/opt/consolecrypt-agent-install/opt/consolecrypt-agent
+ExecStart=/usr/bin/python3.12 -I -B /opt/consolecrypt-agent-install/opt/consolecrypt-agent/launch.py outbound-control
+Environment=LANG=C.UTF-8
+Restart=no
+TimeoutStopSec=10s
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+IPAddressDeny=any
+IPAddressAllow=localhost {{ cc_agent_outbound_control_relay_ip }}
+ReadOnlyPaths=/var/lib/consolecrypt-agent/tunnel/control
+InaccessiblePaths=-/run/docker.sock -/var/run/docker.sock -/run/containerd/containerd.sock
+MemoryMax=128M
+MemorySwapMax=0
+CPUQuota=25%
+TasksMax=16
+LimitNOFILE=64
+
+[Install]
+WantedBy=multi-user.target

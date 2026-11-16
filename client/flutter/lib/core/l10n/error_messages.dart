@@ -38,6 +38,8 @@
 /// | (transport failure) | serverUnreachable / offline |
 library;
 
+import 'package:consolecrypt/automation/automation_project_credentials_errors.dart';
+
 import 'package:consolecrypt/core/models/validation.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
@@ -212,6 +214,12 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
 /// Localized text for a model [ValidationError] (`field` = snake_case
 /// cc-models field name, `rule` = its English reason).
 String validationMessage(AppLocalizations l, String field, String rule) {
+  if (field == 'automation_credentials') return projectCredentialsIssueMessage(l, projectCredentialsIssueForRule(rule));
+  if (field == 'automation_vault') return l.automationVaultChoose;
+  if (field == 'agent_tunnel') {
+    if (rule == 'tls_identity_expired') return l.agentTunnelTlsExpired;
+    if (rule == 'tls_identity_unavailable' || rule == 'tls_identity_unknown') return l.agentTunnelTlsUnavailable;
+  }
   if (field == 'shared_host' && (rule == 'endpoint_changed_review' || rule == 'exact_endpoint_confirmation_required')) {
     return l.sharingEndpointChanged;
   }

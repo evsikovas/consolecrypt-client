@@ -22,6 +22,7 @@ import 'package:consolecrypt/vault/vault_key_mismatch.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+
 class ConsoleCryptApp extends ConsumerWidget {
   const ConsoleCryptApp({super.key});
 
@@ -158,6 +159,7 @@ class AppCommandsScope extends ConsumerWidget {
               item(AppCommandId.commandPalette),
               item(AppCommandId.snippets),
               item(AppCommandId.toggleSidebar),
+              item(AppCommandId.customizeSidebar),
               item(AppCommandId.toggleTerminalMinimalMode),
               item(AppCommandId.splitTerminalRight),
               item(AppCommandId.splitTerminalDown),

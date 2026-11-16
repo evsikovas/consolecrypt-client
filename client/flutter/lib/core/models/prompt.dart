@@ -18,6 +18,21 @@ sealed class CorePrompt {
   ObjectId? get hostId;
 }
 
+/// A nonsecret question that is valid even while the profile is locked.
+final class AutomationTransitionCorePrompt extends CorePrompt {
+  const AutomationTransitionCorePrompt({
+    required String requestId,
+    required this.jobCount,
+    required this.operation,
+    this.unknownCount = 0,
+  }) : super(requestId);
+  final int jobCount;
+  final int unknownCount;
+  final String operation;
+  @override
+  ObjectId? get hostId => null;
+}
+
 /// "Unknown host key" (host-key policy `ask`). Changed keys never ask: they
 /// fail hard (`hostKeyChanged`).
 final class HostKeyCorePrompt extends CorePrompt {

@@ -27,8 +27,15 @@
 //! Secret-bearing types zeroize on drop and have redacted `Debug`.
 
 mod aead;
+mod automation;
+mod production_owner;
+pub use production_owner::{OwnerConfirmation, ProductionOwnerPolicy, PRODUCTION_OWNER_DOMAIN, production_manifest_digest};
+pub mod agent_reader;
+mod agent_tunnel;
+mod agent_reader_node_owner;
 mod backup;
 mod device;
+pub use automation::verify_automation_manifest;
 mod envelope;
 mod error;
 mod kdf;
@@ -85,3 +92,29 @@ pub use rng::{fill_random, random_below};
 /// Re-exported so callers need not depend on `secrecy` just to pass a
 /// passphrase.
 pub use secrecy::{ExposeSecret, SecretString};
+
+// Private client-side file format; no vault object/server protocol authority.
+mod portable_project;
+pub use portable_project::{open_portable_project, seal_portable_project, MAX_PORTABLE_PROJECT_PLAIN, MAX_PORTABLE_PROJECT_BYTES};
+
+// Private service-purpose capsule; no protocol pin or vault-key wrapping.
+mod service_credential;
+pub use service_credential::{ServiceCredentialBinding, ServiceCredentialCapsule, ServiceCredentialError, ServiceCredentialKind, ServiceTenantKind, SelectedServiceCredential, OpenedServiceCredential, seal_service_credential, open_service_credential};
+
+mod service_delegation;
+pub use service_delegation::{ServiceDelegationPolicy, ServiceDelegationError, ServicePolicyTenant, ServicePolicyKey, ServicePolicyHostRef, ServicePolicyCredentialRef, ServicePolicyQuotas, ServiceRouteInputRef, ServiceRouteInputs, ServiceAccessMode, ServiceAccessPolicy, SignedInitialServiceStatus, SignedServiceDelegation, VerifiedServiceDelegation, SERVICE_DELEGATION_DOMAIN_V4};
+
+mod service_origin;
+pub use service_origin::ServiceExecutionOrigin;
+mod service_job;
+pub use service_job::{ServiceScheduledSlot, ServiceJobApproval, SignedServiceScheduledJob};
+
+pub use service_delegation::{ServiceOwnerStatusVerifier, VerifiedServiceOwnerStatus, SignedServiceRevocation};
+
+mod collector_service;
+
+mod agent_collector_credentials;
+pub use agent_collector_credentials::{PreparedCollectorCredentialOwner, collector_credential_binding, open_collector_credential, collector_basic_password_supported, CollectorCredentialEnvelope, CollectorCredentialBundle};
+
+mod collector_service_credentials;
+pub use collector_service_credentials::{PreparedCollectorServiceCredentialOwner,CollectorServiceCredentialFrame,collector_service_credential_binding,preflight_collector_service_credential_set,open_collector_service_credential_set};

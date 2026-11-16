@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-11",
+  "collector": {
+    "name": "vmagent",
+    "version": "v1.156.0",
+    "license": "Apache-2.0",
+    "source": "https://github.com/VictoriaMetrics/VictoriaMetrics/tree/v1.156.0",
+    "release": "https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.156.0",
+    "license_url": "https://raw.githubusercontent.com/VictoriaMetrics/VictoriaMetrics/v1.156.0/LICENSE",
+    "artifacts": {
+      "linux-amd64": {
+        "archive": "vmutils-linux-amd64-v1.156.0.tar.gz",
+        "archive_sha256": "d71f7f00e07782531000620ec6c2a9d7ec83324f364dd1f36095ab378b5fb43b",
+        "binary": "vmagent-prod",
+        "binary_sha256": "2039bc05b6ad5c96b34b72801908896bf8a6a7bcab8ae32120cbb8e6217ef6f6"
+      },
+      "linux-arm64": {
+        "archive": "vmutils-linux-arm64-v1.156.0.tar.gz",
+        "archive_sha256": "1a8e4ed55df2a59d5cd03056213f50d293d4fab029e38dd960597362d92cf176",
+        "binary": "vmagent-prod",
+        "binary_sha256": "564346d8acd0979b62c2671ad586d63b243a925307bfa54d0d5f94bd50dda4f5"
+      },
+      "windows-amd64": {
+        "archive": "vmutils-windows-amd64-v1.156.0.zip",
+        "archive_sha256": "c18ebbc315b8b48135e3600bf040dcacb56b43388e683acf2adec00f1db6d468",
+        "binary": "vmagent-windows-amd64-prod.exe",
+        "binary_sha256": "80ec3c2ea108cb480b0c4f8f645d55661fbaad62b31d21b4b751aa567acae7a3"
+      }
+    },
+    "trust": "Checksums fetched from official HTTPS release assets and pinned here. This is integrity pinning, not an independently authenticated release signature; no unattended updater is enabled."
+  },
+  "test_receiver": {
+    "name": "Prometheus",
+    "version": "3.16.0",
+    "license": "Apache-2.0",
+    "release": "https://github.com/prometheus/prometheus/releases/tag/v3.16.0",
+    "checksum_source": "https://github.com/prometheus/prometheus/releases/download/v3.16.0/sha256sums.txt",
+    "platform": "windows-amd64",
+    "archive": "prometheus-3.16.0.windows-amd64.tar.gz",
+    "archive_sha256": "9e46350ae75dfa766e64d4abbc00f45a327bb4198915b3fe4d74baa809a83223",
+    "binary_sha256": "ac39610df6a7a45face0a08476ac9ae85b1e13d82da891d33739dea448100eb4",
+    "purpose": "Owned temporary loopback integration tests and native promtool syntax validation. No installation or unattended updates. Full upstream LICENSE and NOTICE extracted into ignored cache.",
+    "additional_artifacts": {
+      "linux-amd64": {
+        "archive": "prometheus-3.16.0.linux-amd64.tar.gz",
+        "archive_sha256": "68727009472a2c02e1ff7f062fd5b3e637285bffc8fc2d340c76fb449d6e0f34",
+        "binary_sha256": "fe1fc9a01dbe3c6bd8abda3f050fc9fc85483cbea2b36c8603eef34cbbd36ff9",
+        "checked_at": "2026-11-12"
+      },
+      "linux-arm64": {
+        "archive": "prometheus-3.16.0.linux-arm64.tar.gz",
+        "archive_sha256": "fd8571b8162f4020232d886f17340bcf92e1722985ae3b4c1d096157826c0fbe",
+        "binary_sha256": "14988cc7557c48b611a89f1db2cdbd899bbe5949b9aa67b888ddd00f2fc88a00",
+        "promtool_binary_sha256": "6e310e54a01ba7f9aeb8962148c9147712bd05336b17240ce5252ab12a02da96",
+        "checked_at": "2026-11-12"
+      }
+    }
+  },
+  "optional_exporters": {
+    "node_exporter": {
+      "version": "v1.12.1",
+      "license": "Apache-2.0",
+      "release": "https://github.com/prometheus/node_exporter/releases/tag/v1.12.1",
+      "checksum_source": "https://github.com/prometheus/node_exporter/releases/download/v1.12.1/sha256sums.txt",
+      "linux-amd64_archive_sha256": "b51d8a76aa2a9156a55d501aca6276fae09e262259a5e4e831d2c2222f084e63",
+      "linux-arm64_archive_sha256": "ad35b605f9954b9f1ffddf5ba054bdc5a98d790b9eae5291e1eeb83f1ecbd0e7",
+      "linux-amd64_fixture_binary_sha256": "1108f7453ecfe4a72f131c73b69537c171840ad4f1713a2402328ad56cf12e09",
+      "linux-arm64_fixture_binary_sha256": "737591cd29f1aad5f1f53fe61d19ea54d841c27c101446619f7b026a682b85b8",
+      "privileges": "Separate unprivileged service, loopback bind, explicit collectors only. No host root or Docker socket is granted. Container host metrics need reviewed read-only host mounts. Installation not implemented by this module."
+    },
+    "cadvisor": {
+      "version": "v0.60.6",
+      "license": "Apache-2.0",
+      "release": "https://github.com/google/cadvisor/releases/tag/v0.60.6",
+      "checksum_source": "https://api.github.com/repos/google/cadvisor/releases/tags/v0.60.6",
+      "linux-amd64_binary_sha256": "c381c2c911bc43d465d1e0eaff60f96d58c031c409bddf06da0316fdde8a9296",
+      "linux-arm64_binary_sha256": "d788162d9deea8aa024fd79a0a685df90a987362d8f0e580f822474c1fbef7f9",
+      "privileges": "Disabled. Upstream typical container setup requires privileged mode and host /, /sys, /var/lib/docker, /dev/disk and runtime access. Monitoring scopes cannot grant these; dedicated privilege review required. This module refuses to enable cAdvisor."
+    }
+  }
+}

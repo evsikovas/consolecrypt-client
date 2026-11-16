@@ -8,11 +8,12 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/prompt_service.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
+import 'package:consolecrypt/src/rust/api/automation.dart' as rs_automation;
 
 /// [PromptService] over the core's prompt stream: receives the prompts no
 /// terminal tab claimed (`RustBackend.onUnclaimedPrompt`) while a presenter
 /// is attached; without one they are declined at once.
-final class RustPromptService implements PromptService {
+final class RustPromptService implements PromptService, AutomationTransitionPromptService {
   RustPromptService(this._hub) {
     _hub
       ..onUnclaimedPrompt = _claim
@@ -27,9 +28,10 @@ final class RustPromptService implements PromptService {
   final _pending = ValueStreamController<List<CorePrompt>>(const []);
   final Map<String, Timer> _expiry = {};
   int _presenters = 0;
+  bool _disposed = false;
 
   Future<bool> _claim(Json json) async {
-    if (_presenters == 0) return false;
+    if (_disposed || _presenters == 0) return false;
     final prompt = corePromptFromJson(json);
     if (prompt == null) return false;
     _pending.value = List.unmodifiable([..._pending.value, prompt]);
@@ -38,6 +40,7 @@ final class RustPromptService implements PromptService {
   }
 
   bool _remove(String requestId) {
+    if (_disposed) return false;
     _expiry.remove(requestId)?.cancel();
     final before = _pending.value;
     final after = [
@@ -54,6 +57,19 @@ final class RustPromptService implements PromptService {
 
   @override
   List<CorePrompt> get pending => _pending.value;
+
+  @override
+  Future<void> answerAutomationTransition(String requestId, String decision) async {
+    if (!_pending.value.any((p) => p.requestId == requestId && p is AutomationTransitionCorePrompt)) return;
+    _expiry.remove(requestId)?.cancel();
+    try {
+      await guard(() => rs_automation.automationAnswerTransition(requestId: requestId, decision: decision));
+    } on AppException catch (e) {
+      if (e.code != AppErrorCode.notFound) rethrow;
+    } finally {
+      _remove(requestId);
+    }
+  }
 
   @override
   Future<void> answerHostKey(String requestId, HostKeyDecision decision) async {
@@ -106,8 +122,11 @@ final class RustPromptService implements PromptService {
   }
 
   void _declineAll() {
+    if (_disposed) return;
     for (final p in [..._pending.value]) {
-      if (p is HostKeyCorePrompt) {
+      if (p is AutomationTransitionCorePrompt) {
+        unawaited(_quiet(answerAutomationTransition(p.requestId, 'abort')));
+      } else if (p is HostKeyCorePrompt) {
         unawaited(_quiet(answerHostKey(p.requestId, HostKeyDecision.reject)));
       } else {
         unawaited(_quiet(answerSecret(p.requestId, null)));
@@ -124,7 +143,9 @@ final class RustPromptService implements PromptService {
   }
 
   Future<void> dispose() async {
+    if (_disposed) return;
     _declineAll();
+    _disposed = true;
     for (final t in _expiry.values) {
       t.cancel();
     }

@@ -647,6 +647,33 @@ fn prompt_responder(app: &AppCore, accept_host_key: bool) -> tokio::task::JoinHa
                     .flatten();
                     let _ = app.answer_password_prompt(p.request_id, answer);
                 }
+                PromptRequest::AutomationTransition(p) => {
+                    let choice = tokio::task::spawn_blocking(move || {
+                        if !stdin_is_tty() { return (p.request_id, "abort"); }
+                        let question = if p.unknown_count > 0 {
+                            format!("{} jobs have unknown outcomes. Remote commands may still run; closing does not resolve them. Type cancel-accept-unknown to cancel known active jobs and close, or stay:", p.unknown_count)
+                        } else {
+                            format!("{} jobs are active. Wait for completion, cancel jobs and finish, or stay? [wait/cancel/stay]", p.job_count)
+                        };
+                        let choice = match ask(&question).unwrap_or_default().trim() {
+                            "wait" if p.unknown_count == 0 => "wait",
+                            "cancel" if p.unknown_count == 0 => "cancel_jobs",
+                            "cancel-accept-unknown" if p.unknown_count > 0 => "cancel_jobs_accept_unknown",
+                            _ => "abort",
+                        };
+                        (p.request_id, choice)
+                    }).await;
+                    if let Ok((id, choice)) = choice {
+                        // Continue answering any authentication prompts needed
+                        // by a worker while its transition completion is pending.
+                        let responder = app.clone();
+                        tokio::spawn(async move {
+                            let _ = responder
+                                .automation_answer_transition(id, choice.into())
+                                .await;
+                        });
+                    }
+                }
             }
         }
     })
@@ -672,7 +699,23 @@ fn bind_spec(s: &str) -> R<(String, u16)> {
     Ok((h, port))
 }
 
-async fn run(cli: &Cli, app: &AppCore) -> R<i32> {
+type CommandFuture<'a> = std::pin::Pin<Box<dyn std::future::Future<Output = R<i32>> + 'a>>;
+
+fn run<'a>(cli: &'a Cli, app: &'a AppCore) -> CommandFuture<'a> {
+    match &cli.cmd {
+        // Device approval must not poll through the large, unrelated command
+        // dispatcher frame on Windows' one-MiB main stack. This non-async gate
+        // selects its own boxed future before either command body is polled.
+        Cmd::Device { cmd } => Box::pin(async move {
+            let out = Out::new(cli.json);
+            device(cli, app, cmd, &out).await?;
+            Ok(0)
+        }),
+        _ => Box::pin(run_commands(cli, app)),
+    }
+}
+
+async fn run_commands(cli: &Cli, app: &AppCore) -> R<i32> {
     let out = Out::new(cli.json);
     match &cli.cmd {
         Cmd::Init(a) => init(cli, app, a, &out).await?,
@@ -718,7 +761,7 @@ async fn run(cli: &Cli, app: &AppCore) -> R<i32> {
         Cmd::Tunnel { cmd } => tunnel(cli, app, cmd, &out).await?,
         Cmd::Sftp { cmd } => sftp(cli, app, cmd, &out).await?,
         Cmd::Sync { cmd } => sync(cli, app, cmd, &out).await?,
-        Cmd::Device { cmd } => device(cli, app, cmd, &out).await?,
+        Cmd::Device { .. } => unreachable!("device commands use the separate dispatch future"),
         Cmd::Backup { cmd } => backup(cli, app, cmd, &out).await?,
         Cmd::RecoveryKit { regenerate } => {
             if !regenerate {
@@ -750,6 +793,39 @@ async fn run(cli: &Cli, app: &AppCore) -> R<i32> {
         },
     }
     Ok(0)
+}
+
+#[cfg(test)]
+mod dispatch_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn device_dispatch_keeps_the_entry_future_bounded_without_polling_or_network() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().to_string_lossy().into_owned();
+        let app = AppCore::new(AppConfig::for_tests(path.clone())).unwrap();
+        let cli = Cli::try_parse_from([
+            "consolecrypt-cli",
+            "--data-dir",
+            &path,
+            "--secure-store",
+            "memory",
+            "device",
+            "announce",
+            "11111111-1111-4111-8111-111111111111",
+        ])
+        .unwrap();
+        // Before the gate this entry await embeds the ~24KiB run future. This
+        // budget detects reintroducing that state, not just the Box pointer's
+        // size. Real v1/v2 device behavior remains covered by the CLI tests.
+        let entry = async { run(&cli, &app).await };
+        assert!(
+            std::mem::size_of_val(&entry) <= 1024,
+            "device entry future must stay bounded"
+        );
+        drop(entry); // Never poll: no profile, approval or network is created.
+        app.shutdown().await.unwrap();
+    }
 }
 
 /// Mandatory 3-word check when interactive; otherwise remind the user.

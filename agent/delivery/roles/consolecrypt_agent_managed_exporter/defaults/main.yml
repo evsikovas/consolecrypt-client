@@ -1,0 +1,9 @@
+---
+# Explicit administrator action, independent from Agent permit/admission.
+cc_managed_exporter_prepare: false
+cc_managed_exporter_bundle_dir: ''
+cc_managed_exporter_host_id: ''
+cc_managed_exporter_agent_id: ''
+cc_managed_exporter_worker_sha256: ''
+cc_managed_exporter_platform: ''
+cc_managed_exporter_max_seconds: 300

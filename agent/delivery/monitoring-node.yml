@@ -1,0 +1,127 @@
+---
+# NOT executed by the Agent. Run explicitly with reviewed inventory and plan.
+# ansible-playbook -i inventory monitoring-node.yml -e @plan.json -e cc_monitoring_install_approved=true
+- name: Install an explicitly approved independent monitoring node
+  hosts: monitoring_nodes
+  gather_facts: false
+  become: true
+  vars:
+    cc_monitoring_install_approved: false
+    cc_monitoring_restore_approved: false
+    cc_monitoring_operation: install
+    cc_monitoring_volume: /srv/consolecrypt-monitoring
+    cc_monitoring_backup: /srv/consolecrypt-monitoring/config-backup
+  pre_tasks:
+    - name: Describe monitoring storage trust boundary; vault E2EE is not inherited
+      ansible.builtin.debug:
+        msg: >-
+          Metrics snapshots are accessible to and processed by the monitoring storage within its trust boundary.
+          They do not automatically inherit ConsoleCrypt vault end-to-end encryption.
+          Treat the monitoring node, storage administrators and its backups as a separate trust boundary;
+          configure access and storage protection explicitly.
+      become: false
+      tags: [always]
+
+    - name: Require explicit approval and the separately reviewed plan
+      ansible.builtin.assert:
+        that:
+          - cc_monitoring_operation in ['install', 'restore']
+          - cc_monitoring_install_approved is boolean
+          - cc_monitoring_restore_approved is boolean
+          - (cc_monitoring_operation == 'install' and cc_monitoring_install_approved) or (cc_monitoring_operation == 'restore' and cc_monitoring_restore_approved)
+          - cc_monitoring_plan is defined
+          - cc_prometheus_config is defined
+          - cc_prometheus_version == '3.16.0'
+          - cc_prometheus_sha256 == '68727009472a2c02e1ff7f062fd5b3e637285bffc8fc2d340c76fb449d6e0f34'
+          - cc_monitoring_plan.retention_days | int >= 1
+          - cc_monitoring_plan.retention_days | int <= 365
+          - cc_monitoring_plan.disk_gib | int >= 10
+          - cc_monitoring_plan.retention_gib | int >= 1
+          - cc_monitoring_plan.retention_gib | int <= (cc_monitoring_plan.disk_gib | int * 0.8)
+          - cc_monitoring_plan.cpu_cores | int >= 2
+          - cc_monitoring_plan.memory_mib | int >= 2048
+          - cc_monitoring_plan.receiver_enabled is boolean
+          - cc_monitoring_plan.alertmanager_enabled is boolean
+          - cc_monitoring_volume == '/srv/consolecrypt-monitoring'
+          - cc_monitoring_backup == '/srv/consolecrypt-monitoring/config-backup'
+        fail_msg: Review the generated capacity/retention/backup plan and explicitly approve installation.
+
+    - name: Collect only required platform and capacity facts
+      ansible.builtin.setup:
+        gather_subset: ['!all', '!min', hardware, distribution, platform, python]
+        filter: ['ansible_system', 'ansible_architecture', 'ansible_distribution', 'ansible_distribution_version', 'ansible_memtotal_mb', 'ansible_processor_vcpus', 'ansible_python']
+      register: cc_node_facts
+
+    - name: Gate the restricted delivery target and planned resources
+      ansible.builtin.assert:
+        that:
+          - cc_node_facts.ansible_facts.ansible_system == 'Linux'
+          - cc_node_facts.ansible_facts.ansible_architecture == 'x86_64'
+          - cc_node_facts.ansible_facts.ansible_distribution == 'Ubuntu'
+          - cc_node_facts.ansible_facts.ansible_distribution_version == '24.04'
+          - cc_node_facts.ansible_facts.ansible_memtotal_mb | int >= cc_monitoring_plan.memory_mib | int
+          - cc_node_facts.ansible_facts.ansible_processor_vcpus | int >= cc_monitoring_plan.cpu_cores | int
+        fail_msg: This prepared recipe is restricted to Ubuntu 24.04 x86_64; arm64/service E2E certification remains outstanding.
+
+    - name: Require an already provisioned separate storage mount
+      ansible.builtin.command:
+        argv: [mountpoint, --quiet, /srv/consolecrypt-monitoring]
+      changed_when: false
+      check_mode: false
+
+    - name: Inspect free bytes without changing disks
+      ansible.builtin.command:
+        argv: [df, '--output=size,avail', --block-size=1, /srv/consolecrypt-monitoring]
+      register: cc_disk
+      changed_when: false
+      check_mode: false
+
+    - name: Enforce capacity reserve before download or service changes
+      ansible.builtin.assert:
+        that:
+          - cc_disk.stdout_lines[-1].split()[0] | int >= (cc_monitoring_plan.disk_gib | int * 1073741824)
+          - cc_disk.stdout_lines[-1].split()[1] | int >= ((cc_monitoring_plan.disk_gib | int - cc_monitoring_plan.retention_gib | int) * 1073741824)
+        fail_msg: Provision the approved dedicated volume; this playbook does not partition, format or mount disks.
+
+    - name: Require the explicitly selected existing loopback Alertmanager
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9093/-/ready
+        method: GET
+        status_code: 200
+        use_proxy: false
+        return_content: false
+        timeout: 3
+      when: cc_monitoring_plan.alertmanager_enabled
+      check_mode: false
+
+  tasks:
+    - name: Require existing immutable monitoring software parent for restoration
+      ansible.builtin.stat:
+        path: /opt/consolecrypt-monitoring
+        follow: false
+      register: cc_monitoring_installed_parent
+      when: cc_monitoring_operation == 'restore'
+
+    - name: Refuse restoration into an absent, linked or writable software parent
+      ansible.builtin.assert:
+        that:
+          - cc_monitoring_installed_parent.stat.isdir | default(false)
+          - not (cc_monitoring_installed_parent.stat.islnk | default(true))
+          - cc_monitoring_installed_parent.stat.uid == 0
+          - cc_monitoring_installed_parent.stat.mode == '0755'
+      when: cc_monitoring_operation == 'restore'
+
+    - name: Install configuration only through the explicitly selected action
+      ansible.builtin.include_tasks: monitoring-node-install.yml
+      when: cc_monitoring_operation == 'install'
+
+    - name: Restore only the exact explicitly reviewed configuration backup
+      ansible.builtin.include_tasks: monitoring-node-restore.yml
+      when: cc_monitoring_operation == 'restore'
+
+  handlers:
+    - name: Restart ConsoleCrypt Prometheus
+      ansible.builtin.systemd_service:
+        name: consolecrypt-prometheus
+        daemon_reload: true
+        state: restarted

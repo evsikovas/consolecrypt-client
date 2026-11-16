@@ -301,6 +301,7 @@ async fn settings_conflict_is_last_writer_wins() {
     let (a, b, vault) = two_devices(&server).await;
     let now = chrono::Utc::now();
     let settings = VaultSettings {
+        automation: None, monitoring: None,
         password_vaults: vec![cc_models::settings::PasswordVaultConnection {
             id: "dav-1".into(),
             name: "Passwords".into(),

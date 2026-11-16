@@ -14,9 +14,9 @@
 
 use crate::agent;
 use crate::error::SshError;
-use crate::keys::{self, fingerprint_sha256, key_blob, KeyError};
+use crate::keys::{self, KeyError, fingerprint_sha256, key_blob};
 use crate::known_hosts::{
-    check_host_key, new_known_host, normalize_key_type, HostKeyCheck, PresentedCertificate,
+    HostKeyCheck, PresentedCertificate, check_host_key, new_known_host, normalize_key_type,
 };
 use crate::planner::{ConnectionPlan, Hop};
 use crate::proxy::connect_via_proxy;
@@ -25,10 +25,10 @@ use crate::traits::{
     ResolvedCredential,
 };
 use bytes::Bytes;
+use cc_models::ObjectId;
 use cc_models::credential::{Credential, CredentialKind};
 use cc_models::host::HostKeyPolicy;
-use cc_models::known_host::{host_pattern, KnownHost, KnownHostSource};
-use cc_models::ObjectId;
+use cc_models::known_host::{KnownHost, KnownHostSource, host_pattern};
 use russh::client::{
     self, AuthResult, ChannelOpenHandle, DisconnectReason, Handle, KeyboardInteractiveAuthResponse,
     Msg,
@@ -44,6 +44,7 @@ use russh::{
     SshId,
 };
 use secrecy::{ExposeSecret, SecretString};
+use serde::Serialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
@@ -56,6 +57,17 @@ use tokio::sync::{broadcast, mpsc, watch};
 
 /// Bidirectional byte stream over an SSH channel (`AsyncRead + AsyncWrite`).
 pub type SshStream = ChannelStream<Msg>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum NetworkOrigin {
+    Native,
+    ScopedStream { scope_digest: [u8; 32] },
+}
+
+trait TransportIo: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send {}
+impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send> TransportIo for T {}
+type BoxedTransport = Box<dyn TransportIo + 'static>;
 
 /// Tunables of the native connector.
 #[derive(Debug, Clone)]
@@ -394,7 +406,7 @@ impl ClientHandler {
                     host,
                     port,
                     fingerprint,
-                })
+                });
             }
             HostKeyCheck::Changed {
                 expected_fingerprints,
@@ -415,7 +427,7 @@ impl ClientHandler {
                         port,
                         key_type,
                         fingerprint,
-                    })
+                    });
                 }
                 HostKeyPolicy::AcceptNew => {
                     self.known_hosts
@@ -461,7 +473,7 @@ impl ClientHandler {
                                 host,
                                 port,
                                 fingerprint,
-                            })
+                            });
                         }
                     }
                 }
@@ -653,6 +665,7 @@ pub struct SshConnector {
     known_hosts: Arc<dyn KnownHostsStore>,
     prompt: Arc<dyn HostKeyPrompt>,
     options: ConnectOptions,
+    diagnostic_capture:Option<Arc<crate::DiagnosticCapture>>,
 }
 
 impl fmt::Debug for SshConnector {
@@ -726,6 +739,20 @@ impl SshConnector {
             known_hosts,
             prompt,
             options: ConnectOptions::default(),
+            diagnostic_capture:None,
+        }
+    }
+
+    /// Automation-only transient diagnostic capture. Does not change trust,
+    /// credentials, route, authentication or any session capability.
+    pub fn with_diagnostic_capture(mut self,capture:Arc<crate::DiagnosticCapture>)->Self{
+        self.diagnostic_capture=Some(capture);self
+    }
+    fn observe_diagnostic(&self,value:&str){
+        // Privacy budgets cannot deny otherwise-authorized authentication.
+        // Incomplete capture is retired; every later projection censors whole.
+        if let Some(capture)=&self.diagnostic_capture{
+            if capture.remember(value).is_err(){capture.clear();}
         }
     }
 
@@ -777,6 +804,40 @@ impl SshConnector {
 
     /// Establish every hop of `plan` and return the session to the target.
     pub async fn connect(&self, plan: &ConnectionPlan) -> Result<SshSession, SshError> {
+        self.connect_inner(plan, None, NetworkOrigin::Native).await
+    }
+
+    /// An explicitly selected origin (e.g. WSL) supplies transport bytes only.
+    /// SSH authentication and every hop's host-key verification remain native.
+    /// A configured proxy cannot silently disappear on this path.
+    pub async fn connect_over_stream<S>(
+        &self,
+        plan: &ConnectionPlan,
+        stream: S,
+        scope_digest: [u8; 32],
+    ) -> Result<SshSession, SshError>
+    where
+        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+    {
+        if plan.proxy.is_some() {
+            return Err(SshError::Unsupported(
+                "configured proxy requires a verified origin adapter".into(),
+            ));
+        }
+        self.connect_inner(
+            plan,
+            Some(Box::new(stream)),
+            NetworkOrigin::ScopedStream { scope_digest },
+        )
+        .await
+    }
+
+    async fn connect_inner(
+        &self,
+        plan: &ConnectionPlan,
+        mut first: Option<BoxedTransport>,
+        origin: NetworkOrigin,
+    ) -> Result<SshSession, SshError> {
         let hops = plan.all_hops();
         let (events, _) = broadcast::channel(256);
         let (closed_tx, closed_rx) = watch::channel(false);
@@ -805,7 +866,10 @@ impl SshConnector {
             let config = Arc::new(self.config_for(hop).await);
             let handshake = self.handshake_timeout(hop);
             let mut handle = if index == 0 {
-                let stream = self.open_first_stream(plan, hop).await?;
+                let stream: BoxedTransport = match first.take() {
+                    Some(stream) => stream,
+                    None => Box::new(self.open_first_stream(plan, hop).await?),
+                };
                 with_timeout(
                     handshake,
                     "SSH handshake",
@@ -861,6 +925,8 @@ impl SshConnector {
             .pop()
             .ok_or_else(|| SshError::Channel("empty route".into()))?;
         Ok(SshSession {
+            connection_plan: plan.clone(),
+            network_origin: origin,
             host_id: plan.host_id,
             description: plan.describe(),
             target,
@@ -868,6 +934,7 @@ impl SshConnector {
             events,
             closed: closed_rx,
             forwards,
+            diagnostic_capture:self.diagnostic_capture.clone(),
         })
     }
 
@@ -886,6 +953,7 @@ impl SshConnector {
                     } else {
                         None
                     };
+                    if let Some(password)=password.as_ref(){self.observe_diagnostic(password.expose_secret());}
                     connect_via_proxy(proxy, password.as_ref(), host, port).await
                 }
                 None => {
@@ -919,6 +987,20 @@ impl SshConnector {
                     ));
                 }
                 let resolved = self.resolver.resolve(cred).await?;
+                if self.diagnostic_capture.is_some(){
+                    let record=|value:&str|self.observe_diagnostic(value);
+                    match &resolved{
+                        ResolvedCredential::Password(value)=>record(value.expose_secret()),
+                        ResolvedCredential::PrivateKey{openssh,passphrase,..}=>{
+                            record(openssh.expose_secret());
+                            // PEM lines are exact known substrings, not guessed
+                            // transforms. This also covers line-wise diagnostics.
+                            for line in openssh.expose_secret().lines().map(str::trim).filter(|s|s.len()>=16){record(line);}
+                            if let Some(value)=passphrase{record(value.expose_secret());}
+                        }
+                        ResolvedCredential::Agent{..}=>{},
+                    }
+                }
                 self.auth_with(handle, user, cred, resolved).await?
             }
         };
@@ -1032,13 +1114,14 @@ impl SshConnector {
                     }
                 });
             };
+            self.observe_diagnostic(p.expose_secret());
             match keys::load_private_key(openssh, Some(&p)) {
                 Ok(k) => return Ok(k),
                 Err(KeyError::WrongPassphrase) if attempt < 2 => attempt += 1,
                 Err(KeyError::WrongPassphrase) => {
                     return Err(SshError::WrongPassphrase {
                         credential_id: Some(cred.id),
-                    })
+                    });
                 }
                 Err(e) => return Err(e.into()),
             }
@@ -1127,7 +1210,7 @@ async fn auth_password(
                 return Ok(AuthResult::Failure {
                     remaining_methods,
                     partial_success,
-                })
+                });
             }
             KeyboardInteractiveAuthResponse::InfoRequest { prompts, .. } => {
                 let answers = prompts
@@ -1152,6 +1235,8 @@ async fn auth_password(
 /// An authenticated SSH session to the target (holding every jump hop
 /// alive). Share it with `Arc`.
 pub struct SshSession {
+    connection_plan: ConnectionPlan,
+    network_origin: NetworkOrigin,
     host_id: ObjectId,
     description: String,
     target: Arc<Handle<ClientHandler>>,
@@ -1160,6 +1245,7 @@ pub struct SshSession {
     events: broadcast::Sender<SessionEvent>,
     closed: watch::Receiver<bool>,
     forwards: Arc<ForwardRegistry>,
+    diagnostic_capture:Option<Arc<crate::DiagnosticCapture>>,
 }
 
 impl fmt::Debug for SshSession {
@@ -1192,6 +1278,18 @@ fn map_channel_msg(msg: ChannelMsg) -> Option<ShellEvent> {
 }
 
 impl SshSession {
+    /// Opaque write/projection-only data holder; no credential/key export.
+    pub fn diagnostic_capture(&self)->Option<Arc<crate::DiagnosticCapture>>{self.diagnostic_capture.clone()}
+    /// The immutable route and credential references actually used for this
+    /// connection. Contains models only, never resolved secret material.
+    pub fn connection_plan(&self) -> &ConnectionPlan {
+        &self.connection_plan
+    }
+
+    pub fn network_origin(&self) -> &NetworkOrigin {
+        &self.network_origin
+    }
+
     /// Inventory host this session belongs to.
     pub fn host_id(&self) -> ObjectId {
         self.host_id
@@ -1254,13 +1352,66 @@ impl SshSession {
                 ChannelMsg::Failure => {
                     return Err(SshError::Channel(
                         "the server refused to execute the command".into(),
-                    ))
+                    ));
                 }
                 ChannelMsg::Close => break,
                 _ => {}
             }
         }
         Ok(out)
+    }
+
+    /// Bounded private bootstrap input. Keep stdin open until the process exits
+    /// so a remote setup helper can use EOF as its cancellation/liveness signal.
+    /// Callers must impose a deadline and close their dedicated session when
+    /// cancelled. Output is data and must never be logged without filtering.
+    pub async fn exec_with_private_input(
+        &self,
+        command: &str,
+        input: &[u8],
+        output_limit: usize,
+    ) -> Result<ExecOutput, SshError> {
+        if input.len() > 4 * 1024 * 1024 || output_limit == 0 || output_limit > 65536 {
+            return Err(SshError::Channel("bootstrap byte limit exceeded".into()));
+        }
+        let mut ch = self.open_exec(command).await?;
+        let result = async {
+            ch.data(input).await?;
+            let mut out = ExecOutput::default();
+            while let Some(message) = ch.wait().await {
+                match message {
+                    ChannelMsg::Data { data } => {
+                        if data.len() > output_limit.saturating_sub(out.stdout.len()) {
+                            return Err(SshError::Channel(
+                                "bootstrap output limit exceeded".into(),
+                            ));
+                        }
+                        out.stdout.extend_from_slice(&data);
+                    }
+                    ChannelMsg::ExtendedData { data, .. } => {
+                        if data.len() > output_limit.saturating_sub(out.stderr.len()) {
+                            return Err(SshError::Channel(
+                                "bootstrap output limit exceeded".into(),
+                            ));
+                        }
+                        out.stderr.extend_from_slice(&data);
+                    }
+                    ChannelMsg::ExitStatus { exit_status } => out.exit_status = Some(exit_status),
+                    ChannelMsg::ExitSignal { signal_name, .. } => {
+                        out.exit_signal = Some(format!("{signal_name:?}"));
+                    }
+                    ChannelMsg::Failure => {
+                        return Err(SshError::Channel("bootstrap exec refused".into()));
+                    }
+                    ChannelMsg::Close => break,
+                    _ => {}
+                }
+            }
+            Ok(out)
+        }
+        .await;
+        let _ = ch.close().await;
+        result
     }
 
     /// Open a raw session channel running `command` (streaming use).
@@ -1273,6 +1424,24 @@ impl SshSession {
 
     /// Open an interactive shell with a PTY.
     pub async fn open_shell(&self, pty: PtyRequest) -> Result<ShellChannel, SshError> {
+        self.open_pty_process(pty, None).await
+    }
+
+    /// Run one caller-controlled command in a PTY without typing it into an
+    /// arbitrary login shell. The caller owns validation of the command.
+    pub async fn open_command_pty(
+        &self,
+        pty: PtyRequest,
+        command: &str,
+    ) -> Result<ShellChannel, SshError> {
+        self.open_pty_process(pty, Some(command)).await
+    }
+
+    async fn open_pty_process(
+        &self,
+        pty: PtyRequest,
+        command: Option<&str>,
+    ) -> Result<ShellChannel, SshError> {
         self.ensure_open()?;
         let mut ch = self.target.channel_open_session().await?;
         for (k, v) in &pty.env {
@@ -1290,7 +1459,11 @@ impl SshSession {
             &[(russh::Pty::IUTF8, 1)],
         )
         .await?;
-        ch.request_shell(true).await?;
+        if let Some(command) = command {
+            ch.exec(true, command).await?;
+        } else {
+            ch.request_shell(true).await?;
+        }
         // Wait for the shell reply; keep anything else that arrives first.
         let mut early = Vec::new();
         loop {
@@ -1299,14 +1472,14 @@ impl SshSession {
                 Some(ChannelMsg::Failure) => {
                     return Err(SshError::Channel(
                         "the server refused the shell/PTY request".into(),
-                    ))
+                    ));
                 }
                 Some(ChannelMsg::WindowAdjusted { .. }) => {}
                 Some(other) => early.push(other),
                 None => {
                     return Err(SshError::Channel(
                         "channel closed before the shell started".into(),
-                    ))
+                    ));
                 }
             }
         }
@@ -1422,13 +1595,13 @@ impl SshSession {
                 Some(ChannelMsg::Failure) => {
                     return Err(SshError::Channel(format!(
                         "subsystem '{name}' refused by the server"
-                    )))
+                    )));
                 }
                 Some(ChannelMsg::WindowAdjusted { .. }) => {}
                 Some(ChannelMsg::Close | ChannelMsg::Eof) | None => {
                     return Err(SshError::Channel(format!(
                         "channel closed while starting '{name}'"
-                    )))
+                    )));
                 }
                 Some(_) => {}
             }
@@ -1497,6 +1670,7 @@ impl SshSession {
 
     /// Disconnect the target and every jump hop (target first).
     pub async fn disconnect(&self) -> Result<(), SshError> {
+        if let Some(capture)=&self.diagnostic_capture{capture.clear();}
         let _ = self
             .target
             .disconnect(Disconnect::ByApplication, "bye", "en")

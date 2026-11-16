@@ -61,7 +61,7 @@ pub use cc_storage_core as storage;
 
 pub use api::{
     quota, ApiClient, ApiConfig, ApiError, MemoryTokenStore, ProofRejection, QuotaRefusal,
-    RequestSigner, SignerError, TokenStore, TokenStoreError,
+    ReaderAuthenticatedSubject, RequestSigner, SignerError, TokenStore, TokenStoreError,
 };
 pub use attach::{
     disconnect, enable_sync, DisconnectOptions, DisconnectOutcome, EnableSync, EnableSyncOutcome,
@@ -95,3 +95,6 @@ pub const SAFE_LOG_DIRECTIVES: &[&str] = &[
     "h2=warn",
     "rustls=warn",
 ];
+
+pub use api::{MonitoringAccountPolicy, MonitoringCompatibilityError, MonitoringPolicyState, MonitoringPullCheckpoint};
+pub use engine::MonitoringCheckpointApplied;

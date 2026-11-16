@@ -17,8 +17,10 @@
 //! to [`recovery`] (full listing → reconcile → re-push) before continuing.
 
 pub(crate) mod conflict;
+mod monitoring_checkpoint;
 mod recovery;
 mod validate;
+pub use monitoring_checkpoint::MonitoringCheckpointApplied;
 
 use crate::api::{ApiClient, ApiError, QuotaRefusal};
 use crate::backoff::BackoffConfig;
@@ -60,6 +62,77 @@ const MAX_RECOVERIES_PER_CYCLE: usize = 3;
 enum Flow {
     Done,
     Rollback,
+}
+
+fn checkpoint_changed() -> SyncError {
+    SyncError::MalformedResponse("compatibility checkpoint changed".into())
+}
+struct CheckpointPages {
+    remaining: usize,
+    expected: Option<uuid::Uuid>,
+    serialized_bytes_left: usize,
+}
+impl CheckpointPages {
+    fn legacy() -> Self {
+        Self {
+            remaining: 1_000_000,
+            expected: None,
+            serialized_bytes_left: usize::MAX,
+        }
+    }
+    fn strict(epoch: uuid::Uuid) -> Self {
+        Self {
+            remaining: 32,
+            expected: Some(epoch),
+            serialized_bytes_left: 32 * 1024 * 1024,
+        }
+    }
+    fn take(&mut self) -> bool {
+        if self.remaining == 0 {
+            false
+        } else {
+            self.remaining -= 1;
+            true
+        }
+    }
+    // Exact serialization of the already bounded typed page, no guessed
+    // ciphertext headroom or second buffered body. Legacy paths do no work.
+    fn charge<T: serde::Serialize>(&mut self, page: &T) -> Result<(), SyncError> {
+        if self.expected.is_none() {
+            return Ok(());
+        }
+        struct Count<'a>(&'a mut usize);
+        impl std::io::Write for Count<'_> {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                *self.0 = self
+                    .0
+                    .checked_sub(bytes.len())
+                    .ok_or_else(|| std::io::Error::other("checkpoint byte budget"))?;
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        serde_json::to_writer(Count(&mut self.serialized_bytes_left), page).map_err(|_| {
+            SyncError::MalformedResponse("compatibility pull response budget exceeded".into())
+        })
+    }
+    fn validate_epoch(&self, actual: Option<uuid::Uuid>) -> Result<(), SyncError> {
+        if self.expected.is_some() && actual != self.expected {
+            return Err(checkpoint_changed());
+        }
+        Ok(())
+    }
+    fn finished(&self) -> Result<Flow, SyncError> {
+        if self.expected.is_some() {
+            Err(SyncError::MalformedResponse(
+                "compatibility pull page budget exceeded".into(),
+            ))
+        } else {
+            Ok(Flow::Done)
+        }
+    }
 }
 
 /// Engine configuration.
@@ -216,6 +289,14 @@ fn verify_changes(
     changes: Vec<Change>,
     local_ok: impl Fn(ObjectId) -> bool,
 ) -> (Vec<RemoteChange>, Vec<(ObjectId, i64)>) {
+    verify_changes_mode(codec, changes, local_ok, false)
+}
+fn verify_changes_mode(
+    codec: &dyn crate::codec::ObjectCodec,
+    changes: Vec<Change>,
+    local_ok: impl Fn(ObjectId) -> bool,
+    require_decryption: bool,
+) -> (Vec<RemoteChange>, Vec<(ObjectId, i64)>) {
     let mut warnings = Vec::new();
     let remote = changes
         .into_iter()
@@ -226,7 +307,12 @@ fn verify_changes(
                     .as_ref()
                     .and_then(|b| match codec.decrypt(c.object_id, c.revision, b) {
                         Ok(p) => Some(p.object.kind().kek_class()),
-                        Err(CodecError::Locked) => None,
+                        Err(CodecError::Locked) => {
+                            if require_decryption {
+                                warnings.push((c.object_id, c.revision));
+                            }
+                            None
+                        }
                         Err(e) => {
                             unauthentic =
                                 matches!(e, CodecError::Integrity | CodecError::ClassMismatch);
@@ -350,6 +436,29 @@ impl SyncEngine {
         let r = self.inner.store.put(payload).await?;
         self.refresh_status().await?;
         Ok(r)
+    }
+
+    /// Same guarded encrypted mutation; preserve the engine status refresh.
+    pub async fn put_checked<G, C>(
+        &self,
+        payload: cc_models::ObjectPayload,
+        with_guard: G,
+        check_tx: C,
+    ) -> Result<cc_storage_core::LocalMutationOutcome, SyncError>
+    where
+        G: FnOnce(&mut dyn FnMut() -> Result<(), SyncError>) -> Result<(), SyncError>
+            + Send
+            + 'static,
+        C: FnOnce(&cc_storage_core::Tx<'_>) -> Result<(), SyncError> + Send + 'static,
+    {
+        let result = self
+            .inner
+            .store
+            .put_checked(payload, with_guard, check_tx)
+            .await;
+        // Also reflect any genuinely committed but uncertain guard outcome.
+        self.refresh_status().await?;
+        result
     }
 
     /// Commit related local mutations together and wake the sync worker.
@@ -935,10 +1044,18 @@ impl SyncEngine {
     // ---- pull ---------------------------------------------------------------------------
 
     async fn pull(&self, report: &mut SyncReport) -> Result<Flow, SyncError> {
+        self.pull_budget(report, &mut CheckpointPages::legacy())
+            .await
+    }
+    async fn pull_budget(
+        &self,
+        report: &mut SyncReport,
+        budget: &mut CheckpointPages,
+    ) -> Result<Flow, SyncError> {
         let vault_id = self.vault_id();
         let limit = self.inner.cfg.page_limit;
         let mut resnapshots = 0;
-        for _ in 0..1_000_000 {
+        while budget.take() {
             let cursor = self.cursor().await?;
             let after = cursor.last_sequence;
             let q = ChangesQuery {
@@ -957,14 +1074,24 @@ impl SyncEngine {
                         .storage()
                         .write(move |tx| tx.reset_for_resnapshot(vault_id))
                         .await?;
-                    if self.snapshot(report).await? == Flow::Rollback {
+                    let flow = if budget.expected.is_some() {
+                        self.snapshot_budget(report, budget).await?
+                    } else {
+                        self.snapshot(report).await?
+                    };
+                    if flow == Flow::Rollback {
                         return Ok(Flow::Rollback);
                     }
                     continue;
                 }
                 Err(e) => return Err(e.into()),
             };
+            budget.validate_epoch(resp.epoch)?;
+            budget.charge(&resp)?;
             if let Some(reason) = cursor.rollback_evidence(resp.epoch, resp.latest_sequence) {
+                if budget.expected.is_some() {
+                    return Err(checkpoint_changed());
+                }
                 self.begin_recovery(reason, resp.epoch).await?;
                 return Ok(Flow::Rollback);
             }
@@ -974,20 +1101,28 @@ impl SyncEngine {
                 latest_sequence: resp.latest_sequence,
             };
             let has_more = resp.has_more;
-            self.apply_page(resp.changes, page, resp.epoch, report)
+            self.apply_page_inner(resp.changes, page, resp.epoch, report, budget.expected)
                 .await?;
             report.change_pages += 1;
             if !has_more {
                 return Ok(Flow::Done);
             }
         }
-        Ok(Flow::Done)
+        budget.finished()
     }
 
     async fn snapshot(&self, report: &mut SyncReport) -> Result<Flow, SyncError> {
+        self.snapshot_budget(report, &mut CheckpointPages::legacy())
+            .await
+    }
+    async fn snapshot_budget(
+        &self,
+        report: &mut SyncReport,
+        budget: &mut CheckpointPages,
+    ) -> Result<Flow, SyncError> {
         let vault_id = self.vault_id();
         let limit = self.inner.cfg.page_limit;
-        for _ in 0..1_000_000 {
+        while budget.take() {
             let cursor = self.cursor().await?;
             if cursor.snapshot_complete {
                 return Ok(Flow::Done);
@@ -998,7 +1133,12 @@ impl SyncEngine {
                 limit: Some(limit),
             };
             let resp = self.inner.api.snapshot(&q).await?;
+            budget.validate_epoch(resp.epoch)?;
+            budget.charge(&resp)?;
             if let Some(reason) = cursor.rollback_evidence(resp.epoch, resp.latest_sequence) {
+                if budget.expected.is_some() {
+                    return Err(checkpoint_changed());
+                }
                 self.begin_recovery(reason, resp.epoch).await?;
                 return Ok(Flow::Rollback);
             }
@@ -1008,7 +1148,7 @@ impl SyncEngine {
                 latest_sequence: resp.latest_sequence,
             };
             let out = self
-                .apply_page(resp.objects, page, resp.epoch, report)
+                .apply_page_inner(resp.objects, page, resp.epoch, report, budget.expected)
                 .await?;
             report.snapshot_pages += 1;
             if out.snapshot_completed {
@@ -1018,17 +1158,18 @@ impl SyncEngine {
                 return Ok(Flow::Done);
             }
         }
-        Ok(Flow::Done)
+        budget.finished()
     }
 
     /// Verify ciphertexts through the codec (KEK class hint, integrity
     /// warnings) and apply the page + cursor in one transaction.
-    async fn apply_page(
+    async fn apply_page_inner(
         &self,
         changes: Vec<Change>,
         page: PageCursor,
         epoch: Option<uuid::Uuid>,
         report: &mut SyncReport,
+        expected_epoch: Option<uuid::Uuid>,
     ) -> Result<PageOutcome, SyncError> {
         let vault_id = self.vault_id();
         let codec = self.inner.store.codec().clone();
@@ -1037,9 +1178,26 @@ impl SyncEngine {
             .store
             .storage()
             .write(move |tx| -> Result<_, SyncError> {
-                let (remote, warnings) = verify_changes(codec.as_ref(), changes, |id| {
-                    local_copy_ok(tx, codec.as_ref(), vault_id, id)
-                });
+                if let Some(expected) = expected_epoch {
+                    let cursor = tx.get_sync_cursor(vault_id)?;
+                    if epoch != Some(expected)
+                        || cursor.epoch.is_some_and(|known| known != expected)
+                        || cursor.recovery.is_some()
+                    {
+                        return Err(checkpoint_changed());
+                    }
+                }
+                let (remote, warnings) = verify_changes_mode(
+                    codec.as_ref(),
+                    changes,
+                    |id| local_copy_ok(tx, codec.as_ref(), vault_id, id),
+                    expected_epoch.is_some(),
+                );
+                if expected_epoch.is_some() && !warnings.is_empty() {
+                    return Err(SyncError::MalformedResponse(
+                        "compatibility pull integrity refused".into(),
+                    ));
+                }
                 tx.note_server_epoch(vault_id, epoch)
                     .map_err(malformed_if_invalid)?;
                 let out = tx

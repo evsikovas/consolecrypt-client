@@ -1,6 +1,7 @@
 import 'package:consolecrypt/core/models/ai.dart';
 import 'package:consolecrypt/core/models/glass_settings.dart';
 import 'package:consolecrypt/core/models/ids.dart';
+import 'package:consolecrypt/core/models/navigation.dart';
 import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
@@ -157,6 +158,7 @@ final class LocalSettings {
     this.terminalTabPlacement = TerminalTabPlacement.top,
     this.terminalTabColumnWidth = terminalTabColumnDefault,
     this.terminalTabColumnCollapsed = false,
+    this.navigationByProfile = const {},
     this.sidebarCollapsed = false,
     this.sidebarCollapsedBesideTabs,
     this.shortcutOverrides = const {},
@@ -222,6 +224,8 @@ final class LocalSettings {
   final bool terminalTabColumnCollapsed;
 
   /// The user folded the app sidebar to icons (desktop).
+  final Map<String, NavigationPreferences> navigationByProfile;
+
   final bool sidebarCollapsed;
 
   /// The user's sidebar choice next to the terminal tab column; `null`
@@ -301,6 +305,7 @@ final class LocalSettings {
     TerminalTabPlacement? terminalTabPlacement,
     double? terminalTabColumnWidth,
     bool? terminalTabColumnCollapsed,
+    Map<String, NavigationPreferences>? navigationByProfile,
     bool? sidebarCollapsed,
     bool? sidebarCollapsedBesideTabs,
     Map<String, String>? shortcutOverrides,
@@ -338,6 +343,7 @@ final class LocalSettings {
     terminalTabPlacement: terminalTabPlacement ?? this.terminalTabPlacement,
     terminalTabColumnWidth: terminalTabColumnWidth ?? this.terminalTabColumnWidth,
     terminalTabColumnCollapsed: terminalTabColumnCollapsed ?? this.terminalTabColumnCollapsed,
+    navigationByProfile: navigationByProfile ?? this.navigationByProfile,
     sidebarCollapsed: sidebarCollapsed ?? this.sidebarCollapsed,
     sidebarCollapsedBesideTabs: sidebarCollapsedBesideTabs ?? this.sidebarCollapsedBesideTabs,
     shortcutOverrides: shortcutOverrides ?? this.shortcutOverrides,

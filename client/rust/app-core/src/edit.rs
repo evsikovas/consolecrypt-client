@@ -388,6 +388,7 @@ impl EditRuntime {
     pub(crate) fn spawn_forwarder(
         self: &Arc<Self>,
         ctx: Arc<AppCtx>,
+        notices: Arc<crate::session::critical_notices::RuntimeNoticeEmitter>,
     ) -> Option<tokio::task::JoinHandle<()>> {
         let mut rx = self.manager.as_ref().ok()?.subscribe();
         let me = self.clone();
@@ -395,6 +396,18 @@ impl EditRuntime {
             loop {
                 match rx.recv().await {
                     Ok(EditEvent { session_id, status }) => {
+                        match &status {
+                            EditStatus::Error { .. } => {
+                                notices.edit(session_id, crate::dto::CriticalEditStateDto::Error)
+                            }
+                            EditStatus::Conflict { .. } => {
+                                notices.edit(session_id, crate::dto::CriticalEditStateDto::Conflict)
+                            }
+                            EditStatus::Synced => {
+                                notices.edit(session_id, crate::dto::CriticalEditStateDto::Synced)
+                            }
+                            _ => {}
+                        }
                         if status == EditStatus::Closed {
                             me.owners().remove(&session_id);
                         }
@@ -404,6 +417,7 @@ impl EditRuntime {
                         });
                     }
                     Err(broadcast::error::RecvError::Lagged(_)) => {
+                        notices.source_gap();
                         // The UI re-reads the list on any event.
                         ctx.emit(AppEvent::EditStatus {
                             session_id: String::new(),

@@ -1,0 +1,92 @@
+#!/usr/bin/python3 -I
+"""Fixed installed enrollment adapter. No caller-selected path or command."""
+import grp
+import os
+from pathlib import Path
+import pwd
+import stat
+import sys
+
+
+def require(value, code):
+    if not value:
+        raise ValueError(code)
+
+
+def trusted(path, regular=False, cap=1048576):
+    path = Path(path)
+    for item in (path, *path.parents):
+        info = item.lstat()
+        require(info.st_uid == 0 and not info.st_mode & 0o022,
+                "root_nonwrite_required")
+        require(stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode), "physical_path_required")
+        if stat.S_ISREG(info.st_mode):
+            require(info.st_nlink == 1, "singlelink_required")
+        if item != path:
+            require(stat.S_ISDIR(info.st_mode), "directory_parent_required")
+    info = path.lstat()
+    if regular:
+        require(stat.S_ISREG(info.st_mode) and info.st_size <= cap, "bounded_regular_required")
+    return path
+
+
+def read_root(path, cap=1048576):
+    path = trusted(path, regular=True, cap=cap)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    try:
+        def identity(info):
+            return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid,
+                    info.st_nlink, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+        actual = os.fstat(fd)
+        require(stat.S_ISREG(actual.st_mode) and actual.st_uid == 0 and
+                not actual.st_mode & 0o022 and actual.st_nlink == 1 and
+                0 <= actual.st_size <= cap, "held_root_regular_required")
+        # Repeat physical/root-controlled ancestry after opening and before data.
+        trusted(path, regular=True, cap=cap)
+        require(identity(path.lstat()) == identity(actual), "held_path_identity_required")
+        data = bytearray()
+        while len(data) <= cap:
+            part = os.read(fd, min(65536, cap + 1 - len(data)))
+            if not part:
+                break
+            data.extend(part)
+        trusted(path, regular=True, cap=cap)
+        require(len(data) == actual.st_size and
+                identity(os.fstat(fd)) == identity(actual) == identity(path.lstat()),
+                "stable_complete_root_input_required")
+        return bytes(data)
+    finally:
+        os.close(fd)
+
+
+def service():
+    user = pwd.getpwnam("consolecrypt-agent")
+    group = grp.getgrnam("consolecrypt-agent")
+    require(user.pw_uid > 0 and user.pw_gid == group.gr_gid > 0, "service_identity_required")
+    require(user.pw_shell in ("/usr/sbin/nologin", "/sbin/nologin"), "service_nologin_required")
+    return user, group
+
+
+def main():
+    require(sys.argv[1:] == ["-c", "consolecrypt-agent-enrollment"], "fixed_force_command_required")
+    trusted(__file__, regular=True)
+    user = pwd.getpwnam("cc-agent-enroll")
+    group = grp.getgrnam("cc-agent-enroll")
+    require(user.pw_uid > 0 and user.pw_gid == group.gr_gid > 0 and
+            os.getuid() == os.geteuid() == user.pw_uid and
+            os.getgid() == os.getegid() == group.gr_gid, "operator_identity_required")
+    service_user, service_group = service()
+    require(user.pw_uid != service_user.pw_uid and group.gr_gid != service_group.gr_gid,
+            "separate_operator_required")
+    trusted("/usr/bin/sudo", regular=True, cap=16 * 1024 * 1024)
+    trusted("/usr/libexec/consolecrypt-agent/enrollment-worker", regular=True)
+    os.execve("/usr/bin/sudo", ["/usr/bin/sudo", "-n", "-u", "consolecrypt-agent",
+              "-g", "consolecrypt-agent", "--", "/usr/libexec/consolecrypt-agent/enrollment-worker"],
+              {"LANG": "C.UTF-8"})
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, KeyError, ValueError):
+        sys.exit(1)

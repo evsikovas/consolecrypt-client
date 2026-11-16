@@ -1,0 +1,48 @@
+[package]
+name = "cc-automation-core"
+description = "Bounded automation helper IPC and immutable project workspaces"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["process"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+uuid.workspace = true
+cap-std = "=4.0.3"
+cap-fs-ext = "=4.0.3"
+sha2 = "0.11"
+hex.workspace = true
+url.workspace = true
+cc-ssh-core.workspace = true
+cc-sftp-core.workspace = true
+cc-models.workspace = true
+cc-crypto-core.workspace = true
+base64.workspace = true
+zeroize.workspace = true
+flate2 = "=1.1.10"
+unicode-normalization = "=0.1.26"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_FileSystem", "Wdk_Storage_FileSystem", "Win32_System_IO", "Win32_System_Threading"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+rustix = { version = "=1.1.5", features = ["fs", "process"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "cc-service-node"
+path = "examples/service_execution_node.rs"

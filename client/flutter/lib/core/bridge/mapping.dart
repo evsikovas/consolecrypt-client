@@ -10,6 +10,7 @@ library;
 import 'dart:convert';
 
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/models/navigation.dart';
 import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/models/sftp_browser.dart';
@@ -860,6 +861,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'terminal_tab_placement': s.terminalTabPlacement.name,
   'terminal_tab_column_width': s.terminalTabColumnWidth,
   'terminal_tab_column_collapsed': s.terminalTabColumnCollapsed,
+  'navigation_by_profile': {for (final entry in s.navigationByProfile.entries) entry.key: entry.value.toJson()},
   'sidebar_collapsed': s.sidebarCollapsed,
   'sidebar_collapsed_beside_tabs': s.sidebarCollapsedBesideTabs,
   'shortcut_overrides': s.shortcutOverrides,
@@ -944,6 +946,7 @@ LocalSettings localSettingsFromJson(Json j) {
       _ => d.terminalTabColumnWidth,
     },
     terminalTabColumnCollapsed: j['terminal_tab_column_collapsed'] == true,
+    navigationByProfile: NavigationPreferences.profilesFromJson(j['navigation_by_profile']),
     sidebarCollapsed: j['sidebar_collapsed'] == true,
     sidebarCollapsedBesideTabs: switch (j['sidebar_collapsed_beside_tabs']) {
       final bool value => value,
@@ -1128,6 +1131,28 @@ EditLeftover editLeftoverFromJson(Json j) => EditLeftover(
 /// `PromptRequest` JSON (`{"HostKey":{…}}` / `{"Password":{…}}` /
 /// `{"Passphrase":{…}}`) → [CorePrompt]; `null` for unknown shapes.
 CorePrompt? corePromptFromJson(Json j) {
+  if (j['AutomationTransition'] case final Map<Object?, Object?> b) {
+    final id = b['request_id'], count = b['job_count'], operation = b['operation'];
+    final unknown = b['unknown_count'];
+    if (id is! String ||
+        id.isEmpty ||
+        id.length > 64 ||
+        count is! int ||
+        count < 1 ||
+        count > 2048 ||
+        unknown is! int ||
+        unknown < 0 ||
+        unknown > count ||
+        !const {'close', 'switch_profile', 'remove_profile'}.contains(operation)) {
+      return null;
+    }
+    return AutomationTransitionCorePrompt(
+      requestId: id,
+      jobCount: count,
+      unknownCount: unknown,
+      operation: operation as String,
+    );
+  }
   if (j['HostKey'] case final Map<Object?, Object?> b) {
     return HostKeyCorePrompt(
       requestId: b['request_id']! as String,

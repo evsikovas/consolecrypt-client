@@ -1,0 +1,136 @@
+{
+  "architecture": "aarch64",
+  "format": "cc-existing-arm-ansible-wheel-inputs/v1",
+  "lockSha256": "e96c9c53e2ed70e65f6932978dc2740c3b8d9dfe17b98f233149d6a70382c42d",
+  "nativeInstalledAcceptanceExecuted": false,
+  "packageCodeExecuted": false,
+  "packages": [
+    {
+      "bytes": 2431382,
+      "filename": "ansible_core-2.20.11-py3-none-any.whl",
+      "metadataSha256": "375e2b509aaa725ea4556fc9e9c6daf890a188da4f8e46b4ab946ff6a521efbc",
+      "metadataUrl": "https://pypi.org/pypi/ansible-core/2.20.11/json",
+      "name": "ansible-core",
+      "requiresDist": [
+        "jinja2>=3.1.0",
+        "PyYAML>=5.1",
+        "cryptography",
+        "packaging",
+        "resolvelib<2.0.0,>=0.8.0"
+      ],
+      "sha256": "a136e1b04c705e44d14507058008206eac3bae9179fa8499c36b0048ef1a2b33",
+      "url": "https://files.pythonhosted.org/packages/4c/99/91413ac82ecf7d0d7436fee151188d569736b719c6228d1b4d2230b6d2b9/ansible_core-2.20.11-py3-none-any.whl",
+      "version": "2.20.11"
+    },
+    {
+      "bytes": 134899,
+      "filename": "jinja2-3.1.6-py3-none-any.whl",
+      "metadataSha256": "1bc757d7065f3e67d3a49e72ebc731d0774055575732592eede9820c136329cc",
+      "metadataUrl": "https://pypi.org/pypi/Jinja2/3.1.6/json",
+      "name": "Jinja2",
+      "requiresDist": [
+        "MarkupSafe>=2.0",
+        "Babel>=2.7; extra == \"i18n\""
+      ],
+      "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",
+      "url": "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl",
+      "version": "3.1.6"
+    },
+    {
+      "bytes": 775116,
+      "filename": "pyyaml-6.0.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl",
+      "metadataSha256": "c3f35597bc2f08cc990c2a5fe57bef6687b3a3d7c61d8b0ba4cc067777eb1def",
+      "metadataUrl": "https://pypi.org/pypi/PyYAML/6.0.3/json",
+      "name": "PyYAML",
+      "requiresDist": [],
+      "sha256": "9149cad251584d5fb4981be1ecde53a1ca46c891a79788c0df828d2f166bda28",
+      "url": "https://files.pythonhosted.org/packages/ed/23/7a778b6bd0b9a8039df8b1b1d80e2e2ad78aa04171592c8a5c43a56a6af4/pyyaml-6.0.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl",
+      "version": "6.0.3"
+    },
+    {
+      "bytes": 4731146,
+      "filename": "cryptography-50.0.2-cp311-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+      "metadataSha256": "7423990cc0948676ef47a71ea62a476ece4c76245e6bebd1c3a71f03c4ffc0f4",
+      "metadataUrl": "https://pypi.org/pypi/cryptography/50.0.2/json",
+      "name": "cryptography",
+      "requiresDist": [
+        "cffi>=2.0.0; platform_python_implementation != \"PyPy\"",
+        "typing-extensions>=4.13.2; python_full_version < \"3.11\"",
+        "bcrypt>=3.1.5; extra == \"ssh\""
+      ],
+      "sha256": "79def8d059362e7831389ed3be0ecdf58a89386e1271e35dd9f5af84e81bffd0",
+      "url": "https://files.pythonhosted.org/packages/d9/69/c9bd862c3bf43d6399c433caf002df16e2dffd4be49bdf515cda38038711/cryptography-50.0.2-cp311-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+      "version": "50.0.2"
+    },
+    {
+      "bytes": 129956,
+      "filename": "packaging-26.3-py3-none-any.whl",
+      "metadataSha256": "4f190d2f0b312b3086058cee64ab4333bf3ce67fb78b4c2bdb43899049b29f4d",
+      "metadataUrl": "https://pypi.org/pypi/packaging/26.3/json",
+      "name": "packaging",
+      "requiresDist": [],
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+      "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+      "version": "26.3"
+    },
+    {
+      "bytes": 18737,
+      "filename": "resolvelib-1.2.1-py3-none-any.whl",
+      "metadataSha256": "b4489cc681f34f897ad72d14cd954e751eab00165c2e629a3aa0ae7d16a855cd",
+      "metadataUrl": "https://pypi.org/pypi/resolvelib/1.2.1/json",
+      "name": "resolvelib",
+      "requiresDist": [
+        "ruff; extra == \"lint\"",
+        "mypy; extra == \"lint\"",
+        "types-requests; extra == \"lint\"",
+        "packaging; extra == \"test\"",
+        "pytest; extra == \"test\"",
+        "build; extra == \"release\"",
+        "towncrier; extra == \"release\"",
+        "twine; extra == \"release\""
+      ],
+      "sha256": "fb06b66c8da04172d9e72a21d7d06186d8919e32ae5ab5cdf5b9d920be805ac2",
+      "url": "https://files.pythonhosted.org/packages/e2/23/c941a0d0353681ca138489983c4309e0f5095dfd902e1357004f2357ddf2/resolvelib-1.2.1-py3-none-any.whl",
+      "version": "1.2.1"
+    },
+    {
+      "bytes": 24363,
+      "filename": "markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl",
+      "metadataSha256": "85cd5bce3f85e67ab0b921be9c9ba144a7cc01a2d02b85ad65b1f8dabeac4c57",
+      "metadataUrl": "https://pypi.org/pypi/MarkupSafe/3.0.4/json",
+      "name": "MarkupSafe",
+      "requiresDist": [],
+      "sha256": "6a45c3d514f2436064db00d7fc8778d888f0236ebfed649b53d13a59e69ad51b",
+      "url": "https://files.pythonhosted.org/packages/0d/f2/8f18e0b806eb13c1f8d07d917a720831ead54253a6dec011fbc78098a6f8/markupsafe-3.0.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl",
+      "version": "3.0.4"
+    },
+    {
+      "bytes": 222389,
+      "filename": "cffi-2.1.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+      "metadataSha256": "2255e530e3f80593a354e3d84a29966924d0e10309d1e3a6d50f845ab7d8df66",
+      "metadataUrl": "https://pypi.org/pypi/cffi/2.1.1/json",
+      "name": "cffi",
+      "requiresDist": [
+        "pycparser; implementation_name != \"PyPy\""
+      ],
+      "sha256": "68e62fe11f30d5ca8289242866f0a5291402d8529ca2178ab8afc5c9694ae890",
+      "url": "https://files.pythonhosted.org/packages/44/de/f98430906df1545ffde0d543dd124a7a439bc2cd32b36b9c53f805df7333/cffi-2.1.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+      "version": "2.1.1"
+    },
+    {
+      "bytes": 62600,
+      "filename": "pycparser-3.12-py3-none-any.whl",
+      "metadataSha256": "e919b291615d54a2328a0da6128cd9d95601ad04d27cec48eeb75e0d57c3b6ad",
+      "metadataUrl": "https://pypi.org/pypi/pycparser/3.12/json",
+      "name": "pycparser",
+      "requiresDist": [],
+      "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
+      "url": "https://files.pythonhosted.org/packages/b6/ae/315bbeee126a769cbde43cf4908acb4b40408d8bf8bbf334dd7368d8dadf/pycparser-3.12-py3-none-any.whl",
+      "version": "3.12"
+    }
+  ],
+  "purpose": "existing installed acceptance controller only",
+  "python": "CPython3.12",
+  "versionsReusedFromExistingRunnerPolicy": true,
+  "wheelBytesFetched": false
+}

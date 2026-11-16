@@ -13,9 +13,35 @@ use std::sync::Mutex;
 use std::time::Duration;
 use tokio::sync::{broadcast, oneshot};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TransitionDecision {
+    Wait,
+    CancelJobs,
+    CancelJobsAcceptUnknown,
+    Abort,
+}
+
+pub(crate) struct TransitionQuestion<'a> {
+    broker: &'a PromptBroker,
+    id: String,
+    pub choices: tokio::sync::mpsc::Receiver<TransitionDecision>,
+    completed: tokio::sync::watch::Sender<bool>,
+}
+
+impl Drop for TransitionQuestion<'_> {
+    fn drop(&mut self) {
+        self.broker.lock().remove(&self.id);
+        let _ = self.completed.send(true);
+    }
+}
+
 enum Pending {
     HostKey(oneshot::Sender<HostKeyDecision>),
     Secret(oneshot::Sender<Option<SecretString>>),
+    Transition(
+        tokio::sync::mpsc::Sender<TransitionDecision>,
+        tokio::sync::watch::Receiver<bool>,
+    ),
 }
 
 pub(crate) struct PromptBroker {
@@ -33,6 +59,80 @@ impl std::fmt::Debug for PromptBroker {
 }
 
 impl PromptBroker {
+    pub(crate) fn transition(
+        &self,
+        job_count: u32,
+        unknown_count: u32,
+        operation: &str,
+    ) -> AppResult<TransitionQuestion<'_>> {
+        if self.tx.receiver_count() == 0 {
+            return Err(AppError::invalid(
+                "automation_transition",
+                "active jobs require an explicit transition choice",
+            ));
+        }
+        let id = uuid::Uuid::new_v4().to_string();
+        let (sender, choices) = tokio::sync::mpsc::channel(4);
+        let (completed, completion) = tokio::sync::watch::channel(false);
+        self.lock()
+            .insert(id.clone(), Pending::Transition(sender, completion));
+        let question = TransitionQuestion {
+            broker: self,
+            id: id.clone(),
+            choices,
+            completed,
+        };
+        self.tx
+            .send(PromptRequest::AutomationTransition(
+                crate::dto::AutomationTransitionPromptDto {
+                    request_id: id,
+                    job_count,
+                    unknown_count,
+                    operation: operation.into(),
+                },
+            ))
+            .map_err(|_| {
+                AppError::invalid("automation_transition", "transition presenter unavailable")
+            })?;
+        Ok(question)
+    }
+
+    pub(crate) async fn answer_transition(
+        &self,
+        id: &str,
+        decision: TransitionDecision,
+    ) -> AppResult<()> {
+        let (sender, mut completion) = {
+            let pending = self.lock();
+            match pending.get(id) {
+                Some(Pending::Transition(sender, completed)) => (sender.clone(), completed.clone()),
+                Some(_) => {
+                    return Err(AppError::invalid(
+                        "request_id",
+                        "not an automation transition prompt",
+                    ))
+                }
+                None => return Err(AppError::not_found("prompt", id)),
+            }
+        };
+        sender
+            .send(decision)
+            .await
+            .map_err(|_| AppError::not_found("prompt", id))?;
+        // The UI can render cancellable progress while this specific reply is
+        // pending; a second Abort/CancelJobs reply remains possible.
+        if decision != TransitionDecision::Abort {
+            loop {
+                if *completion.borrow_and_update() {
+                    break;
+                }
+                if completion.changed().await.is_err() {
+                    break;
+                }
+            }
+        }
+        Ok(())
+    }
     pub(crate) fn new(timeout: Duration) -> Self {
         Self {
             tx: broadcast::channel(64).0,

@@ -1,0 +1,191 @@
+{
+  "scope": "Explicitly reviewed test-purpose disposable Ubuntu24.04 native ARM CI only; no production runtime pin certification",
+  "candidateRemainsObservationOnly": true,
+  "reviewedByRoot": true,
+  "independentReviewSha256": "426f20d21737cea8ea776004d90667ef1cce45f81f4a4c90c74818bd86546d16",
+  "observedRuntime": {
+    "architecture": "aarch64",
+    "bytes": 7845048,
+    "ciRun": "43822571859",
+    "elfMachine": 183,
+    "path": "/usr/bin/python3.12",
+    "pythonVersion": [
+      3,
+      12,
+      3
+    ],
+    "sha256": "c86f21d0da9290ece2d7d49a3f7ed52aed59cb029abdf0ea25c79634f6cbe960",
+    "ubuntu": "24.04"
+  },
+  "officialPackage": {
+    "architecture": "arm64",
+    "candidateMatches": true,
+    "debBytes": 2253306,
+    "debPath": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/python3.12-minimal_3.12.3-1ubuntu0.17_arm64.deb",
+    "debSha256": "be39fa8380f1e65fc02701cdbc8652acd924d8576b4ba1bd772141040a22b15f",
+    "debUrl": "https://ports.ubuntu.com/ubuntu-ports/pool/main/p/python3.12/python3.12-minimal_3.12.3-1ubuntu0.17_arm64.deb",
+    "elfBytes": 7845048,
+    "elfMachine": 183,
+    "elfSha256": "c86f21d0da9290ece2d7d49a3f7ed52aed59cb029abdf0ea25c79634f6cbe960",
+    "member": "./usr/bin/python3.12",
+    "package": "python3.12-minimal",
+    "packageCodeExecuted": false,
+    "packageInstalled": false,
+    "pocket": "noble-updates",
+    "version": "3.12.3-1ubuntu0.17"
+  },
+  "signatureChain": {
+    "debControlMatchesSignedPackageVersionAndArchitecture": true,
+    "elfBytesMatchCiCandidate": true,
+    "gpgNoAutostart": true,
+    "keyFingerprintReadbackChecked": true,
+    "onlyIsolatedPublicKeyringUsed": true,
+    "packageFields": {
+      "Architecture": "arm64",
+      "Filename": "pool/main/p/python3.12/python3.12-minimal_3.12.3-1ubuntu0.17_arm64.deb",
+      "Package": "python3.12-minimal",
+      "SHA256": "be39fa8380f1e65fc02701cdbc8652acd924d8576b4ba1bd772141040a22b15f",
+      "Size": "2253306",
+      "Source": "python3.12",
+      "Version": "3.12.3-1ubuntu0.17"
+    },
+    "packagesIndexBytes": 1506728,
+    "packagesIndexSha256": "40bc6641ebda96ee37fed0e1c8ed7fb4ed3ea7f87ec1466a2c6402b1201f9465",
+    "packagesIndexUrl": "https://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/main/binary-arm64/by-hash/SHA256/40bc6641ebda96ee37fed0e1c8ed7fb4ed3ea7f87ec1466a2c6402b1201f9465",
+    "packagesUncompressedSha256": "bfd6096635d9f4396b3a85f29e2377d5969f62fb08306b06a9563c108b3ed027",
+    "publicKeySha256": "bfb2ee70cecac799f63eab325c21700927d287e8f6ae3c9d9940b92cbdea1645",
+    "publicKeyUrl": "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xF6ECB3762474EDA9D21B7022871920D1991BC93C",
+    "selectedInReleaseSha256": "cc12944ff54a4dfde90014a9532b6c924139a888e53e5f0cb9e010b44f81c83f",
+    "selectedInReleaseUrl": "https://ports.ubuntu.com/ubuntu-ports/dists/noble-updates/InRelease",
+    "selectedReleaseFields": {
+      "Codename": "noble",
+      "Date": "Sun, 15 Nov 2026 21:25:23 UTC",
+      "Label": "Ubuntu",
+      "Origin": "Ubuntu",
+      "Suite": "noble-updates"
+    },
+    "trustAnchorAuthorityAdditionalUrl": "https://ubuntu.com/docs/snapcraft/latest/how-to/integrations/craft-a-cross-compiled-app/",
+    "trustAnchorAuthorityHtmlSha256": "7cb21eb4290447d0c5aa458166c19bf0490b0cf9d8d11a9e7964a9cb158c9c1d",
+    "trustAnchorAuthorityUrl": "https://wiki.ubuntu.com/SecurityTeam/FAQ",
+    "trustAnchorFingerprint": "F6ECB3762474EDA9D21B7022871920D1991BC93C",
+    "validSignatureStatusPath": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble-updates.gpgv.status",
+    "verifiedInReleasePockets": [
+      "noble",
+      "noble-updates",
+      "noble-security"
+    ]
+  },
+  "evidence": [
+    {
+      "bytes": 1620,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/DEB_COMPARISONS.json",
+      "sha256": "c99fe427a37cb45e346ce54d252f886572db18f847f32c5ff71b3db27188c33d"
+    },
+    {
+      "bytes": 1782,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/FETCH_INITIAL.json",
+      "sha256": "9613501b3c9a23acd39999a9fde20a6f3135a82f0bcbe4d8f6553c0c97ebe99f"
+    },
+    {
+      "bytes": 630,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/key-inspection.status",
+      "sha256": "69213438859b2752782a31e1a8d58c9009e72b149939d58afa27bdb0011fa021"
+    },
+    {
+      "bytes": 842,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/matching-control.txt",
+      "sha256": "9206e0747f0e396597a329a19898abd3b5389d2bc2ee62aed3632caa1a8938be"
+    },
+    {
+      "bytes": 7845048,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/matching-python3.12.payload",
+      "sha256": "c86f21d0da9290ece2d7d49a3f7ed52aed59cb029abdf0ea25c79634f6cbe960"
+    },
+    {
+      "bytes": 607,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble-security.gpgv.status",
+      "sha256": "6870e6c89da9a5a509b0efc2b8f71a51a6b45c7184f022db54de9d1e73f9dbad"
+    },
+    {
+      "bytes": 126127,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble-security.InRelease",
+      "sha256": "b26a00fd20bcf0f31cb3e132702958eba8d50cd81d3b20bfe7433b77ebf7f775"
+    },
+    {
+      "bytes": 607,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble-updates.gpgv.status",
+      "sha256": "8c1c3a155b02191285b9d34ef958d00fe01566bf012768a70cfc3c21ed9bb152"
+    },
+    {
+      "bytes": 126125,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble-updates.InRelease",
+      "sha256": "cc12944ff54a4dfde90014a9532b6c924139a888e53e5f0cb9e010b44f81c83f"
+    },
+    {
+      "bytes": 8335263,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble-updates.Packages",
+      "sha256": "bfd6096635d9f4396b3a85f29e2377d5969f62fb08306b06a9563c108b3ed027"
+    },
+    {
+      "bytes": 1506728,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble-updates.Packages.xz",
+      "sha256": "40bc6641ebda96ee37fed0e1c8ed7fb4ed3ea7f87ec1466a2c6402b1201f9465"
+    },
+    {
+      "bytes": 607,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble.gpgv.status",
+      "sha256": "696ae9eb930f5cf33c0e85782d28bd3ee52c0736907a94fbde43dac69f34d391"
+    },
+    {
+      "bytes": 255850,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble.InRelease",
+      "sha256": "cdb2f31d809f589719a53c6ad15f255b27569c4059542ada282aaa21b8e164b0"
+    },
+    {
+      "bytes": 7028761,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble.Packages",
+      "sha256": "423c9185185cfc15df7bb3e748afc94b79ed09e0c437a0589aace46b61090d29"
+    },
+    {
+      "bytes": 1376632,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/noble.Packages.xz",
+      "sha256": "4a1901e6124fb0a111f5dffc8f5c14474f449e2ecfa71f2eaf0b29917edb53f9"
+    },
+    {
+      "bytes": 135430,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/official-ubuntu-security-faq.html",
+      "sha256": "7cb21eb4290447d0c5aa458166c19bf0490b0cf9d8d11a9e7964a9cb158c9c1d"
+    },
+    {
+      "bytes": 3823,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/PACKAGES_SELECTED.json",
+      "sha256": "8faec9a4c9ec57acd5f619d2751d35589d7cab2c63a9d7cccae5b8298517ae96"
+    },
+    {
+      "bytes": 2251184,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/python3.12-minimal_3.12.3-1_arm64.deb",
+      "sha256": "c5ce70a0cc04dbe9e7e6a1bdf21c0989f7d7c69ef2fd53ff98a6d3ac00d02d5f"
+    },
+    {
+      "bytes": 2253306,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/python3.12-minimal_3.12.3-1ubuntu0.17_arm64.deb",
+      "sha256": "be39fa8380f1e65fc02701cdbc8652acd924d8576b4ba1bd772141040a22b15f"
+    },
+    {
+      "bytes": 4747,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/ubuntu-archive-2018.asc",
+      "sha256": "bfb2ee70cecac799f63eab325c21700927d287e8f6ae3c9d9940b92cbdea1645"
+    },
+    {
+      "bytes": 3413,
+      "path": "monitoring-e2/next-agent-linux-install-v1/acceptance/current-source-rebind/ram-only-current/ubuntu-apt-python-review/ubuntu-archive-2018.gpg",
+      "sha256": "aff7b0bd431039349cfd2b8e97e722f360f61dd02f1c2087f911d80c5bd57614"
+    }
+  ],
+  "pinSha256": "f9bf701065f5f04556a97557dcbbf402a3d775b57f99c5d18ba5a7162b4565d6",
+  "qualification": [
+    "Proves exact member byte provenance of the observed interpreter, not a full runner image/runtime dependency attestation.",
+    "Current signed noble-updates metadata binds this exact package; no historical snapshot or unreviewed older package was substituted.",
+    "Candidate observation and this review do not automatically adopt or activate a product pin."
+  ]
+}

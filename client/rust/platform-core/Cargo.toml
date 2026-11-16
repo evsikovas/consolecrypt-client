@@ -45,9 +45,6 @@ sha2 = "0.10"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "1", optional = true, features = ["keychain"] }
-# setxattr: `com.apple.quarantine` on downloaded files (mark.rs). Already in
-# the lockfile.
-libc = "0.2"
 # Security keys (FEAT-16) over CTAP2/HID: the app asks for the PIN. MIT.
 ctap-hid-fido2 = { version = "3.6", optional = true }
 anyhow = { version = "1", optional = true }
@@ -64,6 +61,7 @@ objc2 = { version = "0.6", optional = true }
 apple-native-keyring-store = { version = "1", optional = true, features = ["protected"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Security", "Win32_System_Threading", "Win32_System_SystemInformation"] }
 windows-native-keyring-store = { version = "1", optional = true, default-features = false }
 # Device unlock (S5): Windows Hello KeyCredentialManager. Same version as the
 # one already in the lockfile; only WinRT features are added.
@@ -91,6 +89,10 @@ base64 = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+# Disk capacity and macOS quarantine xattr. Already in the lockfile.
+libc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 zbus = { version = "6.2.1", default-features = false, features = ["tokio", "enumflags2"] }

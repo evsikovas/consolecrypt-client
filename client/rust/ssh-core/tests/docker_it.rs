@@ -80,8 +80,23 @@ async fn docker_ssh_core() {
             let kh = Arc::new(MemoryKnownHosts::new());
             let (c, _) = connector(ti.resolver.clone(), kh, HostKeyDecision::Reject);
             let plan = planner(&ti).plan(ti.bastion1).await.unwrap();
-            let s = c.connect(&plan).await.unwrap();
+            // SAME actual authentication, no second resolver call.
+            let capture=Arc::new(cc_ssh_core::DiagnosticCapture::new());
+            let s = c.clone().with_diagnostic_capture(capture.clone()).connect(&plan).await.unwrap();
             assert_eq!(s.exec("whoami").await.unwrap().stdout_lossy(), "tester\n");
+            use secrecy::ExposeSecret;
+            let known=tb.secrets.password.expose_secret();
+            assert_eq!(capture.redact(known).unwrap(),"[REDACTED]");
+            assert!(Arc::ptr_eq(&s.diagnostic_capture().unwrap(),&capture));
+            s.disconnect().await.unwrap();
+            assert!(capture.redact(known).is_err());
+            let full=Arc::new(cc_ssh_core::DiagnosticCapture::new());
+            for n in 0..512{full.remember(&format!("owned-prefill-{n}")).unwrap();}
+            // Capture overflow is NOT authentication failure: visit the actual
+            // original password authenticator and real remote operation.
+            let s=c.clone().with_diagnostic_capture(full.clone()).connect(&plan).await.unwrap();
+            assert_eq!(s.exec("whoami").await.unwrap().stdout_lossy(),"tester\n");
+            assert!(full.redact(known).is_err());s.disconnect().await.unwrap();
 
             ti.resolver.insert(
                 ti.cred_password,
@@ -120,8 +135,13 @@ async fn docker_ssh_core() {
 
             ti.resolver
                 .set_prompt_passphrase(ti.cred_encrypted, tb.secrets.encrypted_passphrase.clone());
-            let s = c.connect(&plan).await.unwrap();
+            let capture=Arc::new(cc_ssh_core::DiagnosticCapture::new());
+            let s = c.clone().with_diagnostic_capture(capture.clone()).connect(&plan).await.unwrap();
             assert_eq!(s.exec("whoami").await.unwrap().stdout_lossy(), "tester\n");
+            use secrecy::ExposeSecret;
+            assert_eq!(capture.redact(tb.secrets.encrypted_passphrase.expose_secret()).unwrap(),"[REDACTED]");
+            assert_eq!(capture.redact(tb.secrets.encrypted_key.private_openssh.expose_secret()).unwrap(),"[REDACTED]");
+            s.disconnect().await.unwrap();
 
             ti.resolver.insert(
                 ti.cred_encrypted,

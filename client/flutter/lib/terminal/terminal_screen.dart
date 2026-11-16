@@ -17,6 +17,10 @@ import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
+import 'package:consolecrypt/monitoring/job_context_focus.dart';
+import 'package:consolecrypt/monitoring/job_context_navigation.dart';
+import 'package:consolecrypt/monitoring/job_context_receiver.dart';
+import 'package:consolecrypt/monitoring/monitoring_providers.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
@@ -31,7 +35,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:xterm/xterm.dart';
 
 class TerminalScreen extends ConsumerStatefulWidget {
-  const TerminalScreen({super.key});
+  const TerminalScreen({super.key, this.contextFocus});
+  final JobContextFocus? contextFocus;
 
   @override
   ConsumerState<TerminalScreen> createState() => _TerminalScreenState();
@@ -42,15 +47,58 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   /// between the row and the column.
   final _card = GlobalKey();
   late final SidebarCollapsed _sidebar;
+  JobContextFocus? _handledContextFocus;
+  int _contextFocusGeneration = 0;
 
   @override
   void initState() {
     super.initState();
     _sidebar = ref.read(sidebarCollapsedProvider.notifier);
+    _scheduleContextFocus();
+  }
+
+  void _scheduleContextFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) unawaited(_consumeContextFocus());
+  });
+
+  @override
+  void didUpdateWidget(TerminalScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.contextFocus, widget.contextFocus)) {
+      _contextFocusGeneration++;
+      _scheduleContextFocus();
+    }
+  }
+
+  Future<void> _consumeContextFocus() async {
+    final focus = widget.contextFocus;
+    if (focus == null || identical(focus, _handledContextFocus)) return;
+    _handledContextFocus = focus;
+    final token = ++_contextFocusGeneration;
+    final previousTab = ref.read(terminalTabsProvider).active?.sessionId;
+    bool current() => mounted && token == _contextFocusGeneration && identical(widget.contextFocus, focus) &&
+        GoRouter.of(context).routeInformationProvider.value.uri.path == AppRoutes.terminal &&
+        ref.read(monitoringScopeProvider).current && identical(ref.read(monitoringSessionProvider)?.correlationScope, focus.scope) &&
+        ref.read(terminalTabsProvider).active?.sessionId == previousTab;
+    try {
+      final ready = await receiveJobContextFocus(ref, focus, destination: JobContextDestination.sshHost,
+        receiverCurrent: () => current() && ModalRoute.of(context)?.isCurrent == true);
+      if (!mounted || ready == null || !current()) return;
+      // Opening/focusing the chooser does not open a tab or a connection. Only
+      // its separate explicit Connect action can return a target below.
+      final target = await showTerminalTargetPicker(context, contextFocus: ready);
+      if (target == null || !current()) return;
+      if (target is! SshTerminalTarget || target.host.id.value != ready.selection.hostId) return;
+      if (!await recheckJobContextFocus(ref, ready, receiverCurrent: current) || !mounted || !current()) return;
+      await runWithFeedback(context, () => ref.read(terminalTabsProvider.notifier).openTarget(target));
+    } catch (_) {
+      if (mounted && current()) showSnack(context, context.l10n.correlationContextChanged, error: true);
+    }
   }
 
   @override
   void dispose() {
+    _contextFocusGeneration++;
     final sidebar = _sidebar;
     scheduleMicrotask(() => sidebar.setBesideTabs(false));
     super.dispose();

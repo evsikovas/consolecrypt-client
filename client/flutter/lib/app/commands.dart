@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/navigation_customization.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/sidebar_state.dart';
@@ -32,6 +33,7 @@ enum AppCommandId {
   previousTerminalTab,
   nextTerminalTab,
   toggleTerminalMinimalMode,
+  customizeSidebar,
 }
 
 /// A key combination: the platform primary modifier (⌘ on macOS, Ctrl
@@ -176,6 +178,7 @@ final class AppCommand {
     AppCommandId.openSettings => l.commandOpenSettings,
     AppCommandId.snippets => l.navSnippets,
     AppCommandId.toggleSidebar => l.commandToggleSidebar,
+    AppCommandId.customizeSidebar => l.navigationCustomize,
     AppCommandId.splitTerminalRight => l.terminalSplitRight,
     AppCommandId.splitTerminalDown => l.terminalSplitDown,
     AppCommandId.nextTerminalPane => l.terminalNextPane,
@@ -195,6 +198,7 @@ const appCommands = [
   AppCommand(AppCommandId.openSettings, ShortcutBinding(LogicalKeyboardKey.comma)),
   AppCommand(AppCommandId.snippets, ShortcutBinding(LogicalKeyboardKey.period)),
   AppCommand(AppCommandId.toggleSidebar, ShortcutBinding(LogicalKeyboardKey.keyS, shift: true)),
+  AppCommand(AppCommandId.customizeSidebar, ShortcutBinding(LogicalKeyboardKey.keyB, shift: true)),
   // ⇧\ is `|` (side by side), ⇧- is `_` (one under the other).
   AppCommand(AppCommandId.splitTerminalRight, ShortcutBinding(LogicalKeyboardKey.backslash, shift: true)),
   AppCommand(AppCommandId.splitTerminalDown, ShortcutBinding(LogicalKeyboardKey.minus, shift: true)),
@@ -274,6 +278,8 @@ final class AppCommandDispatcher {
     final router = _ref.read(routerProvider);
     final context = rootNavigatorKey.currentContext;
     switch (id) {
+      case AppCommandId.customizeSidebar:
+        if (context != null) unawaited(showNavigationCustomization(context));
       case AppCommandId.toggleTerminalMinimalMode:
         if (!AppPlatform.isMobile && router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
           _ref.read(terminalMinimalModeProvider.notifier).toggle();

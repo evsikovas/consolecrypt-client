@@ -1,0 +1,20 @@
+{
+  "body": {
+    "format": 1,
+    "version": 1,
+    "displayVersion": "0.1.0",
+    "protocol": 1,
+    "capabilities": {
+      "version": 1,
+      "scopes": [
+        "telemetry.read"
+      ]
+    },
+    "platform": "linux-x86_64",
+    "artifactSha256": "a78518c0dd3c7866ba8e95a7ebd34fb0ee0765cc101f5131afd50ea36c006812",
+    "artifactBytes": 422,
+    "issuedAt": 1794643145,
+    "expiresAt": 1794729546
+  },
+  "signature": "5b8d3a07d476b3fdf0a3d84d7e54cf2e5fe65b63b52285a0fb1fbbda518d11b7cd783e6da7f8bb892d3703251019594e7af77b98458d05bb542981bb9b88ab07"
+}

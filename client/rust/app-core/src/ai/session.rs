@@ -159,6 +159,7 @@ struct EmbedTask {
 
 /// AI state of an unlocked vault.
 pub(crate) struct AiSession {
+    pub(super) metrics: Arc<super::monitoring::MetricsRuntime>,
     ctx: Arc<AppCtx>,
     profile_id: ProfileId,
     search_path: Option<PathBuf>,
@@ -207,6 +208,7 @@ impl AiSession {
     ) -> Arc<Self> {
         let events = ctx.events.subscribe();
         Arc::new(Self {
+            metrics: Arc::new(super::monitoring::MetricsRuntime::default()),
             ctx,
             profile_id,
             search_path,
@@ -239,6 +241,17 @@ impl AiSession {
         *lock(&self.indexer) = Some(handle);
     }
 
+    /// Synchronous original-unlock retirement request. The running index/OS
+    /// job retains its actual join/custody; this never pretends it has finished.
+    /// Embedding uses a child of `closed`, so it observes the same retirement.
+    pub(crate) fn retire(&self) {
+        self.closed.cancel();
+        self.metrics.close();
+        for (_, t) in lock(&self.requests).drain() {
+            t.cancel();
+        }
+    }
+
     /// Lock / close: cancel everything and drop the index, providers,
     /// conversations, proposals and approvals.
     ///
@@ -248,10 +261,7 @@ impl AiSession {
     /// closed before `shutdown` returns (closing it during process exit can
     /// crash; see `AppCore::shutdown`).
     pub(crate) async fn shutdown(&self) {
-        self.closed.cancel();
-        for (_, t) in lock(&self.requests).drain() {
-            t.cancel();
-        }
+        self.retire();
         let embed = self.embed.lock().await.take();
         if let Some(t) = embed {
             stop_task(t.cancel, t.handle).await;
@@ -280,6 +290,23 @@ impl AiSession {
 
     pub(crate) fn is_closed(&self) -> bool {
         self.closed.is_cancelled()
+    }
+
+    /// Recheck the exact cached provider without resolving secrets or awaiting.
+    pub(super) fn metrics_provider_current(
+        &self,
+        cfg: &AiProviderConfig,
+        provider: &Arc<dyn LlmProvider>,
+    ) -> bool {
+        if self.is_closed() || self.resolve_config(Some(&cfg.id.to_string())).ok().as_ref() != Some(cfg) {
+            return false;
+        }
+        if cfg.id.to_string() == DEVICE_LOCAL_PROVIDER_ID {
+            return lock(&self.device_local).as_ref().is_some_and(|p|
+                p.cached.config == *cfg && Arc::ptr_eq(&p.cached.provider, provider));
+        }
+        lock(&self.providers).get(&cfg.id).is_some_and(|p|
+            p.config == *cfg && Arc::ptr_eq(&p.provider, provider))
     }
 
     fn check_open(&self) -> AppResult<()> {
@@ -552,6 +579,10 @@ impl AiSession {
             registration_id,
             cached: CachedProvider { config, provider },
         });
+        drop(local);
+        // Reviewed Monitoring requests must not survive a local model/process
+        // replacement. Do not hold the provider mutex while taking its registry.
+        self.metrics.invalidate_device();
         Ok(())
     }
 
@@ -562,6 +593,8 @@ impl AiSession {
             .is_some_and(|p| p.registration_id == registration_id)
         {
             local.take();
+            drop(local);
+            self.metrics.invalidate_device();
         }
     }
 

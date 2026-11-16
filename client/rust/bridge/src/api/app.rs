@@ -197,11 +197,13 @@ where
 /// Close the open profile (locks the vault, stops sync/SSH, closes the
 /// SQLCipher connection) and drop the core. Call before the process exits.
 pub async fn core_shutdown() -> Result<(), BridgeError> {
-    let Some(core) = state::core_opt() else {
+    let Some((core, original)) = state::core_for_shutdown() else {
         return Ok(());
     };
     let r = run(async move { core.shutdown().await.map_err(BridgeError::from) }).await;
-    state::set_core(None);
+    // A denied shutdown leaves the original app usable. A stale completion
+    // never removes a different app initialized while this one was closing.
+    state::complete_shutdown(&original, &r);
     r
 }
 

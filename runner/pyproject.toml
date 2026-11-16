@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools==84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "consolecrypt-runner"
+version = "0.1.0"
+description = "Scoped Ansible helper and service for ConsoleCrypt"
+requires-python = ">=3.12"
+license = "AGPL-3.0-only"
+dependencies = ["ansible-core==2.20.11", "ansible-runner==2.4.3", "cryptography==50.0.2", "PyYAML==6.0.3"]
+
+[project.scripts]
+consolecrypt-runner = "consolecrypt_runner.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+consolecrypt_runner = ["environments/*.json"]

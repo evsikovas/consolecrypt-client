@@ -1,0 +1,14 @@
+[Unit]
+Description=Explicitly reviewed ConsoleCrypt node exporter
+After=network.target
+[Service]
+User=consolecrypt-node-exporter
+Group=consolecrypt-node-exporter
+ExecStart=/opt/consolecrypt-node-exporter/node_exporter \
+  --web.listen-address=127.0.0.1:{{ cc_node_exporter_port }}
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target

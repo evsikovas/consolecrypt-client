@@ -1,0 +1,295 @@
+#!/usr/bin/python3 -I
+"""Fixed installed enrollment adapter. No caller-selected path or command."""
+import grp
+import os
+from pathlib import Path
+import pwd
+import stat
+import sys
+
+
+def require(value, code):
+    if not value:
+        raise ValueError(code)
+
+
+def trusted(path, regular=False, cap=1048576):
+    path = Path(path)
+    for item in (path, *path.parents):
+        info = item.lstat()
+        require(info.st_uid == 0 and not info.st_mode & 0o022,
+                "root_nonwrite_required")
+        require(stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode), "physical_path_required")
+        if stat.S_ISREG(info.st_mode):
+            require(info.st_nlink == 1, "singlelink_required")
+        if item != path:
+            require(stat.S_ISDIR(info.st_mode), "directory_parent_required")
+    info = path.lstat()
+    if regular:
+        require(stat.S_ISREG(info.st_mode) and info.st_size <= cap, "bounded_regular_required")
+    return path
+
+
+def read_root(path, cap=1048576):
+    path = trusted(path, regular=True, cap=cap)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    try:
+        def identity(info):
+            return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid,
+                    info.st_nlink, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+        actual = os.fstat(fd)
+        require(stat.S_ISREG(actual.st_mode) and actual.st_uid == 0 and
+                not actual.st_mode & 0o022 and actual.st_nlink == 1 and
+                0 <= actual.st_size <= cap, "held_root_regular_required")
+        # Repeat physical/root-controlled ancestry after opening and before data.
+        trusted(path, regular=True, cap=cap)
+        require(identity(path.lstat()) == identity(actual), "held_path_identity_required")
+        data = bytearray()
+        while len(data) <= cap:
+            part = os.read(fd, min(65536, cap + 1 - len(data)))
+            if not part:
+                break
+            data.extend(part)
+        trusted(path, regular=True, cap=cap)
+        require(len(data) == actual.st_size and
+                identity(os.fstat(fd)) == identity(actual) == identity(path.lstat()),
+                "stable_complete_root_input_required")
+        return bytes(data)
+    finally:
+        os.close(fd)
+
+
+def service():
+    user = pwd.getpwnam("consolecrypt-agent")
+    group = grp.getgrnam("consolecrypt-agent")
+    require(user.pw_uid > 0 and user.pw_gid == group.gr_gid > 0, "service_identity_required")
+    require(user.pw_shell in ("/usr/sbin/nologin", "/sbin/nologin"), "service_nologin_required")
+    return user, group
+
+import importlib.util
+import json
+import selectors
+import signal
+import subprocess
+import time
+import uuid
+
+CONFIG = Path("/etc/consolecrypt-agent/enrollment-control.json")
+GENESIS = Path("/etc/consolecrypt-agent/enrollment-genesis-owner.json")
+NODE = Path("/var/lib/consolecrypt-agent/identity/node")
+DB = Path("/var/lib/consolecrypt-agent/identity/sqlite")
+ANCHOR = Path("/var/lib/consolecrypt-agent/checkpoints/enrollment")
+POLICY_KEYS = {"retainedInvitations", "pendingInvitations", "retainedAgents", "consumedNonces",
+    "consumedLeases", "retainedAgentKeyTombstones", "maxAgentKeyTombstones",
+    "retainedOwnerKeyTombstones", "maxOwnerKeyTombstones", "maxInvitations", "maxPending",
+    "maxAgents", "maxNonces", "maxLeases", "remainingAdmissionsUpperBound"}
+
+
+def object_pairs(pairs):
+    result = {}
+    for key, value in pairs:
+        require(key not in result, "duplicate_json_key")
+        result[key] = value
+    return result
+
+
+def parsed(data):
+    return json.loads(data, object_pairs_hook=object_pairs)
+
+
+def configuration():
+    cfg = parsed(read_root(CONFIG, 16384))
+    require(set(cfg) == {"format", "agentId", "nodeDir", "dbDir", "anchorDir", "ownerPin"}, "config_fields")
+    require(cfg["format"] == "cc-agent-enroll-config/v1" and str(uuid.UUID(cfg["agentId"])) == cfg["agentId"]
+            and uuid.UUID(cfg["agentId"]).int != 0, "config_agent")
+    require((cfg["nodeDir"], cfg["dbDir"], cfg["anchorDir"], cfg["ownerPin"]) ==
+            tuple(map(str, (NODE, DB, ANCHOR, GENESIS))), "fixed_config_paths")
+    read_root(GENESIS, 16384)
+    return cfg
+
+
+def binary():
+    path = Path("/opt/consolecrypt-agent-install/opt/consolecrypt-agent/launch.py")
+    before = read_root(path, 1048576)
+    spec = importlib.util.spec_from_file_location("cc_installed_enrollment_launch", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    require(read_root(path, 1048576) == before, "launcher_changed")
+    result = module.verified_identity_binary()
+    require(type(result) is type(Path("/")) and result.is_absolute(), "verified_binary_required")
+    return str(result)
+
+
+def private(path, uid, directory):
+    info = path.lstat()
+    require(info.st_uid == uid and info.st_gid == service()[1].gr_gid and stat.S_IMODE(info.st_mode) == (0o700 if directory else 0o600)
+            and (stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode) and info.st_nlink == 1),
+            "private_existing_state_required")
+    # Each fixed private directory has a physical root-owned parent.
+    if directory:
+        state_parent(path.parent)
+    else:
+        private(path.parent, uid, True)
+
+
+def state_parent(path):
+    require(path in (NODE.parent, ANCHOR.parent), "fixed_state_parent")
+    user, _ = service()
+    info = path.lstat()
+    require(stat.S_ISDIR(info.st_mode) and info.st_uid == user.pw_uid and info.st_gid == user.pw_gid and
+            stat.S_IMODE(info.st_mode) == 0o700, "private_state_parent_required")
+    trusted(path.parent)
+
+
+def owned_group_empty(pid, deadline):
+    import time
+    for entry in Path("/proc").iterdir():
+        require(time.monotonic() < deadline, "owned_group_observation_timeout")
+        if not entry.name.isdigit() or int(entry.name) == pid:
+            continue
+        try:
+            fields = (entry / "stat").read_bytes().rpartition(b") ")[2].split()
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        require(len(fields) >= 20, "owned_group_stat_required")
+        if int(fields[2]) == pid:
+            require(int(fields[3]) == pid, "owned_group_session_mismatch")
+            return False
+    return True
+
+
+def finish_owned(proc):
+    import signal
+    import time
+    # Retain the exact child PID through group cleanup. Unknown ownership denies.
+    os.waitid(os.P_PID, proc.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    end = time.monotonic() + 2
+    try:
+        while not owned_group_empty(proc.pid, end):
+            require(time.monotonic() < end, "owned_descendants_not_gone")
+            time.sleep(0.01)
+    finally:
+        proc.wait(timeout=2)
+        proc.stdout.close()
+
+
+def run_owned(argv, user, group, data=b"", cap=4097):
+    deadline = time.monotonic() + 10
+    require(signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL, "default_child_wait_required")
+    selector = selectors.DefaultSelector()
+    try:
+        proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            env={"LANG": "C.UTF-8"}, cwd="/", start_new_session=True,
+            user=user.pw_uid, group=group.gr_gid, extra_groups=[])
+    except BaseException:
+        selector.close()
+        raise
+    output = bytearray()
+    try:
+        proc.stdin.write(data)
+        proc.stdin.close()
+        os.set_blocking(proc.stdout.fileno(), False)
+        selector.register(proc.stdout, selectors.EVENT_READ)
+        eof = False
+        exited = None
+        while not eof or exited is None:
+            require(time.monotonic() < deadline, "worker_timeout")
+            exited = os.waitid(os.P_PID, proc.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+            for key, _ in selector.select(min(0.1, max(0, deadline - time.monotonic()))):
+                part = os.read(key.fd, cap + 1 - len(output))
+                require(len(output) + len(part) <= cap, "worker_output_bound")
+                if not part:
+                    selector.unregister(key.fileobj)
+                    eof = True
+                else:
+                    output.extend(part)
+        require(exited is not None and exited.si_pid == proc.pid and
+                exited.si_code == os.CLD_EXITED and exited.si_status == 0, "worker_exit_denied")
+        require(output.endswith(b"\n") and output.count(b"\n") == 1, "one_complete_reply_required")
+        return parsed(output)
+    finally:
+        try:
+            selector.close()
+        finally:
+            finish_owned(proc)
+
+
+def status_result(row):
+    require(type(row) is dict and set(row) == {"ok", "metadata"} and row["ok"] is True, "status_denied")
+    meta = row["metadata"]
+    require(type(meta) is dict and set(meta) == {"provider", "revision", "policy"} and
+            meta["provider"] == "sqlite-journal-v1" and type(meta["revision"]) is int and
+            0 <= meta["revision"] < 2**64, "status_metadata")
+    policy = meta["policy"]
+    require(type(policy) is dict and set(policy) == POLICY_KEYS and
+            all(type(value) is int and 0 <= value < 2**64 for value in policy.values()), "status_policy")
+    for key, value in {"maxAgentKeyTombstones":4096, "maxOwnerKeyTombstones":128,
+            "maxInvitations":128, "maxPending":32, "maxAgents":128, "maxNonces":4096,
+            "maxLeases":4096}.items():
+        require(policy[key] == value, "status_capacity")
+    return {"integrityObserved": True, "liveAuthorityObserved": False, "revision": meta["revision"]}
+
+
+def exclusive():
+    marker = parsed(read_root("/etc/consolecrypt-agent/enrollment-role-policy.json", 32768))
+    require(marker.get("exclusiveBootstrapApproved") is True, "exclusive_bootstrap_not_approved")
+    require(not Path("/etc/ssh/sshd_config.d/00-consolecrypt-agent-enrollment.conf").exists()
+            and not Path("/etc/sudoers.d/consolecrypt-agent-enrollment").exists(), "disable_ingress_before_bootstrap")
+    # No process-name inference: the separately installed fixed service must be inactive.
+    result = subprocess.run(["/usr/bin/systemctl", "is-active", "consolecrypt-agent.service"],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        timeout=3, env={"LANG":"C.UTF-8"}, check=False)
+    require(result.returncode == 3 and result.stdout in (b"inactive\n", b"failed\n"), "service_inactive_required")
+
+
+def main():
+    require(os.getuid() == os.geteuid() == 0 and len(sys.argv) == 2 and
+            sys.argv[1] in ("--status", "--node-provision", "--store-init"), "fixed_root_mode_required")
+    trusted(__file__, regular=True)
+    cfg = configuration()
+    user, group = service()
+    exe = binary()
+    common = ["--db-dir", str(DB), "--anchor-dir", str(ANCHOR), "--owner-pin", str(GENESIS)]
+    if sys.argv[1] == "--status":
+        for path in (DB, ANCHOR):
+            private(path, user.pw_uid, True)
+        private(DB / "identity.sqlite3", user.pw_uid, False)
+        private(ANCHOR / "head.json", user.pw_uid, False)
+        row = run_owned([exe, "worker-sqlite", *common], user, group, b'{"action":"status"}\n')
+        print(json.dumps(status_result(row), sort_keys=True, separators=(",", ":")))
+    elif sys.argv[1] == "--store-init":
+        exclusive()
+        require(not os.path.lexists(DB) and not os.path.lexists(ANCHOR), "both_store_paths_must_be_absent")
+        state_parent(DB.parent)
+        state_parent(ANCHOR.parent)
+        row = run_owned([exe, "init-sqlite", *common], user, group)
+        require(type(row) is dict and set(row) == {"initialized", "provider"} and row["initialized"] is True
+                and row["provider"] == "sqlite-journal-v1", "store_init_reply")
+        print('{"initialized":true,"liveAuthorityObserved":false}')
+    else:
+        exclusive()
+        state_parent(NODE.parent)
+        if os.path.lexists(NODE):
+            private(NODE, user.pw_uid, True)
+        row = run_owned([exe, "provision-node", "--state-dir", str(NODE), "--agent-id", cfg["agentId"]],
+                        user, group, cap=16384)
+        require(type(row) is dict and set(row) == {"agentId", "format", "keyEpoch", "keyFingerprint", "publicKey"}
+                and row["agentId"] == cfg["agentId"] and type(row["format"]) is int and row["format"] == 1
+                and type(row["keyEpoch"]) is int and row["keyEpoch"] == 1,
+                "node_public_reply")
+        import re
+        require(all(isinstance(row[k], str) and re.fullmatch("[0-9a-f]{64}", row[k])
+                    for k in ("keyFingerprint", "publicKey")), "node_public_key")
+        print(json.dumps(row, sort_keys=True, separators=(",", ":")))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, KeyError, ValueError, TypeError, subprocess.SubprocessError):
+        print('{"error":"enrollment_admin_denied"}', file=sys.stderr)
+        sys.exit(1)

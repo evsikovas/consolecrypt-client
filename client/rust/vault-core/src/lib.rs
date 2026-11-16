@@ -32,6 +32,9 @@ mod device_sharing;
 mod device_unlock;
 mod error;
 mod identity;
+mod agent_tunnel;
+mod agent_reader_node_owner;
+mod agent_reader;
 mod recovery_kit;
 mod team;
 mod unlock;
@@ -79,3 +82,9 @@ mod tests {
         assert_send_sync::<super::VaultError>();
     }
 }
+
+mod collector_service;
+
+mod agent_collector_credentials;
+
+mod collector_service_credentials;

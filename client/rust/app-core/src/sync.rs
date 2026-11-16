@@ -108,6 +108,7 @@ impl AppCore {
         account_password: String,
         mode: AccountMode,
     ) -> AppResult<ProfileInfo> {
+        let _reader_auth_transition = self.reader_auth_transition();
         let email = crate::validate::email(&email)?;
         crate::validate::secret_text("account_password", &account_password)?;
         let credential = Credential::Password {
@@ -124,7 +125,11 @@ impl AppCore {
         server_url: String,
         credential: Credential,
     ) -> AppResult<ProfileInfo> {
+        let _reader_auth_transition = self.reader_auth_transition();
         let (s, u) = self.unlocked().await?;
+        if let Some(api) = s.api_opt() {
+            api.invalidate_reader_auth();
+        }
         let old = s.profile().await?;
         if old.kind == ProfileKind::Synced {
             return Err(AppError::AlreadySynced);
@@ -251,7 +256,11 @@ impl AppCore {
     /// (or revoke this device), keep all local data; the profile becomes
     /// Local. The server copy is left untouched.
     pub async fn disconnect(&self, revoke_device: bool) -> AppResult<ProfileInfo> {
+        let _reader_auth_transition = self.reader_auth_transition();
         let s = self.session().await?;
+        if let Some(api) = s.api_opt() {
+            api.invalidate_reader_auth();
+        }
         let old = s.profile().await?;
         if old.kind != ProfileKind::Synced {
             return Err(AppError::LocalProfile);
@@ -305,8 +314,12 @@ impl AppCore {
         account_password: String,
         allow_new_device_identity: bool,
     ) -> AppResult<AuthStateDto> {
+        let _reader_auth_transition = self.reader_auth_transition();
         crate::validate::secret_text("account_password", &account_password)?;
         let s = self.session().await?;
+        if let Some(api) = s.api_opt() {
+            api.invalidate_reader_auth();
+        }
         let email = s
             .profile()
             .await?
@@ -331,7 +344,11 @@ impl AppCore {
         credential: Credential,
         allow_new_device_identity: bool,
     ) -> AppResult<AuthStateDto> {
+        let _reader_auth_transition = self.reader_auth_transition();
         let s = self.session().await?;
+        if let Some(api) = s.api_opt() {
+            api.invalidate_reader_auth();
+        }
         let api = s.api()?;
         let mut profile = s.profile().await?;
         let mut new_identity = false;

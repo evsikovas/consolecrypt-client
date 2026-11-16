@@ -65,6 +65,11 @@ void main() {
           closeTo(12, 1),
           reason: 'search stretches to the connection action',
         );
+        expect(
+          tester.getRect(find.byKey(const ValueKey('critical-notices-open'))).left,
+          greaterThanOrEqualTo(tester.getRect(connection).right),
+          reason: 'notifications follow the primary connection action',
+        );
         if (width == 1600) expect(tester.getSize(search).width, greaterThan(700));
         expect(tester.takeException(), isNull);
 

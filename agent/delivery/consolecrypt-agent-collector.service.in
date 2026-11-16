@@ -1,0 +1,44 @@
+[Unit]
+Description=ConsoleCrypt explicitly delegated finite metrics collector
+After=network.target run-consolecrypt\x2dagent-disk.mount user@@SERVICE_UID@.service
+Requires=run-consolecrypt\x2dagent-disk.mount user@@SERVICE_UID@.service
+ConditionPathExists=/etc/consolecrypt-agent/collector-service.json
+ConditionPathExists=/etc/consolecrypt-agent/collector-disk-provisioned.json
+ConditionPathExists=/etc/consolecrypt-agent/enrollment-control.json
+
+[Service]
+Type=simple
+User=consolecrypt-agent
+Group=consolecrypt-agent
+ExecStart=/usr/bin/python3 -I -B /opt/consolecrypt-agent-install/opt/consolecrypt-agent/launch.py --collector-service
+Restart=no
+TimeoutStopSec=15s
+KillMode=mixed
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindReadOnlyPaths=/run/user/@SERVICE_UID@
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+IPAddressDeny=any
+IPAddressAllow=localhost
+ReadWritePaths=/var/lib/consolecrypt-agent/identity /var/lib/consolecrypt-agent/checkpoints /var/lib/consolecrypt-agent/metrics-disk /var/lib/consolecrypt-agent/collector-credentials /run/consolecrypt-agent/disk
+InaccessiblePaths=-/run/docker.sock -/var/run/docker.sock -/run/containerd/containerd.sock
+MemoryMax=128M
+MemorySwapMax=0
+CPUQuota=25%
+TasksMax=16
+LimitNOFILE=128
+
+[Install]
+WantedBy=multi-user.target

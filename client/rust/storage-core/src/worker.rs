@@ -175,6 +175,42 @@ impl Storage {
         self.call(move |db| db.write(f)).await
     }
 
+    /// Purpose-specific file-backed at-least-FULL acknowledgement for the
+    /// project publication catalog. SAME connection/worker/kernel; no raw SQL.
+    pub async fn write_project_publication<T,E,F>(&self,f:F)->std::result::Result<T,crate::ProjectPublicationWriteError<E>>
+    where F:FnOnce(&Tx<'_>)->std::result::Result<T,E>+Send+'static,T:Send+'static,E:From<StorageError>+Send+'static {
+        self.call(move|db|db.project_publication_write(f)).await
+    }
+
+    /// Original file-backed service owner metadata; same SQLCipher worker.
+    /// Unknown never returns a committed result, even on lost worker ACK.
+    pub async fn write_service_owner<T, E, F>(&self, f: F) -> std::result::Result<T, crate::ServiceOwnerWriteError<E>>
+    where
+        F: FnOnce(&Tx<'_>) -> std::result::Result<T, E> + Send + 'static,
+        T: Send + 'static,
+        E: From<StorageError> + Send + 'static,
+    {
+        self.call(move |db| db.service_owner_write(f)).await
+    }
+
+    /// Original fixed TLS identity row; same FULL durable worker/kernel.
+    pub async fn write_tunnel_tls<T,E,F>(&self,f:F)->std::result::Result<T,crate::ReaderAuthorityWriteError<E>>
+    where F:FnOnce(&Tx<'_>)->std::result::Result<T,E>+Send+'static,T:Send+'static,E:From<StorageError>+Send+'static {
+        self.call(move |db|db.tunnel_tls_write(f)).await
+    }
+
+    pub async fn write_node_association<T, E, F>(
+        &self,
+        f: F,
+    ) -> std::result::Result<T, crate::ReaderAuthorityWriteError<E>>
+    where
+        F: FnOnce(&Tx<'_>) -> std::result::Result<T, E> + Send + 'static,
+        T: Send + 'static,
+        E: From<StorageError> + Send + 'static,
+    {
+        self.call(move |db| db.node_association_write(f)).await
+    }
+
     /// Run `f` in a read transaction.
     pub async fn read<T, E, F>(&self, f: F) -> Result<T, E>
     where

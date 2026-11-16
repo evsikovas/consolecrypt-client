@@ -1,0 +1,17 @@
+---
+- name: Validate explicit role switches
+  ansible.builtin.assert:
+    that:
+      - cc_agent_enrollment_manage is boolean
+      - cc_agent_enrollment_activate is boolean
+      - cc_agent_enrollment_node_provision is boolean
+      - cc_agent_enrollment_store_init is boolean
+      - cc_agent_enrollment_create_service is boolean
+      - cc_agent_enrollment_exclusive_bootstrap_approved is boolean
+      - cc_agent_enrollment_pam_context_reviewed is boolean
+      - cc_agent_enrollment_sudo_nologin_reviewed is boolean
+      - cc_agent_enrollment_default_sshd_config_reviewed is boolean
+      - cc_agent_enrollment_manage or not (cc_agent_enrollment_activate or cc_agent_enrollment_node_provision or cc_agent_enrollment_store_init)
+- name: Manage the explicitly requested installed enrollment role
+  ansible.builtin.include_tasks: managed.yml
+  when: cc_agent_enrollment_manage

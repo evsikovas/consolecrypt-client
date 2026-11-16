@@ -39,11 +39,13 @@
 //! * [`shell`] — shell tokenizer shared by the above.
 
 pub mod assistant;
+pub mod automation;
 pub mod cancel;
 pub mod context;
 pub mod embed;
 pub mod error;
 pub mod features;
+pub mod monitoring;
 pub mod parameterize;
 pub mod pipeline;
 pub mod policy;

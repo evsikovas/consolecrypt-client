@@ -122,7 +122,7 @@ List<String> windowsInstallerArguments(int processId) => [
   '/SP-',
   '/SILENT',
   '/NORESTART',
-  '/CLOSEAPPLICATIONS',
+  '/NOCLOSEAPPLICATIONS',
   '/RELAUNCH=1',
   '/WAITPID=$processId',
 ];

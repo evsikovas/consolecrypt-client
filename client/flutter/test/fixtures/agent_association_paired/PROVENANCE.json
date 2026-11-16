@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "evidence": "monitoring-e2/agent/integration/evidence/agent-enrollment-ssh/attempt2",
+  "sourceStdoutSha256": "aaac3d83bf62b12bb600417edfd2fc8a763e0a3010362eaf05a61c297c57d958",
+  "sourcePositiveCaseSha256": "112dceb93600e7b698826ed7b52cc505e5e4b5c21b36d14cb4e31ad328c72034",
+  "sourceCompleteSha256": "aadc4e875a759f017152db631a894abbf822781ba138907fcc3fd0073ef21925",
+  "captures": {
+    "status": {
+      "sha256": "7f26dc27be26a94e9a462c84c3ac56a12824de6ac99f8a68cc818d724e96aecc",
+      "bytes": 1203,
+      "source": "NATIVE_STDOUT.log",
+      "tag": "CC_ASSOCIATION_PAIRED_STATUS="
+    },
+    "offer": {
+      "sha256": "bf8109efcfe161df823be6b08dd284f05493ed0995f44111f2d53b666471cbb7",
+      "bytes": 1206,
+      "source": "NATIVE_STDOUT.log",
+      "tag": "CC_ASSOCIATION_PAIRED_OFFER="
+    },
+    "claim": {
+      "sha256": "46d9bad23036a9dc38e4056317c22c6b018876d4af19a57bf43689a469d3930b",
+      "bytes": 1304,
+      "source": "NATIVE_STDOUT.log",
+      "tag": "CC_ASSOCIATION_PAIRED_CLAIM="
+    },
+    "associated": {
+      "sha256": "9c8527c314a2d2fdfbe6716975dd5de9e94ad4722e3ad3424354dd6efdc3eb73",
+      "bytes": 1381,
+      "source": "NATIVE_STDOUT.log",
+      "tag": "CC_ASSOCIATION_PAIRED_ASSOCIATED="
+    },
+    "cleanup": {
+      "sha256": "e6264e1edc87c091b93094e3f79d2ffea49a5d4472734780ecf2c891fc7f734c",
+      "bytes": 95,
+      "source": "positive/NATIVE_CASE.json",
+      "utf8Start": 1758,
+      "utf8End": 1853
+    }
+  },
+  "producerJsonBytesUnchanged": true,
+  "historicalOwnedFixtureOnly": true,
+  "FlutterTestUsesNativeMock": true,
+  "actorAdmissionClaimed": false,
+  "note": "The Native ordinary stage Associated DTO records enrollment, not live tunnel authority; actorAdmission remains false. Cleanup is an exact original JSON subtree slice, not reserialized."
+}

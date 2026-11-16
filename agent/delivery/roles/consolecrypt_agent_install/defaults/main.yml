@@ -1,0 +1,15 @@
+---
+cc_agent_install_approved: false
+cc_agent_install_operation: status
+cc_agent_install_start: false
+cc_agent_release_artifact: ''
+cc_agent_release_manifest: ''
+# The release key, pinned verifier and trust.json are administrator-provisioned
+# at fixed root-owned paths; this role does not synthesize signing authority.
+
+# Explicit separate infrastructure opt-in; no collector or authority activation.
+cc_agent_install_metrics_runtime: false
+# Explicit fixed administrator catalog; does not lengthen any collection lease.
+cc_agent_install_metrics_buffer_mode: volatile
+cc_agent_install_service_uid: 0
+cc_agent_install_service_gid: 0

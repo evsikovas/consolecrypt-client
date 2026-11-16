@@ -1,0 +1,30 @@
+# Managed fixed enrollment role. Must be the FIRST .conf in the GLOBAL Include.
+Subsystem consolecrypt-agent-enroll-v1 consolecrypt-agent-enrollment
+Match User cc-agent-enroll
+    ForceCommand consolecrypt-agent-enrollment
+    AuthenticationMethods publickey
+    PubkeyAuthentication yes
+    PubkeyAcceptedAlgorithms ssh-ed25519
+    AuthorizedKeysFile /etc/consolecrypt-agent/enrollment-authorized-keys
+    AuthorizedKeysCommand none
+    AuthorizedKeysCommandUser nobody
+    AuthorizedPrincipalsFile none
+    AuthorizedPrincipalsCommand none
+    TrustedUserCAKeys none
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+    GSSAPIAuthentication no
+    HostbasedAuthentication no
+    KerberosAuthentication no
+    PermitEmptyPasswords no
+    DisableForwarding yes
+    AllowAgentForwarding no
+    AllowTcpForwarding no
+    AllowStreamLocalForwarding no
+    X11Forwarding no
+    PermitTunnel no
+    PermitTTY no
+    PermitUserRC no
+Match User consolecrypt-agent
+    DenyUsers consolecrypt-agent
+Match all

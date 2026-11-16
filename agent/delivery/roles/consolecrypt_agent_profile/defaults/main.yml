@@ -1,0 +1,8 @@
+---
+# Public desired configuration only; never credentials, keys or grants.
+cc_agent_profile_manifest: {}
+cc_agent_profile_fleet: []
+cc_agent_profile_python: '{{ ansible_playbook_python }}'
+cc_agent_profile_renderer: '{{ role_path }}/../../render_profile.py'
+cc_agent_profile_write: false
+cc_agent_profile_output_root: ''

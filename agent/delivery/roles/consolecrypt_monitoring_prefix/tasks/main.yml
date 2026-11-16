@@ -1,0 +1,24 @@
+---
+- name: Require an explicit monitoring prefix action
+  ansible.builtin.assert:
+    that: [cc_monitoring_prefix_apply is boolean]
+
+- name: Apply reviewed monitoring configuration only to an owned prefix
+  when: cc_monitoring_prefix_apply
+  block:
+    - name: Require explicit prefix and pinned already available components
+      ansible.builtin.assert:
+        that:
+          - cc_monitoring_prefix is match('^/[^\n\r]+$')
+          - cc_monitoring_prefix_variables is mapping
+          - cc_monitoring_prefix_prometheus_sha256 is match('^[0-9a-f]{64}$')
+          - cc_monitoring_prefix_promtool_sha256 is match('^[0-9a-f]{64}$')
+    - name: Validate and render the shared plan without starting a service
+      ansible.builtin.command:
+        argv: '{{ [cc_monitoring_prefix_python, "-I", "-B", cc_monitoring_prefix_helper, "--prefix", cc_monitoring_prefix, "--prometheus-binary", cc_monitoring_prefix_prometheus_binary, "--prometheus-sha256", cc_monitoring_prefix_prometheus_sha256, "--promtool", cc_monitoring_prefix_promtool, "--promtool-sha256", cc_monitoring_prefix_promtool_sha256, "--port", cc_monitoring_prefix_port | string] + (["--check"] if ansible_check_mode else []) }}'
+        stdin: '{{ cc_monitoring_prefix_variables | to_json }}'
+        stdin_add_newline: false
+      register: cc_monitoring_prefix_result
+      become: false
+      check_mode: false
+      changed_when: cc_monitoring_prefix_result.rc == 0 and (cc_monitoring_prefix_result.stdout | from_json).changed

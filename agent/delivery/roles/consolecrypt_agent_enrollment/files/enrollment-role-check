@@ -1,0 +1,519 @@
+#!/usr/bin/python3 -I
+"""Fixed installed enrollment adapter. No caller-selected path or command."""
+import grp
+import os
+from pathlib import Path
+import pwd
+import stat
+import sys
+
+
+def require(value, code):
+    if not value:
+        raise ValueError(code)
+
+
+def trusted(path, regular=False, cap=1048576):
+    path = Path(path)
+    for item in (path, *path.parents):
+        info = item.lstat()
+        require(info.st_uid == 0 and not info.st_mode & 0o022,
+                "root_nonwrite_required")
+        require(stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode), "physical_path_required")
+        if stat.S_ISREG(info.st_mode):
+            require(info.st_nlink == 1, "singlelink_required")
+        if item != path:
+            require(stat.S_ISDIR(info.st_mode), "directory_parent_required")
+    info = path.lstat()
+    if regular:
+        require(stat.S_ISREG(info.st_mode) and info.st_size <= cap, "bounded_regular_required")
+    return path
+
+
+def read_root(path, cap=1048576):
+    path = trusted(path, regular=True, cap=cap)
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    try:
+        def identity(info):
+            return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid,
+                    info.st_nlink, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+        actual = os.fstat(fd)
+        require(stat.S_ISREG(actual.st_mode) and actual.st_uid == 0 and
+                not actual.st_mode & 0o022 and actual.st_nlink == 1 and
+                0 <= actual.st_size <= cap, "held_root_regular_required")
+        # Repeat physical/root-controlled ancestry after opening and before data.
+        trusted(path, regular=True, cap=cap)
+        require(identity(path.lstat()) == identity(actual), "held_path_identity_required")
+        data = bytearray()
+        while len(data) <= cap:
+            part = os.read(fd, min(65536, cap + 1 - len(data)))
+            if not part:
+                break
+            data.extend(part)
+        trusted(path, regular=True, cap=cap)
+        require(len(data) == actual.st_size and
+                identity(os.fstat(fd)) == identity(actual) == identity(path.lstat()),
+                "stable_complete_root_input_required")
+        return bytes(data)
+    finally:
+        os.close(fd)
+
+
+def service():
+    user = pwd.getpwnam("consolecrypt-agent")
+    group = grp.getgrnam("consolecrypt-agent")
+    require(user.pw_uid > 0 and user.pw_gid == group.gr_gid > 0, "service_identity_required")
+    require(user.pw_shell in ("/usr/sbin/nologin", "/sbin/nologin"), "service_nologin_required")
+    return user, group
+
+import base64
+import json
+import re
+import subprocess
+import tempfile
+import uuid
+
+BASE = Path("/etc/consolecrypt-agent")
+SNIPPET = "00-consolecrypt-agent-enrollment.conf"
+
+
+def pairs(items):
+    result = {}
+    for key, value in items:
+        require(key not in result, "duplicate_key")
+        result[key] = value
+    return result
+
+
+def load(path):
+    return json.loads(read_root(path, 32768), object_pairs_hook=pairs)
+
+
+def identifier(value):
+    require(isinstance(value, str) and str(uuid.UUID(value)) == value and uuid.UUID(value).int != 0,
+            "canonical_nonzero_uuid_required")
+
+
+def validate_inputs():
+    policy = load(BASE / "enrollment-role-policy.json")
+    require(set(policy) == {"operatorUid", "operatorGid", "agentId", "authorizedKeys",
+        "pamContextReviewed", "sudoNologinReviewed", "exclusiveBootstrapApproved",
+        "serviceUid", "serviceGid", "createService", "daemonDefaultConfigReviewed"}, "role_policy_fields")
+    require(type(policy["operatorUid"]) is int and type(policy["operatorGid"]) is int and
+            1000 <= policy["operatorUid"] < 2**31 and 1000 <= policy["operatorGid"] < 2**31, "explicit_operator_ids")
+    require(all(type(policy[k]) is bool for k in ("pamContextReviewed", "sudoNologinReviewed",
+            "exclusiveBootstrapApproved", "daemonDefaultConfigReviewed")), "explicit_review_flags")
+    identifier(policy["agentId"])
+    keys = policy["authorizedKeys"]
+    require(type(keys) is list and 1 <= len(keys) <= 16 and len(set(keys)) == len(keys), "public_key_count")
+    for key in keys:
+        require(isinstance(key, str) and re.fullmatch(r"ssh-ed25519 [A-Za-z0-9+/]+={0,2}", key), "canonical_public_key")
+        blob = base64.b64decode(key.split(" ")[1], validate=True)
+        require(len(blob) == 51 and blob[:19] == b"\x00\x00\x00\x0bssh-ed25519\x00\x00\x00 " and
+                base64.b64encode(blob).decode("ascii") == key.split(" ")[1], "ed25519_key_blob")
+    pin = load(BASE / "enrollment-genesis-owner.candidate.json")
+    require(type(pin) is dict and set(pin) == {"context", "key", "epoch", "checkpoint", "expiresAt"}, "genesis_fields")
+    require(type(pin["epoch"]) is int and pin["epoch"] >= 1 and type(pin["checkpoint"]) is int and pin["checkpoint"] == 0
+            and type(pin["expiresAt"]) is int and 0 < pin["expiresAt"] < 2**64 and
+            isinstance(pin["key"], str) and re.fullmatch("[0-9a-f]{64}", pin["key"]) and pin["key"] != "0" * 64,
+            "explicit_genesis_pin")
+    context = pin["context"]
+    require(type(context) is dict and set(context) == {"tenant", "deploymentId"}, "genesis_context")
+    identifier(context["deploymentId"])
+    tenant = context["tenant"]
+    require(type(tenant) is dict and set(tenant) == {"kind", "id"} and tenant["kind"] in ("localProfile", "personalAccount"), "personal_genesis_only")
+    identifier(tenant["id"])
+    cfg = load(BASE / "enrollment-control.candidate.json")
+    require(cfg == {"format":"cc-agent-enroll-config/v1", "agentId":policy["agentId"],
+        "nodeDir":"/var/lib/consolecrypt-agent/identity/node", "dbDir":"/var/lib/consolecrypt-agent/identity/sqlite",
+        "anchorDir":"/var/lib/consolecrypt-agent/checkpoints/enrollment",
+        "ownerPin":"/etc/consolecrypt-agent/enrollment-genesis-owner.json"}, "fixed_root_config")
+    for actual, candidate in (("enrollment-control.json", "enrollment-control.candidate.json"),
+                              ("enrollment-genesis-owner.json", "enrollment-genesis-owner.candidate.json")):
+        if os.path.lexists(BASE / actual):
+            require(read_root(BASE / actual, 32768) == read_root(BASE / candidate, 32768), "existing_trust_mismatch")
+    launcher = Path("/opt/consolecrypt-agent-install/opt/consolecrypt-agent/launch.py")
+    original = read_root(launcher, 1048576)
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("cc_enroll_installed_verifier", launcher)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.verified_identity_binary()
+    require(read_root(launcher, 1048576) == original, "installed_launcher_changed")
+    user, group = service()
+    require(user.pw_uid == policy["serviceUid"] and group.gr_gid == policy["serviceGid"], "service_ids_mismatch")
+    require(policy["operatorUid"] != user.pw_uid and policy["operatorGid"] != group.gr_gid, "operator_service_separate")
+    for getter, key, expected in ((pwd.getpwuid, "operatorUid", "cc-agent-enroll"),
+                                   (grp.getgrgid, "operatorGid", "cc-agent-enroll")):
+        try:
+            entry = getter(policy[key])
+        except KeyError:
+            continue
+        require(entry[0] == expected, "operator_id_collision")
+    try:
+        operator = pwd.getpwnam("cc-agent-enroll")
+        require(operator.pw_uid == policy["operatorUid"] and operator.pw_gid == policy["operatorGid"]
+                and operator.pw_shell == "/usr/libexec/consolecrypt-agent/enrollment-login-shell"
+                and operator.pw_dir == "/var/empty/cc-agent-enroll", "existing_operator_mismatch")
+    except KeyError:
+        pass
+    try:
+        require(grp.getgrnam("cc-agent-enroll").gr_gid == policy["operatorGid"], "existing_group_mismatch")
+    except KeyError:
+        pass
+    return policy
+
+
+def owned_group_empty(pid, deadline):
+    import time
+    for entry in Path("/proc").iterdir():
+        require(time.monotonic() < deadline, "owned_group_observation_timeout")
+        if not entry.name.isdigit() or int(entry.name) == pid:
+            continue
+        try:
+            fields = (entry / "stat").read_bytes().rpartition(b") ")[2].split()
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        require(len(fields) >= 20, "owned_group_stat_required")
+        if int(fields[2]) == pid:
+            require(int(fields[3]) == pid, "owned_group_session_mismatch")
+            return False
+    return True
+
+
+def finish_owned(proc):
+    import signal
+    import time
+    # Retain the exact child PID through group cleanup. Unknown ownership denies.
+    os.waitid(os.P_PID, proc.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    end = time.monotonic() + 2
+    try:
+        while not owned_group_empty(proc.pid, end):
+            require(time.monotonic() < end, "owned_descendants_not_gone")
+            time.sleep(0.01)
+    finally:
+        proc.wait(timeout=2)
+        proc.stdout.close()
+
+
+def command(argv, cap=131072, allowed_exits=(0,), with_status=False):
+    # Fixed root-controlled validators only; no output is relayed on failure.
+    import selectors
+    import signal
+    require(signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL, "default_child_wait_required")
+    selector = selectors.DefaultSelector()
+    try:
+        proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            env={"LANG":"C.UTF-8"}, cwd="/", start_new_session=True)
+    except BaseException:
+        selector.close()
+        raise
+    import time
+    end = time.monotonic() + 5
+    data = bytearray()
+    try:
+        os.set_blocking(proc.stdout.fileno(), False)
+        selector.register(proc.stdout, selectors.EVENT_READ)
+        eof = False
+        exited = None
+        while not eof or exited is None:
+            require(time.monotonic() < end, "validator_timeout")
+            exited = os.waitid(os.P_PID, proc.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+            for key, _ in selector.select(0.05):
+                piece = os.read(key.fd, cap + 1 - len(data))
+                require(len(data) + len(piece) <= cap, "validator_output_bound")
+                if piece:
+                    data.extend(piece)
+                else:
+                    selector.unregister(key.fileobj)
+                    eof = True
+        require(exited is not None and exited.si_pid == proc.pid and
+                exited.si_code == os.CLD_EXITED and exited.si_status in allowed_exits, "validator_denied")
+        return (exited.si_status, bytes(data)) if with_status else bytes(data)
+    finally:
+        try:
+            selector.close()
+        finally:
+            finish_owned(proc)
+
+
+def verify_sudo(allow_absent):
+    """Closed Ubuntu sudo1.9.15p5/files-only profile; no privilege execution."""
+    trusted("/usr/bin/sudo", regular=True, cap=16777216)
+    config = read_root("/etc/sudo.conf", 65536).decode("ascii")
+    plugins = {"Plugin sudoers_policy sudoers.so", "Plugin sudoers_io sudoers.so",
+               "Plugin sudoers_audit sudoers.so"}
+    active = [line.split("#", 1)[0].strip() for line in config.splitlines()]
+    configured = [line for line in active if line]
+    require(len(configured) == len(set(configured)) and all(line in plugins for line in configured),
+            "unsupported_sudo_plugin_configuration")
+    nss = read_root("/etc/nsswitch.conf", 65536).decode("ascii")
+    sources = [line.split("#", 1)[0].strip() for line in nss.splitlines()
+               if re.match(r"sudoers\s*:", line.split("#", 1)[0].strip(), re.IGNORECASE)]
+    require(len(sources) <= 1 and all(line.split() == ["sudoers:", "files"] for line in sources),
+            "unsupported_sudo_policy_source")
+    version = command(["/usr/bin/sudo", "--version"]).decode("ascii").splitlines()
+    require(version and version[0] == "Sudo version 1.9.15p5", "unsupported_sudo_listing_profile")
+    status, raw = command(["/usr/bin/sudo", "-n", "-ll", "-U", "cc-agent-enroll"],
+                          allowed_exits=(0, 1), with_status=True)
+    text = raw.decode("ascii")
+    absent = re.fullmatch(r"User cc-agent-enroll is not allowed to run sudo on [A-Za-z0-9_.-]{1,253}\.\n", text)
+    if absent:
+        require(allow_absent, "effective_sudo_grant_missing")
+        return
+    require(status == 0, "positive_sudo_listing_exit_zero_required")
+    lines = [line for line in text.splitlines() if line]
+    require(lines and re.fullmatch(r"Matching Defaults entries for cc-agent-enroll on [A-Za-z0-9_.-]{1,253}:", lines[0]),
+            "sudo_defaults_header_required")
+    headers = [i for i, line in enumerate(lines) if re.fullmatch(
+        r"User cc-agent-enroll may run the following commands on [A-Za-z0-9_.-]{1,253}:", line)]
+    require(len(headers) == 1 and headers[0] >= 2, "one_effective_sudo_subject")
+    index = headers[0]
+    require(all(line.startswith("    ") for line in lines[1:index]), "unsupported_sudo_default_section")
+    defaults = " ".join(line.strip() for line in lines[1:index]).split(", ")
+    booleans = {}
+    allowed = {"env_reset", "mail_badpass", "use_pty", "!use_pty", "requiretty", "!requiretty",
+               "log_input", "!log_input", "log_output", "!log_output", "!setenv", "!runas_check_shell"}
+    for item in defaults:
+        if item.startswith("secure_path="):
+            value = item.removeprefix("secure_path=").replace("\\:", ":")
+            require(value in ("/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                              "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"),
+                    "unsupported_sudo_secure_path")
+        else:
+            require(item in allowed, "unsupported_sudo_effective_default")
+            booleans[item.removeprefix("!")] = not item.startswith("!")
+    require(booleans.get("env_reset") is True and all(booleans.get(key) is False for key in
+            ("use_pty", "requiretty", "log_input", "log_output")), "unsafe_effective_sudo_defaults")
+    entry = lines[index + 1:]
+    require(len(entry) == 6 and entry[0] == "Sudoers entry: /etc/sudoers.d/consolecrypt-agent-enrollment"
+            and entry[1].strip() == "RunAsUsers: consolecrypt-agent"
+            and entry[2].strip() == "RunAsGroups: consolecrypt-agent"
+            and entry[3].startswith("    Options: ") and entry[4].strip() == "Commands:"
+            and entry[5].strip() == '/usr/libexec/consolecrypt-agent/enrollment-worker ""',
+            "only_exact_effective_sudo_entry_allowed")
+    options = entry[3].strip().removeprefix("Options: ").split(", ")
+    require(len(options) == 4 and set(options) == {"!setenv", "!authenticate", "!log_input", "!log_output"},
+            "exact_effective_sudo_tags_required")
+
+
+def effective(candidate, user):
+    raw = command(["/usr/sbin/sshd", "-T", "-f", str(candidate), "-C",
+        "user=" + user + ",host=localhost,addr=127.0.0.1,laddr=127.0.0.1,lport=22"])
+    result = {}
+    for line in raw.decode("utf-8", errors="strict").splitlines():
+        key, _, value = line.partition(" ")
+        result.setdefault(key, []).append(value)
+    return result
+
+
+def verify_effective(candidate):
+    actual = effective(candidate, "cc-agent-enroll")
+    expected = {"usepam":"yes", "forcecommand":"consolecrypt-agent-enrollment",
+        "authenticationmethods":"publickey", "pubkeyauthentication":"yes",
+        "pubkeyacceptedalgorithms":"ssh-ed25519",
+        "authorizedkeysfile":"/etc/consolecrypt-agent/enrollment-authorized-keys",
+        "authorizedkeyscommand":"none", "authorizedprincipalsfile":"none",
+        "authorizedprincipalscommand":"none", "trustedusercakeys":"none",
+        "passwordauthentication":"no", "kbdinteractiveauthentication":"no",
+        "gssapiauthentication":"no", "hostbasedauthentication":"no", "kerberosauthentication":"no",
+        "permitemptypasswords":"no", "disableforwarding":"yes", "allowagentforwarding":"no",
+        "allowtcpforwarding":"no", "allowstreamlocalforwarding":"no", "x11forwarding":"no",
+        "permittunnel":"no", "permittty":"no", "permituserrc":"no", "permituserenvironment":"no"}
+    for key, value in expected.items():
+        require(actual.get(key) == [value], "effective_enrollment_policy_mismatch")
+    # This check runs before the Python login shell can see a client environment.
+    # Existing broad host rules are refused, never globally rewritten by this role.
+    accepted = " ".join(actual.get("acceptenv", [])).split()
+    require(len(accepted) <= 16 and all(name in {"LANG", "LC_*"} for name in accepted),
+            "unsafe_effective_acceptenv")
+    require(actual.get("setenv", []) in ([], ["none"]), "effective_setenv_must_be_empty")
+    # Simple existing allow/deny lists are supported; host/address/pattern policy
+    # needs manual review rather than pretending this loopback -C covers it.
+    for key, name in (("allowusers", "cc-agent-enroll"), ("allowgroups", "cc-agent-enroll"),
+                      ("denyusers", "cc-agent-enroll"), ("denygroups", "cc-agent-enroll")):
+        values = actual.get(key, [])
+        if values:
+            tokens = " ".join(values).split()
+            require(all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", item) for item in tokens),
+                    "contextual_admission_policy_manual_review")
+            require((name in tokens) if key.startswith("allow") else (name not in tokens),
+                    "operator_admission_list_denied")
+    subsystem = actual.get("subsystem", [])
+    require(subsystem.count("consolecrypt-agent-enroll-v1 consolecrypt-agent-enrollment") == 1,
+            "effective_subsystem_mismatch")
+    service_result = effective(candidate, "consolecrypt-agent")
+    require(any("consolecrypt-agent" in value.split() for value in service_result.get("denyusers", [])),
+            "service_ssh_denial_required")
+
+
+def candidate_validation():
+    main = read_root("/etc/ssh/sshd_config", 1048576).decode("utf-8", errors="strict")
+    lines = main.splitlines(keepends=True)
+    include_index = []
+    matched = False
+    for index, line in enumerate(lines):
+        content = line.strip()
+        if not content or content.startswith("#"):
+            continue
+        word = content.split()[0].lower()
+        if word == "match":
+            matched = True
+        if word == "include":
+            require(not matched and content.split() == ["Include", "/etc/ssh/sshd_config.d/*.conf"],
+                    "unsupported_sshd_include_layout")
+            include_index.append(index)
+        require(word != "subsystem" or "consolecrypt-agent-enroll-v1" not in content.split(),
+                "duplicate_enrollment_subsystem")
+    require(len(include_index) == 1, "one_global_include_required")
+    trusted("/etc/ssh/sshd_config.d")
+    entries = sorted(Path("/etc/ssh/sshd_config.d").glob("*.conf"))
+    require(len(entries) <= 64 and all(path.name == SNIPPET or path.name > SNIPPET for path in entries),
+            "managed_snippet_must_be_first")
+    require(all(re.fullmatch(r"[A-Za-z0-9_.-]+\.conf", p.name) for p in entries), "safe_include_filenames")
+    candidate = read_root(BASE / "enrollment-sshd-candidate.conf", 32768)
+    total = len(main.encode("utf-8")) + len(candidate)
+    with tempfile.TemporaryDirectory(prefix=".sshd-validation-", dir=BASE) as temp:
+        root = Path(temp)
+        snippets = root / "candidate.d"
+        snippets.mkdir(mode=0o700)
+        for path in entries:
+            data = read_root(path, 1048576)
+            if path.name == SNIPPET:
+                require(data == candidate, "existing_role_snippet_mismatch")
+                continue
+            total += len(data)
+            require(total <= 1048576 and not any(re.match(r"\s*include(?:\s|$)", line, re.IGNORECASE)
+                    for line in data.decode("utf-8").splitlines()), "nested_or_oversize_sshd_include")
+            (snippets / path.name).write_bytes(data)
+        (snippets / SNIPPET).write_bytes(candidate)
+        lines[include_index[0]] = "Include " + str(snippets) + "/*.conf\n"
+        full = root / "sshd_config"
+        full.write_text("".join(lines), encoding="utf-8")
+        command(["/usr/sbin/sshd", "-t", "-f", str(full)])
+        verify_effective(full)
+
+
+def tunnel_runtime_check():
+    # No supplied path/policy/hash is accepted by this root-only command.
+    # The existing selected-release verifier authenticates the complete record
+    # and its runtime pin before this separate Host prerequisite comparison.
+    import hashlib,importlib.util
+    launcher=Path("/opt/consolecrypt-agent-install/opt/consolecrypt-agent/launch.py")
+    original=read_root(launcher)
+    spec=importlib.util.spec_from_file_location("cc_enroll_tunnel_runtime_verifier",launcher)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    binary=module.verified_identity_binary()
+    current=read_root(launcher.parent/"current.json",4096)
+    installed=read_root(binary.parent.parent/"installed.json",128*1024)
+    pin_raw=read_root(binary.parent.parent/"python/supervisor-runtime.json",4096)
+    pin=json.loads(pin_raw,object_pairs_hook=pairs)
+    require(type(pin)is dict and set(pin)=={"format","pythonExecutable","pythonSha256"}
+        and pin["format"]=="cc-tunnel-supervisor-runtime/v1" and type(pin["pythonExecutable"])is str
+        and pin["pythonExecutable"]in {"/usr/bin/python3.11","/usr/bin/python3.12"}
+        and type(pin["pythonSha256"])is str and re.fullmatch('[0-9a-f]{64}',pin["pythonSha256"])
+        and pin["pythonSha256"]!='0'*64,"closed_selected_system_python_pin")
+    python=Path(pin["pythonExecutable"])
+    require(stat.S_IMODE(trusted(python,regular=True,cap=128*1024*1024).stat().st_mode)==0o755,
+        "selected_system_python_mode")
+    require(hashlib.sha256(read_root(python,128*1024*1024)).hexdigest()==pin["pythonSha256"],
+        "target_host_python_does_not_match_reviewed_package")
+    require(module.verified_identity_binary()==binary
+        and read_root(launcher.parent/"current.json",4096)==current
+        and read_root(binary.parent.parent/"installed.json",128*1024)==installed
+        and read_root(binary.parent.parent/"python/supervisor-runtime.json",4096)==pin_raw,
+        "selected_runtime_release_changed")
+    require(read_root(launcher)==original,"installed_launcher_changed")
+    print(json.dumps(dict(tunnelRuntimePinValidated=True,pythonExecutable=pin["pythonExecutable"],
+        pythonSha256=pin["pythonSha256"],runtimeExecuted=False),sort_keys=True))
+
+
+def main():
+    # Observe the actual kernel too; a gathered/caller Ansible fact is not the
+    # installed binary's platform authority. Existing validate_inputs() still verifies
+    # the selected signed release and matching held Node ELF before activation.
+    require(sys.platform == "linux" and os.uname().machine in {"x86_64", "aarch64"},
+            "supported_linux_kernel_required")
+    require(os.getuid() == os.geteuid() == 0 and len(sys.argv) == 2 and
+            sys.argv[1] in ("--account-plan", "--inputs", "--activation-check", "--sudo-check", "--live-check", "--tunnel-runtime-check"), "fixed_root_check_mode")
+    trusted(__file__, regular=True)
+    if sys.argv[1] == "--tunnel-runtime-check":
+        tunnel_runtime_check();return
+    if sys.argv[1] == "--account-plan":
+        policy = load(BASE / "enrollment-role-policy.json")
+        require(type(policy.get("createService")) is bool, "explicit_service_create_switch")
+        for role, prefix in (("consolecrypt-agent", "service"), ("cc-agent-enroll", "operator")):
+            uid, gid = policy.get(prefix + "Uid"), policy.get(prefix + "Gid")
+            minimum = 1 if prefix == "service" else 1000
+            require(type(uid) is int and type(gid) is int and minimum <= uid < 2**31 and minimum <= gid < 2**31,
+                    "explicit_account_ids")
+            for getter, number in ((pwd.getpwuid, uid), (grp.getgrgid, gid)):
+                try:
+                    require(getter(number)[0] == role, "account_id_collision")
+                except KeyError:
+                    pass
+            try:
+                user = pwd.getpwnam(role)
+                require(user.pw_uid == uid and user.pw_gid == gid, "existing_account_ids_mismatch")
+                require(user.pw_shell == ("/usr/sbin/nologin" if prefix == "service" else
+                        "/usr/libexec/consolecrypt-agent/enrollment-login-shell"), "existing_account_shell_mismatch")
+                require(all(role not in entry.gr_mem for entry in grp.getgrall()), "existing_account_groups_mismatch")
+            except KeyError:
+                require(prefix != "service" or policy["createService"], "service_creation_not_approved")
+            try:
+                entry = grp.getgrnam(role)
+                require(entry.gr_gid == gid and entry.gr_mem == [], "existing_private_group_mismatch")
+            except KeyError:
+                pass
+        require(policy["serviceUid"] != policy["operatorUid"] and policy["serviceGid"] != policy["operatorGid"],
+                "accounts_must_be_distinct")
+        return
+    policy = validate_inputs()
+    if sys.argv[1] == "--inputs":
+        return
+    require(policy["pamContextReviewed"] and policy["sudoNologinReviewed"] and policy["daemonDefaultConfigReviewed"], "host_policy_manual_review_required")
+    operator = pwd.getpwnam("cc-agent-enroll")
+    require(operator.pw_uid == policy["operatorUid"] and operator.pw_gid == policy["operatorGid"], "operator_identity")
+    require(grp.getgrnam("cc-agent-enroll").gr_mem == [] and
+            all(operator.pw_name not in entry.gr_mem for entry in grp.getgrall()), "operator_no_supplementary_groups")
+    trusted(operator.pw_dir)
+    for path in ("/usr/libexec/consolecrypt-agent/enrollment-login-shell", "/usr/libexec/consolecrypt-agent/enrollment-worker"):
+        trusted(path, regular=True)
+    shells = read_root("/etc/shells", 32768).decode("utf-8").splitlines()
+    require(operator.pw_shell in shells and service()[0].pw_shell not in shells, "valid_operator_shell_prerequisite")
+    # Existing tools only; no install, unlock, password, PAM or sudo global-policy changes.
+    trusted("/usr/bin/pamtester", regular=True, cap=16777216)
+    command(["/usr/bin/pamtester", "sshd", "cc-agent-enroll", "acct_mgmt"], cap=8192)
+    command(["/usr/sbin/visudo", "-c", "-f", str(BASE / "enrollment-sudoers-candidate")], cap=8192)
+    for actual, candidate in ((Path("/etc/ssh/sshd_config.d") / SNIPPET, BASE / "enrollment-sshd-candidate.conf"),
+                              (Path("/etc/sudoers.d/consolecrypt-agent-enrollment"), BASE / "enrollment-sudoers-candidate"),
+                              (BASE / "enrollment-authorized-keys", BASE / "enrollment-authorized-keys.candidate")):
+        if os.path.lexists(actual):
+            require(read_root(actual, 32768) == read_root(candidate, 32768), "existing_active_role_mismatch")
+    require(read_root(BASE / "enrollment-authorized-keys.candidate", 32768) ==
+            ("\n".join(policy["authorizedKeys"]) + "\n").encode("ascii"), "exact_authorized_key_candidate")
+    if sys.argv[1] == "--activation-check":
+        present = [os.path.lexists(path) for path in (
+            "/etc/ssh/sshd_config.d/00-consolecrypt-agent-enrollment.conf",
+            "/etc/sudoers.d/consolecrypt-agent-enrollment",
+            "/etc/consolecrypt-agent/enrollment-authorized-keys")]
+        require(not any(present) or all(present), "partial_existing_role_requires_manual_reconciliation")
+    candidate_validation()
+    verify_sudo(allow_absent=sys.argv[1] == "--activation-check")
+    if sys.argv[1] == "--live-check":
+        command(["/usr/sbin/sshd", "-t", "-f", "/etc/ssh/sshd_config"])
+        verify_effective(Path("/etc/ssh/sshd_config"))
+        command(["/usr/sbin/visudo", "-c"], cap=32768)
+    print('{"candidatePolicyValidated":true,"actualSshAuthenticationObserved":false}')
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, KeyError, ValueError, TypeError, subprocess.SubprocessError):
+        print('{"error":"enrollment_role_check_denied"}', file=sys.stderr)
+        sys.exit(1)

@@ -1,0 +1,100 @@
+---
+- name: Validate the explicit finite collector service prerequisite operation
+  ansible.builtin.assert:
+    that:
+      - cc_agent_collector_service_operation in ['status', 'prepare', 'disable']
+      - ansible_system == 'Linux'
+    fail_msg: This role only supports the fixed Linux collector prerequisite; no service grant is implicit.
+
+- name: Read the actual fixed installed collector unit
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/systemctl
+      - --no-pager
+      - show
+      - consolecrypt-agent-collector.service
+      - --property=LoadState,ActiveState,SubState,MainPID,FragmentPath,DropInPaths
+  changed_when: false
+  register: cc_agent_collector_service_observed
+  timeout: 5
+  when: cc_agent_collector_service_operation == 'status'
+
+- name: Inspect the existing reviewed installer helper without following links
+  ansible.builtin.stat:
+    path: /usr/local/libexec/consolecrypt-agent-install/collector_service_provision.py
+    follow: false
+    checksum_algorithm: sha256
+  register: cc_agent_collector_service_helper
+  when: cc_agent_collector_service_operation in ['prepare', 'disable']
+
+- name: Observe only the fixed helper parent chain
+  ansible.builtin.stat:
+    path: '{{ item }}'
+    follow: false
+  loop:
+    - /
+    - /usr
+    - /usr/local
+    - /usr/local/libexec
+    - /usr/local/libexec/consolecrypt-agent-install
+  register: cc_agent_collector_service_parents
+  when: cc_agent_collector_service_operation in ['prepare', 'disable']
+
+- name: Require original root-owned nonwritable helper parents
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists and item.stat.isdir and not item.stat.islnk
+      - item.stat.uid == 0
+      - item.stat.mode[-2] in ['0', '1', '4', '5']
+      - item.stat.mode[-1] in ['0', '1', '4', '5']
+  loop: '{{ cc_agent_collector_service_parents.results | default([]) }}'
+  when: cc_agent_collector_service_operation in ['prepare', 'disable']
+
+- name: Require the exact explicit role helper before any service mutation
+  ansible.builtin.assert:
+    that:
+      - not cc_agent_collector_service_helper.stat.exists or (cc_agent_collector_service_helper.stat.isreg and not cc_agent_collector_service_helper.stat.islnk and cc_agent_collector_service_helper.stat.uid == 0 and cc_agent_collector_service_helper.stat.nlink == 1 and cc_agent_collector_service_helper.stat.mode == '0644' and cc_agent_collector_service_helper.stat.checksum == (lookup('ansible.builtin.file', role_path + '/../../collector_service_provision.py', rstrip=False) | hash('sha256')))
+    fail_msg: Install the reviewed helper as part of the original explicit signed installation; this role never substitutes a caller executable.
+  when: cc_agent_collector_service_operation in ['prepare', 'disable']
+
+- name: Publish only an absent reviewed inert helper
+  ansible.builtin.copy:
+    src: '{{ role_path }}/../../collector_service_provision.py'
+    dest: /usr/local/libexec/consolecrypt-agent-install/collector_service_provision.py
+    owner: root
+    group: root
+    mode: '0644'
+    follow: false
+    force: false
+  when:
+    - cc_agent_collector_service_operation in ['prepare', 'disable']
+    - not cc_agent_collector_service_helper.stat.exists
+
+- name: Prepare only the verified installed finite collector prerequisite
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - -I
+      - -B
+      - /usr/local/libexec/consolecrypt-agent-install/collector_service_provision.py
+      - --provision
+  register: cc_agent_collector_service_prepared
+  timeout: 60
+  changed_when: true
+  when:
+    - cc_agent_collector_service_operation == 'prepare'
+    - not ansible_check_mode
+
+- name: Disable the prerequisite with systemd's original owner stop and join
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - -I
+      - -B
+      - /usr/local/libexec/consolecrypt-agent-install/collector_service_provision.py
+      - --disable
+  timeout: 60
+  changed_when: true
+  when:
+    - cc_agent_collector_service_operation == 'disable'
+    - not ansible_check_mode

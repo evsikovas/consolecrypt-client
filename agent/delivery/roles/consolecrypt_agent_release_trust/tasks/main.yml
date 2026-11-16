@@ -1,0 +1,150 @@
+---
+- name: Require independent explicit administrator release trust approval
+  ansible.builtin.assert:
+    that:
+      - cc_agent_release_bootstrap_approved is boolean and cc_agent_release_bootstrap_approved
+      - cc_agent_release_bootstrap_platform in ['linux-x86_64', 'linux-aarch64']
+      - cc_agent_release_bootstrap_verifier is match('^/[^\r\n]+$')
+      - cc_agent_release_bootstrap_public_key is match('^/[^\r\n]+$')
+      - cc_agent_release_bootstrap_verifier_sha256 is match('^[0-9a-f]{64}$')
+      - cc_agent_release_bootstrap_public_key_sha256 is match('^[0-9a-f]{64}$')
+      - cc_agent_release_bootstrap_public_key_fingerprint is match('^[0-9a-f]{64}$')
+    fail_msg: Approve the dedicated Agent release key fingerprint and verifier hash independently; package-provided trust is not accepted.
+
+- name: Validate exact public controller inputs without executing the candidate
+  ansible.builtin.command:
+    argv:
+      - '{{ ansible_playbook_python }}'
+      - '{{ role_path }}/files/bootstrap_release.py'
+      - --verifier
+      - '{{ cc_agent_release_bootstrap_verifier }}'
+      - --public-key
+      - '{{ cc_agent_release_bootstrap_public_key }}'
+      - --expected-verifier
+      - '{{ cc_agent_release_bootstrap_verifier_sha256 }}'
+      - --expected-key
+      - '{{ cc_agent_release_bootstrap_public_key_sha256 }}'
+      - --expected-fingerprint
+      - '{{ cc_agent_release_bootstrap_public_key_fingerprint }}'
+      - --platform
+      - '{{ cc_agent_release_bootstrap_platform }}'
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  register: cc_agent_release_public_check
+
+- name: Observe only fixed root-controlled trust parents
+  ansible.builtin.stat:
+    path: '{{ item }}'
+    follow: false
+  loop:
+    - /etc
+    - /etc/consolecrypt-agent-release
+    - /usr
+    - /usr/local
+    - /usr/local/libexec
+    - /usr/local/libexec/consolecrypt-agent-release
+  register: cc_agent_release_parents
+
+- name: Refuse existing symlink foreign or writable trust parents
+  ansible.builtin.assert:
+    that:
+      - not (item.stat.islnk | default(false))
+      - not item.stat.exists or (item.stat.isdir | default(false) and not (item.stat.islnk | default(true)) and item.stat.uid == 0 and item.stat.mode in ['0755', '0700', '0555'])
+  loop: '{{ cc_agent_release_parents.results }}'
+
+- name: Observe fixed bootstrap files before any publication
+  ansible.builtin.stat:
+    path: '{{ item }}'
+    follow: false
+    checksum_algorithm: sha256
+  loop:
+    - /usr/local/libexec/consolecrypt-agent-release/cc-agent-identity
+    - /etc/consolecrypt-agent-release/public-key.json
+    - /etc/consolecrypt-agent-release/trust.json
+  register: cc_agent_release_existing
+
+- name: Refuse partial bootstrap or replacement of any existing trust
+  ansible.builtin.assert:
+    that:
+      - cc_agent_release_existing.results | selectattr('stat.exists') | list | length in [0, 3]
+      - not (item.stat.islnk | default(false))
+      - not item.stat.exists or (item.stat.isreg | default(false) and not (item.stat.islnk | default(true)) and item.stat.uid == 0 and item.stat.checksum == cc_agent_release_expected[index])
+  loop: '{{ cc_agent_release_existing.results }}'
+  loop_control:
+    index_var: index
+  vars:
+    cc_agent_release_expected:
+      - '{{ cc_agent_release_bootstrap_verifier_sha256 }}'
+      - '{{ cc_agent_release_bootstrap_public_key_sha256 }}'
+      - '{{ (cc_agent_release_public_check.stdout | from_json).trustSha256 }}'
+
+- name: Create absent fixed public trust directories only
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /etc/consolecrypt-agent-release
+    - /usr/local/libexec/consolecrypt-agent-release
+  when: cc_agent_release_existing.results | selectattr('stat.exists') | list | length == 0
+
+- name: Publish only the explicitly pinned public verifier without replacing files
+  ansible.builtin.copy:
+    src: '{{ cc_agent_release_bootstrap_verifier }}'
+    dest: /usr/local/libexec/consolecrypt-agent-release/cc-agent-identity
+    owner: root
+    group: root
+    mode: '0755'
+    force: false
+  when: cc_agent_release_existing.results | selectattr('stat.exists') | list | length == 0
+
+- name: Publish only the independently approved public release key
+  ansible.builtin.copy:
+    src: '{{ cc_agent_release_bootstrap_public_key }}'
+    dest: /etc/consolecrypt-agent-release/public-key.json
+    owner: root
+    group: root
+    mode: '0644'
+    force: false
+  when: cc_agent_release_existing.results | selectattr('stat.exists') | list | length == 0
+
+- name: Publish the closed fixed-path public trust metadata without replacing files
+  ansible.builtin.copy:
+    content: '{{ (cc_agent_release_public_check.stdout | from_json).trustJson }}'
+    dest: /etc/consolecrypt-agent-release/trust.json
+    owner: root
+    group: root
+    mode: '0644'
+    force: false
+  when: cc_agent_release_existing.results | selectattr('stat.exists') | list | length == 0
+
+- name: Verify the actual final fixed bootstrap files match the original approval
+  ansible.builtin.stat:
+    path: '{{ item }}'
+    follow: false
+    checksum_algorithm: sha256
+  loop:
+    - /usr/local/libexec/consolecrypt-agent-release/cc-agent-identity
+    - /etc/consolecrypt-agent-release/public-key.json
+    - /etc/consolecrypt-agent-release/trust.json
+  register: cc_agent_release_final
+
+- name: Require exact actual published trust; never repair partial or foreign bytes
+  ansible.builtin.assert:
+    that:
+      - item.stat.isreg | default(false)
+      - not (item.stat.islnk | default(true))
+      - item.stat.uid == 0
+      - item.stat.mode == ('0755' if index == 0 else '0644')
+      - item.stat.checksum == cc_agent_release_expected[index]
+  loop: '{{ cc_agent_release_final.results }}'
+  loop_control:
+    index_var: index
+  vars:
+    cc_agent_release_expected:
+      - '{{ cc_agent_release_bootstrap_verifier_sha256 }}'
+      - '{{ cc_agent_release_bootstrap_public_key_sha256 }}'
+      - '{{ (cc_agent_release_public_check.stdout | from_json).trustSha256 }}'

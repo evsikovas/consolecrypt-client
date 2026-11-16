@@ -24,6 +24,7 @@ class LocalAiSettings extends ConsumerWidget {
     final hardware = ref.watch(localAiHardwareProvider).value;
     final l = context.l10n;
     final busy = const {LocalAiPhase.installing, LocalAiPhase.starting, LocalAiPhase.stopping}.contains(status.phase);
+    final stopUnconfirmed = status.phase == LocalAiPhase.error && status.message == 'runtime_stop_failed';
     String tier(LocalAiModel model) => switch (model.tier) {
       LocalAiTier.light => l.localAiTierLight,
       LocalAiTier.medium => l.localAiTierMedium,
@@ -138,7 +139,14 @@ class LocalAiSettings extends ConsumerWidget {
               const SizedBox(height: 4),
               Text('${formatBytes(l, status.downloadedBytes)} / ${formatBytes(l, status.totalBytes)}'),
             ],
-            if (status.phase == LocalAiPhase.error && status.message != null) ...[
+            if (stopUnconfirmed) ...[
+              const SizedBox(height: 8),
+              InfoBanner(
+                key: const ValueKey('local-ai-stop-unconfirmed'),
+                tone: BannerTone.danger,
+                message: l.localAiStopUnconfirmed,
+              ),
+            ] else if (status.phase == LocalAiPhase.error && status.message != null) ...[
               const SizedBox(height: 4),
               Text(switch (status.message) {
                 'install_failed' => l.localAiInstallFailed,
@@ -175,7 +183,14 @@ class LocalAiSettings extends ConsumerWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (status.phase == LocalAiPhase.installing)
+                if (stopUnconfirmed)
+                  GlassButton(
+                    key: const ValueKey('local-ai-stop'),
+                    label: l.localAiStop,
+                    icon: Icons.stop_rounded,
+                    onPressed: () => perform(runtime.stop),
+                  )
+                else if (status.phase == LocalAiPhase.installing)
                   GlassButton(
                     key: const ValueKey('local-ai-cancel'),
                     label: l.commonCancel,
@@ -203,7 +218,7 @@ class LocalAiSettings extends ConsumerWidget {
                       icon: Icons.download_rounded,
                       onPressed: busy ? null : () => perform(runtime.install),
                     )
-                  else if (status.phase == LocalAiPhase.ready)
+                  else if (status.phase == LocalAiPhase.ready || status.phase == LocalAiPhase.stopping)
                     GlassButton(
                       key: const ValueKey('local-ai-stop'),
                       label: l.localAiStop,

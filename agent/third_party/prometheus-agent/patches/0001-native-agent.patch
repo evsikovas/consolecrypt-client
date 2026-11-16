@@ -1,0 +1,877 @@
+--- a/cmd/prometheus/main.go
++++ b/cmd/prometheus/main.go
+@@ -81,6 +81,7 @@
+ 	"github.com/prometheus/prometheus/tsdb/agent"
+ 	"github.com/prometheus/prometheus/tsdb/chunkenc"
+ 	"github.com/prometheus/prometheus/tsdb/fileutil"
++	"github.com/prometheus/prometheus/tsdb/wlog"
+ 	"github.com/prometheus/prometheus/util/compression"
+ 	"github.com/prometheus/prometheus/util/documentcli"
+ 	"github.com/prometheus/prometheus/util/features"
+@@ -562,6 +563,8 @@
+ 	agentOnlyFlag(a, "storage.agent.path", "Base path for metrics storage.").
+ 		Default("data-agent/").StringVar(&cfg.agentStoragePath)
+ 
++	agentOnlyFlag(a, "storage.agent.hard-budget", "Bounded numeric Agent WAL: 512MiB physical root, oldest-prefix eviction and conservative two-hour residence; Linux cooperating owned root only; requires explicit pre-existing hardmode layout marker in lock.").Default("false").BoolVar(&cfg.agent.HardBudget)
++
+ 	agentOnlyFlag(a, "storage.agent.wal-segment-size",
+ 		"Size at which to split WAL segment files. Example: 100MB").
+ 		Hidden().PlaceHolder("<bytes>").BytesVar(&cfg.agent.WALSegmentSize)
+@@ -960,6 +963,10 @@
+ 		remoteStorage = remote.NewStorage(logger.With("component", "remote"), prometheus.DefaultRegisterer, localStorage.StartTime, localStoragePath, time.Duration(cfg.RemoteFlushDeadline), scraper, cfg.scrape.EnableTypeAndUnitLabels)
+ 		fanoutStorage = storage.NewFanout(logger, localStorage, remoteStorage)
+ 	)
++
++	if cfg.agent.HardBudget {
++		remoteStorage.SetAgentHardMode(wlog.NewHardMode())
++	}
+ 
+ 	var (
+ 		ctxWeb, cancelWeb = context.WithCancel(context.Background())
+@@ -2253,6 +2260,7 @@
+ // agentOptions is a version of agent.Options with defined units. This is required
+ // as agent.Option fields are unit agnostic (time).
+ type agentOptions struct {
++	HardBudget                   bool
+ 	WALSegmentSize               units.Base2Bytes
+ 	WALCompressionType           compression.Type
+ 	StripeSize                   int
+@@ -2272,6 +2280,7 @@
+ 		outOfOrderTimeWindow = 0
+ 	}
+ 	return agent.Options{
++		HardBudget:                   opts.HardBudget,
+ 		WALSegmentSize:               int(opts.WALSegmentSize),
+ 		WALCompression:               opts.WALCompressionType,
+ 		StripeSize:                   opts.StripeSize,
+--- a/storage/remote/queue_manager.go
++++ b/storage/remote/queue_manager.go
+@@ -429,6 +429,7 @@
+ // indicated by the provided WriteClient. Implements writeTo interface
+ // used by WAL Watcher.
+ type QueueManager struct {
++	hard                         *wlog.HardMode
+ 	lastSendTimestamp            atomic.Int64
+ 	buildRequestLimitTimestamp   atomic.Int64
+ 	reshardDisableStartTimestamp atomic.Int64 // Time that reshard was disabled.
+@@ -1390,6 +1391,9 @@
+ // SetClient updates the client used by a queue. Used when only client specific
+ // fields are updated to avoid restarting the queue.
+ func (t *QueueManager) SetClient(c WriteClient) {
++	if t.hard != nil {
++		c = hardWriteClient{WriteClient: c, h: t.hard}
++	}
+ 	t.clientMtx.Lock()
+ 	t.storeClient = c
+ 	t.clientMtx.Unlock()
+--- a/storage/remote/write.go
++++ b/storage/remote/write.go
+@@ -58,9 +58,13 @@
+ 
+ // WriteStorage represents all the remote write storage.
+ type WriteStorage struct {
+-	logger *slog.Logger
+-	reg    prometheus.Registerer
+-	mtx    sync.Mutex
++	logger     *slog.Logger
++	reg        prometheus.Registerer
++	mtx        sync.Mutex
++	lifecycle  sync.Mutex
++	hard       *wlog.HardMode
++	hardConfig *config.Config
++	closed     bool
+ 
+ 	watcherMetrics    *wlog.WatcherMetrics
+ 	liveReaderMetrics *wlog.LiveReaderMetrics
+@@ -141,6 +145,18 @@
+ // ApplyConfig updates the state as the new config requires.
+ // Only stop & create queues which have changes.
+ func (rws *WriteStorage) ApplyConfig(conf *config.Config) error {
++	rws.lifecycle.Lock()
++	defer rws.lifecycle.Unlock()
++	return rws.applyConfig(conf)
++}
++
++func (rws *WriteStorage) applyConfig(conf *config.Config) error {
++	if rws.closed || (rws.hard != nil && rws.hard.Failed()) {
++		return wlog.ErrHardModeUnavailable
++	}
++	if rws.hard != nil && len(conf.RemoteWriteConfigs) != 1 {
++		return fmt.Errorf("hard mode requires exactly one remote-write destination")
++	}
+ 	rws.mtx.Lock()
+ 	defer rws.mtx.Unlock()
+ 
+@@ -152,6 +168,9 @@
+ 	newQueues := make(map[string]*QueueManager)
+ 	newHashes := []string{}
+ 	for _, rwConf := range conf.RemoteWriteConfigs {
++		if rws.hard != nil && (rwConf.QueueConfig.MinShards != 1 || rwConf.QueueConfig.MaxShards != 1 || time.Duration(rwConf.QueueConfig.MaxBackoff) > time.Second || rwConf.QueueConfig.SampleAgeLimit != 0 || rwConf.MetadataConfig.Send) {
++			return fmt.Errorf("hard mode requires one shard, backoff <=1s, no source-age filter and no metadata watcher")
++		}
+ 		hash, err := toHash(rwConf)
+ 		if err != nil {
+ 			return err
+@@ -223,6 +242,9 @@
+ 			rwConf.FailedRequestLogging,
+ 			rwConf.ConvertNHCBToClassic,
+ 		)
++		if rws.hard != nil {
++			newQueues[hash].setHardMode(rws.hard)
++		}
+ 		// Keep track of which queues are new so we know which to start.
+ 		newHashes = append(newHashes, hash)
+ 	}
+@@ -230,7 +252,11 @@
+ 	// Anything remaining in rws.queues is a queue who's config has
+ 	// changed or was removed from the overall remote write config.
+ 	for _, q := range rws.queues {
+-		q.Stop()
++		if rws.hard != nil {
++			q.abortHardMode()
++		} else {
++			q.Stop()
++		}
+ 	}
+ 
+ 	for _, hash := range newHashes {
+@@ -238,6 +264,7 @@
+ 	}
+ 
+ 	rws.queues = newQueues
++	rws.hardConfig = conf
+ 
+ 	return nil
+ }
+@@ -284,11 +311,26 @@
+ 
+ // Close closes the WriteStorage.
+ func (rws *WriteStorage) Close() error {
++	rws.lifecycle.Lock()
++	defer rws.lifecycle.Unlock()
++	if rws.closed {
++		return nil
++	}
++	rws.closed = true
++	if rws.hard != nil {
++		rws.hard.Fail()
++		rws.hard.Fence()
++	}
+ 	rws.mtx.Lock()
+ 	defer rws.mtx.Unlock()
+ 	for _, q := range rws.queues {
+-		q.Stop()
+-	}
++		if rws.hard != nil {
++			q.abortHardMode()
++		} else {
++			q.Stop()
++		}
++	}
++	clear(rws.queues)
+ 	close(rws.quit)
+ 
+ 	rws.watcherMetrics.Unregister()
+--- a/tsdb/agent/db.go
++++ b/tsdb/agent/db.go
+@@ -19,6 +19,7 @@
+ 	"fmt"
+ 	"log/slog"
+ 	"math"
++	"os"
+ 	"path/filepath"
+ 	"sync"
+ 	"time"
+@@ -61,6 +62,7 @@
+ 
+ // Options of the WAL storage.
+ type Options struct {
++	HardBudget bool // Explicit bounded numeric telemetry profile, Linux only.
+ 	// Segments (wal files) max size.
+ 	// WALSegmentSize <= 0, segment size is default size.
+ 	// WALSegmentSize > 0, segment size is WALSegmentSize.
+@@ -130,7 +132,15 @@
+ }
+ 
+ type dbMetrics struct {
+-	r prometheus.Registerer
++	hardByteEvicted     prometheus.Counter
++	hardAgeEvicted      prometheus.Counter
++	hardAllocated       prometheus.Gauge
++	hardOldestResidence prometheus.Gauge
++	hardEvictedBytes    prometheus.Counter
++	hardEvictedSegments prometheus.Counter
++	hardLossUnknown     prometheus.Gauge
++	hardUnavailable     prometheus.Gauge
++	r                   prometheus.Registerer
+ 
+ 	numActiveSeries             prometheus.Gauge
+ 	numWALSeriesPendingDeletion prometheus.Gauge
+@@ -148,6 +158,14 @@
+ 
+ func newDBMetrics(r prometheus.Registerer) *dbMetrics {
+ 	m := dbMetrics{r: r}
++	m.hardByteEvicted = prometheus.NewCounter(prometheus.CounterOpts{Name: "prometheus_agent_hard_byte_evicted_segments_total", Help: "Native original WAL segments evicted for byte pressure; may include ACKed data."})
++	m.hardAgeEvicted = prometheus.NewCounter(prometheus.CounterOpts{Name: "prometheus_agent_hard_age_evicted_segments_total", Help: "Native original WAL segments evicted for physical residence; not source-age or exact unACKed loss."})
++	m.hardAllocated = prometheus.NewGauge(prometheus.GaugeOpts{Name: "prometheus_agent_hard_charged_bytes", Help: "Conservatively charged owned storage bytes; includes metadata and rounded allocations."})
++	m.hardOldestResidence = prometheus.NewGauge(prometheus.GaugeOpts{Name: "prometheus_agent_hard_oldest_segment_residence_seconds", Help: "Age since oldest retained WAL last write; source timestamp lag is different and not inferred."})
++	m.hardEvictedBytes = prometheus.NewCounter(prometheus.CounterOpts{Name: "prometheus_agent_hard_evicted_wal_bytes_total", Help: "Physical prefix bytes evicted, INCLUDING possibly ACKed data; NOT exact unacknowledged sample loss."})
++	m.hardEvictedSegments = prometheus.NewCounter(prometheus.CounterOpts{Name: "prometheus_agent_hard_evicted_segments_total", Help: "Native original WAL segments deliberately evicted."})
++	m.hardLossUnknown = prometheus.NewGauge(prometheus.GaugeOpts{Name: "prometheus_agent_hard_loss_unknown", Help: "1 after prefix eviction: exact unacknowledged loss unknown without an ACK journal."})
++	m.hardUnavailable = prometheus.NewGauge(prometheus.GaugeOpts{Name: "prometheus_agent_hard_unavailable", Help: "1 after sticky hard-mode clock/storage/budget failure; no false delivery guarantee."})
+ 	m.numActiveSeries = prometheus.NewGauge(prometheus.GaugeOpts{
+ 		Name: "prometheus_agent_active_series",
+ 		Help: "Number of active series being tracked by the WAL storage",
+@@ -210,6 +228,7 @@
+ 
+ 	if r != nil {
+ 		r.MustRegister(
++			m.hardByteEvicted, m.hardAgeEvicted, m.hardAllocated, m.hardOldestResidence, m.hardEvictedBytes, m.hardEvictedSegments, m.hardLossUnknown, m.hardUnavailable,
+ 			m.numActiveSeries,
+ 			m.numWALSeriesPendingDeletion,
+ 			m.totalAppendedSamples,
+@@ -233,6 +252,7 @@
+ 		return
+ 	}
+ 	cs := []prometheus.Collector{
++		m.hardByteEvicted, m.hardAgeEvicted, m.hardAllocated, m.hardOldestResidence, m.hardEvictedBytes, m.hardEvictedSegments, m.hardLossUnknown, m.hardUnavailable,
+ 		m.numActiveSeries,
+ 		m.numWALSeriesPendingDeletion,
+ 		m.totalAppendedSamples,
+@@ -259,6 +279,8 @@
+ 
+ // DB represents a WAL-only storage. It implements storage.DB.
+ type DB struct {
++	hardMu sync.Mutex
++	hard   *hardBudget
+ 	mtx    sync.RWMutex
+ 	logger *slog.Logger
+ 	opts   *Options
+@@ -296,32 +318,58 @@
+ // Open returns a new agent.DB in the given directory.
+ func Open(l *slog.Logger, reg prometheus.Registerer, rs *remote.Storage, dir string, opts *Options) (*DB, error) {
+ 	opts = validateOptions(opts)
+-
+-	locker, err := tsdbutil.NewDirLocker(dir, "agent", l, reg)
+-	if err != nil {
+-		return nil, err
+-	}
+-	if !opts.NoLockfile {
+-		if err := locker.Lock(); err != nil {
++	var hard *hardBudget
++	if opts.HardBudget {
++		if opts.NoLockfile || rs == nil {
++			return nil, wlog.ErrHardModeUnavailable
++		}
++		var err error
++		hard, err = openHardBudget(dir, rs.AgentHardMode())
++		if err != nil {
+ 			return nil, err
+ 		}
++		opts.WALSegmentSize = 10 * 1024 * 1024
++		opts.TruncateFrequency = time.Second
++		opts.CheckpointFromInMemorySeries = true
++	}
++
++	var locker interface{ Release() error }
++	var nativeLocker *tsdbutil.DirLocker
++	var err error
++	if hard != nil {
++		locker = hard.guard
++	} else {
++		nativeLocker, err = tsdbutil.NewDirLocker(dir, "agent", l, reg)
++		if err != nil {
++			return nil, err
++		}
++		if !opts.NoLockfile {
++			if err = nativeLocker.Lock(); err != nil {
++				return nil, err
++			}
++		}
++		locker = nativeLocker
+ 	}
+ 
+ 	// remote_write expects WAL to be stored in a "wal" subdirectory of the main storage.
+ 	dir = filepath.Join(dir, "wal")
+ 
+-	w, err := wlog.NewSize(l, reg, dir, opts.WALSegmentSize, opts.WALCompression)
+-	if err != nil {
+-		return nil, fmt.Errorf("creating WAL: %w", err)
++	var w *wlog.WL
++	if hard == nil {
++		w, err = wlog.NewSize(l, reg, dir, opts.WALSegmentSize, opts.WALCompression)
++		if err != nil {
++			return nil, fmt.Errorf("creating WAL: %w", err)
++		}
+ 	}
+ 
+ 	db := &DB{
++		hard:   hard,
+ 		logger: l,
+ 		opts:   opts,
+ 		rs:     rs,
+ 
+ 		wal:    w,
+-		locker: locker,
++		locker: nativeLocker,
+ 
+ 		nextRef: atomic.NewUint64(0),
+ 		series:  newStripeSeries(opts.StripeSize),
+@@ -366,7 +414,59 @@
+ 		}
+ 	}
+ 
+-	if err := db.replayWAL(); err != nil {
++	if hard != nil {
++		// Parse/replay the existing native files BEFORE NewSize can create a
++		// new segment. Never call Repair in hard mode.
++		if _, err := os.Stat(dir); err == nil {
++			db.metrics.hardLossUnknown.Set(1) // Restart cannot certify producer-memory loss or past ACKs.
++
++			if err := db.replayWALDir(dir); err != nil {
++				hard.mode.Fail()
++				locker.Release()
++				return nil, err
++			}
++		} else if !os.IsNotExist(err) {
++			hard.mode.Fail()
++			locker.Release()
++			return nil, err
++		}
++		if err := db.hardMetadataBound(); err != nil {
++			hard.mode.Fail()
++			locker.Release()
++			return nil, err
++		}
++		if err := hard.guard.check(); err != nil {
++			hard.mode.Fail()
++			locker.Release()
++			return nil, err
++		}
++		w, err = wlog.NewSize(l, reg, dir, opts.WALSegmentSize, opts.WALCompression)
++		if err != nil {
++			hard.mode.Fail()
++			locker.Release()
++			return nil, err
++		}
++		db.wal = w
++		w.SetSynchronousRotation()
++		if err := db.hardMaintain(0); err != nil {
++			hard.mode.Fail()
++			hard.closeWAL(w)
++			locker.Release()
++			return nil, err
++		}
++		if !hard.mode.Ready() {
++			inv, err := hard.inventory(false)
++			if err == nil {
++				err = hard.mode.Resume(hardDeadline(inv.segments, time.Now()))
++			}
++			if err != nil {
++				hard.mode.Fail()
++				hard.closeWAL(w)
++				locker.Release()
++				return nil, err
++			}
++		}
++	} else if err := db.replayWAL(); err != nil {
+ 		db.logger.Warn("encountered WAL read error, attempting repair", "err", err)
+ 		if err := w.Repair(err); err != nil {
+ 			return nil, fmt.Errorf("repair corrupted WAL: %w", err)
+@@ -419,12 +519,14 @@
+ 	return opts
+ }
+ 
+-func (db *DB) replayWAL() error {
+-	db.logger.Info("replaying WAL, this may take a while", "dir", db.wal.Dir())
++func (db *DB) replayWAL() error { return db.replayWALDir(db.wal.Dir()) }
++
++func (db *DB) replayWALDir(walDir string) error {
++	db.logger.Info("replaying WAL, this may take a while", "dir", walDir)
+ 	defer db.resetWALReplayResources()
+ 	start := time.Now()
+ 
+-	dir, startFrom, err := wlog.LastCheckpoint(db.wal.Dir())
++	dir, startFrom, err := wlog.LastCheckpoint(walDir)
+ 	if err != nil && !errors.Is(err, record.ErrNotFound) {
+ 		return fmt.Errorf("find last checkpoint: %w", err)
+ 	}
+@@ -452,14 +554,14 @@
+ 	}
+ 
+ 	// Find the last segment.
+-	_, last, err := wlog.Segments(db.wal.Dir())
++	_, last, err := wlog.Segments(walDir)
+ 	if err != nil {
+ 		return fmt.Errorf("finding WAL segments: %w", err)
+ 	}
+ 
+ 	// Backfill segments from the most recent checkpoint onwards.
+ 	for i := startFrom; i <= last; i++ {
+-		seg, err := wlog.OpenReadSegment(wlog.SegmentName(db.wal.Dir(), i))
++		seg, err := wlog.OpenReadSegment(wlog.SegmentName(walDir, i))
+ 		if err != nil {
+ 			return fmt.Errorf("open WAL segment: %d: %w", i, err)
+ 		}
+@@ -504,6 +606,13 @@
+ 		var err error
+ 		for r.Next() {
+ 			rec := r.Record()
++			if db.hard != nil {
++				typ := dec.Type(rec)
++				if len(rec) > hardRecord || (typ != record.Series && typ != record.Samples && typ != record.SamplesV2 && typ != record.Metadata) {
++					errCh <- wlog.ErrHardModeUnavailable
++					return
++				}
++			}
+ 			switch dec.Type(rec) {
+ 			case record.Series:
+ 				series := db.walReplaySeriesPool.Get()[:0]
+@@ -754,6 +863,17 @@
+ 		case <-db.stopc:
+ 			break Loop
+ 		case <-time.After(db.opts.TruncateFrequency):
++			if db.hard != nil {
++				db.hardMu.Lock()
++				err := db.hardMaintain(0)
++				if err != nil {
++					db.metrics.hardUnavailable.Set(1)
++					db.hard.mode.Fail()
++					db.logger.Error("hard budget maintenance unavailable", "err", err)
++				}
++				db.hardMu.Unlock()
++				continue
++			}
+ 			// The timestamp ts is used to determine which series are not receiving
+ 			// samples and may be deleted from the WAL. Their most recent append
+ 			// timestamp is compared to ts, and if that timestamp is older then ts,
+@@ -927,6 +1047,16 @@
+ 
+ // Close implements the Storage interface.
+ func (db *DB) Close() error {
++	if db.hard != nil {
++		close(db.stopc)
++		<-db.donec
++		db.hardMu.Lock()
++		defer db.hardMu.Unlock()
++		db.hard.mode.Fence()
++		db.metrics.Unregister()
++		// Tail padding was reserved before every Log.
++		return errors.Join(db.hard.closeWAL(db.wal), db.hard.guard.Release())
++	}
+ 	db.mtx.Lock()
+ 	defer db.mtx.Unlock()
+ 
+@@ -940,6 +1070,7 @@
+ 
+ type appenderBase struct {
+ 	*DB
++	hardFirst time.Time // Earliest ephemeral real pending-data observation, reset on pool reuse.
+ 
+ 	pendingSeries          []record.RefSeries
+ 	pendingSamples         []record.RefSample
+@@ -1002,6 +1133,16 @@
+ }
+ 
+ func (a *appenderBase) getOrCreate(ref chunks.HeadSeriesRef, l labels.Labels) (series *memSeries, err error) {
++	if a.hard != nil {
++		a.hardMu.Lock()
++		defer a.hardMu.Unlock()
++		if a.hard.mode.Failed() || !hardLabelBound(l) {
++			return nil, a.hardReject()
++		}
++		if err := a.hardStartLocked(); err != nil {
++			return nil, err
++		}
++	}
+ 	// Fastest path: caller already has a valid ref from a prior append.
+ 	if ref != 0 {
+ 		if series = a.series.GetByID(ref); series != nil {
+@@ -1029,6 +1170,9 @@
+ 	}
+ 
+ 	// Note this ref is wasted if a concurrent goroutine inserts the same series first.
++	if a.hard != nil && a.nextRef.Load() >= hardSeries {
++		return nil, wlog.ErrHardModeUnavailable
++	}
+ 	newRef := chunks.HeadSeriesRef(a.nextRef.Inc())
+ 	var created bool
+ 	series, created = a.series.SetUnlessAlreadySet(hash, &memSeries{ref: newRef, lset: l, lastTs: math.MinInt64})
+@@ -1180,6 +1324,14 @@
+ 	series.Unlock()
+ 
+ 	if hasNewMetadata {
++		if a.hard != nil {
++			a.hardMu.Lock()
++			err := a.hardStartLocked()
++			a.hardMu.Unlock()
++			if err != nil {
++				return 0, err
++			}
++		}
+ 		a.pendingMetadata = append(a.pendingMetadata, record.RefMetadata{
+ 			Ref:  series.ref,
+ 			Type: record.GetMetricType(meta.Type),
+@@ -1302,6 +1454,9 @@
+ }
+ 
+ func (a *appenderBase) commit() error {
++	if a.hard != nil {
++		defer a.clearData()
++	}
+ 	if err := a.log(); err != nil {
+ 		return err
+ 	}
+@@ -1316,6 +1471,13 @@
+ 
+ // log logs all pending data to the WAL.
+ func (a *appenderBase) log() error {
++	if a.hard != nil {
++		a.hardMu.Lock()
++		defer a.hardMu.Unlock()
++		if err := a.hardPendingBound(); err != nil {
++			return err
++		}
++	}
+ 	a.mtx.RLock()
+ 	defer a.mtx.RUnlock()
+ 
+@@ -1327,7 +1489,7 @@
+ 
+ 	if len(a.pendingSeries) > 0 {
+ 		buf = encoder.Series(a.pendingSeries, buf)
+-		if err := a.wal.Log(buf); err != nil {
++		if err := a.writeAgentRecord(buf); err != nil {
+ 			return err
+ 		}
+ 		buf = buf[:0]
+@@ -1335,7 +1497,7 @@
+ 
+ 	if len(a.pendingMetadata) > 0 {
+ 		buf = encoder.Metadata(a.pendingMetadata, buf)
+-		if err := a.wal.Log(buf); err != nil {
++		if err := a.writeAgentRecord(buf); err != nil {
+ 			return err
+ 		}
+ 		buf = buf[:0]
+@@ -1343,7 +1505,7 @@
+ 
+ 	if len(a.pendingSamples) > 0 {
+ 		buf = encoder.Samples(a.pendingSamples, buf)
+-		if err := a.wal.Log(buf); err != nil {
++		if err := a.writeAgentRecord(buf); err != nil {
+ 			return err
+ 		}
+ 		buf = buf[:0]
+@@ -1353,14 +1515,14 @@
+ 		var customBucketsHistograms []record.RefHistogramSample
+ 		buf, customBucketsHistograms = encoder.HistogramSamples(a.pendingHistograms, buf)
+ 		if len(buf) > 0 {
+-			if err := a.wal.Log(buf); err != nil {
++			if err := a.writeAgentRecord(buf); err != nil {
+ 				return err
+ 			}
+ 			buf = buf[:0]
+ 		}
+ 		if len(customBucketsHistograms) > 0 {
+ 			buf = encoder.CustomBucketsHistogramSamples(customBucketsHistograms, nil)
+-			if err := a.wal.Log(buf); err != nil {
++			if err := a.writeAgentRecord(buf); err != nil {
+ 				return err
+ 			}
+ 			buf = buf[:0]
+@@ -1371,14 +1533,14 @@
+ 		var customBucketsFloatHistograms []record.RefFloatHistogramSample
+ 		buf, customBucketsFloatHistograms = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
+ 		if len(buf) > 0 {
+-			if err := a.wal.Log(buf); err != nil {
++			if err := a.writeAgentRecord(buf); err != nil {
+ 				return err
+ 			}
+ 			buf = buf[:0]
+ 		}
+ 		if len(customBucketsFloatHistograms) > 0 {
+ 			buf = encoder.CustomBucketsFloatHistogramSamples(customBucketsFloatHistograms, nil)
+-			if err := a.wal.Log(buf); err != nil {
++			if err := a.writeAgentRecord(buf); err != nil {
+ 				return err
+ 			}
+ 			buf = buf[:0]
+@@ -1387,7 +1549,7 @@
+ 
+ 	if len(a.pendingExamplars) > 0 {
+ 		buf = encoder.Exemplars(a.pendingExamplars, buf)
+-		if err := a.wal.Log(buf); err != nil {
++		if err := a.writeAgentRecord(buf); err != nil {
+ 			return err
+ 		}
+ 		buf = buf[:0]
+@@ -1428,6 +1590,7 @@
+ 
+ // clearData clears all pending data.
+ func (a *appenderBase) clearData() {
++	a.hardFirst = time.Time{}
+ 	a.pendingSeries = a.pendingSeries[:0]
+ 	a.pendingSamples = a.pendingSamples[:0]
+ 	a.pendingHistograms = a.pendingHistograms[:0]
+@@ -1443,6 +1606,9 @@
+ }
+ 
+ func (a *appenderBase) rollback() error {
++	if a.hard != nil {
++		defer a.clearData()
++	}
+ 	// Series are created in-memory regardless of rollback. This means we must
+ 	// log them to the WAL, otherwise subsequent commits may reference a series
+ 	// which was never written to the WAL.
+@@ -1456,6 +1622,13 @@
+ 
+ // logSeries logs only pending series records to the WAL.
+ func (a *appenderBase) logSeries() error {
++	if a.hard != nil {
++		a.hardMu.Lock()
++		defer a.hardMu.Unlock()
++		if err := a.hardPendingBound(); err != nil {
++			return err
++		}
++	}
+ 	a.mtx.RLock()
+ 	defer a.mtx.RUnlock()
+ 
+@@ -1467,7 +1640,7 @@
+ 
+ 		encoder := record.Encoder{EnableSTStorage: a.opts.EnableSTStorage}
+ 		buf = encoder.Series(a.pendingSeries, buf)
+-		if err := a.wal.Log(buf); err != nil {
++		if err := a.writeAgentRecord(buf); err != nil {
+ 			return err
+ 		}
+ 		buf = buf[:0]
+--- a/tsdb/wlog/watcher.go
++++ b/tsdb/wlog/watcher.go
+@@ -88,6 +88,7 @@
+ 
+ // Watcher watches the TSDB WAL for a given WriteTo.
+ type Watcher struct {
++	hard           *HardMode
+ 	name           string
+ 	writer         WriteTo
+ 	recordBuf      *record.BuffersPool
+@@ -278,14 +279,32 @@
+ 	w.logger.Info("WAL watcher stopped", "queue", w.name)
+ }
+ 
++// SetAgentHardMode is initialization-only. Checkpoints remain series-only.
++func (w *Watcher) SetAgentHardMode(h *HardMode) { w.hard = h }
++
+ func (w *Watcher) loop() {
+ 	defer close(w.done)
+ 
+ 	// We may encounter failures processing the WAL; we should wait and retry.
+ 	for !isClosed(w.quit) {
++		if w.hard != nil && !w.hard.Ready() {
++			if w.hard.Failed() {
++				return
++			}
++			select {
++			case <-w.quit:
++				return
++			case <-time.After(20 * time.Millisecond):
++				continue
++			}
++		}
+ 		w.SetStartTime(time.Now())
+ 		if err := w.Run(); err != nil {
+ 			w.logger.Error("error tailing WAL", "err", err)
++			if w.hard != nil {
++				w.hard.Fail()
++				return
++			}
+ 		}
+ 
+ 		select {
+@@ -406,6 +425,14 @@
+ 			return fmt.Errorf("getSegmentSize: %w", err)
+ 		}
+ 
++		if w.hard != nil {
++			// This is an original closed payload segment, NOT readCheckpoint.
++			err := w.readAndHandleError(reader, segmentNum, false, size)
++			if err == nil && !isClosed(w.quit) && reader.Offset() != size {
++				return fmt.Errorf("incomplete retained segment")
++			}
++			return err
++		}
+ 		return w.readAndHandleError(reader, segmentNum, onlySeries, size)
+ 	}
+ 
+@@ -425,6 +452,9 @@
+ 			return nil
+ 
+ 		case <-checkpointTicker.C:
++			if w.hard != nil {
++				continue
++			} // joined-generation replay replaces asynchronous checkpoint GC.
+ 			// Periodically check if there is a new checkpoint so we can garbage
+ 			// collect labels. As this is considered an optimisation, we ignore
+ 			// errors during checkpoint processing. Doing the process asynchronously
+@@ -557,7 +587,7 @@
+ 			// It's valid to do, because we override elements that we no longer need to read when filtering.
+ 			samplesToSend := samples[:0]
+ 			for _, s := range samples {
+-				if s.T > w.startTimestamp {
++				if w.hard != nil || s.T > w.startTimestamp {
+ 					if !w.sendSamples {
+ 						w.sendSamples = true
+ 						duration := time.Since(w.startTime)
+@@ -604,7 +634,7 @@
+ 			// It's valid to do, because we override elements that we no longer need to read when filtering.
+ 			histogramsToSend := histograms[:0]
+ 			for _, h := range histograms {
+-				if h.T > w.startTimestamp {
++				if w.hard != nil || h.T > w.startTimestamp {
+ 					if !w.sendSamples {
+ 						w.sendSamples = true
+ 						duration := time.Since(w.startTime)
+@@ -634,7 +664,7 @@
+ 			// It's valid to do, because we override elements that we no longer need to read when filtering.
+ 			floatHistogramsToSend := floatHistograms[:0]
+ 			for _, fh := range floatHistograms {
+-				if fh.T > w.startTimestamp {
++				if w.hard != nil || fh.T > w.startTimestamp {
+ 					if !w.sendSamples {
+ 						w.sendSamples = true
+ 						duration := time.Since(w.startTime)
+@@ -659,6 +689,10 @@
+ 			w.writer.StoreMetadata(metadata)
+ 
+ 		case record.Unknown:
++			if w.hard != nil {
++				w.hard.Fail()
++				return fmt.Errorf("unknown retained WAL record")
++			}
+ 			// Could be corruption, or reading from a WAL from a newer Prometheus.
+ 			w.recordDecodeFailsMetric.Inc()
+ 
+@@ -692,6 +726,10 @@
+ 			w.writer.UpdateSeriesSegment(series, segmentNum)
+ 
+ 		case record.Unknown:
++			if w.hard != nil {
++				w.hard.Fail()
++				return fmt.Errorf("unknown retained WAL record")
++			}
+ 			// Could be corruption, or reading from a WAL from a newer Prometheus.
+ 			w.recordDecodeFailsMetric.Inc()
+ 
+--- a/tsdb/wlog/wlog.go
++++ b/tsdb/wlog/wlog.go
+@@ -180,18 +180,19 @@
+ // safely truncated. It also ensures that torn writes never corrupt records
+ // beyond the most recent segment.
+ type WL struct {
+-	dir         string
+-	logger      *slog.Logger
+-	segmentSize int
+-	mtx         sync.RWMutex
+-	segment     *Segment // Active segment.
+-	donePages   int      // Pages written to the segment.
+-	page        *page    // Active page.
+-	stopc       chan chan struct{}
+-	actorc      chan func()
+-	closed      bool // To allow calling Close() more than once without blocking.
+-	compress    compression.Type
+-	cEnc        compression.EncodeBuffer
++	dir                 string
++	logger              *slog.Logger
++	segmentSize         int
++	mtx                 sync.RWMutex
++	segment             *Segment // Active segment.
++	donePages           int      // Pages written to the segment.
++	page                *page    // Active page.
++	stopc               chan chan struct{}
++	actorc              chan func()
++	synchronousRotation bool // Agent hard mode: no deferred open writer credit.
++	closed              bool // To allow calling Close() more than once without blocking.
++	compress            compression.Type
++	cEnc                compression.EncodeBuffer
+ 
+ 	WriteNotified WriteNotified
+ 
+@@ -511,6 +512,9 @@
+ 
+ // NextSegment creates the next segment and closes the previous one asynchronously.
+ // It returns the file number of the new file.
++// SetSynchronousRotation is initialization-only, before the first Log.
++func (w *WL) SetSynchronousRotation() { w.synchronousRotation = true }
++
+ func (w *WL) NextSegment() (int, error) {
+ 	w.mtx.Lock()
+ 	defer w.mtx.Unlock()
+@@ -528,6 +532,9 @@
+ // nextSegment creates the next segment and closes the previous one.
+ // It returns the file number of the new file.
+ func (w *WL) nextSegment(async bool) (int, error) {
++	if w.synchronousRotation {
++		async = false
++	}
+ 	if w.closed {
+ 		return 0, errors.New("wlog is closed")
+ 	}
+@@ -548,18 +555,20 @@
+ 	}
+ 
+ 	// Don't block further writes by fsyncing the last segment.
++	var closeErr error
+ 	f := func() {
+-		if err := w.fsync(prev); err != nil {
+-			w.logger.Error("sync previous segment", "err", err)
+-		}
+-		if err := prev.Close(); err != nil {
+-			w.logger.Error("close previous segment", "err", err)
++		closeErr = errors.Join(w.fsync(prev), prev.Close())
++		if closeErr != nil {
++			w.logger.Error("close previous segment", "err", closeErr)
+ 		}
+ 	}
+ 	if async {
+ 		w.actorc <- f
+ 	} else {
+ 		f()
++	}
++	if w.synchronousRotation && closeErr != nil {
++		return next.Index(), closeErr
+ 	}
+ 	return next.Index(), nil
+ }
+@@ -872,6 +881,30 @@
+ 	return nil
+ }
+ 
++// CloseWithoutFlush is exclusively for an unavailable Agent hard-mode guard.
++// Its initialization-only synchronous-rotation mode guarantees no deferred
++// old-writer actions remain. Stop that native actor and close the actual FD;
++// never pad, Log, sync, repair or unlink under an invalid guard.
++func (w *WL) CloseWithoutFlush() error {
++	w.mtx.Lock()
++	defer w.mtx.Unlock()
++	if !w.synchronousRotation {
++		return errors.New("nonflushing close requires synchronous rotation")
++	}
++	if w.closed {
++		return nil
++	}
++	done := make(chan struct{})
++	w.stopc <- done
++	<-done
++	w.closed = true
++	w.metrics.Unregister()
++	if w.segment == nil {
++		return nil
++	}
++	return w.segment.Close()
++}
++
+ // Segments returns the range [first, n] of currently existing segments.
+ // If no segments are found, first and n are -1.
+ func Segments(wlDir string) (first, last int, err error) {

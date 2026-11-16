@@ -1,0 +1,33 @@
+name: Final reviewed Linux service bundle
+on:
+  workflow_dispatch:
+    inputs:
+      final_bundle:
+        description: Build only after the complete service acceptance gate
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+jobs:
+  service:
+    if: github.repository == 'evsikovas/consolecrypt-client' && inputs.final_bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Existing release source guard
+        run: python3 client/scripts/verify-github-tag.py --allow-main-candidate
+      - name: Existing dependency/license audit tools
+        run: python3 client/scripts/dependency-audit.py install "$RUNNER_TEMP/audit-tools" cargo-deny osv-scanner
+      - name: Build exact CLI, package metadata, notices and corresponding source
+        run: PATH="$RUNNER_TEMP/audit-tools:$PATH" python3 runner/deployment/bundle.py build --output "$RUNNER_TEMP/final-service-bundle"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: final-linux-service-bundle
+          path: ${{ runner.temp }}/final-service-bundle
+          if-no-files-found: error
+# No push/tag trigger, package publication, service activation or release step.

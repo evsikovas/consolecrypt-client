@@ -1,0 +1,44 @@
+[Unit]
+Description=Original bounded ConsoleCrypt Node control connection
+
+[Service]
+Type=exec
+User=consolecrypt-agent
+Group=consolecrypt-agent
+ExecStart=/usr/bin/python3 -I -B /opt/consolecrypt-agent-install/opt/consolecrypt-agent/launch.py --enrollment-worker
+StandardInput=socket
+StandardOutput=socket
+StandardError=null
+Restart=no
+RuntimeMaxSec=330
+RuntimeRandomizedExtraSec=0
+TimeoutStopSec=3
+KillMode=control-group
+KillSignal=SIGKILL
+FinalKillSignal=SIGKILL
+SendSIGKILL=yes
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryMax=256M
+MemorySwapMax=0
+CPUQuota=25%
+TasksMax=16
+LimitNOFILE=128
+LimitCORE=0
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+IPAddressDeny=any
+IPAddressAllow=localhost
+InaccessiblePaths=-/run/docker.sock -/var/run/docker.sock -/run/containerd/containerd.sock
+ReadWritePaths=/var/lib/consolecrypt-agent /run/consolecrypt-agent/managed-exporter
