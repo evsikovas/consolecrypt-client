@@ -254,6 +254,24 @@ def persist_journal_query():
         save_private('namespace-probe.journal',journal_state['raw'])
         journal_state['persisted']=True
 
+def journal_capability_stage(message):
+    # Project only fixed systemd diagnostics after existing UID/boot/unit guards.
+    # No journal text, path, executable argument, or arbitrary key is published.
+    if type(message)is not str or len(message.encode('utf-8'))>2048:return None
+    unit_prefix='cc-agent-collector-prerequisite.service: '
+    if message.startswith(unit_prefix):message=message[len(unit_prefix):]
+    stages=(
+        ('ambientQuery','Failed to query ambient caps'),
+        ('boundingDrop','Failed to drop capabilities'),
+        ('ambientBeforeUid','Failed to apply ambient capabilities (before UID change)'),
+        ('ambientAfterUid','Failed to apply ambient capabilities (after UID change)'),
+        ('secureBitsSetpcap','Failed to gain CAP_SETPCAP for setting secure bits'),
+        ('boundingRestore','Failed to drop bset capabilities'),
+    )
+    for code,prefix in stages:
+        if message==prefix or message.startswith(prefix+': '):return code
+    return None
+
 def capture_namespace_journal():
     if not namespace_observed:return
     unit='cc-agent-collector-prerequisite.service'
@@ -279,7 +297,7 @@ def capture_namespace_journal():
         if remaining>0:time.sleep(min(.05,remaining))
     # Retain this exact filtered command output BEFORE any JSON/scope guard.
     persist_journal_query()
-    selected=[];errnos=[]
+    selected=[];errnos=[];capability_stages=[]
     journal_state['stage']='jsonDecode'
     for line in raw.splitlines(keepends=True):
         value=json.loads(line)
@@ -293,11 +311,13 @@ def capture_namespace_journal():
         if present:
             assert type(value['__SEQNUM'])is str and re.fullmatch('[0-9]{1,20}',value['__SEQNUM'])and int(value['__SEQNUM'])<2**64
             assert type(value['__SEQNUM_ID'])is str and re.fullmatch('[0-9a-f]{32}',value['__SEQNUM_ID'])
+        stage=journal_capability_stage(value.get('MESSAGE'))
+        if stage is not None:capability_stages.append(stage)
         selected.append(line)
         errno=value.get('ERRNO')
         if type(errno)is str and errno.isdecimal()and 0<int(errno)<4096:errnos.append(int(errno))
     journal_state['stage']='complete'
-    print('CC_AGENT_NAMESPACE_JOURNAL '+json.dumps({'code':'recordsCaptured'if selected else 'noMatchingRecordsUnknown','validated':bool(selected),'uid':10002,'unit':unit,'records':len(selected),'queryCount':journal_state['queryCount'],'query':journal_state['snapshot'],'privateRetained':journal_state['persisted'],'errnoValues':sorted(set(errnos))if selected else [],'originalProcessExit':namespace_observed['exit'],'readOnly':True}),file=sys.stderr,flush=True)
+    print('CC_AGENT_NAMESPACE_JOURNAL '+json.dumps({'code':'recordsCaptured'if selected else 'noMatchingRecordsUnknown','validated':bool(selected),'uid':10002,'unit':unit,'records':len(selected),'queryCount':journal_state['queryCount'],'query':journal_state['snapshot'],'privateRetained':journal_state['persisted'],'errnoValues':sorted(set(errnos))if selected else [],'originalProcessExit':namespace_observed['exit'],'capabilityStages':sorted(set(capability_stages)),'readOnly':True}),file=sys.stderr,flush=True)
 module.command=namespace_command
 sys.argv=[str(path),'--provision']
 try:
