@@ -76,15 +76,15 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.sha }}
-      - name: Compare baseline and one owned named AppArmor userns profile
+      - name: Compare owned profiles with temporary transition hardening
         timeout-minutes: 4
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' '6e289922e571a27a725eb95653a39ca6af1319f09f53f572a0572195706c8404  .github/fixtures/agent-installed/arm64_capability_observe.py' | sha256sum --check --strict
+          printf '%s\n' '9813115b413147a734a98ec0c37849c5b0ca60cc7d305c811b65982f578df857  .github/fixtures/agent-installed/arm64_capability_observe.py' | sha256sum --check --strict
           sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT \
             /usr/bin/python3.12 -I -B .github/fixtures/agent-installed/arm64_capability_observe.py \
-            --execute-disposable-arm-apparmor-ab-only | tee "$RUNNER_TEMP/cc-arm64-capability-result.json"
+            --execute-disposable-arm-apparmor-ab-with-tightening | tee "$RUNNER_TEMP/cc-arm64-capability-result.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

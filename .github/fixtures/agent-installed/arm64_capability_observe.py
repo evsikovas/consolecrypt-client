@@ -2,8 +2,12 @@
 
 Reuses the pinned production profile/command custody and the reviewed finite
 journal observer. Only a fresh named AppArmor profile on our own user@10002
-manager may change between A and B. No existing profile, sysctl, capability
+manager may change between A and B. No existing profile, other sysctl, capability
 setting, executable attachment, or production sandbox argument is changed.
+Only in this explicit disposable experiment, the unconfined-profile-transition
+restriction may be tightened from zero to one BEFORE both A and B. Its held
+root/procfs inode and exact bytes are checked before restoring an owned change,
+after our profile is absent and our manager is stopped. No production repair.
 The sole executable substitution is /usr/bin/true after the original sandbox
 arguments. Exit zero here is NOT a successful production namespace probe.
 """
@@ -32,6 +36,7 @@ NAME = 'consolecrypt-agent'
 UNIT = 'cc-agent-collector-prerequisite.service'
 PROVISION_SHA = '9b03e2af5e66c0b2dcd2e6f1618a27182e311e92b00ced89766dcbbca4c50d10'
 GUEST_SHA = '302f88020c99f6ab25354704d9ed81ae33ab9430cd6782a357fb212ff72ca141'
+TRANSITION_SYSCTL = '/proc/sys/kernel/apparmor_restrict_unprivileged_unconfined'
 private_capture = {}
 journal_after_cursor = None
 
@@ -172,6 +177,77 @@ def sandbox_argv(provision):
     return argv[:-6] + ['/usr/bin/true']
 
 
+def sysctl_stamp(info):
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid, info.st_nlink)
+
+
+def sysctl_path_identity():
+    # The only writable knob is fixed here; no caller-supplied path or key.
+    path = pathlib.Path(TRANSITION_SYSCTL)
+    parents = (path.parent, *path.parent.parents)
+    facts = []
+    for parent in parents:
+        info = parent.lstat()
+        need(stat.S_ISDIR(info.st_mode) and info.st_uid == info.st_gid == 0
+             and not info.st_mode & 0o022, 'diag_sysctl_root_parent')
+        facts.append(sysctl_stamp(info))
+    info = path.lstat()
+    need(stat.S_ISREG(info.st_mode) and info.st_uid == info.st_gid == 0
+         and stat.S_IMODE(info.st_mode) == 0o644 and info.st_nlink == 1
+         and info.st_size == 0, 'diag_sysctl_root_inode')
+    proc = pathlib.Path('/proc').lstat()
+    need(info.st_dev == proc.st_dev, 'diag_sysctl_not_procfs_device')
+    namespace = pathlib.Path('/proc/self/ns/mnt').stat()
+    return (sysctl_stamp(info), tuple(facts), (namespace.st_dev, namespace.st_ino))
+
+
+def sysctl_guard(state):
+    need(state.get('fd') is not None and state.get('identity') is not None, 'diag_sysctl_identity_missing')
+    need(sysctl_stamp(os.fstat(state['fd'])) == state['identity'][0]
+         and sysctl_path_identity() == state['identity'], 'diag_sysctl_identity_changed')
+
+
+def sysctl_bytes(state):
+    sysctl_guard(state)
+    os.lseek(state['fd'], 0, os.SEEK_SET)
+    raw = os.read(state['fd'], 8)
+    need(raw in (b'0\n', b'1\n'), 'diag_sysctl_exact_bytes')
+    sysctl_guard(state)
+    return raw
+
+
+def tighten_transition_sysctl(state):
+    state['identity'] = sysctl_path_identity()
+    state['fd'] = os.open(TRANSITION_SYSCTL, os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC)
+    sysctl_guard(state)
+    state['original'] = sysctl_bytes(state)
+    if state['original'] == b'1\n':
+        return  # Existing one is a true no-op, with no restoration write.
+    need(sysctl_bytes(state) == b'0\n', 'diag_sysctl_tighten_compare')
+    os.lseek(state['fd'], 0, os.SEEK_SET)
+    state['writeAttempted'] = True
+    need(os.write(state['fd'], b'1\n') == 2, 'diag_sysctl_tighten_short_write')
+    state['recordedChange'] = True
+    need(sysctl_bytes(state) == b'1\n', 'diag_sysctl_tighten_readback')
+
+
+def restore_transition_sysctl(state, profile_absent, manager_stopped):
+    need(profile_absent and manager_stopped, 'diag_sysctl_restore_resources_live')
+    need(state.get('original') in (b'0\n', b'1\n'), 'diag_sysctl_original_unknown')
+    current = sysctl_bytes(state)
+    if state['recordedChange']:
+        need(state['writeAttempted'] and state['original'] == b'0\n' and current == b'1\n',
+             'diag_sysctl_restore_compare')
+        # Check the held original inode/root path again immediately before writing.
+        sysctl_guard(state)
+        os.lseek(state['fd'], 0, os.SEEK_SET)
+        need(os.write(state['fd'], state['original']) == 2, 'diag_sysctl_restore_short_write')
+        need(sysctl_bytes(state) == state['original'], 'diag_sysctl_restore_readback')
+    else:
+        need(not state['writeAttempted'] and current == state['original'], 'diag_sysctl_unrecorded_state')
+    state['restored'] = True
+
+
 def ab_candidate(baseline):
     kernel, manager, journal = (baseline.get(key, {}) for key in ('kernel', 'manager', 'journal'))
     return (baseline.get('observationCompleted') is True
@@ -306,6 +382,8 @@ def observe_phase(provision, expected_dropins, owned_identity, owned_profile=Non
         if owned_profile is not None:
             need(report['manager']['apparmorProfile'] == 'ownedNamed', 'diag_named_profile_not_applied')
         report['kernel'] = kernel_facts()
+        need(report['kernel'].get('restrictUnprivilegedUnconfined') == 1,
+             'diag_transition_not_tightened')
         if baseline is not None:
             need(report['kernel'] == baseline['kernel'], 'diag_kernel_facts_changed')
             need(all(report['manager'][key] == baseline['manager'][key]
@@ -348,7 +426,7 @@ def observe_phase(provision, expected_dropins, owned_identity, owned_profile=Non
 
 def main():
     global module, original_command, namespace_observed, journal_state, probe_argv, journal_after_cursor
-    need(sys.argv[1:] == ['--execute-disposable-arm-apparmor-ab-only'], 'diag_explicit_mode')
+    need(sys.argv[1:] == ['--execute-disposable-arm-apparmor-ab-with-tightening'], 'diag_explicit_mode')
     need(os.getuid() == 0 and platform.machine() == 'aarch64'
          and os.environ.get('GITHUB_ACTIONS') == 'true'
          and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted', 'diag_disposable_arm_only')
@@ -372,7 +450,8 @@ def main():
                   productionNamespaceProbePassed=False, executable='/usr/bin/true', cleanupJoined=False,
                   observationCompleted=False, causalExperimentCompleted=False, causalEffectObserved=False,
                   temporaryProfileLoaded=False, temporaryProfileAbsent=True,
-                  originalUnitPolicyRestored=True, existingProfilesChanged=False, sysctlsChanged=False)
+                  originalUnitPolicyRestored=True, existingProfilesChanged=False, otherSysctlsChanged=False,
+                  temporarySysctlChangeRecorded=False, temporarySysctlRestored=True)
     created_dirs, created_files = [], []
     owned_identity = None
     group_created = False
@@ -381,6 +460,7 @@ def main():
     user_attempted = False
     user_removed = False
     temporary = None
+    transition = None
     journal_after_cursor = None
     roots = [pathlib.Path(p) for p in ('/etc/consolecrypt-agent', '/var/lib/consolecrypt-agent',
              '/run/consolecrypt-agent', '/etc/systemd/system/user@10002.service.d')]
@@ -435,6 +515,11 @@ def main():
             module.publish(path, raw)
             info = path.lstat()
             created_files.append((path, info.st_dev, info.st_ino, hashlib.sha256(raw).hexdigest()))
+        # All fresh-VM/account/root ownership guards precede this test-only change.
+        transition = dict(fd=None, identity=None, original=None, writeAttempted=False,
+                          recordedChange=False, restored=False)
+        report['temporarySysctlRestored'] = False
+        tighten_transition_sysctl(transition)
         module.system('daemon-reload')
         manager_started = True  # Own creation/readback precedes the start attempt.
         module.system('start', 'user@10002.service')
@@ -476,6 +561,7 @@ def main():
         code = error.args[0] if len(error.args) == 1 and type(error.args[0]) is str else ''
         report['errorCode'] = code if re.fullmatch(r'(?:diag|collector)_[a-z_]{1,80}', code) else 'unclassified'
     finally:
+        manager_stopped = not manager_started
         try:
             # Separate reserved cleanup time; no collector/grant is created here.
             module.END = time.monotonic() + 75
@@ -485,6 +571,7 @@ def main():
                 if manager_started:
                     stop_owned_manager()
                     stopped = True
+                    manager_stopped = True
                 if temporary is not None:
                     retire_temporary_profile(temporary, created_files, expected_dropins,
                                              existing['AppArmorProfile'], stopped, report)
@@ -538,6 +625,31 @@ def main():
             report['cleanupJoined'] = False
             code = error.args[0] if len(error.args) == 1 and type(error.args[0]) is str else ''
             report['cleanupErrorCode'] = code if re.fullmatch(r'(?:diag|collector)_[a-z_]{1,80}', code) else 'unclassified'
+        # Independent finalizer: an unrelated file/account cleanup failure never
+        # skips restoration of a provably owned knob, nor permits a live profile.
+        if transition is not None:
+            report['temporarySysctlOriginalValue'] = (0 if transition['original'] == b'0\n'
+                                                      else 1 if transition['original'] == b'1\n' else None)
+            report['temporarySysctlChangeRecorded'] = transition['recordedChange']
+            try:
+                restore_transition_sysctl(transition,
+                    profile_absent=(report['temporaryProfileAbsent'] is True
+                                    and (temporary is None or profile_state(temporary['name']) is None)),
+                    manager_stopped=manager_stopped)
+                report['temporarySysctlRestored'] = transition['restored']
+            except BaseException as error:
+                report['cleanupJoined'] = False
+                code = error.args[0] if len(error.args) == 1 and type(error.args[0]) is str else ''
+                report['sysctlCleanupErrorCode'] = code if re.fullmatch(r'diag_[a-z_]{1,80}', code) else 'unclassified'
+            finally:
+                if transition['fd'] is not None:
+                    try:
+                        os.close(transition['fd'])
+                    except OSError:
+                        report['cleanupJoined'] = False
+                        report.setdefault('sysctlCleanupErrorCode', 'diag_sysctl_close')
+                    finally:
+                        transition['fd'] = None
         private_capture.clear()
         print(json.dumps(report, sort_keys=True), flush=True)
     return 0 if report['observationCompleted'] and report['cleanupJoined'] else 1
