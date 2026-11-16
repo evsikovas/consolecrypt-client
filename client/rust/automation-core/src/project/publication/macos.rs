@@ -149,7 +149,9 @@ fn leaf(name: &Path) -> io::Result<()> {
     Ok(())
 }
 fn flags() -> OFlags {
-    OFlags::CLOEXEC | OFlags::NOFOLLOW | OFlags::NOFOLLOW_ANY
+    // Darwin rejects NOFOLLOW combined with NOFOLLOW_ANY as EINVAL. The latter
+    // already rejects symlinks in every component, including the final leaf.
+    OFlags::CLOEXEC | OFlags::NOFOLLOW_ANY
 }
 
 /// Profile ancestors may cross volumes. Managed descendants may not.
