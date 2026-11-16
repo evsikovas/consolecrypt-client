@@ -1,0 +1,34 @@
+name: Agent ARM interpreter observation
+on:
+  push:
+    branches: [ci/agent-arm64-observe-r17]
+    paths: ['.github/workflows/agent-arm-observe.yml', '.github/fixtures/agent-installed/arm64_python_observe.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: agent-arm-observe-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  observe:
+    if: github.ref == 'refs/heads/ci/agent-arm64-observe-r17'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Observe the fixed interpreter without approving a runtime pin
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'a9679355bbd0da789129e649f14084c6942d226d16ea46d69c9a7cbd5aeb7cdd  .github/fixtures/agent-installed/arm64_python_observe.py' | sha256sum --check --strict
+          /usr/bin/python3.12 -I -B .github/fixtures/agent-installed/arm64_python_observe.py --observe-only --output "$RUNNER_TEMP/cc-arm64-python-candidate.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: agent-arm64-python-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 7
+          path: ${{ runner.temp }}/cc-arm64-python-candidate.json
