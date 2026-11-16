@@ -80,5 +80,58 @@ class ServiceMetadata(unittest.TestCase):
         self.assertNotIn(self.spec.ENTRY, interactive.start_argv())
 
 
+class ServiceWorkerDiagnostics(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        spec=importlib.util.spec_from_file_location("owned_service_daemon_diagnostics",COLLECTOR/"service_daemon.py")
+        cls.module=importlib.util.module_from_spec(spec);spec.loader.exec_module(cls.module)
+
+    def test_actual_closed_identity_denial_codes_are_classified_without_echo(self):
+        import json
+        from types import SimpleNamespace
+        from contextlib import redirect_stderr
+        from io import StringIO
+        for code in ("Storage","CapabilityDenied","UncertainCommit","InvalidTime"):
+            observed=self.module._WorkerStderr()
+            observed.accept(json.dumps({"event":"identityDenied","code":code}).encode()+b"\n")
+            self.assertEqual(observed.code(),code)
+            sink=StringIO()
+            with redirect_stderr(sink):observed.report(SimpleNamespace(returncode=1,pid=4321))
+            value=json.loads(sink.getvalue().split(" ",1)[1])
+            self.assertEqual(value["errorCode"],code);self.assertEqual(value["workerExit"],1)
+            self.assertNotIn("identityDenied",sink.getvalue())
+
+    def test_malformed_duplicate_extra_unknown_and_secret_inputs_never_echo(self):
+        from types import SimpleNamespace
+        from contextlib import redirect_stderr
+        from io import StringIO
+        for raw in (b"not JSON secret-sentinel",b'{"event":"identityDenied","code":"Storage","code":"Expired"}',
+                    b'{"event":"identityDenied","code":"Storage","password":"secret-sentinel"}',
+                    b'{"event":"identityDenied","code":"secret-sentinel"}',b'{"event":"readerDenied","code":"Storage"}',
+                    b'{"event":"identityDenied","code":7}',b'\xff'):
+            observed=self.module._WorkerStderr();observed.accept(raw)
+            self.assertEqual(observed.code(),"unknown");sink=StringIO()
+            with redirect_stderr(sink):observed.report(SimpleNamespace(returncode=1,pid=4321))
+            self.assertNotIn("secret-sentinel",sink.getvalue());self.assertNotIn("password",sink.getvalue())
+            self.assertEqual(len(sink.getvalue().splitlines()),1)
+
+    def test_overflow_discards_raw_and_cannot_borrow_valid_suffix(self):
+        observed=self.module._WorkerStderr();observed.accept(b"secret-sentinel"*400)
+        observed.accept(b'{"event":"identityDenied","code":"Storage"}\n')
+        self.assertTrue(observed.overflow);self.assertEqual(observed.raw,bytearray())
+        self.assertEqual(observed.code(),"unknown")
+
+    def test_nonblocking_poll_drain_is_bounded_even_after_overflow(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        observed=self.module._WorkerStderr();stream=SimpleNamespace(fileno=lambda:42)
+        with patch.object(self.module.os,"read",return_value=b"s"*4096)as read:
+            observed.drain(stream);self.assertEqual(read.call_count,16)
+        self.assertTrue(observed.overflow);self.assertLessEqual(len(observed.raw),4096)
+        with patch.object(self.module.os,"read",side_effect=BlockingIOError):observed.drain(stream)
+        self.assertEqual(observed.code(),"unknown")
+
+
 if __name__ == "__main__":
     unittest.main()

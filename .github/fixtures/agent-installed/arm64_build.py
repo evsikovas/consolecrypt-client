@@ -5,12 +5,14 @@ push or publication. Existing pipeline owns source/material/package checks.
 """
 import argparse
 import ctypes
+import hashlib
 import importlib.util
 import json
 import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -39,6 +41,63 @@ def fixture_sources(agent, paths, read, digest):
         sources[name] = raw
     assert set(sources) == set(FIXTURES), 'all three fixture sources required'
     return sources
+
+
+def compiler_input(path, expected, role, phase, observations, row):
+    """Only this joined Cargo command's fixed outputs may have one Cargo alias."""
+    record=dict(role=role,phase=phase,passed=False,cargoFresh=row['fresh'],
+                features=row['features'],optLevel=row['profile']['opt_level'],targetKind=row['target']['kind'])
+    observations.append(record)
+    fd=None
+    identity=lambda m:(m.st_dev,m.st_ino,m.st_mode,m.st_uid,m.st_gid,m.st_nlink,
+                       m.st_size,m.st_mtime_ns,m.st_ctime_ns)
+    try:
+        assert role in (*FIXTURES,'cc-agent-identity','cc-agent-release-sign')
+        assert path==expected and path.is_absolute()
+        for parent in (path,*path.parents):
+            info=parent.lstat()
+            assert not stat.S_ISLNK(info.st_mode)and not getattr(info,'st_file_attributes',0)&0x400
+        named=path.lstat()
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC)
+        before=os.fstat(fd)
+        record.update(regular=stat.S_ISREG(before.st_mode),links=before.st_nlink,
+                      bytes=before.st_size,ownerMatches=before.st_uid==os.geteuid())
+        assert identity(before)==identity(named)
+        assert stat.S_ISREG(before.st_mode)and before.st_uid==os.geteuid()
+        assert before.st_nlink in (1,2)and 64<=before.st_size<=64*1024**2
+        assert before.st_mode&stat.S_IXUSR and not before.st_mode&0o022
+        alias=None
+        if before.st_nlink==2:
+            directory=path.parent if role in FIXTURES else path.parent/'deps'
+            assert directory.resolve(strict=True)==directory and stat.S_ISDIR(directory.lstat().st_mode)
+            pattern=re.compile(re.escape(role.replace('-','_'))+'-[0-9a-f]{16}')
+            matches=[];count=0
+            with os.scandir(directory)as entries:
+                for entry in entries:
+                    count+=1;assert count<=8192
+                    if not pattern.fullmatch(entry.name):continue
+                    candidate=directory/entry.name;metadata=candidate.lstat()
+                    if (metadata.st_dev,metadata.st_ino)==(before.st_dev,before.st_ino):
+                        assert identity(metadata)==identity(before)
+                        matches.append(candidate)
+            assert len(matches)==1,'original Cargo hardlink alias must be inside its private target'
+            alias=matches[0]
+        chunks=[];used=0;digest=hashlib.sha256()
+        while True:
+            block=os.read(fd,min(65536,before.st_size+1-used))
+            if not block:break
+            used+=len(block);assert used<=before.st_size
+            chunks.append(block);digest.update(block)
+        assert used==before.st_size
+        assert identity(before)==identity(os.fstat(fd))==identity(path.lstat())
+        if alias is not None:assert identity(alias.lstat())==identity(before)
+        record.update(sha256=digest.hexdigest(),cargoAliasVerified=alias is not None,passed=True)
+        return b''.join(chunks),identity(before)
+    except BaseException as error:
+        record['errorKind']=type(error).__name__
+        raise
+    finally:
+        if fd is not None:os.close(fd)
 
 
 def build(args):
@@ -106,33 +165,56 @@ def build(args):
         argv += ['--example',name]
     # This is the one actual build log, including unchanged Cargo diagnostics.
     # Every compiler-artifact and successful build-finished must come from it.
-    command([*argv,'--message-format=json'],first/'cargo-build.jsonl',900,environment)
-    cargo = [json.loads(line) for line in read(first/'cargo-build.jsonl').splitlines() if line.strip().startswith(b'{')]
-    assert [row['success'] for row in cargo if row.get('reason') == 'build-finished'] == [True]
-    compiled = {}
-    compiled_fingerprints = {}
-    for name in (*FIXTURES,'cc-agent-identity','cc-agent-release-sign'):
-        rows = [row for row in cargo if row.get('reason') == 'compiler-artifact'
-                and row.get('executable') and row['target']['name'] == name]
-        assert len(rows) == 1
-        row = rows[0]
-        assert row['features'] == [] and row['fresh'] is False and row['profile']['test'] is False
-        assert row['profile']['opt_level'] == '3'
-        path = Path(row['executable'])
-        expected = target/TARGET/'release'/('examples/'+name if name in FIXTURES else name)
-        assert path == expected
-        raw = read(path,64*1024**2)
-        assert raw[:7] == b'\x7fELF\x02\x01\x01' and int.from_bytes(raw[18:20],'little') == 183
-        if name in FIXTURES:
-            assert row['target']['kind'] == ['example'] and row['target']['src_path'] == str(examples/(name+'.rs'))
-            assert digest(read(examples/(name+'.rs'),262144)) == FIXTURES[name]
-        compiled[name] = path
-        compiled_fingerprints[name] = (digest(raw),len(raw))
-    command(['cargo','test','--release','--offline','--locked','--manifest-path',agent/'identity/Cargo.toml',
-        '--target',TARGET,'-j1','--no-default-features','--bins'],output/'native-rust-tests.log',600,environment)
-    for name,path in compiled.items():
-        raw = read(path,64*1024**2)
-        assert (digest(raw),len(raw)) == compiled_fingerprints[name]
+    observations=[];compiler_passed=False;cargo_raw=None;cargo_finished=False;bin_tests_passed=False
+    try:
+        command([*argv,'--message-format=json'],first/'cargo-build.jsonl',900,environment)
+        cargo_raw=read(first/'cargo-build.jsonl')
+        cargo = [json.loads(line) for line in cargo_raw.splitlines() if line.strip().startswith(b'{')]
+        assert [row['success'] for row in cargo if row.get('reason') == 'build-finished'] == [True]
+        cargo_finished=True
+        copied=output/'compiler-binaries';copied.mkdir(mode=0o700)
+        compiled = {};originals = {};compiled_fingerprints = {};cargo_rows={}
+        for name in (*FIXTURES,'cc-agent-identity','cc-agent-release-sign'):
+            rows = [row for row in cargo if row.get('reason') == 'compiler-artifact'
+                    and row.get('executable') and row['target']['name'] == name]
+            assert len(rows) == 1
+            row = rows[0]
+            assert row['features'] == [] and row['fresh'] is False and row['profile']['test'] is False
+            assert row['profile']['opt_level'] == '3'
+            path = Path(row['executable'])
+            expected = target/TARGET/'release'/('examples/'+name if name in FIXTURES else name)
+            assert path == expected and row['filenames']==[str(expected)]
+            if name in FIXTURES:
+                assert row['target']['kind'] == ['example'] and row['target']['src_path'] == str(examples/(name+'.rs'))
+                assert digest(read(examples/(name+'.rs'),262144)) == FIXTURES[name]
+            else:
+                assert row['target']['kind']==['bin']and row['target']['src_path']==str(agent/'identity/src/bin'/(name+'.rs'))
+            raw,stamp=compiler_input(path,expected,name,'capture',observations,row)
+            assert raw[:7] == b'\x7fELF\x02\x01\x01' and int.from_bytes(raw[18:20],'little') == 183
+            destination=copied/name
+            with destination.open('xb')as stream:stream.write(raw)
+            destination.chmod(0o700)
+            assert read(destination,64*1024**2)==raw
+            compiled[name] = destination
+            originals[name] = (path,stamp)
+            cargo_rows[name] = row
+            compiled_fingerprints[name] = (digest(raw),len(raw))
+        command(['cargo','test','--release','--offline','--locked','--manifest-path',agent/'identity/Cargo.toml',
+            '--target',TARGET,'-j1','--no-default-features','--bins'],output/'native-rust-tests.log',600,environment)
+        bin_tests_passed=True
+        for name,path in compiled.items():
+            raw = read(path,64*1024**2)
+            assert (digest(raw),len(raw)) == compiled_fingerprints[name]
+            original,stamp=originals[name]
+            source,current=compiler_input(original,original,name,'after-bin-tests',observations,cargo_rows[name])
+            assert current==stamp and source==raw
+        compiler_passed=True
+    finally:
+        report=dict(format='cc-arm64-compiler-capture/v1',passed=compiler_passed,
+                    actualOneCargoBuild=True,cargoBuildFinished=cargo_finished,nativeBinTestsPassed=bin_tests_passed,
+                    cargoLogSha256=None if cargo_raw is None else digest(cargo_raw),artifacts=observations)
+        encoded=(json.dumps(report,sort_keys=True)+'\n').encode();assert len(encoded)<=65536
+        with(output/'COMPILER_RESULT.json').open('xb')as stream:stream.write(encoded)
     for number,letter in enumerate(('a','b','disk'),1):
         work = root/letter
         if number != 1:
@@ -152,6 +234,23 @@ def build(args):
     spec = importlib.util.spec_from_file_location('same_native_arm_sealer',sealer)
     module = importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     value = module.seal(root,agent,args.disk_input.absolute(),target,args.runtime_pin.absolute())
+    # Bind the actual sealed package/authority bytes back to the held Cargo
+    # captures; package/sealer retain their existing readers and schemas.
+    for name,path in compiled.items():
+        raw=read(path,64*1024**2)
+        assert (digest(raw),len(raw))==compiled_fingerprints[name]
+    for letter in ('a','b','disk'):
+        for name in ('cc-agent-identity','cc-agent-release-sign'):
+            raw=read(root/letter/name,64*1024**2)
+            assert (digest(raw),len(raw))==compiled_fingerprints[name]
+    for name,folder in (('synthetic_node_authority','actor-authority'),
+                        ('synthetic_exporter_authority','exporter-authority')):
+        raw=read(root/folder/name,64*1024**2)
+        receipt=json.loads(read(root/folder/'receipt.json',16*1024**2))
+        fingerprint=compiled_fingerprints[name]
+        assert (digest(raw),len(raw))==fingerprint
+        assert (receipt['sha256'],receipt['bytes'])==fingerprint
+        assert receipt['sourceSha256']==FIXTURES[name]and receipt['cargoLogSha256']==digest(cargo_raw)
     assert pipeline.source_map() == original_frame
     result = dict(passed=True,packetPrepared=True,installedAcceptanceExecuted=False,productionReleaseClaimed=False,
         nativeArchitecture='aarch64',sourceCommit=commit,normalElfSha256=value['normalElfSha256'],

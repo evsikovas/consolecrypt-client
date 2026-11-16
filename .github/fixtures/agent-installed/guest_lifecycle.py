@@ -625,6 +625,92 @@ def node_record(path):
     finally:os.close(fd)
 
 
+def _collector_failure_facts(end):
+    # Read-only bounded facts from the SAME failed service before guest cleanup.
+    # No worker, signed request, manager restart or raw journal persistence.
+    fields=('MainPID','ExecMainPID','ExecMainCode','ExecMainStatus','ActiveState','SubState','Result',
+            'MemoryCurrent','MemoryPeak','MemoryMax','TasksCurrent','ControlGroup')
+    groups={'consolecrypt-agent-collector.service':'/system.slice/consolecrypt-agent-collector.service',
+            'user@10002.service':'/user.slice/user-10002.slice/user@10002.service',
+            'dbus.service':'/system.slice/dbus.service'}
+    states={'active','inactive','failed','activating','deactivating','running','dead','exited','stop-sigterm',
+            'success','exit-code','signal','core-dump','timeout','oom-kill','start-limit-hit','resources','unknown'}
+    facts={'readOnly':True,'units':{},'workerExits':[],'journalObserved':False}
+    for unit,expected_group in groups.items():
+        item={'statusObserved':False,'memoryEventsObserved':False};facts['units'][unit]=item
+        remaining=end-time.monotonic()
+        if remaining<=0:break
+        try:
+            value=subprocess.run(['/usr/bin/systemctl','--no-pager','show',unit,'--property='+','.join(fields)],
+                capture_output=True,close_fds=True,timeout=min(1,remaining))
+            if value.returncode!=0 or len(value.stdout)+len(value.stderr)>8192:continue
+            rows=[line.split('=',1)for line in value.stdout.decode('ascii').splitlines()]
+            if any(len(row)!=2 for row in rows)or len({row[0]for row in rows})!=len(rows):continue
+            row=dict(rows)
+            if set(row)!=set(fields):continue
+            safe={}
+            for key,entry in row.items():
+                if key=='ControlGroup':continue
+                if entry.isascii()and entry.isdecimal():safe[key]=int(entry)
+                elif entry in states:safe[key]=entry
+                elif entry in('','[not set]','infinity'):safe[key]='unknown'
+                else:raise ValueError('closed_service_status')
+            item.update(statusObserved=True,status=safe)
+            if row['ControlGroup']!=expected_group:continue
+            group=Path('/sys/fs/cgroup'+expected_group)
+            if not group.is_dir()or group.is_symlink():continue
+            events=(group/'memory.events').read_bytes()
+            if len(events)>4096:continue
+            observed={}
+            for line in events.decode('ascii').splitlines():
+                key,count=line.split()
+                if key not in('low','high','max','oom','oom_kill','oom_group_kill')or not count.isdecimal()or key in observed:
+                    raise ValueError('closed_memory_events')
+                observed[key]=int(count)
+            item.update(memoryEventsObserved=True,memoryEvents=observed)
+        except Exception:pass # Absence/unknown is retained, never changed to zero.
+    # Fixed stage booleans only: no namespace name, private file body or grant.
+    facts['namespace']={'observed':False}
+    try:
+        import itertools
+        root=Path('/run/consolecrypt-agent/disk')
+        names=[entry for entry in itertools.islice(root.iterdir(),3)if re.fullmatch('[0-9a-f]{32}',entry.name)]
+        if len(names)==1:
+            directory=names[0];meta=directory.lstat()
+            if stat.S_ISDIR(meta.st_mode)and not directory.is_symlink()and meta.st_uid==10002 and stat.S_IMODE(meta.st_mode)==0o700:
+                stages={}
+                for name in('session.json','launch-owner.json','preexec.json','prometheus-exec.json','prometheus-exit.json'):
+                    try:
+                        item=(directory/name).lstat()
+                        stages[name]=stat.S_ISREG(item.st_mode)and item.st_uid==10002 and item.st_nlink==1
+                    except FileNotFoundError:stages[name]=False
+                facts['namespace']={'observed':True,'stageFiles':stages}
+        elif not names:facts['namespace']={'observed':True,'directoryPresent':False}
+    except Exception:pass
+    remaining=end-time.monotonic()
+    if remaining>0:
+        try:
+            value=subprocess.run(['/usr/bin/journalctl','--no-pager','--unit=consolecrypt-agent-collector.service',
+                '--lines=32','--output=cat'],capture_output=True,close_fds=True,timeout=min(1,remaining))
+            if value.returncode==0 and len(value.stdout)+len(value.stderr)<=16384:
+                facts['journalObserved']=True
+                allowed={'InvalidWire','InvalidKey','InvalidSignature','InvalidTime','Expired','WrongContext','WrongEpoch',
+                    'WrongCheckpoint','UnsupportedTeam','Replay','NotFound','WrongState','InvalidToken','WrongClaim',
+                    'ScopeDenied','CapabilityDenied','MissingFreshness','Revoked','Quota','Conflict','Storage','Entropy',
+                    'KeyReuse','UncertainCommit','unknown'}
+                for line in value.stdout.decode('utf-8',errors='replace').splitlines():
+                    prefix='CC_AGENT_COLLECTOR_WORKER_EXIT '
+                    if not line.startswith(prefix):continue
+                    raw=line[len(prefix):];row=json.loads(raw)
+                    if (type(row)is dict and set(row)=={'errorCode','workerExit','workerPid','parentPid'}
+                            and json.dumps(row,sort_keys=True,separators=(',',':'))==raw
+                            and row['errorCode']in allowed and type(row['workerExit'])is int and -255<=row['workerExit']<=255
+                            and all(type(row[key])is int and row[key]>1 for key in('workerPid','parentPid'))):
+                        facts['workerExits'].append(row)
+        except Exception:pass
+    return facts
+
+
 def disk_service():
     from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
     import threading
@@ -644,7 +730,7 @@ def disk_service():
             raw=self.rfile.read(count);assert len(raw)==count
             key='acceptedRequests'if state['receiverReady']else'failedRequests';state[key]+=1
             self.send_response(204 if state['receiverReady']else 503);self.send_header('Content-Length','0');self.end_headers()
-    servers=[];threads=[];observed=None
+    servers=[];threads=[];observed=None;failure_capture_end=time.monotonic()+110
     try:
         for port in(18992,18993):
             server=ThreadingHTTPServer(('127.0.0.1',port),Handler);server.daemon_threads=False
@@ -658,6 +744,13 @@ def disk_service():
             assert len(candidates)<=1
             if candidates and(candidates[0]/'prometheus-exec.json').exists():session=candidates[0];break
             time.sleep(.05)
+        if session is None:
+            try:facts=_collector_failure_facts(min(failure_capture_end,time.monotonic()+5))
+            except Exception:facts={'readOnly':True,'captureAvailable':False}
+            try:save(OBS/'metrics-service-failure.json',facts)
+            except Exception:pass
+            try:print('CC_AGENT_COLLECTOR_SERVICE_FAILURE_FACTS '+json.dumps(facts,sort_keys=True,separators=(',',':')),flush=True)
+            except OSError:pass
         assert session is not None,'installed normal Prometheus never reached actual exec'
         handoff=node_record(session/'session.json');executed=node_record(session/'prometheus-exec.json');preexec=node_record(session/'preexec.json')
         expected=expected_releases()['phases']['disk'];assert handoff['format']=='cc-collector-service-session/v2'
