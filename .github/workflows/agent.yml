@@ -42,6 +42,8 @@ jobs:
           python3 -B -m unittest discover -s agent/scripts/tests -p 'test_*.py' -v
           python3 -B -m unittest discover -s client/scripts -p 'test_export_source.py' -v
       - name: Test runtime without enabling the Agent
+        env:
+          PYTHONPATH: ${{ github.workspace }}/agent/third_party/websockets/websockets-17.4-py3-none-any.whl
         run: |
           python3 -B -m unittest discover -s agent/runtime/tests -p 'test_*.py' -v
           python3 -B -m unittest discover -s agent/integration/tests -p 'test_*.py' -v

@@ -243,7 +243,11 @@ fn tunnel_transport_preview_does_not_ignore_revocation_checkpoint_or_original_ex
     let mut h=enrolled_resume();let policy=resume_policy(&h);
     let binding=NodeRequestBinding {certificate:sign(h.cert.clone(),&h.owner),
         lease:sign(h.lease(policy.operation().unwrap(),123),&h.owner),freshness:h.fresh(),operation:policy.operation().unwrap()};
-    assert!(h.actor.preview_original_tunnel_binding(&binding,&policy,Now(time(1120))).is_err());
+    // Expiry observation advances this handle's monotonic clock even on denial.
+    // Keep the separate current-time revocation check on its original handle.
+    let mut expired_preview=Actor::new(h.memory.clone()).unwrap();
+    assert_eq!(expired_preview.preview_original_tunnel_binding(&binding,&policy,Now(time(1120))),Err(Error::Expired));
+    assert_eq!(expired_preview.preview_original_tunnel_binding(&binding,&policy,now()),Err(Error::InvalidTime));
     h.actor.revoke(sign(Revocation {header:header(3),agent_id:h.cert.agent_id,key_epoch:1,
         certificate_hash:h.cert.digest().unwrap(),issued_at:time(1000)},&h.owner),now()).unwrap();
     assert_eq!(h.actor.preview_original_tunnel_binding(&binding,&policy,now()),Err(Error::WrongCheckpoint));
