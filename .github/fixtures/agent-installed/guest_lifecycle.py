@@ -602,7 +602,8 @@ def metric_values(port):
     finally:c.close()
     wanted={'prometheus_agent_samples_appended_total','prometheus_agent_hard_charged_bytes',
         'prometheus_agent_hard_loss_unknown','prometheus_agent_hard_unavailable',
-        'prometheus_agent_hard_byte_evicted_segments_total','prometheus_agent_hard_age_evicted_segments_total'}
+        'prometheus_agent_hard_byte_evicted_segments_total','prometheus_agent_hard_age_evicted_segments_total',
+        'prometheus_agent_hard_oldest_segment_residence_seconds'}
     values={}
     for line in raw.decode('ascii').splitlines():
         if line.startswith('#'):continue
@@ -612,6 +613,8 @@ def metric_values(port):
             number=float(fields[1]);assert math.isfinite(number)and number>=0;values[fields[0]]=number
     assert set(values)==wanted
     assert values['prometheus_agent_hard_loss_unknown']in(0,1)and values['prometheus_agent_hard_unavailable']in(0,1)
+    assert values['prometheus_agent_hard_charged_bytes']<=536870912
+    assert values['prometheus_agent_hard_oldest_segment_residence_seconds']<=7200
     return values
 
 
@@ -795,6 +798,7 @@ def disk_service():
             time.sleep(.1)
         assert before is not None and before['prometheus_agent_hard_unavailable']==0
         catalog=json.loads((CONFIG/'collector-disk.json').read_bytes());wal=HOME/'metrics-disk'/catalog['collectorId']/'wal'
+        assert catalog['manifest']['buffer']=={'max_bytes':536870912,'max_age_seconds':7200}
         payload=[p for p in wal.iterdir()if re.fullmatch('[0-9]{8}',p.name)]
         wal_bytes=sum(p.stat().st_size for p in payload);assert payload and wal_bytes>0
         state['receiverReady']=True;end=time.monotonic()+15
