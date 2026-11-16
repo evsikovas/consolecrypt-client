@@ -333,10 +333,10 @@ def execute(args):
              and authority_info.st_uid == authority_info.st_gid == 0
              and authority_info.st_size == len(authority) and stat.S_IMODE(authority_info.st_mode) == 0o555,
              'fresh exact readonly root authority copy required')
-        identity = lambda m: (m.st_dev,m.st_ino,m.st_uid,m.st_gid,m.st_mode,m.st_nlink,
+        authority_identity = lambda m: (m.st_dev,m.st_ino,m.st_uid,m.st_gid,m.st_mode,m.st_nlink,
                               m.st_size,m.st_mtime_ns,m.st_ctime_ns)
         need(digest(read(authority_path,64*1024**2)) == digest(authority)
-             and identity(authority_path.lstat()) == identity(authority_info), 'private authority copy changed')
+             and authority_identity(authority_path.lstat()) == authority_identity(authority_info), 'private authority copy changed')
         report['bootstrapOwner'] = dict(uid=authority_info.st_uid,gid=authority_info.st_gid,
             mode=stat.S_IMODE(authority_info.st_mode),links=authority_info.st_nlink,bytes=authority_info.st_size,
             privateUid=private_info.st_uid,privateGid=private_info.st_gid,privateMode=stat.S_IMODE(private_info.st_mode),
