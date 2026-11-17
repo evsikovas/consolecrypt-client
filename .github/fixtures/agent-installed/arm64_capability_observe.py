@@ -115,6 +115,33 @@ def profile_fact(raw, owned_profile=None):
     return 'other'
 
 
+def profile_observation(raw, owned_profile=None):
+    need(type(raw) is bytes and len(raw) <= 4096, 'diag_profile_observation_bound')
+    category, mode = 'other', 'unspecified'
+    try:
+        label = raw.decode('ascii', 'strict').strip()
+    except UnicodeDecodeError:
+        label, mode = '', 'unknown'
+    for known in ('enforce', 'complain', 'unconfined'):
+        suffix = ' (' + known + ')'
+        if label.endswith(suffix):
+            label, mode = label[:-len(suffix)], known
+            break
+    if owned_profile is not None and label == owned_profile:
+        category = 'ownNamed'
+    elif owned_profile is not None and len(label.split('//&')) == 2 and set(label.split('//&')) == {owned_profile, 'unconfined'}:
+        category = 'ownStackedUnconfined'
+    elif label == 'unconfined':
+        category = 'plainUnconfined'
+    elif label == 'unprivileged_userns' or (owned_profile is not None and len(label.split('//&')) == 2
+                                           and set(label.split('//&')) == {owned_profile, 'unprivileged_userns'}):
+        category = 'restricted'
+    if category == 'other' and mode == 'unspecified':
+        mode = 'unknown'
+    return dict(readStatus='read', category=category, mode=mode, complain=mode == 'complain',
+                bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest(), readOnly=True)
+
+
 def manager_facts(pid, owned_profile=None):
     status = read(pathlib.Path('/proc') / str(pid) / 'status', 16384).decode('ascii')
     rows = {line.split(':', 1)[0]: line.split(':', 1)[1].strip() for line in status.splitlines() if ':' in line}
@@ -124,9 +151,13 @@ def manager_facts(pid, owned_profile=None):
         need(re.fullmatch('[0-9a-f]{16}', rows[field]) is not None, 'diag_capability_shape')
         result[field] = int(rows[field], 16)
     try:
-        result['apparmorProfile'] = profile_fact(read(pathlib.Path('/proc') / str(pid) / 'attr/current', 4096), owned_profile)
+        raw = read(pathlib.Path('/proc') / str(pid) / 'attr/current', 4096)
+        result['apparmorProfile'] = profile_fact(raw, owned_profile)
+        result['apparmorObservation'] = profile_observation(raw, owned_profile)
     except OSError:
         result['apparmorProfile'] = 'unavailable'
+        result['apparmorObservation'] = dict(readStatus='unavailable', category='other', mode='unknown',
+                                            complain=False, bytes=None, sha256=None, readOnly=True)
     return result
 
 
@@ -362,12 +393,14 @@ def stop_owned_manager():
         need(not read(path, 65536).strip(), 'diag_cleanup_cgroup')
 
 
-def observe_phase(provision, expected_dropins, owned_identity, owned_profile=None, baseline=None):
+def observe_phase(provision, expected_dropins, owned_identity, owned_profile=None, baseline=None, phase_report=None):
     global namespace_observed, journal_state, probe_argv
     namespace_observed = {}
     journal_state = dict(stage='notStarted', expected=(), snapshot={}, raw=b'', persisted=False, queryCount=0)
     private_capture.clear()
-    report = {}
+    report = phase_report if phase_report is not None else {}
+    need(type(report) is dict and not report, 'diag_phase_report_shape')
+    report['observationCompleted'] = False
     manager = module.show('user@10002.service', ['ActiveState', 'MainPID', 'InvocationID', 'ControlGroup', 'DropInPaths'])
     need(manager['ActiveState'] == 'active' and manager['ControlGroup'] == '/user.slice/user-10002.slice/user@10002.service', 'diag_manager_start')
     need(len(manager['DropInPaths'].split()) == len(expected_dropins)
@@ -419,8 +452,8 @@ def observe_phase(provision, expected_dropins, owned_identity, owned_profile=Non
         need(journal_state['queryCount'] == 1 and journal_state['stage'] == 'complete', 'diag_single_journal')
         report['preexecExit'] = namespace_observed['exit']
         report['journalQueryCount'] = 1
-        report['observationCompleted'] = True
     report['managerInvocationId'] = manager['InvocationID']
+    report['observationCompleted'] = True
     return report
 
 
@@ -524,7 +557,8 @@ def main():
         manager_started = True  # Own creation/readback precedes the start attempt.
         module.system('start', 'user@10002.service')
         expected_dropins = vendor_dropins | {'/etc/systemd/system/user@10002.service.d/60-consolecrypt-agent.conf'}
-        report['baseline'] = observe_phase(provision, expected_dropins, owned_identity)
+        report['baseline'] = {}
+        observe_phase(provision, expected_dropins, owned_identity, phase_report=report['baseline'])
         if ab_candidate(report['baseline']):
             # A true causal experiment, not an inference of AppArmor causality.
             # Unsupported parser/ABI/profile operation fails explicitly; no fallback.
@@ -544,8 +578,9 @@ def main():
             publish_registered(dropin, ('[Service]\nAppArmorProfile=' + name + '\n').encode('ascii'), created_files)
             module.system('daemon-reload')
             module.system('start', 'user@10002.service')
-            report['namedProfile'] = observe_phase(provision, expected_dropins | {str(dropin)}, owned_identity,
-                                                    owned_profile=name, baseline=report['baseline'])
+            report['namedProfile'] = {}
+            observe_phase(provision, expected_dropins | {str(dropin)}, owned_identity,
+                          owned_profile=name, baseline=report['baseline'], phase_report=report['namedProfile'])
             need(report['namedProfile']['managerInvocationId'] != report['baseline']['managerInvocationId'], 'diag_manager_not_restarted')
             need(report['namedProfile']['completeArgvSha256'] == report['baseline']['completeArgvSha256'], 'diag_ab_argv_changed')
             report['causalExperimentCompleted'] = True
