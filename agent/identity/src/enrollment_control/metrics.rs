@@ -933,7 +933,7 @@ impl Files {
         let m = fs::symlink_metadata(&directory).map_err(|_| Error::Storage)?;
         let directory_fd = OpenOptions::new()
             .read(true)
-            .custom_flags(NOFOLLOW | NONBLOCK | CLOEXEC | 0x10000)
+            .custom_flags(NOFOLLOW | NONBLOCK | CLOEXEC | rustix::fs::OFlags::DIRECTORY.bits() as i32)
             .open(&directory)
             .map_err(|_| Error::Storage)?;
         let held = directory_fd.metadata().map_err(|_| Error::Storage)?;
@@ -1087,7 +1087,7 @@ fn audit_child_fds() -> Result<()> {
             .find_map(|l| l.strip_prefix("flags:\t"))
             .ok_or(Error::Storage)?;
         let flags = u64::from_str_radix(flags.trim(), 8).map_err(|_| Error::Storage)?;
-        if flags & 0o2000000 == 0 {
+        if flags & (rustix::fs::OFlags::CLOEXEC.bits() as u64) == 0 {
             return Err(Error::Storage);
         }
     }

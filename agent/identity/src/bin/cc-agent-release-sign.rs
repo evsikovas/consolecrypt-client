@@ -40,7 +40,7 @@ fn read_input(path: &Path, maximum: usize, secret: bool) -> Result<Zeroizing<Vec
     // Linux-only fixed O_NOFOLLOW|O_NONBLOCK, including FIFO-before-fstat denial.
     let mut file = OpenOptions::new()
         .read(true)
-        .custom_flags(0x20000 | 0x800)
+        .custom_flags((rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK).bits() as i32)
         .open(path)
         .map_err(|_| "input_open_failed")?;
     let before = file.metadata().map_err(|_| "input_metadata_failed")?;

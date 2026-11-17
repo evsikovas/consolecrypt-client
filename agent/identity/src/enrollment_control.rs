@@ -18,9 +18,9 @@ mod tunnel_transport;
 mod exporters;
 const FORMAT: &str = "cc-native-node-enroll/v1";
 const CONFIG: &str = "/etc/consolecrypt-agent/enrollment-control.json";
-const NONBLOCK: i32 = 0x800;
-const CLOEXEC: i32 = 0x80000;
-const NOFOLLOW: i32 = 0x20000;
+const NONBLOCK: i32 = rustix::fs::OFlags::NONBLOCK.bits() as i32;
+const CLOEXEC: i32 = rustix::fs::OFlags::CLOEXEC.bits() as i32;
+const NOFOLLOW: i32 = rustix::fs::OFlags::NOFOLLOW.bits() as i32;
 
 // Private RPC-revision CAS fence. A mutation which reloaded a newer State must
 // fail BEFORE forwarding to the SAME store, without policy/journal changes.

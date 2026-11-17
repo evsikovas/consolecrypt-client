@@ -685,6 +685,11 @@ def execute(args):
                     need(len(shown.stdout)+len(shown.stderr) <= 4096, 'bounded cleanup unit observation')
                     if shown.stdout.strip() != b'not-found':
                         need(shown.returncode == 0 and shown.stdout.strip() == b'loaded', 'known unit required for cleanup')
+                        if unit == 'consolecrypt-agent-collector.service':
+                            need('terminalInputs' in gate and 'lifecycle' in gate,
+                                 'original collector ownership frame unavailable')
+                            report['collectorAdministrativeCleanup'] = gate['lifecycle'].retire_fixture_collector()
+                            continue
                         preserve_failed = False
                         if unit == 'consolecrypt-agent-collector.service':
                             terminal = subprocess.run(['/usr/bin/systemctl','show',unit,

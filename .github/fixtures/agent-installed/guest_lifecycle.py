@@ -504,6 +504,43 @@ def capture_collector_terminal_inputs():
     return TERMINAL_INPUTS
 
 
+def retire_fixture_collector():
+    # Fixture root owns only the original verified installation, never an
+    # arbitrary unit. This administrative disable does NOT sign a revocation.
+    assert type(TERMINAL_INPUTS)is tuple and len(TERMINAL_INPUTS)==3
+    unit,catalog,owner_raw=TERMINAL_INPUTS
+    service=terminal_module(Path('/usr/local/libexec/consolecrypt-agent-install/collector_service_provision.py'),
+        '0a9bf83d0a76e01547a97f8d20738a3ff7ee2ba1e33cd68d60ca43f0f301eab1')
+    base=terminal_module(Path('/usr/local/libexec/consolecrypt-agent-install/collector_provision.py'),
+        '29c84a9c814f44e3bc54853e9c989ba4b2c67d701e83cad4d9210971ef9886bf')
+    base.END=time.monotonic()+55
+    assert service.trusted(service.UNIT,16384)==unit
+    assert service.trusted(service.CATALOG)==catalog
+    assert service.trusted(service.OWNER,mode=0o600)==owner_raw
+    names=['LoadState','FragmentPath','DropInPaths','UnitFileState','ActiveState','SubState','MainPID']
+    before=base.show(service.UNIT.name,names)
+    assert set(before)==set(names)and before['LoadState']=='loaded'
+    assert before['FragmentPath']==str(service.UNIT)and not before['DropInPaths']
+    assert before['UnitFileState']in('enabled','disabled')
+    assert before['ActiveState']in('active','activating','deactivating','inactive','failed')
+    assert re.fullmatch('[0-9]{1,10}',before['MainPID'])and int(before['MainPID'])<2**31
+    failed=(before['ActiveState'],before['SubState'],before['MainPID'])==('failed','failed','0')
+    idle=(before['ActiveState'],before['SubState'],before['MainPID'])==('inactive','dead','0')
+    # Disable only our exact known enabled unit, even when the acceptance
+    # failed before its signed revoke phase. Preserve already-failed evidence.
+    if before['UnitFileState']=='enabled':base.system('disable',service.UNIT.name)
+    if not(failed or idle):
+        base.command(['/usr/bin/systemctl','--system','--no-pager','--no-ask-password',
+            'stop',service.UNIT.name],seconds=30)
+    terminal=service.disabled_terminal_state(base,unit,catalog)
+    assert service.fixed_root_unit_cgroup_quiescent()
+    assert service.disabled_terminal_state(base,unit,catalog)==terminal
+    if failed:assert terminal=='failed'
+    return {'actualTerminalState':terminal,'exactOriginalUnitDisabled':True,
+        'mainPidZeroAndDescendantsQuiescent':True,'originalFailedStatePreserved':failed,
+        'fixtureAdministrativeTeardown':True,'signedRevocationClaimed':False}
+
+
 def collector_terminal_state():
     assert type(TERMINAL_INPUTS)is tuple and len(TERMINAL_INPUTS)==3
     assert all(type(raw)is bytes for raw in TERMINAL_INPUTS)

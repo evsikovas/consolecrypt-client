@@ -55,7 +55,7 @@ fn read_public(path: &Path, uid: u32) -> Result<(Zeroizing<Vec<u8>>, FileIdentit
     // Linux only: nofollow+nonblock prevents replaced symlink/FIFO blocking.
     let mut file = OpenOptions::new()
         .read(true)
-        .custom_flags(0x20000 | 0x800)
+        .custom_flags((rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK).bits() as i32)
         .open(path)
         .map_err(|_| Error::Storage)?;
     if identity(&before) != identity(&file.metadata().map_err(|_| Error::Storage)?) {

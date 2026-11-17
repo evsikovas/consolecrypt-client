@@ -8,7 +8,7 @@ use crate::{CollectorCredentialScope, CollectorRecipientAttestation, RegisteredS
 use cc_agent_node_wire::Statement as NativeStatement;
 
 const MAX_FRAME: usize = crate::MAX_WIRE_BYTES;
-const DIRECTORY: i32 = 0x10000;
+const DIRECTORY: i32 = rustix::fs::OFlags::DIRECTORY.bits() as i32;
 type LeafIdentity = (u64, u64, u32, u32, u64, u64, i64, i64, i64, i64);
 fn identity(m: &fs::Metadata) -> LeafIdentity {
     (m.dev(), m.ino(), m.mode(), m.uid(), m.nlink(), m.len(), m.mtime(), m.mtime_nsec(), m.ctime(), m.ctime_nsec())

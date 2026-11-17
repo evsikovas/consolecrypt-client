@@ -142,7 +142,7 @@ pub(super) fn read_file(path: &Path, cap: u64, root_owned: bool) -> Result<(Vec<
     }
     let mut file = fs::OpenOptions::new()
         .read(true)
-        .custom_flags(0x20000 | 0x800)
+        .custom_flags((rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK).bits() as i32)
         .open(path)
         .map_err(|_| Error::Storage)?;
     if identity(&before) != identity(&file.metadata().map_err(|_| Error::Storage)?) {

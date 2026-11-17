@@ -42,7 +42,7 @@ pub(super) fn audit_inherited_fds() -> Result<()> {
             .find_map(|l| l.strip_prefix("flags:\t"))
             .ok_or(Error::Storage)?;
         let flags = u64::from_str_radix(flags.trim(), 8).map_err(|_| Error::Storage)?;
-        if flags & 0o2000000 == 0 {
+        if flags & (rustix::fs::OFlags::CLOEXEC.bits() as u64) == 0 {
             return Err(Error::Storage);
         }
     }
@@ -99,7 +99,7 @@ impl ParentControl {
         // nonblocking file description; never alters caller stdin flags.
         let input = fs::OpenOptions::new()
             .read(true)
-            .custom_flags(0x800 | 0x80000) // O_NONBLOCK | O_CLOEXEC
+            .custom_flags((rustix::fs::OFlags::NONBLOCK | rustix::fs::OFlags::CLOEXEC).bits() as i32) // O_NONBLOCK | O_CLOEXEC
             .open("/proc/self/fd/0")
             .map_err(|_| Error::Storage)?;
         let meta = input.metadata().map_err(|_| Error::Storage)?;

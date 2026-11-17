@@ -6,7 +6,7 @@ use std::os::fd::AsRawFd;
 
 const CONTROL: &str = "/var/lib/consolecrypt-agent/tunnel/control";
 const RECORD: &str = "/var/lib/consolecrypt-agent/tunnel/control/bootstrap.json";
-const DIRECTORY: i32 = 0x10000; // Linux O_DIRECTORY; same fixed Linux worker.
+const DIRECTORY: i32 = rustix::fs::OFlags::DIRECTORY.bits() as i32; // Linux O_DIRECTORY; same fixed Linux worker.
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

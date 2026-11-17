@@ -24,7 +24,7 @@ impl CollectorServiceClockObservation {
         fn kernel(path: &str) -> Result<String> {
             let mut file = std::fs::OpenOptions::new()
                 .read(true)
-                .custom_flags(0x20000 | 0x800 | 0x80000)
+                .custom_flags((rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK | rustix::fs::OFlags::CLOEXEC).bits() as i32)
                 .open(path)
                 .map_err(|_| Error::Storage)?;
             let mut raw = String::new();

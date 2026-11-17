@@ -14,6 +14,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:crypto/crypto.dart' as digest;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../helpers/test_app.dart';
@@ -140,6 +141,17 @@ Future<ProviderContainer> open(
 }
 
 void main() {
+  setUp(() {
+    // Cached asset Futures retain their creating test's FakeAsync zone.
+    // Each test must load the real shipped bytes in its own active zone.
+    for (final asset in const [
+      'assets/automation/exporters/cadvisor.yml',
+      'assets/automation/exporters/node-exporter.yml',
+      'assets/automation/exporters/node-exporter.service.j2',
+    ]) {
+      rootBundle.evict(asset);
+    }
+  });
   for (final fromHost in [false, true]) {
   testWidgets('cAdvisor ${fromHost ? 'original Host intent' : 'install menu'} fills ordinary Run without executing', (tester) async {
     final service = InstallProjects();

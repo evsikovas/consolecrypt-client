@@ -221,7 +221,7 @@ fn load<T: serde::de::DeserializeOwned>(p: &Path) -> ReaderResult<T> {
     }
     let mut file = std::fs::OpenOptions::new()
         .read(true)
-        .custom_flags(0x20000)
+        .custom_flags(rustix::fs::OFlags::NOFOLLOW.bits() as i32)
         .open(p)
         .map_err(|_| ReaderError::Storage)?;
     let after = file.metadata().map_err(|_| ReaderError::Storage)?;

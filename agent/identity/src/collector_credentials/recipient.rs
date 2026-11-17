@@ -11,10 +11,10 @@ use zeroize::Zeroizing;
 
 const ROOT: &str = "/var/lib/consolecrypt-agent/collector-credentials";
 const KEY: &str = "recipient.key";
-const NOFOLLOW: i32 = 0x20000;
-const CLOEXEC: i32 = 0x80000;
-const NONBLOCK: i32 = 0x800;
-const DIRECTORY: i32 = 0x10000;
+const NOFOLLOW: i32 = rustix::fs::OFlags::NOFOLLOW.bits() as i32;
+const CLOEXEC: i32 = rustix::fs::OFlags::CLOEXEC.bits() as i32;
+const NONBLOCK: i32 = rustix::fs::OFlags::NONBLOCK.bits() as i32;
+const DIRECTORY: i32 = rustix::fs::OFlags::DIRECTORY.bits() as i32;
 const MAGIC: &[u8; 8] = b"CCACR\0\0\x01";
 const ENCODED: usize = 285;
 

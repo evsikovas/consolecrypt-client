@@ -62,7 +62,8 @@ import 'app_localizations_ru.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale)
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -70,7 +71,8 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -82,15 +84,19 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('ru'),
+  ];
 
   /// Explicit selected Monitoring data review or scoped host navigation label.
   ///
@@ -2400,13 +2406,19 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · registration open'**
-  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion);
+  String loginServerInfoRegistrationOpen(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: result of a successful server check when registration is invite-only.
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · invite only'**
-  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion);
+  String loginServerInfoInviteOnly(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Login screen: segmented button option to sign in to an existing account.
   ///
@@ -3708,7 +3720,10 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion}'**
-  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion);
+  String enableSyncDialogServerInfo(
+    String serverVersion,
+    String protocolVersion,
+  );
 
   /// Enable-sync wizard segment: register a new account.
   ///
@@ -19758,7 +19773,11 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{note} Runs in {client} in a terminal; the Databases workspace does not allow it. From the {package} starter package.'**
-  String snippetStarterDbTerminalOrigin(String note, String client, String package);
+  String snippetStarterDbTerminalOrigin(
+    String note,
+    String client,
+    String package,
+  );
 
   /// Snippet run flow: a SQL/redis-cli/mongosh snippet needs an open terminal session running the database client
   ///
@@ -26994,7 +27013,12 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{time} · {source} · {mode} · {expression}'**
-  String monitoringHistoryEntry(String time, String source, String mode, String expression);
+  String monitoringHistoryEntry(
+    String time,
+    String source,
+    String mode,
+    String expression,
+  );
 
   /// Monitoring source and query workspace
   ///
@@ -29706,7 +29730,11 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Detected format · apiVersion: {apiVersion} · kind: {kind} · schemaVersion: {schemaVersion}'**
-  String grafanaImportEnvelope(String apiVersion, String kind, String schemaVersion);
+  String grafanaImportEnvelope(
+    String apiVersion,
+    String kind,
+    String schemaVersion,
+  );
 
   /// Offline Grafana import: NotDeclared.
   ///
@@ -31866,7 +31894,11 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'become: {become}; become_user: {user}; become_method: {method}'**
-  String automationReviewDeclaredFlags(String become, String user, String method);
+  String automationReviewDeclaredFlags(
+    String become,
+    String user,
+    String method,
+  );
 
   /// Informational guest-reported Ansible declarations only; never grants or verifies effective privileges.
   ///
@@ -32814,13 +32846,22 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Vault checkpoint: {id}; epoch {epoch}; sequence {sequence}'**
-  String monitoringPanelPolicyCheckpoint(String id, String epoch, String sequence);
+  String monitoringPanelPolicyCheckpoint(
+    String id,
+    String epoch,
+    String sequence,
+  );
 
   /// Explicit held original account compatibility policy review; never panel writer authorization.
   ///
   /// In en, this message translates to:
   /// **'Panel catalog: {id}; object revision {object}; schema {schema}; revision {revision}'**
-  String monitoringPanelPolicyCatalog(String id, String object, String schema, String revision);
+  String monitoringPanelPolicyCatalog(
+    String id,
+    String object,
+    String schema,
+    String revision,
+  );
 
   /// Explicit held original account compatibility policy review; never panel writer authorization.
   ///
@@ -34958,13 +34999,13 @@ abstract class AppLocalizations {
   /// **'Maximum duration now (Agent certificate and sign-in session may shorten it)'**
   String get agentOutboundCappedLifetime;
 
-  /// No description provided for @agentOutboundSeconds.
+  /// Requested outbound registration duration in seconds.
   ///
   /// In en, this message translates to:
   /// **'{seconds} seconds'**
   String agentOutboundSeconds(int seconds);
 
-  /// No description provided for @agentOutboundReviewRemaining.
+  /// Remaining time in seconds to confirm outbound registration.
   ///
   /// In en, this message translates to:
   /// **'Review expires in {seconds} s'**
@@ -35228,7 +35269,7 @@ abstract class AppLocalizations {
   /// **'Allow this service to continue after the client locks or closes, within the displayed expiry and limits.'**
   String get agentCollectorServiceConsent;
 
-  /// No description provided for @agentCollectorServiceRemaining.
+  /// Remaining time in seconds to confirm the finite collector service.
   ///
   /// In en, this message translates to:
   /// **'Confirm within {seconds} s'**
@@ -35706,8 +35747,6 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Connection for this query'**
-  String get monitoringAgentDestinationHint;
-
   String get monitoringAgentRoute;
 
   /// Monitoring source selection of a previously observed, finite Agent tunnel; metadata is not authority.
@@ -35829,9 +35868,16 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'From the same authenticated heartbeat and configured Host. This past observation does not confirm current readiness, update availability or a completed installation.'**
   String get hostAgentLastObservedHint;
+
+  /// Explains the saved Agent route reference and the separate tunnel approval required before reading.
+  ///
+  /// In en, this message translates to:
+  /// **'The Agent route saves its association, SSH host and loopback destination; the source URL, TLS and authentication stay unchanged. Saving changes invalidates the previous tunnel approval. Open and approve a new matching Agent tunnel before reading; this reference grants no access and never reconnects automatically.'**
+  String get monitoringAgentDestinationHint;
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -35840,7 +35886,8 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      <String>['en', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

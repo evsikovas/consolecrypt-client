@@ -609,3 +609,38 @@ fn revoke_sqlite_same_journal_readback_reopens_genesis_with_exact_r4c3_tombstone
     let state=reopened.load().unwrap();assert_eq!(state.revision(),4);assert_eq!(state.owner().checkpoint,3);
     assert!(state.revoked(id()));assert_eq!(state.certificate(id()).unwrap().digest().unwrap(),digest);
 }
+
+
+#[test]
+fn linux_target_directory_flags_open_directory_and_refuse_regular_file() {
+    let directory=Directory::new();
+    let flags=NOFOLLOW|NONBLOCK|CLOEXEC|rustix::fs::OFlags::DIRECTORY.bits() as i32;
+    let held=OpenOptions::new().read(true).custom_flags(flags).open(&directory.0).unwrap();
+    assert!(held.metadata().unwrap().is_dir());
+    let file=directory.0.join("regular");fs::write(&file,b"owned").unwrap();
+    assert!(OpenOptions::new().read(true).custom_flags(flags).open(file).is_err());
+}
+
+#[test]
+fn linux_target_nofollow_flags_refuse_directory_and_file_symlinks() {
+    use std::os::unix::fs::symlink;
+    let directory=Directory::new();
+    let link=directory.0.join("directory-link");symlink(&directory.0,&link).unwrap();
+    assert!(OpenOptions::new().read(true)
+        .custom_flags(NOFOLLOW|NONBLOCK|CLOEXEC|rustix::fs::OFlags::DIRECTORY.bits() as i32).open(link).is_err());
+    let file=directory.0.join("regular");fs::write(&file,b"owned").unwrap();
+    let link=directory.0.join("file-link");symlink(&file,&link).unwrap();
+    assert!(OpenOptions::new().read(true).custom_flags(NOFOLLOW|NONBLOCK|CLOEXEC).open(link).is_err());
+}
+
+#[test]
+fn linux_target_file_flags_keep_original_nonblock_and_cloexec() {
+    use std::os::fd::AsRawFd;
+    let directory=Directory::new();let file=directory.0.join("regular");fs::write(&file,b"owned").unwrap();
+    let held=OpenOptions::new().read(true).custom_flags(NOFOLLOW|NONBLOCK|CLOEXEC).open(file).unwrap();
+    let info=fs::read_to_string(format!("/proc/self/fdinfo/{}",held.as_raw_fd())).unwrap();
+    let flags=info.lines().find_map(|line|line.strip_prefix("flags:\t")).unwrap();
+    let flags=u64::from_str_radix(flags.trim(),8).unwrap();
+    assert_ne!(flags&rustix::fs::OFlags::CLOEXEC.bits() as u64,0);
+    assert_ne!(flags&rustix::fs::OFlags::NONBLOCK.bits() as u64,0);
+}
