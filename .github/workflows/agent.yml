@@ -246,7 +246,7 @@ jobs:
             --packet "$RUNNER_TEMP/cc-arm64-packet/agent-ram-canonical" --packet-sha256 "$packet_sha" \
             --runtime-pin "$CC_FIXTURES/runtime-pin.json" --runtime-pin-sha256 "$CC_REVIEWED_PIN_SHA256" \
             --primitives "$CC_FIXTURES/sqlite_fixture_flow.py" \
-            --lifecycle-sha256 fd6d7da7d5a5f41640f37c65b2ae48989be91d0515f6efe7434271805c9df5c6 \
+            --lifecycle-sha256 a58885d9074a7cd249e8cd4bbc8cc2b49a235ba7f1d8c59298ea6d3682d8daca \
             --primitives-sha256 1d9e95444dbfcde22af7d295844de5c80f43b5d237c248da36dc27083d762786 \
             --ansible-python "$RUNNER_TEMP/cc-arm64-ansible/bin/python" \
             --ansible-wheel-catalog "$CC_FIXTURES/ARM64_ANSIBLE_WHEELS.json" \
