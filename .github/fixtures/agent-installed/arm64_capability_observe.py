@@ -413,7 +413,12 @@ def observe_phase(provision, expected_dropins, owned_identity, owned_profile=Non
         need((executable.st_dev, executable.st_ino) == (systemd.stat().st_dev, systemd.stat().st_ino), 'diag_manager_executable')
         report['manager'] = manager_facts(int(manager['MainPID']), owned_profile)
         if owned_profile is not None:
-            need(report['manager']['apparmorProfile'] == 'ownedNamed', 'diag_named_profile_not_applied')
+            observation = report['manager']['apparmorObservation']
+            need(report['manager']['apparmorProfile'] == 'ownedNamed'
+                 or (observation['readStatus'] == 'read'
+                     and observation['category'] == 'ownStackedUnconfined'
+                     and observation['mode'] == 'unconfined' and observation['complain'] is False),
+                 'diag_named_profile_not_applied')
         report['kernel'] = kernel_facts()
         need(report['kernel'].get('restrictUnprivilegedUnconfined') == 1,
              'diag_transition_not_tightened')

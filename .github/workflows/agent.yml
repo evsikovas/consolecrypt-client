@@ -81,7 +81,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' '2fdf8311435134a28ba2e3304040ac6c6b06eed5daeeb3fec05da8dafdab558c  .github/fixtures/agent-installed/arm64_capability_observe.py' | sha256sum --check --strict
+          printf '%s\n' 'f92950a35852c1f0722af04e75a1f228f3760c2786f14a93612a31008b9151ca  .github/fixtures/agent-installed/arm64_capability_observe.py' | sha256sum --check --strict
           sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT \
             /usr/bin/python3.12 -I -B .github/fixtures/agent-installed/arm64_capability_observe.py \
             --execute-disposable-arm-apparmor-ab-with-tightening | tee "$RUNNER_TEMP/cc-arm64-capability-result.json"
