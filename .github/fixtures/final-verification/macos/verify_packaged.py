@@ -29,6 +29,68 @@ FRAMEWORK='Contents/Frameworks/cc_bridge.framework/Versions/A/cc_bridge'
 HERE=Path(__file__).resolve().parent
 
 
+FLUTTER_ENGINE='Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS'
+FLUTTER_ENGINE_SHA='9afb47e0fded849b1213ddc48f911b0520dca72467a368d1afd38caec3627e36'
+FLUTTER_ENGINE_BYTES=30035744
+_PACKAGED_HANDLES=[]
+_STAGE='preflight'
+_STAGES={'preflight','package_witness','framework_load_probe','packaged_flutter_load','native_framework_load','native_abi','original_g2','owned_gui'}
+
+
+def set_stage(stage):
+    global _STAGE
+    need(stage in _STAGES,'closed_verification_stage')
+    _STAGE=stage
+
+
+def closed_error_facts(error):
+    roles={'main','package_witness','preload_packaged_bridge','digest','read','need','command',
+        'bundle_identity','bundle_version','own_dmg_device','find_owned_dmg','graph','bound_sources','gui','set_stage'}
+    frames=[];trace=error.__traceback__;seen=0
+    while trace is not None and seen<32:
+        code=trace.tb_frame.f_code;seen+=1
+        if code.co_filename==__file__ and code.co_name in roles:
+            frames.append(dict(role=code.co_name,line=trace.tb_lineno))
+        trace=trace.tb_next
+    number=getattr(error,'errno',None)
+    return dict(stage=_STAGE if _STAGE in _STAGES else 'invalid_stage',
+        errno=number if type(number)is int and 0<=number<=4095 else None,
+        frames=frames[-12:],rawMessageOrPathsRetained=False)
+
+
+def preload_packaged_bridge(app,framework,output):
+    engine=app/FLUTTER_ENGINE
+    metadata=engine.lstat()
+    need(engine.resolve(strict=True)==engine and stat.S_ISREG(metadata.st_mode)
+         and metadata.st_nlink==1 and not metadata.st_mode&0o6000
+         and metadata.st_size==FLUTTER_ENGINE_BYTES,'owned_packaged_flutter_input')
+    need(digest(engine,64*1024**2)==FLUTTER_ENGINE_SHA,'owned_packaged_flutter_digest')
+    set_stage('framework_load_probe')
+    probe=dict(actualBeforePreloadProbe=True,loadedBeforePreload=False,
+        missingPackagedFlutterFamily=False,errno=None,rawMessageOrPathsRetained=False)
+    try:
+        before=ctypes.CDLL(str(framework))
+    except OSError as error:
+        message=str(error)
+        probe['missingPackagedFlutterFamily']='Library not loaded: @rpath/FlutterMacOS.framework/Versions/A/FlutterMacOS'in message
+        number=getattr(error,'errno',None)
+        probe['errno']=number if type(number)is int and 0<=number<=4095 else None
+        probe['failureFacts']=closed_error_facts(error)
+    else:
+        _PACKAGED_HANDLES.append(before);probe['loadedBeforePreload']=True
+    save(output/'framework-load-probe.json',probe)
+    need(probe['loadedBeforePreload']or probe['missingPackagedFlutterFamily'],'unclassified_bridge_load_probe')
+    set_stage('packaged_flutter_load')
+    engine_handle=ctypes.CDLL(str(engine),mode=ctypes.RTLD_GLOBAL)
+    _PACKAGED_HANDLES.append(engine_handle)
+    need(digest(engine,64*1024**2)==FLUTTER_ENGINE_SHA,'packaged_flutter_changed_after_load')
+    save(output/'packaged-flutter-host.json',dict(bytes=FLUTTER_ENGINE_BYTES,sha256=FLUTTER_ENGINE_SHA,
+        exactOwnedSignedPackagedInput=True,handleRetained=True,loaderSettingsChanged=False))
+    set_stage('native_framework_load')
+    library=ctypes.CDLL(str(framework));_PACKAGED_HANDLES.append(library)
+    return library
+
+
 def need(value,code):
     if not value:raise ValueError(code)
 
@@ -167,7 +229,8 @@ def package_witness(root,output):
         mount.rmdir()
     need(unmounted,'actual_dmg_mount_and_join')
     need(digest(framework,512*1024**2)==framework_sha and digest(archive)==zip_sha and digest(dmg)==dmg_sha,'artifacts_changed_after_inspection')
-    library=ctypes.CDLL(str(framework))
+    library=preload_packaged_bridge(app,framework,output)
+    set_stage('native_abi')
     getter=library.frb_get_rust_content_hash;getter.argtypes=[];getter.restype=ctypes.c_int32
     need(getter()==ABI,'actual_framework_abi')
     witness=dict(version=VERSION,abi=ABI,frameworkSha256=framework_sha,
@@ -370,14 +433,18 @@ def main():
         need('rustContentHash => 1141874734;'in generated,'current_generated_abi')
         need(digest(HERE/'run_current_graph.py',65536)==OWNER_SHA
              and digest(HERE/'current_graph_test.dart',65536)==TEST_SHA,'reviewed_g2_sources_before_framework_load')
+        set_stage('package_witness')
         app,framework,witness=package_witness(root,output);report['packaged']=witness
+        set_stage('original_g2')
         g2=graph(root,framework,witness,output);report['g2Passed']=g2['passed']
+        set_stage('owned_gui')
         actual_gui=gui(app,witness,output);report['guiObserved']=actual_gui['passed']
         report['emptyOnboardingVisualReviewRequired']=True
         report['passed']=(g2['passed']and actual_gui['passed']and actual_gui['actualOwnedPidJoined']
             and actual_gui.get('ownedFreshDirectoriesRemoved')is True)
     except BaseException as error:
         report.update(errorKind=type(error).__name__,errorCode=str(error)[:160]if isinstance(error,ValueError)else'final_mac_verification_failed')
+        report['errorFacts']=closed_error_facts(error)
     finally:save(output/'RESULT.json',report)
     return 0 if report['passed']else 1
 

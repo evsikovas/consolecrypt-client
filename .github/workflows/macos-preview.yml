@@ -45,7 +45,7 @@ jobs:
           assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()==os.environ['GITHUB_SHA']
           version=(root/'client/flutter/pubspec.yaml').read_text()
           assert re.search(r'^version:\s*1\.2\.0\+67026\s*$',version,re.M), 'Frozen source floor must remain67026 before the one final build'
-          pins={'run_current_graph.py': 'ac754d623f2e52f240ad85144e40c8d6bf3a784b90a003a557b8099e9546dd55', 'current_graph_test.dart': 'e1ea84cffae9cae7b09dbf5320853b760cec8d7a2eed701f9384d31e7ae640e4', 'verify_packaged.py': 'd47b8e078ad05206670bfffadb18ce332877b4e269d4c030796a90c87fd0ccba'}
+          pins={'run_current_graph.py': 'ac754d623f2e52f240ad85144e40c8d6bf3a784b90a003a557b8099e9546dd55', 'current_graph_test.dart': 'e1ea84cffae9cae7b09dbf5320853b760cec8d7a2eed701f9384d31e7ae640e4', 'verify_packaged.py': '6366bc1d84b6da3a0b5e2656dc0a1752df755bb12dd4753e5fe143cf9fe22775'}
           for name,wanted in pins.items():
               path=root/'.github/fixtures/final-verification/macos'/name
               assert path.resolve(strict=True)==path and path.stat().st_nlink==1
@@ -73,7 +73,7 @@ jobs:
           assert os.environ['GITHUB_REF']=='refs/heads/ci/platform-final-r17'
           git=lambda *args:subprocess.check_output(['git',*args],cwd=root,text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA']
-          assert git('rev-parse','HEAD^')=='74fb8b58fbb1f18f1c24719bd26103708a00e324'
+          assert git('rev-parse','HEAD^')=='80381d065fe03f803615a26789dca56e2321b07a'
           assert set(git('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines())=={
               '.github/workflows/macos-preview.yml','.github/fixtures/final-verification/macos/verify_packaged.py'}
           api='https://api.github.com/repos/evsikovas/consolecrypt-client'
@@ -177,7 +177,7 @@ jobs:
             --execute-final-macos-verification --root "$GITHUB_WORKSPACE" \
             --output "$RUNNER_TEMP/cc-final-macos-verification"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: ${{ always() }}
+        if: ${{ always() && !inputs.verify_existing_final_artifact }}
         with:
           name: macos-preview
           if-no-files-found: error
@@ -188,6 +188,24 @@ jobs:
             dist/macos/SHA256SUMS-macos-preview.txt
             dist/macos/ConsoleCrypt-macos.zip
             dist/macos/ConsoleCrypt.version
+            ${{ runner.temp }}/cc-final-artifact-reuse/REUSE.json
+            ${{ runner.temp }}/cc-final-macos-verification/*.json
+            ${{ runner.temp }}/cc-final-macos-verification/*.log
+            ${{ runner.temp }}/cc-final-macos-verification/*.stdout
+            ${{ runner.temp }}/cc-final-macos-verification/*.stderr
+            ${{ runner.temp }}/cc-final-macos-verification/*.png
+            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*.log
+            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*.exit
+            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*-receipt.json
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() && inputs.verify_existing_final_artifact }}
+        with:
+          name: macos-final-verification
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          path: |
             ${{ runner.temp }}/cc-final-artifact-reuse/REUSE.json
             ${{ runner.temp }}/cc-final-macos-verification/*.json
             ${{ runner.temp }}/cc-final-macos-verification/*.log
