@@ -1,15 +1,10 @@
-"""Disposable ARM pre-exec A/B experiment; never an installed Agent acceptance.
-
-Reuses the pinned production profile/command custody and the reviewed finite
-journal observer. Only a fresh named AppArmor profile on our own user@10002
-manager may change between A and B. No existing profile, other sysctl, capability
-setting, executable attachment, or production sandbox argument is changed.
-Only in this explicit disposable experiment, the unconfined-profile-transition
-restriction may be tightened from zero to one BEFORE both A and B. Its held
-root/procfs inode and exact bytes are checked before restoring an owned change,
-after our profile is absent and our manager is stopped. No production repair.
-The sole executable substitution is /usr/bin/true after the original sandbox
-arguments. Exit zero here is NOT a successful production namespace probe.
+"""Disposable ARM A/B diagnostic with an owned vendor-ELF exec attachment.
+A uses the original vendor manager; B uses its byte-identical private copy.
+Only a fresh own-UID manager ExecStart and exact owned-path profile change.
+No root prefix, new capability, vendor profile, or production sandbox change.
+The original guarded temporary sysctl tightening/restoration is retained.
+The original sandbox prerequisite executes /usr/bin/true, not the Agent;
+neither diagnostic success nor exit zero constitutes installed acceptance.
 """
 import ast
 import contextlib
@@ -25,6 +20,7 @@ import pwd
 import re
 import select
 import stat
+import struct
 import sys
 import threading
 import time
@@ -291,10 +287,191 @@ def ab_candidate(baseline):
             and manager.get('apparmorProfile') == 'unconfined')
 
 
+# Integrated into the disposable fixture by prepare_elf_attachment.py.
+VENDOR_SYSTEMD = '/usr/lib/systemd/systemd'
+ELF_CAP = 32 * 1024 * 1024
+ELF_SEARCH_PATHS = ('/usr/lib/aarch64-linux-gnu/systemd', '/usr/lib/aarch64-linux-gnu',
+                    '/usr/lib/systemd', '/lib/aarch64-linux-gnu', '/lib/systemd')
+
+
+def entrypoint_path(name):
+    need(re.fullmatch(r'cc-agent-arm64-ab-[0-9a-f]{32}', name) is not None, 'diag_profile_name')
+    return pathlib.Path('/etc/consolecrypt-agent') / (name + '.systemd')
+
+
+def vendor_elf_facts(raw):
+    """Bounded ELF64/AArch64 dynamic metadata, without executing the image."""
+    need(type(raw) is bytes and 64 <= len(raw) <= ELF_CAP, 'diag_elf_size')
+    need(raw[:7] == b'\x7fELF\x02\x01\x01', 'diag_elf_format')
+    header = struct.unpack_from('<HHIQQQIHHHHHH', raw, 16)
+    kind, machine, version, _, phoff, _, _, ehsize, phsize, phnum, _, _, _ = header
+    need(kind in (2, 3) and machine == 183 and version == 1 and ehsize == 64
+         and phsize == 56 and 1 <= phnum <= 128 and phoff >= 64
+         and phoff + phsize * phnum <= len(raw), 'diag_elf_header')
+    segments = []
+    for index in range(phnum):
+        tag, _, offset, address, _, size, memory, _ = struct.unpack_from('<IIQQQQQQ', raw, phoff + index * phsize)
+        need(offset <= len(raw) and size <= len(raw) - offset and memory >= size, 'diag_elf_segment')
+        segments.append((tag, offset, address, size))
+    interpreters = [p for p in segments if p[0] == 3]
+    dynamics = [p for p in segments if p[0] == 2]
+    need(len(interpreters) == len(dynamics) == 1, 'diag_elf_dynamic_shape')
+    _, offset, _, size = interpreters[0]
+    need(raw[offset:offset + size] == b'/lib/ld-linux-aarch64.so.1\0', 'diag_elf_interpreter')
+    _, offset, _, size = dynamics[0]
+    need(16 <= size <= 65536 and size % 16 == 0, 'diag_elf_dynamic_size')
+    tags = {}
+    ended = False
+    for start in range(offset, offset + size, 16):
+        tag, value = struct.unpack_from('<qQ', raw, start)
+        if tag == 0:
+            ended = True
+            break
+        tags.setdefault(tag, []).append(value)
+    need(ended and len(tags.get(5, [])) == len(tags.get(10, [])) == 1, 'diag_elf_dynamic_strings')
+    address, size = tags[5][0], tags[10][0]
+    need(1 <= size <= 262144, 'diag_elf_strings_size')
+    matches = [off + address - addr for tag, off, addr, count in segments
+               if tag == 1 and addr <= address and address - addr <= count
+               and size <= count - (address - addr)]
+    need(len(matches) == 1, 'diag_elf_strings_mapping')
+    strings = raw[matches[0]:matches[0] + size]
+    def string(index):
+        need(0 <= index < len(strings), 'diag_elf_string_offset')
+        end = strings.find(b'\0', index, min(len(strings), index + 1025))
+        need(end >= index, 'diag_elf_string_bound')
+        try:
+            return strings[index:end].decode('ascii', 'strict')
+        except UnicodeDecodeError:
+            raise ValueError('diag_elf_string_ascii') from None
+    needed = [string(index) for index in tags.get(1, [])]
+    need(1 <= len(needed) <= 64 and len(set(needed)) == len(needed)
+         and all(re.fullmatch(r'[A-Za-z0-9_+.\-]{1,128}', name) is not None for name in needed),
+         'diag_elf_needed')
+    # Location-sensitive origin expansion, alternate loaders/auditors, and
+    # dependency paths are unsupported. No environment/library-path workaround.
+    need(not any(tag in tags for tag in (0x6ffffefa, 0x6ffffefb, 0x6ffffefc, 0x7ffffffd, 0x7fffffff)),
+         'diag_elf_alternate_loader')
+    need(len(tags.get(30, [])) <= 1 and len(tags.get(0x6ffffffb, [])) <= 1
+         and not (tags.get(30, [0])[0] & 1) and not (tags.get(0x6ffffffb, [0])[0] & 128),
+         'diag_elf_origin_flag')
+    need(len(tags.get(15, [])) <= 1 and len(tags.get(29, [])) <= 1
+         and not (15 in tags and 29 in tags), 'diag_elf_search_shape')
+    paths = []
+    for tag in (15, 29):
+        for index in tags.get(tag, []):
+            paths = string(index).split(':')
+            need(1 <= len(paths) <= 8 and len(set(paths)) == len(paths)
+                 and all(path in ELF_SEARCH_PATHS for path in paths), 'diag_elf_search_path')
+    return dict(format='ELF64LE-AArch64', interpreter='/lib/ld-linux-aarch64.so.1',
+                needed=needed, searchTag='RUNPATH' if 29 in tags else 'RPATH' if 15 in tags else 'none',
+                searchPaths=paths, dynamicOriginTokens=False, bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest())
+
+
+def manager_launch(path):
+    row = module.show('user@10002.service', ['ExecStart', 'User', 'Group', 'NoNewPrivileges',
+                                          'CapabilityBoundingSet', 'AmbientCapabilities'])
+    prefix = '{ path=' + str(path) + ' ; argv[]=' + str(path) + ' --user ; ignore_errors=no ; '
+    value = row.pop('ExecStart')
+    need(len(value) <= 4096 and value.startswith(prefix) and value.endswith(' }')
+         and value.count('{') == value.count('}') == 1, 'diag_manager_execstart')
+    need(row['User'] == str(UID) and row['Group'] in ('', str(UID))
+         and row['NoNewPrivileges'] in ('yes', 'no'), 'diag_manager_launch_policy')
+    return row
+
+
+def verify_entrypoint(state):
+    path = state['path']
+    need(path == entrypoint_path(state['name']) and state['ready'], 'diag_entrypoint_state')
+    vendor = pathlib.Path(VENDOR_SYSTEMD)
+    need(module.ident(vendor.lstat()) == state['vendorIdentity'], 'diag_vendor_changed')
+    need(module.root_file(vendor, ELF_CAP, 0o755) == state['raw'], 'diag_vendor_bytes_changed')
+    need(module.ident(path.lstat()) == state['identity'] and path.lstat().st_gid == UID,
+         'diag_entrypoint_identity')
+    need(module.root_file(path, ELF_CAP, 0o750) == state['raw'], 'diag_entrypoint_bytes')
+    need(module.ident(path.lstat()) == state['identity']
+         and module.ident(vendor.lstat()) == state['vendorIdentity'], 'diag_entrypoint_changed')
+
+
+def vendor_snapshot():
+    vendor = pathlib.Path(VENDOR_SYSTEMD)
+    before = vendor.lstat()
+    raw = module.root_file(vendor, ELF_CAP, 0o755)
+    need(before.st_gid == 0 and module.ident(before) == module.ident(vendor.lstat()), 'diag_vendor_changed')
+    facts = vendor_elf_facts(raw)
+    loader = pathlib.Path(facts['interpreter']).resolve(strict=True)
+    need(str(loader) == '/usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1', 'diag_elf_loader_path')
+    module.root_file(loader, ELF_CAP, 0o755)
+    for directory in facts['searchPaths']:
+        resolved = pathlib.Path(directory).resolve(strict=True)
+        need(str(resolved) in ELF_SEARCH_PATHS and resolved.is_dir(), 'diag_elf_library_directory')
+        module.parents(resolved / 'cc-uncreated-library-guard')
+    return raw, module.ident(before), facts
+
+
+def publish_entrypoint(state, report):
+    path = state['path']
+    need(path == entrypoint_path(state['name']) and not state['created'], 'diag_entrypoint_state')
+    module.parents(path)
+    need(not path.exists() and not path.is_symlink(), 'diag_entrypoint_collision')
+    raw, vendor_identity, facts = vendor_snapshot()
+    state.update(raw=raw, vendorIdentity=vendor_identity, facts=facts)
+    report['temporaryEntrypointAbsent'] = False
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    try:
+        created = os.fstat(fd)
+        state.update(created=True, device=created.st_dev, inode=created.st_ino)
+        view = memoryview(raw)
+        while view:
+            count = os.write(fd, view)
+            need(count > 0, 'diag_entrypoint_write')
+            state['written'] += count
+            view = view[count:]
+        os.fchown(fd, 0, UID)
+        os.fchmod(fd, 0o750)
+        os.fsync(fd)
+        state['identity'] = module.ident(os.fstat(fd))
+    finally:
+        os.close(fd)  # A writable descriptor must not survive into exec.
+    state['ready'] = True
+    verify_entrypoint(state)
+    report['managerEntrypoint'] = dict(facts, byteIdenticalToVendor=True, rootOwned=True,
+                                     gid=UID, mode='0750', exclusiveCreation=True)
+
+
+def retire_entrypoint(state, manager_stopped, profile_absent, report):
+    need(manager_stopped and profile_absent, 'diag_entrypoint_retire_live')
+    path = state['path']
+    need(path == entrypoint_path(state['name']), 'diag_entrypoint_state')
+    if state['created'] and not state['retired']:
+        info = path.lstat()
+        need((info.st_dev, info.st_ino) == (state['device'], state['inode'])
+             and stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1
+             and info.st_gid in (0, UID) and stat.S_IMODE(info.st_mode) in (0o600, 0o750),
+             'diag_entrypoint_cleanup_identity')
+        need(module.root_file(path, ELF_CAP) == state['raw'][:state['written']], 'diag_entrypoint_cleanup_bytes')
+        if state['ready']:
+            need(module.ident(info) == state['identity'], 'diag_entrypoint_cleanup_changed')
+        path.unlink()
+        state['retired'] = True
+    need(not path.exists() and not path.is_symlink(), 'diag_entrypoint_cleanup_absent')
+    report['temporaryEntrypointAbsent'] = True
+
+
+def verify_manager_entrypoint(pid, state):
+    verify_entrypoint(state)
+    executable = (pathlib.Path('/proc') / str(pid) / 'exe').stat()
+    need((executable.st_dev, executable.st_ino) == (state['device'], state['inode']), 'diag_manager_executable')
+    need(read(pathlib.Path('/proc') / str(pid) / 'cmdline', 4096)
+         == str(state['path']).encode('ascii') + b'\0--user\0', 'diag_manager_cmdline')
+    need(manager_launch(state['path']) == state['originalLaunch'], 'diag_manager_launch_changed')
+
+
 def profile_body(name):
     need(re.fullmatch(r'cc-agent-arm64-ab-[0-9a-f]{32}', name) is not None, 'diag_profile_name')
-    # Named only: no executable attachment and no capability/network rules.
-    return ('abi <abi/4.0>,\nprofile ' + name + ' flags=(unconfined) {\n  userns,\n}\n').encode('ascii')
+    attachment = entrypoint_path(name)
+    return ('abi <abi/4.0>,\nprofile ' + name + ' ' + str(attachment)
+            + ' flags=(unconfined) {\n  userns,\n}\n').encode('ascii')
 
 
 def profile_state(name):
@@ -371,6 +548,7 @@ def retire_temporary_profile(state, created_files, expected_dropins, original_ap
              and restored['AppArmorProfile'] == original_apparmor, 'diag_profile_restore_readback')
         need(hashlib.sha256(module.root_file(state['originalDropin'], 16384, 0o644)).hexdigest()
              == state['originalDropinSha256'], 'diag_original_profile_changed')
+        need(manager_launch(VENDOR_SYSTEMD) == state['entrypoint']['originalLaunch'], 'diag_launch_restore')
         report['originalUnitPolicyRestored'] = True
     finally:
         if state['addAttempted'] and profile_state(state['name']) is not None:
@@ -393,7 +571,7 @@ def stop_owned_manager():
         need(not read(path, 65536).strip(), 'diag_cleanup_cgroup')
 
 
-def observe_phase(provision, expected_dropins, owned_identity, owned_profile=None, baseline=None, phase_report=None):
+def observe_phase(provision, expected_dropins, owned_identity, owned_profile=None, baseline=None, phase_report=None, entrypoint=None):
     global namespace_observed, journal_state, probe_argv
     namespace_observed = {}
     journal_state = dict(stage='notStarted', expected=(), snapshot={}, raw=b'', persisted=False, queryCount=0)
@@ -407,18 +585,20 @@ def observe_phase(provision, expected_dropins, owned_identity, owned_profile=Non
          and set(manager['DropInPaths'].split()) == expected_dropins, 'diag_manager_dropin')
     with module.retained_manager(manager, UID):
         need(identity() == owned_identity, 'diag_identity_changed')
-        systemd = pathlib.Path('/usr/lib/systemd/systemd')
-        module.root_file(systemd, 32 * 1024 * 1024, 0o755)
-        executable = (pathlib.Path('/proc') / manager['MainPID'] / 'exe').stat()
-        need((executable.st_dev, executable.st_ino) == (systemd.stat().st_dev, systemd.stat().st_ino), 'diag_manager_executable')
+        if entrypoint is None:
+            systemd = pathlib.Path('/usr/lib/systemd/systemd')
+            module.root_file(systemd, 32 * 1024 * 1024, 0o755)
+            executable = (pathlib.Path('/proc') / manager['MainPID'] / 'exe').stat()
+            need((executable.st_dev, executable.st_ino) == (systemd.stat().st_dev, systemd.stat().st_ino), 'diag_manager_executable')
+        else:
+            verify_manager_entrypoint(int(manager['MainPID']), entrypoint)
         report['manager'] = manager_facts(int(manager['MainPID']), owned_profile)
         if owned_profile is not None:
             observation = report['manager']['apparmorObservation']
             need(report['manager']['apparmorProfile'] == 'ownedNamed'
-                 or (observation['readStatus'] == 'read'
-                     and observation['category'] == 'ownStackedUnconfined'
-                     and observation['mode'] == 'unconfined' and observation['complain'] is False),
-                 'diag_named_profile_not_applied')
+                 and observation['readStatus'] == 'read' and observation['category'] == 'ownNamed'
+                 and observation['mode'] == 'unconfined' and observation['complain'] is False,
+                 'diag_standalone_profile_not_applied')
         report['kernel'] = kernel_facts()
         need(report['kernel'].get('restrictUnprivilegedUnconfined') == 1,
              'diag_transition_not_tightened')
@@ -457,6 +637,9 @@ def observe_phase(provision, expected_dropins, owned_identity, owned_profile=Non
         need(journal_state['queryCount'] == 1 and journal_state['stage'] == 'complete', 'diag_single_journal')
         report['preexecExit'] = namespace_observed['exit']
         report['journalQueryCount'] = 1
+        if entrypoint is not None:
+            verify_manager_entrypoint(int(manager['MainPID']), entrypoint)
+            report['ownedVendorCopyVerifiedBeforeAndAfter'] = True
     report['managerInvocationId'] = manager['InvocationID']
     report['observationCompleted'] = True
     return report
@@ -464,7 +647,7 @@ def observe_phase(provision, expected_dropins, owned_identity, owned_profile=Non
 
 def main():
     global module, original_command, namespace_observed, journal_state, probe_argv, journal_after_cursor
-    need(sys.argv[1:] == ['--execute-disposable-arm-apparmor-ab-with-tightening'], 'diag_explicit_mode')
+    need(sys.argv[1:] == ['--execute-disposable-arm-elf-attachment-ab-with-tightening'], 'diag_explicit_mode')
     need(os.getuid() == 0 and platform.machine() == 'aarch64'
          and os.environ.get('GITHUB_ACTIONS') == 'true'
          and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted', 'diag_disposable_arm_only')
@@ -484,10 +667,10 @@ def main():
     namespace_observed = {}
     journal_state = dict(stage='notStarted', expected=(), snapshot={}, raw=b'', persisted=False, queryCount=0)
     install_observer(guest)
-    report = dict(format='cc-arm64-preexec-apparmor-ab-observation/v1', installedAcceptance=False,
+    report = dict(format='cc-arm64-preexec-elf-attachment-ab-observation/v1', installedAcceptance=False,
                   productionNamespaceProbePassed=False, executable='/usr/bin/true', cleanupJoined=False,
                   observationCompleted=False, causalExperimentCompleted=False, causalEffectObserved=False,
-                  temporaryProfileLoaded=False, temporaryProfileAbsent=True,
+                  temporaryProfileLoaded=False, temporaryProfileAbsent=True, temporaryEntrypointAbsent=True,
                   originalUnitPolicyRestored=True, existingProfilesChanged=False, otherSysctlsChanged=False,
                   temporarySysctlChangeRecorded=False, temporarySysctlRestored=True)
     created_dirs, created_files = [], []
@@ -529,7 +712,8 @@ def main():
         existing = module.show('user@10002.service', ['FragmentPath', 'DropInPaths', 'AppArmorProfile'])
         need(existing['FragmentPath'] == '/usr/lib/systemd/system/user@.service'
              and len(existing['DropInPaths'].split()) == len(vendor_dropins)
-             and set(existing['DropInPaths'].split()) == vendor_dropins, 'diag_foreign_dropin')
+             and set(existing['DropInPaths'].split()) == vendor_dropins
+             and existing['AppArmorProfile'] == '', 'diag_foreign_dropin')
         module.root_file(pathlib.Path(existing['FragmentPath']), 16384, 0o644)
         for unit in ('user@10002.service', 'user-runtime-dir@10002.service'):
             row = module.show(unit, ['ActiveState', 'MainPID'])
@@ -571,21 +755,25 @@ def main():
             name = 'cc-agent-arm64-ab-' + uuid.uuid4().hex
             dropin = roots[3] / '70-consolecrypt-arm64-userns.conf'
             original_dropin = roots[3] / '60-consolecrypt-agent.conf'
-            temporary = dict(name=name, profileFile=roots[0] / (name + '.apparmor'), dropin=dropin,
+            entrypoint = dict(name=name, path=entrypoint_path(name), created=False, ready=False,
+                              retired=False, written=0, originalLaunch=manager_launch(VENDOR_SYSTEMD))
+            temporary = dict(name=name, entrypoint=entrypoint, profileFile=roots[0] / (name + '.apparmor'), dropin=dropin,
                              originalDropin=original_dropin,
                              originalDropinSha256=hashlib.sha256(assets[original_dropin]).hexdigest(),
                              addAttempted=False, loadedObserved=False)
+            stop_owned_manager()
+            publish_entrypoint(entrypoint, report)
             report['temporaryProfileAbsent'] = False
             load_temporary_profile(temporary, created_files)
             report['temporaryProfileLoaded'] = True
-            stop_owned_manager()
             report['originalUnitPolicyRestored'] = False
-            publish_registered(dropin, ('[Service]\nAppArmorProfile=' + name + '\n').encode('ascii'), created_files)
+            publish_registered(dropin, ('[Service]\nExecStart=\nExecStart='
+                               + str(entrypoint['path']) + ' --user\n').encode('ascii'), created_files)
             module.system('daemon-reload')
             module.system('start', 'user@10002.service')
             report['namedProfile'] = {}
             observe_phase(provision, expected_dropins | {str(dropin)}, owned_identity,
-                          owned_profile=name, baseline=report['baseline'], phase_report=report['namedProfile'])
+                          owned_profile=name, baseline=report['baseline'], phase_report=report['namedProfile'], entrypoint=entrypoint)
             need(report['namedProfile']['managerInvocationId'] != report['baseline']['managerInvocationId'], 'diag_manager_not_restarted')
             need(report['namedProfile']['completeArgvSha256'] == report['baseline']['completeArgvSha256'], 'diag_ab_argv_changed')
             report['causalExperimentCompleted'] = True
@@ -615,6 +803,8 @@ def main():
                 if temporary is not None:
                     retire_temporary_profile(temporary, created_files, expected_dropins,
                                              existing['AppArmorProfile'], stopped, report)
+                    retire_entrypoint(temporary['entrypoint'], stopped,
+                                      profile_state(temporary['name']) is None, report)
                 for path, dev, ino, digest in reversed(created_files):
                     info = path.lstat()
                     need((info.st_dev, info.st_ino) == (dev, ino)
@@ -665,6 +855,15 @@ def main():
             report['cleanupJoined'] = False
             code = error.args[0] if len(error.args) == 1 and type(error.args[0]) is str else ''
             report['cleanupErrorCode'] = code if re.fullmatch(r'(?:diag|collector)_[a-z_]{1,80}', code) else 'unclassified'
+        # Independent copy retirement also runs if unit/profile restoration failed.
+        if temporary is not None and not report['temporaryEntrypointAbsent']:
+            try:
+                retire_entrypoint(temporary['entrypoint'], manager_stopped,
+                                  profile_state(temporary['name']) is None, report)
+            except BaseException as error:
+                report['cleanupJoined'] = False
+                code = error.args[0] if len(error.args) == 1 and type(error.args[0]) is str else ''
+                report['entrypointCleanupErrorCode'] = code if re.fullmatch(r'diag_[a-z_]{1,80}', code) else 'unclassified'
         # Independent finalizer: an unrelated file/account cleanup failure never
         # skips restoration of a provably owned knob, nor permits a live profile.
         if transition is not None:
