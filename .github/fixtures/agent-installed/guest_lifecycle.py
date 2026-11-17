@@ -800,18 +800,26 @@ class _MetricSamplesNotReady(Exception):
     """Only the lazy sample CounterVec is absent; no zero is invented."""
 
 
-def parse_metric_values(raw):
+def parse_metric_values(raw,diagnostic=None):
     import math
     wanted={'prometheus_agent_samples_appended_total','prometheus_agent_hard_charged_bytes',
         'prometheus_agent_hard_loss_unknown','prometheus_agent_hard_unavailable',
         'prometheus_agent_hard_byte_evicted_segments_total','prometheus_agent_hard_age_evicted_segments_total',
         'prometheus_agent_hard_oldest_segment_residence_seconds'}
     sample='prometheus_agent_samples_appended_total';values={};sample_types=set();total=0.0
+    disk_rejections={}
     for line in raw.decode('ascii').splitlines():
         if line.startswith('#'):continue
         fields=line.split()
         if not fields:continue
         name=fields[0].split('{',1)[0]
+        if name=='prometheus_agent_hard_system_disk_guard_rejections_total':
+            match=re.fullmatch(r'prometheus_agent_hard_system_disk_guard_rejections_total\{cause="(low_available|observation_invalid)"\}',fields[0])
+            if match is not None and len(fields)==2:
+                try:number=float(fields[1])
+                except ValueError:pass
+                else:
+                    if math.isfinite(number)and number>=0:disk_rejections[match[1]]=number
         if name in wanted:
             assert len(fields)==2
             number=float(fields[1]);assert math.isfinite(number)and number>=0
@@ -823,6 +831,11 @@ def parse_metric_values(raw):
             else:
                 assert fields[0]==name and name not in values
                 values[name]=number
+    if diagnostic is not None:
+        diagnostic.update(version=1,values=dict(values),sampleCounterObserved=bool(sample_types),
+            missingMetricNames=sorted(wanted-set(values)-({sample}if sample_types else set())),
+            systemDiskGuardCounterObserved=bool(disk_rejections),systemDiskGuardRejections=disk_rejections)
+        if sample_types:diagnostic['values'][sample]=total
     assert set(values)==wanted-{sample}
     assert values['prometheus_agent_hard_loss_unknown']in(0,1)and values['prometheus_agent_hard_unavailable']in(0,1)
     assert values['prometheus_agent_hard_charged_bytes']<=536870912
@@ -832,13 +845,13 @@ def parse_metric_values(raw):
     return values
 
 
-def metric_values(port):
+def metric_values(port,diagnostic=None):
     c=http.client.HTTPConnection('127.0.0.1',port,timeout=3)
     try:
         c.request('GET','/metrics');response=c.getresponse();raw=response.read(2*1024*1024+1)
         assert response.status==200 and len(raw)<=2*1024*1024
     finally:c.close()
-    return parse_metric_values(raw)
+    return parse_metric_values(raw,diagnostic)
 
 
 def node_record(path):
@@ -1005,6 +1018,40 @@ def _collector_failure_facts(end):
     return facts
 
 
+def metric_readiness_failure(observed,state,before,last_values,last_sample,last_status,counts,runtime,end,last_projection,last_strict):
+    # Snapshot ONLY already observed public numeric metrics/counters, before any
+    # fixture teardown. Reuse the maintained bounded readonly worker/unit facts.
+    import math
+    names={'prometheus_agent_samples_appended_total','prometheus_agent_hard_charged_bytes',
+        'prometheus_agent_hard_loss_unknown','prometheus_agent_hard_unavailable',
+        'prometheus_agent_hard_byte_evicted_segments_total','prometheus_agent_hard_age_evicted_segments_total',
+        'prometheus_agent_hard_oldest_segment_residence_seconds'}
+    safe={}
+    for name,value in(last_values or{}).items():
+        if name in names and type(value)in(int,float)and math.isfinite(value)and value>=0:safe[name]=value
+    condition=lambda name,predicate:None if name not in safe else predicate(safe[name])
+    facts={'version':1,'readOnly':True,'preCleanup':True,'stage':'metricReadiness',
+        'sampleCounterObserved':last_sample,'missingMetricNames':sorted(names-set(safe)),
+        'lastReadStatus':last_status,'lastObservedMetrics':safe,'lastStrictMetrics':last_strict,
+        'lastParseProjection':last_projection,'beforeSelected':before is not None,
+        'fixtureRequests':{name:state[name]for name in('scrapes','failedRequests','acceptedRequests')},
+        'readCounts':dict(counts),'processAliveObserved':observed.alive(),'processReturnCode':None,
+        'returnCodeQualification':'Non-child observer never reaps or invents an exit status.',
+        'conditions':{'receiver503Observed':state['failedRequests']>0,
+            'appendedAtLeast192':condition('prometheus_agent_samples_appended_total',lambda value:value>=192),
+            'chargedBytesPositive':condition('prometheus_agent_hard_charged_bytes',lambda value:value>0),
+            'hardUnavailableZero':condition('prometheus_agent_hard_unavailable',lambda value:value==0)}}
+    # This is the already mapped-ELF-verified signed public binding, not a new CLI.
+    binding={}
+    for name,allowed in(('kind',{'prometheusHardmode'}),('upstreamTag',{'3.16.0'}),
+                         ('platform',{'linux-x86_64','linux-aarch64'})):
+        if runtime.get(name)in allowed:binding[name]=runtime[name]
+    facts['runtimeBinding']=binding
+    try:facts['workerFacts']=_collector_failure_facts(end)
+    except Exception:facts['workerFacts']={'readOnly':True,'captureAvailable':False}
+    return facts
+
+
 def disk_service():
     from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
     import threading
@@ -1017,7 +1064,7 @@ def disk_service():
             assert self.path=='/metrics'and self.server.server_port==18992
             state['scrapes']+=1
             body=''.join('cc_owned_wal_probe{slot="%d"} %d\n'%(i,int.from_bytes(hashlib.sha256(('%d/%d'%(i,state['scrapes'])).encode()).digest()[:6],'big'))for i in range(192)).encode()
-            self.send_response(200);self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+            self.send_response(200);self.send_header('Content-Type','text/plain; version=0.0.4');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
         def do_POST(self):
             assert self.path=='/api/v1/write'and self.server.server_port==18993
             self.connection.settimeout(3);count=int(self.headers['Content-Length']);assert 0<count<=1048576
@@ -1080,15 +1127,31 @@ def disk_service():
         argv=(proc/'cmdline').read_bytes().split(b'\0');assert b'--storage.agent.hard-budget'in argv
         assert b'--storage.agent.path=/var/lib/consolecrypt-agent/metrics-disk/'+json.loads((CONFIG/'collector-disk.json').read_bytes())['collectorId'].encode()+b'/wal'in argv
         before=None;end=time.monotonic()+25
+        last_values=None;last_sample=None;last_status='notObserved';last_projection=None;last_strict=None
+        read_counts={'transportErrors':0,'sampleVectorNotReady':0,'completeMetrics':0}
         while time.monotonic()<end:
             assert observed.alive()
-            try:values=metric_values(handoff['statusPort'])
-            except(ConnectionError,OSError,_MetricSamplesNotReady):time.sleep(.1);continue
+            current_projection={}
+            try:values=metric_values(handoff['statusPort'],current_projection)
+            except(ConnectionError,OSError):
+                last_status='transportUnavailable';read_counts['transportErrors']+=1;time.sleep(.1);continue
+            except _MetricSamplesNotReady:
+                last_projection=current_projection;last_values=current_projection.get('values')
+                last_sample=False;last_status='sampleVectorNotReady'
+                read_counts['sampleVectorNotReady']+=1;time.sleep(.1);continue
+            last_values=values;last_strict=dict(values);last_projection=current_projection
+            last_sample=True;last_status='completeMetrics';read_counts['completeMetrics']+=1
             if state['failedRequests']>0 and values['prometheus_agent_samples_appended_total']>=192 and values['prometheus_agent_hard_charged_bytes']>0:
                 before=values;break
             time.sleep(.1)
+        if before is None or before['prometheus_agent_hard_unavailable']!=0:
+            try:
+                facts=metric_readiness_failure(observed,state,before,last_values,last_sample,last_status,
+                    read_counts,handoff['runtime'],min(failure_capture_end,time.monotonic()+3),last_projection,last_strict)
+                print('CC_AGENT_COLLECTOR_METRIC_READINESS_FAILURE '+json.dumps(facts,sort_keys=True,separators=(',',':'),allow_nan=False),flush=True)
+            except Exception:pass # Keep the ORIGINAL assertion and work traceback.
         assert before is not None and before['prometheus_agent_hard_unavailable']==0
-        catalog=json.loads((CONFIG/'collector-disk.json').read_bytes());wal=HOME/'metrics-disk'/catalog['collectorId']/'wal'
+        catalog=json.loads((CONFIG/'collector-disk.json').read_bytes());wal=HOME/'metrics-disk'/catalog['collectorId']/'wal'/'wal'
         assert catalog['manifest']['buffer']=={'max_bytes':536870912,'max_age_seconds':7200}
         payload=[p for p in wal.iterdir()if re.fullmatch('[0-9]{8}',p.name)]
         wal_bytes=sum(p.stat().st_size for p in payload);assert payload and wal_bytes>0

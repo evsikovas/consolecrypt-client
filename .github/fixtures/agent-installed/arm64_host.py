@@ -346,8 +346,7 @@ def arm_gate_plan(gate,source):
     need(digest(read(path,131072)) == ARM_HELPER_SHA, 'reviewed product ARM helper required')
     spec = importlib.util.spec_from_file_location('arm_installed_product_helper',path)
     product = importlib.util.module_from_spec(spec);spec.loader.exec_module(product)
-    product.DISK = True
-    product.PROFILE = 'ubuntu24-systemd255-disk-v1'
+    product.select_profile({'format':'cc-agent-installed-disk-collector-profile/v1','uid':10002,'gid':10002})
     product.END = time.monotonic()+55
     # A readonly plan pins the actual vendor/parser/helper/unit inputs BEFORE
     # the original lifecycle invokes the unchanged root provisioning CLI.
@@ -490,6 +489,43 @@ def arm_gate_retire(gate,report,output):
         finally:
             if state['fd'] is not None:
                 os.close(state['fd']);state['fd'] = None
+
+
+def arm_cleanup_failure(error,gate):
+    # Fixed classes, codes and source roles only: never exception repr/path/data.
+    known={'bounded stopped ARM unit observation required','complete stopped ARM unit observation required',
+        'qualified collector terminal verifier missing','qualified failed collector proof required',
+        'ARM teardown manager or workload live','owned user runtime directory still live',
+        'ARM teardown processes remain','owned ARM teardown descriptor required',
+        'owned ARM teardown file changed','owned ARM teardown absence required',
+        'original manager policy not restored','owned ARM profile teardown mismatch',
+        'owned ARM profile still loaded','host AppArmor profile set changed',
+        'temporary ARM manager copy or profile remains','bounded actual manager policy required',
+        'complete manager policy required','exact actual manager entrypoint required',
+        'collector_provision_unavailable','collector_control_exit','collector_provision_deadline',
+        'collector_control_output','collector_child_custody'}
+    classes={'ValueError','FileNotFoundError','PermissionError','AssertionError','OSError',
+        'TimeoutExpired','ProcessLookupError','RuntimeError','KeyError'}
+    closed={arm_gate_retire.__code__:'arm_gate_retire',arm_gate_unlink.__code__:'arm_gate_unlink',
+        arm_gate_policy.__code__:'arm_gate_policy',arm_gate_profiles.__code__:'arm_gate_profiles',need.__code__:'need'}
+    for role,names in (('product',('need','root_file','parents','command','fields','arm_profile_state')),
+                       ('custody',('need','read','restore_transition_sysctl','profiles'))):
+        module=gate.get(role)
+        for name in names:
+            function=getattr(module,name,None)
+            if hasattr(function,'__code__'):closed[function.__code__]=role+'.'+name
+    def project(value):
+        code=value.args[0]if type(value)is ValueError and len(value.args)==1 and type(value.args[0])is str and value.args[0]in known else'unclassified'
+        frames=[];tb=value.__traceback__
+        for _ in range(32):
+            if tb is None:break
+            if tb.tb_frame.f_code in closed:frames.append({'role':closed[tb.tb_frame.f_code],'line':tb.tb_lineno})
+            tb=tb.tb_next
+        return {'class':type(value).__name__ if type(value).__name__ in classes else'unclassified',
+            'code':code,'frames':frames[-8:]}
+    result={'readOnly':True,'stage':'armRestoration','error':project(error)}
+    if error.__context__ is not None:result['priorContext']=project(error.__context__)
+    return result
 
 
 def execute(args):
@@ -730,6 +766,8 @@ def execute(args):
             arm_gate_retire(gate,report,output)
         except BaseException as cleanup:
             report.update(passed=False,cleanupJoined=False,armCleanupErrorClass=type(cleanup).__name__)
+            try:report['armCleanupFailure']=arm_cleanup_failure(cleanup,gate)
+            except Exception:pass # Preserve the work error and original restoration failure.
         finally:
             if gate['sysctl']['fd'] is not None:
                 os.close(gate['sysctl']['fd']);gate['sysctl']['fd'] = None
