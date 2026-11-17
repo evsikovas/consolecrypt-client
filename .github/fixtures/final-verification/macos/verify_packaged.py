@@ -300,6 +300,9 @@ def graph(root,framework,witness,output):
     return record
 
 
+PINNED_SESSION_KEYS={'kCGSessionOnConsoleKey':'kCGSSessionOnConsoleKey',
+    'kCGSessionLoginDoneKey':'kCGSessionLoginDoneKey','kCGSessionUserIDKey':'kCGSSessionUserIDKey'}
+
 def parse_session_keys(raw):
     need(type(raw)is bytes and 0<len(raw)<=65536,'bounded_session_sdk_header')
     text=raw.decode('utf-8','strict');result={}
@@ -309,24 +312,37 @@ def parse_session_keys(raw):
         need(len(matches)==1,'exact_session_sdk_cfstr_'+symbol)
         result[symbol]=matches[0]
     need(len(set(result.values()))==3,'distinct_session_sdk_keys')
+    need(result==PINNED_SESSION_KEYS,'pinned_session_sdk_cfstr_map')
     return result
 
 
-def session_keys():
-    result=subprocess.run(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],stdin=subprocess.DEVNULL,
-        capture_output=True,check=False,timeout=10)
-    need(result.returncode==0 and 0<len(result.stdout)<=4096 and len(result.stderr)<=4096,'trusted_session_sdk_query')
-    sdk=Path(result.stdout.decode('utf-8','strict').strip()).resolve(strict=True)
-    developer=Path('/Applications/Xcode.app/Contents/Developer').resolve(strict=True)
-    need(sdk.is_relative_to(developer),'trusted_session_sdk_root')
-    header=(sdk/'System/Library/Frameworks/CoreGraphics.framework/Headers/CGSession.h').resolve(strict=True)
-    need(header.is_relative_to(sdk),'owned_session_sdk_header_path')
-    for path in (header,*header.parents):
-        value=path.stat()
-        need(value.st_uid==0 and not value.st_mode&0o022,'trusted_session_sdk_header_custody')
-        if path==sdk:break
-    raw=read(header,65536)
-    return parse_session_keys(raw),hashlib.sha256(raw).hexdigest()
+def session_keys(output=None):
+    facts=dict(publicConstantDataOnly=True,compiledOrExecuted=False,rawPathsOrNumericUidRetained=False,
+        selectedSdkUnderDeveloper=False,headerUnderSdk=False,metadata=[],pinnedMapMatched=False)
+    try:
+        result=subprocess.run(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],stdin=subprocess.DEVNULL,
+            capture_output=True,check=False,timeout=10)
+        need(result.returncode==0 and 0<len(result.stdout)<=4096 and len(result.stderr)<=4096,'trusted_session_sdk_query')
+        sdk=Path(result.stdout.decode('utf-8','strict').strip()).resolve(strict=True)
+        developer=Path('/Applications/Xcode.app/Contents/Developer').resolve(strict=True)
+        facts['selectedSdkUnderDeveloper']=sdk.is_relative_to(developer)
+        need(facts['selectedSdkUnderDeveloper'],'trusted_session_sdk_root')
+        header=(sdk/'System/Library/Frameworks/CoreGraphics.framework/Headers/CGSession.h').resolve(strict=True)
+        facts['headerUnderSdk']=header.is_relative_to(sdk)
+        need(facts['headerUnderSdk'],'owned_session_sdk_header_path')
+        for number,path in enumerate((header,*header.parents)):
+            value=path.stat()
+            facts['metadata'].append(dict(role='file'if number==0 else 'ancestor'+str(number),
+                ownerRole='root'if value.st_uid==0 else 'current'if value.st_uid==os.getuid()else 'other',
+                mode07777=value.st_mode&0o7777,groupWrite=bool(value.st_mode&0o020),worldWrite=bool(value.st_mode&0o002)))
+            need(number<32,'bounded_session_sdk_ancestry')
+            if path==sdk:break
+        raw=read(header,65536)
+        keys=parse_session_keys(raw);header_sha=hashlib.sha256(raw).hexdigest()
+        facts.update(pinnedMapMatched=True,headerSha256=header_sha,keyNames=keys)
+        return keys,header_sha
+    finally:
+        if output is not None:save(output/'session-sdk-facts.json',facts)
 
 
 def session_flag_fact(session,key):
@@ -404,8 +420,9 @@ def gui(app,witness,output):
         keychainActionsByVerifier=False,localAiSmokeUsedAsGuiProof=False)
     child=None;fresh=None
     try:
-        api=MacWindows();keys,header_sha=session_keys();session=api.session()
+        api=MacWindows()
         capture=bool(api.cg.CGPreflightScreenCaptureAccess());report['screenCaptureAlreadyAuthorized']=capture
+        keys,header_sha=session_keys(output);session=api.session()
         on_console=session_flag_fact(session,keys['kCGSessionOnConsoleKey'])
         login_done=session_flag_fact(session,keys['kCGSessionLoginDoneKey'])
         uid_key=keys['kCGSessionUserIDKey'];uid=session.get(uid_key)
