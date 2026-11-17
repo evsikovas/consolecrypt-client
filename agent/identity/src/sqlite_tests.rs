@@ -685,7 +685,8 @@ fn fault_child() {
     let mut actor = Actor::new(store).unwrap();
     let cert = actor.snapshot().unwrap().certificate(id()).unwrap().clone();
     let (lease, proof, fresh, op) = request(&cert, 2, 2);
-    let _ = actor.admit(lease, proof, Some(&fresh), &op, now());
+    let result = actor.admit(lease, proof, Some(&fresh), &op, now());
+    if root.join("fault.release").exists() { result.unwrap(); return; }
     panic!("fault hook not reached");
 }
 #[test]
@@ -810,4 +811,404 @@ fn sqlite_native_page_limit_full_rolls_back_and_never_consumes_rejected_lease() 
         .unwrap();
     let mut actor = Actor::new(store).unwrap();
     assert!(actor.admit(lease, proof, Some(&fresh), &op, now()).is_ok());
+}
+
+#[test]
+fn sqlite_read_only_pending_window_finishes_only_after_original_writer_ack() {
+    for point in ["after-sql-commit", "after-anchor-ack"] {
+        let temp = Temp::new();
+        let (actor, cert) = enroll(temp.create());
+        drop(actor);
+        let mut child = OwnChild(Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "sqlite::tests::fault_child", "--nocapture"])
+            .env("CC_AGENT_SQLITE_UNIT_ROOT", &temp.0)
+            .env("CC_AGENT_SQLITE_UNIT_FAULT", point)
+            .stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap());
+        let started = Instant::now();
+        while !temp.0.join("fault.ready").exists() {
+            assert!(started.elapsed() < Duration::from_secs(10));
+            assert!(child.0.try_wait().unwrap().is_none());
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        // The original reader would return this real durable-barrier error.
+        for _ in 0..3 {
+            assert!(matches!(temp.open(), Err(Error::UncertainCommit)));
+            assert!(read_head(&temp.raw()).unwrap().pending);
+            assert!(child.0.try_wait().unwrap().is_none());
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        // Fresh read only: no clearing pending, anchor repair, CAS, or new grant.
+        let end = Instant::now() + Duration::from_secs(3);
+        let mut pending_reads = 0;
+        let store = crate::enrollment_control::metrics::wait_recipient_reference(end, || {
+            let value = temp.open();
+            if matches!(&value, Err(Error::UncertainCommit)) {
+                pending_reads += 1;
+                // Release only after the ACTUAL production helper retried a real
+                // pending read. Removing its UC branch fails before this point.
+                if pending_reads == 2 {
+                    fs::write(temp.0.join("fault.release"), b"cc-agent-sqlite-owned-release-v1").unwrap();
+                }
+            }
+            Ok(value)
+        }).unwrap();
+        assert!(pending_reads >= 2);
+        while child.0.try_wait().unwrap().is_none() {
+            assert!(Instant::now() < end);
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert!(child.0.wait().unwrap().success());
+        assert!(!read_head(&temp.raw()).unwrap().pending);
+        let mut actor = Actor::new(store).unwrap();
+        let (lease, proof, fresh, op) = request(&cert, 2, 2);
+        assert!(matches!(actor.admit(lease, proof, Some(&fresh), &op, now()), Err(Error::Replay)));
+    }
+}
+
+#[test]
+fn sqlite_read_only_pending_wait_is_bounded_and_does_not_repair_crash() {
+    let temp = Temp::new();
+    let (actor, _) = enroll(temp.create());
+    drop(actor);
+    let mut child = OwnChild(Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "sqlite::tests::fault_child", "--nocapture"])
+        .env("CC_AGENT_SQLITE_UNIT_ROOT", &temp.0)
+        .env("CC_AGENT_SQLITE_UNIT_FAULT", "after-sql-commit")
+        .stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap());
+    let started = Instant::now();
+    while !temp.0.join("fault.ready").exists() {
+        assert!(started.elapsed() < Duration::from_secs(10));
+        assert!(child.0.try_wait().unwrap().is_none());
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    child.0.kill().unwrap();child.0.wait().unwrap();
+    let head = read_head(&temp.raw()).unwrap();
+    let anchor = fs::read(temp.0.join("anchor").join(ANCHOR_NAME)).unwrap();
+    let end = Instant::now() + Duration::from_secs(3);
+    let mut attempts = 0;
+    let result = crate::enrollment_control::metrics::wait_recipient_reference(end, || {
+        attempts += 1;
+        Ok(temp.open())
+    });
+    assert!(matches!(result, Err(Error::UncertainCommit)));
+    assert!(attempts > 1);
+    let after = read_head(&temp.raw()).unwrap();
+    assert_eq!((after.revision, after.digest, after.pending), (head.revision, head.digest, true));
+    assert_eq!(fs::read(temp.0.join("anchor").join(ANCHOR_NAME)).unwrap(), anchor);
+    assert!(!temp.0.join("fault.release").exists());
+}
+
+#[test]
+fn sqlite_recipient_wait_never_retries_outer_guard_errors() {
+    let mut attempts = 0;
+    let result: Result<()> = crate::enrollment_control::metrics::wait_recipient_reference(
+        Instant::now() + Duration::from_secs(3), || {
+            attempts += 1;
+            Err(Error::Storage)
+        });
+    assert!(matches!(result, Err(Error::Storage)));
+    assert_eq!(attempts, 1);
+}
+
+
+// Real SQLite pending windows below exercise the production Actor read phase.
+// The wrapper only observes the ACTUAL provider result and releases the owned
+// original writer after two pending loads; it cannot manufacture a State.
+struct CollectorReadPhaseSqlite {
+    inner: SqliteJournalStore,
+    pending_reads: std::rc::Rc<std::cell::Cell<usize>>,
+    reads: std::rc::Rc<std::cell::Cell<usize>>,
+    writes: std::rc::Rc<std::cell::Cell<usize>>,
+    release: Option<PathBuf>,
+}
+impl CompareAndSwap for CollectorReadPhaseSqlite {
+    fn load(&self) -> Result<State> {
+        self.reads.set(self.reads.get() + 1);
+        let result = self.inner.load();
+        if matches!(&result, Err(Error::UncertainCommit)) {
+            let attempt = self.pending_reads.get() + 1;
+            self.pending_reads.set(attempt);
+            if attempt == 2 {
+                if let Some(path) = &self.release {
+                    assert!(!path.exists());
+                    fs::write(path, b"cc-agent-sqlite-owned-release-v1").unwrap();
+                }
+            }
+        }
+        result
+    }
+    fn compare_and_swap(&mut self, revision: u64, next: State) -> Result<()> {
+        self.writes.set(self.writes.get() + 1);
+        self.inner.compare_and_swap(revision, next)
+    }
+}
+fn collector_read_phase_actor(
+    store: SqliteJournalStore, release: Option<PathBuf>,
+) -> Actor<CollectorReadPhaseSqlite> {
+    let actor = Actor::new(CollectorReadPhaseSqlite {
+        inner: store, pending_reads: std::rc::Rc::new(std::cell::Cell::new(0)),
+        reads: std::rc::Rc::new(std::cell::Cell::new(0)), writes: std::rc::Rc::new(std::cell::Cell::new(0)), release,
+    }).unwrap();
+    actor
+}
+fn collector_read_phase_writer(temp: &Temp, point: &str) -> OwnChild {
+    let mut child = OwnChild(Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "sqlite::tests::fault_child", "--nocapture"])
+        .env("CC_AGENT_SQLITE_UNIT_ROOT", &temp.0)
+        .env("CC_AGENT_SQLITE_UNIT_FAULT", point)
+        .stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap());
+    let started = Instant::now();
+    while !temp.0.join("fault.ready").exists() {
+        assert!(started.elapsed() < Duration::from_secs(10));
+        assert!(child.0.try_wait().unwrap().is_none());
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(read_head(&temp.raw()).unwrap().pending);
+    child
+}
+fn collector_read_phase_sample(wall: u64, at: u64) -> Result<crate::policy::CollectorServiceClockObservation> {
+    crate::policy::CollectorServiceClockObservation::test_journal(
+        ResourceId::new("99999999-9999-4999-8999-999999999999").unwrap(), at, time(wall))
+}
+#[test]
+fn sqlite_collector_actor_read_phase_waits_for_actual_pending_writer_ack() {
+    for point in ["after-sql-commit", "after-anchor-ack"] {
+        let temp = Temp::new();
+        let (initial, cert) = enroll(temp.create());
+        let mut actor = collector_read_phase_actor(initial.into_store(), Some(temp.0.join("fault.release")));
+        let mut child = collector_read_phase_writer(&temp, point);
+        let end = Instant::now() + Duration::from_secs(3);
+        let mut samples = 0u64;
+        let (state, observed) = actor.read_collector_service_waiting(now(), end, &mut || {
+            samples += 1;
+            collector_read_phase_sample(1000, samples)
+        }).unwrap();
+        let stored = actor.into_store();
+        assert!(stored.pending_reads.get() >= 2);
+        assert!(stored.reads.get() >= 4);
+        assert_eq!(stored.writes.get(), 0);
+        assert!(samples >= 4);
+        assert_eq!(observed.now().0, time(1000));
+        assert_eq!(state.revision(), read_head(&temp.raw()).unwrap().revision);
+        while child.0.try_wait().unwrap().is_none() {
+            assert!(Instant::now() < end);
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert!(child.0.wait().unwrap().success());
+        assert!(!read_head(&temp.raw()).unwrap().pending);
+        let mut actor = Actor::new(stored).unwrap();
+        let (lease, proof, fresh, op) = request(&cert, 2, 2);
+        assert!(matches!(actor.admit(lease, proof, Some(&fresh), &op, now()), Err(Error::Replay)));
+    }
+}
+#[test]
+fn sqlite_collector_actor_read_phase_original_three_seconds_never_repairs_crash() {
+    let temp = Temp::new();
+    let (initial, _) = enroll(temp.create());
+    let mut actor = collector_read_phase_actor(initial.into_store(), None);
+    let mut child = collector_read_phase_writer(&temp, "after-sql-commit");
+    child.0.kill().unwrap(); child.0.wait().unwrap();
+    let before = read_head(&temp.raw()).unwrap();
+    let anchor = fs::read(temp.0.join("anchor").join(ANCHOR_NAME)).unwrap();
+    let started = Instant::now(); let end = started + Duration::from_secs(3);
+    let mut samples = 0;
+    let result = actor.read_collector_service_waiting(now(), end, &mut || {
+        samples += 1; collector_read_phase_sample(1000, samples)
+    });
+    assert!(matches!(result, Err(Error::UncertainCommit)));
+    assert!(Instant::now() >= end && started.elapsed() < Duration::from_secs(5));
+    let stored = actor.into_store();
+    assert!(stored.pending_reads.get() > 1);
+    assert_eq!(stored.writes.get(), 0);
+    let after = read_head(&temp.raw()).unwrap();
+    assert_eq!((after.revision, after.digest, after.pending), (before.revision, before.digest, true));
+    assert_eq!(fs::read(temp.0.join("anchor").join(ANCHOR_NAME)).unwrap(), anchor);
+    assert!(!temp.0.join("fault.release").exists());
+}
+#[test]
+fn sqlite_collector_actor_read_phase_clock_and_outer_guard_errors_stop_pending_wait() {
+    for rollback in [false, true] {
+        let temp = Temp::new();
+        let (initial, _) = enroll(temp.create());
+        let mut actor = collector_read_phase_actor(initial.into_store(), None);
+        let mut child = collector_read_phase_writer(&temp, "after-sql-commit");
+        child.0.kill().unwrap(); child.0.wait().unwrap();
+        let before = read_head(&temp.raw()).unwrap();
+        let anchor = fs::read(temp.0.join("anchor").join(ANCHOR_NAME)).unwrap();
+        let mut samples = 0;
+        let result = actor.read_collector_service_waiting(now(), Instant::now() + Duration::from_secs(3), &mut || {
+            samples += 1;
+            if !rollback { return Err(Error::Storage); }
+            collector_read_phase_sample(if samples == 1 { 1000 } else { 999 }, samples)
+        });
+        let stored = actor.into_store();
+        if rollback {
+            assert!(matches!(result, Err(Error::InvalidTime)));
+            assert_eq!(samples, 2); assert_eq!(stored.reads.get(), 2);
+        } else {
+            assert!(matches!(result, Err(Error::Storage)));
+            assert_eq!(samples, 1); assert_eq!(stored.reads.get(), 1);
+        }
+        assert_eq!(stored.writes.get(), 0);
+        let after = read_head(&temp.raw()).unwrap();
+        assert_eq!((after.revision, after.digest, after.pending), (before.revision, before.digest, true));
+        assert_eq!(fs::read(temp.0.join("anchor").join(ANCHOR_NAME)).unwrap(), anchor);
+        assert!(!temp.0.join("fault.release").exists());
+    }
+}
+
+
+// Actual completed-writer snapshot advance, not a fabricated Conflict result.
+struct SnapshotReadBarrier;
+impl Drop for SnapshotReadBarrier {
+    fn drop(&mut self) { READ_FINAL_HEAD_BARRIER.with(|slot| { slot.borrow_mut().take(); }); }
+}
+fn arm_snapshot_read_barrier(temp: &Temp) -> SnapshotReadBarrier {
+    READ_FINAL_HEAD_BARRIER.with(|slot| {
+        assert!(slot.borrow().is_none());
+        *slot.borrow_mut() = Some(temp.0.clone());
+    });
+    SnapshotReadBarrier
+}
+fn snapshot_advance_child(temp: &Temp) -> OwnChild {
+    OwnChild(Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "sqlite::tests::read_snapshot_advance_child", "--nocapture"])
+        .env("CC_AGENT_SQLITE_UNIT_ADVANCE_ROOT", &temp.0)
+        .env_remove("CC_AGENT_SQLITE_UNIT_FAULT")
+        .stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap())
+}
+fn join_snapshot_writer(child: &mut OwnChild, end: Instant) {
+    while child.0.try_wait().unwrap().is_none() {
+        assert!(Instant::now() < end, "owned completed snapshot writer did not join");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert!(child.0.wait().unwrap().success());
+}
+#[test]
+fn read_snapshot_advance_child() {
+    let Some(root) = std::env::var_os("CC_AGENT_SQLITE_UNIT_ADVANCE_ROOT") else { return; };
+    let root = PathBuf::from(root);
+    assert!(root.is_absolute() && root.file_name().unwrap().to_string_lossy().starts_with("cc-agent-sqlite-unit-"));
+    assert_eq!(fs::read(root.join("owned-test.marker")).unwrap(), b"cc-agent-sqlite-owned-unit-v1");
+    let end = Instant::now() + Duration::from_secs(10);
+    while !root.join("read.ready").exists() {
+        assert!(Instant::now() < end);
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(fs::read(root.join("read.ready")).unwrap(), b"cc-agent-sqlite-owned-read-final-head-v1");
+    let store = SqliteJournalStore::open(root.join("data"), root.join("anchor"), pin(), SqliteStorageBudget::default()).unwrap();
+    let mut actor = Actor::new(store).unwrap();
+    let cert = actor.snapshot().unwrap().certificate(id()).unwrap().clone();
+    let (lease, proof, fresh, op) = request(&cert, 2, 2);
+    actor.admit(lease, proof, Some(&fresh), &op, now()).unwrap();
+    let state = actor.snapshot().unwrap();
+    let raw = Connection::open(root.join("data").join(DB_NAME)).unwrap();
+    let head = read_head(&raw).unwrap();
+    assert_eq!(state.revision(), head.revision);
+    assert!(!head.pending && anchor_matches(&root.join("anchor"), &head).unwrap());
+    assert!(!root.join("writer.done").exists());
+    fs::write(root.join("writer.done"), b"cc-agent-sqlite-owned-writer-ack-v1").unwrap();
+}
+#[test]
+fn sqlite_collector_read_wait_retries_actual_completed_snapshot_advance() {
+    let temp = Temp::new();
+    let (actor, cert) = enroll(temp.create());
+    let store = actor.into_store();
+    let old_revision = store.load().unwrap().revision();
+    // Force this one real read to verify history instead of taking its warm cache.
+    store.inner.borrow_mut().cache = None;
+    let mut child = snapshot_advance_child(&temp);
+    let _barrier = arm_snapshot_read_barrier(&temp);
+    let end = Instant::now() + Duration::from_secs(3);
+    let reads = std::cell::Cell::new(0usize);
+    let conflicts = std::cell::Cell::new(0usize);
+    let samples = std::cell::Cell::new(0u64);
+    let (state, observed) = crate::policy::wait_collector_service_read(end, now(), &mut || {
+        samples.set(samples.get() + 1);
+        collector_read_phase_sample(1000, samples.get())
+    }, || {
+        reads.set(reads.get() + 1);
+        let result = store.load();
+        if matches!(&result, Err(Error::Conflict)) { conflicts.set(conflicts.get() + 1); }
+        result
+    }).unwrap();
+    assert_eq!(conflicts.get(), 1, "the ACTUAL completed-writer final-head mismatch must occur");
+    assert_eq!(reads.get(), 2);
+    assert_eq!(samples.get(), 3);
+    assert_eq!(observed.now().0, time(1000));
+    assert_eq!(state.revision(), old_revision + 1);
+    join_snapshot_writer(&mut child, end);
+    let head = read_head(&temp.raw()).unwrap();
+    assert_eq!(state.revision(), head.revision);
+    assert!(!head.pending && anchor_matches(&temp.0.join("anchor"), &head).unwrap());
+    let mut actor = Actor::new(store).unwrap();
+    let (lease, proof, fresh, op) = request(&cert, 2, 2);
+    assert!(matches!(actor.admit(lease, proof, Some(&fresh), &op, now()), Err(Error::Replay)));
+    assert_eq!(read_head(&temp.raw()).unwrap(), head);
+}
+#[test]
+fn sqlite_collector_read_wait_original_end_does_not_retry_snapshot_conflict() {
+    let temp = Temp::new();
+    let (actor, _) = enroll(temp.create());
+    let store = actor.into_store();
+    store.inner.borrow_mut().cache = None;
+    let mut child = snapshot_advance_child(&temp);
+    let _barrier = arm_snapshot_read_barrier(&temp);
+    let end = Instant::now();
+    let mut reads = 0;
+    let result = crate::policy::wait_collector_service_read(end, now(), &mut || collector_read_phase_sample(1000, 1), || {
+        reads += 1;
+        store.load()
+    });
+    assert!(matches!(result, Err(Error::Conflict)));
+    assert_eq!(reads, 1);
+    join_snapshot_writer(&mut child, Instant::now() + Duration::from_secs(3));
+    let head = read_head(&temp.raw()).unwrap();
+    let anchor = fs::read(temp.0.join("anchor").join(ANCHOR_NAME)).unwrap();
+    assert!(!head.pending && anchor_matches(&temp.0.join("anchor"), &head).unwrap());
+    assert_eq!(store.load().unwrap().revision(), head.revision);
+    assert_eq!(read_head(&temp.raw()).unwrap(), head);
+    assert_eq!(fs::read(temp.0.join("anchor").join(ANCHOR_NAME)).unwrap(), anchor);
+}
+#[test]
+fn sqlite_collector_read_wait_outer_guard_stops_after_real_snapshot_conflict() {
+    let temp = Temp::new();
+    let (actor, _) = enroll(temp.create());
+    let store = actor.into_store();
+    store.inner.borrow_mut().cache = None;
+    let mut child = snapshot_advance_child(&temp);
+    let _barrier = arm_snapshot_read_barrier(&temp);
+    let reads = std::cell::Cell::new(0usize);
+    let conflicts = std::cell::Cell::new(0usize);
+    let samples = std::cell::Cell::new(0u64);
+    let result = crate::policy::wait_collector_service_read(Instant::now() + Duration::from_secs(3), now(), &mut || {
+        samples.set(samples.get() + 1);
+        if conflicts.get() != 0 { return Err(Error::Revoked); }
+        collector_read_phase_sample(1000, samples.get())
+    }, || {
+        reads.set(reads.get() + 1);
+        let result = store.load();
+        if matches!(&result, Err(Error::Conflict)) { conflicts.set(conflicts.get() + 1); }
+        result
+    });
+    assert!(matches!(result, Err(Error::Revoked)));
+    assert_eq!((reads.get(), conflicts.get(), samples.get()), (1, 1, 2));
+    join_snapshot_writer(&mut child, Instant::now() + Duration::from_secs(3));
+    let head = read_head(&temp.raw()).unwrap();
+    assert!(!head.pending && anchor_matches(&temp.0.join("anchor"), &head).unwrap());
+    assert_eq!(store.load().unwrap().revision(), head.revision);
+    assert_eq!(read_head(&temp.raw()).unwrap(), head);
+}
+#[test]
+fn sqlite_recipient_wrapper_never_retries_inner_semantic_conflict() {
+    // Actual outer wrapper contract only. This does not simulate the private
+    // before/after nonce comparator or manufacture a provider State.
+    let mut calls = 0;
+    let result: Result<()> = crate::enrollment_control::metrics::wait_recipient_reference(
+        Instant::now() + Duration::from_secs(3), || {
+            calls += 1;
+            Ok(Err(Error::Conflict))
+        });
+    assert!(matches!(result, Err(Error::Conflict)));
+    assert_eq!(calls, 1);
 }

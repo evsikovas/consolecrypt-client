@@ -6,35 +6,52 @@ use super::service_credential_handoff::{
 };
 use super::*;
 
-pub(super) fn active(
+fn active_inner(
     session: &Session<SqliteJournalStore>,
     policy: &CollectorServiceDelegation,
-    config_raw: &[u8],
-    pin_path: &Path,
-    pin_raw: &[u8],
-    clock: &mut Clock,
+    config_raw: &[u8], pin_path: &Path, pin_raw: &[u8], clock: &mut Clock,
+    read_end: Option<(Instant, &Pipe)>,
 ) -> Result<ActiveCollectorServiceObservation> {
-    original_config(config_raw, pin_path, pin_raw)?;
+    let read_config = || -> Result<Config> {
+        original_config(config_raw, pin_path, pin_raw)?;
+        let catalog = session.catalog.as_ref().ok_or(Error::CapabilityDenied)?;
+        catalog.check()?;
+        if inspect_existing_node_identity(&session.node_dir, session.agent)? != session.node {
+            return Err(Error::WrongClaim);
+        }
+        serde_json::from_slice(config_raw).map_err(|_| Error::InvalidWire)
+    };
+    let config = read_config()?;
     let catalog = session.catalog.as_ref().ok_or(Error::CapabilityDenied)?;
-    catalog.check()?;
-    if inspect_existing_node_identity(&session.node_dir, session.agent)? != session.node {
-        return Err(Error::WrongClaim);
-    }
-    let config: Config = serde_json::from_slice(config_raw).map_err(|_| Error::InvalidWire)?;
     let genesis: OwnerPin = serde_json::from_slice(pin_raw).map_err(|_| Error::InvalidWire)?;
-    let store = SqliteJournalStore::open(
-        &config.db_dir,
-        &config.anchor_dir,
-        genesis,
-        SqliteStorageBudget::default(),
-    )?;
-    let mut actor = Actor::new(store)?;
-    let observed = actor.observe_active_collector_service(
-        policy.service_id,
-        policy.digest()?,
-        clock.now()?,
-        &mut CollectorServiceClockObservation::observe_local,
-    )?;
+    let observed = if let Some((end,pipe)) = read_end {
+        let lower = clock.now()?;
+        let mut checked_clock = || {
+            if Instant::now() >= end { return Err(Error::Expired); }
+            let lower = clock.now()?;
+            pipe.check()?;
+            // Source, catalog, node and pipe checks run on every provider attempt
+            // and again after a successful read, under the SAME original end.
+            read_config()?;
+            let observed = CollectorServiceClockObservation::observe_local()?;
+            if observed.now().0 < lower.0 { return Err(Error::InvalidTime); }
+            clock.now()?;
+            if Instant::now() >= end { return Err(Error::Expired); }
+            Ok(observed)
+        };
+        let (mut actor, _) = crate::policy::wait_collector_service_read(end, lower, &mut checked_clock, || {
+            let store = SqliteJournalStore::open(&config.db_dir, &config.anchor_dir,
+                genesis.clone(), SqliteStorageBudget::default())?;
+            Actor::new(store)
+        })?;
+        actor.observe_active_collector_service_waiting(policy.service_id,policy.digest()?,lower,end,&mut checked_clock)?
+    } else {
+        let store = SqliteJournalStore::open(&config.db_dir, &config.anchor_dir,
+            genesis, SqliteStorageBudget::default())?;
+        let mut actor = Actor::new(store)?;
+        actor.observe_active_collector_service(policy.service_id,policy.digest()?,clock.now()?,
+            &mut CollectorServiceClockObservation::observe_local)?
+    };
     if observed.stored.policy.body != *policy
         || observed.stored.owner != session.expected_pin
         || catalog.hash != policy.manifest_sha256
@@ -42,10 +59,14 @@ pub(super) fn active(
         || policy.agent_id != session.agent
         || policy.key_epoch != session.node.key_epoch
         || policy.recipient != session.node.public_key
-    {
-        return Err(Error::WrongClaim);
-    }
+    { return Err(Error::WrongClaim); }
     Ok(observed)
+}
+pub(super) fn active(
+    session: &Session<SqliteJournalStore>, policy: &CollectorServiceDelegation,
+    config_raw: &[u8], pin_path: &Path, pin_raw: &[u8], clock: &mut Clock,
+) -> Result<ActiveCollectorServiceObservation> {
+    active_inner(session,policy,config_raw,pin_path,pin_raw,clock,None)
 }
 fn reference(
     session: &Session<SqliteJournalStore>,
@@ -54,8 +75,10 @@ fn reference(
     pin_path: &Path,
     pin_raw: &[u8],
     clock: &mut Clock,
+    end: Instant,
+    pipe: &Pipe,
 ) -> Result<RecipientReference> {
-    let before = active(session, policy, config_raw, pin_path, pin_raw, clock)?;
+    let before = active_inner(session, policy, config_raw, pin_path, pin_raw, clock, Some((end,pipe)))?;
     let namespace = hex::encode(before.original_start_nonce.as_bytes());
     let directory = open_physical_namespace(&namespace)?;
     let held = read_original_reference_physical(&directory, &namespace)?;
@@ -67,7 +90,7 @@ fn reference(
         return Err(Error::WrongClaim);
     }
     held.recheck_physical(&directory, &namespace)?;
-    let after = active(session, policy, config_raw, pin_path, pin_raw, clock)?;
+    let after = active_inner(session, policy, config_raw, pin_path, pin_raw, clock, Some((end,pipe)))?;
     if after.original_start_nonce != before.original_start_nonce {
         return Err(Error::Conflict);
     }
@@ -97,18 +120,12 @@ pub(super) fn serve(
     // Read-only wait shares ONE fixed end. No fresh Actor grant/Permit/start is
     // minted here and the supervisor's signed BOOT/policy end is unchanged.
     let end = Instant::now() + Duration::from_secs(3);
-    let original = loop {
+    let original = super::wait_recipient_reference(end, || {
         clock.now()?;
         pipe.check()?;
         original_config(config_raw, pin_path, pin_raw)?;
-        match reference(session, policy, config_raw, pin_path, pin_raw, clock) {
-            Ok(value) => break value,
-            Err(Error::WrongState | Error::Storage) if Instant::now() < end => {
-                std::thread::sleep(Duration::from_millis(20))
-            }
-            Err(error) => return Err(error),
-        }
-    };
+        Ok(reference(session, policy, config_raw, pin_path, pin_raw, clock, end, pipe))
+    })?;
     reply_for(
         pipe,
         clock,

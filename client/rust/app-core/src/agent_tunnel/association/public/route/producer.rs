@@ -187,8 +187,14 @@ impl Prepared {
         // always attempts its original DELETE even when the reply is lost.
         let capability=slot.take_agent_capability().map_err(|_|unknown())?.provision_once();
         let observed=context.scope.now()?.0;
-        let floor=slot.remaining_seconds().map_err(|_|unknown())?;
-        let expires=Timestamp::new(observed.seconds().checked_add(floor).ok_or_else(unknown)?).map_err(|_|unknown())?.min(self.lease.expires_at);
+        // Sample the original grant first, then the SAME slot's exact deadline.
+        // No await intervenes: flooring only the resulting absolute expiry never
+        // extends either deadline or loses a live subsecond relay window.
+        let grant_remaining=context.scope.remaining_until(self.lease.expires_at)?;
+        let slot_remaining=slot.remaining_duration().map_err(|_|unknown())?;
+        let expires=Timestamp::new(relay_transport_expiry(self.lease.expires_at.seconds(),grant_remaining,slot_remaining)
+            .ok_or_else(unknown)?).map_err(|_|unknown())?;
+        let floor=expires.seconds().checked_sub(observed.seconds()).filter(|n|*n>0).ok_or_else(unknown)?;
         let reply:TransportReady=self.peer.as_mut().ok_or_else(unknown)?.start_tunnel_transport(&context.core,
             self.descriptor.actor_revision,&self.pin,binding,&self.policy,&self.tls_public.certificate_der,
             slot.id(),&capability,expires,self.policy.route.limits.idle_timeout_seconds.min(floor),self.mode).await?;
@@ -263,5 +269,40 @@ pub(super) async fn watch_blocked(context:Context,association:Uuid,host:ObjectId
         match bounded_original(&context.scope,observed).await {
             Ok(None)=>{},Ok(Some(end))=>return end,Err(_)=>return RouteAuditEnd::Unknown,
         }
+    }
+}
+
+// Integer wire expiry <= both original absolute deadlines. The grant duration
+// is observed before the relay duration, so time spent observing only narrows.
+fn relay_transport_expiry(grant_expiry:u64,grant_remaining:Duration,slot_remaining:Duration)->Option<u64> {
+    if grant_remaining.is_zero()||slot_remaining.is_zero(){return None}
+    let reduction=grant_remaining.saturating_sub(slot_remaining);
+    let seconds=reduction.as_secs().checked_add(u64::from(reduction.subsec_nanos()!=0))?;
+    let expiry=grant_expiry.checked_sub(seconds)?;
+    let sampled_wall=Duration::from_secs(grant_expiry).checked_sub(grant_remaining)?;
+    (Duration::from_secs(expiry)>sampled_wall).then_some(expiry)
+}
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+impl AppCore {
+    pub(crate) fn __owned_relay_expiry_fractional() {
+        let original=1004;
+        let grant=Duration::from_millis(3352)-Duration::from_millis(476);
+        let slot=Duration::from_millis(900);
+        assert_eq!(slot.as_secs(),0); // Old repeated floor denied this live slot.
+        let expiry=relay_transport_expiry(original,grant,slot).unwrap();
+        assert_eq!(expiry,1002);
+        let observed_wall=Duration::from_secs(original)-grant;
+        assert!(Duration::from_secs(expiry)>observed_wall);
+        assert!(Duration::from_secs(expiry)<=observed_wall+slot);
+        assert!(expiry<=original);
+    }
+    pub(crate) fn __owned_relay_expiry_denials() {
+        assert_eq!(relay_transport_expiry(1004,Duration::ZERO,Duration::from_millis(900)),None);
+        assert_eq!(relay_transport_expiry(1004,Duration::from_secs(2),Duration::ZERO),None);
+        assert_eq!(relay_transport_expiry(1,Duration::from_secs(3),Duration::from_millis(1)),None);
+        assert_eq!(relay_transport_expiry(1004,Duration::from_millis(2500),Duration::from_millis(100)),None);
+        let expiry=relay_transport_expiry(1004,Duration::from_millis(900),Duration::from_secs(3)).unwrap();
+        assert_eq!(expiry,1004); // A longer slot cannot extend the original grant.
     }
 }

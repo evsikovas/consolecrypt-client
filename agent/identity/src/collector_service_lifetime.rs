@@ -143,6 +143,18 @@ impl<S: CompareAndSwap> Actor<S> {
         let observed = clock()?;
         if observed.wall_time < now.0 || observed.wall_time < self.last_observed_time { return Err(Error::InvalidTime); }
         let state = self.read(Now(observed.wall_time))?;
+        self.collector_service_credential_set_loaded(permit, state, observed)
+    }
+    pub(crate) fn collector_service_credential_set_original_waiting(&mut self, permit: &CollectorServicePermit,
+        now: Now, end: std::time::Instant, clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>)
+        -> Result<Option<StoredCollectorServiceCredentialSet>> {
+        self.check_collector_service_waiting(permit, now, end, clock)?;
+        let (state, observed) = self.read_collector_service_waiting(now, end, clock)?;
+        self.collector_service_credential_set_loaded(permit, state, observed)
+    }
+    fn collector_service_credential_set_loaded(&self, permit: &CollectorServicePermit,
+        state: State, observed: CollectorServiceClockObservation)
+        -> Result<Option<StoredCollectorServiceCredentialSet>> {
         let record = state.collector_services.get(&permit.service_id).ok_or(Error::NotFound)?;
         current(&state, record, Now(observed.wall_time), &observed)?;
         if record.hash != permit.delegation_hash || record.active != Some(permit.start) || record.starts != permit.start_count {

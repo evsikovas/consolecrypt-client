@@ -3,7 +3,7 @@
 The package's dummy ELF and fake supervisor are never run. No Linux service,
 runtime version, actual join, legal inventory or production release is claimed.
 """
-import hashlib,importlib.util,json,os,shutil,stat,subprocess,sys,tempfile,time,unittest
+import hashlib,importlib.util,json,os,shutil,sqlite3,stat,subprocess,sys,tempfile,time,unittest,zipfile
 from unittest.mock import patch
 from pathlib import Path
 HERE=Path(__file__).resolve().parents[1]
@@ -60,17 +60,29 @@ class InstallTests(unittest.TestCase):
             from prototype_package import stamp_runtime_version,RUNTIME_VERSION_FILE
             files[RUNTIME_VERSION_FILE],_=stamp_runtime_version(files[RUNTIME_VERSION_FILE],version)
         files['launch.py']=(BASE/'launch.py').read_bytes();files['systemd/consolecrypt-agent.service']=(BASE/'consolecrypt-agent.service').read_bytes()
-        header=bytearray(20);header[:6]=b'\x7fELF\x02\x01';header[18:20]=(62).to_bytes(2,'little')
+        header=bytearray(64);header[:7]=b'\x7fELF\x02\x01\x01';header[18:20]=(62).to_bytes(2,'little')
         files['bin/cc-agent-identity']=bytes(header) # Explicitly inert synthetic metadata fixture.
         files.update(wheel_file(BASE.parent));files[m.INVENTORY]=json.dumps({'format':'cc-agent-notice-inventory/v1','components':[]}).encode()
         for name in COLLECTOR_FILES[:-1]:files[name]=(BASE.parent/name).read_bytes()
         files['collector/vmagent-prod']=self.vmagent_bytes # Actual maintained bytes as DATA, never run.
         if incomplete:files.pop(PACKAGE)
-        if wrong_vmagent:files['collector/vmagent-prod']=bytes([self.vmagent_bytes[0]^1])+self.vmagent_bytes[1:]
         if missing_collector:
             for name in COLLECTOR_FILES:files.pop(name)
         executables={'bin/cc-agent-identity'}|({'collector/vmagent-prod'}if not missing_collector else set())
         stage.build_package(files,self.paths.artifact,version,executables)
+        if wrong_vmagent:
+            # Build normally, then fault-inject an internally consistent signed
+            # package. The production builder itself refuses foreign supply bytes.
+            with zipfile.ZipFile(self.paths.artifact)as package:
+                entries=[(entry,package.read(entry))for entry in package.infolist()]
+            damaged=self.vmagent_bytes[:-1]+bytes([self.vmagent_bytes[-1]^1])
+            manifest=json.loads(next(raw for entry,raw in entries if entry.filename=='package.json'))
+            manifest['files']['collector/vmagent-prod']=hashlib.sha256(damaged).hexdigest()
+            with zipfile.ZipFile(self.paths.artifact,'w')as package:
+                for entry,raw in entries:
+                    if entry.filename=='collector/vmagent-prod':raw=damaged
+                    elif entry.filename=='package.json':raw=json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()
+                    package.writestr(entry,raw)
         signed=self.root/('signature-'+str(sequence));signed.mkdir()
         run=subprocess.run([str(SIGNER.resolve()),'--out',str(signed.resolve()),'--artifact',str(self.paths.artifact.resolve()),'--now',str(int(time.time())),'--version',str(sequence),'--display-version',version,'--platform','linux-x86_64'],capture_output=True,timeout=10,check=True)
         self.assertTrue(json.loads(run.stdout)['testOnly'])
@@ -127,9 +139,46 @@ class InstallTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.act('update')
         self.assertEqual(self.supervisor.calls,before);self.preserved()
     def test_remove_preserves_identity_and_replay_anchor_instead_of_purging_data(self):
-        self.act('install');floor=self.paths.prefix/'var/lib/consolecrypt-agent/release-anchor.json';original=floor.read_bytes()
-        value=self.act('remove');self.assertEqual(value['phase'],'removed');self.assertTrue(value['identityHistoryAndReplayPreserved'])
-        self.assertEqual(floor.read_bytes(),original);self.preserved();self.assertIsNone(self.act('status')['selectedRelease'])
+        """Real FS data preservation/reopen; only systemd is mocked. WAL bytes are opaque synthetic sentinels."""
+        self.act('install')
+        root = self.root
+        data = root / 'var/lib/consolecrypt-agent'
+        metrics = data / 'metrics/history.sqlite'
+        metrics.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(metrics) as db:
+            db.execute('CREATE TABLE samples(host TEXT, ts INTEGER, value REAL)')
+            db.executemany('INSERT INTO samples VALUES(?,?,?)', [('owned-host', 1, 7.25), ('owned-host', 2, 9.5)])
+        metrics.chmod(384)
+        sentinels = {data / 'metrics-disk/12345678-1234-8234-9234-123456789abc/wal/wal/00000000': (b'OWNED synthetic opaque WAL sentinel\x00\xff\x01', 384), data / 'metrics-disk/12345678-1234-8234-9234-123456789abc/wal/wal/checkpoint.00000001/00000000': (b'OWNED checkpoint sentinel\x00', 384), data / 'history/series.json': (b'{"host":"owned-host","samples":[7.25,9.5]}\n', 416), root / 'etc/consolecrypt-agent/operator.yml': (b'owner: owned-operator\nretain_metrics: true\n', 416), data / 'operator/notes.txt': (b'OWNED operator notes must survive software removal\n', 384)}
+        for path, (raw, mode) in sentinels.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            path.chmod(mode)
+        import collector_provision
+        collector_provision.select_profile(dict(format='cc-agent-installed-disk-collector-profile/v1', uid=10002, gid=10002))
+        assets = collector_provision.files(10002, 10002)
+        self.assertEqual(len(assets), 4)
+        for absolute, raw in assets.items():
+            path = root / absolute.relative_to('/')
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self.assertFalse(path.exists())
+            path.write_bytes(raw)
+            path.chmod(420)
+            sentinels[path] = (raw, 420)
+        watched = set(sentinels) | {metrics, self.private / 'key', self.paths.prefix / 'var/lib/consolecrypt-agent/release-anchor.json'}
+    
+        def snapshot():
+            return {str(p.relative_to(root)): (p.read_bytes(), stat.S_IMODE(p.stat().st_mode)) for p in watched}
+        before = snapshot()
+        result = self.act('remove')
+        self.assertEqual(result['phase'], 'removed')
+        self.assertEqual(snapshot(), before)
+        self.assertIsNone(self.act('status')['selectedRelease'])
+        self.assertEqual(self.supervisor.calls[-2:], ['stop_join', 'disable'])
+        with sqlite3.connect(metrics.resolve().as_uri() + '?mode=ro', uri=True) as db:
+            self.assertEqual(db.execute('SELECT host,ts,value FROM samples ORDER BY ts').fetchall(), [('owned-host', 1, 7.25), ('owned-host', 2, 9.5)])
+        self.assertEqual(json.loads((data / 'history/series.json').read_bytes())['samples'], [7.25, 9.5])
+        self.assertEqual(snapshot(), before)
     def test_retained_software_budget_refuses_new_release_before_stop_and_deletes_nothing(self):
         self.act('install');releases=self.paths.prefix/'opt/consolecrypt-agent/releases'
         for n in range(1,8):(releases/('0.1.'+str(n))).mkdir()

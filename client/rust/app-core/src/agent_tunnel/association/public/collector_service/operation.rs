@@ -483,6 +483,13 @@ async fn configure(
         Ok::<_, AppError>(ack)
     };
     let result = bounded_original(&shared.context.scope, work).await;
+    #[cfg(any(test, all(feature = "test-harness", any(target_os = "linux", target_os = "windows"))))]
+    if std::env::var_os("CC_LIFETIME_PAIR_PROOF").as_deref() == Some(std::ffi::OsStr::new("1")) {
+        if let Err(error) = &result {
+            let _ = std::io::Write::write_fmt(&mut std::io::stderr().lock(), format_args!(
+                "CC_LIFETIME_NATIVE_FAILURE stage=configure_work code={}\n", error.code()));
+        }
+    }
     drop(ready); // Original captured-runtime Peer cleanup, SAME quota lease.
     shared.finish(result.ok());
     let response = shared.publish().await;

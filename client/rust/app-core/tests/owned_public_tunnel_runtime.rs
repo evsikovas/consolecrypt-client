@@ -44,3 +44,25 @@ async fn cancelled_original_join_restores_same_pending_pump() {
 async fn cancelled_control_wait_preserves_actual_original_join() {
     cc_app_core::__test_harness_cancel_control_preserves_join_witness().await;
 }
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[test]
+fn four_second_original_with_476ms_approval_keeps_live_fractional_slot_without_extension() {
+    cc_app_core::__test_harness_relay_expiry_fractional();
+}
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[test]
+fn expired_and_nonpositive_windows_cannot_mint_transport_time() {
+    cc_app_core::__test_harness_relay_expiry_denials();
+}
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[test]
+fn original_outbound_bootstrap_raw_owner_matches_same_canonical_full_url() {
+    cc_app_core::__test_harness_outbound_url_canonical_positive();
+}
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[test]
+fn original_outbound_bootstrap_rejects_changed_url_authority_path_or_credentials() {
+    cc_app_core::__test_harness_outbound_url_canonical_negative();
+}

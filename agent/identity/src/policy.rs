@@ -260,6 +260,9 @@ impl<S: CompareAndSwap> Actor<S> {
     }
     fn read(&mut self, now: Now) -> Result<State> {
         let state = self.store.load()?;
+        self.check_read_state(state, now)
+    }
+    fn check_read_state(&mut self, state: State, now: Now) -> Result<State> {
         now.0.valid()?;
         if now.0 < self.last_observed_time {
             return Err(Error::InvalidTime);
@@ -282,6 +285,17 @@ impl<S: CompareAndSwap> Actor<S> {
         }
         self.seen = seen;
         Ok(state)
+    }
+    /// Only the fixed supervisor uses this bounded read phase. The callback
+    /// rechecks its original launcher/config/runtime and samples the clock.
+    /// No semantic operation or CAS is inside the retry.
+    pub(crate) fn read_collector_service_waiting(
+        &mut self, now: Now, end: std::time::Instant,
+        clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
+    ) -> Result<(State, CollectorServiceClockObservation)> {
+        let (state, observed) = wait_collector_service_read(end, now, clock, || self.store.load())?;
+        let state = self.check_read_state(state, observed.now())?;
+        Ok((state, observed))
     }
     fn commit(&mut self, mut state: State, now: Now, transition: Transition) -> Result<()> {
         if state.invitations.len() > MAX_INVITATIONS
@@ -931,3 +945,5 @@ pub use collector_service::{CollectorServicePermit, CollectorServiceClockObserva
 pub(crate) use collector_service::{CollectorServiceStoredObservation,ActiveCollectorServiceObservation,CollectorServiceEndReason};
 
 pub(crate) use collector_service::{StoredCollectorServiceCredentialSet, LifetimeReadback};
+
+pub(crate) use collector_service::wait_collector_service_read;

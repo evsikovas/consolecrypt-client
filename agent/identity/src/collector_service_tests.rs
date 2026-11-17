@@ -593,3 +593,198 @@ fn service_original_active_start_observation_is_readonly_and_retired_start_is_no
 
 #[path="collector_service_lifetime_tests.rs"]
 mod lifetime_tests;
+
+
+#[test]
+fn service_read_phase_fresh_after_clock_is_returned_and_rollback_is_denied() {
+    let mut f = Fixture::new(); f.admit();
+    let revision = f.actor.snapshot().unwrap().revision();
+    let before_entries = f.memory.0.lock().unwrap().1.len();
+    let mut calls = 0;
+    let (state, observed) = f.actor.read_collector_service_waiting(now(1000),
+        std::time::Instant::now() + std::time::Duration::from_secs(3), &mut || {
+            calls += 1; sample(if calls == 1 { 1000 } else { 1001 })
+        }).unwrap();
+    assert_eq!(calls, 2); assert_eq!(observed.now().0, time(1001));
+    assert_eq!(state.revision(), revision);
+    assert_eq!(f.memory.0.lock().unwrap().1.len(), before_entries);
+    assert!(matches!(f.actor.read_collector_service_waiting(now(1001),
+        std::time::Instant::now() + std::time::Duration::from_secs(3), &mut || sample(1000)), Err(Error::InvalidTime)));
+}
+#[test]
+fn service_read_phase_after_clock_wall_boot_and_boottime_rollback_fail_closed() {
+    for kind in 0..3 {
+        let mut f = Fixture::new(); f.admit();
+        let revision = f.actor.snapshot().unwrap().revision();
+        let before_entries = f.memory.0.lock().unwrap().1.len();
+        let mut calls = 0;
+        let result = f.actor.read_collector_service_waiting(now(1000),
+            std::time::Instant::now() + std::time::Duration::from_secs(3), &mut || {
+                calls += 1;
+                if calls == 1 { return CollectorServiceClockObservation::journal(boot(), 20, time(1001)); }
+                match kind {
+                    0 => CollectorServiceClockObservation::journal(boot(), 21, time(1000)),
+                    1 => CollectorServiceClockObservation::journal(
+                        ResourceId::new("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa").unwrap(), 21, time(1001)),
+                    _ => CollectorServiceClockObservation::journal(boot(), 19, time(1001)),
+                }
+            });
+        assert!(matches!(result, Err(Error::InvalidTime))); assert_eq!(calls, 2);
+        assert_eq!(f.actor.snapshot().unwrap().revision(), revision);
+        assert_eq!(f.memory.0.lock().unwrap().1.len(), before_entries);
+    }
+}
+#[test]
+fn service_next_read_phase_never_retries_semantic_occupied_slot_uncertain_commit() {
+    let mut f = Fixture::new(); f.admit(); let permit = f.start(3, 1000).unwrap();
+    let before = f.actor.snapshot().unwrap();
+    let entries = f.memory.0.lock().unwrap().1.len();
+    let mut calls = 0;
+    let started = std::time::Instant::now();
+    let result = f.actor.next_collector_service_waiting(f.policy.body.agent_id,
+        f.policy.body.manifest_sha256, now(1000), started + std::time::Duration::from_secs(3), &mut || {
+            calls += 1; sample(1000)
+        });
+    assert!(matches!(result, Err(Error::UncertainCommit)));
+    assert_eq!(calls, 2); assert!(started.elapsed() < std::time::Duration::from_secs(1));
+    let after = f.actor.snapshot().unwrap();
+    assert_eq!(after.revision(), before.revision());
+    let record = after.collector_services.get(&permit.service_id).unwrap();
+    assert_eq!(record.active, Some(permit.start)); assert_eq!(record.starts, 1);
+    assert_eq!(f.memory.0.lock().unwrap().1.len(), entries);
+}
+
+
+#[test]
+fn service_active_waiting_uses_fresh_verified_read_without_mutation_or_clock_rebase() {
+    let mut f = Fixture::new();
+    f.admit();
+    let permit = f.start(3, 1000).unwrap();
+    let revision = f.actor.snapshot().unwrap().revision();
+    let entries = f.memory.0.lock().unwrap().1.len();
+    let mut calls = 0;
+    let observed = f.actor.observe_active_collector_service_waiting(
+        permit.service_id(), permit.delegation_hash(), now(1000),
+        std::time::Instant::now() + std::time::Duration::from_secs(3), &mut || {
+            calls += 1;
+            sample(if calls == 1 { 1000 } else { 1001 })
+        },
+    ).unwrap();
+    assert_eq!(calls, 2);
+    assert_eq!(observed.original_start_nonce, permit.start_id());
+    assert_eq!(observed.stored.policy.body.digest().unwrap(), permit.delegation_hash());
+    assert_eq!(observed.stored.actor_revision, revision);
+    assert_eq!(observed.stored.revocation_floor, 1);
+    assert_eq!(f.actor.snapshot().unwrap().revision(), revision);
+    assert_eq!(f.memory.0.lock().unwrap().1.len(), entries);
+    // The AFTER-read observation advances the existing wall highwater. A fresh
+    // caller cannot fall back to the otherwise valid BEFORE-read observation.
+    assert!(matches!(f.actor.observe_active_collector_service(
+        permit.service_id(), permit.delegation_hash(), now(1000), &mut || sample(1000),
+    ), Err(Error::InvalidTime)));
+}
+
+#[test]
+fn service_active_waiting_wrong_hash_is_semantic_denial_without_retry_or_write() {
+    let mut f = Fixture::new();
+    f.admit();
+    let permit = f.start(3, 1000).unwrap();
+    let revision = f.actor.snapshot().unwrap().revision();
+    let entries = f.memory.0.lock().unwrap().1.len();
+    let mut calls = 0;
+    let started = std::time::Instant::now();
+    let result = f.actor.observe_active_collector_service_waiting(
+        permit.service_id(), Hash::from_bytes([77; 32]), now(1001),
+        started + std::time::Duration::from_secs(3), &mut || {
+            calls += 1;
+            sample(1001)
+        },
+    );
+    assert!(matches!(result, Err(Error::WrongClaim)));
+    assert_eq!(calls, 2);
+    assert!(started.elapsed() < std::time::Duration::from_secs(1));
+    let after = f.actor.snapshot().unwrap();
+    assert_eq!(after.revision(), revision);
+    let record = after.collector_services.get(&permit.service_id()).unwrap();
+    assert_eq!(record.active, Some(permit.start));
+    assert_eq!(record.starts, 1);
+    assert_eq!(f.memory.0.lock().unwrap().1.len(), entries);
+}
+
+#[test]
+fn service_active_waiting_signed_revoke_is_immediate_and_retains_original_slot() {
+    let mut f = Fixture::new();
+    f.admit();
+    let permit = f.start(3, 1000).unwrap();
+    let revoke = sign(CollectorServiceRevocation {
+        header: f.policy.body.header.clone(),
+        service_id: f.policy.body.service_id,
+        delegation_hash: f.policy.body.digest().unwrap(),
+        policy_revision: 1,
+        revocation_epoch: 2,
+        issued_at: time(1001),
+    }, &f.owner);
+    f.actor.revoke_collector_service(revoke, now(1001)).unwrap();
+    let revision = f.actor.snapshot().unwrap().revision();
+    let entries = f.memory.0.lock().unwrap().1.len();
+    let mut calls = 0;
+    let started = std::time::Instant::now();
+    let result = f.actor.observe_active_collector_service_waiting(
+        permit.service_id(), permit.delegation_hash(), now(1001),
+        started + std::time::Duration::from_secs(3), &mut || {
+            calls += 1;
+            sample(1001)
+        },
+    );
+    assert!(matches!(result, Err(Error::Revoked)));
+    assert_eq!(calls, 2);
+    assert!(started.elapsed() < std::time::Duration::from_secs(1));
+    let after = f.actor.snapshot().unwrap();
+    assert_eq!(after.revision(), revision);
+    let record = after.collector_services.get(&permit.service_id()).unwrap();
+    assert_eq!(record.revocation_floor, 2);
+    assert_eq!(record.active, Some(permit.start));
+    assert_eq!(record.starts, 1);
+    assert_eq!(f.memory.0.lock().unwrap().1.len(), entries);
+}
+
+#[test]
+fn service_active_waiting_absent_or_retired_start_is_never_replaced_or_retried() {
+    for kind in 0..3 {
+        let mut f = Fixture::new();
+        f.admit();
+        if kind == 1 {
+            let permit = f.start(3, 1000).unwrap();
+            f.ended(&permit, 1001);
+        }
+        let service = if kind == 2 {
+            ResourceId::new("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa").unwrap()
+        } else {
+            f.policy.body.service_id
+        };
+        let revision = f.actor.snapshot().unwrap().revision();
+        let entries = f.memory.0.lock().unwrap().1.len();
+        let mut calls = 0;
+        let started = std::time::Instant::now();
+        let result = f.actor.observe_active_collector_service_waiting(
+            service, f.policy.body.digest().unwrap(), now(1001),
+            started + std::time::Duration::from_secs(3), &mut || {
+                calls += 1;
+                sample(1001)
+            },
+        );
+        if kind == 2 {
+            assert!(matches!(result, Err(Error::NotFound)));
+        } else {
+            assert!(matches!(result, Err(Error::WrongState)));
+        }
+        assert_eq!(calls, 2);
+        assert!(started.elapsed() < std::time::Duration::from_secs(1));
+        let after = f.actor.snapshot().unwrap();
+        assert_eq!(after.revision(), revision);
+        let record = after.collector_services.get(&f.policy.body.service_id).unwrap();
+        assert_eq!(record.active, None);
+        assert_eq!(record.starts, if kind == 1 { 1 } else { 0 });
+        assert_eq!(f.memory.0.lock().unwrap().1.len(), entries);
+    }
+}

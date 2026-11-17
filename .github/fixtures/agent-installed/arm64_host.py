@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import platform
 import pwd
+import re
 import signal
 import stat
 import subprocess
@@ -265,6 +266,232 @@ def validate(args):
     return source,packet,normal,authority,phases,lifecycle_raw,primitives_raw
 
 
+# Disposable-fixture custody only. The shipping installer never writes sysctl
+# or tears down its preserved manager prerequisite during product removal.
+ARM_HELPER_SHA = '29c84a9c814f44e3bc54853e9c989ba4b2c67d701e83cad4d9210971ef9886bf'
+ARM_CUSTODY_SHA = '453887c7d811fa071d6970afe390994a2effeae26e7b87aa4bf0bfa9468b8b1a'
+ARM_MANAGER = 'user@10002.service'
+
+
+def arm_gate_profiles(custody):
+    raw = custody.read('/sys/kernel/security/apparmor/profiles',131072)
+    rows = raw.decode('utf-8','strict').splitlines()
+    need(len(rows) == len(set(rows)), 'duplicate host AppArmor profile observation')
+    return set(rows)
+
+
+def arm_gate_initial_idle():
+    # Runs before account creation and BEFORE entering the cleanup-authority
+    # try/finally. An unknown/live prior UID instance is never stopped by us.
+    for unit in (ARM_MANAGER,'user-runtime-dir@10002.service'):
+        result=subprocess.run(['/usr/bin/systemctl','show',unit,'--property=LoadState',
+            '--property=ActiveState','--property=MainPID'],stdin=subprocess.DEVNULL,
+            capture_output=True,timeout=5,check=False)
+        need(len(result.stdout)+len(result.stderr)<=4096,'bounded initial manager observation required')
+        rows=[line.split('=',1)for line in result.stdout.decode('utf-8','strict').splitlines()]
+        need(len(rows)==3 and all(len(row)==2 for row in rows)
+             and {row[0]for row in rows}=={'LoadState','ActiveState','MainPID'},
+             'complete initial manager observation required')
+        actual=dict(rows)
+        need(result.returncode==0 and actual==dict(LoadState='loaded',ActiveState='inactive',MainPID='0')
+             or result.returncode in (0,4)and actual==dict(LoadState='not-found',ActiveState='inactive',MainPID='0'),
+             'initial fixed UID manager instance is not idle')
+    for path in (Path('/run/user/10002'),Path('/sys/fs/cgroup/user.slice/user-10002.slice')):
+        need(not path.exists()and not path.is_symlink(),'initial fixed UID runtime or cgroup exists')
+    return dict(fixedInstancesIdle=True,runtimeAndUserCgroupAbsent=True,cleanupAuthorityNotYetAcquired=True)
+
+
+def arm_gate_prepare(gate):
+    # Import only the already reviewed guard functions. Its diagnostic main,
+    # /usr/bin/true probe, profile publisher and A/B runner are never invoked.
+    path = HERE/'arm64_capability_observe.py'
+    need(digest(read(path,131072)) == ARM_CUSTODY_SHA, 'reviewed sysctl custody source required')
+    spec = importlib.util.spec_from_file_location('arm_installed_sysctl_custody',path)
+    custody = importlib.util.module_from_spec(spec);spec.loader.exec_module(custody)
+    gate['custody'] = custody
+    gate['profilesBefore'] = arm_gate_profiles(custody)
+    gate['profileName'] = 'consolecrypt-agent-arm64-manager-10002'
+    need(not any(row == gate['profileName'] or row.startswith(gate['profileName']+' (')
+                 for row in gate['profilesBefore']), 'fresh product profile required')
+    for path in (Path('/etc/apparmor.d/consolecrypt-agent-arm64-manager'),
+                 Path('/etc/systemd/system/user@10002.service.d/60-consolecrypt-agent.conf'),
+                 Path('/usr/local/libexec/consolecrypt-agent-install')):
+        need(not path.exists() and not path.is_symlink(), 'fresh owned ARM manager path required')
+    gate['policyBefore'] = arm_gate_policy(Path('/usr/lib/systemd/systemd'))
+    gate['freshChecked'] = True
+    custody.tighten_transition_sysctl(gate['sysctl'])
+
+
+def arm_gate_policy(executable):
+    names = ['ExecStart','FragmentPath','DropInPaths','AppArmorProfile','User','Group',
+             'NoNewPrivileges','CapabilityBoundingSet','AmbientCapabilities']
+    result = subprocess.run(['/usr/bin/systemctl','--system','--no-pager','--no-ask-password',
+        'show',ARM_MANAGER,*['--property='+name for name in names]],
+        stdin=subprocess.DEVNULL,capture_output=True,timeout=5,check=False)
+    need(result.returncode == 0 and len(result.stdout)+len(result.stderr) <= 16384,
+         'bounded actual manager policy required')
+    rows = [line.split('=',1) for line in result.stdout.decode('utf-8','strict').splitlines()]
+    need(all(len(row) == 2 for row in rows) and len(rows) == len(names)
+         and {row[0] for row in rows} == set(names), 'complete manager policy required')
+    values = dict(rows)
+    prefix = '{ path='+str(executable)+' ; argv[]='+str(executable)+' --user ; ignore_errors=no ; '
+    value = values.pop('ExecStart')
+    need(value.startswith(prefix) and value.endswith(' }') and value.count('{') == value.count('}') == 1,
+         'exact actual manager entrypoint required')
+    return values
+
+
+def arm_gate_plan(gate,source):
+    path = source/'delivery/collector_provision.py'
+    need(digest(read(path,131072)) == ARM_HELPER_SHA, 'reviewed product ARM helper required')
+    spec = importlib.util.spec_from_file_location('arm_installed_product_helper',path)
+    product = importlib.util.module_from_spec(spec);spec.loader.exec_module(product)
+    product.DISK = True
+    product.PROFILE = 'ubuntu24-systemd255-disk-v1'
+    product.END = time.monotonic()+55
+    # A readonly plan pins the actual vendor/parser/helper/unit inputs BEFORE
+    # the original lifecycle invokes the unchanged root provisioning CLI.
+    plan = product.arm_manager_plan(10002,10002)
+    product.arm_manager_preflight(plan,None)
+    gate.update(product=product,plan=plan)
+
+
+def arm_gate_boot(gate):
+    product,plan = gate['product'],gate['plan']
+    product.END = time.monotonic()+55
+    product.arm_manager_assets(plan)
+    row = product.show(ARM_MANAGER,['ActiveState','MainPID','InvocationID','ExecStartPre','ExecStartPost'])
+    need(row['ActiveState'] == 'active' and row['MainPID'].isdigit() and int(row['MainPID']) > 1
+         and re.fullmatch('[0-9a-f]{32}',row['InvocationID']) is not None,
+         'actual active manager invocation required')
+    # These are systemd's actual completed commands, not a static drop-in read.
+    for phase,field in (('pre','ExecStartPre'),('post','ExecStartPost')):
+        value = row[field]
+        argv = '/usr/bin/python3.12 -I -B '+str(product.ARM_HELPER)+' --verify-arm-manager '+phase
+        prefix = '{ path=/usr/bin/python3.12 ; argv[]='+argv+' ; ignore_errors=no ; '
+        need(value.startswith(prefix) and value.endswith(' }')
+             and value.count('{') == value.count('}') == 1
+             and re.search(r'; pid=[1-9][0-9]* ; code=exited ; status=0 \}$',value) is not None,
+             'actual successful manager '+phase+' command required')
+        # Execute the SAME installed public CLI as the dedicated UID as well.
+        environment = dict(PATH='/usr/bin:/bin',HOME='/var/lib/consolecrypt-agent',
+                           XDG_RUNTIME_DIR='/run/user/10002',MAINPID=row['MainPID'])
+        result = subprocess.run(['/usr/bin/python3.12','-I','-B',str(product.ARM_HELPER),
+            '--verify-arm-manager',phase],stdin=subprocess.DEVNULL,capture_output=True,
+            timeout=5,check=False,user=10002,group=10002,extra_groups=[],env=environment)
+        need(result.returncode == 0 and result.stdout == result.stderr == b'',
+             'actual sameUID readonly manager '+phase+' check required')
+    product.arm_manager_process(plan,Path('/proc')/row['MainPID'])
+    policy = arm_gate_policy(product.ARM_COPY)
+    original = gate['policyBefore']
+    need(all(policy[key] == original[key] for key in
+        ('FragmentPath','AppArmorProfile','User','Group','NoNewPrivileges','CapabilityBoundingSet','AmbientCapabilities')),
+         'original manager capability and execution policy required')
+    return dict(invocationId=row['InvocationID'],mainPid=int(row['MainPID']),
+        actualSystemdPrePassed=True,actualSystemdPostPassed=True,sameUidPrePassed=True,
+        sameUidPostPassed=True,actualOwnedManagerProcessPassed=True,hostRebootObserved=False)
+
+
+def arm_gate_unlink(product,path,expected,mode,gid=0):
+    # Only initially absent exact fixture-owned files are eligible. No glob,
+    # recursive remove, account removal, adoption or repair of changed bytes.
+    before = path.lstat()
+    need(before.st_gid == gid and product.root_file(path,max(len(expected),1),mode) == expected
+         and product.ident(path.lstat()) == product.ident(before), 'owned ARM teardown file changed')
+    path.unlink()
+    need(not path.exists() and not path.is_symlink(), 'owned ARM teardown absence required')
+
+
+def arm_gate_retire(gate,report,output):
+    if not gate.get('freshChecked'):
+        return
+    custody = gate['custody']
+    # This second observation also runs after an unrelated lifecycle cleanup
+    # error. It never relaxes the manager/cgroup join prerequisites.
+    for unit in ('consolecrypt-agent.service','consolecrypt-agent-collector.service',
+                 ARM_MANAGER,'user-runtime-dir@10002.service'):
+        result = subprocess.run(['/usr/bin/systemctl','show',unit,'--property=LoadState',
+            '--property=ActiveState','--property=MainPID'],stdin=subprocess.DEVNULL,
+            capture_output=True,timeout=5,check=False)
+        need(len(result.stdout)+len(result.stderr) <= 4096,
+             'bounded stopped ARM unit observation required')
+        rows = [line.split('=',1) for line in result.stdout.decode('utf-8','strict').splitlines()]
+        need(len(rows) == 3 and all(len(row) == 2 for row in rows)
+             and {row[0] for row in rows} == {'LoadState','ActiveState','MainPID'},
+             'complete stopped ARM unit observation required')
+        observed = dict(rows)
+        # A fresh fixture may fail after tightening but before creating either
+        # product service. Accept only exact not-created state, including rc4;
+        # loaded services still require rc0. Task census below remains mandatory.
+        failed_collector = (unit == 'consolecrypt-agent-collector.service' and result.returncode == 0
+            and observed == dict(LoadState='loaded',ActiveState='failed',MainPID='0'))
+        if failed_collector:
+            need('lifecycle' in gate,'qualified collector terminal verifier missing')
+            terminal=gate['lifecycle'].collector_terminal_state()
+            need(terminal == dict(activeState='failed',mainPid=0,disabled=True,exactOwnedUnit=True,
+                 cgroupAndDescendantsQuiescent=True,failurePreserved=True),'qualified failed collector proof required')
+            report['collectorServiceTerminal'] = terminal
+        else:
+            need((result.returncode == 0 and observed == dict(LoadState='loaded',ActiveState='inactive',MainPID='0'))
+                 or (result.returncode in (0,4) and observed == dict(LoadState='not-found',ActiveState='inactive',MainPID='0')),
+                 'ARM teardown manager or workload live')
+    need(not Path('/run/user/10002').exists() and not Path('/run/user/10002').is_symlink(),
+         'owned user runtime directory still live')
+    for group in (Path('/sys/fs/cgroup/system.slice/consolecrypt-agent.service'),
+                  Path('/sys/fs/cgroup/system.slice/consolecrypt-agent-collector.service'),
+                  Path('/sys/fs/cgroup/user.slice/user-10002.slice')):
+        for path in group.rglob('cgroup.procs') if group.exists() else ():
+            need(not custody.read(str(path),65536).strip(), 'ARM teardown processes remain')
+    product,plan = gate.get('product'),gate.get('plan')
+    absent = lambda path: not path.exists() and not path.is_symlink()
+    try:
+        if plan is not None:
+            product.END = time.monotonic()+55
+            # Materialization is owned only when the product's configured or
+            # ready descriptor agrees with the exact plan captured beforehand.
+            paths = (plan['managerPath'],product.ARM_COPY,product.ARM_POLICY,product.ARM_META)
+            if any(not absent(path) for path in paths[1:]):
+                owner = product.decode(product.root_file(product.OWNER,16384,0o600))
+                need(owner.get('state') in ('configured','ready') and owner.get('uid') == owner.get('gid') == 10002
+                     and owner.get('armManager') == plan['descriptor'], 'owned ARM teardown descriptor required')
+            if not absent(plan['managerPath']):
+                arm_gate_unlink(product,plan['managerPath'],plan['managerBytes'],0o644)
+            command(['/usr/bin/systemctl','daemon-reload'],output/'cleanup-arm-reload.log',20)
+            need(arm_gate_policy(product.ARM_VENDOR) == gate['policyBefore'], 'original manager policy not restored')
+            report['originalUnitPolicyRestored'] = True
+            if product.arm_profile_state(10002) is not None:
+                need(product.arm_profile_state(10002) == 'ownedMode'
+                     and product.root_file(product.ARM_POLICY,16384,0o644) == plan['profile'],
+                     'owned ARM profile teardown mismatch')
+                product.command(product.arm_parser_argv('remove'),seconds=15)
+            need(product.arm_profile_state(10002) is None, 'owned ARM profile still loaded')
+            for path,raw,mode,gid in ((product.ARM_POLICY,plan['profile'],0o644,0),
+                (product.ARM_META,plan['public'],0o644,0),(product.ARM_COPY,plan['raw'],0o750,10002)):
+                if not absent(path):arm_gate_unlink(product,path,raw,mode,gid)
+        need(arm_gate_profiles(custody) == gate['profilesBefore'], 'host AppArmor profile set changed')
+        report['temporaryProfileAbsent'] = True
+        need(absent(Path('/etc/consolecrypt-agent/collector-systemd'))
+             and absent(Path('/etc/apparmor.d/consolecrypt-agent-arm64-manager')),
+             'temporary ARM manager copy or profile remains')
+        report['temporaryEntrypointAbsent'] = True
+    finally:
+        state = gate['sysctl']
+        try:
+            if state['fd'] is not None:
+                # Restoration is independent of copy removal errors, but only
+                # after the own profile is absent and all manager tasks joined.
+                own = gate['profileName']
+                profile_absent = not any(row == own or row.startswith(own+' (')
+                                         for row in arm_gate_profiles(custody))
+                custody.restore_transition_sysctl(state,profile_absent,True)
+                report['temporarySysctlRestored'] = state['restored']
+                report['temporarySysctl'] = dict(original=int(state['original']),
+                    recordedChange=state['recordedChange'],restored=state['restored'])
+        finally:
+            if state['fd'] is not None:
+                os.close(state['fd']);state['fd'] = None
+
+
 def execute(args):
     source,packet,normal,authority,phases,lifecycle_raw,primitives_raw = validate(args)
     # All input checks precede any host change. Never adopt existing product state.
@@ -284,13 +511,16 @@ def execute(args):
             capture_output=True,timeout=10,check=False)
         need(len(shown.stdout)+len(shown.stderr) <= 4096 and shown.stdout.strip() == b'not-found',
              'existing product unit refused')
+    initial_idle = arm_gate_initial_idle()
     need(ctypes.CDLL(None,use_errno=True).prctl(36,1,0,0,0) == 0, 'original command group subreaper required')
     output = args.output.absolute()
     output.mkdir(mode=0o700,parents=False,exist_ok=False)
     report = dict(passed=False,architecture='aarch64',packetSha256=args.packet_sha256,
         syntheticReleaseSignerOnly=True,productionReleaseClaimed=False,hostRebootObserved=False,
-        installedAcceptanceExecuted=False,cleanupJoined=False)
+        installedAcceptanceExecuted=False,cleanupJoined=False,initialFixedUidIdle=initial_idle)
     owned_identity = None
+    gate = dict(sysctl=dict(fd=None,identity=None,original=None,writeAttempted=False,
+                            recordedChange=False,restored=False))
     def identity():
         user = pwd.getpwnam('consolecrypt-agent')
         group = grp.getgrnam('consolecrypt-agent')
@@ -338,6 +568,7 @@ def execute(args):
         need(created_identity[1] == created_group, 'own group changed during user creation')
         owned_identity = created_identity
         report['cleanupAuthorityAcquired'] = True
+        arm_gate_prepare(gate)
         for path,mode in ((FIXTURE,0o755),(FIXTURE/'private',0o700),(OBS,0o700),
                           (Path('/var/lib/consolecrypt-agent'),0o755),(Path('/etc/consolecrypt-agent'),0o755),
                           (Path('/opt/consolecrypt-agent-install'),0o755),(Path('/etc/consolecrypt-agent-release'),0o755),
@@ -390,6 +621,7 @@ def execute(args):
         sys.path.insert(0,str(FIXTURE))
         spec = importlib.util.spec_from_file_location('same_agent_arm_host_lifecycle',FIXTURE/'guest_lifecycle.py')
         lifecycle = importlib.util.module_from_spec(spec);spec.loader.exec_module(lifecycle)
+        gate['lifecycle'] = lifecycle
         token = str(uuid.uuid4())
         publish(FIXTURE/'token',(token+'\n').encode(),0o444)
         lifecycle.token = lambda: token  # Host transport has no QEMU kernel argv.
@@ -417,8 +649,15 @@ def execute(args):
             report[phase] = lifecycle.runtime(phase)
         report['diskStopA'] = lifecycle.disk_stop_a()
         role(3,'update')
+        arm_gate_plan(gate,source)
         report['diskPrepare'] = lifecycle.disk_prepare()
+        report['managerInitialStart'] = arm_gate_boot(gate)
         role(3,'prepare',collector=True)
+        gate['terminalInputs'] = lifecycle.capture_collector_terminal_inputs()
+        command(['/usr/bin/systemctl','restart',ARM_MANAGER],output/'manager-restart.log',60)
+        report['managerRestart'] = arm_gate_boot(gate)
+        need(report['managerRestart']['invocationId'] != report['managerInitialStart']['invocationId'],
+             'actual fresh manager invocation required')
         report['disk'] = lifecycle.disk_service()
         role(3,'disable',collector=True)
         role(3,'remove')
@@ -426,6 +665,7 @@ def execute(args):
         # Fresh module import after removal; same host, explicitly no reboot claim.
         reopened = importlib.util.module_from_spec(spec);spec.loader.exec_module(reopened)
         reopened.token = lambda: token
+        reopened.TERMINAL_INPUTS = gate['terminalInputs']
         report['readOnlyReopen'] = reopened.removed()
         report['passed'] = True
     except BaseException as error:
@@ -437,14 +677,23 @@ def execute(args):
                 report['cleanupSkippedIdentityUnowned'] = True
             else:
                 need(identity() == owned_identity, 'cleanup dedicated identity changed')
-                for index,unit in enumerate(('consolecrypt-agent.service','consolecrypt-agent-collector.service','user@10002.service')):
+                for index,unit in enumerate(('consolecrypt-agent.service','consolecrypt-agent-collector.service','user@10002.service',
+                                             'user-runtime-dir@10002.service')):
                     # Authority exists only after our successful create+readback.
                     shown = subprocess.run(['/usr/bin/systemctl','show','--property=LoadState','--value',unit],
                         capture_output=True,timeout=10,check=False)
                     need(len(shown.stdout)+len(shown.stderr) <= 4096, 'bounded cleanup unit observation')
                     if shown.stdout.strip() != b'not-found':
                         need(shown.returncode == 0 and shown.stdout.strip() == b'loaded', 'known unit required for cleanup')
-                        command(['/usr/bin/systemctl','stop',unit],output/('cleanup-%d.log'%index),60)
+                        preserve_failed = False
+                        if unit == 'consolecrypt-agent-collector.service':
+                            terminal = subprocess.run(['/usr/bin/systemctl','show',unit,
+                                '--property=ActiveState','--property=MainPID'],capture_output=True,timeout=5,check=False)
+                            need(terminal.returncode == 0 and len(terminal.stdout)+len(terminal.stderr)<=4096,
+                                 'bounded collector cleanup terminal observation required')
+                            preserve_failed = terminal.stdout in (b'ActiveState=failed\nMainPID=0\n',b'MainPID=0\nActiveState=failed\n')
+                        if not preserve_failed:
+                            command(['/usr/bin/systemctl','stop',unit],output/('cleanup-%d.log'%index),60)
                 groups = [Path('/sys/fs/cgroup/system.slice')/unit for unit in
                           ('consolecrypt-agent.service','consolecrypt-agent-collector.service')]
                 groups += [Path('/sys/fs/cgroup/user.slice/user-10002.slice')]
@@ -472,6 +721,13 @@ def execute(args):
                 report['cleanupFailure'] = dict(code=code, frames=frames[-8:], readOnly=True)
             except BaseException:
                 pass
+        try:
+            arm_gate_retire(gate,report,output)
+        except BaseException as cleanup:
+            report.update(passed=False,cleanupJoined=False,armCleanupErrorClass=type(cleanup).__name__)
+        finally:
+            if gate['sysctl']['fd'] is not None:
+                os.close(gate['sysctl']['fd']);gate['sysctl']['fd'] = None
         (output/'RESULT.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
     need(report['passed'] and report['cleanupJoined'], 'actual ARM lifecycle/cleanup did not pass')
 
@@ -479,6 +735,7 @@ def execute(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--execute-disposable-arm-host',action='store_true',required=True)
+    parser.add_argument('--exercise-owned-arm-manager',action='store_true',required=True)
     for name in ('agent','packet','runtime-pin','primitives','ansible-python','output',
                  'ansible-wheel-catalog','ansible-lock','ansible-install-report'):
         parser.add_argument('--'+name,type=Path,required=True)

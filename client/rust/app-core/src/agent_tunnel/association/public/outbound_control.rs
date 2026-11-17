@@ -386,3 +386,27 @@ mod tests {
         assert!(context.scope.check_current().is_err());
     }
 }
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+impl AppCore {
+    pub(crate) fn __owned_outbound_url_canonical_positive() {
+        let raw="https://owned-control.invalid:8443";
+        assert!(NodeOutboundControlReference::canonical_server_url_matches(raw,"https://owned-control.invalid:8443/"));
+        assert_eq!(raw,"https://owned-control.invalid:8443");
+        assert!(NodeOutboundControlReference::canonical_server_url_matches("https://owned-control.invalid/base/v1","https://owned-control.invalid/base/v1"));
+    }
+    pub(crate) fn __owned_outbound_url_canonical_negative() {
+        let raw="https://owned-control.invalid:8443/base/v1";
+        for other in ["https://other-control.invalid:8443/base/v1","https://owned-control.invalid:8444/base/v1",
+            "https://owned-control.invalid:8443/other","https://owned-control.invalid:8443/base/v1/",
+            "http://owned-control.invalid:8443/base/v1","https://owned-control.invalid:8443/base/v1?q=1",
+            "https://user@owned-control.invalid:8443/base/v1","https://owned-control.invalid:8443/base/v1#part"] {
+            assert!(!NodeOutboundControlReference::canonical_server_url_matches(raw,other));
+        }
+        for forbidden in ["https://user@owned-control.invalid:8443/base/v1","https://owned-control.invalid:8443/base/v1?q=1",
+            "https://owned-control.invalid:8443/base/v1#part","https://owned-control.invalid:8443/base/v1\\tail",
+            "https://owned-control.invalid:8443/base/v1\n"," https://owned-control.invalid:8443/base/v1"] {
+            assert!(!NodeOutboundControlReference::canonical_server_url_matches(forbidden,raw));
+        }
+    }
+}

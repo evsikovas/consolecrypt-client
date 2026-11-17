@@ -129,6 +129,21 @@ fn integer(v: &Value, min: u64, max: u64) -> Result<u64> {
         .filter(|n| min <= *n && *n <= max)
         .ok_or(Error::InvalidWire)
 }
+// Only the original read-only recipient wait. Outer errors are the mandatory
+// clock/pipe/config guards and are never retried; inner errors are reference reads.
+pub(crate) fn wait_recipient_reference<T>(
+    end: Instant, mut read: impl FnMut() -> Result<Result<T>>,
+) -> Result<T> {
+    loop {
+        match read()? {
+            Ok(value) => return Ok(value),
+            Err(Error::WrongState | Error::Storage | Error::UncertainCommit) if Instant::now() < end =>
+                std::thread::sleep(Duration::from_millis(20)),
+            Err(error) => return Err(error),
+        }
+    }
+}
+
 fn name(v: &Value) -> Result<&str> {
     let s = v.as_str().ok_or(Error::InvalidWire)?;
     let b = s.as_bytes();
@@ -1078,6 +1093,7 @@ fn audit_child_fds() -> Result<()> {
     }
     Ok(())
 }
+enum AdapterFrame { Pending, Frame(Value), Eof }
 struct Adapter {
     child: Child,
     input: File,
@@ -1171,28 +1187,41 @@ impl Adapter {
             stopped: false,
         })
     }
-    fn frame(&mut self) -> Result<Option<Value>> {
-        let mut buf = [0u8; 1024];
-        match self.output.read(&mut buf) {
-            Ok(0) => return Err(Error::InvalidWire),
-            Ok(n) => {
-                self.pending.extend_from_slice(&buf[..n]);
-                if self.pending.len() > 4096 {
-                    return Err(Error::Quota);
-                }
+    fn frame_event(&mut self) -> Result<AdapterFrame> {
+        let mut read_once = false;
+        loop {
+            if self.pending.len() > 4096 {
+                return Err(Error::Quota);
             }
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => return Ok(None),
-            Err(_) => return Err(Error::Storage),
+            if let Some(end) = self.pending.iter().position(|byte| *byte == b'\n') {
+                let record = &self.pending[..=end];
+                let value: Value = serde_json::from_slice(record).map_err(|_| Error::InvalidWire)?;
+                if canonical(&value)?.as_slice() != record {
+                    return Err(Error::InvalidWire);
+                }
+                self.pending.drain(..=end);
+                return Ok(AdapterFrame::Frame(value));
+            }
+            if read_once {
+                return Ok(AdapterFrame::Pending);
+            }
+            read_once = true;
+            let mut buf = [0u8; 1024];
+            match self.output.read(&mut buf) {
+                Ok(0) if self.pending.is_empty() => return Ok(AdapterFrame::Eof),
+                Ok(0) => return Err(Error::InvalidWire),
+                Ok(n) => self.pending.extend_from_slice(&buf[..n]),
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => return Ok(AdapterFrame::Pending),
+                Err(_) => return Err(Error::Storage),
+            }
         }
-        if !self.pending.contains(&b'\n') {
-            return Ok(None);
+    }
+    fn frame(&mut self) -> Result<Option<Value>> {
+        match self.frame_event()? {
+            AdapterFrame::Pending => Ok(None),
+            AdapterFrame::Frame(value) => Ok(Some(value)),
+            AdapterFrame::Eof => Err(Error::InvalidWire),
         }
-        let value: Value = serde_json::from_slice(&self.pending).map_err(|_| Error::InvalidWire)?;
-        if canonical(&value)? != self.pending {
-            return Err(Error::InvalidWire);
-        }
-        self.pending.clear();
-        Ok(Some(value))
     }
     fn stop_join(&mut self, files: &Files) -> bool {
         let end = Instant::now() + Duration::from_secs(10);

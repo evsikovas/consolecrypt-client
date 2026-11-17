@@ -13613,6 +13613,7 @@
   "agentOutboundReview": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044e",
   "agentOutboundConfirm": "\u0417\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u044f\u0449\u0435\u0435 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435",
   "@agentOutboundSeconds": {
+    "description": "Requested outbound registration duration in seconds.",
     "placeholders": {
       "seconds": {
         "type": "int"
@@ -13620,6 +13621,7 @@
     }
   },
   "@agentOutboundReviewRemaining": {
+    "description": "Remaining time in seconds to confirm outbound registration.",
     "placeholders": {
       "seconds": {
         "type": "int"
@@ -13822,6 +13824,7 @@
     "description": "Explicit finite service flow; caller cleanup is not service stop."
   },
   "@agentCollectorServiceRemaining": {
+    "description": "Remaining time in seconds to confirm the finite collector service.",
     "placeholders": {
       "seconds": {
         "type": "int"
@@ -14225,5 +14228,8 @@
   "@hostAgentLastObservedHint": {
     "description": "Qualifies previously observed heartbeat version; no remote action or readiness claim."
   },
-  "monitoringAgentDestinationHint": "Маршрут Agent сохраняет связь, SSH-хост и loopback-назначение; URL источника, TLS и аутентификация не меняются. Сохранение изменений делает прежнее разрешение туннеля недействительным. Перед чтением откройте и подтвердите новый соответствующий туннель Agent; ссылка не даёт доступа и не переподключается автоматически."
+  "monitoringAgentDestinationHint": "Маршрут Agent сохраняет связь, SSH-хост и loopback-назначение; URL источника, TLS и аутентификация не меняются. Сохранение изменений делает прежнее разрешение туннеля недействительным. Перед чтением откройте и подтвердите новый соответствующий туннель Agent; ссылка не даёт доступа и не переподключается автоматически.",
+  "@monitoringAgentDestinationHint": {
+    "description": "Explains the saved Agent route reference and the separate tunnel approval required before reading."
+  }
 }

@@ -238,7 +238,7 @@ pub(crate) async fn owned_cadvisor_install_signed_job_real_source_binding_and_do
         "cc_cadvisor_image_id":pins.cadvisor_image_id,"cc_cadvisor_owner":token,
         "cc_cadvisor_port":19101,"cc_cadvisor_host_access":"privileged-host-filesystems-and-kmsg"},"tags":[],"skip_tags":[],"diff":false}})).unwrap();
     let review = app.automation_prepare_run(request).await.unwrap();
-    assert_eq!(review["validation"]["valid"], true);
+    assert_eq!(review["validation"]["valid"], true, "{}", review["validation"]);
     let admitted = app
         .automation_confirm_run(review["review_id"].as_str().unwrap().into())
         .await
@@ -308,13 +308,13 @@ pub(crate) async fn owned_cadvisor_install_signed_job_real_source_binding_and_do
     assert_eq!(panel["result"]["state"], "ready");
     // A second actual signed job cleans ONLY the same disposable guest's
     // captured original containers. No Native key export or host cleanup SSH.
-    let cleanup_source = "---\n- name: End only this original owned cAdvisor fixture\n  hosts: all\n  gather_facts: false\n  become: true\n  tasks:\n    - name: Verify and end captured original guest resources\n      ansible.builtin.command:\n        argv: [/usr/bin/python3, /opt/fixture/guest_cleanup.py]\n      no_log: true\n";
+    let cleanup_source = "---\n- name: End only this original owned cAdvisor fixture\n  hosts: all\n  gather_facts: false\n  become: true\n  tasks:\n    - name: Verify and end captured original guest resources\n      ansible.builtin.command:\n        argv: [/usr/bin/python3, /opt/fixture/guest_cleanup.py]\n      changed_when: true\n      no_log: true\n";
     app.automation_project_save(project.id.clone(), "cleanup.yml".into(), None, cleanup_source.into()).await.unwrap();
     let cleanup: AutomationRunRequest = serde_json::from_value(json!({"project_id":project.id,"runner_id":runner.id,
         "playbook":"cleanup.yml","host_ids":[hosts[1].id],"mode":"apply","timeout_seconds":60,"forks":1,
         "cancel_on_lock":true,"parameters":{"extra_vars":{},"tags":[],"skip_tags":[],"diff":false}})).unwrap();
     let cleanup_review = app.automation_prepare_run(cleanup).await.unwrap();
-    assert_eq!(cleanup_review["validation"]["valid"], true);
+    assert_eq!(cleanup_review["validation"]["valid"], true, "{}", cleanup_review["validation"]);
     let cleanup_admitted = app.automation_confirm_run(cleanup_review["review_id"].as_str().unwrap().into()).await.unwrap();
     let cleanup_job = cleanup_admitted["job_id"].as_str().unwrap();
     let cleanup_end = terminal(&app, cleanup_job).await;

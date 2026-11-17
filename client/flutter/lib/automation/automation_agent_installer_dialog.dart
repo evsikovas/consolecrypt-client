@@ -210,7 +210,7 @@ class _State extends ConsumerState<AutomationAgentInstallerDialog> {
               InfoBanner(tone: BannerTone.warning, message: l.agentInstallSourceOnly),
               const SizedBox(height: 12), Text(l.agentInstallTrustGuide),
               // l10n-ignore: fixed target bootstrap paths, never UI-supplied keys.
-              const SelectableText(
+              const SelectableText( // l10n-ignore: fixed filesystem paths and executable names.
                 // l10n-ignore: exact technical path, CLI syntax or SHA value; never translated.
                 '/etc/consolecrypt-agent-release/trust.json\n/etc/consolecrypt-agent-release/public-key.json\n/usr/local/libexec/consolecrypt-agent-release/cc-agent-identity\nconsolecrypt-agent', // l10n-ignore: exact technical path, CLI syntax or SHA value; never translated.
               ),
@@ -323,11 +323,11 @@ class _State extends ConsumerState<AutomationAgentInstallerDialog> {
                 InfoBanner(tone: BannerTone.info, message: l.agentInstallProjectCreated),
                 const SizedBox(height: 12),
                 Text(l.agentInstallUnverified),
-                SelectableText(
-                  'SHA256: ${result.projectDigest}',
+                SelectableText( // l10n-ignore: exact digest and artifact filenames.
+                  'SHA256: ${result.projectDigest}', // l10n-ignore: standardized digest label and value.
                 ), // l10n-ignore: exact technical path, CLI syntax or SHA value; never translated.
                 if (result.artifactSha256 != null)
-                  SelectableText(
+                  SelectableText( // l10n-ignore: exact digest and artifact filenames.
                     // l10n-ignore: exact technical path, CLI syntax or SHA value; never translated.
                     'candidate.zip SHA256: ${result.artifactSha256}\ncandidate-release.json SHA256: ${result.manifestSha256}', // l10n-ignore: exact technical path, CLI syntax or SHA value; never translated.
                   ),

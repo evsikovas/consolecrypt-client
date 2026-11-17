@@ -455,6 +455,80 @@ def runtime(stage):
     else:assert(OBS/'first-history.json').read_bytes()in rows
     return{'version':1,'phase':stage,'actualRuntimeVersion':actual['version'],'agentId':agent(),'keyFingerprint':original['keyFingerprint'],'mainPid':pid,'realWorkerCount':len(workers),'originalKeyPreserved':True,'originalHistoryPreserved':True,'actualSignedRead':True,'ownerDescriptorInherited':False,'actualRuntimeVersionSource':'owned_python_heartbeat','pythonCodeAndListenerBound':True,'selectedRuntimeSource':source_binding,'rustVersionIsNotPythonRuntimeVersion':True}
 
+TERMINAL_INPUTS=None
+
+
+def terminal_module(path,pin):
+    # Only two fixed reviewed installed helpers call this fixture loader.
+    assert str(path) in (
+        '/usr/local/libexec/consolecrypt-agent-install/collector_provision.py',
+        '/usr/local/libexec/consolecrypt-agent-install/collector_service_provision.py')
+    for parent in path.parents:
+        info=parent.lstat()
+        assert stat.S_ISDIR(info.st_mode)and info.st_uid==0 and not info.st_mode&0o022
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC)
+    try:
+        before=os.fstat(fd)
+        identity=lambda m:(m.st_dev,m.st_ino,m.st_mode,m.st_uid,m.st_gid,m.st_nlink,m.st_size,m.st_mtime_ns,m.st_ctime_ns)
+        assert stat.S_ISREG(before.st_mode)and before.st_uid==0 and before.st_nlink==1
+        assert stat.S_IMODE(before.st_mode)==0o644 and 0<before.st_size<=131072
+        with os.fdopen(os.dup(fd),'rb')as stream:raw=stream.read(131073)
+        assert len(raw)==before.st_size and identity(before)==identity(os.fstat(fd))==identity(path.lstat())
+        assert hashlib.sha256(raw).hexdigest()==pin
+    finally:os.close(fd)
+    spec=importlib.util.spec_from_file_location('fixture_terminal_'+path.stem,path)
+    value=importlib.util.module_from_spec(spec)
+    exec(compile(raw,str(path),'exec'),value.__dict__)
+    return value
+
+
+def capture_collector_terminal_inputs():
+    global TERMINAL_INPUTS
+    assert TERMINAL_INPUTS is None,'terminal inputs may be captured only before removal'
+    service=terminal_module(Path('/usr/local/libexec/consolecrypt-agent-install/collector_service_provision.py'),
+        '0a9bf83d0a76e01547a97f8d20738a3ff7ee2ba1e33cd68d60ca43f0f301eab1')
+    base=terminal_module(Path('/usr/local/libexec/consolecrypt-agent-install/collector_provision.py'),
+        '29c84a9c814f44e3bc54853e9c989ba4b2c67d701e83cad4d9210971ef9886bf')
+    base.END=time.monotonic()+55
+    unit=service.trusted(service.UNIT,16384)
+    # Independently reviewed current template rendered only for this fixture UID.
+    assert hashlib.sha256(unit).hexdigest()=='0269b790e78375d1a98c4c3b8f700714d788c12badfffc8b1c9ec6ce4db8faba'
+    catalog=service.trusted(service.CATALOG)
+    owner_raw=service.trusted(service.OWNER,mode=0o600)
+    owner=base.decode(owner_raw)
+    assert owner['format']=='cc-agent-finite-collector-provision-owner/v1'and owner['state']=='ready'
+    assert owner['uid']==owner['gid']==10002
+    assert owner['unitSha256']==hashlib.sha256(unit).hexdigest()
+    assert owner['catalogSha256']==hashlib.sha256(catalog).hexdigest()
+    TERMINAL_INPUTS=(unit,catalog,owner_raw)
+    return TERMINAL_INPUTS
+
+
+def collector_terminal_state():
+    assert type(TERMINAL_INPUTS)is tuple and len(TERMINAL_INPUTS)==3
+    assert all(type(raw)is bytes for raw in TERMINAL_INPUTS)
+    unit,catalog,owner_raw=TERMINAL_INPUTS
+    service=terminal_module(Path('/usr/local/libexec/consolecrypt-agent-install/collector_service_provision.py'),
+        '0a9bf83d0a76e01547a97f8d20738a3ff7ee2ba1e33cd68d60ca43f0f301eab1')
+    base=terminal_module(Path('/usr/local/libexec/consolecrypt-agent-install/collector_provision.py'),
+        '29c84a9c814f44e3bc54853e9c989ba4b2c67d701e83cad4d9210971ef9886bf')
+    base.END=time.monotonic()+55
+    # These expected bytes were held before revoke/removal, never minted from
+    # the post-removal files that are currently being verified.
+    assert service.trusted(service.UNIT,16384)==unit
+    assert service.trusted(service.CATALOG)==catalog
+    assert service.trusted(service.OWNER,mode=0o600)==owner_raw
+    # Reuse the maintained qualified proof: exact fragment/no drop-ins,
+    # disabled, MainPID0 and inactive/dead OR failed/failed, trusted inputs.
+    terminal=service.disabled_terminal_state(base,unit,catalog)
+    # populated=0 proves no live descendant even if the root cgroup.procs is empty.
+    assert service.fixed_root_unit_cgroup_quiescent()
+    assert service.disabled_terminal_state(base,unit,catalog)==terminal
+    assert terminal in ('inactive','failed')
+    return {'activeState':terminal,'mainPid':0,'disabled':True,'exactOwnedUnit':True,
+        'cgroupAndDescendantsQuiescent':True,'failurePreserved':terminal=='failed'}
+
+
 def removed():
     info=show();assert info['MainPID']=='0'and info['ActiveState']in('inactive','failed')
     group=Path('/sys/fs/cgroup/system.slice/consolecrypt-agent.service');assert not group.exists()or not(group/'cgroup.procs').read_text().strip()
@@ -473,12 +547,9 @@ def removed():
     assert[c_meta.st_dev,c_meta.st_ino]==c_original['identity']and hashlib.sha256(c_key.read_bytes()).hexdigest()==c_original['sha256']
     assert C_DB.is_dir()and C_ANCHOR.is_dir()and any(C_DB.iterdir())and any(C_ANCHOR.iterdir())
     assert a_state()==json.loads((OBS/'a-before-metrics-c.json').read_bytes())
-    service=subprocess.run(['/usr/bin/systemctl','--no-pager','show','--property=MainPID,ActiveState','consolecrypt-agent-collector.service'],capture_output=True,timeout=5,check=True)
-    assert len(service.stdout)<=4096 and b'MainPID=0\n'in service.stdout and b'ActiveState=inactive\n'in service.stdout
-    service_group=Path('/sys/fs/cgroup/system.slice/consolecrypt-agent-collector.service')
-    assert not service_group.exists()or not(service_group/'cgroup.procs').read_text().strip()
+    service_terminal=collector_terminal_state()
     assert any((HOME/'metrics-disk').iterdir()),'software removal erased collector data'
-    return{'version':1,'phase':'remove','originalKeyHistoryAndReplayStatePreserved':True,'serviceMainPidZero':True,'cgroupEmptyOrRemoved':True,'releaseFloor':3,'dataErased':False,'runtimeVersion':None,'separateCIdentityJournalAndWalPreserved':True,'collectorServiceStopped':True}
+    return{'version':1,'phase':'remove','originalKeyHistoryAndReplayStatePreserved':True,'serviceMainPidZero':True,'cgroupEmptyOrRemoved':True,'releaseFloor':3,'dataErased':False,'runtimeVersion':None,'separateCIdentityJournalAndWalPreserved':True,'collectorServiceStopped':True,'collectorServiceTerminal':service_terminal}
 
 # C is a different MetricsOnly association; A's certificate and data stay intact.
 C_KEY=HOME/'identity/metrics-c-key'

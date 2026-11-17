@@ -301,13 +301,24 @@ impl<S: CompareAndSwap> Actor<S> {
     }
 
     pub fn check_collector_service(
-        &mut self,
-        permit: &CollectorServicePermit,
-        now: Now,
+        &mut self, permit: &CollectorServicePermit, now: Now,
         clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
     ) -> Result<CollectorServiceDelegation> {
         let state = self.read(now)?;
         let observed = clock()?;
+        self.check_collector_service_loaded(permit, now, state, observed)
+    }
+    pub(crate) fn check_collector_service_waiting(
+        &mut self, permit: &CollectorServicePermit, now: Now, end: std::time::Instant,
+        clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
+    ) -> Result<CollectorServiceDelegation> {
+        let (state, observed) = self.read_collector_service_waiting(now, end, clock)?;
+        self.check_collector_service_loaded(permit, now, state, observed)
+    }
+    fn check_collector_service_loaded(
+        &mut self, permit: &CollectorServicePermit, now: Now, state: State,
+        observed: CollectorServiceClockObservation,
+    ) -> Result<CollectorServiceDelegation> {
         if observed.wall_time < now.0 || observed.wall_time < self.last_observed_time {
             return Err(Error::InvalidTime);
         }
@@ -325,6 +336,12 @@ impl<S: CompareAndSwap> Actor<S> {
             return Err(Error::WrongState);
         }
         Ok(record.policy.body.clone())
+    }
+    pub(crate) fn snapshot_collector_service_waiting(
+        &mut self, now: Now, end: std::time::Instant,
+        clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
+    ) -> Result<State> {
+        self.read_collector_service_waiting(now, end, clock).map(|(state, _)| state)
     }
 
     pub fn revoke_collector_service(
@@ -441,3 +458,40 @@ mod tests;
 #[path="collector_service_lifetime.rs"]
 mod lifetime;
 pub(crate) use lifetime::{CollectorCredentialPurpose, StoredCollectorServiceCredentialSet, LifetimeReadback};
+
+/// A read-only provider boundary, not an operation retry. Outer guards and
+/// clock failures are never retried; only the supplied load's pending or snapshot-conflict error is.
+pub(crate) fn wait_collector_service_read<T>(
+    end: std::time::Instant, lower: Now,
+    clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
+    mut load: impl FnMut() -> Result<T>,
+) -> Result<(T, CollectorServiceClockObservation)> {
+    lower.0.valid()?;
+    let mut previous = lower.0;
+    let mut previous_boot = None;
+    let mut previous_boottime = 0;
+    loop {
+        let before = clock()?;
+        before.wall_time.valid()?;
+        if before.wall_time < previous || previous_boot.as_ref().is_some_and(|boot| *boot != before.boot_id)
+            || before.boottime_ns < previous_boottime { return Err(Error::InvalidTime); }
+        previous = before.wall_time;
+        previous_boot = Some(before.boot_id);
+        previous_boottime = before.boottime_ns;
+        match load() {
+            Ok(value) => {
+                let after = clock()?;
+                after.wall_time.valid()?;
+                if after.wall_time < previous || after.boot_id != before.boot_id
+                    || after.boottime_ns < before.boottime_ns {
+                    return Err(Error::InvalidTime);
+                }
+                return Ok((value, after));
+            }
+            Err(Error::UncertainCommit | Error::Conflict) if std::time::Instant::now() < end => {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}

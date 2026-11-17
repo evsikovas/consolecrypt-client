@@ -17,7 +17,10 @@
       bindIp: 127.0.0.1
       port: '{{ cc_cadvisor_port }}'
       metricsPath: /metrics
-    consolecrypt_cadvisor_manifest_digest: '{{ consolecrypt_cadvisor_manifest_definition | to_json(sort_keys=True, separators=[",", ":"], ensure_ascii=True) | hash("sha256") }}'
+    consolecrypt_cadvisor_manifest_digest: >-
+      {{ consolecrypt_cadvisor_manifest_definition | to_json(
+        sort_keys=True, separators=[",", ":"], ensure_ascii=True
+      ) | hash("sha256") }}
   tasks:
     - name: Validate explicit operation mode
       ansible.builtin.assert:
@@ -228,8 +231,13 @@
           ansible.builtin.assert:
             that:
               - consolecrypt_local_image.stdout | length <= 8192
-              - consolecrypt_local_image.stdout == ((cc_cadvisor_image_id | to_json) ~ ' ' ~ (['ghcr.io/google/cadvisor@sha256:' ~ cc_cadvisor_image_sha256] | to_json))
-            fail_msg: The exact image ID and sole reviewed repository digest must already be installed by the administrator. No pull or tag fallback is permitted.
+              - >-
+                consolecrypt_local_image.stdout ==
+                ((cc_cadvisor_image_id | to_json) ~ ' ' ~
+                 (['ghcr.io/google/cadvisor@sha256:' ~ cc_cadvisor_image_sha256] | to_json))
+            fail_msg: >-
+              The exact image ID and sole reviewed repository digest must already be installed by the administrator.
+              No pull or tag fallback is permitted.
 
         - name: Explicitly start the new container with the reviewed privileged host mounts
           ansible.builtin.command:
@@ -295,8 +303,27 @@
               - '{{ consolecrypt_readback_format }}'
               - '{{ consolecrypt_new_container.stdout }}'
           vars:
-            consolecrypt_readback_format: !unsafe >-
-              {"id":{{json .Id}},"name":{{json .Name}},"imageRef":{{json .Config.Image}},"host":{{json (index .Config.Labels "io.consolecrypt.host")}},"managedBy":{{json (index .Config.Labels "io.consolecrypt.managed-by")}},"manifestSha256":{{json (index .Config.Labels "io.consolecrypt.manifest")}},"image":{{json .Image}},"owner":{{json (index .Config.Labels "io.consolecrypt.owner")}},"component":{{json (index .Config.Labels "io.consolecrypt.component")}},"running":{{json .State.Running}},"oom":{{json .State.OOMKilled}},"memory":{{json .HostConfig.Memory}},"swap":{{json .HostConfig.MemorySwap}},"cpu":{{json .HostConfig.NanoCpus}},"pids":{{json .HostConfig.PidsLimit}},"privileged":{{json .HostConfig.Privileged}},"restart":{{json .HostConfig.RestartPolicy.Name}},"ports":{{json .HostConfig.PortBindings}},"logs":{{json .HostConfig.LogConfig}},"mounts":{{json .Mounts}}}
+            consolecrypt_readback_format: >-
+              {{ '{"id":{{json .Id}},'
+                 ~ '"name":{{json .Name}},'
+                 ~ '"imageRef":{{json .Config.Image}},'
+                 ~ '"host":{{json (index .Config.Labels "io.consolecrypt.host")}},'
+                 ~ '"managedBy":{{json (index .Config.Labels "io.consolecrypt.managed-by")}},'
+                 ~ '"manifestSha256":{{json (index .Config.Labels "io.consolecrypt.manifest")}},'
+                 ~ '"image":{{json .Image}},'
+                 ~ '"owner":{{json (index .Config.Labels "io.consolecrypt.owner")}},'
+                 ~ '"component":{{json (index .Config.Labels "io.consolecrypt.component")}},'
+                 ~ '"running":{{json .State.Running}},'
+                 ~ '"oom":{{json .State.OOMKilled}},'
+                 ~ '"memory":{{json .HostConfig.Memory}},'
+                 ~ '"swap":{{json .HostConfig.MemorySwap}},'
+                 ~ '"cpu":{{json .HostConfig.NanoCpus}},'
+                 ~ '"pids":{{json .HostConfig.PidsLimit}},'
+                 ~ '"privileged":{{json .HostConfig.Privileged}},'
+                 ~ '"restart":{{json .HostConfig.RestartPolicy.Name}},'
+                 ~ '"ports":{{json .HostConfig.PortBindings}},'
+                 ~ '"logs":{{json .HostConfig.LogConfig}},'
+                 ~ '"mounts":{{json .Mounts}}}' }}
           environment:
             DOCKER_CONTEXT: ''
             DOCKER_HOST: unix:///var/run/docker.sock
@@ -342,7 +369,9 @@
               - consolecrypt_actual.mounts | selectattr('Source','equalto','/') | selectattr('Destination','equalto','/rootfs') | list | length == 1
               - consolecrypt_actual.mounts | selectattr('Source','equalto','/var/run') | selectattr('Destination','equalto','/var/run') | list | length == 1
               - consolecrypt_actual.mounts | selectattr('Source','equalto','/sys') | selectattr('Destination','equalto','/sys') | list | length == 1
-              - consolecrypt_actual.mounts | selectattr('Source','equalto','/var/lib/docker') | selectattr('Destination','equalto','/var/lib/docker') | list | length == 1
+              - >-
+                consolecrypt_actual.mounts | selectattr('Source','equalto','/var/lib/docker')
+                | selectattr('Destination','equalto','/var/lib/docker') | list | length == 1
               - consolecrypt_actual.mounts | selectattr('Source','equalto','/dev/disk') | selectattr('Destination','equalto','/dev/disk') | list | length == 1
             fail_msg: Actual owned installation readback differs from the reviewed profile. State is preserved; no binding or freshness is claimed.
           no_log: true
@@ -388,8 +417,27 @@
       become: '{{ cc_exporter_mode != "inspect" }}'
       vars:
         consolecrypt_expected_container_id: '{{ cc_cadvisor_container_id }}'
-        consolecrypt_owned_format: !unsafe >-
-          {"id":{{json .Id}},"name":{{json .Name}},"imageRef":{{json .Config.Image}},"host":{{json (index .Config.Labels "io.consolecrypt.host")}},"managedBy":{{json (index .Config.Labels "io.consolecrypt.managed-by")}},"manifestSha256":{{json (index .Config.Labels "io.consolecrypt.manifest")}},"image":{{json .Image}},"owner":{{json (index .Config.Labels "io.consolecrypt.owner")}},"component":{{json (index .Config.Labels "io.consolecrypt.component")}},"running":{{json .State.Running}},"oom":{{json .State.OOMKilled}},"memory":{{json .HostConfig.Memory}},"swap":{{json .HostConfig.MemorySwap}},"cpu":{{json .HostConfig.NanoCpus}},"pids":{{json .HostConfig.PidsLimit}},"privileged":{{json .HostConfig.Privileged}},"restart":{{json .HostConfig.RestartPolicy.Name}},"ports":{{json .HostConfig.PortBindings}},"logs":{{json .HostConfig.LogConfig}},"mounts":{{json .Mounts}}}
+        consolecrypt_owned_format: >-
+          {{ '{"id":{{json .Id}},'
+             ~ '"name":{{json .Name}},'
+             ~ '"imageRef":{{json .Config.Image}},'
+             ~ '"host":{{json (index .Config.Labels "io.consolecrypt.host")}},'
+             ~ '"managedBy":{{json (index .Config.Labels "io.consolecrypt.managed-by")}},'
+             ~ '"manifestSha256":{{json (index .Config.Labels "io.consolecrypt.manifest")}},'
+             ~ '"image":{{json .Image}},'
+             ~ '"owner":{{json (index .Config.Labels "io.consolecrypt.owner")}},'
+             ~ '"component":{{json (index .Config.Labels "io.consolecrypt.component")}},'
+             ~ '"running":{{json .State.Running}},'
+             ~ '"oom":{{json .State.OOMKilled}},'
+             ~ '"memory":{{json .HostConfig.Memory}},'
+             ~ '"swap":{{json .HostConfig.MemorySwap}},'
+             ~ '"cpu":{{json .HostConfig.NanoCpus}},'
+             ~ '"pids":{{json .HostConfig.PidsLimit}},'
+             ~ '"privileged":{{json .HostConfig.Privileged}},'
+             ~ '"restart":{{json .HostConfig.RestartPolicy.Name}},'
+             ~ '"ports":{{json .HostConfig.PortBindings}},'
+             ~ '"logs":{{json .HostConfig.LogConfig}},'
+             ~ '"mounts":{{json .Mounts}}}' }}
       block:
         - name: Require an explicit complete original container ID
           ansible.builtin.assert:
@@ -463,7 +511,13 @@
         - name: Start only the already verified original container ID
           when: cc_exporter_mode == 'start' and not (consolecrypt_owned_before.stdout | from_json).running
           ansible.builtin.command:
-            argv: [docker, '--config={{ consolecrypt_owned_docker_config.path }}', --host=unix:///var/run/docker.sock, container, start, '{{ cc_cadvisor_container_id }}']
+            argv:
+              - docker
+              - '--config={{ consolecrypt_owned_docker_config.path }}'
+              - --host=unix:///var/run/docker.sock
+              - container
+              - start
+              - '{{ cc_cadvisor_container_id }}'
           environment: *cc_owned_docker_environment
           timeout: 20
           changed_when: true
@@ -472,7 +526,14 @@
         - name: Stop only the already verified original container ID
           when: cc_exporter_mode == 'stop' and (consolecrypt_owned_before.stdout | from_json).running
           ansible.builtin.command:
-            argv: [docker, '--config={{ consolecrypt_owned_docker_config.path }}', --host=unix:///var/run/docker.sock, container, stop, --time=10, '{{ cc_cadvisor_container_id }}']
+            argv:
+              - docker
+              - '--config={{ consolecrypt_owned_docker_config.path }}'
+              - --host=unix:///var/run/docker.sock
+              - container
+              - stop
+              - --time=10
+              - '{{ cc_cadvisor_container_id }}'
           environment: *cc_owned_docker_environment
           timeout: 20
           changed_when: true
@@ -481,7 +542,13 @@
         - name: Remove only the stopped verified container without volumes or force
           when: cc_exporter_mode == 'remove'
           ansible.builtin.command:
-            argv: [docker, '--config={{ consolecrypt_owned_docker_config.path }}', --host=unix:///var/run/docker.sock, container, rm, '{{ cc_cadvisor_container_id }}']
+            argv:
+              - docker
+              - '--config={{ consolecrypt_owned_docker_config.path }}'
+              - --host=unix:///var/run/docker.sock
+              - container
+              - rm
+              - '{{ cc_cadvisor_container_id }}'
           environment: *cc_owned_docker_environment
           timeout: 20
           changed_when: true
@@ -490,7 +557,15 @@
         - name: Read actual public state after inspection, start or stop
           when: cc_exporter_mode != 'remove' or ansible_check_mode
           ansible.builtin.command:
-            argv: [docker, '--config={{ consolecrypt_owned_docker_config.path }}', --host=unix:///var/run/docker.sock, container, inspect, --format, '{{ consolecrypt_owned_format }}', '{{ cc_cadvisor_container_id }}']
+            argv:
+              - docker
+              - '--config={{ consolecrypt_owned_docker_config.path }}'
+              - --host=unix:///var/run/docker.sock
+              - container
+              - inspect
+              - --format
+              - '{{ consolecrypt_owned_format }}'
+              - '{{ cc_cadvisor_container_id }}'
           environment: *cc_owned_docker_environment
           register: consolecrypt_owned_after
           check_mode: false
@@ -524,9 +599,19 @@
         - name: Check absence of only the original removed ID
           when: cc_exporter_mode == 'remove' and not ansible_check_mode
           ansible.builtin.command:
-            argv: [docker, '--config={{ consolecrypt_owned_docker_config.path }}', --host=unix:///var/run/docker.sock, container, ls, --all, --no-trunc, '--filter=id={{ cc_cadvisor_container_id }}', --format, '{{ consolecrypt_removed_format }}']
+            argv:
+              - docker
+              - '--config={{ consolecrypt_owned_docker_config.path }}'
+              - --host=unix:///var/run/docker.sock
+              - container
+              - ls
+              - --all
+              - --no-trunc
+              - '--filter=id={{ cc_cadvisor_container_id }}'
+              - --format
+              - '{{ consolecrypt_removed_format }}'
           vars:
-            consolecrypt_removed_format: !unsafe '{{.ID}}'
+            consolecrypt_removed_format: "{{ '{{.ID}}' }}"
           environment: *cc_owned_docker_environment
           register: consolecrypt_owned_absence
           check_mode: false
@@ -550,7 +635,9 @@
               container_id: '{{ cc_cadvisor_container_id }}'
               requested_operation: '{{ cc_exporter_mode }}'
               check_mode: '{{ ansible_check_mode }}'
-              observed_state: '{{ "removed" if cc_exporter_mode == "remove" and not ansible_check_mode else ("running" if (consolecrypt_owned_after.stdout | from_json).running else "stopped") }}'
+              observed_state: >-
+                {{ "removed" if cc_exporter_mode == "remove" and not ansible_check_mode
+                   else ("running" if (consolecrypt_owned_after.stdout | from_json).running else "stopped") }}
               volumes_removed: false
               host_bind_paths_deleted_by_job: false
               fresh_metrics_verified: false

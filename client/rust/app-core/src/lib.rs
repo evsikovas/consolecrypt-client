@@ -472,3 +472,17 @@ pub async fn __test_harness_cancel_pending_join_preserves_handle() { AppCore::__
 #[cfg(all(feature="test-harness",target_os="linux"))]
 #[doc(hidden)]
 pub async fn __test_harness_cancel_control_preserves_join_witness() { AppCore::__owned_cancel_control_preserves_join_witness().await; }
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[doc(hidden)]
+pub fn __test_harness_relay_expiry_fractional() { AppCore::__owned_relay_expiry_fractional(); }
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[doc(hidden)]
+pub fn __test_harness_relay_expiry_denials() { AppCore::__owned_relay_expiry_denials(); }
+
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[doc(hidden)]
+pub fn __test_harness_outbound_url_canonical_positive() { AppCore::__owned_outbound_url_canonical_positive(); }
+#[cfg(all(feature="test-harness",target_os="linux"))]
+#[doc(hidden)]
+pub fn __test_harness_outbound_url_canonical_negative() { AppCore::__owned_outbound_url_canonical_negative(); }

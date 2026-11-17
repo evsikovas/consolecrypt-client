@@ -287,6 +287,14 @@ impl RelaySlot {
         if seconds==0||seconds>300||self.revoked.load(Ordering::SeqCst){return Err(RelaySlotError::Rejected);}
         self.subject.check_current(&current).map_err(unavailable)?;Ok(seconds)
     }
+    /// Exact ORIGINAL deadline observation, with no renewal or extra lifetime.
+    pub fn remaining_duration(&self)->Result<Duration,RelaySlotError>{
+        if self.revoked.load(Ordering::SeqCst){return Err(RelaySlotError::Rejected);}
+        let current=api(&self.client,&self.subject)?;
+        let remaining=self.deadline.checked_duration_since(tokio::time::Instant::now()).ok_or(RelaySlotError::Rejected)?;
+        if remaining.is_zero()||remaining>Duration::from_secs(300)||self.revoked.load(Ordering::SeqCst){return Err(RelaySlotError::Rejected);}
+        self.subject.check_current(&current).map_err(unavailable)?;Ok(remaining)
+    }
     pub fn id(&self) -> uuid::Uuid {
         self.id
     }

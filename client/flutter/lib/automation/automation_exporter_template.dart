@@ -7,7 +7,7 @@ enum AutomationExporterTemplate { nodeExporter, cadvisor }
 enum AutomationCadvisorOperation { inspect, install, start, stop, remove }
 
 /// Identity of the shipped source, not a file-name or project-name heuristic.
-const automationCadvisorTemplateSha256 = 'a341f805b5b1db61431c267cd59763de227160a06a1b929a0d1a7e1d1f6e1453';
+const automationCadvisorTemplateSha256 = '18fdbbadb11d9cc37cd7f851cda04b0cf6b80ce5f67a3fc8780c61ac3f9f6b06';
 
 final class AutomationCadvisorInstallOptions {
   AutomationCadvisorInstallOptions({required this.imageSha256, required this.imageId,

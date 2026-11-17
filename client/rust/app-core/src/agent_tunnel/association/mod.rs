@@ -30,10 +30,25 @@ fn review_permit() -> AppResult<tokio::sync::OwnedSemaphorePermit> {
         .try_acquire_owned()
         .map_err(|_| unavailable())
 }
+#[cfg(any(test, all(feature = "test-harness", any(target_os = "linux", target_os = "windows"))))]
+#[track_caller]
+fn paired_failure_location(kind: &'static str) {
+    if std::env::var_os("CC_LIFETIME_PAIR_PROOF").as_deref() == Some(std::ffi::OsStr::new("1")) {
+        let at = std::panic::Location::caller();
+        let _ = std::io::Write::write_fmt(&mut std::io::stderr().lock(), format_args!(
+            "CC_LIFETIME_NATIVE_FAILURE kind={} file={} line={}\n", kind, at.file(), at.line()));
+    }
+}
+#[cfg_attr(any(test, all(feature = "test-harness", any(target_os = "linux", target_os = "windows"))), track_caller)]
 fn unavailable() -> AppError {
+    #[cfg(any(test, all(feature = "test-harness", any(target_os = "linux", target_os = "windows"))))]
+    paired_failure_location("unavailable");
     AppError::invalid("agent_node_association", "bootstrap_unenrolled")
 }
+#[cfg_attr(any(test, all(feature = "test-harness", any(target_os = "linux", target_os = "windows"))), track_caller)]
 fn unknown() -> AppError {
+    #[cfg(any(test, all(feature = "test-harness", any(target_os = "linux", target_os = "windows"))))]
+    paired_failure_location("unknown");
     AppError::invalid("agent_node_association", "enrollment_unknown")
 }
 fn hash(bytes: &[u8]) -> String {

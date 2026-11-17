@@ -635,6 +635,8 @@ fn refresh(
     if state.revision() != head.revision || digest != head.digest || total != head.logical_bytes {
         return Err(Error::WrongCheckpoint);
     }
+    #[cfg(test)]
+    read_snapshot_advance_hook();
     if read_head(conn)? != head || !anchor_matches(anchor, &head)? {
         return Err(Error::Conflict);
     }
@@ -774,6 +776,30 @@ fn sql_error(error: rusqlite::Error) -> Error {
     }
 }
 #[cfg(test)]
+std::thread_local! {
+    // One test thread only: no process-global environment or production hook.
+    static READ_FINAL_HEAD_BARRIER: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
+}
+#[cfg(test)]
+fn read_snapshot_advance_hook() {
+    let root = READ_FINAL_HEAD_BARRIER.with(|slot| slot.borrow_mut().take());
+    let Some(root) = root else { return; };
+    assert!(root.is_absolute() && root.file_name().unwrap().to_string_lossy().starts_with("cc-agent-sqlite-unit-"));
+    let owned = fs::symlink_metadata(&root).unwrap();
+    assert!(owned.is_dir() && !owned.file_type().is_symlink() && owned.mode() & 0o777 == 0o700);
+    assert_eq!(fs::read(root.join("owned-test.marker")).unwrap(), b"cc-agent-sqlite-owned-unit-v1");
+    let ready = root.join("read.ready");
+    assert!(!ready.exists());
+    fs::write(ready, b"cc-agent-sqlite-owned-read-final-head-v1").unwrap();
+    let end = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        if fs::read(root.join("writer.done")).ok().as_deref() == Some(b"cc-agent-sqlite-owned-writer-ack-v1") { return; }
+        assert!(std::time::Instant::now() < end, "owned snapshot writer did not acknowledge");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+
+#[cfg(test)]
 fn fault_hook(point: &str) {
     if std::env::var("CC_AGENT_SQLITE_UNIT_FAULT").ok().as_deref() != Some(point) {
         return;
@@ -795,6 +821,9 @@ fn fault_hook(point: &str) {
     // Test binary only: parent holds the returned Child handle and kills this
     // exact own process. No production env flag or fault endpoint exists.
     loop {
+        // Same private test root only; absence preserves all crash-at-barrier cases.
+        if fs::read(root.join("fault.release")).ok().as_deref()
+            == Some(b"cc-agent-sqlite-owned-release-v1") { return; }
         std::thread::sleep(Duration::from_millis(100));
     }
 }

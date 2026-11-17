@@ -62,6 +62,71 @@ def module(path, name):
     return value
 
 
+def fixed_root_unit_cgroup_quiescent():
+    # Fixed root-owned system unit only. Never accept a caller cgroup path.
+    root = Path('/sys/fs/cgroup')
+    def identity(m):
+        return (m.st_dev, m.st_ino, m.st_mode, m.st_uid, m.st_gid, m.st_nlink)
+    def directory(m):
+        need(stat.S_ISDIR(m.st_mode) and m.st_uid == 0 and not m.st_mode & 0o022)
+    for parent in reversed(root.parents):
+        directory(parent.lstat())
+    held = []
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
+    try:
+        fd = os.open(root, flags); held.append(fd)
+        directory(os.fstat(fd)); need(identity(os.fstat(fd)) == identity(root.lstat()))
+        parent = os.open('system.slice', flags, dir_fd=fd); held.append(parent)
+        directory(os.fstat(parent))
+        need(identity(os.fstat(parent)) == identity(os.stat('system.slice', dir_fd=fd, follow_symlinks=False)))
+        try:
+            unit = os.open('consolecrypt-agent-collector.service', flags, dir_fd=parent)
+        except FileNotFoundError:
+            need(identity(os.fstat(fd)) == identity(root.lstat()))
+            need(identity(os.fstat(parent)) == identity(os.stat('system.slice', dir_fd=fd, follow_symlinks=False)))
+            return True
+        held.append(unit); directory(os.fstat(unit))
+        need(identity(os.fstat(unit)) == identity(os.stat('consolecrypt-agent-collector.service', dir_fd=parent, follow_symlinks=False)))
+        procs = os.open('cgroup.procs', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, dir_fd=unit)
+        held.append(procs); before = os.fstat(procs)
+        need(stat.S_ISREG(before.st_mode) and before.st_uid == 0 and before.st_nlink == 1 and not before.st_mode & 0o022)
+        raw = os.read(procs, 4097)
+        need(len(raw) <= 4096 and raw == b'')
+        need(identity(before) == identity(os.fstat(procs)) == identity(os.stat('cgroup.procs', dir_fd=unit, follow_symlinks=False)))
+        events = os.open('cgroup.events', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, dir_fd=unit)
+        held.append(events); event_before = os.fstat(events)
+        need(stat.S_ISREG(event_before.st_mode) and event_before.st_uid == 0 and event_before.st_nlink == 1 and not event_before.st_mode & 0o022)
+        event_raw = os.read(events, 4097); need(len(event_raw) <= 4096)
+        rows = [line.split() for line in event_raw.decode('ascii').splitlines()]
+        need(len(rows) == 2 and all(len(row) == 2 for row in rows) and len({row[0] for row in rows}) == 2)
+        state = dict(rows)
+        need(set(state) == {'populated', 'frozen'} and state['populated'] == '0' and state['frozen'] in ('0', '1'))
+        need(identity(event_before) == identity(os.fstat(events)) == identity(os.stat('cgroup.events', dir_fd=unit, follow_symlinks=False)))
+        need(identity(os.fstat(unit)) == identity(os.stat('consolecrypt-agent-collector.service', dir_fd=parent, follow_symlinks=False)))
+        need(identity(os.fstat(parent)) == identity(os.stat('system.slice', dir_fd=fd, follow_symlinks=False)))
+        need(identity(os.fstat(fd)) == identity(root.lstat()))
+        return True
+    finally:
+        for fd in reversed(held):
+            os.close(fd)
+
+
+def disabled_terminal_state(base, unit, catalog):
+    fields = ['ActiveState', 'SubState', 'MainPID', 'FragmentPath', 'DropInPaths', 'UnitFileState']
+    actual = base.show(UNIT.name, fields)
+    need(set(actual) == set(fields) and actual['MainPID'] == '0'
+         and actual['FragmentPath'] == str(UNIT) and not actual['DropInPaths']
+         and actual['UnitFileState'] == 'disabled'
+         and trusted(UNIT, 16384) == unit and trusted(CATALOG) == catalog)
+    terminal = (actual['ActiveState'], actual['SubState'])
+    need(terminal in (('inactive', 'dead'), ('failed', 'failed')))
+    if terminal == ('failed', 'failed'):
+        need(fixed_root_unit_cgroup_quiescent())
+        # Preserve failure evidence. Never reset-failed or report a healthy unit.
+        need(base.show(UNIT.name, fields) == actual)
+    return actual['ActiveState']
+
+
 def provision(operation='prepare'):
     need(operation in ('prepare', 'disable'))
     need(sys.platform == 'linux' and os.getuid() == os.geteuid() == 0 and os.uname().machine in {'x86_64', 'aarch64'})
@@ -142,12 +207,10 @@ def provision(operation='prepare'):
     if operation == 'disable':
         need(previous is not None)
         base.system('disable', '--now', UNIT.name)
-        actual = base.show(UNIT.name, ['ActiveState', 'SubState', 'MainPID', 'FragmentPath', 'DropInPaths'])
-        need((actual['ActiveState'], actual['SubState']) == ('inactive', 'dead') and actual['MainPID'] == '0'
-             and actual['FragmentPath'] == str(UNIT) and not actual['DropInPaths']
-             and trusted(UNIT, 16384) == unit and trusted(CATALOG) == catalog)
+        terminal = disabled_terminal_state(base, unit, catalog)
         return {'format': 'cc-agent-finite-collector-provision-result/v1', 'prerequisiteDisabled': True,
-                'runtimeState': 'notObserved', 'signedPolicyRevoked': False, 'retainedDataErased': False}
+                'runtimeState': 'notObserved', 'signedPolicyRevoked': False, 'retainedDataErased': False,
+                'terminalState': terminal}
     configured = base.encode(dict(marker, state='configured'))
     base.publish(OWNER, configured, mode=0o600, previous=previous)
     if previous is None:

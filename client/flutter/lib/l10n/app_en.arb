@@ -26666,6 +26666,7 @@
   "agentOutboundReview": "Review registration",
   "agentOutboundConfirm": "Register outbound connection",
   "@agentOutboundSeconds": {
+    "description": "Requested outbound registration duration in seconds.",
     "placeholders": {
       "seconds": {
         "type": "int"
@@ -26673,6 +26674,7 @@
     }
   },
   "@agentOutboundReviewRemaining": {
+    "description": "Remaining time in seconds to confirm outbound registration.",
     "placeholders": {
       "seconds": {
         "type": "int"
@@ -26875,6 +26877,7 @@
     "description": "Explicit finite service flow; caller cleanup is not service stop."
   },
   "@agentCollectorServiceRemaining": {
+    "description": "Remaining time in seconds to confirm the finite collector service.",
     "placeholders": {
       "seconds": {
         "type": "int"
@@ -27278,5 +27281,8 @@
   "@hostAgentLastObservedHint": {
     "description": "Qualifies previously observed heartbeat version; no remote action or readiness claim."
   },
-  "monitoringAgentDestinationHint": "The Agent route saves its association, SSH host and loopback destination; the source URL, TLS and authentication stay unchanged. Saving changes invalidates the previous tunnel approval. Open and approve a new matching Agent tunnel before reading; this reference grants no access and never reconnects automatically."
+  "monitoringAgentDestinationHint": "The Agent route saves its association, SSH host and loopback destination; the source URL, TLS and authentication stay unchanged. Saving changes invalidates the previous tunnel approval. Open and approve a new matching Agent tunnel before reading; this reference grants no access and never reconnects automatically.",
+  "@monitoringAgentDestinationHint": {
+    "description": "Explains the saved Agent route reference and the separate tunnel approval required before reading."
+  }
 }

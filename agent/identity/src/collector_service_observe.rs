@@ -18,6 +18,19 @@ impl<S: CompareAndSwap> Actor<S> {
     pub(crate) fn observe_active_collector_service(&mut self,service:ResourceId,hash:Hash,now:Now,
         clock:&mut impl FnMut()->Result<CollectorServiceClockObservation>)->Result<ActiveCollectorServiceObservation>{
         let observed=clock()?;let state=self.read(Now(observed.wall_time))?;
+        self.observe_active_collector_service_from_read(service,hash,now,state,observed)
+    }
+    pub(crate) fn observe_active_collector_service_waiting(
+        &mut self, service:ResourceId, hash:Hash, now:Now, end:std::time::Instant,
+        clock:&mut impl FnMut()->Result<CollectorServiceClockObservation>,
+    )->Result<ActiveCollectorServiceObservation>{
+        let (state,observed)=self.read_collector_service_waiting(now,end,clock)?;
+        self.observe_active_collector_service_from_read(service,hash,now,state,observed)
+    }
+    fn observe_active_collector_service_from_read(
+        &mut self, service:ResourceId, hash:Hash, now:Now, state:State,
+        observed:CollectorServiceClockObservation,
+    )->Result<ActiveCollectorServiceObservation>{
         if observed.wall_time<now.0||observed.wall_time<self.last_observed_time{return Err(Error::InvalidTime);}
         let record=state.collector_services.get(&service).ok_or(Error::NotFound)?;
         current(&state,record,Now(observed.wall_time),&observed)?;
@@ -77,6 +90,20 @@ impl<S: CompareAndSwap> Actor<S> {
     ) -> Result<Option<CollectorServiceStoredObservation>> {
         let observed = clock()?;
         let state = self.read(Now(observed.wall_time))?;
+        self.next_collector_service_from_read(agent, manifest, now, state, observed)
+    }
+    pub(crate) fn next_collector_service_waiting(
+        &mut self, agent: AgentId, manifest: Hash, now: Now,
+        end: std::time::Instant,
+        clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
+    ) -> Result<Option<CollectorServiceStoredObservation>> {
+        let (state, observed) = self.read_collector_service_waiting(now, end, clock)?;
+        self.next_collector_service_from_read(agent, manifest, now, state, observed)
+    }
+    fn next_collector_service_from_read(
+        &mut self, agent: AgentId, manifest: Hash, now: Now, state: State,
+        observed: CollectorServiceClockObservation,
+    ) -> Result<Option<CollectorServiceStoredObservation>> {
         if observed.wall_time < now.0 || observed.wall_time < self.last_observed_time {
             return Err(Error::InvalidTime);
         }

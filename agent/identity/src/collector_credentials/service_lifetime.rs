@@ -45,7 +45,25 @@ impl CollectorCredentialRecipient {
         capsules: &[cc_crypto_core::ServiceCredentialCapsule],
         installed_catalog: &serde_json::Value, clock: &mut impl FnMut() -> Result<Now>,
     ) -> Result<OpenedLifetimeCollectorCredentials<'a>> {
-        let (policy, _, pin) = checked_original(actor, permit, clock)?;
+        self.open_original_service_lifetime_set_read_phase(actor, permit, authorization, capsules, installed_catalog, None, clock)
+    }
+    pub(crate) fn open_original_service_lifetime_set_waiting<'a, S: CompareAndSwap>(
+        &mut self, actor: &mut Actor<S>, permit: &'a CollectorServicePermit,
+        authorization: &Signed<CollectorServiceCredentialAuthorization>,
+        capsules: &[cc_crypto_core::ServiceCredentialCapsule],
+        installed_catalog: &serde_json::Value, end: std::time::Instant,
+        clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<OpenedLifetimeCollectorCredentials<'a>> {
+        self.open_original_service_lifetime_set_read_phase(actor, permit, authorization, capsules, installed_catalog, Some(end), clock)
+    }
+    fn open_original_service_lifetime_set_read_phase<'a, S: CompareAndSwap>(
+        &mut self, actor: &mut Actor<S>, permit: &'a CollectorServicePermit,
+        authorization: &Signed<CollectorServiceCredentialAuthorization>,
+        capsules: &[cc_crypto_core::ServiceCredentialCapsule],
+        installed_catalog: &serde_json::Value, read_end: Option<std::time::Instant>,
+        clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<OpenedLifetimeCollectorCredentials<'a>> {
+        let (policy, _, pin) = checked_original_read_phase(actor, permit, read_end, clock)?;
         authorization.verify(pin.key)?;
         authorization.body.verify_initial_binding(&pin)?;
         let r = &authorization.body.recipient.body;
@@ -56,11 +74,10 @@ impl CollectorCredentialRecipient {
         let native = native_authorization(authorization)?;
         let native_pin = native_pin_metadata(&pin)?;
         let native_base = native_policy_metadata(&policy)?;
-        let mut access = actor.borrow_collector_service(permit, fresh_lower_bound(clock)?,
-            &mut crate::CollectorServiceClockObservation::observe_local)?;
+        let mut access = borrow_original_read(actor, permit, read_end, clock)?;
         access.matches_original_permit(permit)?;
         if access.policy() != &policy { return Err(Error::Conflict); }
-        let now = access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+        let now = recheck_original_read(&mut access, clock()?, read_end, clock)?;
         authorization.body.check_original(&policy, access.credential_original_clock(), installed_catalog, now)?;
         // Conversion is exact canonical public metadata, never a Permit cast.
         let native_now = cc_agent_node_wire::Now(cc_agent_node_wire::Timestamp::new(now.0.seconds())
@@ -74,7 +91,7 @@ impl CollectorCredentialRecipient {
         }
         access.narrow_expiry(expires_at)?;
         let material = self.inner.with_keys(|keys| {
-            let now = access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+            let now = recheck_original_read(&mut access, clock()?, read_end, clock)?;
             let native_now = cc_agent_node_wire::Now(cc_agent_node_wire::Timestamp::new(now.0.seconds())
                 .map_err(|_| Error::InvalidTime)?);
             cc_crypto_core::open_collector_service_credential_set(&native, capsules, &native_pin,
@@ -90,7 +107,7 @@ impl CollectorCredentialRecipient {
                 reference: authorization.body.credentials[slot].clone(),
                 scope_hash: authorization.body.capsule_delegation_digest(slot)? });
         }
-        let after = access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+        let after = recheck_original_read(&mut access, clock()?, read_end, clock)?;
         authorization.body.check_original(&policy, access.credential_original_clock(), installed_catalog, after)?;
         Ok(OpenedLifetimeCollectorCredentials { entries, permit, expires_at })
     }

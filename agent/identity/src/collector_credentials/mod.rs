@@ -20,13 +20,60 @@ fn fresh_lower_bound(clock: &mut impl FnMut() -> Result<Now>) -> Result<Now> {
     Ok(observed.now())
 }
 
+
+fn guarded_observation(clock: &mut impl FnMut() -> Result<Now>)
+    -> Result<crate::CollectorServiceClockObservation> {
+    let lower = clock()?;
+    let observed = crate::CollectorServiceClockObservation::observe_local()?;
+    if observed.now().0 < lower.0 { return Err(Error::InvalidTime); }
+    Ok(observed)
+}
+fn check_original_read<S: CompareAndSwap>(actor: &mut Actor<S>, permit: &CollectorServicePermit,
+    end: Option<std::time::Instant>, clock: &mut impl FnMut() -> Result<Now>) -> Result<CollectorServiceDelegation> {
+    match end {
+        Some(end) => actor.check_collector_service_waiting(permit, fresh_lower_bound(clock)?, end,
+            &mut || guarded_observation(clock)),
+        None => actor.check_collector_service(permit, fresh_lower_bound(clock)?,
+            &mut crate::CollectorServiceClockObservation::observe_local),
+    }
+}
+fn snapshot_original_read<S: CompareAndSwap>(actor: &mut Actor<S>,
+    end: Option<std::time::Instant>, clock: &mut impl FnMut() -> Result<Now>) -> Result<crate::State> {
+    match end {
+        Some(end) => actor.snapshot_collector_service_waiting(fresh_lower_bound(clock)?, end,
+            &mut || guarded_observation(clock)),
+        None => actor.snapshot(),
+    }
+}
+fn borrow_original_read<'a, S: CompareAndSwap>(actor: &'a mut Actor<S>, permit: &'a CollectorServicePermit,
+    end: Option<std::time::Instant>, clock: &mut impl FnMut() -> Result<Now>) -> Result<CollectorServiceAccess<'a, S>> {
+    match end {
+        Some(end) => actor.borrow_collector_service_waiting(permit, fresh_lower_bound(clock)?, end,
+            &mut || guarded_observation(clock)),
+        None => actor.borrow_collector_service(permit, fresh_lower_bound(clock)?,
+            &mut crate::CollectorServiceClockObservation::observe_local),
+    }
+}
+fn recheck_original_read<S: CompareAndSwap>(access: &mut CollectorServiceAccess<'_, S>, lower: Now,
+    end: Option<std::time::Instant>, clock: &mut impl FnMut() -> Result<Now>) -> Result<Now> {
+    match end {
+        Some(end) => access.recheck_waiting(lower, end, &mut || guarded_observation(clock)),
+        None => access.recheck(lower, &mut crate::CollectorServiceClockObservation::observe_local),
+    }
+}
 fn checked_original<S: CompareAndSwap>(
     actor: &mut Actor<S>, permit: &CollectorServicePermit,
     clock: &mut impl FnMut() -> Result<Now>,
 ) -> Result<(CollectorServiceDelegation, Certificate, OwnerPin)> {
-    let policy = actor.check_collector_service(permit, fresh_lower_bound(clock)?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+    checked_original_read_phase(actor, permit, None, clock)
+}
+fn checked_original_read_phase<S: CompareAndSwap>(
+    actor: &mut Actor<S>, permit: &CollectorServicePermit,
+    read_end: Option<std::time::Instant>, clock: &mut impl FnMut() -> Result<Now>,
+) -> Result<(CollectorServiceDelegation, Certificate, OwnerPin)> {
+    let policy = check_original_read(actor, permit, read_end, clock)?;
     if policy.credential_targets.is_empty() { return Err(Error::CapabilityDenied); }
-    let state = actor.snapshot()?;
+    let state = snapshot_original_read(actor, read_end, clock)?;
     let certificate = state.certificate(policy.agent_id).ok_or(Error::NotFound)?.clone();
     let pin = state.owner().clone();
     if state.revoked(policy.agent_id) || policy.certificate_hash != certificate.digest()?
@@ -34,8 +81,8 @@ fn checked_original<S: CompareAndSwap>(
         || policy.header.checkpoint != pin.checkpoint || permit.delegation_hash() != policy.digest()?
         || permit.service_id() != policy.service_id
     { return Err(Error::WrongClaim); }
-    let after = actor.check_collector_service(permit, fresh_lower_bound(clock)?, &mut crate::CollectorServiceClockObservation::observe_local)?;
-    if after != policy || actor.snapshot()?.revision() != state.revision() {
+    let after = check_original_read(actor, permit, read_end, clock)?;
+    if after != policy || snapshot_original_read(actor, read_end, clock)?.revision() != state.revision() {
         return Err(Error::Conflict);
     }
     Ok((policy, certificate, pin))
@@ -51,11 +98,23 @@ impl CollectorCredentialRecipient {
         actor: &mut Actor<S>, permit: &CollectorServicePermit, id: ResourceId,
         clock: &mut impl FnMut() -> Result<Now>,
     ) -> Result<Self> {
-        let (policy, _, pin) = checked_original(actor, permit, clock)?;
+        Self::create_original_read_phase(actor, permit, id, None, clock)
+    }
+    pub(crate) fn create_original_waiting<S: CompareAndSwap>(
+        actor: &mut Actor<S>, permit: &CollectorServicePermit, id: ResourceId,
+        end: std::time::Instant, clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<Self> {
+        Self::create_original_read_phase(actor, permit, id, Some(end), clock)
+    }
+    fn create_original_read_phase<S: CompareAndSwap>(
+        actor: &mut Actor<S>, permit: &CollectorServicePermit, id: ResourceId,
+        read_end: Option<std::time::Instant>, clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<Self> {
+        let (policy, _, pin) = checked_original_read_phase(actor, permit, read_end, clock)?;
         let inner = recipient::Recipient::create(binding(&policy, &pin, id)?)?;
         // Mutation already happened: loss/change after creation is unknown.
         let mut result = Self { inner };
-        let (after, _, after_pin) = checked_original(actor, permit, clock).map_err(|_| Error::UncertainCommit)?;
+        let (after, _, after_pin) = checked_original_read_phase(actor, permit, read_end, clock).map_err(|_| Error::UncertainCommit)?;
         let after_binding = binding(&after, &after_pin, id).map_err(|_| Error::UncertainCommit)?;
         result.inner.check_binding(&after_binding).map_err(|_| Error::UncertainCommit)?;
         if after != policy { return Err(Error::UncertainCommit); }
@@ -65,10 +124,22 @@ impl CollectorCredentialRecipient {
         actor: &mut Actor<S>, permit: &CollectorServicePermit, id: ResourceId,
         clock: &mut impl FnMut() -> Result<Now>,
     ) -> Result<Self> {
-        let (policy, _, pin) = checked_original(actor, permit, clock)?;
+        Self::open_existing_original_read_phase(actor, permit, id, None, clock)
+    }
+    pub(crate) fn open_existing_original_waiting<S: CompareAndSwap>(
+        actor: &mut Actor<S>, permit: &CollectorServicePermit, id: ResourceId,
+        end: std::time::Instant, clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<Self> {
+        Self::open_existing_original_read_phase(actor, permit, id, Some(end), clock)
+    }
+    fn open_existing_original_read_phase<S: CompareAndSwap>(
+        actor: &mut Actor<S>, permit: &CollectorServicePermit, id: ResourceId,
+        read_end: Option<std::time::Instant>, clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<Self> {
+        let (policy, _, pin) = checked_original_read_phase(actor, permit, read_end, clock)?;
         let inner = recipient::Recipient::open_existing(binding(&policy, &pin, id)?)?;
         let mut result = Self { inner };
-        let (after, _, after_pin) = checked_original(actor, permit, clock)?;
+        let (after, _, after_pin) = checked_original_read_phase(actor, permit, read_end, clock)?;
         result.inner.check_binding(&binding(&after, &after_pin, id)?)?;
         if after != policy { return Err(Error::Conflict); }
         Ok(result)
@@ -77,12 +148,24 @@ impl CollectorCredentialRecipient {
         &'a mut self, actor: &'a mut Actor<S>, permit: &'a CollectorServicePermit, challenge: Nonce,
         clock: &mut impl FnMut() -> Result<Now>,
     ) -> Result<PreparedRecipientAttestation<'a, S>> {
-        let (policy, certificate, pin) = checked_original(actor, permit, clock)?;
+        self.prepare_attestation_read_phase(actor, permit, challenge, None, clock)
+    }
+    pub(crate) fn prepare_attestation_waiting<'a, S: CompareAndSwap>(
+        &'a mut self, actor: &'a mut Actor<S>, permit: &'a CollectorServicePermit, challenge: Nonce,
+        end: std::time::Instant, clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<PreparedRecipientAttestation<'a, S>> {
+        self.prepare_attestation_read_phase(actor, permit, challenge, Some(end), clock)
+    }
+    fn prepare_attestation_read_phase<'a, S: CompareAndSwap>(
+        &'a mut self, actor: &'a mut Actor<S>, permit: &'a CollectorServicePermit, challenge: Nonce,
+        read_end: Option<std::time::Instant>, clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<PreparedRecipientAttestation<'a, S>> {
+        let (policy, certificate, pin) = checked_original_read_phase(actor, permit, read_end, clock)?;
         self.inner.check_binding(&binding(&policy, &pin, self.inner.id())?)?;
         let recipient_public_key = Hash::from_bytes(self.inner.public()?);
-        let mut access = actor.borrow_collector_service(permit, fresh_lower_bound(clock)?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+        let mut access = borrow_original_read(actor, permit, read_end, clock)?;
         if access.policy() != &policy { return Err(Error::Conflict); }
-        let now = access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+        let now = recheck_original_read(&mut access, clock()?, read_end, clock)?;
         let body = CollectorRecipientAttestation {
             header: policy.header.clone(), agent_id: policy.agent_id, key_epoch: policy.key_epoch,
             certificate_hash: policy.certificate_hash, service_id: policy.service_id,
@@ -95,19 +178,35 @@ impl CollectorCredentialRecipient {
         };
         body.validate()?;
         self.inner.check()?;
-        access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
-        Ok(PreparedRecipientAttestation { body, policy, certificate, pin, recipient: &mut self.inner, access })
+        recheck_original_read(&mut access, clock()?, read_end, clock)?;
+        Ok(PreparedRecipientAttestation { body, policy, certificate, pin, recipient: &mut self.inner, access, read_wait_end: read_end })
     }
 
     /// Returns a private scoped plaintext holder, never JSON or a launch receipt.
     pub(crate) fn open_original<'a, S: CompareAndSwap>(
         &mut self, actor: &mut Actor<S>, permit: &'a CollectorServicePermit,
         scope: &Signed<CollectorCredentialScope>, proof: &Signed<CollectorRecipientAttestation>,
+        capsule: &cc_crypto_core::ServiceCredentialCapsule, installed_catalog: &serde_json::Value,
+        clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<OpenedCollectorCredential<'a>> {
+        self.open_original_read_phase(actor, permit, scope, proof, capsule, installed_catalog, None, clock)
+    }
+    pub(crate) fn open_original_waiting<'a, S: CompareAndSwap>(
+        &mut self, actor: &mut Actor<S>, permit: &'a CollectorServicePermit,
+        scope: &Signed<CollectorCredentialScope>, proof: &Signed<CollectorRecipientAttestation>,
+        capsule: &cc_crypto_core::ServiceCredentialCapsule, installed_catalog: &serde_json::Value,
+        end: std::time::Instant, clock: &mut impl FnMut() -> Result<Now>,
+    ) -> Result<OpenedCollectorCredential<'a>> {
+        self.open_original_read_phase(actor, permit, scope, proof, capsule, installed_catalog, Some(end), clock)
+    }
+    fn open_original_read_phase<'a, S: CompareAndSwap>(
+        &mut self, actor: &mut Actor<S>, permit: &'a CollectorServicePermit,
+        scope: &Signed<CollectorCredentialScope>, proof: &Signed<CollectorRecipientAttestation>,
         capsule: &cc_crypto_core::ServiceCredentialCapsule,
-        installed_catalog: &serde_json::Value, clock: &mut impl FnMut() -> Result<Now>,
+        installed_catalog: &serde_json::Value, read_end: Option<std::time::Instant>, clock: &mut impl FnMut() -> Result<Now>,
     ) -> Result<OpenedCollectorCredential<'a>> {
         if capsule.to_json().map_err(|_| Error::InvalidWire)?.len() > 8192 { return Err(Error::Quota); }
-        let (policy, _, pin) = checked_original(actor, permit, clock)?;
+        let (policy, _, pin) = checked_original_read_phase(actor, permit, read_end, clock)?;
         self.inner.check_binding(&binding(&policy, &pin, self.inner.id())?)?;
         proof.verify(policy.recipient)?;
         proof.body.validate()?;
@@ -130,25 +229,25 @@ impl CollectorCredentialRecipient {
         let native_id = cc_agent_node_wire::ResourceId::new(id.as_str().ok_or(Error::InvalidWire)?)
             .map_err(|_| Error::InvalidWire)?;
         let material_expires_at = crate::Timestamp::new(capsule.access_expires_at().map_err(|_| Error::InvalidWire)?)?;
-        let mut access = actor.borrow_collector_service(permit, fresh_lower_bound(clock)?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+        let mut access = borrow_original_read(actor, permit, read_end, clock)?;
         if access.policy() != &policy { return Err(Error::Conflict); }
         access.narrow_expiry(scope.body.expires_at.min(material_expires_at))?;
-        access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+        recheck_original_read(&mut access, clock()?, read_end, clock)?;
         let material = self.inner.with_keys(|keys| {
-            let now = access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+            let now = recheck_original_read(&mut access, clock()?, read_end, clock)?;
             let native_now = cc_agent_node_wire::Now(cc_agent_node_wire::Timestamp::new(now.0.seconds())
                 .map_err(|_| Error::InvalidTime)?);
             cc_crypto_core::open_collector_credential(&native_scope, capsule, &native_pin, &native_base,
                 native_hash, installed_catalog, native_id, keys, native_now)
                 .map_err(|_| Error::WrongClaim)
         })?;
-        let after = access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+        let after = recheck_original_read(&mut access, clock()?, read_end, clock)?;
         if after.0 < proof.body.issued_at || after.0 >= proof.body.expires_at { return Err(Error::Expired); }
         let native_now = cc_agent_node_wire::Now(cc_agent_node_wire::Timestamp::new(after.0.seconds())
             .map_err(|_| Error::InvalidTime)?);
         let expected = cc_crypto_core::collector_credential_binding(&native_scope, &native_pin, native_now)
             .map_err(|_| Error::WrongClaim)?;
-        let final_now = access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+        let final_now = recheck_original_read(&mut access, clock()?, read_end, clock)?;
         if final_now.0 < proof.body.issued_at || final_now.0 >= proof.body.expires_at { return Err(Error::Expired); }
         Ok(OpenedCollectorCredential { material, expected, scope: scope.clone(), permit, material_expires_at })
     }
@@ -205,6 +304,7 @@ pub(crate) struct PreparedRecipientAttestation<'a, S: CompareAndSwap> {
     pin: OwnerPin,
     recipient: &'a mut recipient::Recipient,
     access: CollectorServiceAccess<'a, S>,
+    read_wait_end: Option<std::time::Instant>,
 }
 impl<S: CompareAndSwap> PreparedRecipientAttestation<'_, S> {
     pub(crate) fn original(&self) -> (CollectorRecipientAttestation, CollectorServiceDelegation, Certificate, OwnerPin) {
@@ -217,7 +317,7 @@ impl<S: CompareAndSwap> PreparedRecipientAttestation<'_, S> {
         Ok(())
     }
     pub(crate) fn check_original(&mut self, clock: &mut impl FnMut() -> Result<Now>) -> Result<Now> {
-        let now = self.access.recheck(clock()?, &mut crate::CollectorServiceClockObservation::observe_local)?;
+        let now = recheck_original_read(&mut self.access, clock()?, self.read_wait_end, clock)?;
         if self.access.policy() != &self.policy { return Err(Error::Conflict); }
         if now.0 < self.body.issued_at || now.0 >= self.body.expires_at { return Err(Error::Expired); }
         self.check_recipient()?;

@@ -20,24 +20,24 @@ pub(super) fn prepare(
     node: &Path,
     input: &mut File,
     pending: &mut Vec<u8>,
+    checks: &super::service_supervisor::ReadChecks<'_>,
 ) -> Result<Material> {
-    let mut clock = CollectorServiceClockObservation::observe_local;
     let now = super::service_supervisor::actual_now()?;
-    let policy = actor.check_collector_service(permit, now, &mut clock)?;
+    let policy = actor.check_collector_service_waiting(permit, now, Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending))?;
     policy.check_credential_targets(&catalog.manifest)?;
     if policy.credential_targets.is_empty() {
-        let access = actor.borrow_collector_service(permit, now, &mut clock)?;
+        let access = actor.borrow_collector_service_waiting(permit, now, Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending))?;
         return Ok(Material {
             scrape: catalog.scrape()?,
             expires: access.expires_at(),
             deadline: access.deadline_boottime_ns(),
         });
     }
-    if let Some(stored) = actor.collector_service_credential_set_original(permit, now, &mut clock)? {
+    if let Some(stored) = actor.collector_service_credential_set_original_waiting(permit, now, Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending))? {
         // On reopen a missing/corrupt key FAILS; never generate a replacement.
-        let mut recipient = CollectorCredentialRecipient::open_existing_original(actor, permit,
-            stored.authorization.body.recipient.body.recipient_id, &mut super::service_supervisor::actual_now)?;
-        return super::service_lifetime_material::prepare(actor, permit, files, catalog, &mut recipient, stored);
+        let mut recipient = CollectorCredentialRecipient::open_existing_original_waiting(actor, permit,
+            stored.authorization.body.recipient.body.recipient_id, Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending).map(|v| v.now()))?;
+        return super::service_lifetime_material::prepare(actor, permit, files, catalog, &mut recipient, stored, input, pending, checks);
     }
     files.register_service_handoff()?;
     // This separate X25519 identity is scoped to the actual certified Node and
@@ -45,40 +45,40 @@ pub(super) fn prepare(
     let key = Path::new("/var/lib/consolecrypt-agent/collector-credentials/recipient.key");
     let mut recipient = match fs::symlink_metadata(key) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            CollectorCredentialRecipient::create_original(
+            CollectorCredentialRecipient::create_original_waiting(
                 actor,
                 permit,
                 policy.service_id,
-                &mut super::service_supervisor::actual_now,
+                Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending).map(|v| v.now()),
             )?
         }
-        Ok(_) => CollectorCredentialRecipient::open_existing_original(
+        Ok(_) => CollectorCredentialRecipient::open_existing_original_waiting(
             actor,
             permit,
             policy.service_id,
-            &mut super::service_supervisor::actual_now,
+            Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending).map(|v| v.now()),
         )?,
         Err(_) => return Err(Error::Storage),
     };
     let mut bytes = [0u8; 16];
     getrandom::fill(&mut bytes).map_err(|_| Error::Entropy)?;
-    let prepared = recipient.prepare_attestation(
+    let prepared = recipient.prepare_attestation_waiting(
         actor,
         permit,
         Nonce::from_bytes(bytes),
-        &mut super::service_supervisor::actual_now,
+        Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending).map(|v| v.now()),
     )?;
     let proof =
-        sign_original_recipient(node, prepared, &mut super::service_supervisor::actual_now)?;
+        sign_original_recipient(node, prepared, &mut || checks.clock(input, pending).map(|v| v.now()))?;
     let reference = RecipientReference::new(files.session.clone(), proof.clone())?;
     {
         let now = super::service_supervisor::actual_now()?;
-        let mut access = actor.borrow_collector_service(permit, now, &mut clock)?;
+        let mut access = actor.borrow_collector_service_waiting(permit, now, Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending))?;
         files.with_original_credential_session(
             catalog,
             &mut access,
             now,
-            &mut clock,
+            &mut || checks.clock(input, pending),
             |writer| {
                 let writer_now = writer.recheck()?;
                 let held = {
@@ -96,14 +96,14 @@ pub(super) fn prepare(
     let end = Instant::now() + Duration::from_secs(60);
     let mut envelopes = Vec::new();
     while envelopes.len() < policy.credential_targets.len() {
-        if let Some(stored) = actor.collector_service_credential_set_original(permit,
-            super::service_supervisor::actual_now()?, &mut clock)? {
+        if let Some(stored) = actor.collector_service_credential_set_original_waiting(permit,
+            super::service_supervisor::actual_now()?, end.min(Instant::now() + Duration::from_secs(3)), &mut || checks.clock_before(input, pending, end, proof.body.expires_at))? {
             if !envelopes.is_empty() { return Err(Error::WrongState); }
-            return super::service_lifetime_material::prepare(actor,permit,files,catalog,&mut recipient,stored);
+            return super::service_lifetime_material::prepare(actor,permit,files,catalog,&mut recipient,stored,input,pending,checks);
         }
         catalog.check()?;
         let now = super::service_supervisor::actual_now()?;
-        actor.check_collector_service(permit, now, &mut clock)?;
+        actor.check_collector_service_waiting(permit, now, end.min(Instant::now() + Duration::from_secs(3)), &mut || checks.clock_before(input, pending, end, proof.body.expires_at))?;
         if now.0 >= proof.body.expires_at
             || Instant::now() >= end
             || !super::service_supervisor::launcher_alive(input, pending)?
@@ -111,13 +111,14 @@ pub(super) fn prepare(
             return Err(Error::Expired);
         }
         let slot = envelopes.len() as u8;
-        let owner = actor.snapshot()?.owner().clone();
-        let mut access = actor.borrow_collector_service(permit, now, &mut clock)?;
+        let owner = actor.snapshot_collector_service_waiting(super::service_supervisor::actual_now()?,
+            end.min(Instant::now() + Duration::from_secs(3)), &mut || checks.clock_before(input, pending, end, proof.body.expires_at))?.owner().clone();
+        let mut access = actor.borrow_collector_service_waiting(permit, now, end.min(Instant::now() + Duration::from_secs(3)), &mut || checks.clock_before(input, pending, end, proof.body.expires_at))?;
         let frame = files.with_original_credential_session(
             catalog,
             &mut access,
             now,
-            &mut clock,
+            &mut || checks.clock_before(input, pending, end, proof.body.expires_at),
             |writer| {
                 let checked_now = writer.recheck()?;
                 let held = {
@@ -150,7 +151,7 @@ pub(super) fn prepare(
             std::thread::sleep(Duration::from_millis(20));
         }
     }
-    if actor.collector_service_credential_set_original(permit, super::service_supervisor::actual_now()?, &mut clock)?.is_some() {
+    if actor.collector_service_credential_set_original_waiting(permit, super::service_supervisor::actual_now()?, Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending))?.is_some() {
         return Err(Error::WrongState); // Never select v1 after lifetime admission.
     }
     let mut opened = Vec::new();
@@ -167,25 +168,25 @@ pub(super) fn prepare(
         {
             return Err(Error::WrongClaim);
         }
-        opened.push(recipient.open_original(
+        opened.push(recipient.open_original_waiting(
             actor,
             permit,
             &scope,
             &proof,
             &capsule,
             &catalog.manifest,
-            &mut super::service_supervisor::actual_now,
+            Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending).map(|v| v.now()),
         )?);
     }
     let now = super::service_supervisor::actual_now()?;
-    let mut access = actor.borrow_collector_service(permit, now, &mut clock)?;
+    let mut access = actor.borrow_collector_service_waiting(permit, now, Instant::now() + Duration::from_secs(3), &mut || checks.clock(input, pending))?;
     let cfg = super::credential_capsules::build_registered_scrape(
         files,
         catalog,
         &mut access,
         opened,
         now,
-        &mut clock,
+        &mut || checks.clock(input, pending),
     )?;
     Ok(Material {
         scrape: cfg.raw,

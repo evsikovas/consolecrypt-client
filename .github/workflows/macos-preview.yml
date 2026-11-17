@@ -28,6 +28,26 @@ jobs:
           persist-credentials: false
       - name: Native toolchain
         run: source client/scripts/ci-macos-tools.sh --xcode
+      - name: Check frozen final source and verification source pins before building
+        timeout-minutes: 2
+        run: |
+          python3 -I -B - <<'PY'
+          import hashlib,os,re,subprocess
+          from pathlib import Path
+          root=Path(os.environ['GITHUB_WORKSPACE']).resolve(strict=True)
+          assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()==os.environ['GITHUB_SHA']
+          version=(root/'client/flutter/pubspec.yaml').read_text()
+          assert re.search(r'^version:\s*1\.2\.0\+67026\s*$',version,re.M), 'Frozen source floor must remain67026 before the one final build'
+          pins={'run_current_graph.py': 'ac754d623f2e52f240ad85144e40c8d6bf3a784b90a003a557b8099e9546dd55', 'current_graph_test.dart': 'e1ea84cffae9cae7b09dbf5320853b760cec8d7a2eed701f9384d31e7ae640e4', 'verify_packaged.py': '8ef6eb42e4fdce4691d9a37f4021fbac0faa6bb05613017cfa2474676cd5d378'}
+          for name,wanted in pins.items():
+              path=root/'.github/fixtures/final-verification/macos'/name
+              assert path.resolve(strict=True)==path and path.stat().st_nlink==1
+              assert 0<path.stat().st_size<=131072 and hashlib.sha256(path.read_bytes()).hexdigest()==wanted
+          owner=(root/'.github/fixtures/final-verification/macos/run_current_graph.py').read_text()
+          test=(root/'.github/fixtures/final-verification/macos/current_graph_test.dart').read_text()
+          assert owner.count('APPROVED_SHA = None  # Bind only after the actual final application build.')==1
+          assert test.count('const String? approvedDllSha256 = null;')==1
+          PY
       - name: Analyze
         run: |
           cd client/flutter
@@ -40,7 +60,19 @@ jobs:
           cp dist/macos/ConsoleCrypt.dmg "dist/macos/ConsoleCrypt-$version-macos-universal-preview.dmg"
           cd dist/macos
           shasum -a 256 "ConsoleCrypt-$version-macos-universal-preview.dmg" > SHA256SUMS-macos-preview.txt
+      - name: Python for the original final packaged graph and GUI verification
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+          check-latest: false
+      - name: Verify signed packaged members, original Memory graph and owned GUI
+        timeout-minutes: 12
+        run: |
+          python -I -B .github/fixtures/final-verification/macos/verify_packaged.py \
+            --execute-final-macos-verification --root "$GITHUB_WORKSPACE" \
+            --output "$RUNNER_TEMP/cc-final-macos-verification"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
         with:
           name: macos-preview
           if-no-files-found: error
@@ -49,6 +81,16 @@ jobs:
           path: |
             dist/macos/ConsoleCrypt-*-macos-universal-preview.dmg
             dist/macos/SHA256SUMS-macos-preview.txt
+            dist/macos/ConsoleCrypt-macos.zip
+            dist/macos/ConsoleCrypt.version
+            ${{ runner.temp }}/cc-final-macos-verification/*.json
+            ${{ runner.temp }}/cc-final-macos-verification/*.log
+            ${{ runner.temp }}/cc-final-macos-verification/*.stdout
+            ${{ runner.temp }}/cc-final-macos-verification/*.stderr
+            ${{ runner.temp }}/cc-final-macos-verification/*.png
+            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*.log
+            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*.exit
+            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*-receipt.json
 
   native-checks:
     if: github.repository == 'evsikovas/consolecrypt-client' && github.event_name == 'workflow_dispatch' && inputs.native_checks_only

@@ -231,7 +231,7 @@ fn audit_history(view:&Value,association:&str,profile:&str,device:&str,user:&str
     let rows=audit_rows(view)?;require(rows.len()==20)?;
     let mut lineage=Vec::new();let mut operations=std::collections::BTreeSet::new();
     let mut grants=std::collections::BTreeSet::new();
-    for(index,end)in ["stopRequested","unknown","unknown","stopRequested","revoked"].iter().enumerate() {
+    for(index,end)in ["stopRequested","cancelled","unknown","stopRequested","revoked"].iter().enumerate() {
         let start=[0,3,6,9,17][index];let group=&rows[start..start+3];
         let requested=&group[0]["record"];let opened=&group[1]["record"];let terminal=&group[2]["record"];
         require(requested["event"]=="openRequested"&&opened["event"]=="opened"&&terminal["event"]==*end)?;

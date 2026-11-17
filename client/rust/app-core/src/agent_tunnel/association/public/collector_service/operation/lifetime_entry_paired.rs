@@ -177,7 +177,7 @@ async fn run_case(ipc:Ipc,normal:bool) {
     let ssh=cc_ssh_core::keys::generate_key(cc_ssh_core::keys::KeyGenAlgorithm::Ed25519,"owned lifetime Native",None).unwrap();
     let public_ssh=ssh.public_openssh.split_whitespace().take(2).collect::<Vec<_>>().join(" ");
     let mut events=app.subscribe_events();
-    let ssh_credential=app.import_ssh_key("Owned lifetime SSH".into(),Some("ccenroll".into()),ssh.private_openssh.expose_secret().to_owned(),None,false,None).await.unwrap();
+    let ssh_credential=app.import_ssh_key("Owned lifetime SSH".into(),Some("root".into()),ssh.private_openssh.expose_secret().to_owned(),None,false,None).await.unwrap();
     drop(ssh);changed(&mut events,cc_models::ObjectKind::Credential,&ssh_credential.id).await;drop(events);
     let f=frame(&app).await;
     let identity=app.agent_node_client_identity_prepare_json(&f.to_string()).await.unwrap();
@@ -197,7 +197,7 @@ async fn run_case(ipc:Ipc,normal:bool) {
     ipc.publish("bootstrap",json!({"agentId":agent,"genesisOwnerPin":pin,"sshClientPublicKey":public_ssh,"clientTlsPublic":tls,
         "requiredScrapeTargetId":"exporter","requireTwoBasicAuthRefs":true}));drop(bootstrap_scope);
     let endpoint:Ready=ipc.wait("ssh-ready").await;
-    assert!(endpoint.host=="127.0.0.1"&&endpoint.port>0&&endpoint.user=="ccenroll"&&endpoint.subsystem=="consolecrypt-agent-enroll-v1");
+    assert!(endpoint.host=="127.0.0.1"&&endpoint.port>0&&endpoint.user=="root"&&endpoint.subsystem=="consolecrypt-agent-enroll-v1");
     let parts:Vec<_>=endpoint.host_public_key.split_whitespace().collect();
     assert!(parts.len()==2&&parts[0]=="ssh-ed25519"&&parts.join(" ")==endpoint.host_public_key);
     app.import_known_hosts(format!("[127.0.0.1]:{} {}\n",endpoint.port,endpoint.host_public_key)).await.unwrap();

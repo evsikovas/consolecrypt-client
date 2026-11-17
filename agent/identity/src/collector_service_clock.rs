@@ -93,6 +93,14 @@ impl CollectorServiceClockObservation {
         stamp.validate()?;
         Ok(stamp)
     }
+    /// Synthetic signed-time inputs are confined to unit tests; production
+    /// still constructs observations only through the original kernel reader.
+    #[cfg(test)]
+    pub(crate) fn test_journal(
+        boot_id: ResourceId, boottime_ns: u64, wall_time: Timestamp,
+    ) -> Result<Self> {
+        Self::journal(boot_id, boottime_ns, wall_time)
+    }
     /// Called only while replaying authenticated anchored journal transitions.
     pub(super) fn journal(
         boot_id: ResourceId,

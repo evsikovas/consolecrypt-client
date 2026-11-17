@@ -9,6 +9,7 @@ pub struct CollectorServiceAccess<'a, S: CompareAndSwap> {
     original_clock: CollectorServiceClockStamp,
     expires_at: Timestamp,
     deadline_boottime_ns: u64,
+    read_wait_end: Option<std::time::Instant>,
 }
 impl<S: CompareAndSwap> CollectorServiceAccess<'_, S> {
     pub fn service_id(&self) -> ResourceId {
@@ -62,8 +63,19 @@ impl<S: CompareAndSwap> CollectorServiceAccess<'_, S> {
         Ok(())
     }
     pub fn recheck(
-        &mut self,
-        now: Now,
+        &mut self, now: Now,
+        clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
+    ) -> Result<Now> {
+        self.recheck_read_phase(now, self.read_wait_end, clock)
+    }
+    pub(crate) fn recheck_waiting(
+        &mut self, now: Now, end: std::time::Instant,
+        clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
+    ) -> Result<Now> {
+        self.recheck_read_phase(now, Some(end), clock)
+    }
+    fn recheck_read_phase(
+        &mut self, now: Now, read_end: Option<std::time::Instant>,
         clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
     ) -> Result<Now> {
         // `now` is the original caller's lower bound, never a frozen clock
@@ -77,8 +89,10 @@ impl<S: CompareAndSwap> CollectorServiceAccess<'_, S> {
         {
             return Err(Error::Expired);
         }
-        self.actor
-            .check_collector_service(self.permit, Now(before.wall_time), clock)?;
+        match read_end {
+            Some(end) => { self.actor.check_collector_service_waiting(self.permit, Now(before.wall_time), end, clock)?; }
+            None => { self.actor.check_collector_service(self.permit, Now(before.wall_time), clock)?; }
+        }
         let observed = clock()?;
         observed.check(&self.original_clock)?;
         if observed.wall_time < now.0
@@ -94,9 +108,7 @@ impl<S: CompareAndSwap> CollectorServiceAccess<'_, S> {
 }
 impl<S: CompareAndSwap> Actor<S> {
     pub fn borrow_collector_service<'a>(
-        &'a mut self,
-        permit: &'a CollectorServicePermit,
-        now: Now,
+        &'a mut self, permit: &'a CollectorServicePermit, now: Now,
         clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
     ) -> Result<CollectorServiceAccess<'a, S>> {
         let observed = clock()?;
@@ -104,6 +116,19 @@ impl<S: CompareAndSwap> Actor<S> {
             return Err(Error::InvalidTime);
         }
         let state = self.read(Now(observed.wall_time))?;
+        self.borrow_collector_service_loaded(permit, state, observed, None)
+    }
+    pub(crate) fn borrow_collector_service_waiting<'a>(
+        &'a mut self, permit: &'a CollectorServicePermit, now: Now, end: std::time::Instant,
+        clock: &mut impl FnMut() -> Result<CollectorServiceClockObservation>,
+    ) -> Result<CollectorServiceAccess<'a, S>> {
+        let (state, observed) = self.read_collector_service_waiting(now, end, clock)?;
+        self.borrow_collector_service_loaded(permit, state, observed, Some(end))
+    }
+    fn borrow_collector_service_loaded<'a>(
+        &'a mut self, permit: &'a CollectorServicePermit, state: State,
+        observed: CollectorServiceClockObservation, read_wait_end: Option<std::time::Instant>,
+    ) -> Result<CollectorServiceAccess<'a, S>> {
         self.last_observed_time = observed.wall_time;
         let record = state
             .collector_services
@@ -118,6 +143,7 @@ impl<S: CompareAndSwap> Actor<S> {
         }
         Ok(CollectorServiceAccess {
             actor: self,
+            read_wait_end,
             permit,
             policy: record.policy.body.clone(),
             owner:state.pin.clone(),

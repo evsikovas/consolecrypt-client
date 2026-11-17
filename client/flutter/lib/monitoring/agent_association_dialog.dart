@@ -689,7 +689,7 @@ class _AgentAssociationDialogState extends State<AgentAssociationDialog> {
                 ),
                 fact(l.agentMetricsScope, review.scopeName),
                 if (review.exporterCatalog case final catalog?) ...[
-                  Text('${catalog.policy.address} · cpu, meminfo'),
+                  Text('${catalog.policy.address} · cpu, meminfo'), // l10n-ignore: endpoint and exporter collector identifiers.
                   Text(catalog.policy.artifactVersion),
                   Text(l.agentExporterEnrollmentDisclosure),
                 ],

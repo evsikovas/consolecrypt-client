@@ -1578,7 +1578,7 @@ class _MonitoringWorkspaceState extends State<MonitoringWorkspace> {
               onChanged:busy?null:(value)=>setState(()=>routeDestinationIp=value)),
             field(l.agentTunnelDestinationPort,routeDestinationPortInput,keyName:'monitoring-source-agent-port'),
             if (routeAssociationId!=null)
-              Text('${sourceAgentHostName(routeHostId)} · ${routeDestinationIp=='::1'?'[::1]':routeDestinationIp}:${routeDestinationPortInput.text}',
+              Text('${sourceAgentHostName(routeHostId)} · ${routeDestinationIp=='::1'?'[::1]':routeDestinationIp}:${routeDestinationPortInput.text}', // l10n-ignore: host, IP and port reference; no translatable text.
                 key:const ValueKey('monitoring-source-agent-reference')),
             Text(l.monitoringAgentDestinationHint),
             const SizedBox(height: 12),

@@ -145,7 +145,7 @@ class _State extends State<AgentExporterDialog> {
                   Text(state(), key: const ValueKey('agent-exporter-state')),
                   InfoBanner(tone: BannerTone.warning, message: l.agentExporterFiniteDisclosure),
                   if (p != null) ...[
-                    Text('${p.address} · cpu, meminfo'),
+                    Text('${p.address} · cpu, meminfo'), // l10n-ignore: endpoint and exporter collector identifiers.
                     Text('${l.agentExporterArtifact}: ${p.artifactVersion} / ${p.platform}'),
                     Text('${l.agentExporterExecutingVersion}: ${l.agentAssociationUnknown}'),
                     if (!owner.prepareSpent)

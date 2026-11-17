@@ -243,6 +243,30 @@ void main() {
     await expectLater(binding.recheck(service, isCurrent: () => false), throwsFormatException);
     expect(service.expected, isEmpty); // No writes, Runner connection, preparation or execution.
   });
+
+
+  test('cAdvisor capture pins canonical bytes and rejects stale or self-consistent edited sources', () async {
+    final service = Projects();
+    final project = await service.createProject(name: 'Canonical pin regression');
+    final source = await io.File('assets/automation/exporters/cadvisor.yml').readAsString();
+    final actual = digest.sha256.convert(utf8.encode(source)).toString();
+    expect(actual, automationCadvisorTemplateSha256);
+    service.contents['playbook.yml'] = source;
+    service.readShaOverride = actual;
+    final binding = await AutomationCadvisorTemplateBinding.capture(service, project.id, isCurrent: () => true);
+    expect(binding.project.id, project.id);
+    // Current bytes do not make a stale peer-reported digest trustworthy.
+    service.readShaOverride = 'a341f805b5b1db61431c267cd59763de227160a06a1b929a0d1a7e1d1f6e1453';
+    await expectLater(AutomationCadvisorTemplateBinding.capture(service, project.id, isCurrent: () => true),
+      throwsFormatException);
+    // A matching hash of modified bytes still cannot replace the reviewed pin.
+    final edited = '$source\n# unreviewed template edit\n';
+    service.contents['playbook.yml'] = edited;
+    service.readShaOverride = digest.sha256.convert(utf8.encode(edited)).toString();
+    await expectLater(AutomationCadvisorTemplateBinding.capture(service, project.id, isCurrent: () => true),
+      throwsFormatException);
+    expect(service.expected, isEmpty);
+  });
   test('cAdvisor lifecycle binds one Host and original container to a closed component manifest', () {
     const owner = '00000000-0000-4000-8000-000000000001';
     const host = '00000000-0000-4000-8000-000000000002';

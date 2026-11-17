@@ -300,11 +300,13 @@ impl OriginalSessionDeviceIdentity {
         self.sample_wall_held()
     }
     fn sample_wall_held(&self) -> AppResult<Duration> {
+        // Serialize clock sampling with publication: concurrent callers must not
+        // mistake an earlier sample published later for a real clock rollback.
+        let mut high = self.wall.lock().map_err(|_| denied())?;
         let raw = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| {
             self.retired.cancel();
             denied()
         })?;
-        let mut high = self.wall.lock().map_err(|_| denied())?;
         if raw.as_secs() > 253_402_300_799 || high.is_some_and(|old| raw < old) {
             self.retired.cancel();
             return Err(denied());
