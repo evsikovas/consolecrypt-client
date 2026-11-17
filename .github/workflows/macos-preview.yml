@@ -45,7 +45,7 @@ jobs:
           assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()==os.environ['GITHUB_SHA']
           version=(root/'client/flutter/pubspec.yaml').read_text()
           assert re.search(r'^version:\s*1\.2\.0\+67026\s*$',version,re.M), 'Frozen source floor must remain67026 before the one final build'
-          pins={'run_current_graph.py': 'ac754d623f2e52f240ad85144e40c8d6bf3a784b90a003a557b8099e9546dd55', 'current_graph_test.dart': 'e1ea84cffae9cae7b09dbf5320853b760cec8d7a2eed701f9384d31e7ae640e4', 'verify_packaged.py': '6366bc1d84b6da3a0b5e2656dc0a1752df755bb12dd4753e5fe143cf9fe22775'}
+          pins={'run_current_graph.py': 'ac754d623f2e52f240ad85144e40c8d6bf3a784b90a003a557b8099e9546dd55', 'current_graph_test.dart': 'e1ea84cffae9cae7b09dbf5320853b760cec8d7a2eed701f9384d31e7ae640e4', 'verify_packaged.py': 'f37dbc40f95f06c5af0a9a0d8cb384da56449825bbab18249a9f0f9084bf01e7'}
           for name,wanted in pins.items():
               path=root/'.github/fixtures/final-verification/macos'/name
               assert path.resolve(strict=True)==path and path.stat().st_nlink==1
@@ -73,7 +73,7 @@ jobs:
           assert os.environ['GITHUB_REF']=='refs/heads/ci/platform-final-r17'
           git=lambda *args:subprocess.check_output(['git',*args],cwd=root,text=True).strip()
           assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA']
-          assert git('rev-parse','HEAD^')=='80381d065fe03f803615a26789dca56e2321b07a'
+          assert git('rev-parse','HEAD^')=='6897dba6842e55934b7180d96681f313de797657'
           assert set(git('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines())=={
               '.github/workflows/macos-preview.yml','.github/fixtures/final-verification/macos/verify_packaged.py'}
           api='https://api.github.com/repos/evsikovas/consolecrypt-client'

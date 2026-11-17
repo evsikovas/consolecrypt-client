@@ -45,7 +45,8 @@ def set_stage(stage):
 
 def closed_error_facts(error):
     roles={'main','package_witness','preload_packaged_bridge','digest','read','need','command',
-        'bundle_identity','bundle_version','own_dmg_device','find_owned_dmg','graph','bound_sources','gui','set_stage'}
+        'bundle_identity','bundle_version','own_dmg_device','find_owned_dmg','graph','bound_sources','gui','set_stage',
+        'session_keys','parse_session_keys','session_flag_fact'}
     frames=[];trace=error.__traceback__;seen=0
     while trace is not None and seen<32:
         code=trace.tb_frame.f_code;seen+=1
@@ -264,6 +265,9 @@ def graph(root,framework,witness,output):
     owner,test=bound_sources(source_owner,source_test,witness['frameworkSha256'])
     directory=output/'bound-g2';directory.mkdir(mode=0o700)
     (directory/'run_current_graph.py').write_bytes(owner);(directory/'current_graph_test.dart').write_bytes(test)
+    need((directory/'current_graph_test.dart').parent==directory and directory.resolve(strict=True)==directory,'owned_private_test_config_parent')
+    bootstrap=b"import 'dart:async';\nimport 'dart:convert';\nimport 'dart:ffi';\nimport 'dart:io';\nimport 'package:crypto/crypto.dart';\n\nfinal List<DynamicLibrary> _ownedPackagedLibraries = <DynamicLibrary>[];\n\nFuture<void> testExecutable(FutureOr<void> Function() testMain) async {\n  final nativePath = Platform.environment['CC_OWNED_MONITORING_DLL'];\n  if (!Platform.isMacOS || nativePath == null || File(nativePath).resolveSymbolicLinksSync() != nativePath) {\n    throw StateError('owned_native_bootstrap_input');\n  }\n  final frameworks = File(nativePath).parent.parent.parent.parent;\n  final engine = File('${frameworks.path}/FlutterMacOS.framework/Versions/A/FlutterMacOS');\n  final before = await engine.stat();\n  if (engine.resolveSymbolicLinksSync() != engine.path ||\n      await FileSystemEntity.type(engine.path, followLinks: false) != FileSystemEntityType.file ||\n      before.size != 30035744 || (before.mode & 0xC00) != 0) {\n    throw StateError('owned_packaged_flutter_bootstrap_input');\n  }\n  final hash = (await sha256.bind(engine.openRead()).first).toString();\n  final after = await engine.stat();\n  if (hash != '9afb47e0fded849b1213ddc48f911b0520dca72467a368d1afd38caec3627e36' ||\n      before.size != after.size || before.modified != after.modified || before.changed != after.changed ||\n      before.mode != after.mode || engine.resolveSymbolicLinksSync() != engine.path) {\n    throw StateError('owned_packaged_flutter_bootstrap_digest');\n  }\n  _ownedPackagedLibraries.add(DynamicLibrary.open(engine.path));\n  print('OWNED_PACKAGED_FLUTTER_TEST_BOOTSTRAP ${jsonEncode(<String, Object>{\n    'engineSha256': hash, 'engineBytes': before.size, 'actualEngineLoaded': true, 'ownedHandleRetained': true,\n  })}');\n  await testMain();\n}\n"
+    (directory/'flutter_test_config.dart').write_bytes(bootstrap)
     runtime=output/'g2-runtime';runtime.mkdir(mode=0o700)
     environment=dict(os.environ,RUNNER_TEMP=str(runtime))
     with(output/'g2-owner.log').open('xb')as log:
@@ -278,12 +282,59 @@ def graph(root,framework,witness,output):
     need(actual['nativeSha256']==witness['frameworkSha256']and actual['abi']==ABI,'actual_g2_binding')
     need(actual['ownedProcessGroupJoined']and not actual['remainingOwnedFixtures'],'original_g2_cleanup')
     need(digest(HERE/'run_current_graph.py',65536)==OWNER_SHA and digest(HERE/'current_graph_test.dart',65536)==TEST_SHA,'shipping_g2_sources_modified')
-    record=dict(passed=result.returncode==0 and actual['exitCode']==0,originalG2Receipt=actual,
+    log=runtime/'monitoring-final-macos-packaged-graph-ffi-attempt1.log'
+    marker='OWNED_PACKAGED_FLUTTER_TEST_BOOTSTRAP '
+    bootstraps=[json.loads(line.split(marker,1)[1])for line in read(log,8*1024**2).decode('utf-8','replace').splitlines()if marker in line]
+    need(len(bootstraps)<=1,'single_owned_flutter_test_bootstrap')
+    child_host=bootstraps[0]if bootstraps else None
+    if child_host is not None:
+        need(child_host==dict(engineSha256=FLUTTER_ENGINE_SHA,engineBytes=FLUTTER_ENGINE_BYTES,
+            actualEngineLoaded=True,ownedHandleRetained=True),'actual_child_packaged_flutter_host')
+    record=dict(passed=result.returncode==0 and actual['exitCode']==0 and child_host is not None,originalG2Receipt=actual,
+        privateTestBootstrapSha256=hashlib.sha256(bootstrap).hexdigest(),privateTestBootstrapOwnedParent=True,
+        actualChildPackagedFlutterHost=child_host,
         sourceOwnerSha256=OWNER_SHA,sourceTestSha256=TEST_SHA,
         boundOwnerSha256=hashlib.sha256(owner).hexdigest(),boundTestSha256=hashlib.sha256(test).hexdigest(),
         onlyTwoPrivateCopyNullGuardsBound=True,shippingGuardsRemainNull=True)
     save(output/'g2-verification.json',record)
     return record
+
+
+def parse_session_keys(raw):
+    need(type(raw)is bytes and 0<len(raw)<=65536,'bounded_session_sdk_header')
+    text=raw.decode('utf-8','strict');result={}
+    for symbol in ('kCGSessionOnConsoleKey','kCGSessionLoginDoneKey','kCGSessionUserIDKey'):
+        pattern=r'(?m)^[\t ]*#[\t ]*define[\t ]+'+re.escape(symbol)+r'[\t ]+CFSTR\([\t ]*"([A-Za-z0-9_]{1,96})"[\t ]*\)'
+        matches=re.findall(pattern,text)
+        need(len(matches)==1,'exact_session_sdk_cfstr_'+symbol)
+        result[symbol]=matches[0]
+    need(len(set(result.values()))==3,'distinct_session_sdk_keys')
+    return result
+
+
+def session_keys():
+    result=subprocess.run(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path'],stdin=subprocess.DEVNULL,
+        capture_output=True,check=False,timeout=10)
+    need(result.returncode==0 and 0<len(result.stdout)<=4096 and len(result.stderr)<=4096,'trusted_session_sdk_query')
+    sdk=Path(result.stdout.decode('utf-8','strict').strip()).resolve(strict=True)
+    developer=Path('/Applications/Xcode.app/Contents/Developer').resolve(strict=True)
+    need(sdk.is_relative_to(developer),'trusted_session_sdk_root')
+    header=(sdk/'System/Library/Frameworks/CoreGraphics.framework/Headers/CGSession.h').resolve(strict=True)
+    need(header.is_relative_to(sdk),'owned_session_sdk_header_path')
+    for path in (header,*header.parents):
+        value=path.stat()
+        need(value.st_uid==0 and not value.st_mode&0o022,'trusted_session_sdk_header_custody')
+        if path==sdk:break
+    raw=read(header,65536)
+    return parse_session_keys(raw),hashlib.sha256(raw).hexdigest()
+
+
+def session_flag_fact(session,key):
+    if key not in session:return dict(present=False,kind='missing',value=None)
+    value=session[key]
+    if type(value)is bool:return dict(present=True,kind='bool',value=value)
+    if type(value)is int and value in (0,1):return dict(present=True,kind='int01',value=bool(value))
+    return dict(present=True,kind='other',value=None)
 
 
 class MacWindows:
@@ -353,11 +404,18 @@ def gui(app,witness,output):
         keychainActionsByVerifier=False,localAiSmokeUsedAsGuiProof=False)
     child=None;fresh=None
     try:
-        api=MacWindows();session=api.session()
-        need(session.get('kCGSessionOnConsoleKey')is True and session.get('kCGSessionLoginDoneKey')is True
-             and session.get('kCGSessionUserIDKey')==os.getuid(),'no_current_graphical_login_session')
-        report['graphicalSessionAvailable']=True
+        api=MacWindows();keys,header_sha=session_keys();session=api.session()
         capture=bool(api.cg.CGPreflightScreenCaptureAccess());report['screenCaptureAlreadyAuthorized']=capture
+        on_console=session_flag_fact(session,keys['kCGSessionOnConsoleKey'])
+        login_done=session_flag_fact(session,keys['kCGSessionLoginDoneKey'])
+        uid_key=keys['kCGSessionUserIDKey'];uid=session.get(uid_key)
+        current_uid_matches=type(uid)is int and uid==os.getuid()
+        report['sessionPreflight']=dict(sdkHeaderSha256=header_sha,keyNames=keys,onConsole=on_console,
+            loginDone=login_done,userIdPresent=uid_key in session,userIdExactInteger=type(uid)is int,
+            currentUidMatches=current_uid_matches)
+        need(on_console['value']is True and login_done['value']is True
+             and current_uid_matches,'no_current_graphical_login_session')
+        report['graphicalSessionAvailable']=True
         need(capture,'screen_capture_permission_absent_no_prompt_or_grant')
         fresh=output/'fresh-gui';fresh.mkdir(mode=0o700)
         for name in ('home','tmp','data','xdg-cache','xdg-config','xdg-data'):(fresh/name).mkdir(mode=0o700)
@@ -396,6 +454,7 @@ def gui(app,witness,output):
                 isolatedFreshDataWindowCaptured=True,emptyOnboardingVisuallyConfirmed=False)
     except BaseException as error:
         report.update(passed=False,errorKind=type(error).__name__,errorCode=str(error)[:160]if isinstance(error,ValueError)else'gui_verification_failed')
+        report['errorFacts']=closed_error_facts(error)
     finally:
         if child is not None:
             try:report.update(actualExitCode=join_gui(child),actualOwnedPidJoined=True)
