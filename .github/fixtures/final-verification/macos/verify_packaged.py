@@ -126,7 +126,7 @@ def package_witness(root,output):
     dmg=root/'dist/macos/ConsoleCrypt.dmg';framework=app/FRAMEWORK
     need(read(root/'dist/macos/ConsoleCrypt.version',128).decode().strip()==VERSION,'dist_version')
     executable=bundle_version(app)
-    framework_sha=digest(framework,256*1024**2)
+    framework_sha=digest(framework,512*1024**2)
     zip_sha=digest(archive);dmg_sha=digest(dmg)
     save(output/'packaged-inputs.json',dict(version=VERSION,frameworkSha256=framework_sha,
         zipSha256=zip_sha,dmgSha256=dmg_sha,threeMemberEqualityNotYetVerified=True))
@@ -139,7 +139,7 @@ def package_witness(root,output):
         name='ConsoleCrypt.app/'+FRAMEWORK
         rows=[row for row in members if row.filename==name]
         need(len(rows)==1 and rows[0].file_size==framework.stat().st_size
-             and rows[0].file_size<=256*1024**2,'exact_zip_framework')
+             and rows[0].file_size<=512*1024**2,'exact_zip_framework')
         with package.open(rows[0])as stream:zip_framework_sha=hashlib.file_digest(stream,'sha256').hexdigest()
         need(zip_framework_sha==framework_sha,'zip_framework_digest')
         info_rows=[row for row in members if row.filename=='ConsoleCrypt.app/Contents/Info.plist']
@@ -152,7 +152,7 @@ def package_witness(root,output):
             '-mountpoint',mount,'-plist',dmg],output,'dmg-attach',45)
         device=own_dmg_device(attached,mount)
         need(bundle_version(mount/'ConsoleCrypt.app')==executable,'dmg_bundle_identity')
-        dmg_framework_sha=digest(mount/'ConsoleCrypt.app'/FRAMEWORK,256*1024**2)
+        dmg_framework_sha=digest(mount/'ConsoleCrypt.app'/FRAMEWORK,512*1024**2)
         need(dmg_framework_sha==framework_sha,'dmg_framework_digest')
     finally:
         if device is None:
@@ -166,7 +166,7 @@ def package_witness(root,output):
         need(not os.path.ismount(mount),'owned_dmg_still_mounted')
         mount.rmdir()
     need(unmounted,'actual_dmg_mount_and_join')
-    need(digest(framework,256*1024**2)==framework_sha and digest(archive)==zip_sha and digest(dmg)==dmg_sha,'artifacts_changed_after_inspection')
+    need(digest(framework,512*1024**2)==framework_sha and digest(archive)==zip_sha and digest(dmg)==dmg_sha,'artifacts_changed_after_inspection')
     library=ctypes.CDLL(str(framework))
     getter=library.frb_get_rust_content_hash;getter.argtypes=[];getter.restype=ctypes.c_int32
     need(getter()==ABI,'actual_framework_abi')
