@@ -206,7 +206,7 @@ final class RustAppServices {
       automation: RustAutomationService(),
       jobNotices: hub.jobNoticeEvents,
       runtimeNotices: hub.runtimeNoticeEvents,
-      monitoring: const RustMonitoringBackend(),
+      monitoring: RustMonitoringBackend(noticeEvents: hub.runtimeNoticeEvents),
       notes: RustNoteService(hub),
       onDispose: dispose,
       approvedExitActions: approvedExitActions,

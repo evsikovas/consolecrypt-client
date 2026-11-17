@@ -66,7 +66,7 @@ class Projects implements AutomationService {
   dynamic noSuchMethod(Invocation invocation) => throw StateError('no execution or credential capability');
 }
 
-/// Supports the actual install menu without granting a fake execution result.
+/// Preserves previously created Host intents without granting a fake execution result.
 class InstallProjects extends Projects implements AutomationJobService, AutomationRunnerService {
   int prepares = 0, confirms = 0, installationRequests = 0, connects = 0, otherWrites = 0;
   @override
@@ -152,8 +152,8 @@ void main() {
       rootBundle.evict(asset);
     }
   });
-  for (final fromHost in [false, true]) {
-  testWidgets('cAdvisor ${fromHost ? 'original Host intent' : 'install menu'} fills ordinary Run without executing', (tester) async {
+  for (final fromHost in [true]) {
+  testWidgets('legacy cAdvisor Host intent fills ordinary Run without executing', (tester) async {
     final service = InstallProjects();
     final container = await open(tester, service, withHost: fromHost);
     AgentCadvisorComposerFocus? focus;
@@ -169,9 +169,6 @@ void main() {
         returnUri: Uri.parse(AppRoutes.hosts), scope: scope, service: service, original: () => originalHost);
       container.read(routerProvider).go(AppRoutes.automation, extra: focus);
       await settle(tester);
-    } else {
-      await tapKey(tester, 'automation-project-actions');
-      await tapKey(tester, 'automation-cadvisor-install');
     }
     expect(find.textContaining('--privileged'), findsOneWidget);
     expect(service.projectsCreated, isEmpty);
@@ -310,120 +307,32 @@ void main() {
         throwsFormatException);
     }
   });
-  for (final template in ['node-exporter', 'cadvisor']) {
-    testWidgets('$template project template writes reviewed inspect source without execution', (tester) async {
-      final service = Projects();
+  for (final fullCapabilities in [false, true]) {
+    testWidgets('Automation project menu excludes monitoring actions capabilities=$fullCapabilities', (tester) async {
+      final service = fullCapabilities ? InstallProjects() : Projects();
       await open(tester, service);
       await tapKey(tester, 'automation-project-actions');
-      await tapKey(tester, 'automation-$template-template');
-      if (template == 'cadvisor') {
-        expect(service.projectsCreated, isEmpty);
-        expect(service.expected, isEmpty);
-        await tapKey(tester, 'automation-cadvisor-add-source');
+      for (final key in const [
+        'automation-node-exporter-template',
+        'automation-cadvisor-template',
+        'automation-cadvisor-install',
+        'automation-monitoring-node-template',
+        'automation-agent-install-template',
+      ]) {
+        expect(find.byKey(ValueKey(key)), findsNothing);
       }
-      final field = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
-      await tester.enterText(field, 'Reviewed exporter');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await settle(tester, steps: 25);
-      expect(service.projectsCreated.length, 1);
-      expect(service.contents['playbook.yml'], contains('cc_exporter_mode: inspect'));
-      expect(service.expected['playbook.yml'], 'b' * 64);
-      if (template == 'node-exporter') {
-        expect(service.contents.containsKey('node-exporter.service.j2'), isTrue);
-        expect(service.expected['node-exporter.service.j2'], isNull);
-        expect(service.contents['playbook.yml'], contains('use_netrc: false'));
-      } else {
-        expect(service.contents['playbook.yml'], contains('privileged-host-filesystems-and-kmsg'));
-      }
-      expect(tester.takeException(), isNull);
-    }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
-  }
-  testWidgets('cancelling template project name creates no project or file', (tester) async {
-    final service = Projects();
-    await open(tester, service);
-    await tapKey(tester, 'automation-project-actions');
-    await tapKey(tester, 'automation-node-exporter-template');
-    await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.text('Cancel')));
-    await settle(tester);
-    expect(service.projectsCreated, isEmpty);
-    expect(service.expected, isEmpty);
-    expect(tester.takeException(), isNull);
-  }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
-  testWidgets('cAdvisor explicit privilege review cancel produces zero project or file writes', (tester) async {
-    final service = Projects();
-    await open(tester, service);
-    await tapKey(tester, 'automation-project-actions');
-    await tapKey(tester, 'automation-cadvisor-template');
-    expect(find.textContaining('--privileged'), findsOneWidget);
-    expect(find.textContaining('--device=/dev/kmsg'), findsOneWidget);
-    expect(find.textContaining('--volume=/var/run:/var/run:ro'), findsOneWidget);
-    expect(find.textContaining('does not make the Docker API read-only'), findsOneWidget);
-    expect(service.projectsCreated, isEmpty);
-    expect(service.expected, isEmpty);
-    await tapKey(tester, 'automation-cadvisor-cancel');
-    expect(find.byKey(const ValueKey('automation-cadvisor-review')), findsNothing);
-    expect(service.projectsCreated, isEmpty);
-    expect(service.expected, isEmpty);
-    expect(tester.takeException(), isNull);
-  }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
-  for (final afterConsent in [false, true]) {
-    testWidgets('cAdvisor original scope replacement before write afterConsent=$afterConsent', (tester) async {
-      final service = Projects();
-      final container = await open(tester, service);
-      await tapKey(tester, 'automation-project-actions');
-      await tapKey(tester, 'automation-cadvisor-template');
-      if (afterConsent) await tapKey(tester, 'automation-cadvisor-add-source');
-      final previous = container.read(automationScopeProvider);
-      container.invalidate(automationScopeProvider);
-      expect(identical(previous, container.read(automationScopeProvider)), false);
-      await settle(tester);
-      expect(find.byKey(const ValueKey('automation-cadvisor-review')), findsNothing);
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byKey(const ValueKey('automation-new-project')).hitTestable(), findsOneWidget);
+      expect(find.byKey(const ValueKey('automation-open-folder')).hitTestable(), findsOneWidget);
       expect(service.projectsCreated, isEmpty);
       expect(service.expected, isEmpty);
+      if (service is InstallProjects) {
+        expect(service.prepares, 0);
+        expect(service.confirms, 0);
+        expect(service.connects, 0);
+      }
       expect(tester.takeException(), isNull);
     }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
   }
-  testWidgets('cAdvisor service replacement retires reviewed route without adoption', (tester) async {
-    final first = Projects(), second = Projects();
-    final container = await open(tester, first);
-    await tapKey(tester, 'automation-project-actions');
-    await tapKey(tester, 'automation-cadvisor-template');
-    final app = container.read(appServicesProvider);
-    container.updateOverrides([
-      appServicesProvider.overrideWithValue(app),
-      automationServiceProvider.overrideWithValue(second),
-    ]);
-    await settle(tester);
-    expect(find.byKey(const ValueKey('automation-cadvisor-review')), findsNothing);
-    expect(first.projectsCreated, isEmpty);
-    expect(second.projectsCreated, isEmpty);
-    expect(first.expected, isEmpty);
-    expect(second.expected, isEmpty);
-    expect(tester.takeException(), isNull);
-  }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
-  testWidgets('RU cAdvisor disclosure stays bounded and actionable in a narrow scaled viewport', (tester) async {
-    final service = Projects();
-    await open(tester, service, locale: AppLocale.ru);
-    await tapKey(tester, 'automation-project-actions');
-    await tapKey(tester, 'automation-cadvisor-template');
-    // Resize the actual modal after opening from the full existing workspace.
-    tester.view.physicalSize = const Size(500, 700);
-    final context = tester.element(find.byKey(const ValueKey('automation-cadvisor-review')));
-    final original = MediaQuery.of(context);
-    // The full-app setting supplies scale via the platform dispatcher.
-    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
-    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await settle(tester);
-    expect(original.size.width, greaterThan(0));
-    expect(find.textContaining('не делает Docker API'), findsOneWidget);
-    expect(find.byKey(const ValueKey('automation-cadvisor-cancel')).hitTestable(), findsOneWidget);
-    expect(find.byKey(const ValueKey('automation-cadvisor-add-source')).hitTestable(), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tapKey(tester, 'automation-cadvisor-cancel');
-    expect(service.projectsCreated, isEmpty);
-    expect(service.expected, isEmpty);
-  }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
   testWidgets('reviewed disclosure literals match the actual shipped fixed cAdvisor asset', (tester) async {
     final source = (await tester.runAsync(() => io.File('assets/automation/exporters/cadvisor.yml').readAsString()))!;
     for (final flag in [

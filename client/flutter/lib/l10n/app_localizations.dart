@@ -62,8 +62,7 @@ import 'app_localizations_ru.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,8 +70,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -84,19 +82,15 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[
-    Locale('en'),
-    Locale('ru'),
-  ];
+  static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
 
   /// Explicit selected Monitoring data review or scoped host navigation label.
   ///
@@ -2406,19 +2400,13 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · registration open'**
-  String loginServerInfoRegistrationOpen(
-    String serverVersion,
-    String protocolVersion,
-  );
+  String loginServerInfoRegistrationOpen(String serverVersion, String protocolVersion);
 
   /// Login screen: result of a successful server check when registration is invite-only.
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion} · invite only'**
-  String loginServerInfoInviteOnly(
-    String serverVersion,
-    String protocolVersion,
-  );
+  String loginServerInfoInviteOnly(String serverVersion, String protocolVersion);
 
   /// Login screen: segmented button option to sign in to an existing account.
   ///
@@ -3720,10 +3708,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'ConsoleCrypt server {serverVersion} · protocol {protocolVersion}'**
-  String enableSyncDialogServerInfo(
-    String serverVersion,
-    String protocolVersion,
-  );
+  String enableSyncDialogServerInfo(String serverVersion, String protocolVersion);
 
   /// Enable-sync wizard segment: register a new account.
   ///
@@ -19773,11 +19758,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{note} Runs in {client} in a terminal; the Databases workspace does not allow it. From the {package} starter package.'**
-  String snippetStarterDbTerminalOrigin(
-    String note,
-    String client,
-    String package,
-  );
+  String snippetStarterDbTerminalOrigin(String note, String client, String package);
 
   /// Snippet run flow: a SQL/redis-cli/mongosh snippet needs an open terminal session running the database client
   ///
@@ -27013,12 +26994,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'{time} · {source} · {mode} · {expression}'**
-  String monitoringHistoryEntry(
-    String time,
-    String source,
-    String mode,
-    String expression,
-  );
+  String monitoringHistoryEntry(String time, String source, String mode, String expression);
 
   /// Monitoring source and query workspace
   ///
@@ -29730,11 +29706,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Detected format · apiVersion: {apiVersion} · kind: {kind} · schemaVersion: {schemaVersion}'**
-  String grafanaImportEnvelope(
-    String apiVersion,
-    String kind,
-    String schemaVersion,
-  );
+  String grafanaImportEnvelope(String apiVersion, String kind, String schemaVersion);
 
   /// Offline Grafana import: NotDeclared.
   ///
@@ -31894,11 +31866,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'become: {become}; become_user: {user}; become_method: {method}'**
-  String automationReviewDeclaredFlags(
-    String become,
-    String user,
-    String method,
-  );
+  String automationReviewDeclaredFlags(String become, String user, String method);
 
   /// Informational guest-reported Ansible declarations only; never grants or verifies effective privileges.
   ///
@@ -32846,22 +32814,13 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Vault checkpoint: {id}; epoch {epoch}; sequence {sequence}'**
-  String monitoringPanelPolicyCheckpoint(
-    String id,
-    String epoch,
-    String sequence,
-  );
+  String monitoringPanelPolicyCheckpoint(String id, String epoch, String sequence);
 
   /// Explicit held original account compatibility policy review; never panel writer authorization.
   ///
   /// In en, this message translates to:
   /// **'Panel catalog: {id}; object revision {object}; schema {schema}; revision {revision}'**
-  String monitoringPanelPolicyCatalog(
-    String id,
-    String object,
-    String schema,
-    String revision,
-  );
+  String monitoringPanelPolicyCatalog(String id, String object, String schema, String revision);
 
   /// Explicit held original account compatibility policy review; never panel writer authorization.
   ///
@@ -35874,10 +35833,507 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The Agent route saves its association, SSH host and loopback destination; the source URL, TLS and authentication stay unchanged. Saving changes invalidates the previous tunnel approval. Open and approve a new matching Agent tunnel before reading; this reference grants no access and never reconnects automatically.'**
   String get monitoringAgentDestinationHint;
+
+  /// Host monitoring setup wizard and dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH host'**
+  String get monitoringSetupHost;
+
+  /// Host monitoring setup wizard and dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an SSH host in Hosts, then return here.'**
+  String get monitoringSetupNoHosts;
+
+  /// Host monitoring setup wizard and dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Use existing'**
+  String get monitoringSetupReuse;
+
+  /// Host monitoring setup wizard and dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Open graphs'**
+  String get monitoringSetupOpenGraphs;
+
+  /// Host monitoring setup wizard and dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced settings'**
+  String get monitoringSetupAdvanced;
+
+  /// Host monitoring setup wizard and dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphs'**
+  String get monitoringSetupGraphs;
+
+  /// Host monitoring setup wizard and dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a host and set up monitoring. Graphs will appear here after data is received.'**
+  String get monitoringSetupNoGraphs;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Agents'**
+  String get monitoringAgentOverviewTab;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'ConsoleCrypt Agent'**
+  String get monitoringAgentOverviewTitle;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'ConsoleCrypt Agent is a server service for node status, permitted metric collection and protected connections. Access is configured separately for each function.'**
+  String get monitoringAgentOverviewPurpose;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH, Ansible and viewing existing Prometheus metrics work without this Agent.'**
+  String get monitoringAgentOverviewOptional;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'After installing the software, connect the device to ConsoleCrypt and enable the functions you need. Installation, connection and collection readiness are checked separately.'**
+  String get monitoringAgentOverviewSetupHint;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate Agent states'**
+  String get monitoringAgentStatusTitle;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Software on the server'**
+  String get monitoringAgentSoftwareStatus;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Device connection'**
+  String get monitoringAgentConnectionStatus;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Metric collection'**
+  String get monitoringAgentMetricsStatus;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Status has not been checked'**
+  String get monitoringAgentStatusUnknown;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing files, connecting the device and enabling metric collection are separate steps. A saved host or association does not confirm that a service is running.'**
+  String get monitoringAgentStatusHint;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced Agent management'**
+  String get monitoringAgentManagementTitle;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Read Agent state'**
+  String get monitoringAgentReadStatus;
+
+  /// Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection and access'**
+  String get monitoringAgentConnectionSettings;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up ConsoleCrypt Agent'**
+  String get agentSetupTitle;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'ConsoleCrypt Agent connects the server to the application, reports node status and runs the metric collection you select.'**
+  String get agentSetupPurpose;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent functions'**
+  String get agentSetupProfile;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing metrics destination'**
+  String get agentSetupDestination;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Working exporters will be reused. They will not be installed again.'**
+  String get agentSetupExistingExporters;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Linux server metrics'**
+  String get agentSetupLinuxProfile;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Collect the selected server metrics through ConsoleCrypt Agent.'**
+  String get agentSetupLinuxProfileDescription;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Check setup'**
+  String get agentSetupPreflight;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Host and Agent functions'**
+  String get agentSetupSelectionTitle;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Review installation'**
+  String get agentSetupReviewTitle;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing Agent software…'**
+  String get agentSetupInstalling;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect the device'**
+  String get agentSetupPairingTitle;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure metric collection'**
+  String get agentSetupCollectionTitle;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Verifying Agent and received data…'**
+  String get agentSetupVerifying;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified setup state'**
+  String get agentSetupStatusTitle;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent is ready'**
+  String get agentSetupComplete;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent release'**
+  String get agentSetupRelease;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Install ConsoleCrypt Agent'**
+  String get agentSetupInstallAction;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare the Agent service and its dedicated account'**
+  String get agentSetupServiceAccount;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Install a missing exporter'**
+  String get agentSetupInstallExporter;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the existing metrics destination'**
+  String get agentSetupUseDestination;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed files verified'**
+  String get agentSetupSoftwareObserved;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Device pairing acknowledged'**
+  String get agentSetupPairingObserved;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration saved; running collection has not been confirmed yet'**
+  String get agentSetupConfigurationRecorded;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Running collection verified'**
+  String get agentSetupObservedReady;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Not selected'**
+  String get agentSetupNotSelected;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed running Agent version'**
+  String get agentSetupRunningVersion;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect this server’s Agent to the current ConsoleCrypt profile. Access is limited to the function shown below.'**
+  String get agentSetupPairingExplanation;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission: collect the selected metrics'**
+  String get agentSetupMetricsPermission;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission: open the selected protected connections'**
+  String get agentSetupTunnelPermission;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission: manage the selected exporters'**
+  String get agentSetupExportersPermission;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable the reviewed collection profile for the selected destination. Saving configuration is followed by a separate check of the running collector and received data.'**
+  String get agentSetupCollectionExplanation;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Readiness has not been confirmed yet. Check status to verify the connection, running collection and graph data separately.'**
+  String get agentSetupAwaitingEvidence;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'The Agent’s required readiness checks passed.'**
+  String get agentSetupVerified;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm device connection'**
+  String get agentSetupConfirmConnection;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable collection'**
+  String get agentSetupEnableCollection;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Check status'**
+  String get agentSetupVerify;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'This ConsoleCrypt distribution does not include a verified Linux Agent package. Installation is unavailable; the server has not been changed.'**
+  String get agentSetupReleaseUnavailable;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'The Agent cannot be installed automatically on this host with the available release.'**
+  String get agentSetupUnsupportedHost;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic installation needs administrator privileges for the saved SSH account.'**
+  String get agentSetupPrivileges;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing host configuration conflicts with the reviewed installation. It will not be overwritten automatically.'**
+  String get agentSetupPolicyConflict;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no confirmed metrics destination for this profile yet. Collection setup is unavailable.'**
+  String get agentSetupDestinationUnavailable;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'The device connection needs a separate owner approval in this wizard.'**
+  String get agentSetupOwnerApproval;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected collection profile is not available for this Agent yet.'**
+  String get agentSetupCollectionUnavailable;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'The original host or profile changed. Close this wizard and check the current host again.'**
+  String get agentSetupContextChanged;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'The operation stopped. Installed files and completed device pairing are not removed automatically.'**
+  String get agentSetupCancelled;
+
+  /// Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness.
+  ///
+  /// In en, this message translates to:
+  /// **'The Agent setup step could not be completed. Already completed steps are shown separately; readiness has not been confirmed.'**
+  String get agentSetupFailed;
+
+  /// Actual Agent wizard cancellation waits for owned cleanup; unknown is not completion or rollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping…'**
+  String get agentSetupStopping;
+
+  /// Actual Agent wizard cancellation waits for owned cleanup; unknown is not completion or rollback.
+  ///
+  /// In en, this message translates to:
+  /// **'The operation’s completion could not be confirmed. Installed files and completed steps have been preserved. Check completion again before closing.'**
+  String get agentSetupCleanupUnknown;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Host metrics'**
+  String get monitoringHostMetrics;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect source'**
+  String get monitoringConnectSource;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources and settings'**
+  String get monitoringSourcesSettings;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Link host to metrics'**
+  String get monitoringChooseTarget;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an existing source and a target from its metrics. No software installation is required.'**
+  String get monitoringTargetHint;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Find targets'**
+  String get monitoringFindTargets;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Target in metrics source'**
+  String get monitoringTargetLabel;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'The source returned no targets with the up metric. Check metric collection in the source.'**
+  String get monitoringNoTargets;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Save and open graphs'**
+  String get monitoringLinkAndOpen;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'No metrics are linked to this host yet. Link it to a target in an existing source.'**
+  String get monitoringNoHostMetrics;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose host'**
+  String get monitoringChooseHost;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'All graphs'**
+  String get monitoringAllGraphs;
+
+  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a playbook and hosts or a group, review and run. Ansible runs in the selected Runner.'**
+  String get automationWorkflowHint;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -35886,8 +36342,7 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'ru'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'ru'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

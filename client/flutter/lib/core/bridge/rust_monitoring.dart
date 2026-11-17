@@ -7,8 +7,11 @@ import 'package:consolecrypt/core/bridge/rust_agent_exporter_generated.dart';
 import 'package:consolecrypt/core/bridge/rust_agent_metrics_collector.dart';
 import 'package:consolecrypt/core/bridge/rust_agent_outbound_bootstrap.dart';
 import 'package:consolecrypt/core/bridge/rust_agent_reader.dart';
+import 'package:consolecrypt/core/bridge/rust_agent_setup.dart';
 import 'package:consolecrypt/core/bridge/rust_agent_tunnel_saved_route_generated.dart';
 import 'package:consolecrypt/core/bridge/rust_monitoring_consent.dart';
+import 'package:consolecrypt/core/services/runtime_notice_adapter.dart';
+import 'package:consolecrypt/core/services/runtime_notice_events.dart';
 import 'package:consolecrypt/monitoring/metrics_ai_native_transport.dart';
 import 'package:consolecrypt/monitoring/monitoring_models.dart';
 import 'package:consolecrypt/monitoring/monitoring_service.dart';
@@ -16,9 +19,14 @@ import 'package:consolecrypt/src/rust/api/monitoring.dart' as native;
 
 /// Native owns saved configuration, credential resolution and transport.
 final class RustMonitoringBackend implements MonitoringBackend {
-  const RustMonitoringBackend();
+  const RustMonitoringBackend({this.noticeEvents});
+  final RuntimeNoticeEvents? noticeEvents;
   @override
   MonitoringService createService() => AppCoreMonitoringService(
+    agentSetupPort: switch (noticeEvents?.currentScope.scope) {
+      final RuntimeNoticeScope scope => RustAgentSetupPort(scope),
+      _ => null,
+    },
     agentAssociationPort: const RustAgentAssociationPort(),
     agentOutboundBootstrapPort: createGeneratedAgentOutboundBootstrapPort(),
     agentExporterPort: createGeneratedAgentExporterPort(),

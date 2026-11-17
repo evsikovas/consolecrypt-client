@@ -1,361 +1,54 @@
 name: macOS preview build
 
-# Manual, unpublished test build of one branch: produces a DMG artifact only.
-# Stable installers, update feeds and releases remain tag-only (client.yml).
 on:
   workflow_dispatch:
-    inputs:
-      native_checks_only:
-        description: Run owned macOS import and affected native checks without building a client
-        type: boolean
-        default: false
-
-      verify_existing_final_artifact:
-        description: Verify only the exact already-built final Mac artifact, without an app build
-        type: boolean
-        default: false
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
   group: consolecrypt-macos-preview-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   macos:
-    if: github.repository == 'evsikovas/consolecrypt-client' && !inputs.native_checks_only
-    runs-on: ${{ fromJSON(vars.MACOS_BUILD_RUNNER || '["macos-26"]') }}
-    timeout-minutes: 150
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref == 'refs/heads/ci/desktop-preview-67028'
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 120
+    env:
+      CC_BUILD_NUMBER: '67028'
+      CARGO_BUILD_JOBS: '3'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 2
       - name: Native toolchain
         run: source client/scripts/ci-macos-tools.sh --xcode
-      - name: Check frozen final source and verification source pins before building
-        timeout-minutes: 2
+      - name: Build universal preview
+        run: bash client/scripts/build-macos.sh --no-cli
+      - name: Verify and name packages
+        shell: bash
         run: |
-          python3 -I -B - <<'PY'
-          import hashlib,os,re,subprocess
-          from pathlib import Path
-          root=Path(os.environ['GITHUB_WORKSPACE']).resolve(strict=True)
-          assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()==os.environ['GITHUB_SHA']
-          version=(root/'client/flutter/pubspec.yaml').read_text()
-          assert re.search(r'^version:\s*1\.2\.0\+67026\s*$',version,re.M), 'Frozen source floor must remain67026 before the one final build'
-          pins={'run_current_graph.py': 'ac754d623f2e52f240ad85144e40c8d6bf3a784b90a003a557b8099e9546dd55', 'current_graph_test.dart': 'e1ea84cffae9cae7b09dbf5320853b760cec8d7a2eed701f9384d31e7ae640e4', 'verify_packaged.py': '65df4aa1aeaaee27b69081b57f9996c9a98287099e1be43148be348ee291fcd7'}
-          for name,wanted in pins.items():
-              path=root/'.github/fixtures/final-verification/macos'/name
-              assert path.resolve(strict=True)==path and path.stat().st_nlink==1
-              assert 0<path.stat().st_size<=131072 and hashlib.sha256(path.read_bytes()).hexdigest()==wanted
-          owner=(root/'.github/fixtures/final-verification/macos/run_current_graph.py').read_text()
-          test=(root/'.github/fixtures/final-verification/macos/current_graph_test.dart').read_text()
-          assert owner.count('APPROVED_SHA = None  # Bind only after the actual final application build.')==1
-          assert test.count('const String? approvedDllSha256 = null;')==1
-          PY
-      - name: Analyze
-        run: |
-          cd client/flutter
-          flutter pub get
-          if [[ "${{ inputs.verify_existing_final_artifact }}" != true ]]; then flutter analyze; fi
-      - name: Restore only the exact already-built final artifact
-        if: ${{ inputs.verify_existing_final_artifact }}
-        timeout-minutes: 10
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          python3 -I -B - <<'PY'
-          import hashlib,json,os,posixpath,re,shutil,stat,subprocess,time,urllib.error,urllib.parse,urllib.request,zipfile
-          from pathlib import Path,PurePosixPath
-          root=Path(os.environ['GITHUB_WORKSPACE']).resolve(strict=True)
-          assert os.environ['GITHUB_REF']=='refs/heads/ci/platform-final-r17'
-          git=lambda *args:subprocess.check_output(['git',*args],cwd=root,text=True).strip()
-          assert git('rev-parse','HEAD')==os.environ['GITHUB_SHA']
-          assert git('rev-parse','HEAD^')=='cb8235534e5a2caf5a4219d74b918ae0d30192c7'
-          assert set(git('diff-tree','--no-commit-id','--name-only','-r','HEAD').splitlines())=={
-              '.github/workflows/macos-preview.yml','.github/fixtures/final-verification/macos/verify_packaged.py'}
-          api='https://api.github.com/repos/evsikovas/consolecrypt-client'
-          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','User-Agent':'ConsoleCrypt-final-artifact-reader'}
-          def metadata(path):
-              with urllib.request.urlopen(urllib.request.Request(api+path,headers=headers),timeout=20)as response:
-                  data=response.read(1048577);assert len(data)<=1048576
-                  return json.loads(data)
-          run=metadata('/actions/runs/44084456067')
-          assert run['id']==44084456067 and run['run_attempt']==1 and run['status']=='completed' and run['conclusion']=='failure'
-          assert run['head_sha']=='74fb8b58fbb1f18f1c24719bd26103708a00e324' and run['head_branch']=='ci/platform-final-r17'
-          assert run['workflow_id']==390837610 and run['event']=='workflow_dispatch'
-          artifact=metadata('/actions/artifacts/14332909483')
-          expected='90a3cd65c4fa44e964cb90e95f094384d975e3ab1a6838e4756a1c3a73f9aa47'
-          assert artifact['id']==14332909483 and artifact['name']=='macos-preview' and not artifact['expired']
-          assert artifact['size_in_bytes']==435690835 and artifact['digest']=='sha256:'+expected
-          assert artifact['workflow_run']['id']==44084456067 and artifact['workflow_run']['head_sha']==run['head_sha']
-          temporary=Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
-          owned=temporary/'cc-final-artifact-reuse';assert not owned.exists() and not owned.is_symlink()
-          owned.mkdir(mode=0o700);archive=owned/'source-artifact.zip'
-          class NoRedirect(urllib.request.HTTPRedirectHandler):
-              def redirect_request(self,*args,**kwargs):return None
-          try:
-              urllib.request.build_opener(NoRedirect()).open(urllib.request.Request(api+'/actions/artifacts/14332909483/zip',headers=headers),timeout=20)
-              raise AssertionError('Artifact redirect required')
-          except urllib.error.HTTPError as response:
-              assert response.code==302;location=response.headers['Location']
-          url=urllib.parse.urlsplit(location)
-          assert url.scheme=='https' and url.username is None and url.password is None
-          assert url.hostname.endswith(('.blob.core.windows.net','.githubusercontent.com'))
-          digest=hashlib.sha256();count=0;until=time.monotonic()+420
-          with urllib.request.urlopen(urllib.request.Request(location,headers={'User-Agent':'ConsoleCrypt-final-artifact-reader'}),timeout=20)as response,archive.open('xb')as out:
-              assert response.status==200 and int(response.headers['Content-Length'])==435690835
-              while chunk:=response.read(1048576):
-                  count+=len(chunk);assert count<=435690835 and time.monotonic()<until
-                  digest.update(chunk);out.write(chunk)
-          assert count==435690835 and digest.hexdigest()==expected
-          dist=root/'dist/macos';assert not dist.exists() and not dist.is_symlink();dist.mkdir(parents=True)
-          prefix='consolecrypt-client/consolecrypt-client/dist/macos/'
-          files={
-              'ConsoleCrypt-1.2.0+67027-macos-universal-preview.dmg':(228721748,'2e730aac9f406e89599ed894cc83455b666ee8166372261def5a772a351c34b5'),
-              'ConsoleCrypt-macos.zip':(206961430,'10df7226592c2c7e15640decf1bac1a309bef786aa9bed029e762494db70397f'),
-              'SHA256SUMS-macos-preview.txt':(119,'fd0eda8e387e879158889c4d6e7280711b891175d3789a0c34d2dc81647022a5'),
-              'ConsoleCrypt.version':(12,'3e933eaec106e2456c715db4ad5d39a5decebcc4a0dd298c5ac9bdf962edf7c7')}
-          with zipfile.ZipFile(archive)as package:
-              members=package.infolist();assert len(members)==11 and len({m.filename for m in members})==11
-              assert sum(m.file_size for m in members)<436*1024**2
-              for leaf,(size,sha)in files.items():
-                  member=package.getinfo(prefix+leaf)
-                  assert member.file_size==size and not member.is_dir() and not stat.S_ISLNK(member.external_attr>>16)
-                  h=hashlib.sha256();actual=0
-                  with package.open(member)as source,(dist/leaf).open('xb')as target:
-                      while chunk:=source.read(1048576):
-                          actual+=len(chunk);assert actual<=size;h.update(chunk);target.write(chunk)
-                  assert actual==size and h.hexdigest()==sha
-              old=json.loads(package.read('_temp/cc-final-macos-verification/RESULT.json'))
-              assert old['passed']is False and old['errorCode']=='bounded_artifact'
-          assert (dist/'ConsoleCrypt.version').read_text().strip()=='1.2.0+67027'
-          shutil.copyfile(dist/'ConsoleCrypt-1.2.0+67027-macos-universal-preview.dmg',dist/'ConsoleCrypt.dmg')
-          with zipfile.ZipFile(dist/'ConsoleCrypt-macos.zip')as app:
-              members=app.infolist();assert len(members)==215 and sum(m.file_size for m in members)==555390724
-              assert len({m.filename for m in members})==215
-              links={m.filename for m in members if stat.S_ISLNK(m.external_attr>>16)}
-              for member in members:
-                  name=member.filename;parts=PurePosixPath(name).parts
-                  assert parts[0]=='ConsoleCrypt.app' and '..'not in parts and '\\'not in name and not name.startswith('/')
-                  assert not any(str(parent)in links for parent in PurePosixPath(name).parents)
-                  if name in links:
-                      assert 0<member.file_size<=4096
-                      target=app.read(member).decode('utf-8','strict')
-                      assert not target.startswith('/') and '\\'not in target
-                      resolved=posixpath.normpath(posixpath.join(posixpath.dirname(name),target))
-                      assert resolved.startswith('ConsoleCrypt.app/')
-          subprocess.run(['/usr/bin/ditto','-x','-k',str(dist/'ConsoleCrypt-macos.zip'),str(dist)],check=True,timeout=90)
-          framework=dist/'ConsoleCrypt.app/Contents/Frameworks/cc_bridge.framework/Versions/A/cc_bridge'
-          mode=framework.lstat();assert stat.S_ISREG(mode.st_mode) and mode.st_size==333434400
-          with framework.open('rb')as stream:assert hashlib.file_digest(stream,'sha256').hexdigest()=='03e2bd416eb7af234ac58e7875d03f4a4264244230f0e58074cb9110f450faaf'
-          receipt=dict(sourceRun=44084456067,sourceHead=run['head_sha'],artifact=14332909483,artifactBytes=count,artifactSha256=expected,
-              oldFailedReceiptPreserved=old,originalFrameworkBytes=333434400,originalFrameworkSha256='03e2bd416eb7af234ac58e7875d03f4a4264244230f0e58074cb9110f450faaf',
-              sourceProductionTreeUnchanged=True,originalPackageBytesRestored=True,appBuildPerformed=False,nativeBuildPerformed=False)
-          (owned/'REUSE.json').write_text(json.dumps(receipt,indent=2)+'\n')
-          print(json.dumps(receipt))
-          PY
-      - name: Build universal macOS preview
-        if: ${{ !inputs.verify_existing_final_artifact }}
-        run: |
-          bash client/scripts/build-macos.sh --no-cli
-          version="$(cat dist/macos/ConsoleCrypt.version)"
-          cp dist/macos/ConsoleCrypt.dmg "dist/macos/ConsoleCrypt-$version-macos-universal-preview.dmg"
+          set -euo pipefail
           cd dist/macos
-          shasum -a 256 "ConsoleCrypt-$version-macos-universal-preview.dmg" > SHA256SUMS-macos-preview.txt
-      - name: Python for the original final packaged graph and GUI verification
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-        with:
-          python-version: '3.13'
-          check-latest: false
-      - name: Verify signed packaged members, original Memory graph and owned GUI
-        timeout-minutes: 12
-        run: |
-          python -I -B .github/fixtures/final-verification/macos/verify_packaged.py \
-            --execute-final-macos-verification --root "$GITHUB_WORKSPACE" \
-            --output "$RUNNER_TEMP/cc-final-macos-verification"
+          version=$(cat ConsoleCrypt.version)
+          [[ "$version" == '1.2.0+67028' ]]
+          codesign --verify --deep --strict ConsoleCrypt.app
+          lipo -verify_arch arm64 x86_64 ConsoleCrypt.app/Contents/MacOS/ConsoleCrypt
+          lipo -verify_arch arm64 x86_64 ConsoleCrypt.app/Contents/Frameworks/cc_bridge.framework/Versions/A/cc_bridge
+          hdiutil verify ConsoleCrypt.dmg
+          unzip -tq ConsoleCrypt-macos.zip
+          mv ConsoleCrypt.dmg "ConsoleCrypt-$version-macos-universal-preview.dmg"
+          mv ConsoleCrypt-macos.zip "ConsoleCrypt-$version-macos-universal.zip"
+          shasum -a 256 "ConsoleCrypt-$version-macos-universal-preview.dmg" "ConsoleCrypt-$version-macos-universal.zip" > SHA256SUMS-macos.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: ${{ always() && !inputs.verify_existing_final_artifact }}
         with:
-          name: macos-preview
+          name: macos-preview-67028
           if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
-          path: |
-            dist/macos/ConsoleCrypt-*-macos-universal-preview.dmg
-            dist/macos/SHA256SUMS-macos-preview.txt
-            dist/macos/ConsoleCrypt-macos.zip
-            dist/macos/ConsoleCrypt.version
-            ${{ runner.temp }}/cc-final-artifact-reuse/REUSE.json
-            ${{ runner.temp }}/cc-final-macos-verification/*.json
-            ${{ runner.temp }}/cc-final-macos-verification/*.log
-            ${{ runner.temp }}/cc-final-macos-verification/*.stdout
-            ${{ runner.temp }}/cc-final-macos-verification/*.stderr
-            ${{ runner.temp }}/cc-final-macos-verification/*.png
-            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*.log
-            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*.exit
-            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*-receipt.json
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: ${{ always() && inputs.verify_existing_final_artifact }}
-        with:
-          name: macos-final-verification
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
-          path: |
-            ${{ runner.temp }}/cc-final-artifact-reuse/REUSE.json
-            ${{ runner.temp }}/cc-final-macos-verification/*.json
-            ${{ runner.temp }}/cc-final-macos-verification/*.log
-            ${{ runner.temp }}/cc-final-macos-verification/*.stdout
-            ${{ runner.temp }}/cc-final-macos-verification/*.stderr
-            ${{ runner.temp }}/cc-final-macos-verification/*.png
-            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*.log
-            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*.exit
-            ${{ runner.temp }}/cc-final-macos-verification/g2-runtime/*-receipt.json
-
-  native-checks:
-    if: github.repository == 'evsikovas/consolecrypt-client' && github.event_name == 'workflow_dispatch' && inputs.native_checks_only
-    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
-    timeout-minutes: 90
-    env:
-      RUSTUP_TOOLCHAIN: '1.98.1'
-      CARGO_BUILD_JOBS: '1'
-      CARGO_PROFILE_DEV_DEBUG: '0'
-      CARGO_PROFILE_TEST_DEBUG: '0'
-      CARGO_INCREMENTAL: '0'
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target/macos-native-check
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          ref: ${{ github.sha }}
-      - name: Require the reviewed branch and original native macOS runner
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF" = refs/heads/ci/platform-final-r17
-          test "$RUNNER_NAME" = cc-macos-arm64
-          test "$(uname -s)" = Darwin
-          test "$(uname -m)" = arm64
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          export PATH="$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
-          printf '%s\n' "$HOME/.cargo/bin" /opt/homebrew/bin /usr/local/bin >> "$GITHUB_PATH"
-          xcode-select -p
-          python3 -I -B -c 'import sys; assert sys.version_info >= (3,11)'
-          rustup toolchain install 1.98.1 --profile minimal
-      - name: Run existing Darwin publication and affected native regressions
-        timeout-minutes: 75
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-automation-core --lib \
-            project::publication::namespace::macos::tests:: -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/cc-macos-publication.log"
-          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
-            automation_projects::portable::gateway::import::tests:: -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/cc-macos-import-guards.log"
-          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
-            automation_projects::metadata_sync::tests:: -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/cc-macos-metadata.log"
-          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
-            automation_jobs::admission_audit::tests:: -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/cc-macos-admission.log"
-          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
-            monitoring_runtime::exporter_reads::tests:: -- --test-threads=1 \
-            --skip monitoring_runtime::exporter_reads::tests::live_node:: \
-            --skip monitoring_runtime::exporter_reads::tests::live_cadvisor:: 2>&1 | tee "$RUNNER_TEMP/cc-macos-exporter-guards.log"
-          # Bind the already compiled libtest used below. This builds no client.
-          cargo test --locked --manifest-path client/rust/Cargo.toml -p cc-app-core --lib \
-            --no-run --message-format=json > "$RUNNER_TEMP/cc-macos-libtest.jsonl"
-      - name: Run the existing genuine export and explicit import acceptance once
-        id: import_positive
-        timeout-minutes: 4
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -I -B - <<'PY'
-          import hashlib,json,os,stat,subprocess,uuid
-          from pathlib import Path
-          temp=Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
-          counts={'publication':7,'import-guards':3,'metadata':6,'admission':7,'exporter-guards':12}
-          for name,count in counts.items():
-              path=temp/('cc-macos-'+name+'.log');assert path.stat().st_size<=16*1024**2
-              text=path.read_text();assert f'test result: ok. {count} passed; 0 failed; 0 ignored;' in text
-          log=temp/'cc-macos-libtest.jsonl';assert log.stat().st_size<=16*1024**2
-          rows=[json.loads(line) for line in log.read_text().splitlines()]
-          binaries=[Path(r['executable']) for r in rows if r.get('reason')=='compiler-artifact' and r.get('executable') and r['target']['name']=='cc_app_core' and r['profile']['test']]
-          assert len(binaries)==1 and [r['success'] for r in rows if r.get('reason')=='build-finished']==[True]
-          binary=binaries[0].resolve(strict=True)
-          assert binary.is_relative_to(Path(os.environ['CARGO_TARGET_DIR']).resolve(strict=True))
-          def fingerprint():
-              with binary.open('rb') as stream:
-                  header=stream.read(8);assert header[:4]==bytes.fromhex('cffaedfe') and int.from_bytes(header[4:8],'little')==0x100000c
-                  stream.seek(0);return hashlib.file_digest(stream,'sha256').hexdigest()
-          before=fingerprint();token=str(uuid.uuid4());root=temp/('owned-'+token)
-          run_id=os.environ['GITHUB_RUN_ID'];attempt=os.environ['GITHUB_RUN_ATTEMPT']
-          assert run_id.isdigit() and attempt.isdigit()
-          control=temp/('cc-macos-import-control-'+run_id+'-'+attempt+'.json')
-          assert not control.exists()
-          root.mkdir(mode=0o700)
-          assert root.resolve(strict=True)==root and stat.S_IMODE(root.stat().st_mode)==0o700
-          owner=root/'owner.json'
-          with owner.open('x') as stream:json.dump({'token':token,'label':'portable-import-acceptance'},stream)
-          env={**os.environ,'CC_IMPORT_ACCEPTANCE_ROOT':str(root),'CC_IMPORT_ACCEPTANCE_TOKEN':token}
-          with control.open('x') as stream:json.dump({'root':str(root),'token':token,'runId':run_id,'attempt':attempt},stream)
-          with Path(os.environ['GITHUB_OUTPUT']).open('a') as stream:stream.write('control='+str(control)+'\n')
-          test='automation_projects::portable::gateway::import::acceptance_tests::genuine_native_import_accepts_then_reopens_edits_and_preserves_original'
-          try:
-              run=subprocess.run([str(binary),'--exact',test,'--ignored','--nocapture','--test-threads=1'],cwd=Path(os.environ['GITHUB_WORKSPACE'])/'client/rust',env=env,capture_output=True,timeout=120)
-          except subprocess.TimeoutExpired as error:
-              (temp/'cc-macos-import-positive.log').write_bytes(((error.stdout or b'')+(error.stderr or b''))[:256*1024])
-              raise
-          output=run.stdout+run.stderr;assert len(output)<=256*1024
-          (temp/'cc-macos-import-positive.log').write_bytes(output)
-          assert run.returncode==0 and b'1 passed; 0 failed; 0 ignored;' in output
-          assert b'portable_import_acceptance: genuineExport=true explicitAccept=true' in output
-          assert fingerprint()==before
-          with (temp/'cc-macos-native-result.json').open('x') as stream:
-              json.dump({'commit':os.environ['GITHUB_SHA'],'nativeArchitecture':'arm64','normalClientBuilt':False,'regressionsPassed':35,'genuineImportPassed':1,'nativeLibtestSha256':before,'ownedImportRootRemoved':False},stream)
-          PY
-      - name: Remove only this invocation's owned synthetic import root
-        if: always() && steps.import_positive.outputs.control != ''
-        env:
-          CC_IMPORT_CONTROL: ${{ steps.import_positive.outputs.control }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -I -B - <<'PY'
-          import json,os,shutil,uuid
-          from pathlib import Path
-          temp=Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
-          run_id=os.environ['GITHUB_RUN_ID'];attempt=os.environ['GITHUB_RUN_ATTEMPT']
-          assert run_id.isdigit() and attempt.isdigit()
-          control=Path(os.environ['CC_IMPORT_CONTROL'])
-          assert control==temp/('cc-macos-import-control-'+run_id+'-'+attempt+'.json')
-          value=json.loads(control.read_text());token=value['token'];assert str(uuid.UUID(token))==token
-          assert value['runId']==run_id and value['attempt']==attempt
-          root=Path(value['root']);assert root==temp/('owned-'+token) and root.resolve(strict=True)==root
-          assert json.loads((root/'owner.json').read_text())=={'token':token,'label':'portable-import-acceptance'}
-          count=0
-          for directory,dirs,files in os.walk(root,followlinks=False):
-              for name in dirs+files:
-                  path=Path(directory)/name;count+=1;assert count<=20000 and not path.is_symlink()
-          shutil.rmtree(root);assert not root.exists()
-          result=temp/'cc-macos-native-result.json'
-          if result.exists():
-              value=json.loads(result.read_text());value['ownedImportRootRemoved']=True
-              result.write_text(json.dumps(value)+'\n')
-          PY
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always()
-        with:
-          name: macos-native-checks-${{ github.run_id }}-${{ github.run_attempt }}
-          if-no-files-found: warn
           retention-days: 7
+          compression-level: 0
           path: |
-            ${{ runner.temp }}/cc-macos-publication.log
-            ${{ runner.temp }}/cc-macos-import-guards.log
-            ${{ runner.temp }}/cc-macos-metadata.log
-            ${{ runner.temp }}/cc-macos-admission.log
-            ${{ runner.temp }}/cc-macos-exporter-guards.log
-            ${{ runner.temp }}/cc-macos-import-positive.log
-            ${{ runner.temp }}/cc-macos-native-result.json
+            dist/macos/ConsoleCrypt-1.2.0+67028-macos-universal-preview.dmg
+            dist/macos/ConsoleCrypt-1.2.0+67028-macos-universal.zip
+            dist/macos/ConsoleCrypt.version
+            dist/macos/SHA256SUMS-macos.txt

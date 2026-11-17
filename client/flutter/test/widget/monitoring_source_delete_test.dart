@@ -108,6 +108,8 @@ Future<ProviderContainer> _open(
   );
   container.read(routerProvider).go(AppRoutes.monitoring);
   await settle(tester);
+  // Source editing and custom PromQL are now explicitly in Advanced.
+  await tapKey(tester, 'monitoring-view-toggle');
   return container;
 }
 

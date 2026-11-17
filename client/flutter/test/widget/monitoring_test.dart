@@ -77,6 +77,8 @@ Future<ProviderContainer> _open(
   final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
   container.read(routerProvider).go(AppRoutes.monitoring);
   await settle(tester);
+  // Source editing and custom PromQL are now explicitly in Advanced.
+  await tapKey(tester, 'monitoring-view-toggle');
   return container;
 }
 
@@ -249,6 +251,11 @@ void main() {
       locale: AppLocale.ru,
       size: const Size(1500, 1200),
     );
+    // The default graph view has already read the four built-in panels. This
+    // test now starts its assertions at the explicit Advanced interaction.
+    expect(reader.panels.map((r) => r.$3), [MonitoringPanel.hostOverview,
+      MonitoringPanel.filesystem, MonitoringPanel.diskIo, MonitoringPanel.network]);
+    reader.panels.clear();
     expect(reader.panels, isEmpty);
     expect(reader.discoveries, isEmpty);
     expect(find.byKey(const ValueKey('monitoring-binding-reader')), findsNothing);
@@ -371,6 +378,8 @@ void main() {
     await settle(tester);
     container.read(routerProvider).go(AppRoutes.monitoring);
     await settle(tester);
+    expect(find.byKey(const ValueKey('monitoring-expression')), findsNothing);
+    await tapKey(tester, 'monitoring-view-toggle');
     expect(tester.widget<TextField>(find.byKey(const ValueKey('monitoring-expression'))).controller!.text, 'up');
     expect(find.byKey(const ValueKey('monitoring-result-status')), findsNothing);
     expect(find.textContaining('fixture_profile_expression'), findsNothing);

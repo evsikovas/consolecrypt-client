@@ -2,6 +2,8 @@
 mod budget;
 mod client;
 mod scope;
+#[path = "../agent_setup.rs"]
+pub(crate) mod setup;
 #[cfg(test)]
 mod tests;
 mod tls;

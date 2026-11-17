@@ -9,6 +9,7 @@ pub mod account;
 pub mod ai;
 pub mod app;
 pub mod agent_reader;
+pub mod agent_setup;
 pub mod agent_node_association;
 pub mod agent_tunnel_route;
 pub mod agent_collector;

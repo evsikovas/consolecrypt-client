@@ -93,6 +93,8 @@ void main() {
       final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
       container.read(routerProvider).go(AppRoutes.monitoring);
       await settle(tester);
+      // Source editing and custom PromQL are now explicitly in Advanced.
+      await tapKey(tester, 'monitoring-view-toggle');
       await tapKey(tester, 'monitoring-auto-enabled');
       await tapKey(tester, 'monitoring-query');
       final original = container.read(monitoringSessionProvider)!;

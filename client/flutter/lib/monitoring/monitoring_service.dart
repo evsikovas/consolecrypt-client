@@ -11,6 +11,7 @@ import 'package:consolecrypt/monitoring/agent_heartbeat_observation.dart';
 import 'package:consolecrypt/monitoring/agent_metrics_collector_port.dart';
 import 'package:consolecrypt/monitoring/agent_outbound_bootstrap.dart';
 import 'package:consolecrypt/monitoring/agent_reader_port.dart';
+import 'package:consolecrypt/monitoring/agent_setup_port.dart';
 import 'package:consolecrypt/monitoring/agent_tunnel_route_port.dart';
 import 'package:consolecrypt/monitoring/job_context_navigation.dart';
 import 'package:consolecrypt/monitoring/metrics_ai_native_transport.dart';
@@ -98,6 +99,7 @@ class AppCoreMonitoringService
         MonitoringBindingReader,
         MonitoringAlertReader,
         MonitoringSavedPanelReader,
+        AgentSetupCapability,
         MonitoringHostContextReader,
         MetricsAiNativeCapability,
         MonitoringExporterReader {
@@ -113,7 +115,10 @@ class AppCoreMonitoringService
     this.agentTunnelRoutePort,
     this.agentOutboundBootstrapPort,
     this.agentMetricsCollectorPort,
+    this.agentSetupPort,
   });
+  @override
+  final AgentSetupPort? agentSetupPort;
   @override
   final AgentReaderNativePort? agentReaderPort;
   @override

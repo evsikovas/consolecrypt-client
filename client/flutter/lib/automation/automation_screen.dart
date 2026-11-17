@@ -8,8 +8,6 @@ import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/automation/agent_installer_project_focus.dart';
 import 'package:consolecrypt/automation/ansible_code_editor.dart';
-import 'package:consolecrypt/automation/automation_agent_installer.dart';
-import 'package:consolecrypt/automation/automation_agent_installer_dialog.dart';
 import 'package:consolecrypt/automation/automation_ai_dialog.dart';
 import 'package:consolecrypt/automation/automation_ai_draft.dart';
 import 'package:consolecrypt/automation/automation_ai_draft_errors.dart';
@@ -26,8 +24,6 @@ import 'package:consolecrypt/automation/automation_inventory_dialog.dart';
 import 'package:consolecrypt/automation/automation_inventory_export.dart';
 import 'package:consolecrypt/automation/automation_inventory_export_dialog.dart';
 import 'package:consolecrypt/automation/automation_jobs_dialog.dart';
-import 'package:consolecrypt/automation/automation_monitoring_node.dart';
-import 'package:consolecrypt/automation/automation_monitoring_node_dialog.dart';
 import 'package:consolecrypt/automation/automation_portable_host.dart';
 import 'package:consolecrypt/automation/automation_portable_import_host.dart';
 import 'package:consolecrypt/automation/automation_portable_import_l10n.dart';
@@ -64,7 +60,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-
 class AutomationScreen extends ConsumerWidget {
   const AutomationScreen({super.key, this.contextFocus, this.agentProjectFocus, this.cadvisorFocus});
   final AgentCadvisorComposerFocus? cadvisorFocus;
@@ -78,12 +73,26 @@ class AutomationScreen extends ConsumerWidget {
     if (service == null) return Center(child: Text(context.l10n.automationUnavailable));
     // Replacing this subtree disposes plaintext editors and invalidates pending
     // reads on every profile/unlock generation, including a rapid lock/unlock.
-    return _ProjectWorkspace(key: ObjectKey(scope), scope: scope, service: service, contextFocus: contextFocus, agentProjectFocus: agentProjectFocus, cadvisorFocus: cadvisorFocus);
+    return _ProjectWorkspace(
+      key: ObjectKey(scope),
+      scope: scope,
+      service: service,
+      contextFocus: contextFocus,
+      agentProjectFocus: agentProjectFocus,
+      cadvisorFocus: cadvisorFocus,
+    );
   }
 }
 
 class _ProjectWorkspace extends ConsumerStatefulWidget {
-  const _ProjectWorkspace({super.key, required this.scope, required this.service, this.contextFocus, this.agentProjectFocus, this.cadvisorFocus});
+  const _ProjectWorkspace({
+    super.key,
+    required this.scope,
+    required this.service,
+    this.contextFocus,
+    this.agentProjectFocus,
+    this.cadvisorFocus,
+  });
   final AgentCadvisorComposerFocus? cadvisorFocus;
   final AgentInstallerProjectFocus? agentProjectFocus;
   final JobContextFocus? contextFocus;
@@ -104,10 +113,16 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
   AutomationService? repairService;
   AutomationJson? get repairForCurrent {
     final row = repairOrigin, manifest = repairOrigin?['manifest'];
-    return row != null && identical(repairApp, ref.read(appServicesProvider)) &&
-      identical(repairService, widget.service) && row['project_id'] == project?.id && manifest is Map &&
-      manifest['playbook'] == (file?.path ?? newPath) ? row : null;
+    return row != null &&
+            identical(repairApp, ref.read(appServicesProvider)) &&
+            identical(repairService, widget.service) &&
+            row['project_id'] == project?.id &&
+            manifest is Map &&
+            manifest['playbook'] == (file?.path ?? newPath)
+        ? row
+        : null;
   }
+
   String? newPath;
   Object? error;
   bool busy = false, dirty = false;
@@ -126,9 +141,11 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
   void _scheduleCadvisorFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
     if (mounted) unawaited(_consumeCadvisorFocus());
   });
-  bool _cadvisorCurrent(AgentCadvisorComposerFocus focus) => current &&
-    identical(widget.cadvisorFocus, focus) && focus.current(widget.scope, widget.service) &&
-    ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation;
+  bool _cadvisorCurrent(AgentCadvisorComposerFocus focus) =>
+      current &&
+      identical(widget.cadvisorFocus, focus) &&
+      focus.current(widget.scope, widget.service) &&
+      ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation;
   Future<void> _consumeCadvisorFocus() async {
     final focus = widget.cadvisorFocus;
     if (focus == null || identical(focus, _handledCadvisorFocus)) return;
@@ -143,15 +160,18 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
     await _createCadvisorTemplate(install: true, cadvisorFocus: focus);
   }
+
   AgentInstallerProjectFocus? _handledAgentFocus, _acceptedAgentFocus;
   int _agentFocusGeneration = 0;
   bool _agentProjectUnavailable = false;
   void _scheduleAgentFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
     if (mounted) unawaited(_consumeAgentFocus());
   });
-  bool _agentCurrent(AgentInstallerProjectFocus focus) => current &&
-    identical(widget.agentProjectFocus, focus) && focus.current(widget.scope, widget.service) &&
-    ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation;
+  bool _agentCurrent(AgentInstallerProjectFocus focus) =>
+      current &&
+      identical(widget.agentProjectFocus, focus) &&
+      focus.current(widget.scope, widget.service) &&
+      ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation;
   Future<void> _consumeAgentFocus() async {
     final focus = widget.agentProjectFocus;
     if (focus == null || identical(focus, _handledAgentFocus)) return;
@@ -160,8 +180,14 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final generation = ++_agentFocusGeneration;
     bool valid() => generation == _agentFocusGeneration && _agentCurrent(focus);
     if (!valid()) return;
-    setState(() { _acceptedAgentFocus = focus; _agentProjectUnavailable = false; });
-    if (busy) { setState(() => _agentProjectUnavailable = true); return; }
+    setState(() {
+      _acceptedAgentFocus = focus;
+      _agentProjectUnavailable = false;
+    });
+    if (busy) {
+      setState(() => _agentProjectUnavailable = true);
+      return;
+    }
     try {
       final catalog = await widget.service.projects();
       if (!valid()) return;
@@ -172,22 +198,28 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       }
       await _select(selected, originalCurrent: valid);
       if (valid() && project?.id == focus.projectId) _showProjects();
-
-    } catch (e) { if (valid()) setState(() => error = e); }
+    } catch (e) {
+      if (valid()) setState(() => error = e);
+    }
   }
+
   Future<void> _returnToAgentHost(AgentInstallerProjectFocus focus) async {
     bool original() => _agentCurrent(focus) && identical(_acceptedAgentFocus, focus);
     if (busy || !original() || !await _leaveFile(originalCurrent: original) || !original()) return;
     ref.read(routerProvider).go(focus.returnUri.toString());
   }
+
   JobContextFocus? _handledContextFocus, _acceptedProjectFocus;
   AutomationProject? _focusedProject;
   bool _contextError = false;
   int _contextGeneration = 0;
-  bool _contextCurrent(JobContextFocus focus, int epoch) => current && epoch == _contextGeneration &&
-    identical(widget.contextFocus, focus) &&
-    ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation &&
-    ref.read(monitoringScopeProvider).current && identical(ref.read(monitoringSessionProvider)?.correlationScope, focus.scope);
+  bool _contextCurrent(JobContextFocus focus, int epoch) =>
+      current &&
+      epoch == _contextGeneration &&
+      identical(widget.contextFocus, focus) &&
+      ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation &&
+      ref.read(monitoringScopeProvider).current &&
+      identical(ref.read(monitoringSessionProvider)?.correlationScope, focus.scope);
   void _scheduleContextFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
     if (mounted) unawaited(_consumeContextFocus());
   });
@@ -196,15 +228,21 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     super.didUpdateWidget(oldWidget);
     if (!identical(widget.cadvisorFocus, oldWidget.cadvisorFocus)) _scheduleCadvisorFocus();
     if (!identical(widget.agentProjectFocus, oldWidget.agentProjectFocus)) {
-      _agentFocusGeneration++; _acceptedAgentFocus = null; _scheduleAgentFocus();
+      _agentFocusGeneration++;
+      _acceptedAgentFocus = null;
+      _scheduleAgentFocus();
     }
     if (!identical(widget.contextFocus, oldWidget.contextFocus)) {
       _contextGeneration++;
       _scheduleContextFocus();
     }
   }
-  Future<AutomationProject?> _currentContextProject(JobContextFocus focus, bool Function() valid,
-    {AutomationProjectRevision? files}) async {
+
+  Future<AutomationProject?> _currentContextProject(
+    JobContextFocus focus,
+    bool Function() valid, {
+    AutomationProjectRevision? files,
+  }) async {
     final service = widget.service;
     if (!valid() || service is! AutomationJobService) return null;
     final jobs = await (service as AutomationJobService).jobs();
@@ -213,14 +251,20 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     if (!valid() || !identical(service, widget.service)) return null;
     return jobContextProjectFromCurrentMetadata(focus, catalog, jobs, DateTime.now().toUtc(), files: files);
   }
+
   Future<bool> _recheckContext(JobContextFocus focus, bool Function() valid) async {
     final session = ref.read(monitoringSessionProvider), service = ref.read(monitoringSessionProvider)?.service;
-    if (!valid() || !identical(session?.correlationScope, focus.scope) || service is! MonitoringHostContextReader) return false;
+    if (!valid() || !identical(session?.correlationScope, focus.scope) || service is! MonitoringHostContextReader) {
+      return false;
+    }
     final reader = service as MonitoringHostContextReader;
     if (!reader.hostContextSupported) return false;
     final checked = await reader.recheckHostContext(focus.metadata);
-    return valid() && identical(ref.read(monitoringSessionProvider), session) && sameJobContextMetadata(focus.metadata, checked);
+    return valid() &&
+        identical(ref.read(monitoringSessionProvider), session) &&
+        sameJobContextMetadata(focus.metadata, checked);
   }
+
   Future<void> _consumeContextFocus() async {
     final focus = widget.contextFocus;
     if (focus == null || identical(focus, _handledContextFocus)) return;
@@ -233,8 +277,12 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       return;
     }
     try {
-      final ready = await receiveJobContextFocus(ref, focus, destination: JobContextDestination.ansibleProject,
-        receiverCurrent: valid);
+      final ready = await receiveJobContextFocus(
+        ref,
+        focus,
+        destination: JobContextDestination.ansibleProject,
+        receiverCurrent: valid,
+      );
       if (ready == null || !valid()) return;
       final selected = await _currentContextProject(ready, valid);
       if (!valid()) return;
@@ -253,14 +301,18 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       if (valid()) setState(() => _contextError = true);
     }
   }
+
   Future<void> _openContextProject(JobContextFocus focus) async {
     final epoch = _contextGeneration, service = widget.service;
-    bool original() => _contextCurrent(focus, epoch) && identical(_acceptedProjectFocus, focus) &&
-      identical(widget.service, service);
+    bool original() =>
+        _contextCurrent(focus, epoch) && identical(_acceptedProjectFocus, focus) && identical(widget.service, service);
     if (busy || !original() || !await _leaveFile() || !original()) return;
     final token = ++request;
     bool valid() => original() && token == request;
-    setState(() { busy = true; _contextError = false; });
+    setState(() {
+      busy = true;
+      _contextError = false;
+    });
     try {
       final selected = await _currentContextProject(focus, valid);
       if (selected == null || !valid() || !await _recheckContext(focus, valid) || !valid()) {
@@ -275,10 +327,20 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         return;
       }
       setState(() {
-        project = finalProject; revision = files; file = null; aiDraft = null; repairOrigin = null;
-        requirementsSavedPending = false; newPath = null; editor.clear(); dirty = false;
-        runComposer = null; jobsReviewEpoch++; workspacePage = 0;
-        _acceptedProjectFocus = null; _focusedProject = null;
+        project = finalProject;
+        revision = files;
+        file = null;
+        aiDraft = null;
+        repairOrigin = null;
+        requirementsSavedPending = false;
+        newPath = null;
+        editor.clear();
+        dirty = false;
+        runComposer = null;
+        jobsReviewEpoch++;
+        workspacePage = 0;
+        _acceptedProjectFocus = null;
+        _focusedProject = null;
         busy = false;
       });
     } catch (_) {
@@ -314,9 +376,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       if (intent?.target is! CriticalJobTarget) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!current || ref.read(automationJobServiceProvider) == null) return;
-        final target = ref
-            .read(criticalNoticeOpenIntentProvider.notifier)
-            .take(intent!);
+        final target = ref.read(criticalNoticeOpenIntentProvider.notifier).take(intent!);
         if (target is CriticalJobTarget) _openExecution(target.jobId);
       });
     }, fireImmediately: true);
@@ -346,29 +406,44 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     return _dialog<String>((context) => _NameDialog(title: title, initial: initial));
   }
 
-  Future<bool> _leaveFile({bool Function()? originalCurrent, ValueListenable<bool>? originalLive, void Function(int)? ownSaveRequest, String? discardLabel}) async {
-    if (!dirty) return originalCurrent?.call()??true;
+  Future<bool> _leaveFile({
+    bool Function()? originalCurrent,
+    ValueListenable<bool>? originalLive,
+    void Function(int)? ownSaveRequest,
+    String? discardLabel,
+  }) async {
+    if (!dirty) return originalCurrent?.call() ?? true;
     final choice = await _dialog<String>(
-      (context) => DependencyOriginalGuard(original:originalLive,builder:(context)=>AlertDialog(
-        title: Text(context.l10n.automationUnsaved),
-        content: Text(file?.path ?? newPath ?? ''),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, 'cancel'), child: Text(context.l10n.commonCancel)),
-          TextButton(onPressed: () => Navigator.pop(context, 'discard'), child: Text(discardLabel ?? context.l10n.automationDiscard)),
-          TextButton(onPressed: () => Navigator.pop(context, 'save'), child: Text(context.l10n.commonSave)),
-        ],
-      )),
+      (context) => DependencyOriginalGuard(
+        original: originalLive,
+        builder: (context) => AlertDialog(
+          title: Text(context.l10n.automationUnsaved),
+          content: Text(file?.path ?? newPath ?? ''),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, 'cancel'), child: Text(context.l10n.commonCancel)),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'discard'),
+              child: Text(discardLabel ?? context.l10n.automationDiscard),
+            ),
+            TextButton(onPressed: () => Navigator.pop(context, 'save'), child: Text(context.l10n.commonSave)),
+          ],
+        ),
+      ),
     );
-    if (!current || originalCurrent?.call()==false) return false;
-    if(choice=='discard')return true;
-    if(choice!='save')return false;
-    ownSaveRequest?.call(request+1); // Only this immediately invoked _save owns the counter transition.
-    final saved=await _save();
-    return originalCurrent==null?saved:saved&&current&&originalCurrent();
+    if (!current || originalCurrent?.call() == false) return false;
+    if (choice == 'discard') return true;
+    if (choice != 'save') return false;
+    ownSaveRequest?.call(request + 1); // Only this immediately invoked _save owns the counter transition.
+    final saved = await _save();
+    return originalCurrent == null ? saved : saved && current && originalCurrent();
   }
 
-  Future<void> _run(AutomationJobService service, {AutomationJson? initialExtraVars,
-    AutomationCadvisorTemplateBinding? cadvisorTemplate, AgentCadvisorComposerFocus? cadvisorFocus}) async {
+  Future<void> _run(
+    AutomationJobService service, {
+    AutomationJson? initialExtraVars,
+    AutomationCadvisorTemplateBinding? cadvisorTemplate,
+    AgentCadvisorComposerFocus? cadvisorFocus,
+  }) async {
     if (busy || project == null) return;
     if (dirty && !await _save()) return;
     if (!current || cadvisorFocus != null && !_cadvisorCurrent(cadvisorFocus)) return;
@@ -425,27 +500,21 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
 
   Future<void> _portablePackage({required bool inspect, bool createProject = false}) async {
     final service = widget.service;
-    if (!current || busy || service is! AutomationPortableGatewayCapability ||
+    if (!current ||
+        busy ||
+        service is! AutomationPortableGatewayCapability ||
         createProject && service is! AutomationPortableImportReviewCapability) {
       return;
     }
-    final originalScope = widget.scope,
-        originalServices = ref.read(appServicesProvider);
-    final originalFiles = ref.read(fileDialogServiceProvider),
-        runtime = ref.read(criticalRuntimeEventsProvider);
+    final originalScope = widget.scope, originalServices = ref.read(appServicesProvider);
+    final originalFiles = ref.read(fileDialogServiceProvider), runtime = ref.read(criticalRuntimeEventsProvider);
     final originalProfile = ref.read(activeProfileProvider)?.id.value;
-    final router = ref.read(routerProvider),
-        route = router.routeInformationProvider.value.uri;
-    final epoch = runtime?.currentScope.epoch,
-        intended = project,
-        intendedPath = file?.path ?? newPath;
+    final router = ref.read(routerProvider), route = router.routeInformationProvider.value.uri;
+    final epoch = runtime?.currentScope.epoch, intended = project, intendedPath = file?.path ?? newPath;
     if (runtime == null ||
         originalProfile == null ||
         route.path != AppRoutes.automation ||
-        !inspect &&
-            (intended == null ||
-                intended.readOnly ||
-                intended.revision == null)) {
+        !inspect && (intended == null || intended.readOnly || intended.revision == null)) {
       return;
     }
     var expectedRequest = request, retired = false, finished = false;
@@ -544,20 +613,19 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         }
       } else {
         await showAutomationPortableOperation(
-        context,
-        ref,
-        originalScope: originalScope,
-        originalService: service,
-        expectedUiEpoch: epoch,
-        sourceCurrent: originalCurrent,
-        sourceChanges: editor,
-        labels: portableHostLabels(context.l10n, importMode: inspect),
-        importMode: inspect,
-        gateway: (service as AutomationPortableGatewayCapability)
-            .createPortableGateway(),
-        projectId: inspect ? null : intended?.id,
-        projectRevision: inspect ? null : intended?.revision,
-      );
+          context,
+          ref,
+          originalScope: originalScope,
+          originalService: service,
+          expectedUiEpoch: epoch,
+          sourceCurrent: originalCurrent,
+          sourceChanges: editor,
+          labels: portableHostLabels(context.l10n, importMode: inspect),
+          importMode: inspect,
+          gateway: (service as AutomationPortableGatewayCapability).createPortableGateway(),
+          projectId: inspect ? null : intended?.id,
+          projectRevision: inspect ? null : intended?.revision,
+        );
       }
     } finally {
       finished = true;
@@ -592,90 +660,194 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
   }
 
   Future<void> _dependencies(AutomationDependencyService service) async {
-    if(busy||project==null||project!.readOnly||project!.revision==null||!current)return;
+    if (busy || project == null || project!.readOnly || project!.revision == null || !current) return;
     // Capture EVERY original UI identity synchronously, before the dirty prompt.
-    final selected=project!, originalScope=widget.scope, originalService=widget.service;
-    final originalServices=ref.read(appServicesProvider), originalAutomation=ref.read(automationServiceProvider);
-    final originalProfile=ref.read(activeProfileProvider)?.id.value;
-    final router=ref.read(routerProvider), runtime=ref.read(criticalRuntimeEventsProvider);
-    final runtimeEpoch=runtime?.currentScope.epoch;
-    final route=router.routeInformationProvider.value.uri;
-    if(originalProfile==null||route.path!=AppRoutes.automation||!identical(originalAutomation,originalService)||!identical(service,originalService))return;
-    var expectedRequest=request, retired=false, finished=false, refreshing=false;
-    final live=ValueNotifier<bool>(true);
-    bool matches()=>mounted&&current&&identical(widget.scope,originalScope)&&identical(widget.service,originalService)&&
-      identical(ref.read(appServicesProvider),originalServices)&&identical(ref.read(automationServiceProvider),originalAutomation)&&
-      ref.read(activeProfileProvider)?.id.value==originalProfile&&(refreshing||(identical(project,selected)&&request==expectedRequest))&&
-      identical(ref.read(criticalRuntimeEventsProvider),runtime)&&runtime?.currentScope.epoch==runtimeEpoch&&runtime?.currentScope.streamUnavailable!=true&&
-      identical(ref.read(routerProvider),router)&&router.routeInformationProvider.value.uri==route;
-    void retire(){if(retired||finished)return;retired=true;scheduleMicrotask((){if(!finished)live.value=false;});}
-    bool originalCurrent(){if(retired||finished)return false;if(!matches()){retire();return false;}return true;}
-    void observe(){if(!matches())retire();}
-    final subscriptions=<ProviderSubscription<dynamic>>[
-      ref.listenManual(appServicesProvider,(_,_)=>observe()),ref.listenManual(automationServiceProvider,(_,_)=>observe()),
-      ref.listenManual(automationScopeProvider,(_,_)=>observe()),ref.listenManual(activeProfileProvider,(_,_)=>observe()),
-      ref.listenManual(criticalRuntimeEventsProvider,(_,_)=>observe()),ref.listenManual(routerProvider,(_,_)=>observe()),
+    final selected = project!, originalScope = widget.scope, originalService = widget.service;
+    final originalServices = ref.read(appServicesProvider), originalAutomation = ref.read(automationServiceProvider);
+    final originalProfile = ref.read(activeProfileProvider)?.id.value;
+    final router = ref.read(routerProvider), runtime = ref.read(criticalRuntimeEventsProvider);
+    final runtimeEpoch = runtime?.currentScope.epoch;
+    final route = router.routeInformationProvider.value.uri;
+    if (originalProfile == null ||
+        route.path != AppRoutes.automation ||
+        !identical(originalAutomation, originalService) ||
+        !identical(service, originalService)) {
+      return;
+    }
+    var expectedRequest = request, retired = false, finished = false, refreshing = false;
+    final live = ValueNotifier<bool>(true);
+    bool matches() =>
+        mounted &&
+        current &&
+        identical(widget.scope, originalScope) &&
+        identical(widget.service, originalService) &&
+        identical(ref.read(appServicesProvider), originalServices) &&
+        identical(ref.read(automationServiceProvider), originalAutomation) &&
+        ref.read(activeProfileProvider)?.id.value == originalProfile &&
+        (refreshing || (identical(project, selected) && request == expectedRequest)) &&
+        identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
+        runtime?.currentScope.epoch == runtimeEpoch &&
+        runtime?.currentScope.streamUnavailable != true &&
+        identical(ref.read(routerProvider), router) &&
+        router.routeInformationProvider.value.uri == route;
+    void retire() {
+      if (retired || finished) return;
+      retired = true;
+      scheduleMicrotask(() {
+        if (!finished) live.value = false;
+      });
+    }
+
+    bool originalCurrent() {
+      if (retired || finished) return false;
+      if (!matches()) {
+        retire();
+        return false;
+      }
+      return true;
+    }
+
+    void observe() {
+      if (!matches()) retire();
+    }
+
+    final subscriptions = <ProviderSubscription<dynamic>>[
+      ref.listenManual(appServicesProvider, (_, _) => observe()),
+      ref.listenManual(automationServiceProvider, (_, _) => observe()),
+      ref.listenManual(automationScopeProvider, (_, _) => observe()),
+      ref.listenManual(activeProfileProvider, (_, _) => observe()),
+      ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
+      ref.listenManual(routerProvider, (_, _) => observe()),
     ];
-    final notices=runtime?.watchRuntimeNotices().listen((_){observe();},onError:(Object _,StackTrace _){retire();},onDone:retire);
+    final notices = runtime?.watchRuntimeNotices().listen(
+      (_) {
+        observe();
+      },
+      onError: (Object _, StackTrace _) {
+        retire();
+      },
+      onDone: retire,
+    );
     router.routeInformationProvider.addListener(observe);
     try {
-    if(!originalCurrent()||!await _leaveFile(originalCurrent:originalCurrent,originalLive:live,ownSaveRequest:(next){expectedRequest=next;})||!originalCurrent())return;
-    if (dirty) {
-      // _leaveFile returned true while still dirty ONLY after explicit Discard.
-      setState(() {dirty=false;file=null;newPath=null;editor.clear();aiDraft=null;requirementsSavedPending=false;});
-    }
-    _showProjects(); // Retire an old prepared run composer; accepted jobs keep their signed snapshot policy.
-    expectedRequest=++request; // This operation's own synchronous invalidation of older file reads.
-    if(!originalCurrent())return;
-    if(!mounted)return;
-    final l=context.l10n;
-    final result=await showGlassDialog<DependencyPublished>(context,barrierDismissible:false,builder:(_)=>DependencyOriginalGuard(original:live,builder:(_)=>AutomationScopeGuard(scope:originalScope,builder:(_)=>AutomationDependencyDialog(
-      scope:originalScope,service:service,project:selected,sourceCurrent:originalCurrent,originalLive:live,
-      labels:DependencyInstallerLabels(
-        title:l.automationDependencyTitle,kind:l.automationDependencyKind,role:l.automationDependencyRole,collection:l.automationDependencyCollection,
-        name:l.automationDependencyName,version:l.automationDependencyVersion,url:l.automationDependencyUrl,sha256:l.automationDependencySha256,runner:l.automationDependencyRunner,
-        review:l.automationDependencyReviewSource,download:l.automationDependencyDownload,diff:l.automationDependencyReviewChanges,install:l.automationDependencyInstall,
-        cancel:l.commonCancel,close:l.commonClose,firstInstall:l.automationDependencyFirstOnly,managedOnly:l.automationDependencyManagedOnly,
-        profileUnsupported:l.automationDependencyProfileUnsupported,excludedEntries:l.automationDependencyExcludedEntries,platformUnsupported:l.automationDependencyPlatformUnsupported,
-        networkNotice:l.automationDependencyNetworkNotice,preparing:l.automationDependencyPreparing,published:l.automationDependencyPublished,
-        uncertain:l.automationDependencyUncertain,cancelRequested:l.automationDependencyCancelRequested,
-        failureText:(code)=>switch(code){
-          DependencyFailureCode.invalidInput=>l.automationDependencyErrorInvalidInput,
-          DependencyFailureCode.changed=>l.automationDependencyErrorChanged,
-          DependencyFailureCode.busy=>l.automationDependencyErrorBusy,
-          DependencyFailureCode.unsupported=>l.automationDependencyProfileUnsupported,
-          DependencyFailureCode.cancelled=>l.automationDependencyCancelRequested,
-          DependencyFailureCode.recoveryRequired=>l.automationDependencyUncertain,
-          _=>l.automationDependencyErrorUnavailable,
-        },
-      ),
-    ))));
-    if(!originalCurrent())return;
-    ref.invalidate(automationProjectsProvider);
-    try {
-      // Always recapture ACTUAL Native catalog, including an uncertain outcome.
-      // Never derive/select a path or source kind from a dialog result.
-      final catalog=await widget.service.projects();
-      if(!originalCurrent())return;
-      AutomationProject? fresh;
-      for(final row in catalog.projects){if(row.id==selected.id){fresh=row;break;}}
-      if(fresh==null||catalog.readOnly||fresh.readOnly||fresh.sourceKind!=selected.sourceKind||fresh.revision==null||(result!=null&&fresh.revision!<result.revision)) {
-        throw const DependencyInstallerFailure(DependencyFailureCode.changed);
+      if (!originalCurrent() ||
+          !await _leaveFile(
+            originalCurrent: originalCurrent,
+            originalLive: live,
+            ownSaveRequest: (next) {
+              expectedRequest = next;
+            },
+          ) ||
+          !originalCurrent()) {
+        return;
       }
-      if(result!=null||fresh.revision!=selected.revision){
-        // The installer is CLOSED; only a same-ID actual Native catalog reload
-        // follows. Its own _select token fences project changes. Preserve the
-        // original profile/service/route lifetime through the file-list await.
-        refreshing=true;
-        await _select(fresh,originalCurrent:originalCurrent);
+      if (dirty) {
+        // _leaveFile returned true while still dirty ONLY after explicit Discard.
+        setState(() {
+          dirty = false;
+          file = null;
+          newPath = null;
+          editor.clear();
+          aiDraft = null;
+          requirementsSavedPending = false;
+        });
       }
-    } catch (_) {
-      if(originalCurrent())setState(()=>error=FormatException(l.automationDependencyErrorChanged));
-    }
+      _showProjects(); // Retire an old prepared run composer; accepted jobs keep their signed snapshot policy.
+      expectedRequest = ++request; // This operation's own synchronous invalidation of older file reads.
+      if (!originalCurrent()) return;
+      if (!mounted) return;
+      final l = context.l10n;
+      final result = await showGlassDialog<DependencyPublished>(
+        context,
+        barrierDismissible: false,
+        builder: (_) => DependencyOriginalGuard(
+          original: live,
+          builder: (_) => AutomationScopeGuard(
+            scope: originalScope,
+            builder: (_) => AutomationDependencyDialog(
+              scope: originalScope,
+              service: service,
+              project: selected,
+              sourceCurrent: originalCurrent,
+              originalLive: live,
+              labels: DependencyInstallerLabels(
+                title: l.automationDependencyTitle,
+                kind: l.automationDependencyKind,
+                role: l.automationDependencyRole,
+                collection: l.automationDependencyCollection,
+                name: l.automationDependencyName,
+                version: l.automationDependencyVersion,
+                url: l.automationDependencyUrl,
+                sha256: l.automationDependencySha256,
+                runner: l.automationDependencyRunner,
+                review: l.automationDependencyReviewSource,
+                download: l.automationDependencyDownload,
+                diff: l.automationDependencyReviewChanges,
+                install: l.automationDependencyInstall,
+                cancel: l.commonCancel,
+                close: l.commonClose,
+                firstInstall: l.automationDependencyFirstOnly,
+                managedOnly: l.automationDependencyManagedOnly,
+                profileUnsupported: l.automationDependencyProfileUnsupported,
+                excludedEntries: l.automationDependencyExcludedEntries,
+                platformUnsupported: l.automationDependencyPlatformUnsupported,
+                networkNotice: l.automationDependencyNetworkNotice,
+                preparing: l.automationDependencyPreparing,
+                published: l.automationDependencyPublished,
+                uncertain: l.automationDependencyUncertain,
+                cancelRequested: l.automationDependencyCancelRequested,
+                failureText: (code) => switch (code) {
+                  DependencyFailureCode.invalidInput => l.automationDependencyErrorInvalidInput,
+                  DependencyFailureCode.changed => l.automationDependencyErrorChanged,
+                  DependencyFailureCode.busy => l.automationDependencyErrorBusy,
+                  DependencyFailureCode.unsupported => l.automationDependencyProfileUnsupported,
+                  DependencyFailureCode.cancelled => l.automationDependencyCancelRequested,
+                  DependencyFailureCode.recoveryRequired => l.automationDependencyUncertain,
+                  _ => l.automationDependencyErrorUnavailable,
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      if (!originalCurrent()) return;
+      ref.invalidate(automationProjectsProvider);
+      try {
+        // Always recapture ACTUAL Native catalog, including an uncertain outcome.
+        // Never derive/select a path or source kind from a dialog result.
+        final catalog = await widget.service.projects();
+        if (!originalCurrent()) return;
+        AutomationProject? fresh;
+        for (final row in catalog.projects) {
+          if (row.id == selected.id) {
+            fresh = row;
+            break;
+          }
+        }
+        if (fresh == null ||
+            catalog.readOnly ||
+            fresh.readOnly ||
+            fresh.sourceKind != selected.sourceKind ||
+            fresh.revision == null ||
+            (result != null && fresh.revision! < result.revision)) {
+          throw const DependencyInstallerFailure(DependencyFailureCode.changed);
+        }
+        if (result != null || fresh.revision != selected.revision) {
+          // The installer is CLOSED; only a same-ID actual Native catalog reload
+          // follows. Its own _select token fences project changes. Preserve the
+          // original profile/service/route lifetime through the file-list await.
+          refreshing = true;
+          await _select(fresh, originalCurrent: originalCurrent);
+        }
+      } catch (_) {
+        if (originalCurrent()) setState(() => error = FormatException(l.automationDependencyErrorChanged));
+      }
     } finally {
-      finished=true;
+      finished = true;
       router.routeInformationProvider.removeListener(observe);
-      for(final subscription in subscriptions){subscription.close();}
+      for (final subscription in subscriptions) {
+        subscription.close();
+      }
       unawaited(notices?.cancel());
       live.dispose();
     }
@@ -701,34 +873,73 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final uri = router.routeInformationProvider.value.uri;
     var retired = false;
     final live = ValueNotifier(true);
-    bool matches() => current && identical(widget.scope, scope) && identical(widget.service, source) &&
-      identical(ref.read(appServicesProvider), app) && identical(ref.read(automationServiceProvider), source) &&
-      identical(project, selected) && request == token && identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
-      runtime?.currentScope.epoch == epoch && runtime?.currentScope.streamUnavailable != true &&
-      uri.path == AppRoutes.automation && identical(ref.read(routerProvider), router) &&
-      router.routeInformationProvider.value.uri == uri;
-    void observe() { if (!retired && !matches()) { retired=true; live.value=false; } }
-    bool original() { observe(); return !retired; }
+    bool matches() =>
+        current &&
+        identical(widget.scope, scope) &&
+        identical(widget.service, source) &&
+        identical(ref.read(appServicesProvider), app) &&
+        identical(ref.read(automationServiceProvider), source) &&
+        identical(project, selected) &&
+        request == token &&
+        identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
+        runtime?.currentScope.epoch == epoch &&
+        runtime?.currentScope.streamUnavailable != true &&
+        uri.path == AppRoutes.automation &&
+        identical(ref.read(routerProvider), router) &&
+        router.routeInformationProvider.value.uri == uri;
+    void observe() {
+      if (!retired && !matches()) {
+        retired = true;
+        live.value = false;
+      }
+    }
+
+    bool original() {
+      observe();
+      return !retired;
+    }
+
     final subscriptions = <ProviderSubscription<dynamic>>[
       ref.listenManual(appServicesProvider, (_, _) => observe()),
       ref.listenManual(automationServiceProvider, (_, _) => observe()),
       ref.listenManual(automationScopeProvider, (_, _) => observe()),
       ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
     ];
-    final notices = runtime?.watchRuntimeNotices().listen((_) => observe(),
-      onError: (Object _, StackTrace _) { retired=true;live.value=false; }, onDone: () { retired=true;live.value=false; });
+    final notices = runtime?.watchRuntimeNotices().listen(
+      (_) => observe(),
+      onError: (Object _, StackTrace _) {
+        retired = true;
+        live.value = false;
+      },
+      onDone: () {
+        retired = true;
+        live.value = false;
+      },
+    );
     router.routeInformationProvider.addListener(observe);
     try {
       if (!original()) return;
-      final result = await _dialog<AutomationProject>((_) => DependencyOriginalGuard(original:live,builder:(_) => AutomationProjectCredentialsDialog(
-        scope:scope,project:selected,service:service,originalCurrent:original,originalLive:live)));
+      final result = await _dialog<AutomationProject>(
+        (_) => DependencyOriginalGuard(
+          original: live,
+          builder: (_) => AutomationProjectCredentialsDialog(
+            scope: scope,
+            project: selected,
+            service: service,
+            originalCurrent: original,
+            originalLive: live,
+          ),
+        ),
+      );
       if (original() && result != null) {
         setState(() => project = result);
         ref.invalidate(automationProjectsProvider);
       }
     } finally {
       retired = true;
-      for (final subscription in subscriptions) { subscription.close(); }
+      for (final subscription in subscriptions) {
+        subscription.close();
+      }
       await notices?.cancel();
       router.routeInformationProvider.removeListener(observe);
       live.dispose();
@@ -743,34 +954,76 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final uri = router.routeInformationProvider.value.uri;
     var retired = false;
     final live = ValueNotifier(true);
-    bool matches() => current && identical(widget.scope, scope) && identical(widget.service, source) &&
-      identical(ref.read(appServicesProvider), app) && identical(ref.read(automationServiceProvider), source) &&
-      identical(project, selected) && request == token && identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
-      runtime?.currentScope.epoch == epoch && runtime?.currentScope.streamUnavailable != true &&
-      uri.path == AppRoutes.automation && identical(ref.read(routerProvider), router) &&
-      router.routeInformationProvider.value.uri == uri;
-    void observe() { if (!retired && !matches()) { retired=true; live.value=false; } }
-    bool original() { observe(); return !retired; }
+    bool matches() =>
+        current &&
+        identical(widget.scope, scope) &&
+        identical(widget.service, source) &&
+        identical(ref.read(appServicesProvider), app) &&
+        identical(ref.read(automationServiceProvider), source) &&
+        identical(project, selected) &&
+        request == token &&
+        identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
+        runtime?.currentScope.epoch == epoch &&
+        runtime?.currentScope.streamUnavailable != true &&
+        uri.path == AppRoutes.automation &&
+        identical(ref.read(routerProvider), router) &&
+        router.routeInformationProvider.value.uri == uri;
+    void observe() {
+      if (!retired && !matches()) {
+        retired = true;
+        live.value = false;
+      }
+    }
+
+    bool original() {
+      observe();
+      return !retired;
+    }
+
     final subscriptions = <ProviderSubscription<dynamic>>[
       ref.listenManual(appServicesProvider, (_, _) => observe()),
       ref.listenManual(automationServiceProvider, (_, _) => observe()),
       ref.listenManual(automationScopeProvider, (_, _) => observe()),
       ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
     ];
-    final notices = runtime?.watchRuntimeNotices().listen((_) => observe(),
-      onError: (Object _, StackTrace _) { retired=true;live.value=false; }, onDone: () { retired=true;live.value=false; });
+    final notices = runtime?.watchRuntimeNotices().listen(
+      (_) => observe(),
+      onError: (Object _, StackTrace _) {
+        retired = true;
+        live.value = false;
+      },
+      onDone: () {
+        retired = true;
+        live.value = false;
+      },
+    );
     router.routeInformationProvider.addListener(observe);
     try {
       if (!original()) return;
       final subject = runtime?.currentScope.scope;
-      if (subject == null || subject.profileId != scope.profileId?.toString() || runtime?.currentScope.unsupported != false) return;
-      await _dialog<void>((_) => DependencyOriginalGuard(original: live,
-        builder: (_) => AutomationProjectMetadataDialog(service: service, project: selected,
-          profileId: subject.profileId, nonce: subject.nonce, originalCurrent: original, originalLive: live)));
-
+      if (subject == null ||
+          subject.profileId != scope.profileId?.toString() ||
+          runtime?.currentScope.unsupported != false) {
+        return;
+      }
+      await _dialog<void>(
+        (_) => DependencyOriginalGuard(
+          original: live,
+          builder: (_) => AutomationProjectMetadataDialog(
+            service: service,
+            project: selected,
+            profileId: subject.profileId,
+            nonce: subject.nonce,
+            originalCurrent: original,
+            originalLive: live,
+          ),
+        ),
+      );
     } finally {
       retired = true;
-      for (final subscription in subscriptions) { subscription.close(); }
+      for (final subscription in subscriptions) {
+        subscription.close();
+      }
       await notices?.cancel();
       router.routeInformationProvider.removeListener(observe);
       live.dispose();
@@ -784,34 +1037,61 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final epoch = runtime?.currentScope.epoch, router = ref.read(routerProvider);
     final uri = router.routeInformationProvider.value.uri;
     var retired = false;
-    bool matches() => current && identical(widget.scope, scope) && identical(widget.service, source) &&
-      identical(ref.read(appServicesProvider), app) && identical(ref.read(automationServiceProvider), source) &&
-      identical(project, selected) && request == token && identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
-      runtime?.currentScope.epoch == epoch && runtime?.currentScope.streamUnavailable != true &&
-      uri.path == AppRoutes.automation && identical(ref.read(routerProvider), router) &&
-      router.routeInformationProvider.value.uri == uri;
-    void observe() { if (!matches()) retired = true; }
-    bool original() { observe(); return !retired; }
+    bool matches() =>
+        current &&
+        identical(widget.scope, scope) &&
+        identical(widget.service, source) &&
+        identical(ref.read(appServicesProvider), app) &&
+        identical(ref.read(automationServiceProvider), source) &&
+        identical(project, selected) &&
+        request == token &&
+        identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
+        runtime?.currentScope.epoch == epoch &&
+        runtime?.currentScope.streamUnavailable != true &&
+        uri.path == AppRoutes.automation &&
+        identical(ref.read(routerProvider), router) &&
+        router.routeInformationProvider.value.uri == uri;
+    void observe() {
+      if (!matches()) retired = true;
+    }
+
+    bool original() {
+      observe();
+      return !retired;
+    }
+
     final subscriptions = <ProviderSubscription<dynamic>>[
       ref.listenManual(appServicesProvider, (_, _) => observe()),
       ref.listenManual(automationServiceProvider, (_, _) => observe()),
       ref.listenManual(automationScopeProvider, (_, _) => observe()),
       ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
     ];
-    final notices = runtime?.watchRuntimeNotices().listen((_) => observe(),
-      onError: (Object _, StackTrace _) => retired = true, onDone: () => retired = true);
+    final notices = runtime?.watchRuntimeNotices().listen(
+      (_) => observe(),
+      onError: (Object _, StackTrace _) => retired = true,
+      onDone: () => retired = true,
+    );
     router.routeInformationProvider.addListener(observe);
     try {
       if (!original()) return;
-      final result = await _dialog<AutomationProject>((_) => AutomationInventoryDialog(
-        scope: scope, projectId: selected.id, files: source, service: service, originalCurrent: original));
+      final result = await _dialog<AutomationProject>(
+        (_) => AutomationInventoryDialog(
+          scope: scope,
+          projectId: selected.id,
+          files: source,
+          service: service,
+          originalCurrent: original,
+        ),
+      );
       if (original() && result != null) {
         setState(() => project = result);
         ref.invalidate(automationProjectsProvider);
       }
     } finally {
       retired = true;
-      for (final subscription in subscriptions) { subscription.close(); }
+      for (final subscription in subscriptions) {
+        subscription.close();
+      }
       await notices?.cancel();
       router.routeInformationProvider.removeListener(observe);
     }
@@ -825,27 +1105,51 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final epoch = events?.currentScope.epoch, router = ref.read(routerProvider);
     final id = selectedJob['job_id'], digest = selectedJob['manifest_digest'];
     final rev = selectedJob['notification_revision'], projectId = selectedJob['project_id'];
-    if (busy || jobs == null || service is! AutomationAiService ||
-        scope.profileId is! ObjectId || id is! String || digest is! String ||
-        rev is! int || projectId is! String || selectedJob['state'] != 'failed') { return; }
+    if (busy ||
+        jobs == null ||
+        service is! AutomationAiService ||
+        scope.profileId is! ObjectId ||
+        id is! String ||
+        digest is! String ||
+        rev is! int ||
+        projectId is! String ||
+        selectedJob['state'] != 'failed') {
+      return;
+    }
     var token = request, retired = false, finished = false;
     final live = ValueNotifier<bool>(true);
-    bool matches() => current && request == token &&
-      identical(widget.service, service) && identical(ref.read(automationServiceProvider), service) &&
-      identical(ref.read(automationJobServiceProvider), jobs) && identical(ref.read(appServicesProvider), app) &&
-      identical(ref.read(criticalRuntimeEventsProvider), events) && events?.currentScope.epoch == epoch &&
-      events?.currentScope.streamUnavailable != true && router.routeInformationProvider.value.uri.path == AppRoutes.automation;
+    bool matches() =>
+        current &&
+        request == token &&
+        identical(widget.service, service) &&
+        identical(ref.read(automationServiceProvider), service) &&
+        identical(ref.read(automationJobServiceProvider), jobs) &&
+        identical(ref.read(appServicesProvider), app) &&
+        identical(ref.read(criticalRuntimeEventsProvider), events) &&
+        events?.currentScope.epoch == epoch &&
+        events?.currentScope.streamUnavailable != true &&
+        router.routeInformationProvider.value.uri.path == AppRoutes.automation;
     void retire() {
       if (retired || finished) return;
       retired = true;
-      scheduleMicrotask(() { if (!finished) live.value = false; });
+      scheduleMicrotask(() {
+        if (!finished) live.value = false;
+      });
     }
+
     bool original() {
       if (retired || finished) return false;
-      if (!matches()) { retire(); return false; }
+      if (!matches()) {
+        retire();
+        return false;
+      }
       return true;
     }
-    void observe() { if (!matches()) retire(); }
+
+    void observe() {
+      if (!matches()) retire();
+    }
+
     final subscriptions = <ProviderSubscription<dynamic>>[
       ref.listenManual(appServicesProvider, (_, _) => observe()),
       ref.listenManual(automationScopeProvider, (_, _) => observe()),
@@ -853,13 +1157,22 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       ref.listenManual(automationJobServiceProvider, (_, _) => observe()),
       ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
     ];
-    final notices = events?.watchRuntimeNotices().listen((_) => observe(),
-      onError: (Object _, StackTrace _) => retire(), onDone: retire);
+    final notices = events?.watchRuntimeNotices().listen(
+      (_) => observe(),
+      onError: (Object _, StackTrace _) => retire(),
+      onDone: retire,
+    );
     router.routeInformationProvider.addListener(observe);
     try {
-    if (!original() || !await _leaveFile(originalCurrent: original, originalLive: live,
-      ownSaveRequest: (next) => token = next) || !original()) { return; }
-    setState(() { busy = true; error = null; });
+      if (!original() ||
+          !await _leaveFile(originalCurrent: original, originalLive: live, ownSaveRequest: (next) => token = next) ||
+          !original()) {
+        return;
+      }
+      setState(() {
+        busy = true;
+        error = null;
+      });
       final catalog = await jobs.jobs();
       if (!original()) return;
       final rows = catalog['jobs'];
@@ -867,9 +1180,17 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         throw FormatException(unavailable);
       }
       final row = rows.whereType<AutomationJson>().where((row) => row['job_id'] == id).singleOrNull;
-      if (row == null || row['state'] != 'failed' || jobContextApprovedHostIds(row,
-        profileId: (scope.profileId as ObjectId).value, jobId: id, revision: rev,
-        projectId: projectId, manifestDigest: digest) == null) {
+      if (row == null ||
+          row['state'] != 'failed' ||
+          jobContextApprovedHostIds(
+                row,
+                profileId: (scope.profileId as ObjectId).value,
+                jobId: id,
+                revision: rev,
+                projectId: projectId,
+                manifestDigest: digest,
+              ) ==
+              null) {
         throw FormatException(unavailable);
       }
       final projects = await service.projects();
@@ -893,10 +1214,19 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         throw FormatException(unavailable);
       }
       setState(() {
-        project = selected; revision = verifiedTree; file = loaded;
-        aiDraft = null; newPath = null; requirementsSavedPending = false;
-        editor.text = loaded.text; dirty = false; workspacePage = 0;
-        repairOrigin = row; repairApp = app; repairService = service; busy = false;
+        project = selected;
+        revision = verifiedTree;
+        file = loaded;
+        aiDraft = null;
+        newPath = null;
+        requirementsSavedPending = false;
+        editor.text = loaded.text;
+        dirty = false;
+        workspacePage = 0;
+        repairOrigin = row;
+        repairApp = app;
+        repairService = service;
+        busy = false;
       });
       await _ai(service as AutomationAiService, parentCurrent: original, parentLive: live);
     } catch (e) {
@@ -904,14 +1234,20 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     } finally {
       if (mounted && identical(widget.scope, scope) && request == token) setState(() => busy = false);
       finished = true;
-      for (final subscription in subscriptions) { subscription.close(); }
+      for (final subscription in subscriptions) {
+        subscription.close();
+      }
       await notices?.cancel();
       router.routeInformationProvider.removeListener(observe);
       live.dispose();
     }
   }
 
-  Future<void> _ai(AutomationAiService service, {bool Function()? parentCurrent, ValueListenable<bool>? parentLive}) async {
+  Future<void> _ai(
+    AutomationAiService service, {
+    bool Function()? parentCurrent,
+    ValueListenable<bool>? parentLive,
+  }) async {
     final path = file?.path ?? newPath;
     if (busy || path == null) return;
     final before = editor.text;
@@ -923,33 +1259,67 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final contextFrame = events?.currentScope;
     final hubScope = contextFrame?.epoch;
     final nativeContextScope = contextFrame?.unsupported == false && contextFrame?.streamUnavailable == false
-      ? contextFrame?.scope : null;
-    bool original() => current && parentCurrent?.call() != false && request == epoch &&
-      identical(ref.read(appServicesProvider), app) && identical(widget.service, originalService) &&
-      identical(ref.read(automationServiceProvider), originalService) && identical(ref.read(automationJobServiceProvider), jobs) &&
-      identical(ref.read(criticalRuntimeEventsProvider), events) && events?.currentScope.epoch == hubScope &&
-      events?.currentScope.streamUnavailable != true && router.routeInformationProvider.value.uri.path == AppRoutes.automation &&
-      project?.id == projectId && (file?.path ?? newPath) == path;
+        ? contextFrame?.scope
+        : null;
+    bool original() =>
+        current &&
+        parentCurrent?.call() != false &&
+        request == epoch &&
+        identical(ref.read(appServicesProvider), app) &&
+        identical(widget.service, originalService) &&
+        identical(ref.read(automationServiceProvider), originalService) &&
+        identical(ref.read(automationJobServiceProvider), jobs) &&
+        identical(ref.read(criticalRuntimeEventsProvider), events) &&
+        events?.currentScope.epoch == hubScope &&
+        events?.currentScope.streamUnavailable != true &&
+        router.routeInformationProvider.value.uri.path == AppRoutes.automation &&
+        project?.id == projectId &&
+        (file?.path ?? newPath) == path;
     Future<bool> recheck() async {
       if (!original() || origin == null || jobs == null) return false;
       final catalog = await jobs.jobs();
       if (!original()) return false;
       final rows = catalog['jobs'];
-      if (catalog['schema_version'] != 1 || catalog['read_only'] != false || rows is! List || rows.length > 2048) return false;
-      return rows.whereType<AutomationJson>().any((row) => row['job_id'] == origin['job_id'] &&
-        row['manifest_digest'] == origin['manifest_digest'] && row['notification_revision'] == origin['notification_revision'] &&
-        row['project_id'] == origin['project_id'] && row['state'] == 'failed' &&
-        widget.scope.profileId is ObjectId && jobContextApprovedHostIds(row,
-          profileId: (widget.scope.profileId as ObjectId).value, jobId: origin['job_id'] as String,
-          revision: origin['notification_revision'] as int, projectId: origin['project_id'] as String,
-          manifestDigest: origin['manifest_digest'] as String) != null);
+      if (catalog['schema_version'] != 1 || catalog['read_only'] != false || rows is! List || rows.length > 2048) {
+        return false;
+      }
+      return rows.whereType<AutomationJson>().any(
+        (row) =>
+            row['job_id'] == origin['job_id'] &&
+            row['manifest_digest'] == origin['manifest_digest'] &&
+            row['notification_revision'] == origin['notification_revision'] &&
+            row['project_id'] == origin['project_id'] &&
+            row['state'] == 'failed' &&
+            widget.scope.profileId is ObjectId &&
+            jobContextApprovedHostIds(
+                  row,
+                  profileId: (widget.scope.profileId as ObjectId).value,
+                  jobId: origin['job_id'] as String,
+                  revision: origin['notification_revision'] as int,
+                  projectId: origin['project_id'] as String,
+                  manifestDigest: origin['manifest_digest'] as String,
+                ) !=
+                null,
+      );
     }
+
     final result = await _dialog<AutomationAiDraft>(
-      (_) => DependencyOriginalGuard(original: parentLive, builder: (_) => AutomationAiDialog(
-        scope: widget.scope, service: service, path: path, before: before, projectId: projectId, projectRevision: projectRevision, nativeContextScope: nativeContextScope,
-        originalCurrent: original, repairOrigin: origin,
-        repairEvents: jobs is AutomationEventService ? jobs as AutomationEventService : null,
-        recheckRepair: origin == null ? null : recheck)),
+      (_) => DependencyOriginalGuard(
+        original: parentLive,
+        builder: (_) => AutomationAiDialog(
+          scope: widget.scope,
+          service: service,
+          path: path,
+          before: before,
+          projectId: projectId,
+          projectRevision: projectRevision,
+          nativeContextScope: nativeContextScope,
+          originalCurrent: original,
+          repairOrigin: origin,
+          repairEvents: jobs is AutomationEventService ? jobs as AutomationEventService : null,
+          recheckRepair: origin == null ? null : recheck,
+        ),
+      ),
     );
     // A proposal is only a local edit, never an implicit file write or run.
     // Preserve the existing file SHA so a concurrent disk edit is still caught.
@@ -971,8 +1341,14 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
   }
 
-  Future<void> _select(AutomationProject selected,{bool Function()? originalCurrent}) async {
-    if (busy || originalCurrent?.call()==false || !await _leaveFile(originalCurrent:originalCurrent) || !current || originalCurrent?.call()==false) return;
+  Future<void> _select(AutomationProject selected, {bool Function()? originalCurrent}) async {
+    if (busy ||
+        originalCurrent?.call() == false ||
+        !await _leaveFile(originalCurrent: originalCurrent) ||
+        !current ||
+        originalCurrent?.call() == false) {
+      return;
+    }
     final token = ++request;
     setState(() {
       busy = true;
@@ -988,9 +1364,9 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     });
     try {
       final result = await widget.service.files(selected.id);
-      if (current && token == request && originalCurrent?.call()!=false) setState(() => revision = result);
+      if (current && token == request && originalCurrent?.call() != false) setState(() => revision = result);
     } catch (e) {
-      if (current && token == request && originalCurrent?.call()!=false) setState(() => error = e);
+      if (current && token == request && originalCurrent?.call() != false) setState(() => error = e);
     } finally {
       if (current && token == request) setState(() => busy = false);
     }
@@ -1050,36 +1426,39 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         if (!valid()) return false;
         final after = aiDraft!.requirements(file?.path ?? newPath!, before: old?.text);
         final accepted = await _dialog<bool>(
-          (context) => DependencyOriginalGuard(original: originalLive, builder: (context) => AlertDialog(
-            title: Text(context.l10n.automationAiRequirementsTitle),
-            content: SizedBox(
-              width: 820,
-              height: MediaQuery.sizeOf(context).height * .6,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(context.l10n.automationAiRequirementsHint),
-                  const SizedBox(height: 8),
-                  const Text(automationRequirementsFile),
-                  Expanded(
-                    child: KubeYamlDiff(
-                      before: old?.text ?? '',
-                      after: after,
-                      explanation: context.l10n.automationAiRequirementsHint,
+          (context) => DependencyOriginalGuard(
+            original: originalLive,
+            builder: (context) => AlertDialog(
+              title: Text(context.l10n.automationAiRequirementsTitle),
+              content: SizedBox(
+                width: 820,
+                height: MediaQuery.sizeOf(context).height * .6,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(context.l10n.automationAiRequirementsHint),
+                    const SizedBox(height: 8),
+                    const Text(automationRequirementsFile),
+                    Expanded(
+                      child: KubeYamlDiff(
+                        before: old?.text ?? '',
+                        after: after,
+                        explanation: context.l10n.automationAiRequirementsHint,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
+                FilledButton(
+                  key: const ValueKey('automation-ai-save-requirements'),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(context.l10n.commonSave),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
-              FilledButton(
-                key: const ValueKey('automation-ai-save-requirements'),
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(context.l10n.commonSave),
-              ),
-            ],
-          )),
+          ),
         );
         if (accepted != true || !valid()) return false;
         // Constraints FIRST. If the second write conflicts/fails, execution is
@@ -1120,8 +1499,13 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
   }
 
   Future<void> _externalEditor(AutomationEditorService service) async {
-    if (busy || project == null || file == null || project!.readOnly || !current ||
-        !identical(service, widget.service) || _retireExternalEditor != null) {
+    if (busy ||
+        project == null ||
+        file == null ||
+        project!.readOnly ||
+        !current ||
+        !identical(service, widget.service) ||
+        _retireExternalEditor != null) {
       return;
     }
     final labels = context.l10n, selected = project!, path = file!.path, text = editor.text;
@@ -1131,20 +1515,41 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final uri = router.routeInformationProvider.value.uri;
     var token = request, retired = false, finished = false, ownsBusy = false;
     final live = ValueNotifier<bool>(true);
-    bool matches() => current && identical(widget.scope, scope) && identical(widget.service, source) &&
-      identical(ref.read(automationServiceProvider), source) && identical(ref.read(appServicesProvider), app) &&
-      identical(ref.read(fileDialogServiceProvider), picker) && identical(project, selected) &&
-      file?.path == path && editor.text == text && request == token && workspacePage == 0 &&
-      identical(ref.read(criticalRuntimeEventsProvider), runtime) && runtime?.currentScope.epoch == epoch &&
-      runtime?.currentScope.streamUnavailable != true && identical(ref.read(routerProvider), router) &&
-      uri.path == AppRoutes.automation && router.routeInformationProvider.value.uri == uri;
+    bool matches() =>
+        current &&
+        identical(widget.scope, scope) &&
+        identical(widget.service, source) &&
+        identical(ref.read(automationServiceProvider), source) &&
+        identical(ref.read(appServicesProvider), app) &&
+        identical(ref.read(fileDialogServiceProvider), picker) &&
+        identical(project, selected) &&
+        file?.path == path &&
+        editor.text == text &&
+        request == token &&
+        workspacePage == 0 &&
+        identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
+        runtime?.currentScope.epoch == epoch &&
+        runtime?.currentScope.streamUnavailable != true &&
+        identical(ref.read(routerProvider), router) &&
+        uri.path == AppRoutes.automation &&
+        router.routeInformationProvider.value.uri == uri;
     void retire() {
       if (retired || finished) return;
       retired = true;
-      scheduleMicrotask(() { if (!finished) live.value = false; });
+      scheduleMicrotask(() {
+        if (!finished) live.value = false;
+      });
     }
-    void observe() { if (!matches()) retire(); }
-    bool original() { observe(); return !retired && !finished; }
+
+    void observe() {
+      if (!matches()) retire();
+    }
+
+    bool original() {
+      observe();
+      return !retired && !finished;
+    }
+
     final retirement = retire;
     _retireExternalEditor = retirement;
     final subscriptions = <ProviderSubscription<dynamic>>[
@@ -1154,21 +1559,28 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       ref.listenManual(fileDialogServiceProvider, (_, _) => observe()),
       ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
     ];
-    final notices = runtime?.watchRuntimeNotices().listen((_) => observe(),
-      onError: (Object _, StackTrace _) => retire(), onDone: retire);
+    final notices = runtime?.watchRuntimeNotices().listen(
+      (_) => observe(),
+      onError: (Object _, StackTrace _) => retire(),
+      onDone: retire,
+    );
     router.routeInformationProvider.addListener(observe);
     try {
       if (!original()) return;
       if (dirty) {
-        final save = await _dialog<bool>((context) => DependencyOriginalGuard(original: live,
-          builder: (context) => AlertDialog(
-            title: Text(context.l10n.automationUnsaved),
-            content: Text(context.l10n.automationEditorSaveHint),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(context.l10n.commonSave)),
-            ],
-          )));
+        final save = await _dialog<bool>(
+          (context) => DependencyOriginalGuard(
+            original: live,
+            builder: (context) => AlertDialog(
+              title: Text(context.l10n.automationUnsaved),
+              content: Text(context.l10n.automationEditorSaveHint),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
+                FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(context.l10n.commonSave)),
+              ],
+            ),
+          ),
+        );
         if (!original() || save != true) return;
         token = request + 1; // Only the immediately invoked save owns this request transition.
         if (!await _save(originalCurrent: () => matches() && !retired, originalLive: live) || !original()) return;
@@ -1176,12 +1588,21 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       if (!original()) return;
       final sha = file!.sha256;
       ownsBusy = true;
-      setState(() { busy = true; error = null; });
+      setState(() {
+        busy = true;
+        error = null;
+      });
       final application = await picker.chooseApplication(
-        label: labels.sftpApplications, confirmButtonText: labels.sftpChooseApplication);
+        label: labels.sftpApplications,
+        confirmButtonText: labels.sftpChooseApplication,
+      );
       if (!original() || application == null) return;
-      await service.openProjectEditor(selected.id, path, expectedSha256: sha,
-        editor: {'kind': 'path', 'value': application});
+      await service.openProjectEditor(
+        selected.id,
+        path,
+        expectedSha256: sha,
+        editor: {'kind': 'path', 'value': application},
+      );
       // Disk changes are read only by explicit Reload; the saved SHA still
       // protects a later ordinary save from overwriting concurrent edits.
     } catch (e) {
@@ -1191,7 +1612,9 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       finished = true;
       retired = true;
       if (identical(_retireExternalEditor, retirement)) _retireExternalEditor = null;
-      for (final subscription in subscriptions) { subscription.close(); }
+      for (final subscription in subscriptions) {
+        subscription.close();
+      }
       await notices?.cancel();
       router.routeInformationProvider.removeListener(observe);
       live.dispose();
@@ -1206,16 +1629,31 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final uri = router.routeInformationProvider.value.uri;
     final live = ValueNotifier(true);
     var retired = false;
-    bool matches() => current && (cadvisorFocus == null || _cadvisorCurrent(cadvisorFocus)) &&
-      identical(widget.scope, scope) && identical(widget.service, source) &&
-      identical(ref.read(appServicesProvider), app) && identical(ref.read(automationServiceProvider), source) &&
-      identical(ref.read(criticalRuntimeEventsProvider), runtime) && runtime?.currentScope.epoch == epoch &&
-      runtime?.currentScope.streamUnavailable != true && identical(ref.read(routerProvider), router) &&
-      uri.path == AppRoutes.automation && router.routeInformationProvider.value.uri == uri;
+    bool matches() =>
+        current &&
+        (cadvisorFocus == null || _cadvisorCurrent(cadvisorFocus)) &&
+        identical(widget.scope, scope) &&
+        identical(widget.service, source) &&
+        identical(ref.read(appServicesProvider), app) &&
+        identical(ref.read(automationServiceProvider), source) &&
+        identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
+        runtime?.currentScope.epoch == epoch &&
+        runtime?.currentScope.streamUnavailable != true &&
+        identical(ref.read(routerProvider), router) &&
+        uri.path == AppRoutes.automation &&
+        router.routeInformationProvider.value.uri == uri;
     void observe() {
-      if (!retired && !matches()) { retired = true; live.value = false; }
+      if (!retired && !matches()) {
+        retired = true;
+        live.value = false;
+      }
     }
-    bool original() { observe(); return !retired; }
+
+    bool original() {
+      observe();
+      return !retired;
+    }
+
     final subscriptions = <ProviderSubscription<dynamic>>[
       ref.listenManual(appServicesProvider, (_, _) => observe()),
       ref.listenManual(automationServiceProvider, (_, _) => observe()),
@@ -1223,18 +1661,31 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
       if (cadvisorFocus != null) ref.listenManual(hostsProvider, (_, _) => observe()),
     ];
-    final notices = runtime?.watchRuntimeNotices().listen((_) => observe(),
-      onError: (Object _, StackTrace _) { retired = true; live.value = false; },
-      onDone: () { retired = true; live.value = false; });
+    final notices = runtime?.watchRuntimeNotices().listen(
+      (_) => observe(),
+      onError: (Object _, StackTrace _) {
+        retired = true;
+        live.value = false;
+      },
+      onDone: () {
+        retired = true;
+        live.value = false;
+      },
+    );
     router.routeInformationProvider.addListener(observe);
     try {
       if (!original()) return;
-      final accepted = await _dialog<bool>((_) => DependencyOriginalGuard(original: live,
-        builder: (_) => const AutomationCadvisorReview()));
+      final accepted = await _dialog<bool>(
+        (_) => DependencyOriginalGuard(original: live, builder: (_) => const AutomationCadvisorReview()),
+      );
       if (accepted != true || !original()) return;
       AutomationProject? created;
-      await _create(exporterTemplate: AutomationExporterTemplate.cadvisor,
-        originalCurrent: original, originalLive: live, onTemplateCreated: (value) => created = value);
+      await _create(
+        exporterTemplate: AutomationExporterTemplate.cadvisor,
+        originalCurrent: original,
+        originalLive: live,
+        onTemplateCreated: (value) => created = value,
+      );
       final fresh = created;
       if (!install || fresh == null || !original() || project?.id != fresh.id) return;
       final token = request;
@@ -1242,84 +1693,60 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       final binding = await AutomationCadvisorTemplateBinding.capture(source, fresh.id, isCurrent: originalProject);
       if (!originalProject()) return;
       setState(() => project = binding.project);
-      final options = await _dialog<AutomationCadvisorInstallOptions>((_) => DependencyOriginalGuard(original: live,
-        builder: (_) => _CadvisorInstallDialog(owner: fresh.id)));
+      final options = await _dialog<AutomationCadvisorInstallOptions>(
+        (_) => DependencyOriginalGuard(
+          original: live,
+          builder: (_) => _CadvisorInstallDialog(owner: fresh.id),
+        ),
+      );
       if (options == null || !originalProject()) return;
       await binding.recheck(source, isCurrent: originalProject);
       if (!originalProject()) return;
-      await _run(source as AutomationJobService, initialExtraVars: options.extraVars, cadvisorTemplate: binding,
-        cadvisorFocus: cadvisorFocus);
+      await _run(
+        source as AutomationJobService,
+        initialExtraVars: options.extraVars,
+        cadvisorTemplate: binding,
+        cadvisorFocus: cadvisorFocus,
+      );
     } catch (e) {
       if (original()) setState(() => error = context.l10n.automationCadvisorInstallInvalid);
     } finally {
       retired = true;
-      for (final subscription in subscriptions) { subscription.close(); }
+      for (final subscription in subscriptions) {
+        subscription.close();
+      }
       await notices?.cancel();
       router.routeInformationProvider.removeListener(observe);
       live.dispose();
     }
   }
 
-  Future<void> _agentInstaller(AutomationAgentInstallerService service, {AutomationMonitoringNodeService? monitoringNode}) async {
-    if (busy || !current) return;
-    final source = widget.service, scope = widget.scope;
-    final app = ref.read(appServicesProvider), runtime = ref.read(criticalRuntimeEventsProvider);
-    final epoch = runtime?.currentScope.epoch, router = ref.read(routerProvider);
-    final uri = router.routeInformationProvider.value.uri;
-    final live = ValueNotifier(true);
-    var retired = false;
-    bool matches() => current && identical(widget.scope, scope) && identical(widget.service, source) &&
-      identical(ref.read(appServicesProvider), app) && identical(ref.read(automationServiceProvider), source) &&
-      identical(ref.read(criticalRuntimeEventsProvider), runtime) && runtime?.currentScope.epoch == epoch &&
-      runtime?.currentScope.streamUnavailable != true && identical(ref.read(routerProvider), router) &&
-      uri.path == AppRoutes.automation && router.routeInformationProvider.value.uri == uri;
-    void observe() {
-      if (!retired && !matches()) { retired = true; live.value = false; }
+  Future<void> _create({
+    bool folder = false,
+    AutomationExporterTemplate? exporterTemplate,
+    bool Function()? originalCurrent,
+    ValueListenable<bool>? originalLive,
+    ValueChanged<AutomationProject>? onTemplateCreated,
+  }) async {
+    if (busy ||
+        originalCurrent?.call() == false ||
+        !await _leaveFile(originalCurrent: originalCurrent, originalLive: originalLive) ||
+        !current ||
+        !mounted ||
+        originalCurrent?.call() == false) {
+      return;
     }
-    bool original() { observe(); return !retired; }
-    final subscriptions = <ProviderSubscription<dynamic>>[
-      ref.listenManual(appServicesProvider, (_, _) => observe()),
-      ref.listenManual(automationServiceProvider, (_, _) => observe()),
-      ref.listenManual(automationScopeProvider, (_, _) => observe()),
-      ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
-    ];
-    final notices = runtime?.watchRuntimeNotices().listen((_) => observe(),
-      onError: (Object _, StackTrace _) { retired = true; live.value = false; },
-      onDone: () { retired = true; live.value = false; });
-    router.routeInformationProvider.addListener(observe);
-    try {
-      if (!original()) return;
-      if (!await _leaveFile(originalCurrent: original, originalLive: live) || !original()) return;
-      final result = await _dialog<AutomationProject>((_) => DependencyOriginalGuard(original: live,
-        builder: (_) => monitoringNode == null
-          ? AutomationAgentInstallerDialog(scope:scope,service:service, originalCurrent:original,originalLive:live)
-          : AutomationMonitoringNodeDialog(scope:scope,service:monitoringNode,contextService:service,
-              originalCurrent:original,originalLive:live)));
-      if (result == null || !original()) return;
-      ref.invalidate(automationProjectsProvider);
-      await _select(result,originalCurrent:original);
-    } finally {
-      retired = true;
-      for (final subscription in subscriptions) { subscription.close(); }
-      await notices?.cancel();
-      router.routeInformationProvider.removeListener(observe);
-      live.dispose();
-    }
-  }
-
-  Future<void> _create({bool folder = false, AutomationExporterTemplate? exporterTemplate,
-    bool Function()? originalCurrent, ValueListenable<bool>? originalLive,
-    ValueChanged<AutomationProject>? onTemplateCreated}) async {
-    if (busy || originalCurrent?.call() == false ||
-      !await _leaveFile(originalCurrent: originalCurrent, originalLive: originalLive) ||
-      !current || !mounted || originalCurrent?.call() == false) { return; }
     final directory = folder ? await ref.read(fileDialogServiceProvider).chooseDirectory() : null;
     if (!mounted || !current || originalCurrent?.call() == false || (folder && directory == null)) return;
     final parts = directory?.replaceAll('\\', '/').split('/').where((part) => part.isNotEmpty).toList();
     final name = folder && parts!.isNotEmpty
         ? String.fromCharCodes(parts.last.runes.take(120))
-        : await _dialog<String>((context) => DependencyOriginalGuard(original: originalLive,
-            builder: (_) => _NameDialog(title: context.l10n.automationNewProject, initial: '')));
+        : await _dialog<String>(
+            (context) => DependencyOriginalGuard(
+              original: originalLive,
+              builder: (_) => _NameDialog(title: context.l10n.automationNewProject, initial: ''),
+            ),
+          );
     if (!mounted || !current || originalCurrent?.call() == false || name == null) return;
     setState(() {
       busy = true;
@@ -1329,8 +1756,11 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     Object? creationError;
     final templateFailureMessage = context.l10n.monitoringExporterTemplateIncomplete;
     final originalService = widget.service, originalScope = widget.scope;
-    bool original() => current && originalCurrent?.call() != false &&
-      identical(widget.service, originalService) && identical(widget.scope, originalScope);
+    bool original() =>
+        current &&
+        originalCurrent?.call() != false &&
+        identical(widget.service, originalService) &&
+        identical(widget.scope, originalScope);
     try {
       final assets = exporterTemplate == null
           ? null
@@ -1349,7 +1779,11 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     if (!original()) return;
     ref.invalidate(automationProjectsProvider);
     if (created != null) await _select(created, originalCurrent: original);
-    if (original() && creationError == null && created != null && exporterTemplate != null && project?.id == created.id) {
+    if (original() &&
+        creationError == null &&
+        created != null &&
+        exporterTemplate != null &&
+        project?.id == created.id) {
       onTemplateCreated?.call(created);
     }
     if (original() && creationError != null) setState(() => error = creationError);
@@ -1502,8 +1936,10 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     ref.listen(monitoringSessionProvider, (previous, next) {
       if (!identical(previous, next)) {
         setState(() {
-        _contextGeneration++; _acceptedProjectFocus = null; _focusedProject = null;
-      });
+          _contextGeneration++;
+          _acceptedProjectFocus = null;
+          _focusedProject = null;
+        });
       }
     });
     final l = context.l10n;
@@ -1528,8 +1964,10 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_agentProjectUnavailable)
-          Padding(padding: const EdgeInsets.all(12),
-            child: InfoBanner(tone: BannerTone.warning, message: l.hostAgentProjectUnavailable)),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: InfoBanner(tone: BannerTone.warning, message: l.hostAgentProjectUnavailable),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           child: Wrap(
@@ -1538,9 +1976,12 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
             children: [
               navigation('automation-workspace-projects', 0, Icons.folder_open, l.automationProjects, _showProjects),
               if (_acceptedAgentFocus case final focus?)
-                GlassButton(key: const ValueKey('automation-return-agent-host'),
-                  label: l.hostAgentReturn(focus.hostName), icon: Icons.arrow_back,
-                  onPressed: _agentCurrent(focus) ? () => _returnToAgentHost(focus) : null),
+                GlassButton(
+                  key: const ValueKey('automation-return-agent-host'),
+                  label: l.hostAgentReturn(focus.hostName),
+                  icon: Icons.arrow_back,
+                  onPressed: _agentCurrent(focus) ? () => _returnToAgentHost(focus) : null,
+                ),
               if (jobs != null)
                 navigation(
                   'automation-workspace-jobs',
@@ -1550,8 +1991,13 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                   () => setState(() => workspacePage = 1),
                 ),
               if (awxAvailable)
-                navigation('automation-workspace-awx', 3, Icons.cloud_outlined, l.awxTab,
-                  () => setState(() => workspacePage = 3)),
+                navigation(
+                  'automation-workspace-awx',
+                  3,
+                  Icons.cloud_outlined,
+                  l.awxTab,
+                  () => setState(() => workspacePage = 3),
+                ),
               if (runComposer != null)
                 navigation(
                   'automation-workspace-run',
@@ -1665,8 +2111,8 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final focusedContext = _acceptedProjectFocus, focusedProject = _focusedProject;
     final catalog = ref.watch(automationProjectsProvider);
     final runnerService = ref.watch(automationRunnerServiceProvider);
-    final portableAvailable = widget.service is AutomationPortableGatewayCapability &&
-      ref.watch(criticalRuntimeEventsProvider) != null;
+    final portableAvailable =
+        widget.service is AutomationPortableGatewayCapability && ref.watch(criticalRuntimeEventsProvider) != null;
     final menuProject = project;
     final menuRequest = request;
     bool projectMenuCurrent() =>
@@ -1717,36 +2163,17 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                   ),
                   if (portableAvailable)
                     _automationMenuItem(
-                      key: const ValueKey('automation-portable-inspect-open'), value: 'portable-inspect',
-                      label: l.automationPortableInspectAction, icon: Icons.inventory_2_outlined,
-                    ),
-                  _automationMenuItem(
-                    key: const ValueKey('automation-node-exporter-template'), value: 'node-exporter',
-                    label: l.monitoringExporterNodeTemplate, icon: Icons.monitor_heart_outlined,
-                  ),
-                  _automationMenuItem(
-                    key: const ValueKey('automation-cadvisor-template'), value: 'cadvisor',
-                    label: l.monitoringExporterCadvisorTemplate, icon: Icons.view_in_ar_outlined,
-                  ),
-                  if (widget.service is AutomationJobService)
-                    _automationMenuItem(
-                      key: const ValueKey('automation-cadvisor-install'), value: 'cadvisor-install',
-                      label: l.automationCadvisorLifecycleTitle, icon: Icons.install_desktop_outlined,
+                      key: const ValueKey('automation-portable-inspect-open'),
+                      value: 'portable-inspect',
+                      label: l.automationPortableInspectAction,
+                      icon: Icons.inventory_2_outlined,
                     ),
                   if (portableAvailable && widget.service is AutomationPortableImportReviewCapability)
                     _automationMenuItem(
-                      key: const ValueKey('automation-portable-import-open'), value: 'portable-import',
-                      label: l.automationPortableImportTitle, icon: Icons.create_new_folder_outlined,
-                    ),
-                  if (widget.service is AutomationAgentInstallerService && widget.service is AutomationMonitoringNodeService)
-                    _automationMenuItem(
-                      key: const ValueKey('automation-monitoring-node-template'), value:'monitoring-node',
-                      label:l.monitoringNodeSourceTitle, icon:Icons.monitor_heart_outlined,
-                    ),
-                  if (widget.service is AutomationAgentInstallerService)
-                    _automationMenuItem(
-                      key: const ValueKey('automation-agent-install-template'), value:'agent-installer',
-                      label:l.agentInstallTitle, icon:Icons.install_desktop_outlined,
+                      key: const ValueKey('automation-portable-import-open'),
+                      value: 'portable-import',
+                      label: l.automationPortableImportTitle,
+                      icon: Icons.create_new_folder_outlined,
                     ),
                   if (widget.service is AutomationGitService)
                     _automationMenuItem(
@@ -1759,19 +2186,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                 onSelected: (value) {
                   if (!current || busy || ref.read(automationProjectsProvider).value?.readOnly == true) return;
                   if (value == 'new') _create();
-                  if (value == 'node-exporter') {
-                    _create(exporterTemplate: AutomationExporterTemplate.nodeExporter);
-                  }
-                  if (value == 'monitoring-node' && widget.service is AutomationAgentInstallerService && widget.service is AutomationMonitoringNodeService) {
-                    _agentInstaller(widget.service as AutomationAgentInstallerService, monitoringNode:widget.service as AutomationMonitoringNodeService);
-                  }
-                  if (value == 'agent-installer' && widget.service is AutomationAgentInstallerService) {
-                    _agentInstaller(widget.service as AutomationAgentInstallerService);
-                  }
-                  if (value == 'cadvisor') {
-                    _createCadvisorTemplate();
-                  }
-                  if (value == 'cadvisor-install') _createCadvisorTemplate(install: true);
                   if (value == 'folder') _create(folder: true);
                   if (value == 'portable-inspect') _portablePackage(inspect: true);
                   if (value == 'portable-import') _portablePackage(inspect: true, createProject: true);
@@ -1798,15 +2212,28 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                       ),
                     if (widget.service is AutomationDependencyService)
                       _automationMenuItem(
-                        key: const ValueKey('automation-dependencies-open'),value:'dependencies',
-                        label:l.automationDependencyTitle,icon:Icons.extension_outlined,enabled:projectMenuCurrent(),
+                        key: const ValueKey('automation-dependencies-open'),
+                        value: 'dependencies',
+                        label: l.automationDependencyTitle,
+                        icon: Icons.extension_outlined,
+                        enabled: projectMenuCurrent(),
                       ),
-                    if(widget.service is AutomationProjectCredentialsService)
-                      _automationMenuItem(key:const ValueKey('automation-project-credentials-open'),value:'credentials',
-                        label:l.automationDeploymentTitle,icon:Icons.key_outlined,enabled:projectMenuCurrent()),
+                    if (widget.service is AutomationProjectCredentialsService)
+                      _automationMenuItem(
+                        key: const ValueKey('automation-project-credentials-open'),
+                        value: 'credentials',
+                        label: l.automationDeploymentTitle,
+                        icon: Icons.key_outlined,
+                        enabled: projectMenuCurrent(),
+                      ),
                     if (widget.service is AutomationProjectMetadataService)
-                      _automationMenuItem(key: const ValueKey('automation-project-metadata-open'), value: 'metadata',
-                        label: l.automationMetadataTitle, icon: Icons.sync_outlined, enabled: projectMenuCurrent()),
+                      _automationMenuItem(
+                        key: const ValueKey('automation-project-metadata-open'),
+                        value: 'metadata',
+                        label: l.automationMetadataTitle,
+                        icon: Icons.sync_outlined,
+                        enabled: projectMenuCurrent(),
+                      ),
                     if (widget.service is AutomationInventoryService)
                       _automationMenuItem(
                         key: const ValueKey('automation-groups-open'),
@@ -1833,7 +2260,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                     if (value == 'dependencies' && widget.service is AutomationDependencyService) {
                       _dependencies(widget.service as AutomationDependencyService);
                     }
-                    if(value=='credentials' && widget.service is AutomationProjectCredentialsService) {
+                    if (value == 'credentials' && widget.service is AutomationProjectCredentialsService) {
                       _credentials(widget.service as AutomationProjectCredentialsService);
                     }
                     if (value == 'metadata' && widget.service is AutomationProjectMetadataService) {
@@ -1850,7 +2277,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(l.automationProjectHint),
+          Text(l.automationWorkflowHint),
           if (project?.gitSource case final Map<String, dynamic> source)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1896,57 +2323,73 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                   child: ListView(
                     children: [
                       Padding(padding: const EdgeInsets.all(12), child: Text(l.automationProjects)),
-                      if (_contextError) InfoBanner(key: const ValueKey('automation-context-error'),
-                        message: l.correlationProjectChanged, tone: BannerTone.danger),
+                      if (_contextError)
+                        InfoBanner(
+                          key: const ValueKey('automation-context-error'),
+                          message: l.correlationProjectChanged,
+                          tone: BannerTone.danger,
+                        ),
                       if (focusedContext != null && focusedProject != null) ...[
                         InfoBanner(message: l.correlationProjectFocusHint),
-                        ListTile(key: ValueKey('automation-context-project-${focusedProject.id}'),
-                          dense: true, selected: true, leading: const Icon(Icons.folder_outlined, size: 18),
+                        ListTile(
+                          key: ValueKey('automation-context-project-${focusedProject.id}'),
+                          dense: true,
+                          selected: true,
+                          leading: const Icon(Icons.folder_outlined, size: 18),
                           title: Text(focusedProject.name ?? focusedProject.id),
-                          trailing: GlassButton(key: const ValueKey('automation-context-open'), label: l.commonOpen,
-                            onPressed: busy ? null : () => _openContextProject(focusedContext))),
-                        TextButton(key: const ValueKey('automation-context-clear'), onPressed: () => setState(() {
-                          if (identical(_acceptedProjectFocus, focusedContext)) {
-                            _contextGeneration++; _acceptedProjectFocus = null; _focusedProject = null;
-                          }
-                        }), child: Text(l.commonClose)),
-                      ] else
-
-                      ...catalog.when(
-                        data: (value) => [
-                          if (value?.readOnly == true)
-                            Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNewerSchema)),
-                          if (value?.projects.isEmpty ?? false)
-                            Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNoProjects)),
-                          for (final item in value?.projects ?? <AutomationProject>[])
-                            ListTile(
-                              key: ValueKey('automation-project-${item.id}'),
-                              dense: true,
-                              selected: item.id == project?.id,
-                              leading: const Icon(Icons.folder_outlined, size: 18),
-                              title: Text(item.name ?? item.id, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              subtitle: item.importState == null
-                                  ? null
-                                  : Text(switch (item.importState) {
-                                      'importing' => l.automationGitReceiving,
-                                      'ready' => l.automationGitReady,
-                                      'failed' => l.automationStateFailed,
-                                      'cancelled' => l.automationStateCancelled,
-                                      'interrupted' => l.automationStateInterrupted,
-                                      _ => l.automationNewerSchema,
-                                    }),
-                              onTap: busy || item.readOnly ? null : () => _select(item),
-                            ),
-                        ],
-                        error: (e, _) => [
-                          Padding(padding: const EdgeInsets.all(12), child: Text(errorMessage(l, e))),
-                          TextButton(
-                            onPressed: () => ref.invalidate(automationProjectsProvider),
-                            child: Text(l.commonRetry),
+                          trailing: GlassButton(
+                            key: const ValueKey('automation-context-open'),
+                            label: l.commonOpen,
+                            onPressed: busy ? null : () => _openContextProject(focusedContext),
                           ),
-                        ],
-                        loading: () => [const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())],
-                      ),
+                        ),
+                        TextButton(
+                          key: const ValueKey('automation-context-clear'),
+                          onPressed: () => setState(() {
+                            if (identical(_acceptedProjectFocus, focusedContext)) {
+                              _contextGeneration++;
+                              _acceptedProjectFocus = null;
+                              _focusedProject = null;
+                            }
+                          }),
+                          child: Text(l.commonClose),
+                        ),
+                      ] else
+                        ...catalog.when(
+                          data: (value) => [
+                            if (value?.readOnly == true)
+                              Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNewerSchema)),
+                            if (value?.projects.isEmpty ?? false)
+                              Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNoProjects)),
+                            for (final item in value?.projects ?? <AutomationProject>[])
+                              ListTile(
+                                key: ValueKey('automation-project-${item.id}'),
+                                dense: true,
+                                selected: item.id == project?.id,
+                                leading: const Icon(Icons.folder_outlined, size: 18),
+                                title: Text(item.name ?? item.id, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                subtitle: item.importState == null
+                                    ? null
+                                    : Text(switch (item.importState) {
+                                        'importing' => l.automationGitReceiving,
+                                        'ready' => l.automationGitReady,
+                                        'failed' => l.automationStateFailed,
+                                        'cancelled' => l.automationStateCancelled,
+                                        'interrupted' => l.automationStateInterrupted,
+                                        _ => l.automationNewerSchema,
+                                      }),
+                                onTap: busy || item.readOnly ? null : () => _select(item),
+                              ),
+                          ],
+                          error: (e, _) => [
+                            Padding(padding: const EdgeInsets.all(12), child: Text(errorMessage(l, e))),
+                            TextButton(
+                              onPressed: () => ref.invalidate(automationProjectsProvider),
+                              child: Text(l.commonRetry),
+                            ),
+                          ],
+                          loading: () => [const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())],
+                        ),
                       if (project != null) ...[
                         const Divider(),
                         Padding(
@@ -2025,8 +2468,10 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                   ),
                                   if (portableAvailable)
                                     _automationMenuItem(
-                                      key: const ValueKey('automation-portable-export-open'), value: 'portable-export',
-                                      enabled: project!.revision != null, label: l.automationPortableExportAction,
+                                      key: const ValueKey('automation-portable-export-open'),
+                                      value: 'portable-export',
+                                      enabled: project!.revision != null,
+                                      label: l.automationPortableExportAction,
                                     ),
                                   if (widget.service is AutomationInventoryExportService)
                                     _automationMenuItem(
@@ -2098,16 +2543,20 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                   ),
                                 ],
                                 if (widget.service case final AutomationAiService ai)
-                                  IconButton(
-                                    key: const ValueKey('automation-ai-open'),
-                                    tooltip: l.automationAiTitle,
-                                    onPressed:
-                                        busy ||
-                                            !((file?.path ?? newPath ?? '').endsWith('.yml') ||
-                                                (file?.path ?? newPath ?? '').endsWith('.yaml'))
-                                        ? null
-                                        : () => _ai(ai),
-                                    icon: const Icon(Icons.auto_awesome, size: 18),
+                                  Flexible(
+                                    child: GlassButton(
+                                      key: const ValueKey('automation-ai-open'),
+                                      label: l.automationAiTitle,
+                                      tooltip: l.automationAiTitle,
+                                      size: _automationControlSize(context),
+                                      onPressed:
+                                          busy ||
+                                              !((file?.path ?? newPath ?? '').endsWith('.yml') ||
+                                                  (file?.path ?? newPath ?? '').endsWith('.yaml'))
+                                          ? null
+                                          : () => _ai(ai),
+                                      icon: Icons.auto_awesome,
+                                    ),
                                   ),
                               ],
                             ),
@@ -2296,67 +2745,124 @@ class _CadvisorInstallDialogState extends State<_CadvisorInstallDialog> {
   AutomationCadvisorOperation operation = AutomationCadvisorOperation.install;
   bool reviewed = false, invalid = false;
   @override
-  void dispose() { image.dispose(); imageId.dispose(); port.dispose(); owner.dispose(); containerId.dispose(); super.dispose(); }
+  void dispose() {
+    image.dispose();
+    imageId.dispose();
+    port.dispose();
+    owner.dispose();
+    containerId.dispose();
+    super.dispose();
+  }
+
   void submit() {
     try {
-      final options = AutomationCadvisorInstallOptions(imageSha256: image.text.trim(),
-        imageId: imageId.text.trim(), owner: owner.text.trim(), port: int.tryParse(port.text) ?? 0,
-        hostAccessReviewed: reviewed, operation: operation,
-        containerId: operation == AutomationCadvisorOperation.install ? null : containerId.text.trim());
+      final options = AutomationCadvisorInstallOptions(
+        imageSha256: image.text.trim(),
+        imageId: imageId.text.trim(),
+        owner: owner.text.trim(),
+        port: int.tryParse(port.text) ?? 0,
+        hostAccessReviewed: reviewed,
+        operation: operation,
+        containerId: operation == AutomationCadvisorOperation.install ? null : containerId.text.trim(),
+      );
       Navigator.pop(context, options);
     } on FormatException {
       setState(() => invalid = true);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     return AlertDialog(
       key: const ValueKey('automation-cadvisor-install-options'),
       title: Text(l.automationCadvisorLifecycleTitle),
-      content: SizedBox(width: 620, child: SingleChildScrollView(child: Column(
-        mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(l.automationCadvisorLifecycleDraft),
-          GlassSelect<AutomationCadvisorOperation>(
-            key: const ValueKey('cadvisor-lifecycle-operation'), value: operation, expand: true,
-            semanticLabel: l.automationCadvisorLifecycleOperation,
-            items: [for (final value in AutomationCadvisorOperation.values)
-              GlassSelectItem(value: value, label: switch (value) {
-                AutomationCadvisorOperation.inspect => l.automationCadvisorLifecycleInspect,
-                AutomationCadvisorOperation.install => l.automationCadvisorLifecycleInstall,
-                AutomationCadvisorOperation.start => l.automationCadvisorLifecycleStart,
-                AutomationCadvisorOperation.stop => l.automationCadvisorLifecycleStop,
-                AutomationCadvisorOperation.remove => l.automationCadvisorLifecycleRemove,
-              })],
-            onChanged: (value) => setState(() { operation = value; reviewed = false; invalid = false; }),
+      content: SizedBox(
+        width: 620,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(l.automationCadvisorLifecycleDraft),
+              GlassSelect<AutomationCadvisorOperation>(
+                key: const ValueKey('cadvisor-lifecycle-operation'),
+                value: operation,
+                expand: true,
+                semanticLabel: l.automationCadvisorLifecycleOperation,
+                items: [
+                  for (final value in AutomationCadvisorOperation.values)
+                    GlassSelectItem(
+                      value: value,
+                      label: switch (value) {
+                        AutomationCadvisorOperation.inspect => l.automationCadvisorLifecycleInspect,
+                        AutomationCadvisorOperation.install => l.automationCadvisorLifecycleInstall,
+                        AutomationCadvisorOperation.start => l.automationCadvisorLifecycleStart,
+                        AutomationCadvisorOperation.stop => l.automationCadvisorLifecycleStop,
+                        AutomationCadvisorOperation.remove => l.automationCadvisorLifecycleRemove,
+                      },
+                    ),
+                ],
+                onChanged: (value) => setState(() {
+                  operation = value;
+                  reviewed = false;
+                  invalid = false;
+                }),
+              ),
+              const SizedBox(height: 12),
+              InfoBanner(tone: BannerTone.warning, message: l.automationCadvisorHostAccess),
+              Text(l.automationCadvisorDockerAccess),
+              const SizedBox(height: 12),
+              TextField(
+                key: const ValueKey('cadvisor-lifecycle-owner'),
+                controller: owner,
+                maxLength: 36,
+                decoration: InputDecoration(labelText: l.automationCadvisorLifecycleOwner),
+              ),
+              if (operation != AutomationCadvisorOperation.install)
+                TextField(
+                  key: const ValueKey('cadvisor-lifecycle-container'),
+                  controller: containerId,
+                  maxLength: 64,
+                  decoration: InputDecoration(labelText: l.automationCadvisorLifecycleContainer),
+                ),
+              TextField(
+                key: const ValueKey('cadvisor-install-image-digest'),
+                controller: image,
+                maxLength: 64,
+                decoration: InputDecoration(labelText: l.automationCadvisorInstallImageDigest),
+              ),
+              TextField(
+                key: const ValueKey('cadvisor-install-image-id'),
+                controller: imageId,
+                maxLength: 71,
+                decoration: InputDecoration(labelText: l.automationCadvisorInstallImageId),
+              ),
+              TextField(
+                key: const ValueKey('cadvisor-install-port'),
+                controller: port,
+                maxLength: 5,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: l.automationCadvisorInstallPort),
+              ),
+              CheckboxListTile(
+                key: const ValueKey('cadvisor-install-consent'),
+                value: reviewed,
+                title: Text(l.automationCadvisorInstallConsent),
+                onChanged: (value) => setState(() => reviewed = value == true),
+              ),
+              if (invalid) Text(l.automationCadvisorInstallInvalid),
+            ],
           ),
-          const SizedBox(height: 12),
-          InfoBanner(tone: BannerTone.warning, message: l.automationCadvisorHostAccess),
-          Text(l.automationCadvisorDockerAccess),
-          const SizedBox(height: 12),
-          TextField(key: const ValueKey('cadvisor-lifecycle-owner'), controller: owner,
-            maxLength: 36, decoration: InputDecoration(labelText: l.automationCadvisorLifecycleOwner)),
-          if (operation != AutomationCadvisorOperation.install)
-            TextField(key: const ValueKey('cadvisor-lifecycle-container'), controller: containerId,
-              maxLength: 64, decoration: InputDecoration(labelText: l.automationCadvisorLifecycleContainer)),
-          TextField(key: const ValueKey('cadvisor-install-image-digest'), controller: image,
-            maxLength: 64, decoration: InputDecoration(labelText: l.automationCadvisorInstallImageDigest)),
-          TextField(key: const ValueKey('cadvisor-install-image-id'), controller: imageId,
-            maxLength: 71, decoration: InputDecoration(labelText: l.automationCadvisorInstallImageId)),
-          TextField(key: const ValueKey('cadvisor-install-port'), controller: port,
-            maxLength: 5, keyboardType: TextInputType.number,
-            decoration: InputDecoration(labelText: l.automationCadvisorInstallPort)),
-          CheckboxListTile(key: const ValueKey('cadvisor-install-consent'), value: reviewed,
-            title: Text(l.automationCadvisorInstallConsent),
-            onChanged: (value) => setState(() => reviewed = value == true)),
-          if (invalid) Text(l.automationCadvisorInstallInvalid),
-        ],
-      ))),
+        ),
+      ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
-        TextButton(key: const ValueKey('cadvisor-install-compose'), onPressed: reviewed ? submit : null,
-          child: Text(l.automationCadvisorInstallContinue)),
+        TextButton(
+          key: const ValueKey('cadvisor-install-compose'),
+          onPressed: reviewed ? submit : null,
+          child: Text(l.automationCadvisorInstallContinue),
+        ),
       ],
     );
   }

@@ -14231,5 +14231,337 @@
   "monitoringAgentDestinationHint": "Маршрут Agent сохраняет связь, SSH-хост и loopback-назначение; URL источника, TLS и аутентификация не меняются. Сохранение изменений делает прежнее разрешение туннеля недействительным. Перед чтением откройте и подтвердите новый соответствующий туннель Agent; ссылка не даёт доступа и не переподключается автоматически.",
   "@monitoringAgentDestinationHint": {
     "description": "Explains the saved Agent route reference and the separate tunnel approval required before reading."
+  },
+  "monitoringSetupHost": "SSH-хост",
+  "monitoringSetupNoHosts": "Добавьте SSH-хост в разделе «Хосты», затем вернитесь сюда.",
+  "monitoringSetupReuse": "Использовать установленное",
+  "monitoringSetupOpenGraphs": "Открыть графики",
+  "monitoringSetupAdvanced": "Расширенные настройки",
+  "monitoringSetupGraphs": "Графики",
+  "monitoringSetupNoGraphs": "Выберите хост и настройте мониторинг. Графики появятся здесь после получения данных.",
+  "@monitoringSetupHost": {
+    "description": "Host monitoring setup wizard and dashboard."
+  },
+  "@monitoringSetupNoHosts": {
+    "description": "Host monitoring setup wizard and dashboard."
+  },
+  "@monitoringSetupReuse": {
+    "description": "Host monitoring setup wizard and dashboard."
+  },
+  "@monitoringSetupOpenGraphs": {
+    "description": "Host monitoring setup wizard and dashboard."
+  },
+  "@monitoringSetupAdvanced": {
+    "description": "Host monitoring setup wizard and dashboard."
+  },
+  "@monitoringSetupGraphs": {
+    "description": "Host monitoring setup wizard and dashboard."
+  },
+  "@monitoringSetupNoGraphs": {
+    "description": "Host monitoring setup wizard and dashboard."
+  },
+  "monitoringAgentOverviewTab": "Агенты",
+  "monitoringAgentOverviewTitle": "Агент ConsoleCrypt",
+  "monitoringAgentOverviewPurpose": "ConsoleCrypt Agent — служба на сервере для чтения состояния узла, разрешённого сбора метрик и защищённых подключений. Доступ настраивается отдельно для каждой функции.",
+  "monitoringAgentOverviewOptional": "SSH, Ansible и просмотр существующих метрик Prometheus работают без этого агента.",
+  "monitoringAgentOverviewSetupHint": "После установки программы устройство нужно привязать к ConsoleCrypt и включить нужные функции. Установка, подключение и готовность сбора проверяются отдельно.",
+  "monitoringAgentStatusTitle": "Состояния агента",
+  "monitoringAgentSoftwareStatus": "Программа на сервере",
+  "monitoringAgentConnectionStatus": "Подключение устройства",
+  "monitoringAgentMetricsStatus": "Сбор метрик",
+  "monitoringAgentStatusUnknown": "Статус не проверен",
+  "monitoringAgentStatusHint": "Установка файлов, подключение устройства и включение сбора метрик — отдельные шаги. Сохранённый хост или привязка не подтверждают, что служба работает.",
+  "monitoringAgentManagementTitle": "Дополнительное управление агентом",
+  "monitoringAgentReadStatus": "Считать состояние агента",
+  "monitoringAgentConnectionSettings": "Подключение и доступ",
+  "@monitoringAgentOverviewTab": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentOverviewTitle": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentOverviewPurpose": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentOverviewOptional": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentOverviewSetupHint": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentStatusTitle": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentSoftwareStatus": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentConnectionStatus": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentMetricsStatus": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentStatusUnknown": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentStatusHint": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentManagementTitle": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentReadStatus": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "@monitoringAgentConnectionSettings": {
+    "description": "Dedicated Agent overview in Monitoring; never derives installed, connected or collecting from configuration."
+  },
+  "agentSetupTitle": "Настройка ConsoleCrypt Agent",
+  "agentSetupPurpose": "ConsoleCrypt Agent связывает сервер с приложением, сообщает о состоянии узла и выполняет выбранный сбор метрик.",
+  "agentSetupProfile": "Функции агента",
+  "agentSetupDestination": "Существующий получатель метрик",
+  "agentSetupExistingExporters": "Работающие экспортёры будут использованы повторно, без повторной установки.",
+  "agentSetupLinuxProfile": "Показатели Linux-сервера",
+  "agentSetupLinuxProfileDescription": "Сбор выбранных показателей сервера через ConsoleCrypt Agent.",
+  "agentSetupPreflight": "Проверить настройку",
+  "agentSetupSelectionTitle": "Хост и функции агента",
+  "agentSetupReviewTitle": "Проверка установки",
+  "agentSetupInstalling": "Устанавливаем программу агента…",
+  "agentSetupPairingTitle": "Привязка устройства",
+  "agentSetupCollectionTitle": "Настройка сбора метрик",
+  "agentSetupVerifying": "Проверяем агент и полученные данные…",
+  "agentSetupStatusTitle": "Состояние настройки",
+  "agentSetupComplete": "Агент готов",
+  "agentSetupRelease": "Релиз агента",
+  "agentSetupInstallAction": "Установить ConsoleCrypt Agent",
+  "agentSetupServiceAccount": "Подготовить службу агента и отдельную учётную запись",
+  "agentSetupInstallExporter": "Установить недостающий экспортёр",
+  "agentSetupUseDestination": "Использовать существующий получатель метрик",
+  "agentSetupSoftwareObserved": "Установленные файлы проверены",
+  "agentSetupPairingObserved": "Привязка устройства подтверждена",
+  "agentSetupConfigurationRecorded": "Конфигурация сохранена; работа сбора ещё не подтверждена",
+  "agentSetupObservedReady": "Работа сбора подтверждена",
+  "agentSetupNotSelected": "Не выбрано",
+  "agentSetupRunningVersion": "Проверенная версия работающего агента",
+  "agentSetupPairingExplanation": "Привяжите агент этого сервера к текущему профилю ConsoleCrypt. Доступ ограничен указанной ниже функцией.",
+  "agentSetupMetricsPermission": "Разрешение: собирать выбранные метрики",
+  "agentSetupTunnelPermission": "Разрешение: открывать выбранные защищённые подключения",
+  "agentSetupExportersPermission": "Разрешение: управлять выбранными экспортёрами",
+  "agentSetupCollectionExplanation": "Включите проверенный профиль сбора для выбранного получателя. После сохранения конфигурации мастер отдельно проверит работу сборщика и получение данных.",
+  "agentSetupAwaitingEvidence": "Готовность пока не подтверждена. Проверьте состояние: мастер отдельно проверит связь, работу сбора и данные для графиков.",
+  "agentSetupVerified": "Необходимые проверки готовности агента пройдены.",
+  "agentSetupConfirmConnection": "Подтвердить привязку устройства",
+  "agentSetupEnableCollection": "Включить сбор",
+  "agentSetupVerify": "Проверить состояние",
+  "agentSetupReleaseUnavailable": "В этой поставке ConsoleCrypt нет проверенного пакета Linux Agent. Установка недоступна; сервер не изменён.",
+  "agentSetupUnsupportedHost": "Доступный релиз агента нельзя автоматически установить на этот хост.",
+  "agentSetupPrivileges": "Для автоматической установки нужны права администратора у сохранённой SSH-учётной записи.",
+  "agentSetupPolicyConflict": "Существующая конфигурация хоста конфликтует с проверенной установкой. Автоматически перезаписывать её мастер не будет.",
+  "agentSetupDestinationUnavailable": "Для этого профиля пока нет подтверждённого получателя метрик. Настройка сбора недоступна.",
+  "agentSetupOwnerApproval": "Привязка устройства требует отдельного подтверждения владельцем в этом мастере.",
+  "agentSetupCollectionUnavailable": "Выбранный профиль сбора пока недоступен для этого агента.",
+  "agentSetupContextChanged": "Исходный хост или профиль изменился. Закройте мастер и проверьте актуальный хост снова.",
+  "agentSetupCancelled": "Операция остановлена. Установленные файлы и выполненная привязка устройства автоматически не удаляются.",
+  "agentSetupFailed": "Не удалось завершить шаг настройки агента. Выполненные шаги показаны отдельно; готовность не подтверждена.",
+  "@agentSetupTitle": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupPurpose": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupProfile": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupDestination": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupExistingExporters": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupLinuxProfile": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupLinuxProfileDescription": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupPreflight": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupSelectionTitle": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupReviewTitle": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupInstalling": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupPairingTitle": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupCollectionTitle": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupVerifying": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupStatusTitle": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupComplete": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupRelease": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupInstallAction": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupServiceAccount": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupInstallExporter": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupUseDestination": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupSoftwareObserved": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupPairingObserved": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupConfigurationRecorded": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupObservedReady": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupNotSelected": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupRunningVersion": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupPairingExplanation": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupMetricsPermission": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupTunnelPermission": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupExportersPermission": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupCollectionExplanation": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupAwaitingEvidence": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupVerified": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupConfirmConnection": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupEnableCollection": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupVerify": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupReleaseUnavailable": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupUnsupportedHost": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupPrivileges": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupPolicyConflict": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupDestinationUnavailable": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupOwnerApproval": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupCollectionUnavailable": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupContextChanged": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupCancelled": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "@agentSetupFailed": {
+    "description": "Actual ConsoleCrypt Agent lifecycle wizard, separate software, owner pairing, collection approval and verified readiness."
+  },
+  "agentSetupStopping": "Останавливаем…",
+  "agentSetupCleanupUnknown": "Не удалось подтвердить завершение операции. Установленные файлы и выполненные шаги сохранены. Проверьте завершение снова перед закрытием.",
+  "@agentSetupStopping": {
+    "description": "Actual Agent wizard cancellation waits for owned cleanup; unknown is not completion or rollback."
+  },
+  "@agentSetupCleanupUnknown": {
+    "description": "Actual Agent wizard cancellation waits for owned cleanup; unknown is not completion or rollback."
+  },
+  "monitoringHostMetrics": "Метрики хоста",
+  "monitoringConnectSource": "Подключить источник",
+  "monitoringSourcesSettings": "Источники и настройки",
+  "monitoringChooseTarget": "Связать хост с метриками",
+  "monitoringTargetHint": "Выберите существующий источник и сервер из его метрик. Установка ПО не требуется.",
+  "monitoringFindTargets": "Найти серверы",
+  "monitoringTargetLabel": "Сервер в источнике метрик",
+  "monitoringNoTargets": "Источник не вернул серверы с метрикой up. Проверьте сбор метрик в источнике.",
+  "monitoringLinkAndOpen": "Сохранить и открыть графики",
+  "monitoringNoHostMetrics": "Для этого хоста ещё не выбраны метрики. Свяжите его с сервером в существующем источнике.",
+  "monitoringChooseHost": "Выбрать хост",
+  "monitoringAllGraphs": "Все графики",
+  "automationWorkflowHint": "Выберите плейбук, хосты или группу, проверьте и запустите. Ansible работает в выбранном Runner.",
+  "@monitoringHostMetrics": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringConnectSource": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringSourcesSettings": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringChooseTarget": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringTargetHint": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringFindTargets": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringTargetLabel": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringNoTargets": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringLinkAndOpen": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringNoHostMetrics": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringChooseHost": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@monitoringAllGraphs": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "@automationWorkflowHint": {
+    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
   }
 }

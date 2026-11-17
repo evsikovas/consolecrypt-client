@@ -37,7 +37,7 @@ class _Source extends Projects implements AutomationAgentInstallerService {
 
 void main() {
   testWidgets(
-    'actual project menu opens explicit installer source review; cancel performs zero writes',
+    'Automation menu excludes Agent deployment even when the service supports it',
     (tester) async {
       final service = _Source(),
           events = RuntimeNoticeEventAdapter(),
@@ -73,13 +73,13 @@ void main() {
       expect(service.reads, 0);
       expect(service.creates, 0);
       await tapKey(tester, 'automation-project-actions');
-      await tapKey(tester, 'automation-agent-install-template');
-      expect(service.reads, 1);
+      expect(find.byKey(const ValueKey('automation-agent-install-template')), findsNothing);
+      expect(find.byKey(const ValueKey('automation-new-project')), findsOneWidget);
+      expect(service.reads, 0);
       expect(
         find.byKey(const ValueKey('agent-installer-dialog')),
-        findsOneWidget,
+        findsNothing,
       );
-      await tapKey(tester, 'agent-installer-cancel');
       expect(service.creates, 0);
       expect(service.projectsCreated, isEmpty);
       expect(service.expected, isEmpty);

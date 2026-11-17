@@ -57,6 +57,7 @@ class MonitoringWorkspace extends StatefulWidget {
     required this.service,
     required this.store,
     this.active = true,
+    this.showHeading = true,
     this.credentials = const [],
     this.credentialsLoading = false,
     this.credentialsError,
@@ -99,7 +100,7 @@ class MonitoringWorkspace extends StatefulWidget {
   final MonitoringSourceStore store;
   final RuntimeNoticeScope? panelSyncScope;
   final bool Function()? panelSyncCurrent;
-  final bool active, credentialsLoading;
+  final bool active, credentialsLoading, showHeading;
   final List<MonitoringCredentialRef> credentials;
   final String? credentialsError;
   final Future<MonitoringCredentialRef?> Function(SourceAuth auth)? createCredential;
@@ -2099,8 +2100,10 @@ class _MonitoringWorkspaceState extends State<MonitoringWorkspace> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l.monitoringTitle, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
+          if (widget.showHeading) ...[
+            Text(l.monitoringTitle, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+          ],
           Text(l.monitoringIntro),
           const SizedBox(height: 16),
           if (loading) const LinearProgressIndicator(),

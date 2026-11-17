@@ -48,6 +48,11 @@ Future<(ProviderContainer, MockBackend)> open(
   final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
   container.read(routerProvider).go(AppRoutes.monitoring);
   await settle(tester);
+  // Source editing and custom PromQL are now explicitly in Advanced.
+  await tapKey(tester, 'monitoring-view-toggle');
+  // Dashboard autoload is verified separately; these assertions begin after
+  // switching to the explicit Advanced custom-panel editor/reader.
+  service.reads.clear();
   return (container, backend);
 }
 
@@ -358,6 +363,10 @@ void main() {
           await settle(tester);
         case 'profile':
           await backend.debugCreateUnlockedLocalProfile(name: 'Other owned panel profile');
+          // Native catalogs belong to profiles. The replacement fixture must
+          // not expose the old profile's custom panels to the new dashboard.
+          store.panels = [];
+          store.sources = [];
           await settle(tester);
         case 'source':
           final selector = tester.widget<GlassSelect<String?>>(find.byType(GlassSelect<String?>).first);

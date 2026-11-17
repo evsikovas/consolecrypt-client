@@ -61,6 +61,7 @@ mod account;
 mod agent_reader;
 
 mod agent_tunnel;
+pub use agent_tunnel::setup::AgentSetupOperation;
 
 mod ai;
 

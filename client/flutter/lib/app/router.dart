@@ -19,7 +19,9 @@ import 'package:consolecrypt/hosts/hosts_screen.dart';
 import 'package:consolecrypt/hosts/known_hosts_screen.dart';
 import 'package:consolecrypt/keepass/kdbx_dialog.dart';
 import 'package:consolecrypt/kubernetes/kubernetes_screen.dart';
+import 'package:consolecrypt/monitoring/agent_setup_entry.dart';
 import 'package:consolecrypt/monitoring/job_context_focus.dart';
+import 'package:consolecrypt/monitoring/monitoring_host_focus.dart';
 import 'package:consolecrypt/monitoring/monitoring_screen.dart';
 import 'package:consolecrypt/rdp/rdp_screen.dart';
 import 'package:consolecrypt/settings/settings_screen.dart';
@@ -75,20 +77,34 @@ StatefulShellBranch _branch(String path, Widget child, {List<RouteBase> routes =
 // Same page type/key and cached branch; the optional extra can only propose a
 // one-use read-only focus. No query parameter or arbitrary payload is accepted.
 StatefulShellBranch _contextBranch(String path, Widget Function(JobContextFocus?) child) => StatefulShellBranch(
-  routes: [GoRoute(path: path, pageBuilder: (context, state) =>
-    _page(child(state.extra is JobContextFocus ? state.extra as JobContextFocus : null)))],
+  routes: [
+    GoRoute(
+      path: path,
+      pageBuilder: (context, state) =>
+          _page(child(state.extra is JobContextFocus ? state.extra as JobContextFocus : null)),
+    ),
+  ],
 );
 
 // Only typed in-memory created-receipt or explicit original-Host composer
 // focuses are accepted for this workflow.
 // It opens source metadata; it cannot validate, sign, execute, or install.
-StatefulShellBranch _automationBranch() => StatefulShellBranch(routes: [
-  GoRoute(path: AppRoutes.automation, pageBuilder: (context, state) => _page(AutomationScreen(
-    contextFocus: state.extra is JobContextFocus ? state.extra as JobContextFocus : null,
-    agentProjectFocus: state.extra is AgentInstallerProjectFocus ? state.extra as AgentInstallerProjectFocus : null,
-    cadvisorFocus: state.extra is AgentCadvisorComposerFocus ? state.extra as AgentCadvisorComposerFocus : null,
-  ))),
-]);
+StatefulShellBranch _automationBranch() => StatefulShellBranch(
+  routes: [
+    GoRoute(
+      path: AppRoutes.automation,
+      pageBuilder: (context, state) => _page(
+        AutomationScreen(
+          contextFocus: state.extra is JobContextFocus ? state.extra as JobContextFocus : null,
+          agentProjectFocus: state.extra is AgentInstallerProjectFocus
+              ? state.extra as AgentInstallerProjectFocus
+              : null,
+          cadvisorFocus: state.extra is AgentCadvisorComposerFocus ? state.extra as AgentCadvisorComposerFocus : null,
+        ),
+      ),
+    ),
+  ],
+);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final stage = ValueNotifier<AppStage>(ref.read(appStageProvider));
@@ -164,10 +180,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.rdp, const RdpScreen()),
           _branch(AppRoutes.kubernetes, const KubernetesScreen()),
           _branch(AppRoutes.databases, const DatabasesScreen()),
-            _contextBranch(AppRoutes.docker, (focus) => DockerScreen(contextFocus: focus)),
+          _contextBranch(AppRoutes.docker, (focus) => DockerScreen(contextFocus: focus)),
           _branch(AppRoutes.passwords, const KdbxManagerScreen()),
-            _automationBranch(),
-          _contextBranch(AppRoutes.monitoring, (focus) => MonitoringScreen(contextFocus: focus)),
+          _automationBranch(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.monitoring,
+                pageBuilder: (context, state) => _page(
+                  MonitoringScreen(
+                    contextFocus: state.extra is JobContextFocus ? state.extra as JobContextFocus : null,
+                    setupFocus: state.extra is AgentSetupFocus ? state.extra as AgentSetupFocus : null,
+                    hostFocus: state.extra is MonitoringHostFocus ? state.extra as MonitoringHostFocus : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     ],

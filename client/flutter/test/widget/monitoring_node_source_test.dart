@@ -188,7 +188,7 @@ void main() {
     expect(h.selected, isNull);
     expect(t.takeException(), isNull);
   });
-  testWidgets('actual Automation menu reaches monitoring-node form; cancel creates no project or run', (t) async {
+  testWidgets('Automation menu excludes monitoring-node deployment even when the service supports it', (t) async {
     final service = ParentService(), events = RuntimeNoticeEventAdapter(), backend = testBackend();
     addTearDown(backend.dispose);
     addTearDown(events.dispose);
@@ -216,10 +216,10 @@ void main() {
     await settle(t);
     expect(service.contextReads, 0);
     await tapKey(t, 'automation-project-actions');
-    await tapKey(t, 'automation-monitoring-node-template');
-    expect(find.byKey(const ValueKey('monitoring-node-dialog')), findsOneWidget);
-    expect(service.contextReads, 1);
-    await tapKey(t, 'monitoring-node-close');
+    expect(find.byKey(const ValueKey('automation-monitoring-node-template')), findsNothing);
+    expect(find.byKey(const ValueKey('automation-new-project')), findsOneWidget);
+    expect(find.byKey(const ValueKey('monitoring-node-dialog')), findsNothing);
+    expect(service.contextReads, 0);
     expect(service.creates, 0);
     expect(service.projectsCreated, isEmpty);
     expect(service.expected, isEmpty);
