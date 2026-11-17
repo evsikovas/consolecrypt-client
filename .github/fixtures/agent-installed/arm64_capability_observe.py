@@ -217,7 +217,8 @@ def sysctl_path_identity():
         info = parent.lstat()
         need(stat.S_ISDIR(info.st_mode) and info.st_uid == info.st_gid == 0
              and not info.st_mode & 0o022, 'diag_sysctl_root_parent')
-        facts.append(sysctl_stamp(info))
+        # /proc root nlink includes live process count, not physical identity.
+        facts.append(sysctl_stamp(info)[:5] if parent == pathlib.Path('/proc') else sysctl_stamp(info))
     info = path.lstat()
     need(stat.S_ISREG(info.st_mode) and info.st_uid == info.st_gid == 0
          and stat.S_IMODE(info.st_mode) == 0o644 and info.st_nlink == 1
