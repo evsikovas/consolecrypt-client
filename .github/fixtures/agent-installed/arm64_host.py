@@ -269,7 +269,7 @@ def validate(args):
 # Disposable-fixture custody only. The shipping installer never writes sysctl
 # or tears down its preserved manager prerequisite during product removal.
 ARM_HELPER_SHA = '29c84a9c814f44e3bc54853e9c989ba4b2c67d701e83cad4d9210971ef9886bf'
-ARM_CUSTODY_SHA = '453887c7d811fa071d6970afe390994a2effeae26e7b87aa4bf0bfa9468b8b1a'
+ARM_CUSTODY_SHA = '01ac2184846b2322ca2d01c1aa8b38b13bf4c21d5312a3916296841e3b9f91c7'
 ARM_MANAGER = 'user@10002.service'
 
 
@@ -503,13 +503,30 @@ def arm_cleanup_failure(error,gate):
         'temporary ARM manager copy or profile remains','bounded actual manager policy required',
         'complete manager policy required','exact actual manager entrypoint required',
         'collector_provision_unavailable','collector_control_exit','collector_provision_deadline',
-        'collector_control_output','collector_child_custody'}
+        'collector_control_output','collector_child_custody',
+        'diag_sysctl_close',
+        'diag_sysctl_exact_bytes',
+        'diag_sysctl_identity_changed',
+        'diag_sysctl_identity_missing',
+        'diag_sysctl_not_procfs_device',
+        'diag_sysctl_original_unknown',
+        'diag_sysctl_restore_compare',
+        'diag_sysctl_restore_readback',
+        'diag_sysctl_restore_resources_live',
+        'diag_sysctl_restore_short_write',
+        'diag_sysctl_root_inode',
+        'diag_sysctl_root_parent',
+        'diag_sysctl_tighten_compare',
+        'diag_sysctl_tighten_readback',
+        'diag_sysctl_tighten_short_write',
+        'diag_sysctl_unrecorded_state'}
     classes={'ValueError','FileNotFoundError','PermissionError','AssertionError','OSError',
         'TimeoutExpired','ProcessLookupError','RuntimeError','KeyError'}
     closed={arm_gate_retire.__code__:'arm_gate_retire',arm_gate_unlink.__code__:'arm_gate_unlink',
         arm_gate_policy.__code__:'arm_gate_policy',arm_gate_profiles.__code__:'arm_gate_profiles',need.__code__:'need'}
     for role,names in (('product',('need','root_file','parents','command','fields','arm_profile_state')),
-                       ('custody',('need','read','restore_transition_sysctl','profiles'))):
+                       ('custody',('need','read','restore_transition_sysctl','profiles',
+                                   'sysctl_bytes','sysctl_guard','sysctl_path_identity'))):
         module=gate.get(role)
         for name in names:
             function=getattr(module,name,None)
