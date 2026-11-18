@@ -2364,7 +2364,10 @@ void main() {
     await toolbarAction(tester, 'automation-git-open');
     await enterKey(tester, 'automation-git-name', 'Imported source');
     await enterKey(tester, 'automation-git-url', 'https://example.test/repo.git');
-    expect(find.byType(GlassSelect<String?>), findsNothing);
+    expect(
+      find.descendant(of: find.byType(AlertDialog).last, matching: find.byType(GlassSelect<String?>)),
+      findsNothing,
+    );
   }
 
   testWidgets('Git source remains unavailable until verified import completes', (tester) async {
@@ -2407,7 +2410,7 @@ void main() {
     await _open(tester, service);
     await gitInputs(tester);
     await tapKey(tester, 'automation-git-start');
-    expect(find.textContaining('Git is not installed'), findsOneWidget);
+    expect(find.textContaining('Install Git on this computer'), findsOneWidget);
     expect(service.importRunnerConnections, 0);
     expect(service.started, isFalse);
     expect(find.byKey(const ValueKey('automation-git-start')), findsOneWidget);

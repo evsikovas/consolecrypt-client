@@ -50,7 +50,7 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
   }
 
   Future<void> start() async {
-    if (busy || id != null) return;
+    if (busy || id != null || !current) return;
     if (name.text.trim().isEmpty || url.text.trim().isEmpty || reference.text.trim().isEmpty) {
       setState(() => error = FormatException(context.l10n.automationGitFields));
       return;
