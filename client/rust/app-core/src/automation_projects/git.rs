@@ -119,7 +119,9 @@ impl AppCore {
         ca_pem: Option<String>,
     ) -> AppResult<AutomationProjectSummary> {
         let name = valid_name(&name)?;
-        crate::dto::parse_id("runner_id", &runner_id)?;
+        if !runner_id.is_empty() {
+            crate::dto::parse_id("runner_id", &runner_id)?;
+        }
         validate_ca(ca_pem.as_deref())?;
         let ca_digest = ca_pem
             .as_ref()
@@ -142,26 +144,36 @@ impl AppCore {
             return Err(AppError::VaultLocked);
         }
         let runtime = owner.automation.clone();
-        let runner = runtime
-            .connections
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(&runner_id)
-            .cloned()
-            .filter(|runner| !runner.peer.is_closed())
-            .ok_or_else(|| invalid("connect the selected Runner first"))?;
-        if runner.probe.pointer("/tools/git").and_then(Value::as_bool) != Some(true)
-            || runner
-                .probe
-                .pointer("/sandbox/filesystem")
-                .and_then(Value::as_bool)
-                != Some(true)
-            || runner
-                .probe
-                .pointer("/sandbox/pid")
-                .and_then(Value::as_bool)
-                != Some(true)
-        {
+        if runner_id.is_empty() && !cc_automation_core::git_workstation_available().await {
+            return Err(invalid("git_not_installed"));
+        }
+        let runner = if runner_id.is_empty() {
+            None
+        } else {
+            Some(
+                runtime
+                    .connections
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .get(&runner_id)
+                    .cloned()
+                    .filter(|runner| !runner.peer.is_closed())
+                    .ok_or_else(|| invalid("connect the selected Runner first"))?,
+            )
+        };
+        if runner.as_ref().is_some_and(|runner| {
+            runner.probe.pointer("/tools/git").and_then(Value::as_bool) != Some(true)
+                || runner
+                    .probe
+                    .pointer("/sandbox/filesystem")
+                    .and_then(Value::as_bool)
+                    != Some(true)
+                || runner
+                    .probe
+                    .pointer("/sandbox/pid")
+                    .and_then(Value::as_bool)
+                    != Some(true)
+        }) {
             return Err(invalid("isolated Runner with Git is required"));
         }
         let slot = runtime
@@ -206,6 +218,7 @@ impl AppCore {
         .map_err(|_| invalid("workspace worker stopped"))??;
         let row = json!({"version":1,"name":name,"revision":1,
             "source":{"kind":"git","path":temporary.path(),"status":"importing","runner_id":runner_id,
+                "import_location":if runner.is_none(){"workstation"}else{"runner"},
                 "url":url,"reference":reference,"ca_sha256":ca_digest},
             "created_at":chrono::Utc::now().timestamp(),"updated_at":chrono::Utc::now().timestamp()});
         let summary = summary(&id, &row, false);
@@ -289,7 +302,7 @@ struct ImportedTree {
 
 async fn import_tree(
     owner: &Arc<Session>,
-    runner: Arc<RunnerConnection>,
+    runner: Option<Arc<RunnerConnection>>,
     temporary: tempfile::TempDir,
     url: String,
     reference: String,
@@ -297,6 +310,9 @@ async fn import_tree(
     ca_pem: Option<String>,
     cancel: CancellationToken,
 ) -> AppResult<ImportedTree> {
+    let Some(runner) = runner else {
+        return import_workstation_tree(owner, temporary, url, reference, ca_pem, cancel).await;
+    };
     let mut response = runner
         .peer
         .request(
@@ -371,6 +387,58 @@ async fn import_tree(
     .await
     .map_err(|_| invalid("source receiver stopped"))??;
     Ok(source)
+}
+
+async fn import_workstation_tree(
+    owner: &Arc<Session>,
+    temporary: tempfile::TempDir,
+    url: String,
+    reference: String,
+    ca_pem: Option<String>,
+    cancel: CancellationToken,
+) -> AppResult<ImportedTree> {
+    let workspace = tempfile::Builder::new().prefix("git-data-").tempdir_in(
+        temporary
+            .path()
+            .parent()
+            .ok_or_else(|| invalid("workspace unavailable"))?,
+    )?;
+    let metadata = cc_automation_core::capture_git_workstation(
+        temporary.path(),
+        workspace.path(),
+        url,
+        reference,
+        ca_pem,
+        cancel.clone(),
+    )
+    .await
+    .map_err(automation_error)?;
+    let baseline_slot = tokio::select! {biased;
+        _=cancel.cancelled()=>return Err(invalid("source import cancelled")),
+        permit=owner.automation.baseline_slots.clone().acquire_owned()=>permit.map_err(|_|AppError::VaultLocked)?,
+    };
+    let cache = super::baseline::base(
+        owner
+            .dir
+            .as_ref()
+            .ok_or_else(|| invalid("persistent profile required"))?,
+    );
+    let io_slot = automation_io_slot(owner)?;
+    tokio::task::spawn_blocking(move || ->AppResult<ImportedTree>{
+        let _io_slot=io_slot;let _baseline_slot=baseline_slot;
+        if cancel.is_cancelled(){return Err(invalid("source import cancelled"))}
+        let root=ProjectRoot::open(temporary.path()).map_err(automation_error)?;
+        let revision=root.revision().map_err(automation_error)?;
+        let (actual,stamp)=root.git_source().map_err(automation_error)?.ok_or_else(||invalid("missing source provenance"))?;
+        if actual.url!=metadata.url || actual.reference!=metadata.reference || actual.commit!=metadata.commit
+            || actual.ca_sha256!=metadata.ca_sha256{return Err(invalid("source provenance changed"))}
+        let baseline=super::baseline::capture(&cache,&root,&revision,&cancel)?;
+        if cancel.is_cancelled(){return Err(invalid("source import cancelled"))}
+        let source=json!({"url":actual.url,"reference":actual.reference,"commit":actual.commit,
+            "ca_sha256":actual.ca_sha256,"metadata_sha256":stamp,"snapshot_digest":revision.digest});
+        let _path=temporary.keep();
+        Ok(ImportedTree{source,baseline})
+    }).await.map_err(|_|invalid("workspace worker stopped"))?
 }
 
 async fn persist_result(

@@ -9,6 +9,16 @@ use std::sync::{
     Arc,
 };
 
+fn phase_binding(root:&ProjectRoot,revision:&ProjectRevision,selected:Uuid,scope:Uuid,
+    phase:VaultValidationPhase,nonce:Uuid,playbook:&str,runtime:&VaultValidationRuntime,call_index:u8,
+)->AppResult<VaultValidationBinding> {
+    if selected.is_nil() {
+        root.bind_ephemeral_vault_validation(revision,scope,phase,nonce,playbook,runtime,call_index)
+    } else {
+        root.bind_vault_validation(revision,selected,scope,phase,nonce,playbook,runtime,call_index)
+    }.map_err(|_|invalid())
+}
+
 /// Native routing identity is not authority. The private owner retains the
 /// original explicit selection/project/session and both one-use phase budgets.
 pub(crate) struct NativeVaultValidation {
@@ -68,8 +78,7 @@ impl VaultCredentialReview {
             let current = root
                 .reopen_same_directory(&current_path)
                 .map_err(|_| invalid())?;
-            let binding = current
-                .bind_vault_validation(
+            let binding = phase_binding(&current,
                     &revision,
                     selected,
                     scope,
@@ -78,8 +87,7 @@ impl VaultCredentialReview {
                     &playbook,
                     &runtime,
                     0,
-                )
-                .map_err(|_| invalid())?;
+                )?;
             // Name still points to captured directory after the full walk.
             // Defined check point; no universal lock against later OS renames.
             root.reopen_same_directory(&current_path)
@@ -195,8 +203,7 @@ impl NativeVaultValidation {
             let current = root
                 .reopen_same_directory(&current_path)
                 .map_err(|_| invalid())?;
-            let binding = current
-                .bind_vault_validation(
+            let binding = phase_binding(&current,
                     &revision,
                     selected,
                     scope,
@@ -205,8 +212,7 @@ impl NativeVaultValidation {
                     &playbook,
                     &observed_runtime,
                     call_index,
-                )
-                .map_err(|_| invalid())?;
+                )?;
             // Name still points to captured directory after the full walk.
             // Defined check point; no universal lock against later OS renames.
             root.reopen_same_directory(&current_path)
@@ -236,17 +242,14 @@ impl NativeVaultValidation {
         binding.require_live().map_err(|_| invalid())?;
         let secret = tokio::select! {
             _=self.review.revoked.cancelled()=>return Err(invalid()),
-            secret=u.writer.read_secret(self.review.secret)=>secret.map_err(|_|invalid())?,
+            secret=self.review.password_value(&u)=>secret?,
         };
         let _profile = app.hold_session(&self.review.project.owner).await?;
         let _unlock = self.review.project.owner.hold_unlocked(&u).await?;
         self.review.check_held(&u).await?;
-        if secret.kind != SecretKind::Password {
-            return Err(invalid());
-        }
         let lease = VaultValidationPasswordLease::issue(
             &binding,
-            secret.value,
+            secret,
             self.review.revoked.child_token(),
         )
         .map_err(|_| invalid())?;

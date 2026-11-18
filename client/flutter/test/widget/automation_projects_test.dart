@@ -13,6 +13,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
@@ -408,13 +409,19 @@ class _SetupRunners extends _Runners implements AutomationRunnerSetupService {
 class _WslTerminal extends Fake implements TerminalService, LocalTerminalService {
   Completer<LocalShellProfiles>? pending;
   int lists = 0;
-  LocalShellProfiles value = const LocalShellProfiles(profiles: [
-    LocalShellProfile(id: 'wsl:Alpha', kind: 'wsl', label: 'Alpha', shell: 'sh', distribution: 'Alpha'),
-    LocalShellProfile(id: 'wsl:Beta', kind: 'wsl', label: 'Beta', shell: 'sh', distribution: 'Beta'),
-  ]);
+  LocalShellProfiles value = const LocalShellProfiles(
+    profiles: [
+      LocalShellProfile(id: 'wsl:Alpha', kind: 'wsl', label: 'Alpha', shell: 'sh', distribution: 'Alpha'),
+      LocalShellProfile(id: 'wsl:Beta', kind: 'wsl', label: 'Beta', shell: 'sh', distribution: 'Beta'),
+    ],
+  );
   @override
-  Future<LocalShellProfiles> listLocalProfiles() async { lists++; return pending?.future ?? value; }
+  Future<LocalShellProfiles> listLocalProfiles() async {
+    lists++;
+    return pending?.future ?? value;
+  }
 }
+
 class _WslSetup extends _SetupRunners {
   final terminal = _WslTerminal();
   bool osKnown = true;
@@ -422,15 +429,34 @@ class _WslSetup extends _SetupRunners {
   Future<AutomationJson> setupRunner(AutomationJson target, {required String operationId, bool install = false}) async {
     final result = await super.setupRunner(target, operationId: operationId, install: install);
     if (!install) {
-      return {...result, 'release': 'synthetic-kernel-wsl2', 'wsl2': true,
-        'os_release': osKnown ? {'id': 'fixture-os', 'version_id': '24.04', 'pretty_name': 'Actual captured distribution'} : 'unknown future shape'};
+      return {
+        ...result,
+        'release': 'synthetic-kernel-wsl2',
+        'wsl2': true,
+        'os_release': osKnown
+            ? {'id': 'fixture-os', 'version_id': '24.04', 'pretty_name': 'Actual captured distribution'}
+            : 'unknown future shape',
+      };
     }
-    return {...result, 'probe': {'helper': 'fixture-helper-17', 'system': 'Linux', 'machine': 'x86_64',
-      'python': '3.12.3', 'non_root': true, 'dependencies_ready': true, 'environment_digest': 'fixture-install-env',
-      'sandbox': {'filesystem': true, 'network': true, 'pid': true}, 'tools': {'ssh': true},
-      'packages': {'ansible-core': {'actual': 'fixture-core-version', 'compatible': true},
-        'ansible-runner': {'actual': 'fixture-runner-version', 'compatible': true},
-        'ansible-lint': {'actual': 'fixture-lint-version', 'compatible': true}}}};
+    return {
+      ...result,
+      'probe': {
+        'helper': 'fixture-helper-17',
+        'system': 'Linux',
+        'machine': 'x86_64',
+        'python': '3.12.3',
+        'non_root': true,
+        'dependencies_ready': true,
+        'environment_digest': 'fixture-install-env',
+        'sandbox': {'filesystem': true, 'network': true, 'pid': true},
+        'tools': {'ssh': true},
+        'packages': {
+          'ansible-core': {'actual': 'fixture-core-version', 'compatible': true},
+          'ansible-runner': {'actual': 'fixture-runner-version', 'compatible': true},
+          'ansible-lint': {'actual': 'fixture-lint-version', 'compatible': true},
+        },
+      },
+    };
   }
 }
 
@@ -489,6 +515,15 @@ class _PrerequisiteSetup extends _SetupRunners implements AutomationRunnerPrereq
 class _Sources extends _Runners implements AutomationGitService {
   bool started = false;
   String? cancelled;
+  String? importRunnerId;
+  int importRunnerConnections = 0;
+  Object? gitFailure;
+  @override
+  Future<AutomationJson> connectRunner(String id) async {
+    importRunnerConnections++;
+    return super.connectRunner(id);
+  }
+
   Completer<AutomationProject>? pendingStart;
   static const imported = AutomationProject(
     id: 'imported',
@@ -525,6 +560,8 @@ class _Sources extends _Runners implements AutomationGitService {
     required String reference,
     String? caPem,
   }) async {
+    importRunnerId = runnerId;
+    if (gitFailure != null) throw gitFailure!;
     started = true;
     return pendingStart == null ? imported : pendingStart!.future;
   }
@@ -537,8 +574,14 @@ class _Sources extends _Runners implements AutomationGitService {
 
 class _Groups extends _Runners implements AutomationInventoryService {
   final folder = Group.create('Independent ConsoleCrypt folder');
-  late final member = Host(id: ObjectId.generate(), name: 'Group fixture member', address: 'member.example.test',
-    groupId: folder.id, createdAt: DateTime.now().toUtc(), updatedAt: DateTime.now().toUtc());
+  late final member = Host(
+    id: ObjectId.generate(),
+    name: 'Group fixture member',
+    address: 'member.example.test',
+    groupId: folder.id,
+    createdAt: DateTime.now().toUtc(),
+    updatedAt: DateTime.now().toUtc(),
+  );
   AutomationJson? saved;
   int? savedRevision;
   Completer<AutomationJson>? pendingInventory;
@@ -590,8 +633,9 @@ class _Inventory extends _Runners implements AutomationSourceInventoryService {
   Future<AutomationJson> inventoryConfiguration(String projectId) async {
     configurations++;
     return pendingConfiguration?.future ??
-      {'version': 1, 'project_id': 'p', 'project_revision': 1, 'configuration': configuration};
+        {'version': 1, 'project_id': 'p', 'project_revision': 1, 'configuration': configuration};
   }
+
   @override
   Future<AutomationJson> startInventory(String projectId, String runnerId, List<AutomationJson> sources) async {
     chosenSources = sources;
@@ -640,15 +684,16 @@ class _Inventory extends _Runners implements AutomationSourceInventoryService {
   @override
   Future<AutomationJson> checkInventory(String id, AutomationJson configuration) async {
     checks++;
-    return pendingCheck?.future ?? report ??
-      {
-        'version': 1,
-        'preview_id': id,
-        'project_id': 'p',
-        'valid': true,
-        'conflict_count': 0,
-        'conflicts': <AutomationJson>[],
-      };
+    return pendingCheck?.future ??
+        report ??
+        {
+          'version': 1,
+          'preview_id': id,
+          'project_id': 'p',
+          'valid': true,
+          'conflict_count': 0,
+          'conflicts': <AutomationJson>[],
+        };
   }
 
   @override
@@ -685,37 +730,67 @@ class _SelectedInventory extends _Inventory implements AutomationInventorySelect
   }
 }
 
+class _YamlInventory extends _Inventory {
+  @override
+  Future<AutomationProjectRevision> files(String projectId) async => const AutomationProjectRevision(
+    digest: 'yaml-fixture',
+    bytes: 92,
+    entries: [
+      AutomationFileEntry(path: 'playbook.yml', directory: false),
+      AutomationFileEntry(path: 'inventory/hosts.yml', directory: false),
+      AutomationFileEntry(path: 'ansible.cfg', directory: false),
+    ],
+  );
+
+  @override
+  Future<AutomationProjectFile> readFile(String projectId, String path) async => switch (path) {
+    'ansible.cfg' => const AutomationProjectFile(
+      path: 'ansible.cfg',
+      text: '[defaults]\ninventory = ./inventory/hosts.yml\n',
+      sha256: 'config',
+      lineEndings: 'lf',
+    ),
+    'inventory/hosts.yml' => const AutomationProjectFile(
+      path: 'inventory/hosts.yml',
+      text: 'web:\n  hosts:\n    web_example:\n',
+      sha256: 'inventory',
+      lineEndings: 'lf',
+    ),
+    _ => await super.readFile(projectId, path),
+  };
+}
+
 AppServices _sameInventoryServices(AppServices services) => AppServices(
-        profiles: services.profiles,
-        auth: services.auth,
-        vault: services.vault,
-        inventory: services.inventory,
-        terminal: services.terminal,
-        sftp: services.sftp,
-        tunnels: services.tunnels,
-        snippets: services.snippets,
-        ai: services.ai,
-        devices: services.devices,
-        sync: services.sync,
-        settings: services.settings,
-        backups: services.backups,
-        files: services.files,
-        sftpBrowser: services.sftpBrowser,
-        prompts: services.prompts,
-        sharing: services.sharing,
-        teams: services.teams,
-        enrollment: services.enrollment,
-        kubernetes: services.kubernetes,
-        databases: services.databases,
-        docker: services.docker,
-        automation: services.automation,
-        monitoring: services.monitoring,
-        jobNotices: services.jobNotices,
-        runtimeNotices: services.runtimeNotices,
-        notes: services.notes,
-        developer: services.developer,
-        onDispose: services.onDispose,
-        approvedExitActions: services.approvedExitActions,
+  profiles: services.profiles,
+  auth: services.auth,
+  vault: services.vault,
+  inventory: services.inventory,
+  terminal: services.terminal,
+  sftp: services.sftp,
+  tunnels: services.tunnels,
+  snippets: services.snippets,
+  ai: services.ai,
+  devices: services.devices,
+  sync: services.sync,
+  settings: services.settings,
+  backups: services.backups,
+  files: services.files,
+  sftpBrowser: services.sftpBrowser,
+  prompts: services.prompts,
+  sharing: services.sharing,
+  teams: services.teams,
+  enrollment: services.enrollment,
+  kubernetes: services.kubernetes,
+  databases: services.databases,
+  docker: services.docker,
+  automation: services.automation,
+  monitoring: services.monitoring,
+  jobNotices: services.jobNotices,
+  runtimeNotices: services.runtimeNotices,
+  notes: services.notes,
+  developer: services.developer,
+  onDispose: services.onDispose,
+  approvedExitActions: services.approvedExitActions,
 );
 
 Future<void> inventoryInputs(WidgetTester tester) async {
@@ -1263,6 +1338,28 @@ void main() {
     expect(service.chosenSources, isNull);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('YAML inventory selected by ansible.cfg previews without connecting a Runner', (tester) async {
+    final service = _YamlInventory();
+    await _open(tester, service);
+    await toolbarAction(tester, 'automation-inventory-open');
+    final file = find.byKey(const ValueKey('automation-inventory-file-inventory/hosts.yml'));
+    expect(tester.widget<CheckboxListTile>(file).value, isTrue);
+    final preview = find.byKey(const ValueKey('automation-inventory-start'));
+    expect(tester.widget<FilledButton>(preview).onPressed, isNotNull);
+    await tester.runAsync(() async {
+      await tester.tap(preview);
+      // compute() parses YAML in an isolate.
+      for (var attempt = 0; attempt < 20; attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+        await tester.pump();
+        if (find.text('web_example').evaluate().isNotEmpty) break;
+      }
+    });
+    expect(find.text('web_example'), findsOneWidget);
+    expect(service.chosenSources, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('mixed inventory saves the explicit saved host selection and external preview together', (tester) async {
     final service = _SelectedInventory();
     await _open(tester, service);
@@ -1434,19 +1531,29 @@ void main() {
     service.terminal.value = const LocalShellProfiles(wslDiscovery: WslDiscoveryStatus.available);
     await tapKey(tester, 'automation-wsl-refresh');
     expect(find.text('WSL distribution discovery status is unknown. Refresh to check again.'), findsOneWidget);
-    expect(service.calls, isEmpty); expect(service.created, isNull);
+    expect(service.calls, isEmpty);
+    expect(service.created, isNull);
     expect(tester.takeException(), isNull);
   }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
-  testWidgets('WSL executable missing is explicit discovery metadata with no feature repair or default selection', (tester) async {
-    final service = _WslSetup()..terminal.value = const LocalShellProfiles(wslDiscovery: WslDiscoveryStatus.executableMissing);
+  testWidgets('WSL executable missing is explicit discovery metadata with no feature repair or default selection', (
+    tester,
+  ) async {
+    final service = _WslSetup()
+      ..terminal.value = const LocalShellProfiles(wslDiscovery: WslDiscoveryStatus.executableMissing);
     await openSetup(tester, service, size: const Size(500, 760));
     expect(find.text('The WSL executable was not found at the system path.'), findsOneWidget);
     expect(find.text('No registered WSL distributions were found.'), findsNothing);
-    expect(tester.widget<GlassSelect<String?>>(find.byKey(const ValueKey('automation-wsl-distribution'))).value, isNull);
-    expect(service.calls, isEmpty); expect(service.created, isNull);
+    expect(
+      tester.widget<GlassSelect<String?>>(find.byKey(const ValueKey('automation-wsl-distribution'))).value,
+      isNull,
+    );
+    expect(service.calls, isEmpty);
+    expect(service.created, isNull);
     expect(tester.takeException(), isNull);
   }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
-  testWidgets('WSL typed discovery failures stay distinct and explicit refresh preserves no setup consent', (tester) async {
+  testWidgets('WSL typed discovery failures stay distinct and explicit refresh preserves no setup consent', (
+    tester,
+  ) async {
     final service = _WslSetup();
     final reasons = <WslDiscoveryStatus, String>{
       WslDiscoveryStatus.spawnFailed: 'The WSL executable could not be started.',
@@ -1464,7 +1571,8 @@ void main() {
       }
       expect(find.text(entry.value), findsOneWidget);
       expect(find.text('No registered WSL distributions were found.'), findsNothing);
-      expect(service.calls, isEmpty); expect(service.created, isNull);
+      expect(service.calls, isEmpty);
+      expect(service.created, isNull);
       expect(tester.takeException(), isNull);
     }
   }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
@@ -1487,8 +1595,10 @@ void main() {
     await tester.ensureVisible(find.text('Save').last);
     await tester.tap(find.text('Save').last);
     await settle(tester);
-    expect(service.created, {'kind': 'local', 'launch': {'kind': 'wsl', ..._SetupRunners.paths,
-      'distribution': 'Beta', 'user': 'fixture'}});
+    expect(service.created, {
+      'kind': 'local',
+      'launch': {'kind': 'wsl', ..._SetupRunners.paths, 'distribution': 'Beta', 'user': 'fixture'},
+    });
     expect(service.calls, [false]);
     expect(tester.takeException(), isNull);
   }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
@@ -1496,7 +1606,9 @@ void main() {
     testWidgets('WSL OS version uses actual optional scan metadata, known=$known', (tester) async {
       final service = _WslSetup()..osKnown = known;
       await openSetup(tester, service);
-      tester.widget<GlassSelect<String?>>(find.byKey(const ValueKey('automation-wsl-distribution'))).onChanged!('Alpha');
+      tester.widget<GlassSelect<String?>>(find.byKey(const ValueKey('automation-wsl-distribution'))).onChanged!(
+        'Alpha',
+      );
       await settle(tester);
       await tapKey(tester, 'automation-detect-runner');
       final version = tester.widget<Text>(find.byKey(const ValueKey('automation-runner-os-version'))).data!;
@@ -1540,8 +1652,11 @@ void main() {
     expect(find.textContaining('fixture-helper-17'), findsOneWidget);
     expect(find.textContaining('fixture-core-version'), findsOneWidget);
     expect(find.text('OpenSSH'), findsOneWidget);
-    await tester.scrollUntilVisible(find.byKey(const ValueKey('automation-runner-advanced')), 220,
-      scrollable: find.descendant(of: find.byType(AlertDialog).last, matching: find.byType(Scrollable)).first);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('automation-runner-advanced')),
+      220,
+      scrollable: find.descendant(of: find.byType(AlertDialog).last, matching: find.byType(Scrollable)).first,
+    );
     await tapKey(tester, 'automation-runner-advanced');
     final manual = find.byWidgetPredicate((w) => w is TextField && w.controller?.text == _SetupRunners.paths['python']);
     await tester.ensureVisible(manual);
@@ -1700,7 +1815,9 @@ void main() {
     expect(service.savedExpected, isNull);
     expect(tester.takeException(), isNull);
   }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
-  testWidgets('ANS01 pending application picker cannot revive after hiding and returning to Automation', (tester) async {
+  testWidgets('ANS01 pending application picker cannot revive after hiding and returning to Automation', (
+    tester,
+  ) async {
     final service = _Editor()..picker.pending = Completer<String?>();
     final container = await _open(tester, service);
     await tapKey(tester, 'automation-file-playbook.yml');
@@ -1740,8 +1857,10 @@ void main() {
     expect(replacement.picker.calls, 0);
     expect(service.opened, isEmpty);
     expect(replacement.opened, isEmpty);
-    expect(tester.widget<TextField>(find.byKey(const ValueKey('automation-editor'))).controller!.text,
-      '# original unsaved buffer');
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('automation-editor'))).controller!.text,
+      '# original unsaved buffer',
+    );
     expect(tester.takeException(), isNull);
   }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
   testWidgets('ANS01 explicit save then editor open uses only the resulting saved SHA', (tester) async {
@@ -1836,26 +1955,33 @@ void main() {
     expect(find.byKey(const ValueKey('automation-editor')), findsNothing);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.desktop());
-  testWidgets('inventory original owner denies start after pending Runner connect and same-profile service replacement', (tester) async {
-    final service = _Inventory()..pendingProbe = Completer<AutomationJson>();
-    final container = await _open(tester, service);
-    await inventoryInputs(tester);
-    await tapKey(tester, 'automation-inventory-start');
-    final replacement = _Inventory();
-    container.updateOverrides([
-      appServicesProvider.overrideWithValue(container.read(appServicesProvider)),
-      automationServiceProvider.overrideWithValue(replacement),
-      hostsProvider.overrideWith((ref) => Stream.value([service.member, service.other])),
-    ]);
-    await settle(tester);
-    service.pendingProbe!.complete(<String, dynamic>{});
-    await settle(tester);
-    expect(service.chosenSources, isNull); expect(replacement.chosenSources, isNull);
-    expect(service.discarded, isEmpty); expect(replacement.discarded, isEmpty);
-    expect(find.byKey(const ValueKey('automation-inventory-start')), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-  testWidgets('inventory hidden then reopened cannot adopt a late preview and discards only original issued ID', (tester) async {
+  testWidgets(
+    'inventory original owner denies start after pending Runner connect and same-profile service replacement',
+    (tester) async {
+      final service = _Inventory()..pendingProbe = Completer<AutomationJson>();
+      final container = await _open(tester, service);
+      await inventoryInputs(tester);
+      await tapKey(tester, 'automation-inventory-start');
+      final replacement = _Inventory();
+      container.updateOverrides([
+        appServicesProvider.overrideWithValue(container.read(appServicesProvider)),
+        automationServiceProvider.overrideWithValue(replacement),
+        hostsProvider.overrideWith((ref) => Stream.value([service.member, service.other])),
+      ]);
+      await settle(tester);
+      service.pendingProbe!.complete(<String, dynamic>{});
+      await settle(tester);
+      expect(service.chosenSources, isNull);
+      expect(replacement.chosenSources, isNull);
+      expect(service.discarded, isEmpty);
+      expect(replacement.discarded, isEmpty);
+      expect(find.byKey(const ValueKey('automation-inventory-start')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('inventory hidden then reopened cannot adopt a late preview and discards only original issued ID', (
+    tester,
+  ) async {
     final service = _Inventory()..pendingStart = Completer<AutomationJson>();
     final container = await _open(tester, service);
     await inventoryInputs(tester);
@@ -1864,10 +1990,16 @@ void main() {
     await settle(tester);
     container.read(routerProvider).go(AppRoutes.automation);
     await settle(tester);
-    service.pendingStart!.complete({'version': 1, 'preview_id': 'late-original',
-      'project_id': 'p', 'project_revision': 1, 'state': 'preparing'});
+    service.pendingStart!.complete({
+      'version': 1,
+      'preview_id': 'late-original',
+      'project_id': 'p',
+      'project_revision': 1,
+      'state': 'preparing',
+    });
     await settle(tester);
-    expect(service.discarded, ['late-original']); expect(service.saved, isNull);
+    expect(service.discarded, ['late-original']);
+    expect(service.saved, isNull);
     expect(find.byKey(const ValueKey('automation-inventory-save')), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -1884,40 +2016,78 @@ void main() {
       hostsProvider.overrideWith((ref) => Stream.value([service.member, service.other])),
     ]);
     await settle(tester);
-    service.pendingCheck!.complete({'version': 1, 'preview_id': 'preview1',
-      'project_id': 'p', 'valid': true, 'conflict_count': 0, 'conflicts': <AutomationJson>[]});
+    service.pendingCheck!.complete({
+      'version': 1,
+      'preview_id': 'preview1',
+      'project_id': 'p',
+      'valid': true,
+      'conflict_count': 0,
+      'conflicts': <AutomationJson>[],
+    });
     await settle(tester);
-    expect(service.saved, isNull); expect(replacement.saved, isNull);
-    expect(service.discarded, ['preview1']); expect(replacement.discarded, isEmpty);
+    expect(service.saved, isNull);
+    expect(replacement.saved, isNull);
+    expect(service.discarded, ['preview1']);
+    expect(replacement.discarded, isEmpty);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('inventory changed source requires explicit rebind and another check before committing current provenance', (tester) async {
-    final service = _Inventory();
-    service.configuration = {'version': 1, 'sources': [{'path': 'hosts.ini', 'format': 'ini'}],
-      'mode': 'external_only', 'bindings': {'service_00000': {'host_id': service.member.id.value,
-        'resolution': 'match', 'source': {'address': '192.0.2.12', 'port': 22, 'username': null}}}};
-    service.report = {'version': 1, 'preview_id': 'preview1', 'project_id': 'p',
-      'valid': false, 'conflict_count': 1, 'conflicts': [
-        {'alias': 'service_00000', 'kind': 'source_changed', 'saved': null}]};
-    await _open(tester, service);
-    await toolbarAction(tester, 'automation-inventory-open');
-    await tester.tap(find.byKey(const ValueKey('automation-inventory-runner')));
-    await settle(tester); await tester.tap(find.text('Remote fixture').last); await settle(tester);
-    await tapKey(tester, 'automation-inventory-start');
-    expect(find.text('hosts.ini'), findsWidgets);
-    expect(find.textContaining('deployer@192.0.2.10:2222'), findsOneWidget);
-    await tapKey(tester, 'automation-inventory-save');
-    expect(service.saved, isNull); expect(service.checks, 1);
-    await tapKey(tester, 'automation-inventory-rebind-service_00000');
-    expect(service.saved, isNull); expect(service.checks, 1);
-    service.report = null;
-    await tapKey(tester, 'automation-inventory-save');
-    expect(service.checks, 2);
-    expect(service.saved!['bindings'], {'service_00000': {'host_id': service.member.id.value,
-      'resolution': 'match', 'source': {'address': '192.0.2.10', 'port': 2222, 'username': 'deployer'}}});
-    expect(service.saved!.containsKey('credentials'), false);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'inventory changed source requires explicit rebind and another check before committing current provenance',
+    (tester) async {
+      final service = _Inventory();
+      service.configuration = {
+        'version': 1,
+        'sources': [
+          {'path': 'hosts.ini', 'format': 'ini'},
+        ],
+        'mode': 'external_only',
+        'bindings': {
+          'service_00000': {
+            'host_id': service.member.id.value,
+            'resolution': 'match',
+            'source': {'address': '192.0.2.12', 'port': 22, 'username': null},
+          },
+        },
+      };
+      service.report = {
+        'version': 1,
+        'preview_id': 'preview1',
+        'project_id': 'p',
+        'valid': false,
+        'conflict_count': 1,
+        'conflicts': [
+          {'alias': 'service_00000', 'kind': 'source_changed', 'saved': null},
+        ],
+      };
+      await _open(tester, service);
+      await toolbarAction(tester, 'automation-inventory-open');
+      await tester.tap(find.byKey(const ValueKey('automation-inventory-runner')));
+      await settle(tester);
+      await tester.tap(find.text('Remote fixture').last);
+      await settle(tester);
+      await tapKey(tester, 'automation-inventory-start');
+      expect(find.text('hosts.ini'), findsWidgets);
+      expect(find.textContaining('deployer@192.0.2.10:2222'), findsOneWidget);
+      await tapKey(tester, 'automation-inventory-save');
+      expect(service.saved, isNull);
+      expect(service.checks, 1);
+      await tapKey(tester, 'automation-inventory-rebind-service_00000');
+      expect(service.saved, isNull);
+      expect(service.checks, 1);
+      service.report = null;
+      await tapKey(tester, 'automation-inventory-save');
+      expect(service.checks, 2);
+      expect(service.saved!['bindings'], {
+        'service_00000': {
+          'host_id': service.member.id.value,
+          'resolution': 'match',
+          'source': {'address': '192.0.2.10', 'port': 2222, 'username': 'deployer'},
+        },
+      });
+      expect(service.saved!.containsKey('credentials'), false);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('inventory parent action cannot adopt service replacement before deferred dialog build', (tester) async {
     final service = _Inventory()..pendingConfiguration = Completer<AutomationJson>();
     final container = await _open(tester, service);
@@ -1933,10 +2103,16 @@ void main() {
       hostsProvider.overrideWith((ref) => Stream.value([service.member, service.other])),
     ]);
     await settle(tester);
-    service.pendingConfiguration!.complete({'version': 1, 'project_id': 'p', 'project_revision': 1, 'configuration': null});
+    service.pendingConfiguration!.complete({
+      'version': 1,
+      'project_id': 'p',
+      'project_revision': 1,
+      'configuration': null,
+    });
     await settle(tester);
     expect(find.byKey(const ValueKey('automation-inventory-start')), findsNothing);
-    expect(service.chosenSources, isNull); expect(service.saved, isNull);
+    expect(service.chosenSources, isNull);
+    expect(service.saved, isNull);
     expect(service.configurations, 0);
     expect(identical(original, replacement), false);
     expect(tester.takeException(), isNull);
@@ -2188,11 +2364,7 @@ void main() {
     await toolbarAction(tester, 'automation-git-open');
     await enterKey(tester, 'automation-git-name', 'Imported source');
     await enterKey(tester, 'automation-git-url', 'https://example.test/repo.git');
-    await tester.ensureVisible(find.byType(GlassSelect<String?>));
-    await tester.tap(find.byType(GlassSelect<String?>));
-    await settle(tester);
-    await tester.tap(find.text('Remote fixture').last);
-    await settle(tester);
+    expect(find.byType(GlassSelect<String?>), findsNothing);
   }
 
   testWidgets('Git source remains unavailable until verified import completes', (tester) async {
@@ -2200,6 +2372,8 @@ void main() {
     await _open(tester, service);
     await gitInputs(tester);
     await tapKey(tester, 'automation-git-start');
+    expect(service.importRunnerId, '');
+    expect(service.importRunnerConnections, 0);
     final tile = tester.widget<ListTile>(find.byKey(const ValueKey('automation-project-imported')));
     expect(tile.onTap, isNull);
     service.ready = true;
@@ -2221,6 +2395,22 @@ void main() {
     await tester.tap(find.text('Cancel').last);
     await settle(tester);
     expect(service.cancelled, 'imported');
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('missing local Git is explained without connecting an Ansible Runner', (tester) async {
+    final service = _Sources()
+      ..gitFailure = const AppException(
+        AppErrorCode.validation,
+        'local Git unavailable',
+        args: {'field': 'automation_git', 'rule': 'git_not_installed'},
+      );
+    await _open(tester, service);
+    await gitInputs(tester);
+    await tapKey(tester, 'automation-git-start');
+    expect(find.textContaining('Git is not installed'), findsOneWidget);
+    expect(service.importRunnerConnections, 0);
+    expect(service.started, isFalse);
+    expect(find.byKey(const ValueKey('automation-git-start')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   testWidgets('a late Git start after closing the dialog is cancelled without reopening it', (tester) async {

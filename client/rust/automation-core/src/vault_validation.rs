@@ -53,6 +53,10 @@ impl VaultValidationRuntime {
         let pin: serde_json::Value =
             serde_json::from_str(include_str!("vault_validation/runtime-pin-v1.json"))
                 .map_err(|_| AutomationError::Invalid("invalid reviewed Vault runtime pin"))?;
+        let legacy:serde_json::Value=serde_json::from_str(include_str!("vault_validation/runtime-pin-v1-legacy.json"))
+            .map_err(|_|AutomationError::Invalid("invalid reviewed legacy Vault runtime pin"))?;
+        let approved_code=[&pin,&legacy].iter().any(|approved|
+            value["environment_digest"]==approved["environment_digest"] && value["helper_digest"]==approved["helper_digest"]);
         let mut identity = serde_json::Map::new();
         for key in [
             "helper",
@@ -82,8 +86,7 @@ impl VaultValidationRuntime {
         .map_err(|_| AutomationError::Invalid("invalid Vault runtime identity"))?;
         let derived = hex::encode(Sha256::digest(canonical));
         if parsed.environment_digest != derived
-            || value["environment_digest"] != pin["environment_digest"]
-            || value["helper_digest"] != pin["helper_digest"]
+            || !approved_code
             || !parsed.dependencies_ready
             || !parsed.non_root
             || !parsed.sandbox.filesystem
@@ -192,6 +195,18 @@ impl ProjectRoot {
         runtime: &VaultValidationRuntime,
         call_index: u8,
     ) -> Result<VaultValidationBinding> {
+        self.bind_vault_validation_input(captured,Some(selected),scope,phase,nonce,playbook,runtime,call_index)
+    }
+    pub fn bind_ephemeral_vault_validation(
+        &self, captured:&ProjectRevision, scope:Uuid, phase:VaultValidationPhase,
+        nonce:Uuid, playbook:&str, runtime:&VaultValidationRuntime, call_index:u8,
+    ) -> Result<VaultValidationBinding> {
+        self.bind_vault_validation_input(captured,None,scope,phase,nonce,playbook,runtime,call_index)
+    }
+    fn bind_vault_validation_input(
+        &self, captured:&ProjectRevision, selected:Option<Uuid>, scope:Uuid, phase:VaultValidationPhase,
+        nonce:Uuid, playbook:&str, runtime:&VaultValidationRuntime, call_index:u8,
+    ) -> Result<VaultValidationBinding> {
         crate::validate_project_path(playbook)?;
         runtime.require_fresh()?;
         let environment = runtime.environment_digest();
@@ -207,7 +222,10 @@ impl ProjectRoot {
         {
             return Err(AutomationError::Invalid("invalid Vault validation binding"));
         }
-        let reference = self.bind_vault_input(captured, selected)?;
+        let reference = match selected {
+            Some(id)=>self.bind_vault_input(captured,id)?,
+            None=>self.bind_ephemeral_vault_input(captured)?,
+        };
         Ok(VaultValidationBinding {
             reference,
             scope,

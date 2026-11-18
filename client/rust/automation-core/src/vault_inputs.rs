@@ -46,6 +46,7 @@ pub struct VaultInputBinding {
     reference_sha256: String,
 }
 impl VaultInputBinding {
+    pub fn is_ephemeral(&self) -> bool { self.credential.is_nil() }
     pub fn credential_id(&self) -> Uuid {
         self.credential
     }
@@ -58,6 +59,17 @@ impl VaultInputBinding {
 }
 
 impl ProjectRoot {
+    /// Distinct Native-owned one-launch input, never a saved credential or a
+    /// fabricated project file. Absence of a saved reference is part of proof.
+    pub fn bind_ephemeral_vault_input(&self, captured: &ProjectRevision) -> Result<VaultInputBinding> {
+        if self.revision()? != *captured || captured.entries.iter().any(|e|e.path()==VAULT_INPUT_FILE) {
+            return Err(AutomationError::FileChanged);
+        }
+        let mut hasher=Sha256::new();
+        hasher.update(b"cc-ansible-vault-ephemeral/v1\0");
+        hasher.update(captured.digest.as_bytes());
+        Ok(VaultInputBinding{credential:Uuid::nil(),revision:captured.digest.clone(),reference_sha256:hex::encode(hasher.finalize())})
+    }
     /// An explicit Native selection must match the ref; the ref cannot request
     /// a different credential. No resolver, password, URL or helper is involved.
     pub fn bind_vault_input(

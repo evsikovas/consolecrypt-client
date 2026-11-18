@@ -24,6 +24,8 @@ def main():
     from .errors import require
     require(type(enabled) is bool,'vault_client','Invalid fixed Vault job mode')
     fixed_env={}
+    sudo_enabled=spec.get('become_native',False)
+    require(type(sudo_enabled) is bool,'become_native','Invalid fixed Native sudo mode')
     if enabled:
         # Reuse the SAME trusted mode0500 path/env enforcement as validation.
         # It clears project-supplied identity/password sources; only our fixed
@@ -32,6 +34,7 @@ def main():
         _vault_client({'vault_validation':True})
         fixed_env={'ANSIBLE_VAULT_PASSWORD_FILE':'/tool/vault-password-client',
             'ANSIBLE_VAULT_IDENTITY_LIST':'','ANSIBLE_ASK_VAULT_PASS':'False','ANSIBLE_VAULT_ID_MATCH':'False'}
+    fixed_env['CC_NATIVE_SUDO']='1' if sudo_enabled else '0'
     Path('/work/runner').mkdir(mode=0o700)
     stats = {}
     def event(event):

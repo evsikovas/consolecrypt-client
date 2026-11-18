@@ -10,6 +10,73 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get automationProjectChooseFolderEmpty =>
+      'Для нового проекта выберите пустую папку. Папку с готовыми файлами можно добавить через «Открыть папку».';
+
+  @override
+  String get automationGitUnavailable =>
+      'Установите Git на этом компьютере и перезапустите ConsoleCrypt, чтобы импортировать репозиторий.';
+
+  @override
+  String get automationProjectRoleHelp => 'Создаёт стандартную структуру роли Ansible и плейбук для её запуска.';
+
+  @override
+  String get monitoringBrowseNow => 'Сейчас';
+
+  @override
+  String get automationNewProjectName => 'Название проекта';
+
+  @override
+  String get automationNewProjectType => 'Шаблон проекта';
+
+  @override
+  String get automationProjectPlaybook => 'Только плейбук';
+
+  @override
+  String get automationProjectRole => 'Роль Ansible и плейбук';
+
+  @override
+  String get automationProjectRoleName => 'Имя роли';
+
+  @override
+  String get automationProjectProfileFolder => 'Сохранить в локальном профиле ConsoleCrypt';
+
+  @override
+  String get automationProjectChooseFolder => 'Выбрать пустую папку…';
+
+  @override
+  String get automationProjectUseProfile => 'Использовать папку профиля';
+
+  @override
+  String get automationProjectChooseFolderError => 'Не удалось открыть выбор папки.';
+
+  @override
+  String get automationInventoryRunnerHelp =>
+      'Имена хостов и групп из YAML можно посмотреть сразу. Выберите Runner, чтобы проверить inventory через Ansible и сохранить настройки.';
+
+  @override
+  String get automationInventoryYamlPreviewFailed =>
+      'Не удалось прочитать статический YAML inventory. Выберите файл со списком хостов или проверьте его через Runner.';
+
+  @override
+  String get automationInventoryYamlPreviewHelp =>
+      'Хосты и группы, перечисленные в файле. Для подготовки запуска проверьте inventory через Runner.';
+
+  @override
+  String get automationInventoryYamlPreviewEmpty => 'Хосты и группы не найдены.';
+
+  @override
+  String get automationConfigFromFile =>
+      'Источник настроек — ansible.cfg в корне проекта. Поддерживаемые параметры загружены из файла.';
+
+  @override
+  String get automationConfigNewFile => 'При сохранении файл ansible.cfg будет создан в корне проекта.';
+
+  @override
+  String get awxIntro =>
+      'Вкладка нужна, если у вас уже работает AWX или Ansible Automation Controller. Добавьте подключение, загрузите доступные шаблоны и выберите задание. Проверьте параметры и запустите его. Плейбук выполнится на стороне AWX с его inventory и учётными данными. Здесь можно посмотреть статус и события задания.';
+
+  @override
   String get metricsAiTitle => 'Объяснить выбранные данные мониторинга';
 
   @override
@@ -14996,7 +15063,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationGitHint =>
-      'Выбранный Runner загрузит публичный HTTPS-репозиторий. Файлы сохранятся в этом профиле; импорт ничего не запускает. Подмодули и ключи Git пока не подключаются.';
+      'Git на этом компьютере скачивает публичный HTTPS-репозиторий в локальный профиль ConsoleCrypt. При импорте считываются файлы проекта. Подмодули и закрытые репозитории недоступны.';
 
   @override
   String get automationGitUrl => 'HTTPS-адрес репозитория';
@@ -15011,7 +15078,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationGitCa => 'Публичный сертификат CA в PEM (без приватного ключа)';
 
   @override
-  String get automationGitFields => 'Укажите название, HTTPS-адрес, ветку или тег и Runner.';
+  String get automationGitFields => 'Укажите название, HTTPS-адрес, ветку или тег.';
 
   @override
   String get automationGitReceiving => 'Получение и проверка файлов…';
@@ -17701,13 +17768,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationPortableExportAction => 'Экспорт зашифрованного пакета...';
 
   @override
-  String get automationPortableInspectAction => 'Проверить пакет проекта...';
+  String get automationPortableInspectAction => 'Проверить архив ConsoleCrypt…';
 
   @override
   String get automationPortableExportTitle => 'Экспорт зашифрованного пакета проекта';
 
   @override
-  String get automationPortableInspectTitle => 'Проверка зашифрованного пакета проекта';
+  String get automationPortableInspectTitle => 'Проверка зашифрованного архива ConsoleCrypt';
 
   @override
   String get automationPortablePassword => 'Отдельный пароль пакета';
@@ -17751,7 +17818,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationPortableInspectWarning =>
-      'Пакет будет расшифрован только для проверки. Файлы и настройки проектов не изменятся.';
+      'Здесь можно посмотреть состав зашифрованного архива проекта ConsoleCrypt перед импортом. Введите пароль архива, заданный при экспорте.';
 
   @override
   String get automationPortableUseSaved => 'Взять сохранённые файлы';
@@ -20888,4 +20955,132 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get automationWorkflowHint =>
       'Выберите плейбук, хосты или группу, проверьте и запустите. Ansible работает в выбранном Runner.';
+
+  @override
+  String get monitoringLiveNow => 'Сейчас';
+
+  @override
+  String get monitoringLiveHistory => 'История';
+
+  @override
+  String get monitoringLiveTitle => 'Нагрузка сервера';
+
+  @override
+  String get monitoringLiveHint => 'Данные читаются по SSH. Графики заполняются, пока открыт этот экран.';
+
+  @override
+  String get monitoringLiveLinuxOnly => 'Сейчас этот экран показывает текущие метрики Linux-серверов.';
+
+  @override
+  String get monitoringLiveNativeOnly =>
+      'Для текущих метрик нужен встроенный SSH. Его можно выбрать в настройках хоста.';
+
+  @override
+  String get monitoringLiveReadFailed =>
+      'Не удалось прочитать метрики сервера. Проверьте подключение по SSH и повторите попытку.';
+
+  @override
+  String get monitoringLiveConnecting => 'Подключаемся по SSH и читаем первые значения…';
+
+  @override
+  String get monitoringLiveLastSample => 'Обновлено в';
+
+  @override
+  String get monitoringLiveUptime => 'Время работы';
+
+  @override
+  String monitoringLiveUptimeValue(int days, int hours, int minutes) {
+    return '$days д $hours ч $minutes мин';
+  }
+
+  @override
+  String get monitoringLiveCpu => 'Загрузка процессора';
+
+  @override
+  String get monitoringLiveRam => 'Занято памяти';
+
+  @override
+  String get monitoringLiveDisk => 'Занято на системном диске';
+
+  @override
+  String get monitoringLiveNetwork => 'Сеть';
+
+  @override
+  String get monitoringLiveValues => 'Значения';
+
+  @override
+  String get monitoringBrowseTitle => 'Посмотреть метрики';
+
+  @override
+  String get monitoringBrowseUp => 'Доступность целей';
+
+  @override
+  String get monitoringBrowseHint => 'Откройте готовый график или найдите метрику по названию.';
+
+  @override
+  String get monitoringBrowseAll => 'Все метрики';
+
+  @override
+  String get monitoringBrowseSearch => 'Название метрики';
+
+  @override
+  String get monitoringBrowseNoMatch => 'По этому запросу метрик нет.';
+
+  @override
+  String get monitoringBrowseEmpty =>
+      'Нажмите «Посмотреть метрики», чтобы открыть графики и значения из этого источника.';
+
+  @override
+  String get automationVaultFileTitle => 'Ansible Vault';
+
+  @override
+  String get automationVaultEncrypt => 'Зашифровать YAML';
+
+  @override
+  String get automationVaultDecrypt => 'Расшифровать YAML';
+
+  @override
+  String get automationVaultPasswordSource => 'Источник пароля';
+
+  @override
+  String get automationVaultManual => 'Ввести пароль';
+
+  @override
+  String get automationVaultProjectFile => '.vault/password проекта';
+
+  @override
+  String get automationVaultPassword => 'Пароль Ansible Vault';
+
+  @override
+  String get automationVaultFileHint =>
+      'Изменяется только выбранный сохранённый YAML. Пароль проекта остаётся локально и не включается в снимок запуска.';
+
+  @override
+  String get automationVaultDecryptHint => 'Расшифрованный YAML будет сохранён открытым текстом.';
+
+  @override
+  String get automationTreeRoot => 'Корень проекта';
+
+  @override
+  String get automationTreeEmpty => 'В проекте пока нет файлов';
+
+  @override
+  String get automationRunPasswords => 'Пароли запуска';
+
+  @override
+  String get automationRunPasswordsHint =>
+      'Используются только для этого запуска. Пароли не сохраняются в проекте, журналах и параметрах задания.';
+
+  @override
+  String get automationUseBecomePassword => 'Для запуска нужен пароль sudo / become';
+
+  @override
+  String get automationBecomePassword => 'Пароль sudo / become';
+
+  @override
+  String get automationRunPasswordsConfigured => 'Пароли для этого запуска заданы.';
+
+  @override
+  String get automationRunPasswordsUnavailable =>
+      'Пароли запуска недоступны в этом контексте. Откройте форму запуска заново или выберите обычный Runner.';
 }

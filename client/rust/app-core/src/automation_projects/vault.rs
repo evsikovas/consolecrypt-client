@@ -13,6 +13,11 @@ fn invalid() -> AppError {
     AppError::invalid("automation_vault", "scoped_password_unavailable")
 }
 
+fn rebind(root:&ProjectRoot,revision:&ProjectRevision,selected:Uuid)->AppResult<VaultInputBinding> {
+    if selected.is_nil() { root.bind_ephemeral_vault_input(revision) } else { root.bind_vault_input(revision,selected) }
+        .map_err(|_|invalid())
+}
+
 /// No Unlocked, KEK, secret material, general resolver or serializable DTO.
 /// Existing bounded review/IO slots are retained until release/consumption.
 pub(crate) struct VaultCredentialReview {
@@ -20,11 +25,12 @@ pub(crate) struct VaultCredentialReview {
     stamp: String,
     generation: u64,
     version: u64, // Retained ONLY for the private owner original-input fence.
-    metadata: crate::working_set::VaultCredentialMetadata,
+    metadata: Option<crate::working_set::VaultCredentialMetadata>,
     root: Arc<managed::OpenedProjectRoot>,
     revision: ProjectRevision,
     binding: VaultInputBinding,
-    secret: ObjectId,
+    secret: Option<ObjectId>,
+    ephemeral: Option<cc_models::secret::SecretValue>,
     fences: BTreeMap<ObjectId, i64>,
     deadline: Instant,
     revoked: CancellationToken,
@@ -84,6 +90,44 @@ async fn stamp(context: &AutomationProjectContext) -> AppResult<String> {
 }
 
 impl AppCore {
+    pub(crate) async fn automation_ephemeral_vault_capture(
+        &self, project:AutomationProjectContext, expected_digest:String,
+        password:cc_models::secret::SecretValue, operation_cancel:&CancellationToken,
+    )->AppResult<VaultCredentialReview> {
+        let value=password.expose_secret();
+        if value.is_empty() || value.len()>4096 || value.trim()!=value ||
+            value.chars().any(|c|c.is_control() || matches!(c,'\u{2028}'|'\u{2029}')) || operation_cancel.is_cancelled() {
+            return Err(invalid());
+        }
+        if project.project.read_only {return Err(invalid());}
+        let slot=project.owner.automation.review_slots.clone().try_acquire_owned().map_err(|_|invalid())?;
+        let u=project.unlock.upgrade().ok_or(AppError::VaultLocked)?;
+        let (captured_stamp,generation,version)={
+            let _profile=self.hold_session(&project.owner).await?;
+            let _unlock=project.owner.hold_unlocked(&u).await?;
+            (stamp(&project).await?,project.owner.automation.unlocked_generation()?,u.working().version())
+        };
+        drop(u);
+        let retained_io=managed::admit_io(self,&project).await?;
+        let io=retained_io.clone();let selection=project.root_selection.clone();let path=project.path.clone();
+        let (root,revision,binding)=tokio::task::spawn_blocking(move||{
+            let _io=io;let root=Arc::new(selection.open()?);let revision=root.revision().map_err(|_|invalid())?;
+            if revision.digest!=expected_digest {return Err(invalid());}
+            let binding=root.bind_ephemeral_vault_input(&revision).map_err(|_|invalid())?;
+            root.reopen_same_directory(&path).map_err(|_|invalid())?;root.recheck()?;
+            Ok::<_,AppError>((root,revision,binding))
+        }).await.map_err(|_|invalid())??;
+        let review=VaultCredentialReview{project,stamp:captured_stamp,generation,version,metadata:None,root,revision,binding,
+            secret:None,ephemeral:Some(password),fences:BTreeMap::new(),deadline:Instant::now()+Duration::from_secs(300),
+            revoked:operation_cancel.child_token(),_slot:slot};
+        let u=review.project.unlock.upgrade().ok_or(AppError::VaultLocked)?;
+        let _profile=self.hold_session(&review.project.owner).await?;
+        let _unlock=review.project.owner.hold_unlocked(&u).await?;
+        review.check_held(&u).await?;
+        drop(_unlock);
+        drop(_profile);
+        Ok(review)
+    }
     /// Internal explicit-selection action; not a deserializable bridge request.
     /// expected_digest comes from Native's already captured project preview.
     pub(crate) async fn automation_vault_capture(
@@ -163,11 +207,12 @@ impl AppCore {
             stamp: captured_stamp,
             generation,
             version,
-            metadata,
+            metadata: Some(metadata),
             root,
             revision,
             binding,
-            secret,
+            secret: Some(secret),
+            ephemeral: None,
             fences,
             deadline: Instant::now() + Duration::from_secs(300),
             revoked,
@@ -188,6 +233,12 @@ impl AppCore {
 }
 
 impl VaultCredentialReview {
+    async fn password_value(&self,u:&crate::session::Unlocked)->AppResult<cc_models::secret::SecretValue> {
+        if let Some(password)=&self.ephemeral {return Ok(password.clone());}
+        let secret=u.writer.read_secret(self.secret.ok_or_else(invalid)?).await.map_err(|_|invalid())?;
+        if secret.kind!=SecretKind::Password {return Err(invalid());}
+        Ok(secret.value)
+    }
     async fn check_held(&self, u: &crate::session::Unlocked) -> AppResult<()> {
         // SQL can await while benign duplicate refreshes advance the global
         // WorkingSet counter. No awaited work may follow the exact selected
@@ -197,10 +248,8 @@ impl VaultCredentialReview {
             || self.revoked.is_cancelled()
             || Instant::now() >= self.deadline
             || self.project.owner.automation.unlocked_generation()? != self.generation
-            || u.working()
-                .vault_credential_metadata(self.metadata.credential())
-                .as_ref()
-                != Some(&self.metadata)
+            || self.metadata.as_ref().is_some_and(|metadata|u.working()
+                .vault_credential_metadata(metadata.credential()).as_ref()!=Some(metadata))
             || self
                 .fences
                 .iter()
@@ -255,9 +304,7 @@ impl VaultCredentialReview {
             let current = root
                 .reopen_same_directory(&current_path)
                 .map_err(|_| invalid())?;
-            current
-                .bind_vault_input(&revision, selected)
-                .map_err(|_| invalid())?;
+            rebind(&current,&revision,selected)?;
             root.reopen_same_directory(&current_path)
                 .map_err(|_| invalid())?;
             root.recheck().map_err(|_| invalid())
@@ -280,18 +327,18 @@ impl VaultCredentialReview {
         let secret = tokio::select! {
             _ = self.revoked.cancelled() => return Err(invalid()),
             _ = job_cancel.cancelled() => return Err(invalid()),
-            result = u.writer.read_secret(self.secret) => result.map_err(|_| invalid())?,
+            result = self.password_value(&u) => result?,
         };
         let _profile = app.hold_session(&self.project.owner).await?;
         let _unlock = self.project.owner.hold_unlocked(&u).await?;
         self.check_held(&u).await?;
-        if secret.kind != SecretKind::Password || job_cancel.is_cancelled() {
+        if job_cancel.is_cancelled() {
             return Err(invalid());
         }
         let lease = VaultPasswordLease::issue(
             verified,
             &self.binding,
-            secret.value,
+            secret,
             self.revoked.clone(),
             job_cancel.clone(),
             Duration::from_secs(30),
@@ -309,6 +356,8 @@ impl VaultCredentialReview {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod ephemeral_tests;
 
 // Validation is a separate Native purpose, NOT a fake signed job/target scope.
 // No public Bridge/Helper dispatch is enabled by this private component.

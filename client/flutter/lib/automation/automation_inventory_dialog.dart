@@ -3,14 +3,17 @@ import 'dart:async';
 import 'package:consolecrypt/app/critical_notice_providers.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/automation/automation_ansible_config.dart';
 import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/automation/automation_scope_guard.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
+import 'package:consolecrypt/automation/automation_static_inventory_preview.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -45,6 +48,7 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
   List<AutomationJson> resolvedSources = [];
   List<AutomationJson> frozenSources = [], rows = [];
   List<AutomationJson> conflicts = [];
+  Map<String, List<String>>? yamlPreview;
   int conflictCount = 0;
   String? runner, previewId;
   String mode = 'external_only';
@@ -201,6 +205,22 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
       if (configuration != null && configuration['version'] != 1) {
         throw FormatException(context.l10n.automationInventoryChanged);
       }
+      final configPaths = <String>{};
+      if (configuration == null && tree.entries.any((entry) => !entry.directory && entry.path == 'ansible.cfg')) {
+        try {
+          final config = await originalFiles.readFile(originalProject, 'ansible.cfg');
+          final document = AutomationAnsibleConfigDocument.parse(config.text);
+          final inventory = document.value(AutomationAnsibleSetting.inventory);
+          if (document.canEdit && inventory != null) {
+            for (final source in inventory.split(',').take(8)) {
+              configPaths.add(source.trim().replaceFirst(RegExp(r'^\./'), '').replaceFirst(RegExp(r'/+$'), ''));
+            }
+          }
+        } catch (_) {
+          // The file picker stays usable when an optional config is unreadable.
+        }
+      }
+      if (!current) return;
       setState(() {
         revision = value['project_revision'] as int;
         paths = [
@@ -235,12 +255,42 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
               (key, value) => MapEntry(key, Map<String, dynamic>.from(value as Map)),
             ),
           );
+        } else {
+          selected.addAll(configPaths.where(paths.contains));
+          if (selected.isNotEmpty) sourceKind = savedHosts.isEmpty ? 'files' : 'mixed';
         }
       });
     } catch (e) {
       if (current) setState(() => error = e);
     } finally {
       if (current) setState(() => loading = false);
+    }
+  }
+
+  bool get canPreviewYaml => selected.isNotEmpty && selected.every(
+    (path) => !directories.contains(path) && RegExp(r'\.(yaml|yml|json)$', caseSensitive: false).hasMatch(path),
+  );
+
+  Future<void> previewYaml() async {
+    if (!current || busy || !canPreviewYaml) return;
+    setState(() {
+      busy = true;
+      error = null;
+      yamlPreview = null;
+    });
+    try {
+      final documents = <String>[];
+      for (final path in selected) {
+        final file = await originalFiles.readFile(originalProject, path);
+        if (!current) return;
+        documents.add(file.text);
+      }
+      final groups = await compute(previewStaticYamlInventory, documents);
+      if (current) setState(() => yamlPreview = groups);
+    } catch (_) {
+      if (current) setState(() => error = FormatException(context.l10n.automationInventoryYamlPreviewFailed));
+    } finally {
+      if (current) setState(() => busy = false);
     }
   }
 
@@ -798,10 +848,35 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
 
   Widget filePicker(AsyncValue<AutomationRunnerCatalog?> runners, List<String> missing) {
     final l = context.l10n;
+    final groups = yamlPreview?.entries.toList(growable: false);
     return ContentSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (groups != null) ...[
+            Text(l.automationInventoryYamlPreviewHelp),
+            if (groups.isEmpty) Text(l.automationInventoryYamlPreviewEmpty),
+            if (groups.isNotEmpty)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  primary: false,
+                  itemCount: groups.length,
+                  itemBuilder: (context, index) {
+                    final group = groups[index];
+                    return ExpansionTile(
+                      dense: true,
+                      initiallyExpanded: groups.length == 1,
+                      title: Text(group.key),
+                      subtitle: Text(group.value.length.toString()),
+                      children: [for (final host in group.value) ListTile(title: Text(host), dense: true)],
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 12),
+          ],
           GlassSelect<String?>(
             key: const ValueKey('automation-inventory-runner'),
             value: runner,
@@ -813,6 +888,10 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
               for (final item in runners.value?.runners ?? <AutomationRunnerProfile>[])
                 if (!item.readOnly) GlassSelectItem(value: item.id, label: item.name ?? item.id),
             ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(l.automationInventoryRunnerHelp),
           ),
           if (runners.hasError) Text(errorMessage(l, runners.error!)),
           const SizedBox(height: 12),
@@ -834,7 +913,11 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
                     title: Text(directories.contains(path) ? '$path/' : path),
                     onChanged: loading || busy || (!selected.contains(path) && selected.length >= 8)
                         ? null
-                        : (value) => setState(() => value == true ? selected.add(path) : selected.remove(path)),
+                        : (value) => setState(() {
+                            value == true ? selected.add(path) : selected.remove(path);
+                            yamlPreview = null;
+                            error = null;
+                          }),
                   );
                 },
               ),
@@ -846,7 +929,10 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
               subtitle: Text(l.automationInventoryMissingFile),
               trailing: IconButton(
                 icon: const Icon(Icons.close),
-                onPressed: busy ? null : () => setState(() => selected.remove(path)),
+                onPressed: busy ? null : () => setState(() {
+                  selected.remove(path);
+                  yamlPreview = null;
+                }),
               ),
             ),
           const SizedBox(height: 12),
@@ -963,7 +1049,13 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
         if (previewId == null && (!unified || sourceKind != 'saved'))
           FilledButton(
             key: const ValueKey('automation-inventory-start'),
-            onPressed: busy || loading || runner == null || selected.isEmpty || missing.isNotEmpty ? null : start,
+              onPressed: busy || loading || selected.isEmpty || missing.isNotEmpty
+                  ? null
+                  : runner != null
+                  ? start
+                  : canPreviewYaml
+                  ? previewYaml
+                  : null,
             child: Text(l.automationInventoryPreview),
           ),
         if (ready)

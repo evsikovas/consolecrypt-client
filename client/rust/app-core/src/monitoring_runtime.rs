@@ -15,6 +15,7 @@ use zeroize::Zeroizing;
 mod alert_reads;
 mod binding_reads;
 mod exporter_reads;
+mod host_live;
 #[cfg(all(feature = "test-harness", not(test)))]
 pub(crate) use exporter_reads::live_cadvisor_harness::owned_cadvisor_install_signed_job_real_source_binding_and_docker_panel as __focused_live_cadvisor;
 mod saved_panel_reads;

@@ -77,6 +77,24 @@ async fn fixture() -> (tempfile::TempDir, AppCore, String) {
 }
 
 #[tokio::test]
+async fn new_role_project_uses_the_selected_empty_folder_and_preserves_existing_files() {
+    let (profile, app, _) = fixture().await;
+    let path = profile.path().join("selected-role-folder");
+    std::fs::create_dir(&path).unwrap();
+    let directory = path.to_string_lossy().into_owned();
+    let project = app
+        .automation_project_scaffold("Web setup".into(), Some(directory.clone()), Some("web".into()))
+        .await
+        .unwrap();
+    let entries = app.automation_project_files(project.id.clone()).await.unwrap();
+    assert!(entries.entries.iter().any(|entry| entry.path() == "roles/web/tasks/main.yml"));
+    let playbook = app.automation_project_file(project.id, "playbook.yml".into()).await.unwrap();
+    assert!(playbook.text.contains("  roles:\n    - web\n"));
+    assert!(app.automation_project_scaffold("Collision".into(), Some(directory), None).await.is_err());
+    assert_eq!(std::fs::read_to_string(path.join("playbook.yml")).unwrap(), playbook.text);
+}
+
+#[tokio::test]
 async fn future_marker_denies_all_selected_row_writers_and_loaders_preserving_raw_catalog() {
     let (_root, app, id) = fixture().await;
     let context = app.automation_project_context(&id).await.unwrap();

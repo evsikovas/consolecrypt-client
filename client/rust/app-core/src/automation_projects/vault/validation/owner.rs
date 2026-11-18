@@ -662,12 +662,10 @@ async fn work(
             .root
             .reopen_same_directory(&retained.review.project.path)
             .map_err(|_| invalid())?;
-        let binding = current
-            .bind_vault_input(
+        let binding = rebind(&current,
                 &retained.review.revision,
                 retained.review.binding.credential_id(),
-            )
-            .map_err(|_| invalid())?;
+            )?;
         retained
             .review
             .root

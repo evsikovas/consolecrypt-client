@@ -17,7 +17,9 @@ fn collect(root: &Path, path: &Path, files: &mut Vec<(String, String)>) {
                     .to_str()
                     .unwrap()
                     .replace('\\', "/"),
-                fs::read_to_string(path).unwrap(),
+                // These are installed on Linux regardless of the desktop build
+                // platform. Git checkout CRLF must not change runtime identity.
+                fs::read_to_string(path).unwrap().replace("\r\n", "\n"),
             ));
         }
     }

@@ -64,6 +64,10 @@ Future<String> monitoringSourceDelete({
 Future<String> monitoringRead({required String requestJson}) =>
     RustLib.instance.api.crateApiMonitoringMonitoringRead(requestJson: requestJson);
 
+/// Live, bounded snapshots from the selected Linux SSH host.
+Stream<String> monitoringWatchHost({required String requestJson}) =>
+    RustLib.instance.api.crateApiMonitoringMonitoringWatchHost(requestJson: requestJson);
+
 Future<void> monitoringCancel({required String operationId}) =>
     RustLib.instance.api.crateApiMonitoringMonitoringCancel(operationId: operationId);
 

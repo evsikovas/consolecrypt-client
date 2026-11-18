@@ -92,6 +92,126 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('ru')];
 
+  /// Label or help text for automationProjectChooseFolderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an empty folder for a new project. To use existing files, select Open folder.'**
+  String get automationProjectChooseFolderEmpty;
+
+  /// Label or help text for automationGitUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Git on this computer, then reopen ConsoleCrypt to import the repository.'**
+  String get automationGitUnavailable;
+
+  /// Label or help text for automationProjectRoleHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Creates the standard Ansible role layout and a playbook that calls the role.'**
+  String get automationProjectRoleHelp;
+
+  /// Label or help text for monitoringBrowseNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get monitoringBrowseNow;
+
+  /// Label or help text for automationNewProjectName.
+  ///
+  /// In en, this message translates to:
+  /// **'Project name'**
+  String get automationNewProjectName;
+
+  /// Label or help text for automationNewProjectType.
+  ///
+  /// In en, this message translates to:
+  /// **'Project template'**
+  String get automationNewProjectType;
+
+  /// Label or help text for automationProjectPlaybook.
+  ///
+  /// In en, this message translates to:
+  /// **'Playbook only'**
+  String get automationProjectPlaybook;
+
+  /// Label or help text for automationProjectRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Ansible role and playbook'**
+  String get automationProjectRole;
+
+  /// Label or help text for automationProjectRoleName.
+  ///
+  /// In en, this message translates to:
+  /// **'Role name'**
+  String get automationProjectRoleName;
+
+  /// Label or help text for automationProjectProfileFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Save in the local ConsoleCrypt profile'**
+  String get automationProjectProfileFolder;
+
+  /// Label or help text for automationProjectChooseFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an empty folder…'**
+  String get automationProjectChooseFolder;
+
+  /// Label or help text for automationProjectUseProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Use profile folder'**
+  String get automationProjectUseProfile;
+
+  /// Label or help text for automationProjectChooseFolderError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the folder picker.'**
+  String get automationProjectChooseFolderError;
+
+  /// Label or help text for automationInventoryRunnerHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview YAML host and group names on this device. Choose a Runner to validate the inventory with Ansible and save it.'**
+  String get automationInventoryRunnerHelp;
+
+  /// Label or help text for automationInventoryYamlPreviewFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This file could not be read as static YAML inventory. Select an inventory file or check it with a Runner.'**
+  String get automationInventoryYamlPreviewFailed;
+
+  /// Label or help text for automationInventoryYamlPreviewHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Hosts and groups declared in the file. Use a Runner to resolve the inventory for a job.'**
+  String get automationInventoryYamlPreviewHelp;
+
+  /// Label or help text for automationInventoryYamlPreviewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No hosts or groups were found.'**
+  String get automationInventoryYamlPreviewEmpty;
+
+  /// Label or help text for automationConfigFromFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Source: ansible.cfg in the project root. The form loads supported settings from this file.'**
+  String get automationConfigFromFile;
+
+  /// Label or help text for automationConfigNewFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving creates ansible.cfg in the project root.'**
+  String get automationConfigNewFile;
+
+  /// Label or help text for awxIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this tab with an existing AWX or Ansible Automation Controller server. Add a connection, load available job templates, then review and launch one. The controller runs the playbook with its own inventory and credentials. You can follow the job status and events here.'**
+  String get awxIntro;
+
   /// Explicit selected Monitoring data review or scoped host navigation label.
   ///
   /// In en, this message translates to:
@@ -25865,7 +25985,7 @@ abstract class AppLocalizations {
   /// Explicitly reviewed automation job execution and history
   ///
   /// In en, this message translates to:
-  /// **'The selected Runner downloads a public HTTPS repository. Files are saved in this profile; importing executes nothing. Submodules and Git credentials are not connected yet.'**
+  /// **'Git on this computer downloads a public HTTPS repository into the local ConsoleCrypt profile. Importing reads project files. Submodules and private repositories are unavailable.'**
   String get automationGitHint;
 
   /// Explicitly reviewed automation job execution and history
@@ -25895,7 +26015,7 @@ abstract class AppLocalizations {
   /// Explicitly reviewed automation job execution and history
   ///
   /// In en, this message translates to:
-  /// **'Enter a name, HTTPS URL, branch or tag, and a Runner.'**
+  /// **'Enter a name, HTTPS URL, and branch or tag.'**
   String get automationGitFields;
 
   /// Explicitly reviewed automation job execution and history
@@ -30665,7 +30785,7 @@ abstract class AppLocalizations {
   /// Explicit portable saved-project package UI: automationPortableInspectAction.
   ///
   /// In en, this message translates to:
-  /// **'Review encrypted package...'**
+  /// **'Review ConsoleCrypt archive…'**
   String get automationPortableInspectAction;
 
   /// Explicit portable saved-project package UI: automationPortableExportTitle.
@@ -30677,7 +30797,7 @@ abstract class AppLocalizations {
   /// Explicit portable saved-project package UI: automationPortableInspectTitle.
   ///
   /// In en, this message translates to:
-  /// **'Review encrypted project package'**
+  /// **'Review encrypted ConsoleCrypt archive'**
   String get automationPortableInspectTitle;
 
   /// Explicit portable saved-project package UI: automationPortablePassword.
@@ -30755,7 +30875,7 @@ abstract class AppLocalizations {
   /// Authenticated portable package review is read-only; no project creation/publication is claimed.
   ///
   /// In en, this message translates to:
-  /// **'The package is decrypted only for review. Project files and settings are not changed.'**
+  /// **'Use this to inspect the contents of an encrypted ConsoleCrypt project archive before importing it. Enter the archive password set at export.'**
   String get automationPortableInspectWarning;
 
   /// Dirty editor prompt for export: preserve unsaved buffer and explicitly export only persisted project files; existing Save and Cancel actions remain.
@@ -36331,6 +36451,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a playbook and hosts or a group, review and run. Ansible runs in the selected Runner.'**
   String get automationWorkflowHint;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get monitoringLiveNow;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get monitoringLiveHistory;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Server load'**
+  String get monitoringLiveTitle;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Read directly over SSH. Graphs fill in while this screen is open.'**
+  String get monitoringLiveHint;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'This view reads live metrics from Linux hosts.'**
+  String get monitoringLiveLinuxOnly;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Live metrics require the built-in SSH client. Select it in the host settings to use this view.'**
+  String get monitoringLiveNativeOnly;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the server metrics. Check the SSH connection and try again.'**
+  String get monitoringLiveReadFailed;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting over SSH and reading the first sample…'**
+  String get monitoringLiveConnecting;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated at'**
+  String get monitoringLiveLastSample;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Uptime'**
+  String get monitoringLiveUptime;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d {hours} h {minutes} min'**
+  String monitoringLiveUptimeValue(int days, int hours, int minutes);
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU usage'**
+  String get monitoringLiveCpu;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory used'**
+  String get monitoringLiveRam;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'System disk used'**
+  String get monitoringLiveDisk;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get monitoringLiveNetwork;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Values'**
+  String get monitoringLiveValues;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore metrics'**
+  String get monitoringBrowseTitle;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Target availability'**
+  String get monitoringBrowseUp;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a ready-made chart or find a metric by name.'**
+  String get monitoringBrowseHint;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'All metrics'**
+  String get monitoringBrowseAll;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Metric name'**
+  String get monitoringBrowseSearch;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'No metrics match the search.'**
+  String get monitoringBrowseNoMatch;
+
+  /// Label or guidance for live SSH host metrics or browsing an existing monitoring source.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Explore metrics to see charts and values from this source.'**
+  String get monitoringBrowseEmpty;
+
+  /// Ansible Vault selected YAML file operation: automationVaultFileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ansible Vault'**
+  String get automationVaultFileTitle;
+
+  /// Ansible Vault selected YAML file operation: automationVaultEncrypt.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypt YAML'**
+  String get automationVaultEncrypt;
+
+  /// Ansible Vault selected YAML file operation: automationVaultDecrypt.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrypt YAML'**
+  String get automationVaultDecrypt;
+
+  /// Ansible Vault selected YAML file operation: automationVaultPasswordSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Password source'**
+  String get automationVaultPasswordSource;
+
+  /// Ansible Vault selected YAML file operation: automationVaultManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter password'**
+  String get automationVaultManual;
+
+  /// Ansible Vault selected YAML file operation: automationVaultProjectFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Project .vault/password'**
+  String get automationVaultProjectFile;
+
+  /// Ansible Vault selected YAML file operation: automationVaultPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Ansible Vault password'**
+  String get automationVaultPassword;
+
+  /// Ansible Vault selected YAML file operation: automationVaultFileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the selected saved YAML is changed. Project passwords stay local and are excluded from run snapshots.'**
+  String get automationVaultFileHint;
+
+  /// Ansible Vault selected YAML file operation: automationVaultDecryptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrypted YAML will be saved as plain text.'**
+  String get automationVaultDecryptHint;
+
+  /// Compact expandable Automation project file tree; project root is a file drop target.
+  ///
+  /// In en, this message translates to:
+  /// **'Project root'**
+  String get automationTreeRoot;
+
+  /// Compact expandable Automation project file tree; project root is a file drop target.
+  ///
+  /// In en, this message translates to:
+  /// **'No files in this project'**
+  String get automationTreeEmpty;
+
+  /// One-launch secret input UI: automationRunPasswords.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch passwords'**
+  String get automationRunPasswords;
+
+  /// One-launch secret input UI: automationRunPasswordsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Used only for this launch. Passwords are not saved in the project, logs or run parameters.'**
+  String get automationRunPasswordsHint;
+
+  /// One-launch secret input UI: automationUseBecomePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'This launch needs a sudo / become password'**
+  String get automationUseBecomePassword;
+
+  /// One-launch secret input UI: automationBecomePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'sudo / become password'**
+  String get automationBecomePassword;
+
+  /// One-launch secret input UI: automationRunPasswordsConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords are set for this launch.'**
+  String get automationRunPasswordsConfigured;
+
+  /// One-launch secret input UI: automationRunPasswordsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch passwords are unavailable in this context. Reopen the launch form or choose a regular Runner.'**
+  String get automationRunPasswordsUnavailable;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

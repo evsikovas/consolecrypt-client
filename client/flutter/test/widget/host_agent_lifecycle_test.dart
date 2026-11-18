@@ -80,6 +80,9 @@ void main() {
     expect(focus.host.id, host.id);
     expect(focus.host.updatedAt, host.updatedAt);
     expect(focus.current(_monitoringRef(tester)), isTrue);
+    expect(find.byKey(const ValueKey('monitoring-host-live')), findsOneWidget);
+    expect(find.byKey(const ValueKey('monitoring-host-link-open')), findsNothing);
+    expect(find.byKey(const ValueKey('monitoring-dashboard-source')), findsNothing);
     expect(find.byKey(const ValueKey('agent-setup-wizard')), findsNothing);
     expect(container.read(terminalTabsProvider).tabs, isEmpty);
     expect(container.read(sftpControllerProvider).host, isNull);

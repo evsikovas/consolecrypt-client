@@ -875,6 +875,7 @@ dependencies = [
 name = "cc-app-core"
 version = "0.1.0"
 dependencies = [
+ "aes",
  "async-trait",
  "axum",
  "base64 0.22.1",
@@ -902,12 +903,16 @@ dependencies = [
  "cc-tunnel-core",
  "cc-vault-core",
  "chrono",
+ "ctr",
  "dunce",
  "flate2",
  "futures",
+ "getrandom 0.4.3",
  "hex",
+ "hmac",
  "libc",
  "log",
+ "pbkdf2",
  "pem 3.0.6",
  "rcgen",
  "reqwest",

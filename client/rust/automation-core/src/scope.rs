@@ -107,6 +107,7 @@ pub struct JobTargetScope {
     uncertain_operation: Arc<AtomicBool>,
     diagnostic_retired:CancellationToken,
     diagnostic_bytes:AtomicU64,
+    become_input:Option<Arc<crate::ScopedBecomePassword>>,
 }
 
 impl std::fmt::Debug for JobTargetScope {
@@ -239,6 +240,14 @@ impl JobTargetScope {
         sessions: HashMap<Uuid, Arc<SshSession>>,
         cancelled: CancellationToken,
     ) -> Result<Arc<Self>> {
+        Self::bind_with_become(approval,sessions,cancelled,None)
+    }
+    /// Native-issued one-shot input; never deserialized from Runner requests.
+    pub fn bind_with_become(approval:VerifiedJob,sessions:HashMap<Uuid,Arc<SshSession>>,
+        cancelled:CancellationToken,become_input:Option<Arc<crate::ScopedBecomePassword>>)->Result<Arc<Self>> {
+        if become_input.is_some() && !approval.manifest().policy.cancel_on_lock {
+            return Err(AutomationError::Invalid("one-shot sudo requires cancellation on lock"))
+        }
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|_| AutomationError::Invalid("system clock"))?
@@ -272,6 +281,10 @@ impl JobTargetScope {
                     sftp: OnceCell::new(),
                 }),
             );
+            if let Some(password)=&become_input {
+                let capture=session.diagnostic_capture().ok_or(AutomationError::Invalid("sudo diagnostic mask unavailable"))?;
+                password.remember(capture.as_ref())?;
+            }
         }
         let forks = approval.manifest().policy.forks as usize;
         let diagnostic_runtime=tokio::runtime::Handle::try_current().map_err(|_|AutomationError::Invalid("job diagnostic runtime unavailable"))?;
@@ -287,6 +300,7 @@ impl JobTargetScope {
             uncertain_operation: Arc::new(AtomicBool::new(false)),
             diagnostic_retired:CancellationToken::new(),
             diagnostic_bytes:AtomicU64::new(0),
+            become_input,
         });
         let weak=Arc::downgrade(&scope);let cancelled=scope.cancelled.clone();let retired=scope.diagnostic_retired.clone();let until=scope.deadline;
         diagnostic_runtime.spawn(async move{tokio::select!{_=cancelled.cancelled()=>{},_=retired.cancelled()=>{},_=tokio::time::sleep_until(until.into())=>{}}if let Some(scope)=weak.upgrade(){scope.clear_diagnostics();}});
@@ -311,6 +325,7 @@ impl JobTargetScope {
 
     fn clear_diagnostics(&self){for target in self.targets.values(){if let Some(mask)=target.session.diagnostic_capture(){mask.clear();}}}
     pub fn cancel(&self) {
+        if let Some(password)=&self.become_input{password.revoke();}
         self.clear_diagnostics();
         self.cancelled.cancel();
     }
@@ -328,7 +343,7 @@ impl JobTargetScope {
     }
 }
 
-impl Drop for JobTargetScope{fn drop(&mut self){self.clear_diagnostics();self.diagnostic_retired.cancel();}}
+impl Drop for JobTargetScope{fn drop(&mut self){if let Some(password)=&self.become_input{password.revoke();}self.clear_diagnostics();self.diagnostic_retired.cancel();}}
 
 impl TargetHandler for JobTargetScope {
     fn revoke(&self, job_id: Uuid, manifest_digest: &str) {
@@ -386,6 +401,7 @@ impl TargetHandler for JobTargetScope {
         let deadline = self.deadline;
         let transfers = self.transfers.clone();
         let quota = self.file_bytes.clone();
+        let become_input=self.become_input.clone();
         let active = self.active_operations.clone();
         let uncertain = self.uncertain_operation.clone();
         active.fetch_add(1, Ordering::SeqCst);
@@ -400,7 +416,7 @@ impl TargetHandler for JobTargetScope {
             let result = tokio::select! {
                 _ = cancelled.cancelled() => Err(TargetFailure::Cancelled),
                 _ = tokio::time::sleep_until(deadline.into()) => Err(TargetFailure::ApprovalExpired),
-                result = operate(target, request, transfers, quota) => result,
+                result = operate(target, request, transfers, quota,become_input) => result,
             };
             // Only an acknowledged operation is proof that it stopped. A
             // dropped future/connection/timeout must retain the global lease.
@@ -442,7 +458,12 @@ async fn operate(
     request: TargetRequest,
     transfers: Arc<Mutex<HashMap<(Uuid, Uuid), Transfer>>>,
     quota: Arc<AtomicU64>,
+    become_input:Option<Arc<crate::ScopedBecomePassword>>,
 ) -> TargetResult<Value> {
+    if request.operation=="exec_become" {
+        return crate::sudo_input::execute(&target.session,request.body,
+            become_input.as_ref().ok_or(TargetFailure::TargetDenied)?).await;
+    }
     if request.operation == "exec" {
         #[derive(Deserialize)]
         #[serde(deny_unknown_fields)]

@@ -1,4 +1,44 @@
 {
+  "automationProjectChooseFolderEmpty": "\u0414\u043b\u044f \u043d\u043e\u0432\u043e\u0433\u043e \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u0443\u0441\u0442\u0443\u044e \u043f\u0430\u043f\u043a\u0443. \u041f\u0430\u043f\u043a\u0443 \u0441 \u0433\u043e\u0442\u043e\u0432\u044b\u043c\u0438 \u0444\u0430\u0439\u043b\u0430\u043c\u0438 \u043c\u043e\u0436\u043d\u043e \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0447\u0435\u0440\u0435\u0437 \u00ab\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u0430\u043f\u043a\u0443\u00bb.",
+  "@automationProjectChooseFolderEmpty": {"description": "Label or help text for automationProjectChooseFolderEmpty."},
+  "automationGitUnavailable": "\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0435 Git \u043d\u0430 \u044d\u0442\u043e\u043c \u043a\u043e\u043c\u043f\u044c\u044e\u0442\u0435\u0440\u0435 \u0438 \u043f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 ConsoleCrypt, \u0447\u0442\u043e\u0431\u044b \u0438\u043c\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0440\u0435\u043f\u043e\u0437\u0438\u0442\u043e\u0440\u0438\u0439.",
+  "@automationGitUnavailable": {"description": "Label or help text for automationGitUnavailable."},
+  "automationProjectRoleHelp": "\u0421\u043e\u0437\u0434\u0430\u0451\u0442 \u0441\u0442\u0430\u043d\u0434\u0430\u0440\u0442\u043d\u0443\u044e \u0441\u0442\u0440\u0443\u043a\u0442\u0443\u0440\u0443 \u0440\u043e\u043b\u0438 Ansible \u0438 \u043f\u043b\u0435\u0439\u0431\u0443\u043a \u0434\u043b\u044f \u0435\u0451 \u0437\u0430\u043f\u0443\u0441\u043a\u0430.",
+  "@automationProjectRoleHelp": {"description": "Label or help text for automationProjectRoleHelp."},
+  "@automationNewProjectName": {"description": "Label or help text for automationNewProjectName."},
+  "@automationNewProjectType": {"description": "Label or help text for automationNewProjectType."},
+  "@automationProjectPlaybook": {"description": "Label or help text for automationProjectPlaybook."},
+  "@automationProjectRole": {"description": "Label or help text for automationProjectRole."},
+  "@automationProjectRoleName": {"description": "Label or help text for automationProjectRoleName."},
+  "@automationProjectProfileFolder": {"description": "Label or help text for automationProjectProfileFolder."},
+  "@automationProjectChooseFolder": {"description": "Label or help text for automationProjectChooseFolder."},
+  "@automationProjectUseProfile": {"description": "Label or help text for automationProjectUseProfile."},
+  "@automationProjectChooseFolderError": {"description": "Label or help text for automationProjectChooseFolderError."},
+  "@automationInventoryRunnerHelp": {"description": "Label or help text for automationInventoryRunnerHelp."},
+  "@automationInventoryYamlPreviewFailed": {"description": "Label or help text for automationInventoryYamlPreviewFailed."},
+  "@automationInventoryYamlPreviewHelp": {"description": "Label or help text for automationInventoryYamlPreviewHelp."},
+  "@automationInventoryYamlPreviewEmpty": {"description": "Label or help text for automationInventoryYamlPreviewEmpty."},
+  "@automationConfigFromFile": {"description": "Label or help text for automationConfigFromFile."},
+  "@automationConfigNewFile": {"description": "Label or help text for automationConfigNewFile."},
+  "@awxIntro": {"description": "Label or help text for awxIntro."},
+  "monitoringBrowseNow": "\u0421\u0435\u0439\u0447\u0430\u0441",
+  "@monitoringBrowseNow": {"description": "Label or help text for monitoringBrowseNow."},
+  "automationNewProjectName": "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
+  "automationNewProjectType": "\u0428\u0430\u0431\u043b\u043e\u043d \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
+  "automationProjectPlaybook": "\u0422\u043e\u043b\u044c\u043a\u043e \u043f\u043b\u0435\u0439\u0431\u0443\u043a",
+  "automationProjectRole": "\u0420\u043e\u043b\u044c Ansible \u0438 \u043f\u043b\u0435\u0439\u0431\u0443\u043a",
+  "automationProjectRoleName": "\u0418\u043c\u044f \u0440\u043e\u043b\u0438",
+  "automationProjectProfileFolder": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0432 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u043e\u043c \u043f\u0440\u043e\u0444\u0438\u043b\u0435 ConsoleCrypt",
+  "automationProjectChooseFolder": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043f\u0443\u0441\u0442\u0443\u044e \u043f\u0430\u043f\u043a\u0443\u2026",
+  "automationProjectUseProfile": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u043f\u0430\u043f\u043a\u0443 \u043f\u0440\u043e\u0444\u0438\u043b\u044f",
+  "automationProjectChooseFolderError": "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0432\u044b\u0431\u043e\u0440 \u043f\u0430\u043f\u043a\u0438.",
+  "automationInventoryRunnerHelp": "\u0418\u043c\u0435\u043d\u0430 \u0445\u043e\u0441\u0442\u043e\u0432 \u0438 \u0433\u0440\u0443\u043f\u043f \u0438\u0437 YAML \u043c\u043e\u0436\u043d\u043e \u043f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u0442\u044c \u0441\u0440\u0430\u0437\u0443. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 Runner, \u0447\u0442\u043e\u0431\u044b \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c inventory \u0447\u0435\u0440\u0435\u0437 Ansible \u0438 \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438.",
+  "automationInventoryYamlPreviewFailed": "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0439 YAML inventory. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0444\u0430\u0439\u043b \u0441\u043e \u0441\u043f\u0438\u0441\u043a\u043e\u043c \u0445\u043e\u0441\u0442\u043e\u0432 \u0438\u043b\u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0435\u0433\u043e \u0447\u0435\u0440\u0435\u0437 Runner.",
+  "automationInventoryYamlPreviewHelp": "\u0425\u043e\u0441\u0442\u044b \u0438 \u0433\u0440\u0443\u043f\u043f\u044b, \u043f\u0435\u0440\u0435\u0447\u0438\u0441\u043b\u0435\u043d\u043d\u044b\u0435 \u0432 \u0444\u0430\u0439\u043b\u0435. \u0414\u043b\u044f \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0438 \u0437\u0430\u043f\u0443\u0441\u043a\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 inventory \u0447\u0435\u0440\u0435\u0437 Runner.",
+  "automationInventoryYamlPreviewEmpty": "\u0425\u043e\u0441\u0442\u044b \u0438 \u0433\u0440\u0443\u043f\u043f\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b.",
+  "automationConfigFromFile": "\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043a \u2014 ansible.cfg \u0432 \u043a\u043e\u0440\u043d\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430. \u041f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u043c\u044b\u0435 \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u044b \u0438\u0437 \u0444\u0430\u0439\u043b\u0430.",
+  "automationConfigNewFile": "\u041f\u0440\u0438 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0438 \u0444\u0430\u0439\u043b ansible.cfg \u0431\u0443\u0434\u0435\u0442 \u0441\u043e\u0437\u0434\u0430\u043d \u0432 \u043a\u043e\u0440\u043d\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430.",
+  "awxIntro": "\u0412\u043a\u043b\u0430\u0434\u043a\u0430 \u043d\u0443\u0436\u043d\u0430, \u0435\u0441\u043b\u0438 \u0443 \u0432\u0430\u0441 \u0443\u0436\u0435 \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442 AWX \u0438\u043b\u0438 Ansible Automation Controller. \u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435, \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0435 \u0448\u0430\u0431\u043b\u043e\u043d\u044b \u0438 \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0437\u0430\u0434\u0430\u043d\u0438\u0435. \u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b \u0438 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0435\u0433\u043e. \u041f\u043b\u0435\u0439\u0431\u0443\u043a \u0432\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u0441\u044f \u043d\u0430 \u0441\u0442\u043e\u0440\u043e\u043d\u0435 AWX \u0441 \u0435\u0433\u043e inventory \u0438 \u0443\u0447\u0451\u0442\u043d\u044b\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u043c\u0438. \u0417\u0434\u0435\u0441\u044c \u043c\u043e\u0436\u043d\u043e \u043f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u0442\u044c \u0441\u0442\u0430\u0442\u0443\u0441 \u0438 \u0441\u043e\u0431\u044b\u0442\u0438\u044f \u0437\u0430\u0434\u0430\u043d\u0438\u044f.",
   "metricsAiTitle": "\u041e\u0431\u044a\u044f\u0441\u043d\u0438\u0442\u044c \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0430",
   "@metricsAiTitle": {
     "description": "Explicit selected Monitoring data review or scoped host navigation label."
@@ -7973,7 +8013,7 @@
   "@automationGitName": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationGitHint": "\u0412\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0439 Runner \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442 \u043f\u0443\u0431\u043b\u0438\u0447\u043d\u044b\u0439 HTTPS-\u0440\u0435\u043f\u043e\u0437\u0438\u0442\u043e\u0440\u0438\u0439. \u0424\u0430\u0439\u043b\u044b \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0442\u0441\u044f \u0432 \u044d\u0442\u043e\u043c \u043f\u0440\u043e\u0444\u0438\u043b\u0435; \u0438\u043c\u043f\u043e\u0440\u0442 \u043d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0435\u0442. \u041f\u043e\u0434\u043c\u043e\u0434\u0443\u043b\u0438 \u0438 \u043a\u043b\u044e\u0447\u0438 Git \u043f\u043e\u043a\u0430 \u043d\u0435 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0430\u044e\u0442\u0441\u044f.",
+  "automationGitHint": "Git \u043d\u0430 \u044d\u0442\u043e\u043c \u043a\u043e\u043c\u043f\u044c\u044e\u0442\u0435\u0440\u0435 \u0441\u043a\u0430\u0447\u0438\u0432\u0430\u0435\u0442 \u043f\u0443\u0431\u043b\u0438\u0447\u043d\u044b\u0439 HTTPS-\u0440\u0435\u043f\u043e\u0437\u0438\u0442\u043e\u0440\u0438\u0439 \u0432 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u043f\u0440\u043e\u0444\u0438\u043b\u044c ConsoleCrypt. \u041f\u0440\u0438 \u0438\u043c\u043f\u043e\u0440\u0442\u0435 \u0441\u0447\u0438\u0442\u044b\u0432\u0430\u044e\u0442\u0441\u044f \u0444\u0430\u0439\u043b\u044b \u043f\u0440\u043e\u0435\u043a\u0442\u0430. \u041f\u043e\u0434\u043c\u043e\u0434\u0443\u043b\u0438 \u0438 \u0437\u0430\u043a\u0440\u044b\u0442\u044b\u0435 \u0440\u0435\u043f\u043e\u0437\u0438\u0442\u043e\u0440\u0438\u0438 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b.",
   "@automationGitHint": {
     "description": "Explicitly reviewed automation job execution and history"
   },
@@ -7993,7 +8033,7 @@
   "@automationGitCa": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationGitFields": "\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435, HTTPS-\u0430\u0434\u0440\u0435\u0441, \u0432\u0435\u0442\u043a\u0443 \u0438\u043b\u0438 \u0442\u0435\u0433 \u0438 Runner.",
+  "automationGitFields": "\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435, HTTPS-\u0430\u0434\u0440\u0435\u0441, \u0432\u0435\u0442\u043a\u0443 \u0438\u043b\u0438 \u0442\u0435\u0433.",
   "@automationGitFields": {
     "description": "Explicitly reviewed automation job execution and history"
   },
@@ -10699,7 +10739,7 @@
   "@automationPortableExportAction": {
     "description": "Explicit portable saved-project package UI: automationPortableExportAction."
   },
-  "automationPortableInspectAction": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u0430\u043a\u0435\u0442 \u043f\u0440\u043e\u0435\u043a\u0442\u0430...",
+  "automationPortableInspectAction": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0430\u0440\u0445\u0438\u0432 ConsoleCrypt\u2026",
   "@automationPortableInspectAction": {
     "description": "Explicit portable saved-project package UI: automationPortableInspectAction."
   },
@@ -10707,7 +10747,7 @@
   "@automationPortableExportTitle": {
     "description": "Explicit portable saved-project package UI: automationPortableExportTitle."
   },
-  "automationPortableInspectTitle": "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0437\u0430\u0448\u0438\u0444\u0440\u043e\u0432\u0430\u043d\u043d\u043e\u0433\u043e \u043f\u0430\u043a\u0435\u0442\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
+  "automationPortableInspectTitle": "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0437\u0430\u0448\u0438\u0444\u0440\u043e\u0432\u0430\u043d\u043d\u043e\u0433\u043e \u0430\u0440\u0445\u0438\u0432\u0430 ConsoleCrypt",
   "@automationPortableInspectTitle": {
     "description": "Explicit portable saved-project package UI: automationPortableInspectTitle."
   },
@@ -10770,7 +10810,7 @@
   "@automationPortableUnavailable": {
     "description": "Explicit portable saved-project package UI: automationPortableUnavailable."
   },
-  "automationPortableInspectWarning": "\u041f\u0430\u043a\u0435\u0442 \u0431\u0443\u0434\u0435\u0442 \u0440\u0430\u0441\u0448\u0438\u0444\u0440\u043e\u0432\u0430\u043d \u0442\u043e\u043b\u044c\u043a\u043e \u0434\u043b\u044f \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0438. \u0424\u0430\u0439\u043b\u044b \u0438 \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432 \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u044f\u0442\u0441\u044f.",
+  "automationPortableInspectWarning": "\u0417\u0434\u0435\u0441\u044c \u043c\u043e\u0436\u043d\u043e \u043f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u0442\u044c \u0441\u043e\u0441\u0442\u0430\u0432 \u0437\u0430\u0448\u0438\u0444\u0440\u043e\u0432\u0430\u043d\u043d\u043e\u0433\u043e \u0430\u0440\u0445\u0438\u0432\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u0430 ConsoleCrypt \u043f\u0435\u0440\u0435\u0434 \u0438\u043c\u043f\u043e\u0440\u0442\u043e\u043c. \u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043f\u0430\u0440\u043e\u043b\u044c \u0430\u0440\u0445\u0438\u0432\u0430, \u0437\u0430\u0434\u0430\u043d\u043d\u044b\u0439 \u043f\u0440\u0438 \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0435.",
   "@automationPortableInspectWarning": {
     "description": "Authenticated portable package review is read-only; no project creation/publication is claimed."
   },
@@ -14563,5 +14603,176 @@
   },
   "@automationWorkflowHint": {
     "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "monitoringLiveNow": "Сейчас",
+  "@monitoringLiveNow": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveHistory": "История",
+  "@monitoringLiveHistory": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveTitle": "Нагрузка сервера",
+  "@monitoringLiveTitle": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveHint": "Данные читаются по SSH. Графики заполняются, пока открыт этот экран.",
+  "@monitoringLiveHint": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveLinuxOnly": "Сейчас этот экран показывает текущие метрики Linux-серверов.",
+  "@monitoringLiveLinuxOnly": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveNativeOnly": "Для текущих метрик нужен встроенный SSH. Его можно выбрать в настройках хоста.",
+  "@monitoringLiveNativeOnly": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveReadFailed": "Не удалось прочитать метрики сервера. Проверьте подключение по SSH и повторите попытку.",
+  "@monitoringLiveReadFailed": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveConnecting": "Подключаемся по SSH и читаем первые значения…",
+  "@monitoringLiveConnecting": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveLastSample": "Обновлено в",
+  "@monitoringLiveLastSample": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveUptime": "Время работы",
+  "@monitoringLiveUptime": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveUptimeValue": "{days} д {hours} ч {minutes} мин",
+  "@monitoringLiveUptimeValue": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "monitoringLiveCpu": "Загрузка процессора",
+  "@monitoringLiveCpu": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveRam": "Занято памяти",
+  "@monitoringLiveRam": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveDisk": "Занято на системном диске",
+  "@monitoringLiveDisk": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveNetwork": "Сеть",
+  "@monitoringLiveNetwork": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveValues": "Значения",
+  "@monitoringLiveValues": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseTitle": "Посмотреть метрики",
+  "@monitoringBrowseTitle": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseUp": "Доступность целей",
+  "@monitoringBrowseUp": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseHint": "Откройте готовый график или найдите метрику по названию.",
+  "@monitoringBrowseHint": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseAll": "Все метрики",
+  "@monitoringBrowseAll": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseSearch": "Название метрики",
+  "@monitoringBrowseSearch": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseNoMatch": "По этому запросу метрик нет.",
+  "@monitoringBrowseNoMatch": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseEmpty": "Нажмите «Посмотреть метрики», чтобы открыть графики и значения из этого источника.",
+  "@monitoringBrowseEmpty": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "automationVaultFileTitle": "Ansible Vault",
+  "automationVaultEncrypt": "Зашифровать YAML",
+  "automationVaultDecrypt": "Расшифровать YAML",
+  "automationVaultPasswordSource": "Источник пароля",
+  "automationVaultManual": "Ввести пароль",
+  "automationVaultProjectFile": ".vault/password проекта",
+  "automationVaultPassword": "Пароль Ansible Vault",
+  "automationVaultFileHint": "Изменяется только выбранный сохранённый YAML. Пароль проекта остаётся локально и не включается в снимок запуска.",
+  "automationVaultDecryptHint": "Расшифрованный YAML будет сохранён открытым текстом.",
+  "automationTreeRoot": "Корень проекта",
+  "automationTreeEmpty": "В проекте пока нет файлов",
+  "@automationTreeRoot": {
+    "description": "Compact expandable Automation project file tree; project root is a file drop target."
+  },
+  "@automationTreeEmpty": {
+    "description": "Compact expandable Automation project file tree; project root is a file drop target."
+  },
+  "@automationVaultFileTitle": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultFileTitle."
+  },
+  "@automationVaultEncrypt": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultEncrypt."
+  },
+  "@automationVaultDecrypt": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultDecrypt."
+  },
+  "@automationVaultPasswordSource": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultPasswordSource."
+  },
+  "@automationVaultManual": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultManual."
+  },
+  "@automationVaultProjectFile": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultProjectFile."
+  },
+  "@automationVaultPassword": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultPassword."
+  },
+  "@automationVaultFileHint": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultFileHint."
+  },
+  "@automationVaultDecryptHint": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultDecryptHint."
+  },
+  "automationRunPasswords": "Пароли запуска",
+  "automationRunPasswordsHint": "Используются только для этого запуска. Пароли не сохраняются в проекте, журналах и параметрах задания.",
+  "automationUseBecomePassword": "Для запуска нужен пароль sudo / become",
+  "automationBecomePassword": "Пароль sudo / become",
+  "automationRunPasswordsConfigured": "Пароли для этого запуска заданы.",
+  "automationRunPasswordsUnavailable": "Пароли запуска недоступны в этом контексте. Откройте форму запуска заново или выберите обычный Runner.",
+  "@automationRunPasswords": {
+    "description": "One-launch secret input UI: automationRunPasswords."
+  },
+  "@automationRunPasswordsHint": {
+    "description": "One-launch secret input UI: automationRunPasswordsHint."
+  },
+  "@automationUseBecomePassword": {
+    "description": "One-launch secret input UI: automationUseBecomePassword."
+  },
+  "@automationBecomePassword": {
+    "description": "One-launch secret input UI: automationBecomePassword."
+  },
+  "@automationRunPasswordsConfigured": {
+    "description": "One-launch secret input UI: automationRunPasswordsConfigured."
+  },
+  "@automationRunPasswordsUnavailable": {
+    "description": "One-launch secret input UI: automationRunPasswordsUnavailable."
   }
 }

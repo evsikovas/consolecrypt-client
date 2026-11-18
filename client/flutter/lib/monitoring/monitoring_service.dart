@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:consolecrypt/core/services/runtime_notice_events.dart';
+import 'package:consolecrypt/core/models/models.dart' show Host;
 import 'package:consolecrypt/monitoring/agent_association_models.dart' show checkedAssociationId;
 import 'package:consolecrypt/monitoring/agent_association_port.dart';
 import 'package:consolecrypt/monitoring/agent_collector_service_port.dart';
@@ -20,6 +21,7 @@ import 'package:consolecrypt/monitoring/monitoring_alert_models.dart';
 import 'package:consolecrypt/monitoring/monitoring_binding_models.dart';
 import 'package:consolecrypt/monitoring/monitoring_exporter_review.dart';
 import 'package:consolecrypt/monitoring/monitoring_host_context.dart';
+import 'package:consolecrypt/monitoring/monitoring_host_live.dart';
 import 'package:consolecrypt/monitoring/monitoring_models.dart';
 import 'package:consolecrypt/monitoring/monitoring_panel_sync_consent.dart';
 import 'package:consolecrypt/monitoring/monitoring_saved_panel_models.dart';
@@ -101,12 +103,14 @@ class AppCoreMonitoringService
         MonitoringSavedPanelReader,
         AgentSetupCapability,
         MonitoringHostContextReader,
+        MonitoringHostLiveReader,
         MetricsAiNativeCapability,
         MonitoringExporterReader {
   AppCoreMonitoringService({
     required this.read,
     required this.cancelOperation,
     this.hostContextRead,
+    this.hostLiveRead,
     this.metricsAiRpc,
     this.agentReaderPort,
     this.agentAssociationPort,
@@ -146,6 +150,22 @@ class AppCoreMonitoringService
   }
 
   final Future<Json> Function(Json request)? hostContextRead;
+  final Stream<HostMetricsSample> Function(Json request)? hostLiveRead;
+
+  @override
+  Stream<HostMetricsSample> watchHost(Host host, RuntimeNoticeScope scope, String operationId) =>
+      hostLiveRead?.call({
+        'operationId': operationId,
+        'hostId': host.id.value,
+        'hostUpdatedAtMs': host.updatedAt.millisecondsSinceEpoch,
+        'profileId': scope.profileId,
+        'notificationScopeId': scope.nonce,
+      }) ??
+      Stream.error(const MonitoringFailure.local(MonitoringErrorCode.transport));
+
+  @override
+  Future<void> cancelHostWatch(String operationId) => cancelOperation(operationId);
+
   final Future<Json> Function(Json request) read;
   final Future<void> Function(String operationId) cancelOperation;
   @override

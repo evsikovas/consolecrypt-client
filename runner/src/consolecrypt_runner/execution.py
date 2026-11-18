@@ -78,7 +78,7 @@ class InteractiveExecutor:
 
     def accept(self, body):
         require(set(body) in ({'approval', 'revision_id', field, 'parameters'}|extra
-            for field in ('inventory','inventory_ref') for extra in (set(),{'vault_generation'})), 'job_fields', 'Invalid job submission')
+            for field in ('inventory','inventory_ref') for extra in (set(),{'vault_generation'},{'become_native'},{'vault_generation','become_native'})), 'job_fields', 'Invalid job submission')
         require(self.identity is not None, 'interactive_config', 'Interactive scope must be configured first')
         require(not self.vault_is_locked, 'vault_locked', 'New jobs cannot be accepted while the vault is locked')
         environment = probe()
@@ -86,6 +86,10 @@ class InteractiveExecutor:
         verified = verify_envelope(body['approval'], self.grants, **self.identity, environment_digest=environment['environment_digest'])
         root, snapshot, runtime_inventory, parameters = self._checked_inputs(verified, body, environment)
         manifest = verified.value
+        become_native=body.get('become_native',False)
+        require(type(become_native) is bool and (not become_native or
+                (environment['capabilities'].get('become_native_v1') is True and manifest['policy']['cancel_on_lock'])),
+                'become_native','Native sudo input requires updated Runner and cancellation on lock')
         with self.lock:
             # Probe, signature and snapshot verification may take time. A vault
             # transition in that interval must invalidate this admission too.
@@ -100,7 +104,7 @@ class InteractiveExecutor:
                 cancel = threading.Event()
                 self.pending[manifest['job_id']] = (cancel, verified)
                 atomic_json(self.store.job_directory(manifest['job_id']) / 'approval.json', body['approval'])
-                self.worker.submit(self.run, verified, root, snapshot, runtime_inventory, parameters, cancel)
+                self.worker.submit(self.run, verified, root, snapshot, runtime_inventory, parameters, cancel,become_native)
             return {'created': created, 'job': state}
 
     def _checked_inputs(self, verified, body, environment):
@@ -115,8 +119,8 @@ class InteractiveExecutor:
         parameters = validate_parameters(body['parameters'])
         if 'vault' in parameters:
             require(environment['capabilities'].get('vault_job_v1') is True,'vault_runtime','Update Runner for fixed Vault job input')
-            reference=next((f for f in snapshot.files if f['path']=='.consolecrypt-secret-inputs.json'),None)
-            require(reference is not None and reference['sha256']==parameters['vault']['reference_sha256']
+            from .vault_ephemeral import reference_matches
+            require(reference_matches(snapshot,parameters['vault']['reference_sha256'])
                     and environment['environment_digest']==parameters['vault']['environment_digest']
                     and environment['helper_digest']==parameters['vault']['helper_digest'],
                     'vault_binding','Signed Vault reference/runtime differs')
@@ -169,7 +173,7 @@ class InteractiveExecutor:
                         self.channel.revoke(verified)
             return {'locked': locked, 'generation': self.vault_generation}
 
-    def run(self, verified, root, snapshot, inventory, parameters, cancel):
+    def run(self, verified, root, snapshot, inventory, parameters, cancel,become_native=False):
         manifest, summary = verified.value, None
         job_id = manifest['job_id']
         buffer, discarding = bytearray(), False
@@ -203,6 +207,7 @@ class InteractiveExecutor:
             directory = self.store.job_directory(job_id)
             input_body = encode({'playbook': manifest['playbook'], 'mode': manifest['mode'], 'forks': manifest['policy']['forks'],
                                  'inventory': inventory, 'parameters': parameters,
+                                 **({'become_native':True} if become_native else {}),
                                  **({'vault_execution':True} if 'vault' in parameters else {})})
             with ExitStack() as execution_scope:
                 inputs = execution_scope.enter_context(EphemeralJobInput(input_body))

@@ -353,6 +353,22 @@ impl AppCore {
         let review = self
             .automation_vault_capture(project_id, project_revision, digest, credential, cancel)
             .await?;
+        self.open_vault_review_session(review,runner_id,runner_revision,playbook,root,revision,cancel).await
+    }
+
+    pub(crate) async fn automation_open_ephemeral_vault_job_session(
+        &self, original:AutomationProjectContext, digest:String, password:cc_models::secret::SecretValue,
+        runner_id:String, runner_revision:u64, playbook:String,
+        root:Arc<managed::OpenedProjectRoot>, revision:ProjectRevision,cancel:&CancellationToken,
+    )->AppResult<VaultJobSession> {
+        let review=self.automation_ephemeral_vault_capture(original,digest,password,cancel).await?;
+        self.open_vault_review_session(review,runner_id,runner_revision,playbook,root,revision,cancel).await
+    }
+
+    async fn open_vault_review_session(
+        &self, review:VaultCredentialReview, runner_id:String, runner_revision:u64, playbook:String,
+        root:Arc<managed::OpenedProjectRoot>,revision:ProjectRevision,cancel:&CancellationToken,
+    )->AppResult<VaultJobSession> {
         let registry = review.project.owner.automation.vault_validation.clone();
         let runner = {
             let u = review

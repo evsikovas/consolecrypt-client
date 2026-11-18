@@ -28,6 +28,7 @@ class MonitoringDashboard extends StatefulWidget {
     this.active = true,
     this.onConfigure,
     this.onLinkHost,
+    this.onBrowseSource,
     this.keepHostSelection = false,
   });
   final MonitoringService service;
@@ -38,6 +39,7 @@ class MonitoringDashboard extends StatefulWidget {
   final List<String> requestedBindingIds;
   final bool active;
   final VoidCallback? onConfigure, onLinkHost;
+  final ValueChanged<MonitoringSource>? onBrowseSource;
   final bool keepHostSelection;
   @override
   State<MonitoringDashboard> createState() => _MonitoringDashboardState();
@@ -119,12 +121,14 @@ class _MonitoringDashboardState extends State<MonitoringDashboard> {
           ? (store as MonitoringSavedPanelStore).panels
           : <SavedMonitoringPanel>[];
       setState(() {
-        sources = loaded;
         panels = List.of(saved);
         bindings = store is MonitoringBindingStore ? List.of((store as MonitoringBindingStore).bindings) : [];
+        sources = widget.keepHostSelection
+            ? loaded.where((candidate) => bindings.any((b) => bindingMatches(b, candidate))).toList()
+            : loaded;
         selected = widget.requestedSourceId != null
-            ? loaded.where((s) => s.id == widget.requestedSourceId).firstOrNull?.id
-            : loaded
+            ? sources.where((s) => s.id == widget.requestedSourceId).firstOrNull?.id
+            : sources
                       .where(
                         (s) =>
                             (widget.requestedHostId == null && saved.any((p) => p.currentFor(s))) ||
@@ -138,7 +142,7 @@ class _MonitoringDashboardState extends State<MonitoringDashboard> {
                       )
                       .firstOrNull
                       ?.id ??
-                  loaded.firstOrNull?.id;
+                  sources.firstOrNull?.id;
         if (widget.requestedSourceId != null && selected == null) {
           error = const MonitoringFailure.local(MonitoringErrorCode.sourceChanged);
         }
@@ -257,7 +261,7 @@ class _MonitoringDashboardState extends State<MonitoringDashboard> {
   }
 
   void choose(String? id) {
-    if (id == null || id == selected || !widget.isCurrent()) return;
+    if (id == null || id == selected || !widget.isCurrent() || !sources.any((s) => s.id == id)) return;
     generation++;
     timer?.cancel();
     widget.service.cancel();
@@ -339,6 +343,19 @@ class _MonitoringDashboardState extends State<MonitoringDashboard> {
               ],
             ),
           const SizedBox(height: 16),
+          if (original != null && automatic && !original.readOnly && widget.onBrowseSource != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  key: const ValueKey('monitoring-explore-source'),
+                  onPressed: () => widget.onBrowseSource!(original),
+                  icon: const Icon(Icons.show_chart),
+                  label: Text(l.monitoringBrowseTitle),
+                ),
+              ),
+            ),
           if (original != null && !automatic) InfoBanner(message: l.monitoringAgentRouteHint, tone: BannerTone.info),
           if (widget.store.readOnly || original?.readOnly == true)
             InfoBanner(message: l.monitoringReadOnly, tone: BannerTone.warning),
@@ -347,7 +364,11 @@ class _MonitoringDashboardState extends State<MonitoringDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(focusedHost ? l.monitoringNoHostMetrics : l.monitoringSetupNoGraphs),
+                  Text(focusedHost
+                    ? l.monitoringNoHostMetrics
+                    : original != null && widget.onBrowseSource != null
+                      ? l.monitoringBrowseEmpty
+                      : l.monitoringSetupNoGraphs),
                   const SizedBox(height: 8),
                   if (focusedHost && widget.onLinkHost != null)
                     FilledButton.icon(
@@ -356,7 +377,7 @@ class _MonitoringDashboardState extends State<MonitoringDashboard> {
                       icon: const Icon(Icons.link),
                       label: Text(l.monitoringChooseTarget),
                     )
-                  else if (widget.onConfigure != null)
+                  else if (original == null && widget.onConfigure != null)
                     FilledButton.icon(
                       key: const ValueKey('monitoring-connect-source'),
                       onPressed: widget.onConfigure,

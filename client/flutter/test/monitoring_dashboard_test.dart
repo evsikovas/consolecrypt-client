@@ -229,7 +229,7 @@ Future<void> _open(
 }
 
 void main() {
-  testWidgets('switching sources in a host view preserves the host filter', (tester) async {
+  testWidgets('a host view keeps its graphs when an unrelated source is requested', (tester) async {
     const hostId = '11111111-1111-4111-8111-111111111111';
     final store = _FocusedStore()..sources = [monitoringFixture, _otherSource];
     store.bindings.addAll([
@@ -258,7 +258,7 @@ void main() {
     expect(service.reads, hasLength(4));
     expect(service.savedReads, isEmpty);
     expect(find.text('Other host'), findsNothing);
-    expect(find.byType(MonitoringResultView), findsNothing);
+    expect(find.byType(MonitoringResultView), findsNWidgets(8));
     expect(tester.takeException(), isNull);
   });
 

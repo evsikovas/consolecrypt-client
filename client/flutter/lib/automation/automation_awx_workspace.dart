@@ -101,9 +101,11 @@ class AwxWorkspace extends StatefulWidget {
     required this.copy,
     required this.onEditConnection,
     required this.onOpenResource,
+    this.intro,
   });
   final AwxController controller;
   final AwxCopyText copy;
+  final String? intro;
   final Future<MonitoringSource?> Function(AwxConnection? original)
   onEditConnection;
   final Future<void> Function(String originalNativeUrl) onOpenResource;
@@ -645,6 +647,10 @@ class _AwxWorkspaceState extends State<AwxWorkspace> {
                   t(AwxCopy.title),
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
+                if (widget.intro case final intro?) ...[
+                  const SizedBox(height: 6),
+                  Text(intro),
+                ],
                 const SizedBox(height: 12),
                 if (!c.current)
                   InfoBanner(

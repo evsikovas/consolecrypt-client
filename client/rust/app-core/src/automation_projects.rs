@@ -23,6 +23,7 @@ pub(crate) mod folder_bindings;
 mod export_fence;
 pub(crate) mod portable;
 pub(crate) mod vault;
+mod vault_file;
 pub(crate) mod dependencies;
 pub(crate) mod service_delegation;
 pub(crate) mod execution_credentials;
@@ -47,6 +48,7 @@ pub(crate) fn automation_io_slot(
         .map_err(|_| AppError::invalid("automation_io", "filesystem worker limit reached"))
 }
 
+#[derive(Clone)]
 pub(crate) struct AutomationProjectContext {
     pub owner: Arc<crate::session::Session>,
     pub unlock: Weak<crate::session::Unlocked>,
@@ -224,6 +226,32 @@ impl AppCore {
         name: String,
         directory: Option<String>,
     ) -> AppResult<AutomationProjectSummary> {
+        self.create_automation_project(name, directory, false, None).await
+    }
+
+    /// Initialize a new project in a managed or explicitly selected empty folder.
+    pub async fn automation_project_scaffold(
+        &self,
+        name: String,
+        directory: Option<String>,
+        role: Option<String>,
+    ) -> AppResult<AutomationProjectSummary> {
+        if role.as_deref().is_some_and(|value| {
+            value.is_empty() || value.len() > 64 || !value.as_bytes()[0].is_ascii_lowercase()
+                || !value.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+        }) {
+            return Err(AppError::invalid("role", "use a lowercase role identifier"));
+        }
+        self.create_automation_project(name, directory, true, role).await
+    }
+
+    async fn create_automation_project(
+        &self,
+        name: String,
+        directory: Option<String>,
+        initialize_directory: bool,
+        role: Option<String>,
+    ) -> AppResult<AutomationProjectSummary> {
         let name = valid_name(&name)?;
         let (owner, unlocked) = self.unlocked().await?;
         let id = Uuid::new_v4().to_string();
@@ -249,9 +277,19 @@ impl AppCore {
             let _io_slot=io_slot;
             if managed { std::fs::create_dir_all(&project_path)?; }
             let project = ProjectRoot::open(&project_path).map_err(automation_error)?;
-            project.revision().map_err(automation_error)?;
-            if managed { project.write_file("playbook.yml", None,
-                "---\n- name: New automation project\n  hosts: all\n  gather_facts: false\n  tasks:\n    - name: Display a message\n      ansible.builtin.debug:\n        msg: Project is ready for editing\n").map_err(automation_error)?; }
+            let revision = project.revision().map_err(automation_error)?;
+            if initialize_directory && !revision.entries.is_empty() {
+                return Err(AppError::invalid("project_source", "project_folder_not_empty"));
+            }
+            if managed || initialize_directory {
+                let playbook = if let Some(role) = role {
+                    project.create_role(&role).map_err(automation_error)?;
+                    format!("---\n- name: Apply project role\n  hosts: all\n  roles:\n    - {role}\n")
+                } else {
+                    "---\n- name: New automation project\n  hosts: all\n  gather_facts: false\n  tasks:\n    - name: Display a message\n      ansible.builtin.debug:\n        msg: Project is ready for editing\n".to_owned()
+                };
+                project.write_file("playbook.yml", None, &playbook).map_err(automation_error)?;
+            }
             Ok(())
         }).await.map_err(|_| AppError::internal("project source worker stopped"))??;
         let row = json!({"version":1,"name":name,"source":{"kind":kind,"path":path},"revision":1,
@@ -455,6 +493,30 @@ impl AppCore {
         context.check_after_io(self).await?;
         drop(retained_io);
         Ok(result)
+    }
+
+    pub async fn automation_project_move_file(
+        &self,
+        id: String,
+        path: String,
+        directory: String,
+        expected_sha256: String,
+    ) -> AppResult<()> {
+        let context = self.automation_project_context(&id).await?;
+        let retained_io = managed::admit_io(self, &context).await?;
+        let io_slot = retained_io.clone();
+        let source = context.root_selection.clone();
+        tokio::task::spawn_blocking(move || -> AppResult<()> {
+            let _io_slot = io_slot;
+            let root = source.open()?;
+            root.recheck()?;
+            root.move_file(&path, &directory, &expected_sha256).map_err(automation_error)?;
+            root.recheck()?;
+            Ok(())
+        }).await.map_err(|_| AppError::internal("project move worker stopped"))??;
+        context.check_after_io(self).await?;
+        drop(retained_io);
+        Ok(())
     }
 
     pub async fn automation_project_create_role(

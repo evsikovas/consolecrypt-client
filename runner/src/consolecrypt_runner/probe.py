@@ -75,6 +75,8 @@ def probe():
             "capabilities": {"project_snapshot": os.name == "posix", "validate": dependencies_ready and non_root and sandbox["network"],
                              "trusted_worker_bootstrap_v1": True,
                              "vault_job_v1": sys.platform=='linux' and dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
+                             "become_native_v1": sys.platform=='linux' and dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
+                             "vault_ephemeral_v1": sys.platform=='linux' and dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
                              "target_match_v1": dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
                              "declared_inputs_v1": dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
                              "locked_dependencies_v1": dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),

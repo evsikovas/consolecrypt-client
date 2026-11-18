@@ -204,8 +204,8 @@ class Helper:
                 if 'vault' in checked:
                     from .vault_sidecar import PinnedVaultSidecar
                     binding=checked['vault']
-                    reference=next((f for f in snapshot.files if f['path']=='.consolecrypt-secret-inputs.json'),None)
-                    require(reference is not None and reference['sha256']==binding['reference_sha256'],
+                    from .vault_ephemeral import reference_matches
+                    require(reference_matches(snapshot,binding['reference_sha256']),
                             'vault_binding','Vault reference differs from the frozen revision')
                     options['vault_sidecar_factory']=lambda phase:PinnedVaultSidecar(self.root,binding,phase,snapshot.digest)
             report = validate_project(root, snapshot, body['playbook'], cancel=cancel, **options)

@@ -12,7 +12,10 @@ import 'package:material_ui/material_ui.dart';
 enum AutomationAnsibleSetting {
   gathering('gathering'),
   anyErrorsFatal('any_errors_fatal'),
-  taskTimeout('task_timeout');
+  taskTimeout('task_timeout'),
+  inventory('inventory'),
+  rolesPath('roles_path'),
+  vaultPasswordFile('vault_password_file');
 
   const AutomationAnsibleSetting(this.iniKey);
   final String iniKey;
@@ -29,6 +32,7 @@ enum AutomationAnsibleSetting {
       },
       taskTimeout =>
         RegExp(r'^\d+$').hasMatch(value) && int.tryParse(value) != null ? int.parse(value).toString() : null,
+      inventory || rolesPath || vaultPasswordFile => null,
     };
   }
 }
@@ -200,8 +204,9 @@ class AutomationAnsibleConfigResult {
 /// Present inside the caller's existing AutomationScopeGuard; this widget never
 /// reads files, saves configuration, starts a job or holds credentials.
 class AutomationAnsibleConfigDialog extends StatefulWidget {
-  const AutomationAnsibleConfigDialog({super.key, required this.text});
+  const AutomationAnsibleConfigDialog({super.key, required this.text, this.hasFile = true});
   final String text;
+  final bool hasFile;
 
   @override
   State<AutomationAnsibleConfigDialog> createState() => _AutomationAnsibleConfigDialogState();
@@ -267,6 +272,8 @@ class _AutomationAnsibleConfigDialogState extends State<AutomationAnsibleConfigD
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              Text(widget.hasFile ? context.l10n.automationConfigFromFile : context.l10n.automationConfigNewFile),
+              const SizedBox(height: 8),
               Text(words.policy),
               const SizedBox(height: 16),
               Text(words.precedence),
@@ -297,6 +304,16 @@ class _AutomationAnsibleConfigDialogState extends State<AutomationAnsibleConfigD
                 onChanged: (value) => change(AutomationAnsibleSetting.taskTimeout, value),
               ),
               const SizedBox(height: 20),
+              for (final setting in [
+                AutomationAnsibleSetting.inventory,
+                AutomationAnsibleSetting.rolesPath,
+                AutomationAnsibleSetting.vaultPasswordFile,
+              ])
+                if (document.value(setting) case final value?)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: SelectableText('${setting.iniKey} = $value'),
+                  ),
               Text(words.preserve),
               if (changes.isNotEmpty)
                 TextButton(

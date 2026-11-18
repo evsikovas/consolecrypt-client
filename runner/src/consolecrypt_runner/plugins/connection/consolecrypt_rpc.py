@@ -28,6 +28,33 @@ class Connection(ConnectionBase):
     transport = 'consolecrypt_rpc'
     has_pipelining = False
 
+    def set_become_plugin(self, become_plugin):
+        super().set_become_plugin(become_plugin)
+        self._cc_become_command=None
+        self._cc_native_enabled=os.environ.get('CC_NATIVE_SUDO') == '1'
+        if not self._cc_native_enabled:
+            return
+        # ActionBase must not wrap the captured command a second time after
+        # build_become_command. Native already owns the fixed /bin/sh wrapper.
+        self.allow_executable=False
+        if become_plugin.name != 'sudo':
+            raise AnsibleConnectionFailure('One-shot ConsoleCrypt privilege escalation supports sudo only')
+        executable=become_plugin.get_option('become_exe')
+        flags=become_plugin.get_option('become_flags')
+        if executable not in (None,'','sudo','/usr/bin/sudo') or (flags and flags.strip() not in ('-H -S -n','-H -S','-S -n','-S')):
+            raise AnsibleConnectionFailure('Custom sudo executable or flags are unavailable for one-shot ConsoleCrypt input')
+        build=getattr(become_plugin,'_cc_native_original_build',None)
+        if build is None:
+            build=become_plugin.build_become_command
+            become_plugin._cc_native_original_build=build
+        def capture(command,shell):
+            wrapped=build(command,shell)
+            # Retain data only. Native constructs its own fixed sudo wrapper,
+            # generates the prompt, and never receives a caller password here.
+            self._cc_become_command=(wrapped,command,become_plugin.get_option('become_user') or 'root')
+            return wrapped
+        become_plugin.build_become_command=capture
+
     def _connect(self):
         self._connected = True
         return self
@@ -65,7 +92,13 @@ class Connection(ConnectionBase):
         data = in_data.encode('utf-8') if isinstance(in_data, str) else in_data or b''
         if not isinstance(cmd, str) or len(cmd.encode('utf-8')) > 64 * 1024 or len(data) > 256 * 1024:
             raise AnsibleConnectionFailure('ConsoleCrypt command or input exceeds its job limit')
-        result = self._rpc('exec', {'command': cmd, 'stdin': base64.b64encode(data).decode('ascii')})
+        captured=getattr(self,'_cc_become_command',None)
+        if getattr(self,'_cc_native_enabled',False) and captured is not None and sudoable and cmd==captured[0]:
+            self._cc_become_command=None
+            result=self._rpc('exec_become',{'method':'sudo','user':captured[2],
+                'command':captured[1],'stdin':base64.b64encode(data).decode('ascii')})
+        else:
+            result = self._rpc('exec', {'command': cmd, 'stdin': base64.b64encode(data).decode('ascii')})
         try:
             if type(result['exit_code']) is not int or not 0 <= result['exit_code'] <= 255:
                 raise ValueError('exit code')

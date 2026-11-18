@@ -1,7 +1,28 @@
 import 'package:consolecrypt/core/models/step_up.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 
 typedef AutomationJson = Map<String, dynamic>;
 const automationGitSourceFile = '.consolecrypt-git-source.json';
+
+/// User-selected local YAML transform. Native reads a project password only at
+/// the fixed .vault/password path; typed secrets never enter request JSON.
+abstract interface class AutomationVaultFileService {
+  Future<AutomationJson> vaultFileContext(String projectId);
+  Future<AutomationProjectFile> transformVaultFile(AutomationJson request, {SecretText? password});
+}
+
+/// One original launch only. Secrets are typed separately from run metadata;
+/// Native retains the same sealed validation/job broker and never stores them.
+abstract interface class AutomationRunSecretService {
+  Future<AutomationJson> prepareRunWithSecrets(
+    AutomationJson request, {
+    required String profileId,
+    required String notificationScopeId,
+    SecretText? vaultPassword,
+    SecretText? becomePassword,
+    bool useProjectVaultPassword = false,
+  });
+}
 
 /// Metadata only. Passwords stay in Native custody and never enter this port.
 abstract interface class AutomationVaultSelectionService {
@@ -25,6 +46,19 @@ abstract interface class AutomationEditorService {
 
 abstract interface class AutomationScaffoldService {
   Future<AutomationProjectFile> createRole(String projectId, String name);
+}
+
+abstract interface class AutomationMoveService {
+  Future<void> moveProjectFile(
+    String projectId, {
+    required String sourcePath,
+    required String destinationDirectory,
+    required String expectedSha256,
+  });
+}
+
+abstract interface class AutomationNewProjectService {
+  Future<AutomationProject> scaffoldProject({required String name, String? directory, String? role});
 }
 
 abstract interface class AutomationSourceInventoryService {
@@ -199,15 +233,17 @@ final class AutomationProjectCatalog {
 }
 
 final class AutomationFileEntry {
-  const AutomationFileEntry({required this.path, required this.directory, this.bytes = 0});
+  const AutomationFileEntry({required this.path, required this.directory, this.bytes = 0, this.sha256});
   factory AutomationFileEntry.fromJson(AutomationJson value) => AutomationFileEntry(
     path: value['path'] as String,
     directory: value['type'] == 'directory',
     bytes: value['bytes'] as int? ?? 0,
+    sha256: value['sha256'] as String?,
   );
   final String path;
   final bool directory;
   final int bytes;
+  final String? sha256;
 }
 
 final class AutomationProjectRevision {

@@ -2,6 +2,7 @@ import 'package:consolecrypt/automation/automation_awx_connection_form.dart';
 import 'package:consolecrypt/automation/automation_awx_controller.dart';
 import 'package:consolecrypt/automation/automation_awx_models.dart';
 import 'package:consolecrypt/automation/automation_awx_workspace.dart';
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -37,6 +38,7 @@ class AwxConnectionWorkspace extends ConsumerWidget {
     return AwxWorkspace(
       controller: controller,
       copy: copy,
+      intro: context.l10n.awxIntro,
       onOpenResource: onOpenResource,
       onEditConnection: (original) => showAwxConnectionEditor(
         context,

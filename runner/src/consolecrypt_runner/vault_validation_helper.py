@@ -12,6 +12,7 @@ from .validation import validate_project
 from .store import atomic_json
 from .vault_validation_channel import VaultValidationChannel
 from .vault_validation_broker import VaultValidationBroker,_capsule
+from .vault_ephemeral import reference_matches
 from . import dependency_retention as retention
 ALLOWED=READ|UPLOAD|{'probe','environment_probe','revision_release','validation_prepare','validation_dispose',
     'vault_sidecar_begin','vault_sidecar_finish_validation','vault_sidecar_material'}
@@ -80,8 +81,7 @@ class ValidationHelper(DependencyHelper):
                 r['revision_digest']==snapshot.digest and r['reference_sha256']==first['reference_sha256'] and
                 r['helper_digest']==first['helper_digest'] and r['environment_digest']==first['environment_digest'] for r in children),
                 'vault_phase','Vault grants differ from the frozen revision')
-        reference=next((f for f in snapshot.files if f['path']=='.consolecrypt-secret-inputs.json'),None)
-        require(reference is not None and reference['sha256']==first['reference_sha256'],'vault_phase','Vault reference differs')
+        require(reference_matches(snapshot,first['reference_sha256']),'vault_phase','Vault reference differs')
         report=probe();require(report['environment_digest']==first['environment_digest'] and report['helper_digest']==first['helper_digest'],
                 'vault_runtime','Vault runtime changed')
         @contextmanager
@@ -165,8 +165,7 @@ class ValidationHelper(DependencyHelper):
                         and all(c['scope_id']==binding['scope_id'] and c['revision_digest']==snapshot.digest and
                             all(c[k]==binding[k] for k in ('reference_sha256','environment_digest','helper_digest')) for c in children),
                         'vault_sidecar','Validation grants differ from signed metadata')
-                reference=next((f for f in snapshot.files if f['path']=='.consolecrypt-secret-inputs.json'),None)
-                require(reference is not None and reference['sha256']==binding['reference_sha256'],
+                require(reference_matches(snapshot,binding['reference_sha256']),
                         'vault_sidecar','Snapshot reference differs')
                 self._sidecar_binding=binding;self._sidecar_snapshot=(root,snapshot)
                 self._open_sidecar_broker('syntax',children[:2],cancel)

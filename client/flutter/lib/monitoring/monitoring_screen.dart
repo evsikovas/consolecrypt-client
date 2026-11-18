@@ -47,6 +47,8 @@ import 'package:consolecrypt/monitoring/monitoring_grafana_url.dart';
 import 'package:consolecrypt/monitoring/monitoring_grafana_worker.dart';
 import 'package:consolecrypt/monitoring/monitoring_host_focus.dart';
 import 'package:consolecrypt/monitoring/monitoring_host_link_dialog.dart';
+import 'package:consolecrypt/monitoring/monitoring_host_live.dart';
+import 'package:consolecrypt/monitoring/monitoring_metric_browser.dart';
 import 'package:consolecrypt/monitoring/monitoring_models.dart';
 import 'package:consolecrypt/monitoring/monitoring_pinned_providers.dart';
 import 'package:consolecrypt/monitoring/monitoring_pinned_view.dart';
@@ -77,13 +79,41 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   AgentSetupFocus? _handledSetupFocus;
   MonitoringHostFocus? _handledHostFocus;
   MonitoringBinding? _linkedHost;
-  bool _hostDismissed = false, _linkOpen = false;
+  bool _hostDismissed = false, _linkOpen = false, _hostHistory = false;
 
   void _showSources() => setState(() {
     _advanced = true;
     _agents = false;
     _readyFocus = null;
   });
+
+  Future<void> _browseSource(MonitoringSource source) async {
+    final scope = ref.read(monitoringScopeProvider), session = ref.read(monitoringSessionProvider);
+    if (session == null || _linkOpen || !scope.current) return;
+    final router = ref.read(routerProvider);
+    var open = true;
+    bool current() =>
+        open &&
+        mounted &&
+        scope.current &&
+        identical(ref.read(monitoringSessionProvider), session) &&
+        router.routeInformationProvider.value.uri.path == AppRoutes.monitoring;
+    setState(() => _linkOpen = true);
+    try {
+      await showAppDialog<void>(
+        context,
+        secure: true,
+        builder: (_) => _MonitoringScopeGuard(
+          scope: scope,
+          requireActive: true,
+          child: MonitoringMetricBrowser(source: source, service: session.service, isCurrent: current),
+        ),
+      );
+    } finally {
+      open = false;
+      if (mounted) setState(() => _linkOpen = false);
+    }
+  }
 
   Future<void> _chooseMetricsHost() async {
     final scope = ref.read(monitoringScopeProvider), session = ref.read(monitoringSessionProvider);
@@ -422,6 +452,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
         if (incomingHost != null && !identical(_handledHostFocus, incomingHost)) {
           _handledHostFocus = incomingHost;
           _hostDismissed = false;
+          _hostHistory = false;
           _linkedHost = null;
           _advanced = false;
           _agents = false;
@@ -512,14 +543,27 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
             if (hostFocus != null && !_agents && !showAdvanced)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: Row(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Expanded(
-                      child: Text(
-                        hostCurrent ? hostFocus.host.name : context.l10n.correlationContextChanged,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                    Text(
+                      hostCurrent ? hostFocus.host.name : context.l10n.correlationContextChanged,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    if (hostCurrent) ...[
+                      ChoiceChip(
+                        label: Text(context.l10n.monitoringLiveNow),
+                        selected: !_hostHistory,
+                        onSelected: (_) => setState(() => _hostHistory = false),
+                      ),
+                      ChoiceChip(
+                        label: Text(context.l10n.monitoringLiveHistory),
+                        selected: _hostHistory,
+                        onSelected: (_) => setState(() => _hostHistory = true),
+                      ),
+                    ],
                     TextButton(
                       onPressed: () => setState(() {
                         _hostDismissed = true;
@@ -555,7 +599,21 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
                       : null,
                 ),
               ),
-            if (!showAdvanced && !_agents && hostCurrent)
+            if (!showAdvanced && !_agents && hostCurrent && hostFocus != null && !_hostHistory)
+              Expanded(
+                child: MonitoringHostLive(
+                  key: ObjectKey(hostFocus),
+                  host: hostFocus.host,
+                  scope: scope.nativeScope,
+                  reader: setupService is MonitoringHostLiveReader ? setupService as MonitoringHostLiveReader : null,
+                  active: visible,
+                  isCurrent: () =>
+                      mounted &&
+                      hostFocus.current(ref) &&
+                      ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.monitoring,
+                ),
+              ),
+            if (!showAdvanced && !_agents && hostCurrent && (hostFocus == null || _hostHistory))
               Expanded(
                 child: MonitoringDashboard(
                   key: ValueKey((session, _setupGeneration)),
@@ -572,6 +630,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
                       : [_linkedHost!.id],
                   onConfigure: _showSources,
                   onLinkHost: hostFocus == null ? null : () => _linkMetricsHost(hostFocus),
+                  onBrowseSource: hostFocus == null ? _browseSource : null,
                   isCurrent: () =>
                       mounted &&
                       visible &&

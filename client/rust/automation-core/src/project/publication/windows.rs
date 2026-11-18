@@ -157,22 +157,57 @@ pub(super) fn rename_new(
     parent: BorrowedHandle<'_>,
     name: &str,
 ) -> io::Result<()> {
-    HEALTH.run(|| rename_admitted(source, parent, name))
+    use std::os::windows::io::AsHandle;
+    valid_name(name)?;
+    HEALTH.run(|| rename_admitted(source.file.as_handle(), parent, name))
 }
+
+pub(in crate::project) fn open_project_move_file(
+    parent: &cap_std::fs::Dir,
+    name: &str,
+) -> io::Result<cap_std::fs::File> {
+    use cap_fs_ext::{FollowSymlinks, MetadataExt, OpenOptionsFollowExt};
+    use cap_std::fs::{OpenOptions, OpenOptionsExt};
+    let mut options = OpenOptions::new();
+    options
+        .access_mode(GENERIC_READ_ACCESS | DELETE_ACCESS)
+        .share_mode(1)
+        .follow(FollowSymlinks::No);
+    let file = parent.open_with(name, &options)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file()
+        || metadata.nlink() != 1
+        || cap_std::fs::MetadataExt::file_attributes(&metadata) & 0x400 != 0
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "select a regular project file",
+        ));
+    }
+    Ok(file)
+}
+
+pub(in crate::project) fn rename_project_move_file(
+    file: &cap_std::fs::File,
+    target: &cap_std::fs::Dir,
+    name: &str,
+) -> io::Result<()> {
+    use std::os::windows::io::AsHandle;
+    HEALTH.run(|| rename_admitted(file.as_handle(), target.as_handle(), name))
+}
+
 fn rename_admitted(
-    source: &SynchronousStage,
+    source: BorrowedHandle<'_>,
     parent: BorrowedHandle<'_>,
     name: &str,
 ) -> io::Result<()> {
-    valid_name(name)?;
     let wide: Vec<u16> = name.encode_utf16().collect();
     let bytes = size_of::<FILE_RENAME_INFORMATION>() + wide.len() * 2;
     // usize allocation provides at least pointer alignment for FILE_RENAME_INFO.
     let mut storage = vec![0usize; bytes.div_ceil(size_of::<usize>())];
     let info = storage.as_mut_ptr().cast::<FILE_RENAME_INFORMATION>();
     let mut iosb = Box::new(IO_STATUS_BLOCK::default());
-    use std::os::windows::io::AsHandle;
-    let source = source.file.as_handle().try_clone_to_owned()?;
+    let source = source.try_clone_to_owned()?;
     let parent = parent.try_clone_to_owned()?;
     // SAFETY: aligned, zeroed storage is large enough for the documented header
     // and flexible WCHAR tail. Every read field is initialized. No reference to

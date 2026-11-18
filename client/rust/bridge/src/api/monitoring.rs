@@ -1,6 +1,7 @@
 //! Monitoring facade accepts source IDs/revisions, never arbitrary fetch URLs
 //! or raw authorization material during reads. Config writes are separate CAS.
 use crate::api::error::BridgeError;
+use crate::frb_generated::StreamSink;
 use crate::state::{from_json, to_json, with_core};
 use serde::{Deserialize, Deserializer, de};
 use std::{collections::BTreeMap, fmt};
@@ -286,6 +287,19 @@ pub async fn monitoring_source_delete(
 /// saved source/revision and enforces the same unlock/auth/cancel fences.
 pub async fn monitoring_read(request_json: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.monitoring_read(request_json).await?) }).await
+}
+
+/// Live, bounded snapshots from the selected Linux SSH host.
+pub async fn monitoring_watch_host(
+    request_json: String,
+    sink: StreamSink<String>,
+) -> Result<(), BridgeError> {
+    with_core(move |c| async move {
+        c.monitoring_watch_host(&request_json, move |sample| sink.add(sample.to_string()).is_ok())
+            .await?;
+        Ok(())
+    })
+    .await
 }
 
 pub async fn monitoring_cancel(operation_id: String) -> Result<(), BridgeError> {

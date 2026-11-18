@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
-import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -22,7 +22,7 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
       url = TextEditingController(),
       reference = TextEditingController(text: 'main'),
       ca = TextEditingController();
-  String? runner, id;
+  String? id;
   bool customCa = false, busy = false, polling = false, completed = false, scopeValid = true;
   Object? error;
   Timer? timer;
@@ -51,7 +51,7 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
 
   Future<void> start() async {
     if (busy || id != null) return;
-    if (runner == null || name.text.trim().isEmpty || url.text.trim().isEmpty || reference.text.trim().isEmpty) {
+    if (name.text.trim().isEmpty || url.text.trim().isEmpty || reference.text.trim().isEmpty) {
       setState(() => error = FormatException(context.l10n.automationGitFields));
       return;
     }
@@ -60,11 +60,9 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
       error = null;
     });
     try {
-      await ref.read(automationRunnerServiceProvider)!.connectRunner(runner!);
-      if (!current) return;
       final created = await widget.git.startGit(
         name: name.text.trim(),
-        runnerId: runner!,
+        runnerId: '',
         url: url.text.trim(),
         reference: reference.text.trim(),
         caPem: customCa ? ca.text : null,
@@ -144,7 +142,6 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final runners = ref.watch(automationRunnersProvider);
     return AlertDialog(
       title: Text(l.automationGitImport),
       content: SizedBox(
@@ -157,18 +154,6 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
             field(l.automationGitName, name, 'automation-git-name'),
             field(l.automationGitUrl, url, 'automation-git-url'),
             field(l.automationGitReference, reference, 'automation-git-reference'),
-            GlassSelect<String?>(
-              value: runner,
-              expand: true,
-              semanticLabel: l.automationChooseRunner,
-              onChanged: busy || id != null ? null : (value) => setState(() => runner = value),
-              items: [
-                GlassSelectItem(value: null, label: l.automationChooseRunner),
-                for (final item in runners.value?.runners ?? <AutomationRunnerProfile>[])
-                  if (!item.readOnly) GlassSelectItem(value: item.id, label: item.name ?? item.id),
-              ],
-            ),
-            if (runners.hasError) Text(errorMessage(l, runners.error!)),
             const SizedBox(height: 12),
             CheckboxListTile(
               value: customCa,
@@ -179,7 +164,13 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
             if (busy) ...[const LinearProgressIndicator(), Text(l.automationGitReceiving)],
             if (error != null)
               Text(
-                error is FormatException ? (error as FormatException).message : errorMessage(l, error!),
+                error is AppException &&
+                        (error as AppException).args['field'] == 'automation_git' &&
+                        (error as AppException).args['rule'] == 'git_not_installed'
+                    ? l.automationGitUnavailable
+                    : error is FormatException
+                    ? (error as FormatException).message
+                    : errorMessage(l, error!),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
           ],

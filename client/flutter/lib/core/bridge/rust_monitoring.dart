@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:consolecrypt/core/bridge/mapping.dart' show guard;
+import 'package:consolecrypt/core/bridge/mapping.dart' show guard, toAppException;
 import 'package:consolecrypt/core/bridge/rust_agent_association.dart';
 import 'package:consolecrypt/core/bridge/rust_agent_collector_service_generated.dart';
 import 'package:consolecrypt/core/bridge/rust_agent_exporter_generated.dart';
@@ -10,9 +10,11 @@ import 'package:consolecrypt/core/bridge/rust_agent_reader.dart';
 import 'package:consolecrypt/core/bridge/rust_agent_setup.dart';
 import 'package:consolecrypt/core/bridge/rust_agent_tunnel_saved_route_generated.dart';
 import 'package:consolecrypt/core/bridge/rust_monitoring_consent.dart';
+import 'package:consolecrypt/core/security/vault_key_alarm.dart';
 import 'package:consolecrypt/core/services/runtime_notice_adapter.dart';
 import 'package:consolecrypt/core/services/runtime_notice_events.dart';
 import 'package:consolecrypt/monitoring/metrics_ai_native_transport.dart';
+import 'package:consolecrypt/monitoring/monitoring_host_live.dart' show HostMetricsSample;
 import 'package:consolecrypt/monitoring/monitoring_models.dart';
 import 'package:consolecrypt/monitoring/monitoring_service.dart';
 import 'package:consolecrypt/src/rust/api/monitoring.dart' as native;
@@ -39,6 +41,17 @@ final class RustMonitoringBackend implements MonitoringBackend {
     cancelOperation: (id) => guard(() => native.monitoringCancel(operationId: id)),
     hostContextRead: (request) async =>
         object(jsonDecode(await guard(() => native.monitoringHostContext(requestJson: jsonEncode(request))))),
+    hostLiveRead: (request) async* {
+      try {
+        await for (final item in native.monitoringWatchHost(requestJson: jsonEncode(request))) {
+          yield HostMetricsSample.fromJson(object(jsonDecode(item)));
+        }
+      } catch (error) {
+        final mapped = toAppException(error);
+        reportVaultKeyMismatch(mapped);
+        throw mapped;
+      }
+    },
     metricsAiRpc: (operation, request) async {
       final raw = jsonEncode(request);
       switch (operation) {

@@ -19,6 +19,7 @@ import 'api/automation_awx.dart';
 import 'api/automation_portable.dart';
 import 'api/automation_portable_import.dart';
 import 'api/automation_service.dart';
+import 'api/automation_vault.dart';
 import 'api/backup.dart';
 import 'api/credentials.dart';
 import 'api/database.dart';

@@ -22,10 +22,12 @@ import 'package:consolecrypt/core/bridge/rust_automation_awx.dart';
 import 'package:consolecrypt/core/bridge/rust_automation_portable.dart';
 import 'package:consolecrypt/core/bridge/rust_automation_project_metadata.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/src/rust/api/agent_installer.dart' as installer_native;
 import 'package:consolecrypt/src/rust/api/automation.dart' as native;
 import 'package:consolecrypt/src/rust/api/automation_service.dart' as service_native;
+import 'package:consolecrypt/src/rust/api/automation_vault.dart' as vault_native;
 
 final class RustAutomationService
     implements
@@ -50,6 +52,8 @@ final class RustAutomationService
         AutomationJobService,
         AutomationProductionOwnerService,
         AutomationVaultSelectionService,
+        AutomationVaultFileService,
+        AutomationRunSecretService,
         AutomationEventService,
         AutomationAiService,
         AutomationAiContextService,
@@ -60,17 +64,17 @@ final class RustAutomationService
         AutomationInventoryService,
         AutomationFolderBindingService,
         AutomationInventorySelectionService,
+        AutomationMoveService,
+        AutomationNewProjectService,
         AutomationScaffoldService {
   late final _projectMetadata = RustAutomationProjectMetadataPort(
     contextJson: (id) => _automationGuard(() => native.automationProjectMetadataContext(id: id)),
     catalogJson: () => _automationGuard(native.automationProjectMetadataCatalog),
-    publishJson: (request) =>
-        _automationGuard(() => native.automationProjectMetadataPublish(requestJson: request)),
+    publishJson: (request) => _automationGuard(() => native.automationProjectMetadataPublish(requestJson: request)),
   );
 
   @override
-  Future<AutomationJson> projectMetadataContext(String projectId) =>
-      _projectMetadata.projectMetadataContext(projectId);
+  Future<AutomationJson> projectMetadataContext(String projectId) => _projectMetadata.projectMetadataContext(projectId);
 
   @override
   Future<AutomationJson> projectMetadataCatalog() => _projectMetadata.projectMetadataCatalog();
@@ -80,50 +84,49 @@ final class RustAutomationService
       _projectMetadata.publishProjectMetadata(originalFrame);
 
   @override
-  Future<AutomationJson> agentInstallerContext(AutomationJson frame) async =>
-      jsonDecode(await _automationGuard(
-        () => installer_native.automationAgentInstallerContextJson(requestJson: jsonEncode(frame)),
-      )) as AutomationJson;
+  Future<AutomationJson> agentInstallerContext(AutomationJson frame) async => jsonDecode(
+    await _automationGuard(() => installer_native.automationAgentInstallerContextJson(requestJson: jsonEncode(frame))),
+  ) as AutomationJson;
 
   @override
-  Future<AutomationJson> createAgentInstallerProject(AutomationJson request) async =>
-      jsonDecode(await _automationGuard(
-        () => installer_native.automationAgentInstallerCreateJson(requestJson: jsonEncode(request)),
-      )) as AutomationJson;
+  Future<AutomationJson> createAgentInstallerProject(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => installer_native.automationAgentInstallerCreateJson(requestJson: jsonEncode(request))),
+  ) as AutomationJson;
 
   @override
-  Future<AutomationJson> createMonitoringNodeProject(AutomationJson request) async =>
-      jsonDecode(await _automationGuard(
-        () => installer_native.automationMonitoringNodeCreateJson(requestJson: jsonEncode(request)),
-      )) as AutomationJson;
+  Future<AutomationJson> createMonitoringNodeProject(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => installer_native.automationMonitoringNodeCreateJson(requestJson: jsonEncode(request))),
+  ) as AutomationJson;
 
   @override
-  Future<AutomationJson> prepareServiceDelegation(AutomationJson request) async =>
-      jsonDecode(await _automationGuard(() => service_native.automationServicePrepareJson(requestJson: jsonEncode(request)))) as AutomationJson;
+  Future<AutomationJson> prepareServiceDelegation(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => service_native.automationServicePrepareJson(requestJson: jsonEncode(request))),
+  ) as AutomationJson;
 
   @override
-  Future<AutomationJson> confirmServiceDelegation(AutomationJson request) async =>
-      jsonDecode(await _automationGuard(() => service_native.automationServiceConfirmJson(requestJson: jsonEncode(request)))) as AutomationJson;
+  Future<AutomationJson> confirmServiceDelegation(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => service_native.automationServiceConfirmJson(requestJson: jsonEncode(request))),
+  ) as AutomationJson;
 
   @override
-  Future<AutomationJson> cancelServiceDelegation(AutomationJson request) async =>
-      jsonDecode(await _automationGuard(() => service_native.automationServiceCancelJson(requestJson: jsonEncode(request)))) as AutomationJson;
+  Future<AutomationJson> cancelServiceDelegation(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => service_native.automationServiceCancelJson(requestJson: jsonEncode(request))),
+  ) as AutomationJson;
 
   @override
-  Future<AutomationJson> serviceDelegationStatus(AutomationJson request) async =>
-      jsonDecode(await _automationGuard(() => service_native.automationServiceStatusJson(requestJson: jsonEncode(request)))) as AutomationJson;
+  Future<AutomationJson> serviceDelegationStatus(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => service_native.automationServiceStatusJson(requestJson: jsonEncode(request))),
+  ) as AutomationJson;
 
   @override
-  Future<AutomationJson> serviceDelegationResults(AutomationJson request) async =>
-      jsonDecode(
-        await _automationGuard(
-          () => service_native.automationServiceResultsJson(requestJson: jsonEncode(request)),
-        ),
-      ) as AutomationJson;
+  Future<AutomationJson> serviceDelegationResults(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => service_native.automationServiceResultsJson(requestJson: jsonEncode(request))),
+  ) as AutomationJson;
 
   @override
-  Future<AutomationJson> revokeServiceDelegation(AutomationJson request) async =>
-      jsonDecode(await _automationGuard(() => service_native.automationServiceRevokeJson(requestJson: jsonEncode(request)))) as AutomationJson;
+  Future<AutomationJson> revokeServiceDelegation(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => service_native.automationServiceRevokeJson(requestJson: jsonEncode(request))),
+  ) as AutomationJson;
 
   @override
   AwxOpaqueNativePort createAwxPort() => const RustAwxOpaqueNativePort();
@@ -134,14 +137,58 @@ final class RustAutomationService
           as AutomationJson;
 
   @override
+  Future<AutomationJson> vaultFileContext(String projectId) => vaultContext(projectId);
+
+  @override
+  Future<AutomationJson> prepareRunWithSecrets(
+    AutomationJson request, {
+    required String profileId,
+    required String notificationScopeId,
+    SecretText? vaultPassword,
+    SecretText? becomePassword,
+    bool useProjectVaultPassword = false,
+  }) async {
+    final vaultBytes = vaultPassword?.exposeBytes(), becomeBytes = becomePassword?.exposeBytes();
+    try {
+      final raw = await _automationGuard<String>(
+        () => native.automationPrepareRunWithInputs(
+          requestJson: jsonEncode(request),
+          profileId: profileId,
+          notificationScopeId: notificationScopeId,
+          vaultPassword: vaultBytes,
+          becomePassword: becomeBytes,
+          useProjectVaultPassword: useProjectVaultPassword,
+        ),
+      );
+      return jsonDecode(raw) as AutomationJson;
+    } finally {
+      vaultBytes?.fillRange(0, vaultBytes.length, 0);
+      becomeBytes?.fillRange(0, becomeBytes.length, 0);
+    }
+  }
+
+  @override
+  Future<AutomationProjectFile> transformVaultFile(AutomationJson request, {SecretText? password}) async {
+    final bytes = password?.exposeBytes();
+    try {
+      final raw = await _automationGuard(
+        () => vault_native.automationVaultTransform(requestJson: jsonEncode(request), password: bytes),
+      );
+      return AutomationProjectFile.fromJson(jsonDecode(raw) as AutomationJson);
+    } finally {
+      bytes?.fillRange(0, bytes.length, 0);
+    }
+  }
+
+  @override
   Future<AutomationJson> projectCredentialsContext(String projectId) async =>
       jsonDecode(await _automationGuard(() => native.automationProjectCredentialsContext(id: projectId)))
           as AutomationJson;
 
   @override
-  Future<AutomationJson> saveProjectCredentials(AutomationJson request) async =>
-      jsonDecode(await _automationGuard(() => native.automationProjectCredentialsSave(requestJson: jsonEncode(request))))
-          as AutomationJson;
+  Future<AutomationJson> saveProjectCredentials(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => native.automationProjectCredentialsSave(requestJson: jsonEncode(request))),
+  ) as AutomationJson;
 
   @override
   Future<AutomationJson> selectVault(AutomationJson selection) async => jsonDecode(
@@ -249,9 +296,18 @@ final class RustAutomationService
     required String operationId,
     required String profileId,
     required String notificationScopeId,
-  }) async => jsonDecode(await _automationGuard(() => native.automationWindowsPrerequisitesJson(
-    requestJson: jsonEncode({'version':1,'operationId':operationId,'profileId':profileId,'notificationScopeId':notificationScopeId}),
-  ))) as AutomationJson;
+  }) async => jsonDecode(
+    await _automationGuard(
+      () => native.automationWindowsPrerequisitesJson(
+        requestJson: jsonEncode({
+          'version': 1,
+          'operationId': operationId,
+          'profileId': profileId,
+          'notificationScopeId': notificationScopeId,
+        }),
+      ),
+    ),
+  ) as AutomationJson;
 
   @override
   Future<AutomationJson> setupRunner(
@@ -435,14 +491,21 @@ final class RustAutomationService
     required int expectedProjectRevision,
     required AutomationAiContextKind kind,
     required String subjectId,
-  }) async => jsonDecode(await _automationGuard(() => native.automationAiContextCaptureJson(
-    requestJson: jsonEncode({
-      'operationId': operationId, 'profileId': profileId,
-      'notificationScopeId': notificationScopeId, 'projectId': projectId,
-      'expectedProjectRevision': expectedProjectRevision,
-      'kind': kind.name, 'subjectId': subjectId,
-    }),
-  ))) as AutomationJson;
+  }) async => jsonDecode(
+    await _automationGuard(
+      () => native.automationAiContextCaptureJson(
+        requestJson: jsonEncode({
+          'operationId': operationId,
+          'profileId': profileId,
+          'notificationScopeId': notificationScopeId,
+          'projectId': projectId,
+          'expectedProjectRevision': expectedProjectRevision,
+          'kind': kind.name,
+          'subjectId': subjectId,
+        }),
+      ),
+    ),
+  ) as AutomationJson;
 
   @override
   Future<void> cancelAiContext(String operationId) =>
@@ -462,16 +525,26 @@ final class RustAutomationService
     required List<AutomationJson> selections,
     required List<String> selectedGroups,
     required List<String> selectedTags,
-  }) async => jsonDecode(await _automationGuard(() => native.automationAiPrepareContextJson(
-    requestJson: jsonEncode({
-      'profileId': profileId, 'notificationScopeId': notificationScopeId,
-      'projectId': projectId, 'expectedProjectRevision': expectedProjectRevision,
-      'selectedHostId': selectedHostId, 'providerId': providerId,
-      'task': task, 'path': path, 'selectedText': selectedText,
-      'selections': selections, 'selectedGroups': selectedGroups,
-      'selectedTags': selectedTags,
-    }),
-  ))) as AutomationJson;
+  }) async => jsonDecode(
+    await _automationGuard(
+      () => native.automationAiPrepareContextJson(
+        requestJson: jsonEncode({
+          'profileId': profileId,
+          'notificationScopeId': notificationScopeId,
+          'projectId': projectId,
+          'expectedProjectRevision': expectedProjectRevision,
+          'selectedHostId': selectedHostId,
+          'providerId': providerId,
+          'task': task,
+          'path': path,
+          'selectedText': selectedText,
+          'selections': selections,
+          'selectedGroups': selectedGroups,
+          'selectedTags': selectedTags,
+        }),
+      ),
+    ),
+  ) as AutomationJson;
 
   @override
   Future<AutomationJson> jobEvents(String id, {required int after, int limit = 50}) async =>
@@ -487,9 +560,14 @@ final class RustAutomationService
   Future<AutomationJson> confirmRun(String reviewId) async =>
       jsonDecode(await _automationGuard(() => native.automationConfirmRun(reviewId: reviewId))) as AutomationJson;
   @override
-  Future<AutomationJson> confirmOwnerRun(String reviewId, {required StepUpProof proof}) async =>
-      jsonDecode(await withStepUp(proof, (passphrase, token) => _automationGuard(() =>
-        native.automationConfirmOwnerRun(reviewId: reviewId, passphrase: passphrase, presenceToken: token)))) as AutomationJson;
+  Future<AutomationJson> confirmOwnerRun(String reviewId, {required StepUpProof proof}) async => jsonDecode(
+    await withStepUp(
+      proof,
+      (passphrase, token) => _automationGuard(
+        () => native.automationConfirmOwnerRun(reviewId: reviewId, passphrase: passphrase, presenceToken: token),
+      ),
+    ),
+  ) as AutomationJson;
   @override
   Future<AutomationJson> jobs() async => jsonDecode(await _automationGuard(native.automationJobs)) as AutomationJson;
   @override
@@ -528,6 +606,29 @@ final class RustAutomationService
         jsonDecode(await _automationGuard(() => native.automationProjectCreate(name: name, directory: directory)))
             as AutomationJson,
       );
+
+  @override
+  Future<AutomationProject> scaffoldProject({required String name, String? directory, String? role}) async =>
+      AutomationProject.fromJson(
+        jsonDecode(
+          await _automationGuard(() => native.automationProjectScaffold(name: name, directory: directory, role: role)),
+        ) as AutomationJson,
+      );
+
+  @override
+  Future<void> moveProjectFile(
+    String projectId, {
+    required String sourcePath,
+    required String destinationDirectory,
+    required String expectedSha256,
+  }) => _automationGuard(
+    () => native.automationProjectMoveFile(
+      id: projectId,
+      path: sourcePath,
+      directory: destinationDirectory,
+      expectedSha256: expectedSha256,
+    ),
+  );
 
   @override
   Future<AutomationProject> renameProject(String id, {required int revision, required String name}) async =>

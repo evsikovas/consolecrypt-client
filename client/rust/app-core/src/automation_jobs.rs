@@ -1,21 +1,21 @@
 //! Durable interactive admissions and conservative, profile-wide target leases.
 //! Persistent server-side scheduling is a separate service and authority.
-use crate::automation_prepare::{invalid, AutomationRunRequest, PreparedReview};
+use crate::automation_prepare::{AutomationRunRequest, PreparedReview, invalid};
+use crate::automation_production_owner::{OwnerPassphraseWitness, manifest_for_review};
 use crate::automation_projects::{automation_error, automation_io_slot};
 use crate::automation_runners::RunnerConnection;
 use crate::dto::AutomationJobStateDto;
 use crate::session::Session;
 use crate::{AppCore, AppError, AppEvent, AppResult};
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use cc_automation_core::{
     EnrolledJobGrant, EnvironmentProbe, JobTargetScope, JobTicket, SignedJobApproval,
     TargetHandler, VerifiedJob,
 };
 use cc_models::automation::JobManifest;
-use crate::automation_production_owner::{OwnerPassphraseWitness, manifest_for_review};
 use futures::FutureExt;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
     sync::{Arc, Weak},
@@ -24,9 +24,9 @@ use std::{
 use uuid::Uuid;
 
 const JOBS: &str = "automation.jobs.v1";
+mod admission_audit;
 pub(crate) mod metric_context;
 mod provenance;
-mod admission_audit;
 #[cfg(all(feature = "test-harness", not(test)))]
 pub(crate) use admission_audit::tests as __focused_admission_audit;
 mod result_projection;
@@ -90,7 +90,9 @@ fn resolve_retry_origin(
             .iter()
             .any(|id| !hosts.iter().any(|host| host.to_string() == *id))
     {
-        return Err(invalid("retry requires a finished job, the same project/playbook and explicitly selected original targets"));
+        return Err(invalid(
+            "retry requires a finished job, the same project/playbook and explicitly selected original targets",
+        ));
     }
     Ok(Some(RetryOrigin {
         job_id: job,
@@ -141,22 +143,43 @@ fn emit_job_change(owner: &Session, job: Uuid, state: AutomationJobStateDto, rev
 
 // Only the two real control-evidence shapes are projected; no recursive
 // authority/result interpretation and no change to outer outcome/intervals.
-fn project_saved_summary(row:&mut Value)->AppResult<()>{
-    let original=row.get("runner_result").cloned();
+fn project_saved_summary(row: &mut Value) -> AppResult<()> {
+    let original = row.get("runner_result").cloned();
     admission_audit::project_row(row);
-    let Some(before)=original else{return Ok(())};
-    let aliases:std::collections::BTreeSet<String>=row["manifest"]["targets"].as_array().into_iter().flatten().take(10_000)
-        .filter_map(|target|target["alias"].as_str().filter(|a|!a.is_empty()&&a.len()<=256).map(str::to_owned)).collect();
-    let projected=result_projection::project(&row["runner_result"],&aliases);
-    if projected!=before{
-        if !row["runner_result_original_sha256"].as_str().is_some_and(cc_models::automation::is_digest){
-            use sha2::{Digest,Sha256};
-            let bytes=serde_json::to_vec(&before).map_err(|_|invalid("invalid saved job result"))?;
-            row["runner_result_original_sha256"]=json!(Sha256::digest(bytes).iter().map(|b|format!("{b:02x}")).collect::<String>());
+    let Some(before) = original else {
+        return Ok(());
+    };
+    let aliases: std::collections::BTreeSet<String> = row["manifest"]["targets"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .take(10_000)
+        .filter_map(|target| {
+            target["alias"]
+                .as_str()
+                .filter(|a| !a.is_empty() && a.len() <= 256)
+                .map(str::to_owned)
+        })
+        .collect();
+    let projected = result_projection::project(&row["runner_result"], &aliases);
+    if projected != before {
+        if !row["runner_result_original_sha256"]
+            .as_str()
+            .is_some_and(cc_models::automation::is_digest)
+        {
+            use sha2::{Digest, Sha256};
+            let bytes =
+                serde_json::to_vec(&before).map_err(|_| invalid("invalid saved job result"))?;
+            row["runner_result_original_sha256"] = json!(
+                Sha256::digest(bytes)
+                    .iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect::<String>()
+            );
         }
-        row["runner_result_redacted"]=json!(true);
+        row["runner_result_redacted"] = json!(true);
     }
-    row["runner_result"]=projected;
+    row["runner_result"] = projected;
     Ok(())
 }
 
@@ -196,8 +219,12 @@ async fn change_state(
             row["state"] = json!(state);
             row["updated_at"] = json!(chrono::Utc::now().timestamp());
             if let Some(evidence) = evidence {
-                row.as_object_mut().ok_or_else(||invalid("invalid saved job row"))?.remove("runner_result_original_sha256");
-                row.as_object_mut().ok_or_else(||invalid("invalid saved job row"))?.remove("runner_result_redacted");
+                row.as_object_mut()
+                    .ok_or_else(|| invalid("invalid saved job row"))?
+                    .remove("runner_result_original_sha256");
+                row.as_object_mut()
+                    .ok_or_else(|| invalid("invalid saved job row"))?
+                    .remove("runner_result_redacted");
                 row["runner_result"] = evidence;
                 project_saved_summary(row)?;
             }
@@ -315,10 +342,14 @@ impl AppCore {
         let (owner, unlocked) = self.unlocked().await?;
         let original = Arc::downgrade(&unlocked);
         drop(unlocked);
-        self.automation_confirm_original(owner, original, id, None).await
+        self.automation_confirm_original(owner, original, id, None)
+            .await
     }
     pub(crate) async fn automation_confirm_original(
-        &self, owner: Arc<Session>, captured: Weak<crate::session::Unlocked>, id: Uuid,
+        &self,
+        owner: Arc<Session>,
+        captured: Weak<crate::session::Unlocked>,
+        id: Uuid,
         owner_witness: Option<OwnerPassphraseWitness>,
     ) -> AppResult<Value> {
         self.automation_initialize_jobs(&owner).await?;
@@ -344,7 +375,10 @@ impl AppCore {
             || (!review.policy.production && owner_witness.is_some())
             || review.service_delegation.is_some()
             || review.service_origin.is_some()
-            || matches!(review.runner.configuration, crate::automation_runners::AutomationRunnerConfig::ServiceRemote { .. })
+            || matches!(
+                review.runner.configuration,
+                crate::automation_runners::AutomationRunnerConfig::ServiceRemote { .. }
+            )
         {
             return Err(invalid("review no longer permits execution"));
         }
@@ -437,15 +471,21 @@ impl AppCore {
         if let Some(folders) = &review.context.folder_composition {
             folders.check(&original)?;
         }
-        if let Some(witness) = &owner_witness { witness.check_password_envelope(&owner).await?; }
+        if let Some(witness) = &owner_witness {
+            witness.check_password_envelope(&owner).await?;
+        }
         let now = chrono::Utc::now().timestamp();
         let manifest = if let Some(frozen) = &review.production_owner {
-            let witness = owner_witness.as_ref().ok_or_else(||invalid("production owner passphrase confirmation required"))?;
-            frozen.authorize(witness,&owner,&review,&grant)?;
+            let witness = owner_witness
+                .as_ref()
+                .ok_or_else(|| invalid("production owner passphrase confirmation required"))?;
+            frozen.authorize(witness, &owner, &review, &grant)?;
             frozen.manifest().clone()
         } else {
-            if review.policy.production { return Err(invalid("production manifest unavailable")); }
-            manifest_for_review(&review,&grant,now)?
+            if review.policy.production {
+                return Err(invalid("production manifest unavailable"));
+            }
+            manifest_for_review(&review, &grant, now)?
         };
         let identity = owner.identity();
         if identity.public_keys().signing != grant.public_key
@@ -465,13 +505,25 @@ impl AppCore {
             signature: STANDARD.encode(signature),
         };
         let verified = if let Some(frozen) = &review.production_owner {
-            let confirmation = identity.sign_production_owner_confirmation(&approval.manifest)
-                .map_err(|_|invalid("production owner confirmation signature failed"))?;
-            VerifiedJob::verify_owner_confirmed(&approval,frozen.manual(),&confirmation,
-                review.validation.environment_digest(),now)
+            let confirmation = identity
+                .sign_production_owner_confirmation(&approval.manifest)
+                .map_err(|_| invalid("production owner confirmation signature failed"))?;
+            VerifiedJob::verify_owner_confirmed(
+                &approval,
+                frozen.manual(),
+                &confirmation,
+                review.validation.environment_digest(),
+                now,
+            )
         } else {
-            VerifiedJob::verify(&approval,&grant,review.validation.environment_digest(),now)
-        }.map_err(automation_error)?;
+            VerifiedJob::verify(
+                &approval,
+                &grant,
+                review.validation.environment_digest(),
+                now,
+            )
+        }
+        .map_err(automation_error)?;
         let job = approval.manifest.job_id;
         let digest = verified.digest().to_owned();
         // These facts come only from the verified original Native admission;
@@ -565,8 +617,14 @@ impl AppCore {
                     return Err(invalid("Vault job context changed"));
                 }
                 session.check_before_material(&original).await?;
-                let diagnostic=review.sessions.values().next().and_then(|session|session.diagnostic_capture()).ok_or_else(||invalid("job diagnostic custody unavailable"))?;
-                let opened = session.commit_material(&verified, pending, &original,diagnostic.as_ref())?;
+                let diagnostic = review
+                    .sessions
+                    .values()
+                    .next()
+                    .and_then(|session| session.diagnostic_capture())
+                    .ok_or_else(|| invalid("job diagnostic custody unavailable"))?;
+                let opened =
+                    session.commit_material(&verified, pending, &original, diagnostic.as_ref())?;
                 drop(_epoch);
                 drop(_profile);
                 drop(original);
@@ -631,8 +689,13 @@ impl AppCore {
         runner: &Arc<RunnerConnection>,
         unlock: Weak<crate::session::Unlocked>,
     ) -> AppResult<EnrolledJobGrant> {
-        if matches!(runner.configuration, crate::automation_runners::AutomationRunnerConfig::ServiceRemote { .. }) {
-            return Err(invalid("service Runner cannot issue an interactive job grant"));
+        if matches!(
+            runner.configuration,
+            crate::automation_runners::AutomationRunnerConfig::ServiceRemote { .. }
+        ) {
+            return Err(invalid(
+                "service Runner cannot issue an interactive job grant",
+            ));
         }
         let mut existing = runner.authorization.lock().await;
         if let Some(grant) = existing.as_ref() {
@@ -765,7 +828,9 @@ impl AppCore {
         let _profile = self.hold_session(&owner).await?;
         let _epoch = owner.hold_unlocked(&unlocked).await?;
         let mut catalog = catalog;
-        for row in catalog.records.values_mut() { project_saved_summary(row)?; }
+        for row in catalog.records.values_mut() {
+            project_saved_summary(row)?;
+        }
         Ok(
             json!({"schema_version":catalog.version,"read_only":catalog.version!=1,"jobs":catalog.records.into_values().collect::<Vec<_>>()}),
         )
@@ -907,6 +972,16 @@ async fn dispatch(
         tokio::select! { _=owner.automation.stopped.cancelled()=>return Ok(("interrupted".into(),None)), _=tokio::time::sleep(Duration::from_millis(250))=>{} }
     }
     let vault_generation = owner.automation.unlocked_generation()?;
+    if review.become_password.is_some() && vault_generation != review.context.generation {
+        if let Some(password) = &review.become_password {
+            password.revoke();
+        }
+        return Ok((
+            "interrupted".into(),
+            Some(json!({"reason":"sudo_input_context_retired",
+            "remote_changes_may_be_partial":false})),
+        ));
+    }
     if review
         .vault_session
         .as_ref()
@@ -921,9 +996,13 @@ async fn dispatch(
     }
     change_state(owner, job, "dispatching", None).await?;
     let owner_confirmation = verified.owner_confirmation().cloned();
-    let scope =
-        JobTargetScope::bind_with_cancellation(verified, review.sessions.clone(), cancel.clone())
-            .map_err(automation_error)?;
+    let scope = JobTargetScope::bind_with_become(
+        verified,
+        review.sessions.clone(),
+        cancel.clone(),
+        review.become_password.clone(),
+    )
+    .map_err(automation_error)?;
     owner
         .automation
         .scopes
@@ -932,7 +1011,12 @@ async fn dispatch(
     let peer = &review.runner.peer;
     let mut submission = json!({"approval":approval,"revision_id":review.snapshot.uploaded.revision_id,
         "parameters":review.request.parameters,"vault_generation":vault_generation});
-    if let Some(confirmation) = owner_confirmation { submission["approval"]["owner_confirmation"] = json!(confirmation); }
+    if review.become_password.is_some() {
+        submission["become_native"] = json!(true);
+    }
+    if let Some(confirmation) = owner_confirmation {
+        submission["approval"]["owner_confirmation"] = json!(confirmation);
+    }
     if let Some(reference) = &review.inventory_ref {
         submission["inventory_ref"] = json!(reference);
     } else {
@@ -950,11 +1034,13 @@ async fn dispatch(
     let mut sent_cancel = false;
     let outcome = loop {
         if owner.automation.stopped.is_cancelled() || tokio::time::Instant::now() >= deadline {
-            break Ok(unknown_control(if owner.automation.stopped.is_cancelled() {
-                "owner_closed"
-            } else {
-                "observer_deadline"
-            }));
+            break Ok(unknown_control(
+                if owner.automation.stopped.is_cancelled() {
+                    "owner_closed"
+                } else {
+                    "observer_deadline"
+                },
+            ));
         }
         if cancel.is_cancelled() && !sent_cancel {
             let _ = peer
@@ -1064,38 +1150,106 @@ mod tests {
         }
     }
 
-    fn legacy_result_fixture()->Value{
+    fn legacy_result_fixture() -> Value {
         json!({"job_id":Uuid::new_v4(),"manifest_digest":"a".repeat(64),"state":"unknown","updated_at":123,"cancel_requested":true,"result":{"exit_code":7,"partial":true,"elapsed":1.25,"runner_execution":{"version":1,"exit_observed":true},"summary":{"status":"failed","exit_code":7,"stdout":"knownlegacysecret","token":"knownlegacysecret","stats":{"failures":{"cc_owned":1,"knownlegacysecret":2},"arbitrary":"knownlegacysecret"}}}})
     }
     #[test]
-    fn saved_summary_projection_is_closed_idempotent_and_keeps_outer_outcome(){
-        for nested in [false,true]{
-            let original=legacy_result_fixture();let evidence=if nested{json!({"reason":"native_operation_not_acknowledged","runner_result":original})}else{original};
-            let mut row=json!({"manifest":{"targets":[{"alias":"cc_owned"}]},"runner_result":evidence});
-            use sha2::{Digest,Sha256};let digest=Sha256::digest(serde_json::to_vec(&row["runner_result"]).unwrap()).iter().map(|b|format!("{b:02x}")).collect::<String>();
-            project_saved_summary(&mut row).unwrap();assert!(!row.to_string().contains("knownlegacysecret"));assert_eq!(row["runner_result_original_sha256"],digest);
-            let actual=if nested{&row["runner_result"]["runner_result"]}else{&row["runner_result"]};
-            let mut expected=legacy_result_fixture();expected["job_id"]=actual["job_id"].clone();expected["result"]["summary"]=json!({"status":"failed","exit_code":7,"stats":{"failures":{"cc_owned":1}}});expected["result"]["runner_execution"]=json!({"redacted":true});assert_eq!(actual,&expected);
-            let stable=row.clone();project_saved_summary(&mut row).unwrap();assert_eq!(row,stable);
+    fn saved_summary_projection_is_closed_idempotent_and_keeps_outer_outcome() {
+        for nested in [false, true] {
+            let original = legacy_result_fixture();
+            let evidence = if nested {
+                json!({"reason":"native_operation_not_acknowledged","runner_result":original})
+            } else {
+                original
+            };
+            let mut row =
+                json!({"manifest":{"targets":[{"alias":"cc_owned"}]},"runner_result":evidence});
+            use sha2::{Digest, Sha256};
+            let digest = Sha256::digest(serde_json::to_vec(&row["runner_result"]).unwrap())
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>();
+            project_saved_summary(&mut row).unwrap();
+            assert!(!row.to_string().contains("knownlegacysecret"));
+            assert_eq!(row["runner_result_original_sha256"], digest);
+            let actual = if nested {
+                &row["runner_result"]["runner_result"]
+            } else {
+                &row["runner_result"]
+            };
+            let mut expected = legacy_result_fixture();
+            expected["job_id"] = actual["job_id"].clone();
+            expected["result"]["summary"] =
+                json!({"status":"failed","exit_code":7,"stats":{"failures":{"cc_owned":1}}});
+            expected["result"]["runner_execution"] = json!({"redacted":true});
+            assert_eq!(actual, &expected);
+            let stable = row.clone();
+            project_saved_summary(&mut row).unwrap();
+            assert_eq!(row, stable);
         }
     }
     #[tokio::test]
-    async fn actual_sql_legacy_terminal_summary_scrub_and_current_save_share_projection(){
-        let directory=tempfile::tempdir().unwrap();let app=AppCore::new(crate::AppConfig::for_tests(directory.path().to_string_lossy().into_owned())).unwrap();
-        app.create_local_profile("Summary privacy".into(),PASSWORD.into()).await.unwrap();let(owner,_)=app.unlocked().await.unwrap();
-        let mut catalog=Catalog::default();let mut ids=Vec::new();
-        for phase in ["failed","acknowledged","queued"]{
-            let id=Uuid::new_v4();ids.push(id);catalog.records.insert(id.to_string(),json!({"version":1,"job_id":id,"runner_id":Uuid::new_v4(),"host_ids":[Uuid::new_v4()],"state":phase,"updated_at":123,"notification_revision":4,"pinned":true,"future_field":{"preserve":true},"manifest":{"targets":[{"alias":"cc_owned"}]},"runner_result":legacy_result_fixture()}));
+    async fn actual_sql_legacy_terminal_summary_scrub_and_current_save_share_projection() {
+        let directory = tempfile::tempdir().unwrap();
+        let app = AppCore::new(crate::AppConfig::for_tests(
+            directory.path().to_string_lossy().into_owned(),
+        ))
+        .unwrap();
+        app.create_local_profile("Summary privacy".into(), PASSWORD.into())
+            .await
+            .unwrap();
+        let (owner, _) = app.unlocked().await.unwrap();
+        let mut catalog = Catalog::default();
+        let mut ids = Vec::new();
+        for phase in ["failed", "acknowledged", "queued"] {
+            let id = Uuid::new_v4();
+            ids.push(id);
+            catalog.records.insert(id.to_string(),json!({"version":1,"job_id":id,"runner_id":Uuid::new_v4(),"host_ids":[Uuid::new_v4()],"state":phase,"updated_at":123,"notification_revision":4,"pinned":true,"future_field":{"preserve":true},"manifest":{"targets":[{"alias":"cc_owned"}]},"runner_result":legacy_result_fixture()}));
         }
-        owner.storage().unwrap().write(move|tx|tx.setting_set(JOBS,&catalog)).await.unwrap();
-        let visible=app.automation_jobs().await.unwrap();assert!(!visible.to_string().contains("knownlegacysecret"));
-        let saved:Catalog=owner.storage().unwrap().setting_get(JOBS).await.unwrap().unwrap();
-        for id in &ids{let row=&saved.records[&id.to_string()];assert_eq!(row["pinned"],true);assert_eq!(row["future_field"]["preserve"],true);assert!(row["runner_result_original_sha256"].as_str().is_some());}
-        for id in &ids[..2]{let row=&saved.records[&id.to_string()];assert_eq!(row["updated_at"],123);assert_eq!(row["notification_revision"],4);}
-        let queued=ids[2];assert_eq!(saved.records[&queued.to_string()]["state"],"interrupted");
-        let current=Uuid::new_v4();owner.storage().unwrap().write(move|tx|{let mut c:Catalog=tx.setting_get(JOBS)?.unwrap();c.records.insert(current.to_string(),json!({"version":1,"job_id":current,"runner_id":Uuid::new_v4(),"host_ids":[Uuid::new_v4()],"state":"running","manifest":{"targets":[{"alias":"cc_owned"}]}}));tx.setting_set(JOBS,&c)}).await.unwrap();
-        change_state(&owner,current,"failed",Some(legacy_result_fixture())).await.unwrap();
-        let saved:Catalog=owner.storage().unwrap().setting_get(JOBS).await.unwrap().unwrap();let row=&saved.records[&current.to_string()];assert!(!row.to_string().contains("knownlegacysecret"));assert_eq!(row["runner_result"]["result"]["exit_code"],7);assert_eq!(row["runner_result"]["result"]["partial"],true);
+        owner
+            .storage()
+            .unwrap()
+            .write(move |tx| tx.setting_set(JOBS, &catalog))
+            .await
+            .unwrap();
+        let visible = app.automation_jobs().await.unwrap();
+        assert!(!visible.to_string().contains("knownlegacysecret"));
+        let saved: Catalog = owner
+            .storage()
+            .unwrap()
+            .setting_get(JOBS)
+            .await
+            .unwrap()
+            .unwrap();
+        for id in &ids {
+            let row = &saved.records[&id.to_string()];
+            assert_eq!(row["pinned"], true);
+            assert_eq!(row["future_field"]["preserve"], true);
+            assert!(row["runner_result_original_sha256"].as_str().is_some());
+        }
+        for id in &ids[..2] {
+            let row = &saved.records[&id.to_string()];
+            assert_eq!(row["updated_at"], 123);
+            assert_eq!(row["notification_revision"], 4);
+        }
+        let queued = ids[2];
+        assert_eq!(saved.records[&queued.to_string()]["state"], "interrupted");
+        let current = Uuid::new_v4();
+        owner.storage().unwrap().write(move|tx|{let mut c:Catalog=tx.setting_get(JOBS)?.unwrap();c.records.insert(current.to_string(),json!({"version":1,"job_id":current,"runner_id":Uuid::new_v4(),"host_ids":[Uuid::new_v4()],"state":"running","manifest":{"targets":[{"alias":"cc_owned"}]}}));tx.setting_set(JOBS,&c)}).await.unwrap();
+        change_state(&owner, current, "failed", Some(legacy_result_fixture()))
+            .await
+            .unwrap();
+        let saved: Catalog = owner
+            .storage()
+            .unwrap()
+            .setting_get(JOBS)
+            .await
+            .unwrap()
+            .unwrap();
+        let row = &saved.records[&current.to_string()];
+        assert!(!row.to_string().contains("knownlegacysecret"));
+        assert_eq!(row["runner_result"]["result"]["exit_code"], 7);
+        assert_eq!(row["runner_result"]["result"]["partial"], true);
         app.shutdown().await.unwrap();
     }
 
@@ -1184,23 +1338,26 @@ mod tests {
                 .unwrap()["state"],
             "unknown"
         );
-        assert!(rows
-            .iter()
-            .all(|row| row["future_field"]["preserve"] == true));
+        assert!(
+            rows.iter()
+                .all(|row| row["future_field"]["preserve"] == true)
+        );
         assert_eq!(owner.automation.coordinator.unknown_jobs(), vec![active]);
-        assert!(app
-            .automation_acknowledge_unknown(active.to_string(), false)
-            .await
-            .is_err());
+        assert!(
+            app.automation_acknowledge_unknown(active.to_string(), false)
+                .await
+                .is_err()
+        );
         assert!(owner.automation.coordinator.holds_runner(runner));
         app.automation_acknowledge_unknown(active.to_string(), true)
             .await
             .unwrap();
         assert!(!owner.automation.coordinator.holds_runner(runner));
-        assert!(app
-            .automation_acknowledge_unknown(active.to_string(), true)
-            .await
-            .is_err());
+        assert!(
+            app.automation_acknowledge_unknown(active.to_string(), true)
+                .await
+                .is_err()
+        );
         app.shutdown().await.unwrap();
     }
     #[tokio::test]

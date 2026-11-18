@@ -10,6 +10,74 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get automationProjectChooseFolderEmpty =>
+      'Choose an empty folder for a new project. To use existing files, select Open folder.';
+
+  @override
+  String get automationGitUnavailable =>
+      'Install Git on this computer, then reopen ConsoleCrypt to import the repository.';
+
+  @override
+  String get automationProjectRoleHelp =>
+      'Creates the standard Ansible role layout and a playbook that calls the role.';
+
+  @override
+  String get monitoringBrowseNow => 'Current';
+
+  @override
+  String get automationNewProjectName => 'Project name';
+
+  @override
+  String get automationNewProjectType => 'Project template';
+
+  @override
+  String get automationProjectPlaybook => 'Playbook only';
+
+  @override
+  String get automationProjectRole => 'Ansible role and playbook';
+
+  @override
+  String get automationProjectRoleName => 'Role name';
+
+  @override
+  String get automationProjectProfileFolder => 'Save in the local ConsoleCrypt profile';
+
+  @override
+  String get automationProjectChooseFolder => 'Choose an empty folder…';
+
+  @override
+  String get automationProjectUseProfile => 'Use profile folder';
+
+  @override
+  String get automationProjectChooseFolderError => 'Could not open the folder picker.';
+
+  @override
+  String get automationInventoryRunnerHelp =>
+      'Preview YAML host and group names on this device. Choose a Runner to validate the inventory with Ansible and save it.';
+
+  @override
+  String get automationInventoryYamlPreviewFailed =>
+      'This file could not be read as static YAML inventory. Select an inventory file or check it with a Runner.';
+
+  @override
+  String get automationInventoryYamlPreviewHelp =>
+      'Hosts and groups declared in the file. Use a Runner to resolve the inventory for a job.';
+
+  @override
+  String get automationInventoryYamlPreviewEmpty => 'No hosts or groups were found.';
+
+  @override
+  String get automationConfigFromFile =>
+      'Source: ansible.cfg in the project root. The form loads supported settings from this file.';
+
+  @override
+  String get automationConfigNewFile => 'Saving creates ansible.cfg in the project root.';
+
+  @override
+  String get awxIntro =>
+      'Use this tab with an existing AWX or Ansible Automation Controller server. Add a connection, load available job templates, then review and launch one. The controller runs the playbook with its own inventory and credentials. You can follow the job status and events here.';
+
+  @override
   String get metricsAiTitle => 'Explain selected monitoring data';
 
   @override
@@ -14664,7 +14732,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationGitHint =>
-      'The selected Runner downloads a public HTTPS repository. Files are saved in this profile; importing executes nothing. Submodules and Git credentials are not connected yet.';
+      'Git on this computer downloads a public HTTPS repository into the local ConsoleCrypt profile. Importing reads project files. Submodules and private repositories are unavailable.';
 
   @override
   String get automationGitUrl => 'HTTPS repository URL';
@@ -14679,7 +14747,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationGitCa => 'Public CA certificate in PEM (no private key)';
 
   @override
-  String get automationGitFields => 'Enter a name, HTTPS URL, branch or tag, and a Runner.';
+  String get automationGitFields => 'Enter a name, HTTPS URL, and branch or tag.';
 
   @override
   String get automationGitReceiving => 'Receiving and verifying files…';
@@ -17350,13 +17418,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationPortableExportAction => 'Export encrypted package...';
 
   @override
-  String get automationPortableInspectAction => 'Review encrypted package...';
+  String get automationPortableInspectAction => 'Review ConsoleCrypt archive…';
 
   @override
   String get automationPortableExportTitle => 'Export encrypted project package';
 
   @override
-  String get automationPortableInspectTitle => 'Review encrypted project package';
+  String get automationPortableInspectTitle => 'Review encrypted ConsoleCrypt archive';
 
   @override
   String get automationPortablePassword => 'Separate package password';
@@ -17400,7 +17468,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationPortableInspectWarning =>
-      'The package is decrypted only for review. Project files and settings are not changed.';
+      'Use this to inspect the contents of an encrypted ConsoleCrypt project archive before importing it. Enter the archive password set at export.';
 
   @override
   String get automationPortableUseSaved => 'Use saved files';
@@ -20534,4 +20602,130 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get automationWorkflowHint =>
       'Choose a playbook and hosts or a group, review and run. Ansible runs in the selected Runner.';
+
+  @override
+  String get monitoringLiveNow => 'Live';
+
+  @override
+  String get monitoringLiveHistory => 'History';
+
+  @override
+  String get monitoringLiveTitle => 'Server load';
+
+  @override
+  String get monitoringLiveHint => 'Read directly over SSH. Graphs fill in while this screen is open.';
+
+  @override
+  String get monitoringLiveLinuxOnly => 'This view reads live metrics from Linux hosts.';
+
+  @override
+  String get monitoringLiveNativeOnly =>
+      'Live metrics require the built-in SSH client. Select it in the host settings to use this view.';
+
+  @override
+  String get monitoringLiveReadFailed => 'Could not read the server metrics. Check the SSH connection and try again.';
+
+  @override
+  String get monitoringLiveConnecting => 'Connecting over SSH and reading the first sample…';
+
+  @override
+  String get monitoringLiveLastSample => 'Updated at';
+
+  @override
+  String get monitoringLiveUptime => 'Uptime';
+
+  @override
+  String monitoringLiveUptimeValue(int days, int hours, int minutes) {
+    return '$days d $hours h $minutes min';
+  }
+
+  @override
+  String get monitoringLiveCpu => 'CPU usage';
+
+  @override
+  String get monitoringLiveRam => 'Memory used';
+
+  @override
+  String get monitoringLiveDisk => 'System disk used';
+
+  @override
+  String get monitoringLiveNetwork => 'Network';
+
+  @override
+  String get monitoringLiveValues => 'Values';
+
+  @override
+  String get monitoringBrowseTitle => 'Explore metrics';
+
+  @override
+  String get monitoringBrowseUp => 'Target availability';
+
+  @override
+  String get monitoringBrowseHint => 'Open a ready-made chart or find a metric by name.';
+
+  @override
+  String get monitoringBrowseAll => 'All metrics';
+
+  @override
+  String get monitoringBrowseSearch => 'Metric name';
+
+  @override
+  String get monitoringBrowseNoMatch => 'No metrics match the search.';
+
+  @override
+  String get monitoringBrowseEmpty => 'Open Explore metrics to see charts and values from this source.';
+
+  @override
+  String get automationVaultFileTitle => 'Ansible Vault';
+
+  @override
+  String get automationVaultEncrypt => 'Encrypt YAML';
+
+  @override
+  String get automationVaultDecrypt => 'Decrypt YAML';
+
+  @override
+  String get automationVaultPasswordSource => 'Password source';
+
+  @override
+  String get automationVaultManual => 'Enter password';
+
+  @override
+  String get automationVaultProjectFile => 'Project .vault/password';
+
+  @override
+  String get automationVaultPassword => 'Ansible Vault password';
+
+  @override
+  String get automationVaultFileHint =>
+      'Only the selected saved YAML is changed. Project passwords stay local and are excluded from run snapshots.';
+
+  @override
+  String get automationVaultDecryptHint => 'Decrypted YAML will be saved as plain text.';
+
+  @override
+  String get automationTreeRoot => 'Project root';
+
+  @override
+  String get automationTreeEmpty => 'No files in this project';
+
+  @override
+  String get automationRunPasswords => 'Launch passwords';
+
+  @override
+  String get automationRunPasswordsHint =>
+      'Used only for this launch. Passwords are not saved in the project, logs or run parameters.';
+
+  @override
+  String get automationUseBecomePassword => 'This launch needs a sudo / become password';
+
+  @override
+  String get automationBecomePassword => 'sudo / become password';
+
+  @override
+  String get automationRunPasswordsConfigured => 'Passwords are set for this launch.';
+
+  @override
+  String get automationRunPasswordsUnavailable =>
+      'Launch passwords are unavailable in this context. Reopen the launch form or choose a regular Runner.';
 }

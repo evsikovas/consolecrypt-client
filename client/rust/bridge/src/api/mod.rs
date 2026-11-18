@@ -16,6 +16,7 @@ pub mod agent_collector;
 pub mod agent_exporter;
 pub mod agent_collector_service;
 pub mod automation;
+pub mod automation_vault;
 pub mod automation_service;
 pub mod automation_awx;
 pub mod automation_portable;

@@ -24,12 +24,16 @@ class MonitoringResultView extends StatefulWidget {
     this.unit,
     this.timeWindow,
     this.active = true,
+    this.showChart = true,
+    this.showValues = true,
+    this.showDiagnostics = true,
   });
   final QueryOutcome result;
   final MonitoringCorrelationTimeline? jobTimeline;
   final MonitoringTimeWindow? requestedWindow;
   final MonitoringTimeWindowController? timeWindow;
   final bool active;
+  final bool showChart, showValues, showDiagnostics;
 
   /// Only an already validated Native panel can attach a unit. PromQL labels
   /// and expression text do not supply unit metadata.
@@ -165,17 +169,20 @@ class _MonitoringResultViewState extends State<MonitoringResultView> {
 
   MonitoringCorrelationTimeline? get currentJobTimeline {
     final value = widget.jobTimeline, window = widget.requestedWindow;
-    return value != null && identical(value.owner.snapshot, value.snapshot) && window != null &&
-      value.window == window
-      ? value : null;
+    return value != null && identical(value.owner.snapshot, value.snapshot) && window != null && value.window == window
+        ? value
+        : null;
   }
+
   String utc(double timestamp) {
     final micros = timestamp * Duration.microsecondsPerSecond;
     if (!micros.isFinite || micros.abs() > const Duration(days: 100000000).inMicroseconds) {
       return l.monitoringChartInvalidUtc(timestamp.toString());
     }
-    return jobMetricDisplayTime(DateTime.fromMicrosecondsSinceEpoch(micros.round(), isUtc: true),
-      currentJobTimeline?.localTime ?? false);
+    return jobMetricDisplayTime(
+      DateTime.fromMicrosecondsSinceEpoch(micros.round(), isUtc: true),
+      currentJobTimeline?.localTime ?? false,
+    );
   }
 
   Color rowColor(MonitoringChartSeries row) {
@@ -317,11 +324,16 @@ class _MonitoringResultViewState extends State<MonitoringResultView> {
                                 {for (final row in rows) row.id: rowColor(row)},
                                 colors.outlineVariant,
                                 inspection?.timestamp,
-                                [for (final marker in currentJobTimeline?.snapshot.jobs.markers ?? const <JobMetricMarker>[])
-                                  if (marker.admitted != null && domain.contains(marker.admitted!.utc.microsecondsSinceEpoch / Duration.microsecondsPerSecond))
-                                    marker.admitted!.utc.microsecondsSinceEpoch / Duration.microsecondsPerSecond],
+                                [
+                                  for (final marker
+                                      in currentJobTimeline?.snapshot.jobs.markers ?? const <JobMetricMarker>[])
+                                    if (marker.admitted != null &&
+                                        domain.contains(
+                                          marker.admitted!.utc.microsecondsSinceEpoch / Duration.microsecondsPerSecond,
+                                        ))
+                                      marker.admitted!.utc.microsecondsSinceEpoch / Duration.microsecondsPerSecond,
+                                ],
                                 colors.tertiary,
-
                               ),
                             ),
                           ),
@@ -357,10 +369,19 @@ class _MonitoringResultViewState extends State<MonitoringResultView> {
             ),
         ],
         if (currentJobTimeline case final timeline? when domain != null)
-          JobMetricChartAnnotations(timeline: timeline,
-            startUtc: DateTime.fromMicrosecondsSinceEpoch((domain.start * Duration.microsecondsPerSecond).round(), isUtc: true),
-            endUtc: DateTime.fromMicrosecondsSinceEpoch((domain.end * Duration.microsecondsPerSecond).round(), isUtc: true),
-            active: widget.active, selectedJobId: inspectedJobId),
+          JobMetricChartAnnotations(
+            timeline: timeline,
+            startUtc: DateTime.fromMicrosecondsSinceEpoch(
+              (domain.start * Duration.microsecondsPerSecond).round(),
+              isUtc: true,
+            ),
+            endUtc: DateTime.fromMicrosecondsSinceEpoch(
+              (domain.end * Duration.microsecondsPerSecond).round(),
+              isUtc: true,
+            ),
+            active: widget.active,
+            selectedJobId: inspectedJobId,
+          ),
         if (projection.visible.isEmpty)
           Text(l.monitoringChartAllHidden, key: const ValueKey('monitoring-chart-all-hidden'))
         else if (values == null)
@@ -377,8 +398,8 @@ class _MonitoringResultViewState extends State<MonitoringResultView> {
                     Expanded(
                       child: Text(
                         currentJobTimeline?.localTime == true
-                          ? '${l.correlationLocalTime}: ${utc(current.timestamp)}'
-                          : l.monitoringChartInspectionUtc(utc(current.timestamp)),
+                            ? '${l.correlationLocalTime}: ${utc(current.timestamp)}'
+                            : l.monitoringChartInspectionUtc(utc(current.timestamp)),
                         key: const ValueKey('monitoring-chart-tooltip-time'),
                       ),
                     ),
@@ -492,21 +513,22 @@ class _MonitoringResultViewState extends State<MonitoringResultView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l.monitoringResultStatus(
-              result.status == 'success' ? l.monitoringSuccess : l.monitoringError,
-              result.httpStatus.toString(),
+          if (widget.showDiagnostics || result.error != null)
+            Text(
+              l.monitoringResultStatus(
+                result.status == 'success' ? l.monitoringSuccess : l.monitoringError,
+                result.httpStatus.toString(),
+              ),
+              key: const ValueKey('monitoring-result-status'),
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            key: const ValueKey('monitoring-result-status'),
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
           if (result.partial) Text(l.monitoringPartialResult, key: const ValueKey('monitoring-partial')),
           if (result.error != null) SelectableText(monitoringFailureText(context, result.error!)),
           for (final warning in result.warnings) Text(l.monitoringWarning(warning)),
           for (final info in result.infos) Text(l.monitoringInfo(info)),
-          if (result.effectiveStepSeconds != null)
+          if (widget.showDiagnostics && result.effectiveStepSeconds != null)
             Text(l.monitoringEffectiveStep(result.effectiveStepSeconds.toString())),
-          if (widget.requestedWindow case final window?)
+          if (widget.requestedWindow case final window? when widget.showDiagnostics)
             Text(
               l.monitoringTimeAxisRange(window.startText, window.endText),
               key: const ValueKey('monitoring-requested-axis'),
@@ -514,16 +536,17 @@ class _MonitoringResultViewState extends State<MonitoringResultView> {
           if (data?.empty == true) Text(l.monitoringNoData, key: const ValueKey('monitoring-no-data')),
           if (data?.kind == 'string') SelectableText('${data!.timestamp}: ${data.text}'),
           if (data?.sample case final sample?) SelectableText('${sample.timestamp}: ${sample.display}'),
-          if (series != null) ...[
-            const SizedBox(height: 12),
-            if (data!.kind == 'matrix') chart(),
+          if (series != null && widget.showChart && data!.kind == 'matrix') ...[const SizedBox(height: 12), chart()],
+          if (series != null && widget.showValues) ...[
             const SizedBox(height: 12),
             Text(l.monitoringChartSampleTable),
             GlassSelect<int>(
               key: const ValueKey('monitoring-table-series'),
               value: selected,
               expand: true,
-              items: [for (var i = 0; i < data.series.length; i++) GlassSelectItem(value: i, label: rowLabel(rows[i]))],
+              items: [
+                for (var i = 0; i < data!.series.length; i++) GlassSelectItem(value: i, label: rowLabel(rows[i])),
+              ],
               onChanged: (i) => setState(() => selected = i),
             ),
             const SizedBox(height: 12),
@@ -535,7 +558,11 @@ class _MonitoringResultViewState extends State<MonitoringResultView> {
                 itemCount: series.samples.length,
                 itemBuilder: (_, index) {
                   final sample = series.samples[index];
-                  return ListTile(dense: true, title: Text(sample.display), subtitle: Text(utc(sample.timestamp)));
+                  return ListTile(
+                    dense: true,
+                    title: SelectableText(sample.display),
+                    subtitle: Text(utc(sample.timestamp)),
+                  );
                 },
               ),
             ),
@@ -598,7 +625,9 @@ class _SeriesPainter extends CustomPainter {
     for (final time in admissions) {
       if (time < domain.start || time > domain.end) continue;
       final x = 8 + domain.fraction(time) * (size.width - 16);
-      final paint = Paint()..color = jobColor..strokeWidth = 1.5;
+      final paint = Paint()
+        ..color = jobColor
+        ..strokeWidth = 1.5;
       for (double y = 8; y < size.height - 8; y += 8) {
         canvas.drawLine(Offset(x, y), Offset(x, math.min(y + 4, size.height - 8)), paint);
       }
@@ -620,7 +649,8 @@ class _SeriesPainter extends CustomPainter {
   @override
   bool shouldRepaint(_SeriesPainter oldDelegate) =>
       !identical(projection, oldDelegate.projection) ||
-      jobColor != oldDelegate.jobColor || admissions.length != oldDelegate.admissions.length ||
+      jobColor != oldDelegate.jobColor ||
+      admissions.length != oldDelegate.admissions.length ||
       admissions.indexed.any((entry) => oldDelegate.admissions[entry.$1] != entry.$2) ||
       gridColor != oldDelegate.gridColor ||
       colors.entries.any((entry) => oldDelegate.colors[entry.key] != entry.value) ||

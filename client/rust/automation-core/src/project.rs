@@ -10,6 +10,13 @@ const MAX_FILES: usize = 10_000;
 const MAX_ENTRIES: usize = 20_000;
 const MAX_BYTES: u64 = 100 * 1024 * 1024;
 
+fn is_vault_password_path(path: &str) -> bool {
+    path.split_once('/').is_some_and(|(folder, name)| {
+        folder.trim_end_matches([' ', '.']).eq_ignore_ascii_case(".vault")
+            && name.trim_end_matches([' ', '.']).eq_ignore_ascii_case("password")
+    })
+}
+
 pub fn validate_project_path(value: &str) -> Result<()> {
     if value.is_empty()
         || value.len() > 1024
@@ -317,6 +324,9 @@ impl ProjectRoot {
     }
 
     pub fn read_file(&self, relative: &str) -> Result<ProjectFile> {
+        if is_vault_password_path(relative) {
+            return Err(AutomationError::Invalid("project password is not an editor file"));
+        }
         let text = self.read_text(relative)?;
         let line_endings = if text.contains("\r\n") {
             if text.replace("\r\n", "").contains('\n') {
@@ -337,6 +347,70 @@ impl ProjectRoot {
         })
     }
 
+    /// Move a reviewed file without replacing an existing destination.
+    pub fn move_file(&self, source: &str, directory: &str, expected_sha256: &str) -> Result<()> {
+        validate_project_path(source)?;
+        let (source_parent, name) = self.parent(source, false)?;
+        let target = if directory.is_empty() {
+            name.clone()
+        } else {
+            format!("{directory}/{name}")
+        };
+        if source == target
+            || [source, target.as_str()].contains(&crate::GIT_SOURCE_FILE)
+            || [source, target.as_str()].into_iter().any(is_vault_password_path)
+        {
+            return Err(AutomationError::FileChanged);
+        }
+        let (target_parent, _) = self.parent(&target, false)?;
+        if [source, target.as_str()]
+            .iter()
+            .any(|p| p.split('/').any(|part| part == ".git"))
+        {
+            return Err(AutomationError::Invalid("cannot move Git metadata"));
+        }
+        #[cfg(unix)]
+        let mut file = self.open_file(source)?;
+        #[cfg(windows)]
+        let mut file = publication::open_project_move_file(&source_parent, &name)?;
+        let before = file.metadata()?;
+        if before.len() > MAX_BYTES || expected_sha256.len() != 64 {
+            return Err(AutomationError::FileChanged);
+        }
+        let (bytes, digest) = hash_project_file(&mut file, MAX_BYTES)?;
+        let current = file.metadata()?;
+        if bytes != before.len()
+            || bytes != current.len()
+            || before.modified()? != current.modified()?
+            || current.nlink() != 1
+            || digest != expected_sha256
+        {
+            return Err(AutomationError::FileChanged);
+        }
+        #[cfg(unix)]
+        {
+            let named = self.child_metadata(&source_parent, &name)?;
+            if named.ino() != current.ino()
+                || named.dev() != current.dev()
+                || !named.is_file()
+                || named.nlink() != 1
+            {
+                return Err(AutomationError::FileChanged);
+            }
+            rustix::fs::renameat_with(
+                &source_parent,
+                &name,
+                &target_parent,
+                &name,
+                rustix::fs::RenameFlags::NOREPLACE,
+            )
+            .map_err(|error| AutomationError::Io(error.into()))?;
+        }
+        #[cfg(windows)]
+        publication::rename_project_move_file(&file, &target_parent, &name)?;
+        Ok(())
+    }
+
     /// Save one reviewed file with optimistic conflict detection. Write a new
     /// inode and replace the directory entry; never write through a hardlink or
     /// symlink. External editors are not a filesystem transaction coordinator.
@@ -346,6 +420,9 @@ impl ProjectRoot {
         expected_sha256: Option<&str>,
         text: &str,
     ) -> Result<ProjectFile> {
+        if is_vault_password_path(relative) {
+            return Err(AutomationError::Invalid("Vault password files use the dedicated secret source"));
+        }
         if relative == crate::GIT_SOURCE_FILE {
             return Err(AutomationError::Invalid(
                 "Git provenance is maintained by source import",
@@ -621,6 +698,15 @@ impl ProjectRoot {
             } else {
                 format!("{prefix}/{name}")
             };
+            // This fixed local secret is consumed only by Native's explicit
+            // Vault action. Never hash/upload it, show it in the tree or export
+            // it to AI/public project archives, even when it is a symlink.
+            if is_vault_password_path(&path) {
+                if policy == ProjectRevisionPolicy::RejectExcludedEntries {
+                    return Err(AutomationError::PublicationUnsupported("excluded local Vault password"));
+                }
+                continue;
+            }
             validate_project_path(&path)?;
             let metadata = self.child_metadata(directory, &name)?;
             if metadata.file_type().is_symlink() {
@@ -649,21 +735,8 @@ impl ProjectRoot {
                 *files += 1;
                 let mut file = self.open_file(&path)?;
                 let opened = file.metadata()?;
-                let mut hasher = Sha256::new();
-                let mut size = 0;
-                let mut buffer = [0u8; 65536];
-                loop {
-                    let count = file.read(&mut buffer)?;
-                    if count == 0 {
-                        break;
-                    }
-                    size += count as u64;
-                    *bytes += count as u64;
-                    if *bytes > MAX_BYTES {
-                        return Err(AutomationError::Invalid("project exceeds byte limit"));
-                    }
-                    hasher.update(&buffer[..count]);
-                }
+                let (size, sha256) = hash_project_file(&mut file, MAX_BYTES.saturating_sub(*bytes))?;
+                *bytes += size;
                 let after = file.metadata()?;
                 if opened.len() != size
                     || opened.len() != after.len()
@@ -691,7 +764,7 @@ impl ProjectRoot {
                     path,
                     mode,
                     bytes: size,
-                    sha256: hex::encode(hasher.finalize()),
+                    sha256,
                 });
             }
         }
@@ -699,6 +772,23 @@ impl ProjectRoot {
             return Err(AutomationError::Invalid("project changed while capturing"));
         }
         Ok(())
+    }
+}
+
+fn hash_project_file(file: &mut impl Read, limit: u64) -> Result<(u64, String)> {
+    let mut hasher = Sha256::new();
+    let mut size = 0;
+    let mut buffer = [0u8; 65536];
+    loop {
+        let count = file.read(&mut buffer)?;
+        if count == 0 {
+            return Ok((size, hex::encode(hasher.finalize())));
+        }
+        size += count as u64;
+        if size > limit {
+            return Err(AutomationError::Invalid("project exceeds byte limit"));
+        }
+        hasher.update(&buffer[..count]);
     }
 }
 
@@ -738,8 +828,16 @@ pub(crate) mod publication;
 #[cfg(target_os = "linux")]
 pub(crate) mod service_identity_boundary {
     use super::*;
-    pub(crate) fn check(dir: &Dir) -> Result<()> { publication::check_local_directory(dir) }
-    pub(crate) fn child(dir: &Dir,name: &str) -> Result<Dir> { publication::open_boundary_directory(dir,name) }
-    pub(crate) fn read(dir: &Dir,name: &Path) -> Result<cap_std::fs::File> { publication::read_boundary_file(dir,name) }
-    pub(crate) fn create(dir: &Dir,name: &Path,mode:u32) -> Result<cap_std::fs::File> { publication::create_boundary_file(dir,name,mode) }
+    pub(crate) fn check(dir: &Dir) -> Result<()> {
+        publication::check_local_directory(dir)
+    }
+    pub(crate) fn child(dir: &Dir, name: &str) -> Result<Dir> {
+        publication::open_boundary_directory(dir, name)
+    }
+    pub(crate) fn read(dir: &Dir, name: &Path) -> Result<cap_std::fs::File> {
+        publication::read_boundary_file(dir, name)
+    }
+    pub(crate) fn create(dir: &Dir, name: &Path, mode: u32) -> Result<cap_std::fs::File> {
+        publication::create_boundary_file(dir, name, mode)
+    }
 }

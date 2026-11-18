@@ -223,6 +223,7 @@ impl Fixture {
             snapshot: lease,
             validation,
             vault_session: None,
+            become_password:None,
             inventory,
             inventory_ref: None,
             targets,

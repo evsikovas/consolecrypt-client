@@ -18,8 +18,8 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
-mod namespace;
 pub(crate) mod agent_installer_seed;
+mod namespace;
 pub(crate) mod portable_import;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 pub(super) fn check_local_directory(dir: &Dir) -> Result<()> {
@@ -75,11 +75,7 @@ fn recovery() -> AutomationError {
     AutomationError::Invalid("publication requires explicit recovery")
 }
 fn require(value: bool) -> Result<()> {
-    if value {
-        Ok(())
-    } else {
-        Err(recovery())
-    }
+    if value { Ok(()) } else { Err(recovery()) }
 }
 fn check_cancel(cancel: &CancellationToken) -> Result<()> {
     if cancel.is_cancelled() {
@@ -1460,3 +1456,5 @@ pub(crate) fn check_publication_base(
     original.revision_for_publication()?;
     namespace.recheck_base(original)
 }
+#[cfg(windows)]
+pub(super) use windows::{open_project_move_file, rename_project_move_file};

@@ -334,3 +334,9 @@ fn lease_cannot_cross_loader_call_or_runtime_fingerprints() {
         assert!(l.write_once(&b.request(), &mut pipe).is_err());
     }
 }
+#[test]
+fn reviewed_current_helper_pin_matches_the_platform_normalized_embedded_package() {
+    let pin:serde_json::Value=serde_json::from_str(include_str!("runtime-pin-v1.json")).unwrap();
+    let expected=crate::setup::embedded_helper_digest();
+    assert_eq!(pin["helper_digest"].as_str(),Some(expected.as_str()));
+}

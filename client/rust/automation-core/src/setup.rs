@@ -207,6 +207,20 @@ pub async fn setup_environment(target: &SetupTarget, install: bool) -> Result<Va
         .map_err(|_| AutomationError::Timeout)?
 }
 
+#[cfg(test)]
+pub(crate) fn embedded_helper_digest()->String {
+    use sha2::{Digest,Sha256};
+    let mut digest=Sha256::new();
+    // SETUP_FILES is sorted by build.rs exactly like probe's relative paths.
+    for (name,text) in SETUP_FILES {
+        if let Some(relative)=name.strip_prefix("src/consolecrypt_runner/").filter(|p|p.ends_with(".py")) {
+            digest.update(relative.as_bytes());digest.update(b"\0");
+            digest.update(text.as_bytes());digest.update(b"\0");
+        }
+    }
+    hex::encode(digest.finalize())
+}
+
 fn setup_payload(install: bool, require_wsl2: bool) -> Result<Vec<u8>> {
     use sha2::{Digest, Sha256};
     let files = SETUP_FILES.iter().copied().collect::<BTreeMap<_, _>>();

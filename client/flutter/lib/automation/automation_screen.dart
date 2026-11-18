@@ -18,12 +18,14 @@ import 'package:consolecrypt/automation/automation_dependency_dialog.dart';
 import 'package:consolecrypt/automation/automation_dependency_models.dart';
 import 'package:consolecrypt/automation/automation_execution_console.dart';
 import 'package:consolecrypt/automation/automation_exporter_template.dart';
+import 'package:consolecrypt/automation/automation_file_tree.dart';
 import 'package:consolecrypt/automation/automation_git_dialog.dart';
 import 'package:consolecrypt/automation/automation_groups_dialog.dart';
 import 'package:consolecrypt/automation/automation_inventory_dialog.dart';
 import 'package:consolecrypt/automation/automation_inventory_export.dart';
 import 'package:consolecrypt/automation/automation_inventory_export_dialog.dart';
 import 'package:consolecrypt/automation/automation_jobs_dialog.dart';
+import 'package:consolecrypt/automation/automation_new_project_dialog.dart';
 import 'package:consolecrypt/automation/automation_portable_host.dart';
 import 'package:consolecrypt/automation/automation_portable_import_host.dart';
 import 'package:consolecrypt/automation/automation_portable_import_l10n.dart';
@@ -40,9 +42,11 @@ import 'package:consolecrypt/automation/automation_runners_dialog.dart';
 import 'package:consolecrypt/automation/automation_scope_guard.dart';
 import 'package:consolecrypt/automation/automation_secret_view.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
+import 'package:consolecrypt/automation/automation_vault_file_dialog.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -1736,17 +1740,30 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         originalCurrent?.call() == false) {
       return;
     }
-    final directory = folder ? await ref.read(fileDialogServiceProvider).chooseDirectory() : null;
+    final picker = ref.read(fileDialogServiceProvider);
+    final source = widget.service;
+    final scaffold = !folder && exporterTemplate == null && source is AutomationNewProjectService
+        ? source as AutomationNewProjectService
+        : null;
+    final options = scaffold == null
+        ? null
+        : await _dialog<NewAutomationProject>(
+            (_) => AutomationNewProjectDialog(chooseDirectory: picker.chooseDirectory),
+          );
+    if (!mounted || !current || (scaffold != null && options == null)) return;
+    final directory = folder ? await picker.chooseDirectory() : options?.directory;
     if (!mounted || !current || originalCurrent?.call() == false || (folder && directory == null)) return;
     final parts = directory?.replaceAll('\\', '/').split('/').where((part) => part.isNotEmpty).toList();
-    final name = folder && parts!.isNotEmpty
-        ? String.fromCharCodes(parts.last.runes.take(120))
-        : await _dialog<String>(
-            (context) => DependencyOriginalGuard(
-              original: originalLive,
-              builder: (_) => _NameDialog(title: context.l10n.automationNewProject, initial: ''),
-            ),
-          );
+    final name =
+        options?.name ??
+        (folder && parts!.isNotEmpty
+            ? String.fromCharCodes(parts.last.runes.take(120))
+            : await _dialog<String>(
+                (context) => DependencyOriginalGuard(
+                  original: originalLive,
+                  builder: (_) => _NameDialog(title: context.l10n.automationNewProject, initial: ''),
+                ),
+              ));
     if (!mounted || !current || originalCurrent?.call() == false || name == null) return;
     setState(() {
       busy = true;
@@ -1755,6 +1772,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     AutomationProject? created;
     Object? creationError;
     final templateFailureMessage = context.l10n.monitoringExporterTemplateIncomplete;
+    final folderNotEmpty = context.l10n.automationProjectChooseFolderEmpty;
     final originalService = widget.service, originalScope = widget.scope;
     bool original() =>
         current &&
@@ -1766,12 +1784,19 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
           ? null
           : await loadExporterTemplate(exporterTemplate, rootBundle.loadString);
       if (!original()) return;
-      created = await originalService.createProject(name: name, directory: directory);
+      created = scaffold == null
+          ? await originalService.createProject(name: name, directory: directory)
+          : await scaffold.scaffoldProject(name: name, directory: directory, role: options?.role);
       if (assets != null && original()) {
         await populateExporterTemplate(originalService, created, assets, isCurrent: original);
       }
     } catch (e) {
-      creationError = exporterTemplate == null ? e : templateFailureMessage;
+      creationError = switch (e) {
+        AppException(:final args)
+            when args['field'] == 'project_source' && args['rule'] == 'project_folder_not_empty' =>
+          folderNotEmpty,
+        _ => exporterTemplate == null ? e : templateFailureMessage,
+      };
       if (original()) setState(() => error = creationError);
     } finally {
       if (current) setState(() => busy = false);
@@ -1837,7 +1862,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
     if (!current || token != request) return;
     final result = await _dialog<AutomationAnsibleConfigResult>(
-      (_) => AutomationAnsibleConfigDialog(text: original?.text ?? ''),
+      (_) => AutomationAnsibleConfigDialog(text: original?.text ?? '', hasFile: original != null),
     );
     if (!current || token != request || project?.id != id || result == null) return;
     setState(() {
@@ -1861,6 +1886,171 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     if (!current) return;
     ref.invalidate(automationProjectsProvider);
     if (created != null) await _select(created);
+  }
+
+  Future<void> _vaultFile() async {
+    final originalProject = project, originalPath = file?.path, service = widget.service;
+    if (!current ||
+        busy ||
+        originalProject == null ||
+        originalProject.readOnly ||
+        originalProject.revision == null ||
+        originalPath == null ||
+        service is! AutomationVaultFileService ||
+        !(originalPath.endsWith('.yml') || originalPath.endsWith('.yaml'))) {
+      return;
+    }
+    final router = ref.read(routerProvider), route = ref.read(routerProvider).routeInformationProvider.value.uri;
+    var token = request, retired = false;
+    bool valid() =>
+        !retired &&
+        current &&
+        request == token &&
+        identical(service, widget.service) &&
+        project?.id == originalProject.id &&
+        project?.revision == originalProject.revision &&
+        file?.path == originalPath &&
+        router.routeInformationProvider.value.uri == route &&
+        route.path == AppRoutes.automation;
+    void observe() {
+      if (!valid()) retired = true;
+    }
+
+    router.routeInformationProvider.addListener(observe);
+    try {
+      if (!await _leaveFile(originalCurrent: valid, ownSaveRequest: (next) => token = next) || !valid() || !mounted) {
+        return;
+      }
+      final originalFile = file!;
+      if (dirty) {
+        setState(() {
+          editor.text = originalFile.text;
+          dirty = false;
+        });
+      }
+      final transformed = await showAutomationVaultFileDialog(
+        context,
+        ref,
+        scope: widget.scope,
+        project: originalProject,
+        file: originalFile,
+        service: service as AutomationVaultFileService,
+        originalCurrent: () => valid() && !busy && file?.sha256 == originalFile.sha256,
+      );
+      if (!valid() || transformed == null) return;
+      if (transformed.path != originalPath) throw const AutomationFileConflict();
+      token = ++request;
+      setState(() {
+        busy = true;
+        error = null;
+        file = transformed;
+        newPath = null;
+        repairOrigin = null;
+        aiDraft = null;
+        requirementsSavedPending = false;
+        editor.text = transformed.text;
+        dirty = false;
+      });
+      final refreshed = await widget.service.files(originalProject.id);
+      if (valid()) setState(() => revision = refreshed);
+    } catch (failure) {
+      if (valid()) setState(() => error = failure);
+    } finally {
+      router.routeInformationProvider.removeListener(observe);
+      if (current && token == request) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _moveProjectFile(AutomationFileDrag source, String directory) async {
+    final originalProject = project, service = widget.service, tree = revision;
+    if (!current ||
+        busy ||
+        originalProject == null ||
+        originalProject.readOnly ||
+        tree == null ||
+        service is! AutomationMoveService ||
+        !identical(source.scope, widget.scope) ||
+        source.projectId != originalProject.id ||
+        source.digest != tree.digest ||
+        !tree.entries.any((e) => e.path == source.path && !e.directory)) {
+      return;
+    }
+    final basename = source.path.split('/').last;
+    final target = directory.isEmpty ? basename : '$directory/$basename';
+    if (target == source.path ||
+        automationFileHierarchy(tree.entries).at(directory)?.directory != true ||
+        automationFileHierarchy(tree.entries).at(target) != null) {
+      return;
+    }
+    final router = ref.read(routerProvider),
+        originalRoute = ref.read(routerProvider).routeInformationProvider.value.uri;
+    var token = request, retired = false;
+    bool valid() =>
+        !retired &&
+        current &&
+        request == token &&
+        identical(service, widget.service) &&
+        project?.id == originalProject.id &&
+        router.routeInformationProvider.value.uri == originalRoute &&
+        originalRoute.path == AppRoutes.automation;
+    void observe() {
+      if (!valid()) retired = true;
+    }
+
+    router.routeInformationProvider.addListener(observe);
+    final movingSelection = file?.path == source.path;
+    try {
+      if (!valid()) return;
+      if (movingSelection && !await _leaveFile(originalCurrent: valid, ownSaveRequest: (next) => token = next) ||
+          !valid()) {
+        return;
+      }
+      token = ++request;
+      setState(() {
+        busy = true;
+        error = null;
+      });
+      AutomationProjectFile? originalFile = movingSelection ? file! : null;
+      var expectedSha = originalFile?.sha256 ?? tree.entries.firstWhere((e) => e.path == source.path).sha256;
+      if (expectedSha == null) {
+        originalFile = await service.readFile(originalProject.id, source.path);
+        if (originalFile.path != source.path) throw const AutomationFileConflict();
+        expectedSha = originalFile.sha256;
+      }
+      if (!valid()) return;
+      await (service as AutomationMoveService).moveProjectFile(
+        originalProject.id,
+        sourcePath: source.path,
+        destinationDirectory: directory,
+        expectedSha256: expectedSha,
+      );
+      if (!valid()) return;
+      // The Native move keeps the exact CAS-checked bytes. Keep the editor at
+      // the new path even if the following read-only tree refresh fails.
+      if (movingSelection) {
+        setState(() {
+          file = AutomationProjectFile(
+            path: target,
+            text: originalFile!.text,
+            sha256: originalFile.sha256,
+            lineEndings: originalFile.lineEndings,
+          );
+          newPath = null;
+          aiDraft = null;
+          repairOrigin = null;
+          requirementsSavedPending = false;
+          editor.text = originalFile.text;
+          dirty = false;
+        });
+      }
+      final refreshed = await service.files(originalProject.id);
+      if (valid()) setState(() => revision = refreshed);
+    } catch (failure) {
+      if (valid()) setState(() => error = failure);
+    } finally {
+      router.routeInformationProvider.removeListener(observe);
+      if (current && token == request) setState(() => busy = false);
+    }
   }
 
   Future<void> _newFile({bool playbook = false}) async {
@@ -2365,6 +2555,8 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                               ListTile(
                                 key: ValueKey('automation-project-${item.id}'),
                                 dense: true,
+                                minTileHeight: 34,
+                                visualDensity: VisualDensity.compact,
                                 selected: item.id == project?.id,
                                 leading: const Icon(Icons.folder_outlined, size: 18),
                                 title: Text(item.name ?? item.id, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -2485,19 +2677,21 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                             ],
                           ),
                         ),
-                        for (final entry in revision?.entries ?? <AutomationFileEntry>[])
-                          if (entry.path != automationGitSourceFile)
-                            ListTile(
-                              key: ValueKey('automation-file-${entry.path}'),
-                              dense: true,
-                              selected: entry.path == (file?.path ?? newPath),
-                              leading: Icon(
-                                entry.directory ? Icons.folder_outlined : Icons.description_outlined,
-                                size: 16,
-                              ),
-                              title: Text(entry.path, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              onTap: busy || entry.directory ? null : () => _read(entry.path),
-                            ),
+                        AutomationFileTree(
+                          key: ValueKey('automation-files-${project!.id}'),
+                          scope: widget.scope,
+                          projectId: project!.id,
+                          digest: revision?.digest ?? '',
+                          entries: revision?.entries ?? const [],
+                          selectedPath: file?.path ?? newPath,
+                          enabled: !busy,
+                          rootLabel: l.automationTreeRoot,
+                          emptyLabel: l.automationTreeEmpty,
+                          onRead: (path) => unawaited(_read(path)),
+                          onMove: project!.readOnly || widget.service is! AutomationMoveService || revision == null
+                              ? null
+                              : (source, directory) => unawaited(_moveProjectFile(source, directory)),
+                        ),
                       ],
                     ],
                   ),
@@ -2510,6 +2704,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Row(
+                              key: const ValueKey('automation-editor-toolbar'),
                               children: [
                                 Expanded(
                                   child: Text /* l10n-ignore: filename and dirty marker */ (
@@ -2517,47 +2712,68 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                GlassButton(
-                                  key: const ValueKey('automation-save'),
-                                  label: l.commonSave,
-                                  icon: Icons.save_outlined,
-                                  size: _automationControlSize(context),
-                                  onPressed: !dirty || busy ? null : _save,
+                                Expanded(
+                                  flex: 3,
+                                  child: Wrap(
+                                    alignment: WrapAlignment.end,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: [
+                                      GlassButton(
+                                        key: const ValueKey('automation-save'),
+                                        label: l.commonSave,
+                                        icon: Icons.save_outlined,
+                                        size: _automationControlSize(context),
+                                        onPressed: !dirty || busy ? null : _save,
+                                      ),
+                                      if (file != null &&
+                                          project?.readOnly == false &&
+                                          project?.revision != null &&
+                                          widget.service is AutomationVaultFileService &&
+                                          (file!.path.endsWith('.yml') || file!.path.endsWith('.yaml')))
+                                        GlassButton(
+                                          key: const ValueKey('automation-vault-file-open'),
+                                          label: l.automationVaultFileTitle,
+                                          icon: Icons.lock_outline,
+                                          size: _automationControlSize(context),
+                                          onPressed: busy ? null : () => unawaited(_vaultFile()),
+                                        ),
+                                      if (!AppPlatform.isMobile &&
+                                          file != null &&
+                                          widget.service is AutomationEditorService) ...[
+                                        IconButton(
+                                          key: const ValueKey('automation-open-editor'),
+                                          tooltip: l.automationOpenEditor,
+                                          onPressed: busy
+                                              ? null
+                                              : () => _externalEditor(widget.service as AutomationEditorService),
+                                          icon: const Icon(Icons.open_in_new, size: 18),
+                                        ),
+                                        IconButton(
+                                          key: const ValueKey('automation-reload-file'),
+                                          tooltip: l.automationReloadFile,
+                                          onPressed: busy ? null : () => _read(file!.path),
+                                          icon: const Icon(Icons.refresh, size: 18),
+                                        ),
+                                      ],
+                                      if (widget.service case final AutomationAiService ai)
+                                        GlassButton(
+                                          key: const ValueKey('automation-ai-open'),
+                                          label: l.automationAiTitle,
+                                          tooltip: l.automationAiTitle,
+                                          size: _automationControlSize(context),
+                                          onPressed:
+                                              busy ||
+                                                  !((file?.path ?? newPath ?? '').endsWith('.yml') ||
+                                                      (file?.path ?? newPath ?? '').endsWith('.yaml'))
+                                              ? null
+                                              : () => _ai(ai),
+                                          icon: Icons.auto_awesome,
+                                        ),
+                                    ],
+                                  ),
                                 ),
-                                if (!AppPlatform.isMobile &&
-                                    file != null &&
-                                    widget.service is AutomationEditorService) ...[
-                                  IconButton(
-                                    key: const ValueKey('automation-open-editor'),
-                                    tooltip: l.automationOpenEditor,
-                                    onPressed: busy
-                                        ? null
-                                        : () => _externalEditor(widget.service as AutomationEditorService),
-                                    icon: const Icon(Icons.open_in_new, size: 18),
-                                  ),
-                                  IconButton(
-                                    key: const ValueKey('automation-reload-file'),
-                                    tooltip: l.automationReloadFile,
-                                    onPressed: busy ? null : () => _read(file!.path),
-                                    icon: const Icon(Icons.refresh, size: 18),
-                                  ),
-                                ],
-                                if (widget.service case final AutomationAiService ai)
-                                  Flexible(
-                                    child: GlassButton(
-                                      key: const ValueKey('automation-ai-open'),
-                                      label: l.automationAiTitle,
-                                      tooltip: l.automationAiTitle,
-                                      size: _automationControlSize(context),
-                                      onPressed:
-                                          busy ||
-                                              !((file?.path ?? newPath ?? '').endsWith('.yml') ||
-                                                  (file?.path ?? newPath ?? '').endsWith('.yaml'))
-                                          ? null
-                                          : () => _ai(ai),
-                                      icon: Icons.auto_awesome,
-                                    ),
-                                  ),
                               ],
                             ),
                             const SizedBox(height: 8),

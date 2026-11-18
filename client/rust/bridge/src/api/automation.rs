@@ -296,6 +296,54 @@ pub async fn automation_prepare_run(request_json: String) -> Result<String, Brid
     let request = crate::state::from_json("automation_run", &request_json)?;
     with_core(move |c| async move { to_json(&c.automation_prepare_run(request).await?) }).await
 }
+
+pub async fn automation_prepare_run_with_inputs(
+    request_json: String,
+    profile_id: String,
+    notification_scope_id: String,
+    vault_password: Option<Vec<u8>>,
+    become_password: Option<Vec<u8>>,
+    use_project_vault_password: bool,
+) -> Result<String, BridgeError> {
+    fn secret_text(bytes: Option<&[u8]>) -> Result<Option<&str>, BridgeError> {
+        bytes
+            .map(|value| {
+                std::str::from_utf8(value).map_err(|_| {
+                    cc_app_core::AppError::InvalidInput {
+                        field: "automation_run".into(),
+                        reason: "invalid_launch_password".into(),
+                    }
+                    .into()
+                })
+            })
+            .transpose()
+    }
+
+    let vault_password = vault_password.map(zeroize::Zeroizing::new);
+    let become_password = become_password.map(zeroize::Zeroizing::new);
+    let request = crate::state::from_json("automation_run", &request_json)?;
+    with_core(move |c| async move {
+        let vault = secret_text(vault_password.as_ref().map(|value| value.as_slice()))?;
+        let sudo = secret_text(become_password.as_ref().map(|value| value.as_slice()))?;
+        let vault = vault.map(str::to_owned);
+        let sudo = sudo.map(str::to_owned);
+        drop(vault_password);
+        drop(become_password);
+        to_json(
+            &c.automation_prepare_run_with_inputs(
+                request,
+                profile_id,
+                notification_scope_id,
+                vault,
+                sudo,
+                use_project_vault_password,
+            )
+            .await?,
+        )
+    })
+    .await
+}
+
 pub async fn automation_discard_review(review_id: String) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.automation_discard_review(review_id).await?) }).await
 }
@@ -416,6 +464,16 @@ pub async fn automation_project_rename(
     .await
 }
 
+pub async fn automation_project_scaffold(
+    name: String,
+    directory: Option<String>,
+    role: Option<String>,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        to_json(&c.automation_project_scaffold(name, directory, role).await?)
+    }).await
+}
+
 pub async fn automation_project_files(id: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.automation_project_files(id).await?) }).await
 }
@@ -437,6 +495,18 @@ pub async fn automation_project_save(
         )
     })
     .await
+}
+
+pub async fn automation_project_move_file(
+    id: String,
+    path: String,
+    directory: String,
+    expected_sha256: String,
+) -> Result<(), BridgeError> {
+    with_core(move |c| async move {
+        c.automation_project_move_file(id, path, directory, expected_sha256).await?;
+        Ok(())
+    }).await
 }
 
 /// Profile-local named Ansible group to existing ConsoleCrypt folder DATA.

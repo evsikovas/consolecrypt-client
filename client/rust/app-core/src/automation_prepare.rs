@@ -26,6 +26,20 @@ use tokio::sync::OwnedSemaphorePermit;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
+#[derive(Default)]
+struct LaunchSecrets {
+    vault_password: Option<cc_models::secret::SecretValue>,
+    become_password: Option<Arc<cc_automation_core::ScopedBecomePassword>>,
+    use_project_vault_password: bool,
+}
+impl LaunchSecrets {
+    fn any(&self) -> bool {
+        self.vault_password.is_some()
+            || self.become_password.is_some()
+            || self.use_project_vault_password
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AutomationRunRequest {
@@ -46,7 +60,8 @@ pub struct AutomationRunRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vault_selection: Option<crate::automation_projects::vault::selection::VaultSelectionFrame>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub deployment_environment: Option<crate::automation_projects::execution_credentials::Selection>,
+    pub deployment_environment:
+        Option<crate::automation_projects::execution_credentials::Selection>,
 }
 
 /// Public input remains the legacy four-field shape. In particular even an
@@ -91,9 +106,11 @@ impl AutomationRunRequest {
                 return Err(invalid("invalid identifier"));
             }
         }
-        if let Some(selection)=&self.deployment_environment {
+        if let Some(selection) = &self.deployment_environment {
             selection.validate()?;
-            if selection.frame.project_id!=self.project_id{return Err(invalid("deployment environment belongs to another project"));}
+            if selection.frame.project_id != self.project_id {
+                return Err(invalid("deployment environment belongs to another project"));
+            }
         }
         cc_automation_core::validate_project_path(&self.playbook).map_err(automation_error)?;
         // The caller may select a credential, never inject Native purpose or
@@ -166,7 +183,8 @@ mod tests {
             cancel_on_lock: true,
             retry_of: None,
             vault_credential_id: None,
-            vault_selection: None, deployment_environment:None,
+            vault_selection: None,
+            deployment_environment: None,
         };
         let future = app.automation_prepare_run(request);
         let bytes = std::mem::size_of_val(&future);
@@ -232,6 +250,7 @@ pub(crate) struct PreparedReview {
     pub snapshot: RevisionLease,
     pub validation: VerifiedValidation,
     pub vault_session: Option<crate::automation_projects::vault::VaultJobSession>,
+    pub become_password: Option<Arc<cc_automation_core::ScopedBecomePassword>>,
     pub inventory: Value,
     pub inventory_ref: Option<cc_automation_core::InventoryReference>,
     pub targets: Vec<ApprovedTarget>,
@@ -281,7 +300,12 @@ impl PreparedReview {
     pub fn usable(&self, generation: u64) -> bool {
         generation == self.context.generation
             && self.context.unlock.strong_count() > 0
-            && self.execution_credentials.as_ref().is_none_or(|selected|self.context.unlock.upgrade().is_some_and(|u|selected.current(&u)))
+            && self.execution_credentials.as_ref().is_none_or(|selected| {
+                self.context
+                    .unlock
+                    .upgrade()
+                    .is_some_and(|u| selected.current(&u))
+            })
             && !self.cancellation.0.is_cancelled()
             && !self.runner.peer.is_closed()
             && Instant::now() < self.deadline
@@ -323,12 +347,15 @@ impl PreparedReview {
             "validation":self.validation,"expires_at":self.expires_at,
             "service_origin":self.service_origin,"folder_composition":self.context.folder_composition.as_ref().map(|f|&f.view),"git_source":self.git_source,"retry_origin":self.retry_origin,"inventory_groups":self.inventory_groups_summary(),"origin":origin,"routes":self.targets.iter().filter_map(|target|
                 self.sessions.get(&target.host_id).map(|session|route(session))).collect::<Vec<_>>()});
-        if let Some(owner) = &self.production_owner { value["owner_confirmation"] = owner.view(); }
-        if let Some(selected)=&self.execution_credentials {
-            value["deployment_environment"]=json!({"id":selected.environment.id,"name":selected.environment.name,
+        if let Some(owner) = &self.production_owner {
+            value["owner_confirmation"] = owner.view();
+        }
+        if let Some(selected) = &self.execution_credentials {
+            value["deployment_environment"] = json!({"id":selected.environment.id,"name":selected.environment.name,
                 "production":self.policy.production,"policy_sha256":selected.selection.frame.policy_sha256,
                 "credential_overrides":selected.environment.overrides});
         }
+        value["one_shot_become"] = json!(self.become_password.is_some());
         value
     }
 }
@@ -348,6 +375,69 @@ impl AppCore {
     /// Performs validation only. A successful response is not permission to run.
     pub async fn automation_prepare_run(&self, request: AutomationRunRequest) -> AppResult<Value> {
         self.automation_prepare_purpose(request, None).await
+    }
+    /// Secret arguments are separate typed FFI input, never part of launch JSON.
+    pub async fn automation_prepare_run_with_inputs(
+        &self,
+        request: AutomationRunRequest,
+        profile_id: String,
+        notification_scope_id: String,
+        vault_password: Option<String>,
+        become_password: Option<String>,
+        use_project_vault_password: bool,
+    ) -> AppResult<Value> {
+        use cc_models::secret::SecretValue;
+        let vault_password = vault_password.map(SecretValue::new);
+        let become_password = become_password.map(SecretValue::new);
+        for value in [vault_password.as_ref(), become_password.as_ref()]
+            .into_iter()
+            .flatten()
+        {
+            if value.is_empty()
+                || value.len() > 4096
+                || value.expose_secret().contains(['\0', '\r', '\n'])
+            {
+                return Err(invalid("invalid one-shot password"));
+            }
+        }
+        if use_project_vault_password && vault_password.is_some() {
+            return Err(invalid("select one Vault password source"));
+        }
+        if (use_project_vault_password || vault_password.is_some()) && request.parameters.diff {
+            return Err(invalid("one-shot Vault jobs prohibit diff"));
+        }
+        let secrets = LaunchSecrets {
+            vault_password,
+            become_password: become_password
+                .map(|v| cc_automation_core::ScopedBecomePassword::new(v).map(Arc::new))
+                .transpose()
+                .map_err(automation_error)?,
+            use_project_vault_password,
+        };
+        if secrets.any() && !request.cancel_on_lock {
+            return Err(invalid("one-shot passwords require cancellation on lock"));
+        }
+        if (secrets.vault_password.is_some() || secrets.use_project_vault_password)
+            && request.vault_credential_id.is_some()
+        {
+            return Err(invalid("select one Vault password source"));
+        }
+        request.validate()?;
+        let context = self
+            .automation_project_context(&request.project_id)
+            .boxed()
+            .await?;
+        let unlocked = context.unlock.upgrade().ok_or(AppError::VaultLocked)?;
+        if context.owner.profile_id.to_string() != profile_id
+            || unlocked.notices.scope_id().as_deref() != Some(notification_scope_id.as_str())
+        {
+            return Err(invalid("launch password context changed"));
+        }
+        drop(unlocked);
+        context.check_after_io(self).await?;
+        self.automation_prepare_context_purpose(context, request, None, secrets)
+            .boxed()
+            .await
     }
 
     pub(crate) async fn automation_prepare_service(
@@ -381,7 +471,9 @@ impl AppCore {
             .automation_project_context(&request.project_id)
             .boxed()
             .await?;
-        self.automation_prepare_context_purpose(context, request, service).boxed().await
+        self.automation_prepare_context_purpose(context, request, service, LaunchSecrets::default())
+            .boxed()
+            .await
     }
 
     /// Original-context service path. Never rediscover a current profile after
@@ -393,7 +485,10 @@ impl AppCore {
         context: AutomationProjectContext,
     ) -> AppResult<Value> {
         request.validate()?;
-        let selection = crate::automation_projects::service_delegation::ServiceOriginSelection::from_terms(terms)?;
+        let selection =
+            crate::automation_projects::service_delegation::ServiceOriginSelection::from_terms(
+                terms,
+            )?;
         if request.project_id != context.project.id
             || terms.access_mode != cc_crypto_core::ServiceAccessMode::BoundedOffline
             || request.runner_id != terms.service_id.to_string()
@@ -404,7 +499,14 @@ impl AppCore {
             return Err(invalid("service preparation unavailable"));
         }
         context.check_after_io(self).await?;
-        self.automation_prepare_context_purpose(context, request, Some(selection)).boxed().await
+        self.automation_prepare_context_purpose(
+            context,
+            request,
+            Some(selection),
+            LaunchSecrets::default(),
+        )
+        .boxed()
+        .await
     }
 
     async fn automation_prepare_context_purpose(
@@ -412,6 +514,7 @@ impl AppCore {
         context: AutomationProjectContext,
         request: AutomationRunRequest,
         service: Option<crate::automation_projects::service_delegation::ServiceOriginSelection>,
+        secrets: LaunchSecrets,
     ) -> AppResult<Value> {
         if let (Some(frame), Some(credential)) =
             (&request.vault_selection, &request.vault_credential_id)
@@ -456,6 +559,7 @@ impl AppCore {
                 cancellation,
                 review_slot,
                 service,
+                secrets,
             )
             .boxed();
         let review = tokio::select! {
@@ -497,9 +601,16 @@ impl AppCore {
         cancellation: CancelOnDrop,
         review_slot: OwnedSemaphorePermit,
         service: Option<crate::automation_projects::service_delegation::ServiceOriginSelection>,
+        mut secrets: LaunchSecrets,
     ) -> AppResult<PreparedReview> {
-        let execution_credentials=crate::automation_projects::execution_credentials::freeze(
-            self,&context,request.deployment_environment.as_ref(),&request.host_ids).boxed().await?;
+        let execution_credentials = crate::automation_projects::execution_credentials::freeze(
+            self,
+            &context,
+            request.deployment_environment.as_ref(),
+            &request.host_ids,
+        )
+        .boxed()
+        .await?;
         let mut folder_composition =
             crate::automation_projects::folder_bindings::capture(self, &context)
                 .boxed()
@@ -528,8 +639,15 @@ impl AppCore {
             .cloned()
             .filter(|runner| !runner.peer.is_closed())
             .ok_or_else(|| invalid("connect the selected Runner first"))?;
-        if service.is_none() && matches!(runner.configuration, AutomationRunnerConfig::ServiceRemote { .. }) {
-            return Err(invalid("service Runner requires separate delegation review"));
+        if service.is_none()
+            && matches!(
+                runner.configuration,
+                AutomationRunnerConfig::ServiceRemote { .. }
+            )
+        {
+            return Err(invalid(
+                "service Runner requires separate delegation review",
+            ));
         }
         let cancel = &cancellation.0;
         let raw_probe = runner
@@ -545,14 +663,33 @@ impl AppCore {
             ));
         }
         let observed_service_origin = if service.is_some() {
-            Some(serde_json::from_value::<cc_crypto_core::ServiceExecutionOrigin>(raw_probe["service_origin"].clone())
-                .map_err(|_|invalid("original service origin is unavailable"))?)
-        } else {None};
+            Some(
+                serde_json::from_value::<cc_crypto_core::ServiceExecutionOrigin>(
+                    raw_probe["service_origin"].clone(),
+                )
+                .map_err(|_| invalid("original service origin is unavailable"))?,
+            )
+        } else {
+            None
+        };
         let service_helper = raw_probe
             .get("helper_digest")
             .and_then(Value::as_str)
             .map(str::to_owned);
         let probe = EnvironmentProbe::parse(raw_probe).map_err(automation_error)?;
+        if service.is_some() && secrets.any() {
+            return Err(invalid(
+                "one-shot passwords are unavailable for service delegation",
+            ));
+        }
+        if secrets.become_password.is_some()
+            && probe.capabilities.get("become_native_v1") != Some(&true)
+        {
+            return Err(AppError::invalid(
+                "automation_runner_update",
+                "update the selected Runner for one-shot sudo",
+            ));
+        }
         probe.require_trusted_worker_bootstrap().map_err(|_| {
             AppError::invalid(
                 "automation_runner_update",
@@ -569,8 +706,11 @@ impl AppCore {
         }
         let unlocked = context.unlock.upgrade().ok_or(AppError::VaultLocked)?;
         let service_origin = if let Some(service) = &service {
-            if !matches!(runner.configuration, AutomationRunnerConfig::Remote { .. } | AutomationRunnerConfig::ServiceRemote { .. })
-                || probe.system != "Linux"
+            if !matches!(
+                runner.configuration,
+                AutomationRunnerConfig::Remote { .. }
+                    | AutomationRunnerConfig::ServiceRemote { .. }
+            ) || probe.system != "Linux"
                 || request.runner_id != service.service_id.to_string()
             {
                 return Err(invalid("service-local Linux Runner required"));
@@ -579,15 +719,17 @@ impl AppCore {
                 .working()
                 .service_key_trust_records()
                 .ok_or_else(|| invalid("service key trust unavailable"))?;
-            let selected=service.origin(
-                    &runner,
-                    &probe,
-                    service_helper
-                        .as_deref()
-                        .ok_or_else(|| invalid("service helper identity unavailable"))?,
-                    &records,
-                )?;
-            if observed_service_origin.as_ref()!=Some(&selected) {return Err(invalid("service origin differs from Native selection"));}
+            let selected = service.origin(
+                &runner,
+                &probe,
+                service_helper
+                    .as_deref()
+                    .ok_or_else(|| invalid("service helper identity unavailable"))?,
+                &records,
+            )?;
+            if observed_service_origin.as_ref() != Some(&selected) {
+                return Err(invalid("service origin differs from Native selection"));
+            }
             Some(selected)
         } else {
             None
@@ -597,8 +739,14 @@ impl AppCore {
             folders.watch(&unlocked, cancel.clone())?;
         }
         let snapshot = unlocked.working().snapshot();
-        let mut dependency_roots = if execution_credentials.is_some(){Vec::new()}else{request.host_ids.clone()};
-        if let AutomationRunnerConfig::Remote { host_id, .. } | AutomationRunnerConfig::ServiceRemote { host_id, .. } = &runner.configuration {
+        let mut dependency_roots = if execution_credentials.is_some() {
+            Vec::new()
+        } else {
+            request.host_ids.clone()
+        };
+        if let AutomationRunnerConfig::Remote { host_id, .. }
+        | AutomationRunnerConfig::ServiceRemote { host_id, .. } = &runner.configuration
+        {
             dependency_roots.push(host_id.clone());
         }
         for id in dependency_roots {
@@ -607,13 +755,19 @@ impl AppCore {
                 crate::dto::parse_id("host_id", &id)?,
             )?);
         }
-        if let Some(selected)=&execution_credentials {
-            if !selected.current(&unlocked){return Err(invalid("project environment credentials changed"));}
+        if let Some(selected) = &execution_credentials {
+            if !selected.current(&unlocked) {
+                return Err(invalid("project environment credentials changed"));
+            }
             watched.extend(selected.revisions.clone());
         }
         // Classification comes from native inventory, never a client-supplied
         // production=false. Fixed OWNER policy is always required for production.
-        let production = crate::automation_projects::execution_credentials::production(execution_credentials.as_ref(), &snapshot, &watched);
+        let production = crate::automation_projects::execution_credentials::production(
+            execution_credentials.as_ref(),
+            &snapshot,
+            &watched,
+        );
         if production && service_origin.is_some() {
             return Err(invalid("production service execution remains unsupported"));
         }
@@ -643,12 +797,21 @@ impl AppCore {
         let mut plans = Vec::new();
         let mut hops = 0usize;
         for id in &request.host_ids {
-            let mut prepared = if let Some(selected)=&execution_credentials {
-                let original=context.unlock.upgrade().ok_or(AppError::VaultLocked)?;
-                if !selected.current(&original){return Err(invalid("project environment credentials changed"));}
-                let host=crate::dto::parse_id("host_id",id)?;
-                let plan=selected.plans.get(&host).cloned().ok_or_else(||invalid("project environment route missing"))?;
-                crate::sharing_bindings::PreparedSharingConnection{unlocked:original,plan}
+            let mut prepared = if let Some(selected) = &execution_credentials {
+                let original = context.unlock.upgrade().ok_or(AppError::VaultLocked)?;
+                if !selected.current(&original) {
+                    return Err(invalid("project environment credentials changed"));
+                }
+                let host = crate::dto::parse_id("host_id", id)?;
+                let plan = selected
+                    .plans
+                    .get(&host)
+                    .cloned()
+                    .ok_or_else(|| invalid("project environment route missing"))?;
+                crate::sharing_bindings::PreparedSharingConnection {
+                    unlocked: original,
+                    plan,
+                }
             } else if service_origin.is_some() {
                 // Service purpose admits only original personal/local routes.
                 // The generic sharing refresh helper discovers CURRENT scope
@@ -671,8 +834,9 @@ impl AppCore {
                     let host = crate::inventory::host_of(&original, hop.host_id)?;
                     if original.working().vault_of(hop.host_id).is_some()
                         || crate::sharing_bindings::host_sharing_binding(&host)?.is_some()
-                        || hop.credential.as_ref().is_some_and(|credential|
-                            original.working().vault_of(credential.id).is_some())
+                        || hop.credential.as_ref().is_some_and(|credential| {
+                            original.working().vault_of(credential.id).is_some()
+                        })
                     {
                         return Err(invalid("service requires personal target routes"));
                     }
@@ -681,7 +845,10 @@ impl AppCore {
                     let _profile = self.hold_session(&context.owner).await?;
                     let _epoch = context.owner.hold_unlocked(&original).await?;
                 }
-                crate::sharing_bindings::PreparedSharingConnection { unlocked: original, plan }
+                crate::sharing_bindings::PreparedSharingConnection {
+                    unlocked: original,
+                    plan,
+                }
             } else {
                 self.sharing_prepare_connection(id).boxed().await?
             };
@@ -689,7 +856,10 @@ impl AppCore {
             if !Arc::ptr_eq(&original, &prepared.unlocked) || cancel.is_cancelled() {
                 return Err(AppError::VaultLocked);
             }
-            if execution_credentials.as_ref().is_some_and(|selected|!selected.current(&original)) {
+            if execution_credentials
+                .as_ref()
+                .is_some_and(|selected| !selected.current(&original))
+            {
                 return Err(invalid("project environment credentials changed"));
             }
             if prepared.plan.backend != SshBackend::Native {
@@ -731,10 +901,12 @@ impl AppCore {
                     .map_err(|_| invalid("route budget exceeded"))?,
             )
             .map_err(|_| invalid("route budget exceeded"))?;
-        let diagnostic_capture=Arc::new(cc_ssh_core::DiagnosticCapture::new());
+        let diagnostic_capture = Arc::new(cc_ssh_core::DiagnosticCapture::new());
         for prepared in plans {
-            if let Some(selected)=&execution_credentials {
-                if !selected.current(&prepared.unlocked){return Err(invalid("project environment credentials changed"));}
+            if let Some(selected) = &execution_credentials {
+                if !selected.current(&prepared.unlocked) {
+                    return Err(invalid("project environment credentials changed"));
+                }
             }
             let first = prepared
                 .plan
@@ -742,7 +914,12 @@ impl AppCore {
                 .into_iter()
                 .next()
                 .ok_or_else(|| invalid("empty target route"))?;
-            let connector = prepared.unlocked.ssh.connector.clone().with_diagnostic_capture(diagnostic_capture.clone());
+            let connector = prepared
+                .unlocked
+                .ssh
+                .connector
+                .clone()
+                .with_diagnostic_capture(diagnostic_capture.clone());
             let connect = async {
                 let session = match &runner.configuration {
                     AutomationRunnerConfig::Local {
@@ -888,12 +1065,52 @@ impl AppCore {
             .entries
             .iter()
             .any(|entry| entry.path() == cc_automation_core::VAULT_INPUT_FILE);
-        if has_vault_reference != request.vault_credential_id.is_some() {
+        let ephemeral_vault =
+            secrets.vault_password.is_some() || secrets.use_project_vault_password;
+        if (has_vault_reference != request.vault_credential_id.is_some())
+            || (ephemeral_vault && has_vault_reference)
+        {
             return Err(invalid(
                 "explicit Ansible Vault selection must match the project reference",
             ));
         }
-        let vault_session = if let Some(credential) = request.vault_credential_id.clone() {
+        let vault_session = if ephemeral_vault {
+            if probe.capabilities.get("vault_ephemeral_v1") != Some(&true) {
+                return Err(AppError::invalid(
+                    "automation_runner_update",
+                    "update the selected Runner for one-shot Vault",
+                ));
+            }
+            let password = if secrets.use_project_vault_password {
+                self.automation_project_vault_file_password(
+                    context.clone(),
+                    root.clone(),
+                    revision.clone(),
+                    cancel,
+                )
+                .await?
+            } else {
+                secrets
+                    .vault_password
+                    .take()
+                    .ok_or_else(|| invalid("one-shot Vault input unavailable"))?
+            };
+            let session = self
+                .automation_open_ephemeral_vault_job_session(
+                    context.clone(),
+                    revision.digest.clone(),
+                    password,
+                    runner.id.clone(),
+                    runner.revision,
+                    request.playbook.clone(),
+                    root.clone(),
+                    revision.clone(),
+                    cancel,
+                )
+                .await?;
+            request.parameters.vault = Some(session.binding()?);
+            Some(session)
+        } else if let Some(credential) = request.vault_credential_id.clone() {
             if probe.capabilities.get("vault_job_v1") != Some(&true) {
                 return Err(AppError::invalid(
                     "automation_runner_update",
@@ -1101,6 +1318,7 @@ impl AppCore {
             snapshot: lease,
             validation,
             vault_session,
+            become_password: secrets.become_password,
             inventory,
             inventory_ref,
             targets,
@@ -1119,23 +1337,39 @@ impl AppCore {
             _hop_slots: hop_slots,
         };
         if production && review.validation.is_valid() {
-            let grant = self.automation_authorize_connection(&context.owner, &review).await?;
+            let grant = self
+                .automation_authorize_connection(&context.owner, &review)
+                .await?;
             let identity = context.owner.identity();
             if identity.public_keys().signing != grant.public_key
-                || identity.device_id().to_string() != grant.signer_id.to_string() {
+                || identity.device_id().to_string() != grant.signer_id.to_string()
+            {
                 return Err(invalid("original manual owner key changed"));
             }
-            let manual = cc_automation_core::ManualOwnerGrant::configure(&review.runner.peer, grant.clone())
-                .await.map_err(automation_error)?;
-            let original = review.context.unlock.upgrade().ok_or(AppError::VaultLocked)?;
+            let manual =
+                cc_automation_core::ManualOwnerGrant::configure(&review.runner.peer, grant.clone())
+                    .await
+                    .map_err(automation_error)?;
+            let original = review
+                .context
+                .unlock
+                .upgrade()
+                .ok_or(AppError::VaultLocked)?;
             let _profile = self.hold_session(&context.owner).await?;
             let _epoch = context.owner.hold_unlocked(&original).await?;
             if !review.usable(context.owner.automation.unlocked_generation()?) {
                 return Err(invalid("review changed before production manifest freeze"));
             }
             let scope = original.notices.scope_id().ok_or(AppError::VaultLocked)?;
-            review.production_owner = Some(crate::automation_production_owner::FrozenOwnerReview::freeze(
-                &review, manual, &grant, scope, chrono::Utc::now().timestamp())?);
+            review.production_owner = Some(
+                crate::automation_production_owner::FrozenOwnerReview::freeze(
+                    &review,
+                    manual,
+                    &grant,
+                    scope,
+                    chrono::Utc::now().timestamp(),
+                )?,
+            );
         }
         Ok(review)
     }

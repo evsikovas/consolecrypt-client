@@ -172,6 +172,22 @@ Future<String> automationAiGenerate({required String reviewId}) =>
 Future<String> automationPrepareRun({required String requestJson}) =>
     RustLib.instance.api.crateApiAutomationAutomationPrepareRun(requestJson: requestJson);
 
+Future<String> automationPrepareRunWithInputs({
+  required String requestJson,
+  required String profileId,
+  required String notificationScopeId,
+  Uint8List? vaultPassword,
+  Uint8List? becomePassword,
+  required bool useProjectVaultPassword,
+}) => RustLib.instance.api.crateApiAutomationAutomationPrepareRunWithInputs(
+  requestJson: requestJson,
+  profileId: profileId,
+  notificationScopeId: notificationScopeId,
+  vaultPassword: vaultPassword,
+  becomePassword: becomePassword,
+  useProjectVaultPassword: useProjectVaultPassword,
+);
+
 Future<void> automationDiscardReview({required String reviewId}) =>
     RustLib.instance.api.crateApiAutomationAutomationDiscardReview(reviewId: reviewId);
 
@@ -238,6 +254,9 @@ Future<String> automationProjectRename({required String id, required int expecte
       name: name,
     );
 
+Future<String> automationProjectScaffold({required String name, String? directory, String? role}) =>
+    RustLib.instance.api.crateApiAutomationAutomationProjectScaffold(name: name, directory: directory, role: role);
+
 Future<String> automationProjectFiles({required String id}) =>
     RustLib.instance.api.crateApiAutomationAutomationProjectFiles(id: id);
 
@@ -254,6 +273,18 @@ Future<String> automationProjectSave({
   path: path,
   expectedSha256: expectedSha256,
   text: text,
+);
+
+Future<void> automationProjectMoveFile({
+  required String id,
+  required String path,
+  required String directory,
+  required String expectedSha256,
+}) => RustLib.instance.api.crateApiAutomationAutomationProjectMoveFile(
+  id: id,
+  path: path,
+  directory: directory,
+  expectedSha256: expectedSha256,
 );
 
 /// Profile-local named Ansible group to existing ConsoleCrypt folder DATA.

@@ -1,4 +1,44 @@
 {
+  "automationProjectChooseFolderEmpty": "Choose an empty folder for a new project. To use existing files, select Open folder.",
+  "@automationProjectChooseFolderEmpty": {"description": "Label or help text for automationProjectChooseFolderEmpty."},
+  "automationGitUnavailable": "Install Git on this computer, then reopen ConsoleCrypt to import the repository.",
+  "@automationGitUnavailable": {"description": "Label or help text for automationGitUnavailable."},
+  "automationProjectRoleHelp": "Creates the standard Ansible role layout and a playbook that calls the role.",
+  "@automationProjectRoleHelp": {"description": "Label or help text for automationProjectRoleHelp."},
+  "@automationNewProjectName": {"description": "Label or help text for automationNewProjectName."},
+  "@automationNewProjectType": {"description": "Label or help text for automationNewProjectType."},
+  "@automationProjectPlaybook": {"description": "Label or help text for automationProjectPlaybook."},
+  "@automationProjectRole": {"description": "Label or help text for automationProjectRole."},
+  "@automationProjectRoleName": {"description": "Label or help text for automationProjectRoleName."},
+  "@automationProjectProfileFolder": {"description": "Label or help text for automationProjectProfileFolder."},
+  "@automationProjectChooseFolder": {"description": "Label or help text for automationProjectChooseFolder."},
+  "@automationProjectUseProfile": {"description": "Label or help text for automationProjectUseProfile."},
+  "@automationProjectChooseFolderError": {"description": "Label or help text for automationProjectChooseFolderError."},
+  "@automationInventoryRunnerHelp": {"description": "Label or help text for automationInventoryRunnerHelp."},
+  "@automationInventoryYamlPreviewFailed": {"description": "Label or help text for automationInventoryYamlPreviewFailed."},
+  "@automationInventoryYamlPreviewHelp": {"description": "Label or help text for automationInventoryYamlPreviewHelp."},
+  "@automationInventoryYamlPreviewEmpty": {"description": "Label or help text for automationInventoryYamlPreviewEmpty."},
+  "@automationConfigFromFile": {"description": "Label or help text for automationConfigFromFile."},
+  "@automationConfigNewFile": {"description": "Label or help text for automationConfigNewFile."},
+  "@awxIntro": {"description": "Label or help text for awxIntro."},
+  "monitoringBrowseNow": "Current",
+  "@monitoringBrowseNow": {"description": "Label or help text for monitoringBrowseNow."},
+  "automationNewProjectName": "Project name",
+  "automationNewProjectType": "Project template",
+  "automationProjectPlaybook": "Playbook only",
+  "automationProjectRole": "Ansible role and playbook",
+  "automationProjectRoleName": "Role name",
+  "automationProjectProfileFolder": "Save in the local ConsoleCrypt profile",
+  "automationProjectChooseFolder": "Choose an empty folder\u2026",
+  "automationProjectUseProfile": "Use profile folder",
+  "automationProjectChooseFolderError": "Could not open the folder picker.",
+  "automationInventoryRunnerHelp": "Preview YAML host and group names on this device. Choose a Runner to validate the inventory with Ansible and save it.",
+  "automationInventoryYamlPreviewFailed": "This file could not be read as static YAML inventory. Select an inventory file or check it with a Runner.",
+  "automationInventoryYamlPreviewHelp": "Hosts and groups declared in the file. Use a Runner to resolve the inventory for a job.",
+  "automationInventoryYamlPreviewEmpty": "No hosts or groups were found.",
+  "automationConfigFromFile": "Source: ansible.cfg in the project root. The form loads supported settings from this file.",
+  "automationConfigNewFile": "Saving creates ansible.cfg in the project root.",
+  "awxIntro": "Use this tab with an existing AWX or Ansible Automation Controller server. Add a connection, load available job templates, then review and launch one. The controller runs the playbook with its own inventory and credentials. You can follow the job status and events here.",
   "metricsAiTitle": "Explain selected monitoring data",
   "@metricsAiTitle": {
     "description": "Explicit selected Monitoring data review or scoped host navigation label."
@@ -20006,7 +20046,7 @@
   "@automationGitName": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationGitHint": "The selected Runner downloads a public HTTPS repository. Files are saved in this profile; importing executes nothing. Submodules and Git credentials are not connected yet.",
+  "automationGitHint": "Git on this computer downloads a public HTTPS repository into the local ConsoleCrypt profile. Importing reads project files. Submodules and private repositories are unavailable.",
   "@automationGitHint": {
     "description": "Explicitly reviewed automation job execution and history"
   },
@@ -20026,7 +20066,7 @@
   "@automationGitCa": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationGitFields": "Enter a name, HTTPS URL, branch or tag, and a Runner.",
+  "automationGitFields": "Enter a name, HTTPS URL, and branch or tag.",
   "@automationGitFields": {
     "description": "Explicitly reviewed automation job execution and history"
   },
@@ -23560,7 +23600,7 @@
   "@automationPortableExportAction": {
     "description": "Explicit portable saved-project package UI: automationPortableExportAction."
   },
-  "automationPortableInspectAction": "Review encrypted package...",
+  "automationPortableInspectAction": "Review ConsoleCrypt archive\u2026",
   "@automationPortableInspectAction": {
     "description": "Explicit portable saved-project package UI: automationPortableInspectAction."
   },
@@ -23568,7 +23608,7 @@
   "@automationPortableExportTitle": {
     "description": "Explicit portable saved-project package UI: automationPortableExportTitle."
   },
-  "automationPortableInspectTitle": "Review encrypted project package",
+  "automationPortableInspectTitle": "Review encrypted ConsoleCrypt archive",
   "@automationPortableInspectTitle": {
     "description": "Explicit portable saved-project package UI: automationPortableInspectTitle."
   },
@@ -23631,7 +23671,7 @@
   "@automationPortableUnavailable": {
     "description": "Explicit portable saved-project package UI: automationPortableUnavailable."
   },
-  "automationPortableInspectWarning": "The package is decrypted only for review. Project files and settings are not changed.",
+  "automationPortableInspectWarning": "Use this to inspect the contents of an encrypted ConsoleCrypt project archive before importing it. Enter the archive password set at export.",
   "@automationPortableInspectWarning": {
     "description": "Authenticated portable package review is read-only; no project creation/publication is claimed."
   },
@@ -27616,5 +27656,176 @@
   },
   "@automationWorkflowHint": {
     "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+  },
+  "monitoringLiveNow": "Live",
+  "@monitoringLiveNow": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveHistory": "History",
+  "@monitoringLiveHistory": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveTitle": "Server load",
+  "@monitoringLiveTitle": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveHint": "Read directly over SSH. Graphs fill in while this screen is open.",
+  "@monitoringLiveHint": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveLinuxOnly": "This view reads live metrics from Linux hosts.",
+  "@monitoringLiveLinuxOnly": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveNativeOnly": "Live metrics require the built-in SSH client. Select it in the host settings to use this view.",
+  "@monitoringLiveNativeOnly": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveReadFailed": "Could not read the server metrics. Check the SSH connection and try again.",
+  "@monitoringLiveReadFailed": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveConnecting": "Connecting over SSH and reading the first sample…",
+  "@monitoringLiveConnecting": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveLastSample": "Updated at",
+  "@monitoringLiveLastSample": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveUptime": "Uptime",
+  "@monitoringLiveUptime": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveUptimeValue": "{days} d {hours} h {minutes} min",
+  "@monitoringLiveUptimeValue": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "monitoringLiveCpu": "CPU usage",
+  "@monitoringLiveCpu": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveRam": "Memory used",
+  "@monitoringLiveRam": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveDisk": "System disk used",
+  "@monitoringLiveDisk": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveNetwork": "Network",
+  "@monitoringLiveNetwork": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringLiveValues": "Values",
+  "@monitoringLiveValues": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseTitle": "Explore metrics",
+  "@monitoringBrowseTitle": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseUp": "Target availability",
+  "@monitoringBrowseUp": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseHint": "Open a ready-made chart or find a metric by name.",
+  "@monitoringBrowseHint": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseAll": "All metrics",
+  "@monitoringBrowseAll": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseSearch": "Metric name",
+  "@monitoringBrowseSearch": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseNoMatch": "No metrics match the search.",
+  "@monitoringBrowseNoMatch": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "monitoringBrowseEmpty": "Open Explore metrics to see charts and values from this source.",
+  "@monitoringBrowseEmpty": {
+    "description": "Label or guidance for live SSH host metrics or browsing an existing monitoring source."
+  },
+  "automationVaultFileTitle": "Ansible Vault",
+  "automationVaultEncrypt": "Encrypt YAML",
+  "automationVaultDecrypt": "Decrypt YAML",
+  "automationVaultPasswordSource": "Password source",
+  "automationVaultManual": "Enter password",
+  "automationVaultProjectFile": "Project .vault/password",
+  "automationVaultPassword": "Ansible Vault password",
+  "automationVaultFileHint": "Only the selected saved YAML is changed. Project passwords stay local and are excluded from run snapshots.",
+  "automationVaultDecryptHint": "Decrypted YAML will be saved as plain text.",
+  "automationTreeRoot": "Project root",
+  "automationTreeEmpty": "No files in this project",
+  "@automationTreeRoot": {
+    "description": "Compact expandable Automation project file tree; project root is a file drop target."
+  },
+  "@automationTreeEmpty": {
+    "description": "Compact expandable Automation project file tree; project root is a file drop target."
+  },
+  "@automationVaultFileTitle": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultFileTitle."
+  },
+  "@automationVaultEncrypt": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultEncrypt."
+  },
+  "@automationVaultDecrypt": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultDecrypt."
+  },
+  "@automationVaultPasswordSource": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultPasswordSource."
+  },
+  "@automationVaultManual": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultManual."
+  },
+  "@automationVaultProjectFile": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultProjectFile."
+  },
+  "@automationVaultPassword": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultPassword."
+  },
+  "@automationVaultFileHint": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultFileHint."
+  },
+  "@automationVaultDecryptHint": {
+    "description": "Ansible Vault selected YAML file operation: automationVaultDecryptHint."
+  },
+  "automationRunPasswords": "Launch passwords",
+  "automationRunPasswordsHint": "Used only for this launch. Passwords are not saved in the project, logs or run parameters.",
+  "automationUseBecomePassword": "This launch needs a sudo / become password",
+  "automationBecomePassword": "sudo / become password",
+  "automationRunPasswordsConfigured": "Passwords are set for this launch.",
+  "automationRunPasswordsUnavailable": "Launch passwords are unavailable in this context. Reopen the launch form or choose a regular Runner.",
+  "@automationRunPasswords": {
+    "description": "One-launch secret input UI: automationRunPasswords."
+  },
+  "@automationRunPasswordsHint": {
+    "description": "One-launch secret input UI: automationRunPasswordsHint."
+  },
+  "@automationUseBecomePassword": {
+    "description": "One-launch secret input UI: automationUseBecomePassword."
+  },
+  "@automationBecomePassword": {
+    "description": "One-launch secret input UI: automationBecomePassword."
+  },
+  "@automationRunPasswordsConfigured": {
+    "description": "One-launch secret input UI: automationRunPasswordsConfigured."
+  },
+  "@automationRunPasswordsUnavailable": {
+    "description": "One-launch secret input UI: automationRunPasswordsUnavailable."
   }
 }

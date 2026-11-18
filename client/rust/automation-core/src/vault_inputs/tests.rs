@@ -3,6 +3,23 @@ use crate::{EnrolledJobGrant, SignedJobApproval};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use serde_json::json;
 
+#[test]
+fn ephemeral_input_is_exact_revision_bound_without_writing_a_reference_or_password() {
+    let directory=tempfile::tempdir().unwrap();
+    std::fs::write(directory.path().join("playbook.yml"),"---\n- hosts: all\n").unwrap();
+    let root=ProjectRoot::open(directory.path()).unwrap();let revision=root.revision().unwrap();
+    let binding=root.bind_ephemeral_vault_input(&revision).unwrap();
+    assert!(binding.is_ephemeral());
+    let expected=hex::encode(Sha256::digest([b"cc-ansible-vault-ephemeral/v1\0".as_slice(),revision.digest.as_bytes()].concat()));
+    assert_eq!(binding.reference_sha256(),expected);
+    assert_eq!(root.revision().unwrap(),revision);
+    assert!(!directory.path().join(VAULT_INPUT_FILE).exists());
+    assert!(root.bind_vault_input(&revision,Uuid::nil()).is_err());
+    std::fs::write(directory.path().join(VAULT_INPUT_FILE),document(Uuid::new_v4())).unwrap();
+    assert!(root.bind_ephemeral_vault_input(&root.revision().unwrap()).is_err());
+    assert!(root.bind_ephemeral_vault_input(&revision).is_err());
+}
+
 fn document(id: Uuid) -> String {
     json!({"version":1,"ansible_vault":{"credential_id":id}}).to_string()
 }

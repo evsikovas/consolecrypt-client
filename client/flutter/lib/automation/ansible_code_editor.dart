@@ -47,6 +47,7 @@ class AnsibleCodeEditor extends StatefulWidget {
 }
 
 class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
+  double fontSize = 13;
   late AnsibleEditorDocument document;
   final vertical = ScrollController(), horizontal = ScrollController();
   final ownFocus = FocusNode();
@@ -178,8 +179,8 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
   @override
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
-    final style = tokens.typography.mono.copyWith(fontSize: 13, height: 1.5);
-    final lineHeight = MediaQuery.textScalerOf(context).scale(13) * 1.5;
+    final style = tokens.typography.mono.copyWith(fontSize: fontSize, height: 1.5);
+    final lineHeight = MediaQuery.textScalerOf(context).scale(fontSize) * 1.5;
     document.display.highlight = widget.highlightSyntax;
     final double contentWidth;
     if (document.display.text.length > 200000) {
@@ -187,7 +188,7 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
       // Conservative width prevents wrapping; EditableText owns actual layout.
       final longest = ansibleSourceLines(document.display.text)
           .fold<int>(0, (max, line) => math.max(max, line.text.length));
-      contentWidth = longest * MediaQuery.textScalerOf(context).scale(13) * 1.2 + 32;
+      contentWidth = longest * MediaQuery.textScalerOf(context).scale(fontSize) * 1.2 + 32;
     } else {
       final metrics = TextPainter(
         text: TextSpan(text: document.display.text, style: style),
@@ -199,9 +200,16 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
     }
     final digits = math.max(2, '${document.projection.sourceLines.length}'.length);
     final gutterWidth =
-        (widget.showLineNumbers ? digits * MediaQuery.textScalerOf(context).scale(9) + 12 : 0) +
+        (widget.showLineNumbers ? digits * MediaQuery.textScalerOf(context).scale(fontSize) * .75 + 12 : 0) +
         (widget.enableFolding ? 24 : 0);
     final actions = <Type, Action<Intent>>{
+      _EditorZoomIntent: CallbackAction<_EditorZoomIntent>(
+        onInvoke: (intent) {
+          final next = (fontSize + intent.delta).clamp(8.0, 32.0);
+          if (next != fontSize) setState(() => fontSize = next);
+          return null;
+        },
+      ),
       CopySelectionTextIntent: CallbackAction<CopySelectionTextIntent>(
         onInvoke: (intent) {
           unawaited(_copy(cut: intent.collapseSelection));
@@ -277,30 +285,55 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
                           scrollDirection: Axis.horizontal,
                           child: SizedBox(
                             width: math.max(math.max(80, bounds.maxWidth - gutterWidth), contentWidth),
-                            child: Actions(
-                              actions: actions,
-                              child: TextField(
-                                key: widget.fieldKey,
-                                controller: document.display,
-                                focusNode: widget.focusNode ?? ownFocus,
-                                readOnly: widget.readOnly,
-                                maxLines: null,
-                                minLines: 1,
-                                style: style,
-                                strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
-                                textAlignVertical: TextAlignVertical.top,
-                                textDirection: TextDirection.ltr,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                enableIMEPersonalizedLearning: false,
-                                smartDashesType: SmartDashesType.disabled,
-                                smartQuotesType: SmartQuotesType.disabled,
-                                contextMenuBuilder: _toolbar,
-                                decoration: const InputDecoration(
-                                  filled: false,
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Shortcuts(
+                              shortcuts: const {
+                                SingleActivator(LogicalKeyboardKey.equal, control: true): _EditorZoomIntent(1),
+                                SingleActivator(LogicalKeyboardKey.equal, control: true, shift: true):
+                                    _EditorZoomIntent(1),
+                                SingleActivator(LogicalKeyboardKey.add, control: true): _EditorZoomIntent(1),
+                                SingleActivator(LogicalKeyboardKey.add, control: true, shift: true): _EditorZoomIntent(
+                                  1,
+                                ),
+                                SingleActivator(LogicalKeyboardKey.numpadAdd, control: true): _EditorZoomIntent(1),
+                                SingleActivator(LogicalKeyboardKey.minus, control: true): _EditorZoomIntent(-1),
+                                SingleActivator(LogicalKeyboardKey.numpadSubtract, control: true): _EditorZoomIntent(
+                                  -1,
+                                ),
+                                SingleActivator(LogicalKeyboardKey.equal, meta: true): _EditorZoomIntent(1),
+                                SingleActivator(LogicalKeyboardKey.equal, meta: true, shift: true): _EditorZoomIntent(
+                                  1,
+                                ),
+                                SingleActivator(LogicalKeyboardKey.add, meta: true): _EditorZoomIntent(1),
+                                SingleActivator(LogicalKeyboardKey.add, meta: true, shift: true): _EditorZoomIntent(1),
+                                SingleActivator(LogicalKeyboardKey.numpadAdd, meta: true): _EditorZoomIntent(1),
+                                SingleActivator(LogicalKeyboardKey.minus, meta: true): _EditorZoomIntent(-1),
+                                SingleActivator(LogicalKeyboardKey.numpadSubtract, meta: true): _EditorZoomIntent(-1),
+                              },
+                              child: Actions(
+                                actions: actions,
+                                child: TextField(
+                                  key: widget.fieldKey,
+                                  controller: document.display,
+                                  focusNode: widget.focusNode ?? ownFocus,
+                                  readOnly: widget.readOnly,
+                                  maxLines: null,
+                                  minLines: 1,
+                                  style: style,
+                                  strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
+                                  textAlignVertical: TextAlignVertical.top,
+                                  textDirection: TextDirection.ltr,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  enableIMEPersonalizedLearning: false,
+                                  smartDashesType: SmartDashesType.disabled,
+                                  smartQuotesType: SmartQuotesType.disabled,
+                                  contextMenuBuilder: _toolbar,
+                                  decoration: const InputDecoration(
+                                    filled: false,
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
                                 ),
                               ),
                             ),
@@ -364,4 +397,9 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
       ),
     );
   }
+}
+
+class _EditorZoomIntent extends Intent {
+  const _EditorZoomIntent(this.delta);
+  final double delta;
 }
