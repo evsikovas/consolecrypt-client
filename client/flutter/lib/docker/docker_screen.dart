@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:consolecrypt/app/gate.dart';
-import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -11,12 +9,6 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_workspace.dart';
-import 'package:consolecrypt/monitoring/job_context_focus.dart';
-import 'package:consolecrypt/monitoring/job_context_navigation.dart';
-import 'package:consolecrypt/monitoring/job_context_receiver.dart';
-import 'package:consolecrypt/monitoring/job_context_route_guard.dart';
-import 'package:consolecrypt/monitoring/monitoring_host_context.dart';
-import 'package:consolecrypt/monitoring/monitoring_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -24,8 +16,7 @@ import 'package:material_ui/material_ui.dart';
 /// containers. The screen owns the engine session and closes it when the
 /// section is left for good (lock, profile switch).
 class DockerScreen extends ConsumerStatefulWidget {
-  const DockerScreen({super.key, this.contextFocus});
-  final JobContextFocus? contextFocus;
+  const DockerScreen({super.key});
   @override
   ConsumerState<DockerScreen> createState() => _DockerScreenState();
 }
@@ -34,82 +25,8 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
   DockerSessionInfo? _session;
   DockerHost? _host;
   DockerService? _service;
-  JobContextFocus? _handledFocus, _acceptedFocus;
-  int _focusGeneration = 0;
-  @override
-  void initState() {
-    super.initState();
-    _scheduleFocus();
-  }
-  @override
-  void didUpdateWidget(DockerScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.contextFocus, widget.contextFocus)) {
-      _focusGeneration++;
-      _scheduleFocus();
-    }
-  }
-  void _scheduleFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (mounted) unawaited(_consumeFocus());
-  });
-  bool _focusCurrent(JobContextFocus focus, int token) => mounted && token == _focusGeneration &&
-    identical(widget.contextFocus, focus) &&
-    ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.docker &&
-    ref.read(monitoringScopeProvider).current && identical(ref.read(monitoringSessionProvider)?.correlationScope, focus.scope);
-  Future<bool> _recheckFocus(JobContextFocus focus) async {
-    final token = _focusGeneration, original = ref.read(monitoringSessionProvider);
-    final service = original?.service;
-    if (!identical(_acceptedFocus, focus) || !_focusCurrent(focus, token) ||
-        service is! MonitoringHostContextReader) {
-      return false;
-    }
-    final reader = service as MonitoringHostContextReader;
-    if (!reader.hostContextSupported) return false;
-    try {
-      final checked = await reader.recheckHostContext(focus.metadata);
-      return _focusCurrent(focus, token) && identical(ref.read(monitoringSessionProvider), original) &&
-        identical(_acceptedFocus, focus) && sameJobContextMetadata(focus.metadata, checked);
-    } catch (_) {
-      return false;
-    }
-  }
-  Future<void> _consumeFocus() async {
-    final focus = widget.contextFocus;
-    if (focus == null || identical(focus, _handledFocus)) return;
-    _handledFocus = focus;
-    final token = ++_focusGeneration, previous = _session;
-    final originalService = ref.read(dockerServiceProvider);
-    if (originalService == null) return;
-    bool originalCurrent() => _focusCurrent(focus, token) && identical(ref.read(dockerServiceProvider), originalService);
-    try {
-      final ready = await receiveJobContextFocus(ref, focus, destination: JobContextDestination.dockerHost,
-        receiverCurrent: () => originalCurrent() && identical(_session, previous) &&
-          ModalRoute.of(context)?.isCurrent == true);
-      if (!mounted || ready == null || !originalCurrent() || !identical(_session, previous)) return;
-      setState(() => _acceptedFocus = ready);
-      if (previous == null) return;
-      // The real A chooser is read-only while B remains connected. No new
-      // switch/approval path: the user closes this chooser and uses the existing
-      // explicit Disconnect B action before the ordinary Connect A action.
-      await showAppDialog<void>(context, builder: (dialogContext) => JobContextRouteGuard(focus: ready,
-        isCurrent: originalCurrent, child: GlassDialog(
-        title: context.l10n.dockerTitle, width: 720,
-        content: SizedBox(height: 420, child: Column(children: [
-          InfoBanner(message: context.l10n.correlationDisconnectBeforeConnect, tone: BannerTone.info),
-          Expanded(child: DockerHostPicker(service: originalService, contextFocus: ready, connectEnabled: false,
-            onConnected: (_, _) {})),
-        ])),
-        secondaryActions: [GlassButton(label: context.l10n.commonClose,
-          onPressed: () => Navigator.of(dialogContext).pop())])));
-    } catch (_) {
-      if (mounted && _focusCurrent(focus, token)) showSnack(context, context.l10n.correlationContextChanged, error: true);
-    }
-  }
-
   @override
   void dispose() {
-    _focusGeneration++;
-    _acceptedFocus = null;
     _disconnect();
     super.dispose();
   }
@@ -125,12 +42,9 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
     ref.listen(dockerScopeProvider, (previous, next) {
       if (previous?.profileId != next.profileId || !next.unlocked) {
         setState(() {
-        _focusGeneration++; _acceptedFocus = null; _disconnect();
-      });
+          _disconnect();
+        });
       }
-    });
-    ref.listen(monitoringSessionProvider, (previous, next) {
-      if (!identical(previous, next)) setState(() { _focusGeneration++; _acceptedFocus = null; });
     });
     final service = ref.watch(dockerServiceProvider);
     final l = context.l10n;
@@ -156,13 +70,8 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
         onDisconnect: () => setState(_disconnect),
       );
     }
-    final acceptedFocus = _acceptedFocus, focusEpoch = _focusGeneration;
     return DockerHostPicker(
       service: service,
-      contextFocus: acceptedFocus,
-      beforeContextConnect: acceptedFocus == null ? null : () => _recheckFocus(acceptedFocus),
-      contextCurrent: acceptedFocus == null ? null : () => identical(_acceptedFocus, acceptedFocus) &&
-        _focusCurrent(acceptedFocus, focusEpoch),
       onConnected: (host, info) => setState(() {
         _disconnect();
         _service = service;
@@ -176,12 +85,7 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
 /// "This computer" and saved SSH hosts, with search. Connecting shows
 /// progress; a failure explains what to do on the host.
 class DockerHostPicker extends ConsumerStatefulWidget {
-  const DockerHostPicker({required this.service, required this.onConnected, super.key,
-    this.contextFocus, this.connectEnabled = true, this.beforeContextConnect, this.contextCurrent});
-  final JobContextFocus? contextFocus;
-  final bool connectEnabled;
-  final Future<bool> Function()? beforeContextConnect;
-  final bool Function()? contextCurrent;
+  const DockerHostPicker({required this.service, required this.onConnected, super.key});
   final DockerService service;
   final void Function(DockerHost host, DockerSessionInfo session) onConnected;
   @override
@@ -195,14 +99,12 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
   DockerHost? _failedHost;
   Object? _error;
   int _generation = 0;
-  bool _contextInvalid = false;
   @override
   void didUpdateWidget(DockerHostPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(widget.contextFocus, oldWidget.contextFocus) || !identical(widget.service, oldWidget.service)) {
+    if (!identical(widget.service, oldWidget.service)) {
       _generation++;
       _connecting = null;
-      _contextInvalid = false;
       _hosts = widget.service.hosts();
     }
   }
@@ -214,13 +116,8 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
   });
 
   Future<void> _connect(DockerHost host) async {
-    if (_connecting != null || !widget.connectEnabled) return;
-    final focus = widget.contextFocus;
+    if (_connecting != null) return;
     final originalService = widget.service;
-    if (focus != null && (host.id != focus.selection.hostId || widget.beforeContextConnect == null ||
-        widget.contextCurrent?.call() != true)) {
-      return;
-    }
     final generation = ++_generation;
     setState(() {
       _connecting = host.id;
@@ -228,23 +125,8 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
       _failedHost = null;
     });
     try {
-      if (focus != null) {
-        final accepted = await widget.beforeContextConnect!();
-        if (!accepted || !mounted || generation != _generation || !identical(widget.contextFocus, focus) ||
-            !identical(widget.service, originalService) || !widget.connectEnabled ||
-            widget.contextCurrent?.call() != true) {
-          if (mounted && generation == _generation) {
-            setState(() {
-            _connecting = null; _contextInvalid = true;
-          });
-          }
-          return;
-        }
-      }
       final session = await originalService.connect(host.id);
-      if (!mounted || generation != _generation ||
-          focus != null && (!identical(widget.contextFocus, focus) || widget.contextCurrent?.call() != true ||
-            session.hostId != focus.selection.hostId)) {
+      if (!mounted || generation != _generation || !identical(widget.service, originalService)) {
         unawaited(originalService.disconnect(session.id).catchError((Object _) {}));
         return;
       }
@@ -262,9 +144,6 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final focus = widget.contextFocus;
-    final originalSession = focus == null ? null : ref.watch(monitoringSessionProvider);
-    final scopeCurrent = focus == null || identical(originalSession?.correlationScope, focus.scope);
     final l = context.l10n;
     final narrow = MediaQuery.sizeOf(context).width < 600;
     return PageScaffold(
@@ -283,15 +162,11 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
         builder: (context, snapshot) {
           final needle = _query.trim().toLowerCase();
           final hosts = (snapshot.data ?? const <DockerHost>[])
-              .where((h) => (focus == null || scopeCurrent && h.kind == DockerHostKind.ssh && h.id == focus.selection.hostId) &&
-                (needle.isEmpty || '${h.name} ${h.address}'.toLowerCase().contains(needle)))
+              .where((h) => needle.isEmpty || '${h.name} ${h.address}'.toLowerCase().contains(needle))
               .toList();
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (focus != null) InfoBanner(message: _contextInvalid || !scopeCurrent ?
-                l.correlationContextChanged : l.correlationFocusedHostHint,
-                tone: _contextInvalid || !scopeCurrent ? BannerTone.danger : BannerTone.info),
               Align(
                 alignment: Alignment.centerLeft,
                 child: SizedBox(
@@ -329,9 +204,7 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
                     itemBuilder: (context, index) => _HostRow(
                       host: hosts[index],
                       connecting: _connecting == hosts[index].id,
-                      selected: focus != null,
-                      enabled: _connecting == null && widget.connectEnabled && scopeCurrent && !_contextInvalid &&
-                        (focus == null || widget.beforeContextConnect != null),
+                      enabled: _connecting == null,
                       onConnect: () => _connect(hosts[index]),
                     ),
                   ),
@@ -345,8 +218,7 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
 }
 
 class _HostRow extends StatelessWidget {
-  const _HostRow({required this.host, required this.connecting, required this.enabled, required this.onConnect, this.selected = false});
-  final bool selected;
+  const _HostRow({required this.host, required this.connecting, required this.enabled, required this.onConnect});
   final DockerHost host;
   final bool connecting, enabled;
   final VoidCallback onConnect;
@@ -364,7 +236,7 @@ class _HostRow extends StatelessWidget {
       onPressed: enabled ? onConnect : null,
       builder: (context, state) => DecoratedBox(
         decoration: ShapeDecoration(
-          color: selected || state.hovered ? tokens.surfaces.fillHover : Colors.transparent,
+          color: state.hovered ? tokens.surfaces.fillHover : Colors.transparent,
           shape: GlassRadii.shape(tokens.radii.row),
         ),
         child: Padding(

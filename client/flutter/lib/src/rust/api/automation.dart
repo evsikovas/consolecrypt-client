@@ -260,6 +260,15 @@ Future<String> automationProjectScaffold({required String name, String? director
 Future<String> automationProjectFiles({required String id}) =>
     RustLib.instance.api.crateApiAutomationAutomationProjectFiles(id: id);
 
+Future<String> automationProjectVersions({required String id}) =>
+    RustLib.instance.api.crateApiAutomationAutomationProjectVersions(id: id);
+
+Future<void> automationProjectSaveVersion({required String id, required String digest, required String name}) =>
+    RustLib.instance.api.crateApiAutomationAutomationProjectSaveVersion(id: id, digest: digest, name: name);
+
+Future<String> automationProjectOpenVersion({required String id, required String versionId, required String name}) =>
+    RustLib.instance.api.crateApiAutomationAutomationProjectOpenVersion(id: id, versionId: versionId, name: name);
+
 Future<String> automationProjectFile({required String id, required String path}) =>
     RustLib.instance.api.crateApiAutomationAutomationProjectFile(id: id, path: path);
 

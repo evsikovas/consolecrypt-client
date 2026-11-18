@@ -478,6 +478,28 @@ pub async fn automation_project_files(id: String) -> Result<String, BridgeError>
     with_core(move |c| async move { to_json(&c.automation_project_files(id).await?) }).await
 }
 
+pub async fn automation_project_versions(id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.automation_project_versions(id).await?) }).await
+}
+
+pub async fn automation_project_save_version(
+    id: String,
+    digest: String,
+    name: String,
+) -> Result<(), BridgeError> {
+    with_core(move |c| async move { Ok(c.automation_project_save_version(id, digest, name).await?) }).await
+}
+
+pub async fn automation_project_open_version(
+    id: String,
+    version_id: String,
+    name: String,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        to_json(&c.automation_project_open_version(id, version_id, name).await?)
+    }).await
+}
+
 pub async fn automation_project_file(id: String, path: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.automation_project_file(id, path).await?) }).await
 }

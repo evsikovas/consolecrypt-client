@@ -90,7 +90,7 @@ fn check_job(job: &Job, policy: &SignedServiceDelegation) -> AppResult<()> {
 impl AppCore {
     pub async fn automation_service_results_json(&self, input: String) -> AppResult<String> {
         let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
-        let original_auth = crate::agent_reader::OriginalSessionAuth::capture(self)?;
+        let original_auth = crate::session_provenance::OriginalSessionAuth::capture(self)?;
         let work = async {
             let request: Action = parse(&input, 4096)?;
             let frame = Frame::capture(

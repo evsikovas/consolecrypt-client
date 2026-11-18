@@ -7,9 +7,6 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/hosts/hosts_screen.dart';
-import 'package:consolecrypt/monitoring/job_context_focus.dart';
-import 'package:consolecrypt/monitoring/job_context_route_guard.dart';
-import 'package:consolecrypt/monitoring/monitoring_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -19,40 +16,32 @@ final localShellProfilesProvider = FutureProvider.autoDispose<LocalShellProfiles
   return ref.watch(terminalServiceProvider).localProfiles();
 });
 
-Future<TerminalTarget?> showTerminalTargetPicker(BuildContext context, {bool localOnly = false, JobContextFocus? contextFocus}) =>
-    showAppDialog<TerminalTarget>(context, builder: (_) {
-      final picker = TerminalTargetPicker(localOnly: localOnly, contextFocus: contextFocus);
-      return contextFocus == null ? picker : JobContextRouteGuard(focus: contextFocus, child: picker);
-    });
+Future<TerminalTarget?> showTerminalTargetPicker(BuildContext context, {bool localOnly = false}) =>
+    showAppDialog<TerminalTarget>(context, builder: (_) => TerminalTargetPicker(localOnly: localOnly));
 
 /// One chooser for tab-strip +, the empty state and Cmd/Ctrl+T. Native
 /// discovery owns executable paths and WSL enumeration; this view uses IDs.
 class TerminalTargetPicker extends ConsumerStatefulWidget {
-  const TerminalTargetPicker({super.key, this.localOnly = false, this.contextFocus});
+  const TerminalTargetPicker({super.key, this.localOnly = false});
   final bool localOnly;
-  final JobContextFocus? contextFocus;
   @override
   ConsumerState<TerminalTargetPicker> createState() => _TerminalTargetPickerState();
 }
 
 class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
   String _query = '';
-  String? _selectedHostId;
   ProfileId? _profile;
 
   @override
   void initState() {
     super.initState();
     _profile = ref.read(activeProfileProvider)?.id;
-    _selectedHostId = widget.contextFocus?.selection.hostId;
   }
 
   @override
   Widget build(BuildContext context) {
-    final focus = widget.contextFocus;
-    final metadataSession = focus == null ? null : ref.watch(monitoringSessionProvider);
-    bool current() => ref.read(appStageProvider) == AppStage.unlocked && ref.read(activeProfileProvider)?.id == _profile &&
-        (focus == null || identical(ref.read(monitoringSessionProvider), metadataSession) && identical(metadataSession?.correlationScope, focus.scope));
+    bool current() =>
+        ref.read(appStageProvider) == AppStage.unlocked && ref.read(activeProfileProvider)?.id == _profile;
     void closeIfStale() {
       if (current()) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -69,9 +58,7 @@ class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
       return const SizedBox.shrink();
     }
     final l = context.l10n;
-    // A saved-host context never starts local/WSL discovery or falls back to a
-    // local target when the exact saved host is missing.
-    final profiles = focus == null ? ref.watch(localShellProfilesProvider) : const AsyncValue.data(LocalShellProfiles());
+    final profiles = ref.watch(localShellProfilesProvider);
     final q = _query.trim().toLowerCase();
     bool matches(String value) => q.isEmpty || value.toLowerCase().contains(q);
     final local = (profiles.value?.profiles ?? const <LocalShellProfile>[])
@@ -79,11 +66,10 @@ class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
         .toList();
     final hosts =
         (ref.watch(hostsProvider).value ?? const <Host>[])
-            .where((h) => !widget.localOnly && !h.isRdp && (focus == null || h.id.value == focus.selection.hostId) && matches('${h.name} ${h.address} ${h.tags.join(' ')}'))
+            .where((h) => !widget.localOnly && !h.isRdp && matches('${h.name} ${h.address} ${h.tags.join(' ')}'))
             .toList()
           ..sort((a, b) => a.name.compareTo(b.name));
     final targets = <TerminalTarget>[...local.map(LocalTerminalTarget.new), ...hosts.map(SshTerminalTarget.new)];
-    final selectedHost = hosts.where((host) => host.id.value == _selectedHostId).firstOrNull;
     final reason = profiles.hasError ? 'discovery_failed' : profiles.value?.unavailableReason;
     return GlassDialog(
       key: const ValueKey('terminal-picker'),
@@ -93,10 +79,6 @@ class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
         height: 420,
         child: Column(
           children: [
-            if (focus != null) ...[
-              Text(l.correlationFocusedHostHint, key: const ValueKey('terminal-context-focus-hint')),
-              const SizedBox(height: GlassSpacing.s8),
-            ],
             GlassField(
               key: const ValueKey('host-picker-search'),
               search: true,
@@ -105,14 +87,14 @@ class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
               placeholder: l.terminalLocalSearch,
               onChanged: (value) => setState(() => _query = value),
               onSubmitted: (_) {
-                if (focus == null && targets.isNotEmpty) closeDialog(context, targets.first);
+                if (targets.isNotEmpty) closeDialog(context, targets.first);
               },
             ),
             const SizedBox(height: GlassSpacing.s8),
             Expanded(
               child: ListView(
                 children: [
-                  if (!AppPlatform.isMobile && focus == null) ...[
+                  if (!AppPlatform.isMobile) ...[
                     ListTile(dense: true, title: Text(l.terminalLocalSection)),
                     if (profiles.isLoading) const LinearProgressIndicator(),
                     for (final profile in local)
@@ -150,14 +132,12 @@ class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
                   for (final host in hosts)
                     ListTile(
                       key: ValueKey('pick-${host.name}'),
-                      selected: focus != null && host.id.value == _selectedHostId,
                       leading: HostAvatar(host: host, size: 28),
                       title: Text(host.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                       subtitle: Text(host.address, maxLines: 1, overflow: TextOverflow.ellipsis),
                       onTap: () {
                         if (!current()) return;
-                        if (focus == null) { closeDialog(context, SshTerminalTarget(host)); }
-                        else { setState(() => _selectedHostId = host.id.value); }
+                        closeDialog(context, SshTerminalTarget(host));
                       },
                     ),
                   if (hosts.isEmpty && local.isEmpty && !profiles.isLoading) ListTile(title: Text(l.hostPickerEmpty)),
@@ -166,12 +146,6 @@ class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
             ),
           ],
         ),
-      ),
-      primaryAction: focus == null ? null : GlassButton.prominent(
-        key: const ValueKey('terminal-context-connect'), label: l.commonConnect,
-        onPressed: selectedHost == null || !current() ? null : () {
-          if (current()) closeDialog(context, SshTerminalTarget(selectedHost));
-        },
       ),
       secondaryActions: [GlassButton(label: l.commonCancel, onPressed: () => closeDialog<TerminalTarget>(context))],
     );

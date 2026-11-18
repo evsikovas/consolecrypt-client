@@ -4,7 +4,6 @@ import 'package:consolecrypt/account/welcome_screen.dart';
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/shell.dart';
-import 'package:consolecrypt/automation/agent_installer_project_focus.dart';
 import 'package:consolecrypt/automation/automation_screen.dart';
 import 'package:consolecrypt/backups/backups_screen.dart';
 import 'package:consolecrypt/backups/restore_screen.dart';
@@ -15,14 +14,11 @@ import 'package:consolecrypt/devices/devices_screen.dart';
 import 'package:consolecrypt/docker/docker_screen.dart';
 import 'package:consolecrypt/groups/groups_screen.dart';
 import 'package:consolecrypt/hosts/host_editor_screen.dart';
+import 'package:consolecrypt/hosts/host_metrics_screen.dart';
 import 'package:consolecrypt/hosts/hosts_screen.dart';
 import 'package:consolecrypt/hosts/known_hosts_screen.dart';
 import 'package:consolecrypt/keepass/kdbx_dialog.dart';
 import 'package:consolecrypt/kubernetes/kubernetes_screen.dart';
-import 'package:consolecrypt/monitoring/agent_setup_entry.dart';
-import 'package:consolecrypt/monitoring/job_context_focus.dart';
-import 'package:consolecrypt/monitoring/monitoring_host_focus.dart';
-import 'package:consolecrypt/monitoring/monitoring_screen.dart';
 import 'package:consolecrypt/rdp/rdp_screen.dart';
 import 'package:consolecrypt/settings/settings_screen.dart';
 import 'package:consolecrypt/sftp/sftp_screen.dart';
@@ -62,7 +58,6 @@ enum ShellBranch {
   docker,
   passwords,
   automation,
-  monitoring,
 }
 
 Page<void> _page(Widget child) => NoTransitionPage<void>(child: child);
@@ -72,38 +67,6 @@ GoRoute _gate(String path, Widget Function(GoRouterState state) build) =>
 
 StatefulShellBranch _branch(String path, Widget child, {List<RouteBase> routes = const []}) => StatefulShellBranch(
   routes: [GoRoute(path: path, pageBuilder: (context, state) => _page(child), routes: routes)],
-);
-
-// Same page type/key and cached branch; the optional extra can only propose a
-// one-use read-only focus. No query parameter or arbitrary payload is accepted.
-StatefulShellBranch _contextBranch(String path, Widget Function(JobContextFocus?) child) => StatefulShellBranch(
-  routes: [
-    GoRoute(
-      path: path,
-      pageBuilder: (context, state) =>
-          _page(child(state.extra is JobContextFocus ? state.extra as JobContextFocus : null)),
-    ),
-  ],
-);
-
-// Only typed in-memory created-receipt or explicit original-Host composer
-// focuses are accepted for this workflow.
-// It opens source metadata; it cannot validate, sign, execute, or install.
-StatefulShellBranch _automationBranch() => StatefulShellBranch(
-  routes: [
-    GoRoute(
-      path: AppRoutes.automation,
-      pageBuilder: (context, state) => _page(
-        AutomationScreen(
-          contextFocus: state.extra is JobContextFocus ? state.extra as JobContextFocus : null,
-          agentProjectFocus: state.extra is AgentInstallerProjectFocus
-              ? state.extra as AgentInstallerProjectFocus
-              : null,
-          cadvisorFocus: state.extra is AgentCadvisorComposerFocus ? state.extra as AgentCadvisorComposerFocus : null,
-        ),
-      ),
-    ),
-  ],
 );
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -161,6 +124,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ),
               ),
               GoRoute(
+                path: ':id/metrics',
+                pageBuilder: (context, state) =>
+                    _page(HostMetricsScreen(key: state.pageKey, hostId: ObjectId(state.pathParameters['id']!))),
+              ),
+              GoRoute(
                 path: ':id',
                 pageBuilder: (context, state) => _page(HostEditorScreen(hostId: ObjectId(state.pathParameters['id']!))),
               ),
@@ -169,7 +137,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.groups, const GroupsScreen()),
           _branch(AppRoutes.credentials, const CredentialsScreen()),
           _branch(AppRoutes.knownHosts, const KnownHostsScreen()),
-          _contextBranch(AppRoutes.terminal, (focus) => TerminalScreen(contextFocus: focus)),
+          _branch(AppRoutes.terminal, const TerminalScreen()),
           _branch(AppRoutes.sftp, const SftpScreen()),
           _branch(AppRoutes.tunnels, const TunnelsScreen()),
           _branch(AppRoutes.devices, const DevicesScreen()),
@@ -180,23 +148,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.rdp, const RdpScreen()),
           _branch(AppRoutes.kubernetes, const KubernetesScreen()),
           _branch(AppRoutes.databases, const DatabasesScreen()),
-          _contextBranch(AppRoutes.docker, (focus) => DockerScreen(contextFocus: focus)),
+          _branch(AppRoutes.docker, const DockerScreen()),
           _branch(AppRoutes.passwords, const KdbxManagerScreen()),
-          _automationBranch(),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.monitoring,
-                pageBuilder: (context, state) => _page(
-                  MonitoringScreen(
-                    contextFocus: state.extra is JobContextFocus ? state.extra as JobContextFocus : null,
-                    setupFocus: state.extra is AgentSetupFocus ? state.extra as AgentSetupFocus : null,
-                    hostFocus: state.extra is MonitoringHostFocus ? state.extra as MonitoringHostFocus : null,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _branch(AppRoutes.automation, const AutomationScreen()),
         ],
       ),
     ],

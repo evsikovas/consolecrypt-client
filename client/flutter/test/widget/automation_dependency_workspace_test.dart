@@ -190,7 +190,6 @@ AppServices wrapper(AppServices s) => AppServices(
   databases: s.databases,
   docker: s.docker,
   automation: s.automation,
-  monitoring: s.monitoring,
   jobNotices: s.jobNotices,
   runtimeNotices: s.runtimeNotices,
   notes: s.notes,

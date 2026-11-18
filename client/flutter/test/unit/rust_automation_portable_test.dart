@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:consolecrypt/automation/automation_awx_handle_gateway.dart';
 import 'package:consolecrypt/automation/automation_dependency_models.dart';
 import 'package:consolecrypt/automation/automation_inventory_export.dart';
 import 'package:consolecrypt/automation/automation_portable_handle_gateway.dart';
@@ -62,7 +61,6 @@ void main() {
     final service = RustAutomationService();
     expect(service, isA<AutomationPortableGatewayCapability>());
     expect(service, isA<AutomationService>());
-    expect(service, isA<AutomationAwxPortCapability>());
     expect(service, isA<AutomationDependencyService>());
     expect(service, isA<AutomationInventoryExportService>());
     expect(service, isA<AutomationRunnerCleanupService>());

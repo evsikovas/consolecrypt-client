@@ -4,13 +4,10 @@ import 'dart:convert';
 import 'package:consolecrypt/app/critical_notice_providers.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
-import 'package:consolecrypt/automation/agent_installer_project_focus.dart';
-import 'package:consolecrypt/automation/automation_agent_installer.dart';
 import 'package:consolecrypt/automation/automation_dependency_dialog.dart' show DependencyOriginalGuard;
 import 'package:consolecrypt/automation/automation_deployment_environment_selection.dart';
 import 'package:consolecrypt/automation/automation_diff_dialog.dart';
 import 'package:consolecrypt/automation/automation_event_view.dart';
-import 'package:consolecrypt/automation/automation_exporter_template.dart';
 import 'package:consolecrypt/automation/automation_job_result.dart';
 import 'package:consolecrypt/automation/automation_launch_passwords.dart';
 import 'package:consolecrypt/automation/automation_owner_confirmation.dart';
@@ -44,15 +41,14 @@ class AutomationRunDialog extends ConsumerStatefulWidget {
     required this.playbooks,
     this.initialPlaybook,
     this.initialExtraVars,
-    this.cadvisorTemplate,
-    this.cadvisorFocus,
-    this.cadvisorOriginal,
     this.retryOf,
     this.embedded = false,
+    this.scheduleOnly = false,
     this.onClose,
     this.onSubmitted,
   });
   final bool embedded;
+  final bool scheduleOnly;
   final VoidCallback? onClose;
   final ValueChanged<String>? onSubmitted;
   final AutomationScope scope;
@@ -61,9 +57,6 @@ class AutomationRunDialog extends ConsumerStatefulWidget {
   final List<String> playbooks;
   final String? initialPlaybook;
   final AutomationJson? initialExtraVars;
-  final AutomationCadvisorTemplateBinding? cadvisorTemplate;
-  final AgentCadvisorComposerFocus? cadvisorFocus;
-  final bool Function()? cadvisorOriginal;
   final AutomationJson? retryOf;
   @override
   ConsumerState<AutomationRunDialog> createState() => _AutomationRunDialogState();
@@ -108,7 +101,6 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
   @override
   void initState() {
     super.initState();
-    if (widget.cadvisorFocus case final focus?) selectedHosts.add(focus.hostId);
     if (widget.initialExtraVars case final values?) {
       variables.text = const JsonEncoder.withIndent('  ').convert(values);
     }
@@ -350,55 +342,6 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
   }
 
   List<String> splitTags(String value) => value.split(RegExp(r'[,\s]+')).where((tag) => tag.isNotEmpty).toList();
-  bool get _cadvisorFocusCurrent {
-    final focus = widget.cadvisorFocus;
-    if (focus == null) return true;
-    final service = widget.service;
-    return current &&
-        widget.cadvisorTemplate != null &&
-        widget.cadvisorOriginal?.call() == true &&
-        service is AutomationService &&
-        focus.current(widget.scope, service as AutomationService) &&
-        selectedHosts.length == 1 &&
-        selectedHosts.single == focus.hostId &&
-        identical(ref.read(automationServiceProvider), service) &&
-        identical(ref.read(automationJobServiceProvider), service) &&
-        ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation;
-  }
-
-  Future<void> _checkCadvisorTemplate() async {
-    final binding = widget.cadvisorTemplate;
-    if (binding == null) {
-      if (widget.cadvisorFocus != null) throw FormatException(context.l10n.automationCadvisorInstallInvalid);
-      return;
-    }
-    final invalidMessage = context.l10n.automationCadvisorInstallInvalid;
-    bool original() =>
-        current &&
-        _cadvisorFocusCurrent &&
-        widget.project.id == binding.project.id &&
-        widget.project.revision == binding.project.revision &&
-        identical(ref.read(automationServiceProvider), widget.service) &&
-        identical(ref.read(automationJobServiceProvider), widget.service);
-    final service = widget.service;
-    if (!original() || service is! AutomationService) throw FormatException(invalidMessage);
-    try {
-      await binding.recheck(service as AutomationService, isCurrent: original);
-      if (widget.cadvisorFocus case final focus?) {
-        if (!original() || service is! AutomationAgentInstallerService) throw FormatException(invalidMessage);
-        final raw = await (service as AutomationAgentInstallerService).agentInstallerContext(focus.frame.toJson());
-        if (!original()) throw FormatException(invalidMessage);
-        final metadata = AgentInstallerContext.parse(raw, focus.frame);
-        final host = metadata.hosts.where((h) => h.id == focus.hostId).firstOrNull;
-        if (host == null || host.revision != focus.hostRevision || host.name != focus.hostName) {
-          throw FormatException(invalidMessage);
-        }
-      }
-    } on FormatException {
-      throw FormatException(invalidMessage);
-    }
-  }
-
   Future<void> passwordsForLaunch() async {
     if (!current || busy || widget.service is! AutomationRunSecretService) return;
     final app = ref.read(appServicesProvider), runtime = ref.read(criticalRuntimeEventsProvider);
@@ -428,7 +371,6 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
 
   Future<void> validate() async {
     if (busy || inventoryLoading || inventoryError != null) return;
-    final cadvisorInvalidMessage = context.l10n.automationCadvisorInstallInvalid;
     final launchPasswordsUnavailable = context.l10n.automationRunPasswordsUnavailable;
     final selected = ref.read(automationRunnersProvider).value?.runners.where((item) => item.id == runner).firstOrNull;
     if (selected?.configuration?['kind'] == 'service_remote') {
@@ -455,17 +397,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
           parallel == null) {
         throw FormatException(context.l10n.automationRunFields);
       }
-      if (!_cadvisorFocusCurrent || widget.cadvisorTemplate != null && selectedHosts.length != 1) {
-        throw FormatException(context.l10n.automationCadvisorLifecycleOneHost);
-      }
-      final AutomationJson values;
-      try {
-        values = widget.cadvisorTemplate == null
-            ? parsedValues
-            : bindCadvisorComponentManifest(parsedValues, selectedHosts.single);
-      } on FormatException {
-        throw FormatException(cadvisorInvalidMessage);
-      }
+      final AutomationJson values = parsedValues;
       // Capture all mutable composer values before the first asynchronous step.
       final attempt = _draftGeneration;
       final environmentContext = deploymentContext, environmentId = deploymentEnvironmentId;
@@ -491,7 +423,6 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
           'diff': diff,
         },
       };
-      await _checkCadvisorTemplate();
       if (!current || attempt != _draftGeneration) return;
       final connected = await ref.read(automationRunnerServiceProvider)!.connectRunner(runner!);
       if (!current || !deploymentAvailable) return;
@@ -499,7 +430,6 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
         setState(() => reviewChanged = true);
         return;
       }
-      if (!_cadvisorFocusCurrent) throw FormatException(cadvisorInvalidMessage);
       final probe = connected['probe'];
       final capabilities = probe is Map ? probe['capabilities'] : null;
       if (vaultEnabled && (capabilities is! Map || capabilities['vault_job_v1'] != true)) {
@@ -528,16 +458,6 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
         );
       } else {
         result = await widget.service.prepareRun(request);
-      }
-      if (!_cadvisorFocusCurrent) {
-        if (result['review_id'] case final String id) await widget.service.discardReview(id);
-        throw FormatException(cadvisorInvalidMessage);
-      }
-      if (widget.cadvisorTemplate case final binding?) {
-        if ((result['revision'] as AutomationJson?)?['digest'] != binding.revisionDigest) {
-          if (result['review_id'] case final String id) await widget.service.discardReview(id);
-          throw FormatException(cadvisorInvalidMessage);
-        }
       }
       if (current && (attempt != _draftGeneration || !deploymentAvailable)) {
         // A late review grants no UI approval for a newer composer draft.
@@ -801,9 +721,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
       error = null;
     });
     try {
-      try {
-        await _checkCadvisorTemplate();
-      } catch (_) {
+      try {} catch (_) {
         if (review?['review_id'] case final String id) await widget.service.discardReview(id);
         rethrow;
       }
@@ -866,7 +784,6 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
     var retired = false, finished = false;
     bool matches() =>
         current &&
-        _cadvisorFocusCurrent &&
         identical(review, originalReview) &&
         identical(ref.read(appServicesProvider), app) &&
         identical(ref.read(automationJobServiceProvider), jobService) &&
@@ -900,7 +817,6 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
       ref.listenManual(automationJobServiceProvider, (_, _) => observe()),
       ref.listenManual(automationScopeProvider, (_, _) => observe()),
       ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
-      if (widget.cadvisorFocus != null) ref.listenManual(hostsProvider, (_, _) => observe()),
     ];
     final notices = runtime?.watchRuntimeNotices().listen(
       (_) => observe(),
@@ -1036,6 +952,9 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
     final hosts = ref.watch(hostsProvider);
     final serviceRunner = runners.value?.runners.where((item) => item.id == runner).firstOrNull;
     final serviceSelected = serviceRunner?.configuration?['kind'] == 'service_remote';
+    final visibleRunners = (runners.value?.runners ?? <AutomationRunnerProfile>[]).where(
+      (item) => !item.readOnly && (!widget.scheduleOnly || item.configuration?['kind'] == 'service_remote'),
+    );
     final checked = review;
     final validation = checked?['validation'] as AutomationJson?;
     final capturedRevision = checked?['revision'] as AutomationJson?;
@@ -1087,8 +1006,6 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                 key: const ValueKey('automation-run-scroll'),
                 controller: formScroll,
                 children: [
-                  if (widget.cadvisorTemplate != null)
-                    InfoBanner(tone: BannerTone.warning, message: l.automationCadvisorLifecycleDraft),
                   if (widget.retryOf case final previous?) ...[
                     if (checked != null) InfoBanner(tone: BannerTone.warning, message: l.automationRepairPriorChanges),
                     ExpansionTile(
@@ -1123,11 +1040,12 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                       onChanged: busy ? null : (value) => setState(() => runner = value),
                       items: [
                         GlassSelectItem(value: null, label: l.automationChooseRunner),
-                        for (final item in runners.value?.runners ?? <AutomationRunnerProfile>[])
-                          if (!item.readOnly) GlassSelectItem(value: item.id, label: item.name ?? item.id),
+                        for (final item in visibleRunners) GlassSelectItem(value: item.id, label: item.name ?? item.id),
                       ],
                     ),
                     if (runners.hasError) Text(errorMessage(l, runners.error!)),
+                    if (widget.scheduleOnly && !runners.isLoading && visibleRunners.isEmpty)
+                      InfoBanner(tone: BannerTone.info, message: l.automationSchedulesRunnerRequired),
                     if (serviceSelected)
                       InfoBanner(
                         tone: BannerTone.info,
@@ -1212,7 +1130,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                                       icon: const Icon(Icons.tune_outlined),
                                       onPressed: busy ? null : () => targetSettings(host),
                                     ),
-                                    onChanged: busy || widget.cadvisorFocus != null
+                                    onChanged: busy
                                         ? null
                                         : (value) => setState(() {
                                             if (value == true) {
@@ -1247,11 +1165,11 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                     field(l.automationSkipTags, skipTags),
                     field(l.automationTimeout, timeout),
                     field(l.automationForks, forks),
-                    if (widget.service case final AutomationVaultSelectionService vault)
+                    if (!widget.scheduleOnly && widget.service is AutomationVaultSelectionService)
                       AutomationVaultSelection(
                         scope: widget.scope,
                         projectId: widget.project.id,
-                        service: vault,
+                        service: widget.service as AutomationVaultSelectionService,
                         busy: busy || launchPasswords?.hasVault == true,
                         onChanged: (enabled, selected) => setState(() {
                           vaultEnabled = enabled;
@@ -1260,7 +1178,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                           if (enabled) diff = false;
                         }),
                       ),
-                    if (widget.service is AutomationRunSecretService) ...[
+                    if (!widget.scheduleOnly && widget.service is AutomationRunSecretService) ...[
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
                         key: const ValueKey('automation-run-passwords'),
@@ -1270,11 +1188,14 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                       ),
                       if (launchPasswords?.hasAny == true) Text(l.automationRunPasswordsConfigured),
                     ],
-                    CheckboxListTile(
-                      value: cancelOnLock,
-                      title: Text(l.automationCancelOnLock),
-                      onChanged: busy || launchPasswords?.hasAny==true ? null : (value) => setState(() => cancelOnLock = value ?? true),
-                    ),
+                    if (!widget.scheduleOnly)
+                      CheckboxListTile(
+                        value: cancelOnLock,
+                        title: Text(l.automationCancelOnLock),
+                        onChanged: busy || launchPasswords?.hasAny == true
+                            ? null
+                            : (value) => setState(() => cancelOnLock = value ?? true),
+                      ),
                     CheckboxListTile(
                       value: diff,
                       title: Text(l.automationDiff),
@@ -1358,13 +1279,15 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
               onPressed: busy ? null : editReview,
               child: Text(l.commonBack),
             ),
-          if (checked == null && serviceSelected)
-            TextButton(
+          if (checked == null && (serviceSelected || widget.scheduleOnly))
+            FilledButton(
               key: const ValueKey('automation-service-open'),
-              onPressed: busy || widget.service is! AutomationServiceDelegationService ? null : openServiceDelegation,
-              child: Text(l.automationServiceDelegate),
+              onPressed: busy || !serviceSelected || widget.service is! AutomationServiceDelegationService
+                  ? null
+                  : openServiceDelegation,
+              child: Text(widget.scheduleOnly ? l.automationSchedulesConfigure : l.automationServiceDelegate),
             ),
-          if (checked == null)
+          if (checked == null && !widget.scheduleOnly)
             FilledButton(
               key: const ValueKey('automation-validate-run'),
               onPressed:

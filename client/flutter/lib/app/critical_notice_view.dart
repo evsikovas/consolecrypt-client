@@ -60,7 +60,8 @@ String criticalNoticeTitle(AppLocalizations l, CriticalNoticeRow row) {
       RuntimeNoticeState.idle => l.noticesRuntimeIdle,
       RuntimeNoticeState.running => l.noticesRuntimeRunning,
       RuntimeNoticeState.failed when runtime.value.domain == RuntimeNoticeDomain.backup => l.noticesLegacyBackupFailed,
-      RuntimeNoticeState.failed when runtime.value.domain == RuntimeNoticeDomain.transfer => l.noticesLegacyTransferFailed,
+      RuntimeNoticeState.failed when runtime.value.domain == RuntimeNoticeDomain.transfer =>
+        l.noticesLegacyTransferFailed,
       RuntimeNoticeState.failed => l.noticesRuntimeFailed,
       RuntimeNoticeState.connected => l.noticesRuntimeConnected,
       RuntimeNoticeState.closed => l.noticesRuntimeClosed,
@@ -83,15 +84,7 @@ String criticalNoticeTitle(AppLocalizations l, CriticalNoticeRow row) {
     };
     return l.noticesRuntimeState(domain, state);
   }
-  return switch (row.pin!.reason) {
-    CriticalPinReason.readFailure => l.noticesPinReadFailure,
-    CriticalPinReason.sourceChanged => l.noticesPinSourceChanged,
-    CriticalPinReason.retryLimit => l.noticesPinRetryLimit,
-    CriticalPinReason.paused => l.noticesPinPaused,
-    CriticalPinReason.closed => l.noticesPinClosed,
-    CriticalPinReason.manual => l.noticesPinManual,
-    CriticalPinReason.recovered => l.noticesPinRecovered,
-  };
+  return l.noticesTitle;
 }
 
 GlassTone _tone(CriticalNoticeSeverity value) => switch (value) {
@@ -252,8 +245,6 @@ class _CriticalNoticePanelState extends State<CriticalNoticePanel> {
                                             RuntimeNoticeDomain.edit => Icons.edit_outlined,
                                             RuntimeNoticeDomain.transfer => Icons.swap_vert,
                                           }
-                                        : row.job == null
-                                        ? Icons.monitor_heart_outlined
                                         : Icons.account_tree_outlined,
                                     size: 20,
                                   ),
@@ -278,11 +269,7 @@ class _CriticalNoticePanelState extends State<CriticalNoticePanel> {
                                     key: ValueKey('critical-notice-open-${row.id}'),
                                     size: GlassControlSize.sm,
                                     icon: Icons.open_in_new,
-                                    label: row.runtime != null
-                                        ? l.commonOpen
-                                        : row.job == null
-                                        ? l.noticesOpenMonitoring
-                                        : l.automationOpenOutput,
+                                    label: row.runtime != null ? l.commonOpen : l.automationOpenOutput,
                                     onPressed: row.runtime != null && widget.onOpenRow == null
                                         ? null
                                         : () =>
@@ -324,10 +311,6 @@ class _CriticalNoticePanelState extends State<CriticalNoticePanel> {
                                     Text('${l.noticesRevision}: ${runtime.value.revision}'),
                                     Text(l.noticesRuntimeHelp),
                                   ],
-                                  if (row.pin case final pin?) ...[
-                                    if (pin.sourceId != null) SelectableText('${l.noticesSourceId}: ${pin.sourceId}'),
-                                    if (pin.sourceRevision != null) Text('${l.noticesRevision}: ${pin.sourceRevision}'),
-                                  ],
                                 ],
                               ),
                             ],
@@ -368,7 +351,6 @@ Future<void> showCriticalNotices(BuildContext context, WidgetRef ref) async {
           Navigator.of(dialogContext).pop();
           final route = switch (target) {
             CriticalJobTarget() => AppRoutes.automation,
-            CriticalMonitoringTarget() => AppRoutes.monitoring,
             CriticalRuntimeTarget(:final domain) => criticalRuntimeRoute(domain),
           };
           ref.read(routerProvider).go(route);
@@ -382,7 +364,6 @@ Future<void> showCriticalNotices(BuildContext context, WidgetRef ref) async {
           Navigator.of(dialogContext).pop();
           final route = switch (target) {
             CriticalJobTarget() => AppRoutes.automation,
-            CriticalMonitoringTarget() => AppRoutes.monitoring,
             CriticalRuntimeTarget(:final domain) => criticalRuntimeRoute(domain),
           };
           if (target case CriticalRuntimeTarget(:final domain)) {

@@ -1,10 +1,7 @@
 import 'dart:convert';
 
-import 'package:consolecrypt/automation/automation_agent_installer.dart';
-import 'package:consolecrypt/automation/automation_awx_handle_gateway.dart';
 import 'package:consolecrypt/automation/automation_dependency_models.dart';
 import 'package:consolecrypt/automation/automation_inventory_export.dart';
-import 'package:consolecrypt/automation/automation_monitoring_node.dart';
 import 'package:consolecrypt/automation/automation_portable_handle_gateway.dart';
 import 'package:consolecrypt/automation/automation_portable_import_gateway.dart';
 import 'package:consolecrypt/automation/automation_portable_import_session.dart';
@@ -18,13 +15,11 @@ import 'package:consolecrypt/automation/automation_service_delegation_service.da
 import 'package:consolecrypt/automation/automation_windows_prerequisites.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart' show withStepUp;
-import 'package:consolecrypt/core/bridge/rust_automation_awx.dart';
 import 'package:consolecrypt/core/bridge/rust_automation_portable.dart';
 import 'package:consolecrypt/core/bridge/rust_automation_project_metadata.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
-import 'package:consolecrypt/src/rust/api/agent_installer.dart' as installer_native;
 import 'package:consolecrypt/src/rust/api/automation.dart' as native;
 import 'package:consolecrypt/src/rust/api/automation_service.dart' as service_native;
 import 'package:consolecrypt/src/rust/api/automation_vault.dart' as vault_native;
@@ -34,12 +29,11 @@ final class RustAutomationService
         AutomationService,
         AutomationProjectCredentialsService,
         AutomationProjectMetadataService,
-        AutomationAgentInstallerService,
-        AutomationMonitoringNodeService,
+        AutomationProjectVersionService,
+        AutomationScheduleCatalogService,
         AutomationServiceDelegationService,
         AutomationServiceResultsService,
         AutomationDependencyService,
-        AutomationAwxPortCapability,
         AutomationPortableGatewayCapability,
         AutomationPortableImportReviewCapability,
         AutomationRunnerService,
@@ -84,19 +78,26 @@ final class RustAutomationService
       _projectMetadata.publishProjectMetadata(originalFrame);
 
   @override
-  Future<AutomationJson> agentInstallerContext(AutomationJson frame) async => jsonDecode(
-    await _automationGuard(() => installer_native.automationAgentInstallerContextJson(requestJson: jsonEncode(frame))),
+  Future<AutomationJson> scheduleCatalog(AutomationJson request) async => jsonDecode(
+    await _automationGuard(() => service_native.automationServiceSchedulesJson(requestJson: jsonEncode(request))),
   ) as AutomationJson;
 
   @override
-  Future<AutomationJson> createAgentInstallerProject(AutomationJson request) async => jsonDecode(
-    await _automationGuard(() => installer_native.automationAgentInstallerCreateJson(requestJson: jsonEncode(request))),
-  ) as AutomationJson;
+  Future<List<AutomationJson>> projectVersions(String projectId) async =>
+      (jsonDecode(await _automationGuard(() => native.automationProjectVersions(id: projectId))) as List)
+          .cast<AutomationJson>();
 
   @override
-  Future<AutomationJson> createMonitoringNodeProject(AutomationJson request) async => jsonDecode(
-    await _automationGuard(() => installer_native.automationMonitoringNodeCreateJson(requestJson: jsonEncode(request))),
-  ) as AutomationJson;
+  Future<void> saveProjectVersion(String projectId, {required String digest, required String name}) =>
+      _automationGuard(() => native.automationProjectSaveVersion(id: projectId, digest: digest, name: name));
+
+  @override
+  Future<AutomationProject> openProjectVersion(String projectId, String versionId, {required String name}) async =>
+      AutomationProject.fromJson(
+        jsonDecode(await _automationGuard(() => native.automationProjectOpenVersion(
+          id: projectId, versionId: versionId, name: name,
+        ))) as AutomationJson,
+      );
 
   @override
   Future<AutomationJson> prepareServiceDelegation(AutomationJson request) async => jsonDecode(
@@ -127,9 +128,6 @@ final class RustAutomationService
   Future<AutomationJson> revokeServiceDelegation(AutomationJson request) async => jsonDecode(
     await _automationGuard(() => service_native.automationServiceRevokeJson(requestJson: jsonEncode(request))),
   ) as AutomationJson;
-
-  @override
-  AwxOpaqueNativePort createAwxPort() => const RustAwxOpaqueNativePort();
 
   @override
   Future<AutomationJson> vaultContext(String projectId) async =>

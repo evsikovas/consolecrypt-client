@@ -106,6 +106,21 @@ Future<void> exportMenu(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('Library export version opens saved snapshot review without writing or creating an archive', (
+    tester,
+  ) async {
+    final (_, service, gateway, files) = await open(tester);
+    expect(gateway.captures, 0);
+    await tapKey(tester, 'automation-library-export-version');
+    expect(find.byType(AutomationPortableDialog), findsOneWidget);
+    expect(gateway.captures, 1);
+    expect(gateway.calls.map((x) => x.kind), ['context']);
+    expect(service.saves, 0);
+    expect(files.saves, 0);
+    expect(files.opens, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('optional missing Native support exposes neither portable menu action and opens no scope', (
     tester,
   ) async {

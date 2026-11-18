@@ -4,14 +4,13 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/hosts/host_metrics_screen.dart' show hostMetricsReaderProvider;
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/view_mode_toggle.dart';
 import 'package:consolecrypt/groups/group_dialogs.dart';
 import 'package:consolecrypt/groups/group_tree.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
-import 'package:consolecrypt/monitoring/monitoring_host_focus.dart';
-import 'package:consolecrypt/monitoring/monitoring_providers.dart';
 import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/rdp/rdp_launcher.dart';
@@ -636,7 +635,6 @@ class _GroupCard extends StatelessWidget {
 
 enum _HostAction {
   connect,
-  monitoring,
   notes,
   group,
   sftp,
@@ -681,10 +679,7 @@ class _HostTile extends ConsumerWidget {
     final t = tokens.typography;
     final l10n = context.l10n;
     final hasGroups = ref.watch(groupByIdProvider).isNotEmpty;
-    final monitoringScope = ref.watch(monitoringScopeProvider);
-    final monitoringSession = ref.watch(monitoringSessionProvider);
-    final monitoringApp = ref.watch(appServicesProvider);
-    final monitoringAvailable = monitoringScope.current && monitoringSession != null;
+    final metricsAvailable = !host.isRdp && ref.watch(hostMetricsReaderProvider.select((reader) => reader != null));
     final userPart = host.username == null ? '' : '${host.username}@';
     final portPart = host.port == null || host.port == (host.isRdp ? defaultRdpPort : defaultSshPort)
         ? ''
@@ -724,7 +719,7 @@ class _HostTile extends ConsumerWidget {
     );
     final noteTarget = hostNoteContext(host).target;
     final noteCount = (ref.watch(notesProvider).value ?? const <Note>[]).where((n) => n.target == noteTarget).length;
-    final actions = Row(
+    Widget actions({bool metricLabel = false}) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (noteCount > 0) ...[
@@ -737,6 +732,26 @@ class _HostTile extends ConsumerWidget {
             tooltip: l10n.hostsNotesCount(noteCount),
             onPressed: () => showHostNotes(ref, host),
           ),
+          const SizedBox(width: GlassSpacing.s4),
+        ],
+        if (metricsAvailable) ...[
+          if (metricLabel)
+            GlassButton(
+              key: ValueKey('host-metrics-${host.id.value}'),
+              label: l10n.hostMetricsTitle,
+              icon: Icons.show_chart_rounded,
+              size: GlassControlSize.sm,
+              style: GlassButtonStyle.plain,
+              onPressed: () => context.go(AppRoutes.hostMetrics(host.id)),
+            )
+          else
+            GlassIconButton(
+              key: ValueKey('host-metrics-${host.id.value}'),
+              icon: Icons.show_chart_rounded,
+              tooltip: l10n.hostMetricsTitle,
+              style: GlassIconButtonStyle.plain,
+              onPressed: () => context.go(AppRoutes.hostMetrics(host.id)),
+            ),
           const SizedBox(width: GlassSpacing.s4),
         ],
         GlassIconButton(
@@ -768,13 +783,6 @@ class _HostTile extends ConsumerWidget {
                 icon: Icons.drive_file_move_rounded,
               ),
             const GlassMenuDivider(),
-            if (!host.isRdp && monitoringAvailable)
-              GlassMenuItem(
-                key: ValueKey('host-monitoring-menu-${host.id.value}'),
-                value: _HostAction.monitoring,
-                label: l10n.monitoringHostMetrics,
-                icon: Icons.monitor_heart_outlined,
-              ),
             if (!host.isRdp)
               GlassMenuItem(value: _HostAction.sftp, label: l10n.hostsOpenSftp, icon: Icons.folder_copy_rounded),
             if (ref.watch(activeProfileProvider)?.isSynced == true)
@@ -836,13 +844,6 @@ class _HostTile extends ConsumerWidget {
             switch (v) {
               case _HostAction.connect:
                 await connectToHost(context, ref, host);
-              case _HostAction.monitoring:
-                if (monitoringScope.current &&
-                    identical(ref.read(monitoringScopeProvider), monitoringScope) &&
-                    identical(ref.read(monitoringSessionProvider), monitoringSession) &&
-                    identical(ref.read(appServicesProvider), monitoringApp)) {
-                  openHostMonitoring(ref, host);
-                }
               case _HostAction.notes:
                 showHostNotes(ref, host);
               case _HostAction.share:
@@ -933,7 +934,7 @@ class _HostTile extends ConsumerWidget {
               ),
             ],
           ),
-          trailing: actions,
+          trailing: actions(),
           onTap: () => connectToHost(context, ref, host),
         ),
       );
@@ -988,19 +989,21 @@ class _HostTile extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      host.tags.isEmpty ? (host.isRdp ? 'RDP' : 'SSH') : host.tags.join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.caption.copyWith(color: tokens.secondaryLabel),
+              LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        host.tags.isEmpty ? (host.isRdp ? 'RDP' : 'SSH') : host.tags.join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.caption.copyWith(color: tokens.secondaryLabel),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  actions,
-                ],
+                    const SizedBox(width: 8),
+                    actions(metricLabel: constraints.maxWidth >= 300),
+                  ],
+                ),
               ),
             ],
           ),

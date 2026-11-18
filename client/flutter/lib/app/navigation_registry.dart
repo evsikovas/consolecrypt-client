@@ -3,7 +3,6 @@ import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/symbols.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/monitoring/monitoring_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -29,7 +28,6 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
   ShellBranch.credentials => l.navCredentials,
   ShellBranch.passwords => l.navPasswords,
   ShellBranch.automation => l.automationTitle,
-  ShellBranch.monitoring => l.monitoringTitle,
   ShellBranch.knownHosts => l.settingsKnownHostsTitle,
   ShellBranch.terminal => l.navTerminal,
   ShellBranch.sftp => l.navSftp,
@@ -50,7 +48,6 @@ const navigationSections = [
   NavigationSection(ShellBranch.credentials, Icons.key_rounded),
   NavigationSection(ShellBranch.passwords, Icons.password_rounded),
   NavigationSection(ShellBranch.automation, Icons.account_tree_outlined, defaultPinned: false),
-  NavigationSection(ShellBranch.monitoring, Icons.monitor_heart_outlined, defaultPinned: false),
   NavigationSection(ShellBranch.knownHosts, Icons.verified_user_outlined),
   NavigationSection(ShellBranch.sharing, Icons.people_outline_rounded, syncedOnly: true),
   NavigationSection(ShellBranch.terminal, Icons.terminal_rounded),
@@ -78,7 +75,6 @@ String navigationBranchRoute(ShellBranch branch) => switch (branch) {
   ShellBranch.credentials => AppRoutes.credentials,
   ShellBranch.passwords => AppRoutes.passwords,
   ShellBranch.automation => AppRoutes.automation,
-  ShellBranch.monitoring => AppRoutes.monitoring,
   ShellBranch.knownHosts => AppRoutes.knownHosts,
   ShellBranch.sharing => AppRoutes.sharing,
   ShellBranch.terminal => AppRoutes.terminal,
@@ -94,11 +90,4 @@ String navigationBranchRoute(ShellBranch branch) => switch (branch) {
   ShellBranch.settings => AppRoutes.settings,
 };
 
-/// Optional workspaces appear only when their real backend is connected.
-final availableNavigationSectionsProvider = Provider<List<NavigationSection>>((ref) {
-  final monitoring = ref.watch(monitoringBackendProvider) != null;
-  return [
-    for (final item in navigationSections)
-      if (item.branch != ShellBranch.monitoring || monitoring) item,
-  ];
-});
+final availableNavigationSectionsProvider = Provider<List<NavigationSection>>((ref) => navigationSections);

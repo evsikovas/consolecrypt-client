@@ -247,9 +247,8 @@ pub(crate) struct Unlocked {
     /// In-flight sharing operations drop transient plaintext immediately on
     /// lock, before potentially slower SSH/edit shutdown finishes.
     pub sharing_shutdown: tokio::sync::watch::Sender<bool>,
-    pub(crate) monitoring: crate::monitoring_runtime::MonitoringRuntime,
-    pub(crate) awx_runtime: Arc<crate::automation_awx::runtime::AwxRuntime>,
-    pub(crate) awx_catalog: crate::automation_awx::catalog::AwxCatalogEpoch,
+    pub(crate) settings_reviews: crate::settings_review_runtime::SettingsReviewRuntime,
+    pub(crate) host_metrics:crate::host_metrics::HostMetricsRuntime,
     pub(crate) notices: Arc<critical_notices::RuntimeNoticeEmitter>,
     pub enrollment: crate::sharing_api::enrollment::EnrollmentRuntime,
     pub kube_imports: Arc<crate::kubernetes_import::ImportRuntime>,
@@ -402,8 +401,8 @@ impl Unlocked {
     async fn shutdown(&self) {
         self.notices.close();
         self.sharing_shutdown.send_replace(true);
-        self.awx_runtime.shutdown();
-        self.monitoring.close();
+        self.settings_reviews.close();
+        self.host_metrics.close();
         self.edit.begin_shutdown();
         self.enrollment.clear();
         self.kube_imports.close();
@@ -1127,9 +1126,8 @@ impl Session {
                 notices.clone(),
             ),
             sharing_shutdown: tokio::sync::watch::channel(false).0,
-            monitoring: Default::default(),
-            awx_runtime: Default::default(),
-            awx_catalog: Default::default(),
+            settings_reviews: Default::default(),
+            host_metrics:Default::default(),
             notices,
             enrollment: crate::sharing_api::enrollment::EnrollmentRuntime::default(),
             kube_imports: Arc::new(crate::kubernetes_import::ImportRuntime::default()),

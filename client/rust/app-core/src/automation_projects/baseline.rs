@@ -11,7 +11,7 @@ pub(crate) struct Baseline {
     version: u32,
     directory: String,
     pub digest: String,
-    bytes: u64,
+    pub(super) bytes: u64,
 }
 fn invalid() -> AppError {
     AppError::invalid(

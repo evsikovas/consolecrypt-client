@@ -61,6 +61,16 @@ abstract interface class AutomationNewProjectService {
   Future<AutomationProject> scaffoldProject({required String name, String? directory, String? role});
 }
 
+abstract interface class AutomationProjectVersionService {
+  Future<List<AutomationJson>> projectVersions(String projectId);
+  Future<void> saveProjectVersion(String projectId, {required String digest, required String name});
+  Future<AutomationProject> openProjectVersion(String projectId, String versionId, {required String name});
+}
+
+abstract interface class AutomationScheduleCatalogService {
+  Future<AutomationJson> scheduleCatalog(AutomationJson request);
+}
+
 abstract interface class AutomationSourceInventoryService {
   Future<AutomationJson> inventoryConfiguration(String projectId);
   Future<AutomationJson> startInventory(String projectId, String runnerId, List<AutomationJson> sources);

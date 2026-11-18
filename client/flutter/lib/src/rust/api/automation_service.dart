@@ -8,6 +8,9 @@ import 'error.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+Future<String> automationServiceSchedulesJson({required String requestJson}) =>
+    RustLib.instance.api.crateApiAutomationServiceAutomationServiceSchedulesJson(requestJson: requestJson);
+
 Future<String> automationServicePrepareJson({required String requestJson}) =>
     RustLib.instance.api.crateApiAutomationServiceAutomationServicePrepareJson(requestJson: requestJson);
 

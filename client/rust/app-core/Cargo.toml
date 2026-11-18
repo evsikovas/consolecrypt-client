@@ -28,7 +28,6 @@ tokio-rustls = { version = "=0.26.6", default-features = false, features = ["rin
 cc-protocol.workspace = true
 cc-models.workspace = true
 cc-crypto-core.workspace = true
-cc-agent-node-wire.workspace = true
 cc-platform-core.workspace = true
 cc-vault-core.workspace = true
 cc-storage-core.workspace = true

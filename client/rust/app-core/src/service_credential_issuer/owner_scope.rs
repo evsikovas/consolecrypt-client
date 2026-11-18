@@ -1,6 +1,6 @@
 //! Service-purpose use of existing ORIGINAL authentication provenance only.
 //! No Reader context/key/grant, account token, signer or request owner fields.
-use crate::agent_reader::{OriginalSessionAuth, OriginalSessionProvenance};
+use crate::session_provenance::{OriginalSessionAuth, OriginalSessionProvenance};
 use crate::session::{Session, Unlocked};
 use crate::{AppCore, AppError, AppResult};
 use cc_crypto_core::{ServicePolicyTenant, ServiceTenantKind};

@@ -784,7 +784,6 @@ AppServices _sameInventoryServices(AppServices services) => AppServices(
   databases: services.databases,
   docker: services.docker,
   automation: services.automation,
-  monitoring: services.monitoring,
   jobNotices: services.jobNotices,
   runtimeNotices: services.runtimeNotices,
   notes: services.notes,

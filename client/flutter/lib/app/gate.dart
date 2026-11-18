@@ -56,7 +56,6 @@ final appStageProvider = Provider<AppStage>((ref) {
 abstract final class AppRoutes {
   static const passwords = '/passwords';
   static const automation = '/automation';
-  static const monitoring = '/monitoring';
   static const loading = '/loading';
   static const welcome = '/welcome';
   static const login = '/login';
@@ -73,6 +72,7 @@ abstract final class AppRoutes {
   static const hosts = '/hosts';
   static const newHost = '/hosts/new';
   static String editHost(ObjectId id) => '/hosts/${id.value}';
+  static String hostMetrics(ObjectId id) => '/hosts/${id.value}/metrics';
   static const groups = '/groups';
   static const credentials = '/credentials';
   static const knownHosts = '/known-hosts';
@@ -97,7 +97,6 @@ abstract final class AppRoutes {
   static const shellPrefixes = [
     passwords,
     automation,
-    monitoring,
     hosts,
     groups,
     credentials,

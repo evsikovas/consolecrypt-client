@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/automation/automation_providers.dart';
+import 'package:consolecrypt/automation/automation_library_files.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -12,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../helpers/test_app.dart';
-import 'automation_exporter_template_test.dart' show Projects;
+import '../helpers/automation_projects_fixture.dart' show Projects;
 
 /// Synthetic file service: these assertions cover the real workspace dispatch,
 /// selected editor and CAS arguments, not filesystem moves or Vault encryption.
@@ -89,6 +91,32 @@ class _Files extends Projects implements AutomationMoveService, AutomationVaultF
   }
 }
 
+class _AiFiles extends _Files implements AutomationAiService {
+  _AiFiles() {
+    contents['roles/web/tasks/main.yml'] = '---\n- name: Role task\n  ansible.builtin.debug:\n    msg: hello\n';
+  }
+  int calls = 0;
+  @override
+  Future<AutomationJson> prepareAi({
+    required String providerId,
+    required String task,
+    required String path,
+    String? selectedText,
+  }) async {
+    calls++;
+    throw StateError('No implicit AI preparation');
+  }
+
+  @override
+  Future<AutomationJson> generateAi(String reviewId) async {
+    calls++;
+    throw StateError('No implicit generation');
+  }
+
+  @override
+  Future<void> discardAi(String reviewId) async {}
+}
+
 Future<void> _open(WidgetTester tester, _Files service) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
@@ -145,6 +173,48 @@ void main() {
     expect(service.moves.single.$1, 'blob.bin');
     expect(service.reads, isNot(contains('blob.bin')));
     expect(service.contents, contains('files/blob.bin'));
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('Library project search preserves selected editor and does not select another project', (tester) async {
+    final service = _Files();
+    await _open(tester, service);
+    const another = AutomationProject(
+      id: '22222222-2222-4222-8222-222222222222',
+      name: 'Edge deployment',
+      readOnly: false,
+      revision: 1,
+    );
+    service.projectsCreated.add(another);
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    container.invalidate(automationProjectsProvider);
+    await settle(tester);
+    final before = tester.widget<TextField>(find.byKey(const ValueKey('automation-editor'))).controller!.text;
+    final reads = service.reads.length;
+    await enterKey(tester, 'automation-library-search-input', 'Edge');
+    expect(find.byKey(ValueKey('automation-project-${service.projectsCreated.first.id}')), findsNothing);
+    expect(find.byKey(ValueKey('automation-project-${another.id}')), findsOneWidget);
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('automation-editor'))).controller!.text, before);
+    expect(service.reads.length, reads);
+    expect(service.moves, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('library role opens the exact tasks file and existing AI review without generation', (tester) async {
+    final service = _AiFiles();
+    await _open(tester, service);
+    tester
+        .widget<GlassSelect<AutomationLibraryFilesView>>(find.byKey(const ValueKey('automation-library-file-kind')))
+        .onChanged!(AutomationLibraryFilesView.roles);
+    await settle(tester);
+    await tapKey(tester, 'automation-library-item-roles/web/tasks/main.yml');
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('automation-editor'))).controller!.text,
+      contains('Role task'),
+    );
+    await tapKey(tester, 'automation-ai-open');
+    expect(find.byKey(const ValueKey('automation-ai-task')), findsOneWidget);
+    expect(service.calls, 0);
+    expect(service.moves, isEmpty);
+    expect(service.vaultRequests, isEmpty);
     expect(tester.takeException(), isNull);
   });
   testWidgets('selected YAML Vault action refreshes the editor after the typed transform', (tester) async {

@@ -77,6 +77,17 @@ Future<f.Registration> review(WidgetTester tester, ImportProjects service) async
 }
 
 void main() {
+  testWidgets('Library archive import is explicit and opens review before reading any archive', (tester) async {
+    final (_, service, files, _) = await open(tester);
+    expect(service.imports.calls, isEmpty);
+    await tapKey(tester, 'automation-library-import-archive');
+    expect(find.byType(AutomationPortableImportDialog), findsOneWidget);
+    expect(service.imports.calls, isEmpty);
+    expect(files.opens, 0);
+    expect(service.saves, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('menu/open captures metadata only and preserves dirty editor without register or picker', (tester) async {
     final (_, service, files, _) = await open(tester);
     const draft = '---\n- hosts: all\n# UNSAVED_IMPORT_BUFFER\n';

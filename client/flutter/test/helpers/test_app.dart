@@ -56,15 +56,6 @@ Future<void> settle(WidgetTester tester, {int steps = 12}) async {
 
 Future<void> tapKey(WidgetTester tester, String key) async {
   final finder = find.byKey(ValueKey(key));
-  if (finder.evaluate().isEmpty && const {
-    'monitoring-auto-enabled', 'monitoring-auto-interval', 'monitoring-observation-rolling',
-    'monitoring-observation-pin', 'monitoring-observation-unpin',
-  }.contains(key)) {
-    final settings = find.byKey(const ValueKey('monitoring-auto-settings'));
-    if (settings.evaluate().isNotEmpty) {
-      await tester.ensureVisible(settings); await tester.tap(settings); await settle(tester);
-    }
-  }
   if (finder.evaluate().isEmpty) await _revealInSidebar(tester, finder);
   await tester.ensureVisible(finder);
   await tester.pump();

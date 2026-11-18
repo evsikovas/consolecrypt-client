@@ -6,7 +6,6 @@ import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/monitoring/monitoring_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -72,11 +71,7 @@ class Api extends Fake implements AutomationJobService, AutomationEventService {
 }
 
 Widget host(Api service, {String id = a}) => ProviderScope(
-  overrides: [
-    automationScopeProvider.overrideWithValue(scope),
-    monitoringScopeProvider.overrideWithValue(const MonitoringScope(null, false)),
-    monitoringSessionProvider.overrideWithValue(null),
-  ],
+  overrides: [automationScopeProvider.overrideWithValue(scope)],
   child: MaterialApp(
     theme: AppTheme.dark(platform: TargetPlatform.windows),
     locale: const Locale('en'),

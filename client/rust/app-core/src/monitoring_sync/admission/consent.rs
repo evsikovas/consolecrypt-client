@@ -1,7 +1,7 @@
 //! Original-owner policy metadata, never panel writer admission.
 use super::*;
-use crate::agent_reader::{OriginalSessionAuth, OriginalSessionProvenance};
-use crate::monitoring_runtime::{MonitoringRuntime, OwnedMonitoringRegistration};
+use crate::session_provenance::{OriginalSessionAuth, OriginalSessionProvenance};
+use crate::settings_review_runtime::{SettingsReviewRuntime, OwnedSettingsReviewRegistration};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::sync::Mutex;
@@ -107,7 +107,7 @@ struct Review {
     provenance: OriginalSessionProvenance,
     nonce: String,
     readiness: MonitoringSyncReadiness,
-    _registration: OwnedMonitoringRegistration,
+    _registration: OwnedSettingsReviewRegistration,
 }
 fn final_check(
     c: &Context,
@@ -416,7 +416,7 @@ impl AppCore {
             return Err(changed());
         }
         let weak = Arc::downgrade(&u);
-        let (registration, cancel) = MonitoringRuntime::begin_owned(weak)?;
+        let (registration, cancel) = SettingsReviewRuntime::begin_owned(weak)?;
         let mut context = Context::capture_original(self, owner, u).await?;
         let profile = context.owner.profile().await?;
         let provenance = tokio::select! { biased;

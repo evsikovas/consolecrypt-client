@@ -6,25 +6,23 @@ import 'package:consolecrypt/app/critical_notice_providers.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
-import 'package:consolecrypt/automation/agent_installer_project_focus.dart';
 import 'package:consolecrypt/automation/ansible_code_editor.dart';
 import 'package:consolecrypt/automation/automation_ai_dialog.dart';
 import 'package:consolecrypt/automation/automation_ai_draft.dart';
 import 'package:consolecrypt/automation/automation_ai_draft_errors.dart';
 import 'package:consolecrypt/automation/automation_ansible_config.dart';
-import 'package:consolecrypt/automation/automation_awx_entry.dart';
-import 'package:consolecrypt/automation/automation_cadvisor_review.dart';
 import 'package:consolecrypt/automation/automation_dependency_dialog.dart';
 import 'package:consolecrypt/automation/automation_dependency_models.dart';
 import 'package:consolecrypt/automation/automation_execution_console.dart';
-import 'package:consolecrypt/automation/automation_exporter_template.dart';
 import 'package:consolecrypt/automation/automation_file_tree.dart';
 import 'package:consolecrypt/automation/automation_git_dialog.dart';
 import 'package:consolecrypt/automation/automation_groups_dialog.dart';
 import 'package:consolecrypt/automation/automation_inventory_dialog.dart';
 import 'package:consolecrypt/automation/automation_inventory_export.dart';
 import 'package:consolecrypt/automation/automation_inventory_export_dialog.dart';
+import 'package:consolecrypt/automation/automation_job_provenance.dart';
 import 'package:consolecrypt/automation/automation_jobs_dialog.dart';
+import 'package:consolecrypt/automation/automation_library_files.dart';
 import 'package:consolecrypt/automation/automation_new_project_dialog.dart';
 import 'package:consolecrypt/automation/automation_portable_host.dart';
 import 'package:consolecrypt/automation/automation_portable_import_host.dart';
@@ -38,37 +36,29 @@ import 'package:consolecrypt/automation/automation_project_metadata.dart';
 import 'package:consolecrypt/automation/automation_project_metadata_dialog.dart';
 import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/automation/automation_run_dialog.dart';
+import 'package:consolecrypt/automation/automation_schedules_view.dart';
 import 'package:consolecrypt/automation/automation_runners_dialog.dart';
 import 'package:consolecrypt/automation/automation_scope_guard.dart';
 import 'package:consolecrypt/automation/automation_secret_view.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/automation/automation_vault_file_dialog.dart';
+import 'package:consolecrypt/automation/automation_versions_dialog.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
-import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_editor.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_syntax.dart';
-import 'package:consolecrypt/monitoring/job_context_focus.dart';
-import 'package:consolecrypt/monitoring/job_context_navigation.dart';
-import 'package:consolecrypt/monitoring/job_context_project_guard.dart';
-import 'package:consolecrypt/monitoring/job_context_receiver.dart';
-import 'package:consolecrypt/monitoring/monitoring_host_context.dart';
-import 'package:consolecrypt/monitoring/monitoring_providers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 class AutomationScreen extends ConsumerWidget {
-  const AutomationScreen({super.key, this.contextFocus, this.agentProjectFocus, this.cadvisorFocus});
-  final AgentCadvisorComposerFocus? cadvisorFocus;
-  final AgentInstallerProjectFocus? agentProjectFocus;
-  final JobContextFocus? contextFocus;
+  const AutomationScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scope = ref.watch(automationScopeProvider);
@@ -77,29 +67,12 @@ class AutomationScreen extends ConsumerWidget {
     if (service == null) return Center(child: Text(context.l10n.automationUnavailable));
     // Replacing this subtree disposes plaintext editors and invalidates pending
     // reads on every profile/unlock generation, including a rapid lock/unlock.
-    return _ProjectWorkspace(
-      key: ObjectKey(scope),
-      scope: scope,
-      service: service,
-      contextFocus: contextFocus,
-      agentProjectFocus: agentProjectFocus,
-      cadvisorFocus: cadvisorFocus,
-    );
+    return _ProjectWorkspace(key: ObjectKey(scope), scope: scope, service: service);
   }
 }
 
 class _ProjectWorkspace extends ConsumerStatefulWidget {
-  const _ProjectWorkspace({
-    super.key,
-    required this.scope,
-    required this.service,
-    this.contextFocus,
-    this.agentProjectFocus,
-    this.cadvisorFocus,
-  });
-  final AgentCadvisorComposerFocus? cadvisorFocus;
-  final AgentInstallerProjectFocus? agentProjectFocus;
-  final JobContextFocus? contextFocus;
+  const _ProjectWorkspace({super.key, required this.scope, required this.service});
   final AutomationScope scope;
   final AutomationService service;
   @override
@@ -135,225 +108,13 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
   int request = 0;
   VoidCallback? _retireExternalEditor;
   int workspacePage = 0;
+  String libraryQuery = '';
   Widget? runComposer;
   int jobsReviewEpoch = 0;
   String? executionJob;
   bool consoleCollapsed = false;
   double consoleHeight = 260;
   bool get current => mounted && identical(ref.read(automationScopeProvider), widget.scope);
-  AgentCadvisorComposerFocus? _handledCadvisorFocus;
-  void _scheduleCadvisorFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (mounted) unawaited(_consumeCadvisorFocus());
-  });
-  bool _cadvisorCurrent(AgentCadvisorComposerFocus focus) =>
-      current &&
-      identical(widget.cadvisorFocus, focus) &&
-      focus.current(widget.scope, widget.service) &&
-      ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation;
-  Future<void> _consumeCadvisorFocus() async {
-    final focus = widget.cadvisorFocus;
-    if (focus == null || identical(focus, _handledCadvisorFocus)) return;
-    _handledCadvisorFocus = focus;
-    if (!focus.take(widget.scope, widget.service) || !_cadvisorCurrent(focus)) {
-      if (current) setState(() => error = context.l10n.automationCadvisorInstallInvalid);
-      return;
-    }
-    if (busy || widget.service is! AutomationJobService) {
-      setState(() => error = context.l10n.automationCadvisorInstallInvalid);
-      return;
-    }
-    await _createCadvisorTemplate(install: true, cadvisorFocus: focus);
-  }
-
-  AgentInstallerProjectFocus? _handledAgentFocus, _acceptedAgentFocus;
-  int _agentFocusGeneration = 0;
-  bool _agentProjectUnavailable = false;
-  void _scheduleAgentFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (mounted) unawaited(_consumeAgentFocus());
-  });
-  bool _agentCurrent(AgentInstallerProjectFocus focus) =>
-      current &&
-      identical(widget.agentProjectFocus, focus) &&
-      focus.current(widget.scope, widget.service) &&
-      ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation;
-  Future<void> _consumeAgentFocus() async {
-    final focus = widget.agentProjectFocus;
-    if (focus == null || identical(focus, _handledAgentFocus)) return;
-    _handledAgentFocus = focus;
-    if (!focus.take(widget.scope, widget.service)) return;
-    final generation = ++_agentFocusGeneration;
-    bool valid() => generation == _agentFocusGeneration && _agentCurrent(focus);
-    if (!valid()) return;
-    setState(() {
-      _acceptedAgentFocus = focus;
-      _agentProjectUnavailable = false;
-    });
-    if (busy) {
-      setState(() => _agentProjectUnavailable = true);
-      return;
-    }
-    try {
-      final catalog = await widget.service.projects();
-      if (!valid()) return;
-      final selected = catalog.projects.where((p) => p.id == focus.projectId).firstOrNull;
-      if (catalog.readOnly || selected == null || selected.readOnly || selected.revision == null) {
-        setState(() => _agentProjectUnavailable = true);
-        return;
-      }
-      await _select(selected, originalCurrent: valid);
-      if (valid() && project?.id == focus.projectId) _showProjects();
-    } catch (e) {
-      if (valid()) setState(() => error = e);
-    }
-  }
-
-  Future<void> _returnToAgentHost(AgentInstallerProjectFocus focus) async {
-    bool original() => _agentCurrent(focus) && identical(_acceptedAgentFocus, focus);
-    if (busy || !original() || !await _leaveFile(originalCurrent: original) || !original()) return;
-    ref.read(routerProvider).go(focus.returnUri.toString());
-  }
-
-  JobContextFocus? _handledContextFocus, _acceptedProjectFocus;
-  AutomationProject? _focusedProject;
-  bool _contextError = false;
-  int _contextGeneration = 0;
-  bool _contextCurrent(JobContextFocus focus, int epoch) =>
-      current &&
-      epoch == _contextGeneration &&
-      identical(widget.contextFocus, focus) &&
-      ref.read(routerProvider).routeInformationProvider.value.uri.path == AppRoutes.automation &&
-      ref.read(monitoringScopeProvider).current &&
-      identical(ref.read(monitoringSessionProvider)?.correlationScope, focus.scope);
-  void _scheduleContextFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (mounted) unawaited(_consumeContextFocus());
-  });
-  @override
-  void didUpdateWidget(_ProjectWorkspace oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(widget.cadvisorFocus, oldWidget.cadvisorFocus)) _scheduleCadvisorFocus();
-    if (!identical(widget.agentProjectFocus, oldWidget.agentProjectFocus)) {
-      _agentFocusGeneration++;
-      _acceptedAgentFocus = null;
-      _scheduleAgentFocus();
-    }
-    if (!identical(widget.contextFocus, oldWidget.contextFocus)) {
-      _contextGeneration++;
-      _scheduleContextFocus();
-    }
-  }
-
-  Future<AutomationProject?> _currentContextProject(
-    JobContextFocus focus,
-    bool Function() valid, {
-    AutomationProjectRevision? files,
-  }) async {
-    final service = widget.service;
-    if (!valid() || service is! AutomationJobService) return null;
-    final jobs = await (service as AutomationJobService).jobs();
-    if (!valid() || !identical(service, widget.service)) return null;
-    final catalog = await service.projects();
-    if (!valid() || !identical(service, widget.service)) return null;
-    return jobContextProjectFromCurrentMetadata(focus, catalog, jobs, DateTime.now().toUtc(), files: files);
-  }
-
-  Future<bool> _recheckContext(JobContextFocus focus, bool Function() valid) async {
-    final session = ref.read(monitoringSessionProvider), service = ref.read(monitoringSessionProvider)?.service;
-    if (!valid() || !identical(session?.correlationScope, focus.scope) || service is! MonitoringHostContextReader) {
-      return false;
-    }
-    final reader = service as MonitoringHostContextReader;
-    if (!reader.hostContextSupported) return false;
-    final checked = await reader.recheckHostContext(focus.metadata);
-    return valid() &&
-        identical(ref.read(monitoringSessionProvider), session) &&
-        sameJobContextMetadata(focus.metadata, checked);
-  }
-
-  Future<void> _consumeContextFocus() async {
-    final focus = widget.contextFocus;
-    if (focus == null || identical(focus, _handledContextFocus)) return;
-    _handledContextFocus = focus;
-    final epoch = ++_contextGeneration, before = request, service = widget.service;
-    bool valid() => _contextCurrent(focus, epoch) && request == before && identical(widget.service, service);
-    if (!valid()) return;
-    if (busy) {
-      setState(() => _contextError = true);
-      return;
-    }
-    try {
-      final ready = await receiveJobContextFocus(
-        ref,
-        focus,
-        destination: JobContextDestination.ansibleProject,
-        receiverCurrent: valid,
-      );
-      if (ready == null || !valid()) return;
-      final selected = await _currentContextProject(ready, valid);
-      if (!valid()) return;
-      if (selected == null || !await _recheckContext(ready, valid) || !valid()) {
-        if (valid()) setState(() => _contextError = true);
-        return;
-      }
-      setState(() {
-        _acceptedProjectFocus = ready;
-        _focusedProject = selected;
-        _contextError = false;
-        // IndexedStack retains editor and composer. Do not call _showProjects.
-        workspacePage = 0;
-      });
-    } catch (_) {
-      if (valid()) setState(() => _contextError = true);
-    }
-  }
-
-  Future<void> _openContextProject(JobContextFocus focus) async {
-    final epoch = _contextGeneration, service = widget.service;
-    bool original() =>
-        _contextCurrent(focus, epoch) && identical(_acceptedProjectFocus, focus) && identical(widget.service, service);
-    if (busy || !original() || !await _leaveFile() || !original()) return;
-    final token = ++request;
-    bool valid() => original() && token == request;
-    setState(() {
-      busy = true;
-      _contextError = false;
-    });
-    try {
-      final selected = await _currentContextProject(focus, valid);
-      if (selected == null || !valid() || !await _recheckContext(focus, valid) || !valid()) {
-        if (valid()) setState(() => _contextError = true);
-        return;
-      }
-      final files = await service.files(selected.id);
-      if (!valid()) return;
-      final finalProject = await _currentContextProject(focus, valid, files: files);
-      if (finalProject == null || !await _recheckContext(focus, valid) || !valid()) {
-        if (valid()) setState(() => _contextError = true);
-        return;
-      }
-      setState(() {
-        project = finalProject;
-        revision = files;
-        file = null;
-        aiDraft = null;
-        repairOrigin = null;
-        requirementsSavedPending = false;
-        newPath = null;
-        editor.clear();
-        dirty = false;
-        runComposer = null;
-        jobsReviewEpoch++;
-        workspacePage = 0;
-        _acceptedProjectFocus = null;
-        _focusedProject = null;
-        busy = false;
-      });
-    } catch (_) {
-      if (valid()) setState(() => _contextError = true);
-    } finally {
-      if (current && token == request) setState(() => busy = false);
-    }
-  }
-
   // Project source may contain secrets not recognized by the display mask.
   // Keep every editor selection on the protected, expiring clipboard path.
   Future<bool> _copyEditorSelection(String text) async {
@@ -373,9 +134,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
   void initState() {
     super.initState();
     editor.addListener(_edited);
-    _scheduleContextFocus();
-    _scheduleAgentFocus();
-    _scheduleCadvisorFocus();
     ref.listenManual(criticalNoticeOpenIntentProvider, (_, intent) {
       if (intent?.target is! CriticalJobTarget) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -395,7 +153,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     _retireExternalEditor?.call();
     _retireExternalEditor = null;
     request++;
-    _contextGeneration++;
     editor.removeListener(_edited);
     editor.dispose();
     super.dispose();
@@ -442,20 +199,22 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     return originalCurrent == null ? saved : saved && current && originalCurrent();
   }
 
-  Future<void> _run(
-    AutomationJobService service, {
-    AutomationJson? initialExtraVars,
-    AutomationCadvisorTemplateBinding? cadvisorTemplate,
-    AgentCadvisorComposerFocus? cadvisorFocus,
-  }) async {
+  Future<void> _run(AutomationJobService service, {AutomationJson? initialExtraVars, bool scheduleOnly = false}) async {
     if (busy || project == null) return;
     if (dirty && !await _save()) return;
-    if (!current || cadvisorFocus != null && !_cadvisorCurrent(cadvisorFocus)) return;
+    if (!current) return;
     final paths = [
       for (final entry in revision?.entries ?? <AutomationFileEntry>[])
         if (!entry.directory &&
             RegExp(r'\.(yml|yaml)$', caseSensitive: false).hasMatch(entry.path) &&
-            !['roles', 'templates', 'files', 'host_vars', 'group_vars'].contains(entry.path.split('/').first))
+            ![
+              'roles',
+              'inventory',
+              'templates',
+              'files',
+              'host_vars',
+              'group_vars',
+            ].contains(entry.path.split('/').first))
           entry.path,
     ];
     setState(() {
@@ -465,14 +224,12 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         service: service,
         project: project!,
         playbooks: paths,
-        initialPlaybook: cadvisorTemplate == null ? file?.path : 'playbook.yml',
+        initialPlaybook: !scheduleOnly && paths.contains(file?.path) ? file?.path : null,
+        scheduleOnly: scheduleOnly,
         initialExtraVars: initialExtraVars,
-        cadvisorTemplate: cadvisorTemplate,
-        cadvisorFocus: cadvisorFocus,
-        cadvisorOriginal: cadvisorFocus == null ? null : () => _cadvisorCurrent(cadvisorFocus),
-        retryOf: repairForCurrent,
+        retryOf: scheduleOnly ? null : repairForCurrent,
         embedded: true,
-        onClose: _showProjects,
+        onClose: scheduleOnly ? _showSchedules : _showProjects,
         onSubmitted: _acceptedJob,
       );
     });
@@ -500,6 +257,11 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     // Returning to editable files invalidates every prepared review, including retries.
     runComposer = null;
     jobsReviewEpoch++;
+  });
+
+  void _showSchedules() => setState(() {
+    workspacePage = 3;
+    runComposer = null;
   });
 
   Future<void> _portablePackage({required bool inspect, bool createProject = false}) async {
@@ -950,6 +712,91 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
   }
 
+  Future<void> _versions(AutomationProjectVersionService service) async {
+    final selected = project;
+    if (!current || busy || selected == null || selected.readOnly || revision == null) return;
+    final source = widget.service, scope = widget.scope, app = ref.read(appServicesProvider);
+    final runtime = ref.read(criticalRuntimeEventsProvider), router = ref.read(routerProvider);
+    final epoch = runtime?.currentScope.epoch, uri = router.routeInformationProvider.value.uri;
+    final live = ValueNotifier(true);
+    var token = request, retired = false, selecting = false;
+    bool matches() =>
+        current &&
+        (selecting || request == token) &&
+        identical(widget.service, source) &&
+        identical(ref.read(automationServiceProvider), source) &&
+        identical(widget.scope, scope) &&
+        identical(ref.read(appServicesProvider), app) &&
+        identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
+        runtime?.currentScope.epoch == epoch &&
+        runtime?.currentScope.streamUnavailable != true &&
+        (selecting || project?.id == selected.id && project?.revision == selected.revision) &&
+        identical(ref.read(routerProvider), router) &&
+        router.routeInformationProvider.value.uri == uri;
+    void observe() {
+      if (!retired && !matches()) {
+        retired = true;
+        live.value = false;
+      }
+    }
+
+    bool original() {
+      observe();
+      return !retired;
+    }
+
+    final subscriptions = <ProviderSubscription<dynamic>>[
+      ref.listenManual(appServicesProvider, (_, _) => observe()),
+      ref.listenManual(automationServiceProvider, (_, _) => observe()),
+      ref.listenManual(automationScopeProvider, (_, _) => observe()),
+      ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
+    ];
+    final notices = runtime?.watchRuntimeNotices().listen(
+      (_) => observe(),
+      onError: (Object _, StackTrace _) {
+        retired = true;
+        live.value = false;
+      },
+      onDone: () {
+        retired = true;
+        live.value = false;
+      },
+    );
+    router.routeInformationProvider.addListener(observe);
+    try {
+      if (!original() ||
+          !await _leaveFile(
+            originalCurrent: original,
+            originalLive: live,
+            discardLabel: context.l10n.automationPortableUseSaved,
+            ownSaveRequest: (next) => token = next,
+          ) ||
+          !original())
+        return;
+      final digest = revision?.digest;
+      if (digest == null || !original()) return;
+      final opened = await _dialog<AutomationProject>(
+        (_) => DependencyOriginalGuard(
+          original: live,
+          builder: (_) =>
+              AutomationVersionsDialog(project: selected, digest: digest, service: service, originalCurrent: original),
+        ),
+      );
+      if (!original() || opened == null) return;
+      ref.invalidate(automationProjectsProvider);
+      selecting = true; // _select owns its new request token and selected-project identity.
+      await _select(opened, originalCurrent: original);
+    } finally {
+      retired = true;
+      for (final sub in subscriptions) {
+        sub.close();
+      }
+      await notices?.cancel();
+      router.routeInformationProvider.removeListener(observe);
+      live.dispose();
+    }
+  }
+
   Future<void> _metadata(AutomationProjectMetadataService service) async {
     if (busy || project == null || project!.readOnly || !current) return;
     final selected = project!, source = widget.service, scope = widget.scope, token = request;
@@ -1186,7 +1033,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       final row = rows.whereType<AutomationJson>().where((row) => row['job_id'] == id).singleOrNull;
       if (row == null ||
           row['state'] != 'failed' ||
-          jobContextApprovedHostIds(
+          automationApprovedJobHostIds(
                 row,
                 profileId: (scope.profileId as ObjectId).value,
                 jobId: id,
@@ -1295,7 +1142,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
             row['project_id'] == origin['project_id'] &&
             row['state'] == 'failed' &&
             widget.scope.profileId is ObjectId &&
-            jobContextApprovedHostIds(
+            automationApprovedJobHostIds(
                   row,
                   profileId: (widget.scope.profileId as ObjectId).value,
                   jobId: origin['job_id'] as String,
@@ -1625,112 +1472,10 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
   }
 
-  Future<void> _createCadvisorTemplate({bool install = false, AgentCadvisorComposerFocus? cadvisorFocus}) async {
-    if (busy || !current || install && widget.service is! AutomationJobService) return;
-    final source = widget.service, scope = widget.scope;
-    final app = ref.read(appServicesProvider), runtime = ref.read(criticalRuntimeEventsProvider);
-    final epoch = runtime?.currentScope.epoch, router = ref.read(routerProvider);
-    final uri = router.routeInformationProvider.value.uri;
-    final live = ValueNotifier(true);
-    var retired = false;
-    bool matches() =>
-        current &&
-        (cadvisorFocus == null || _cadvisorCurrent(cadvisorFocus)) &&
-        identical(widget.scope, scope) &&
-        identical(widget.service, source) &&
-        identical(ref.read(appServicesProvider), app) &&
-        identical(ref.read(automationServiceProvider), source) &&
-        identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
-        runtime?.currentScope.epoch == epoch &&
-        runtime?.currentScope.streamUnavailable != true &&
-        identical(ref.read(routerProvider), router) &&
-        uri.path == AppRoutes.automation &&
-        router.routeInformationProvider.value.uri == uri;
-    void observe() {
-      if (!retired && !matches()) {
-        retired = true;
-        live.value = false;
-      }
-    }
-
-    bool original() {
-      observe();
-      return !retired;
-    }
-
-    final subscriptions = <ProviderSubscription<dynamic>>[
-      ref.listenManual(appServicesProvider, (_, _) => observe()),
-      ref.listenManual(automationServiceProvider, (_, _) => observe()),
-      ref.listenManual(automationScopeProvider, (_, _) => observe()),
-      ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
-      if (cadvisorFocus != null) ref.listenManual(hostsProvider, (_, _) => observe()),
-    ];
-    final notices = runtime?.watchRuntimeNotices().listen(
-      (_) => observe(),
-      onError: (Object _, StackTrace _) {
-        retired = true;
-        live.value = false;
-      },
-      onDone: () {
-        retired = true;
-        live.value = false;
-      },
-    );
-    router.routeInformationProvider.addListener(observe);
-    try {
-      if (!original()) return;
-      final accepted = await _dialog<bool>(
-        (_) => DependencyOriginalGuard(original: live, builder: (_) => const AutomationCadvisorReview()),
-      );
-      if (accepted != true || !original()) return;
-      AutomationProject? created;
-      await _create(
-        exporterTemplate: AutomationExporterTemplate.cadvisor,
-        originalCurrent: original,
-        originalLive: live,
-        onTemplateCreated: (value) => created = value,
-      );
-      final fresh = created;
-      if (!install || fresh == null || !original() || project?.id != fresh.id) return;
-      final token = request;
-      bool originalProject() => original() && request == token && project?.id == fresh.id && !dirty;
-      final binding = await AutomationCadvisorTemplateBinding.capture(source, fresh.id, isCurrent: originalProject);
-      if (!originalProject()) return;
-      setState(() => project = binding.project);
-      final options = await _dialog<AutomationCadvisorInstallOptions>(
-        (_) => DependencyOriginalGuard(
-          original: live,
-          builder: (_) => _CadvisorInstallDialog(owner: fresh.id),
-        ),
-      );
-      if (options == null || !originalProject()) return;
-      await binding.recheck(source, isCurrent: originalProject);
-      if (!originalProject()) return;
-      await _run(
-        source as AutomationJobService,
-        initialExtraVars: options.extraVars,
-        cadvisorTemplate: binding,
-        cadvisorFocus: cadvisorFocus,
-      );
-    } catch (e) {
-      if (original()) setState(() => error = context.l10n.automationCadvisorInstallInvalid);
-    } finally {
-      retired = true;
-      for (final subscription in subscriptions) {
-        subscription.close();
-      }
-      await notices?.cancel();
-      router.routeInformationProvider.removeListener(observe);
-      live.dispose();
-    }
-  }
-
   Future<void> _create({
     bool folder = false,
-    AutomationExporterTemplate? exporterTemplate,
     bool Function()? originalCurrent,
     ValueListenable<bool>? originalLive,
-    ValueChanged<AutomationProject>? onTemplateCreated,
   }) async {
     if (busy ||
         originalCurrent?.call() == false ||
@@ -1742,9 +1487,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
     final picker = ref.read(fileDialogServiceProvider);
     final source = widget.service;
-    final scaffold = !folder && exporterTemplate == null && source is AutomationNewProjectService
-        ? source as AutomationNewProjectService
-        : null;
+    final scaffold = !folder && source is AutomationNewProjectService ? source as AutomationNewProjectService : null;
     final options = scaffold == null
         ? null
         : await _dialog<NewAutomationProject>(
@@ -1771,7 +1514,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     });
     AutomationProject? created;
     Object? creationError;
-    final templateFailureMessage = context.l10n.monitoringExporterTemplateIncomplete;
     final folderNotEmpty = context.l10n.automationProjectChooseFolderEmpty;
     final originalService = widget.service, originalScope = widget.scope;
     bool original() =>
@@ -1780,22 +1522,16 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         identical(widget.service, originalService) &&
         identical(widget.scope, originalScope);
     try {
-      final assets = exporterTemplate == null
-          ? null
-          : await loadExporterTemplate(exporterTemplate, rootBundle.loadString);
       if (!original()) return;
       created = scaffold == null
           ? await originalService.createProject(name: name, directory: directory)
           : await scaffold.scaffoldProject(name: name, directory: directory, role: options?.role);
-      if (assets != null && original()) {
-        await populateExporterTemplate(originalService, created, assets, isCurrent: original);
-      }
     } catch (e) {
       creationError = switch (e) {
         AppException(:final args)
             when args['field'] == 'project_source' && args['rule'] == 'project_folder_not_empty' =>
           folderNotEmpty,
-        _ => exporterTemplate == null ? e : templateFailureMessage,
+        _ => e,
       };
       if (original()) setState(() => error = creationError);
     } finally {
@@ -1804,13 +1540,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     if (!original()) return;
     ref.invalidate(automationProjectsProvider);
     if (created != null) await _select(created, originalCurrent: original);
-    if (original() &&
-        creationError == null &&
-        created != null &&
-        exporterTemplate != null &&
-        project?.id == created.id) {
-      onTemplateCreated?.call(created);
-    }
     if (original() && creationError != null) setState(() => error = creationError);
   }
 
@@ -2123,22 +1852,10 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(monitoringSessionProvider, (previous, next) {
-      if (!identical(previous, next)) {
-        setState(() {
-          _contextGeneration++;
-          _acceptedProjectFocus = null;
-          _focusedProject = null;
-        });
-      }
-    });
     final l = context.l10n;
     final jobs = ref.watch(automationJobServiceProvider);
-    final awxFactory = ref.watch(automationAwxPortFactoryProvider);
-    final awxEvents = ref.watch(criticalRuntimeEventsProvider);
-    final awxAvailable = awxFactory != null && awxEvents != null;
     if (workspacePage != 0) _retireExternalEditor?.call();
-    final visiblePage = workspacePage == 3 && !awxAvailable ? 0 : workspacePage;
+    final visiblePage = workspacePage >= 0 && workspacePage <= 3 ? workspacePage : 0;
     Widget navigation(String key, int page, IconData icon, String label, VoidCallback select) => Semantics(
       selected: visiblePage == page,
       child: GlassButton(
@@ -2153,25 +1870,13 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_agentProjectUnavailable)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: InfoBanner(tone: BannerTone.warning, message: l.hostAgentProjectUnavailable),
-          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           child: Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              navigation('automation-workspace-projects', 0, Icons.folder_open, l.automationProjects, _showProjects),
-              if (_acceptedAgentFocus case final focus?)
-                GlassButton(
-                  key: const ValueKey('automation-return-agent-host'),
-                  label: l.hostAgentReturn(focus.hostName),
-                  icon: Icons.arrow_back,
-                  onPressed: _agentCurrent(focus) ? () => _returnToAgentHost(focus) : null,
-                ),
+              navigation('automation-workspace-projects', 0, Icons.folder_open, l.automationLibrary, _showProjects),
               if (jobs != null)
                 navigation(
                   'automation-workspace-jobs',
@@ -2180,14 +1885,13 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                   l.automationJobs,
                   () => setState(() => workspacePage = 1),
                 ),
-              if (awxAvailable)
-                navigation(
-                  'automation-workspace-awx',
-                  3,
-                  Icons.cloud_outlined,
-                  l.awxTab,
-                  () => setState(() => workspacePage = 3),
-                ),
+              navigation(
+                'automation-workspace-schedules',
+                3,
+                Icons.schedule_outlined,
+                l.automationSchedulesTitle,
+                () => setState(() => workspacePage = 3),
+              ),
               if (runComposer != null)
                 navigation(
                   'automation-workspace-run',
@@ -2229,19 +1933,18 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                         else
                           const SizedBox.shrink(),
                         runComposer ?? const SizedBox.shrink(),
-                        if (awxAvailable)
-                          ValueListenableBuilder(
-                            valueListenable: ref.watch(routerProvider).routeInformationProvider,
-                            builder: (context, route, _) => AutomationAwxEntry(
-                              scope: widget.scope,
-                              service: widget.service,
-                              events: awxEvents,
-                              portFactory: awxFactory,
-                              active: visiblePage == 3 && route.uri.path == AppRoutes.automation,
-                            ),
-                          )
-                        else
-                          const SizedBox.shrink(),
+                        AutomationSchedulesView(
+                          active: workspacePage == 3,
+                          scope: widget.scope,
+                          service: widget.service,
+                          onCreate: (item) async {
+                            await _select(item);
+                            final service = widget.service;
+                            if (current && project?.id == item.id && service is AutomationJobService) {
+                              await _run(service as AutomationJobService, scheduleOnly: true);
+                            }
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -2298,7 +2001,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
 
   Widget _buildProjects(BuildContext context) {
     final l = context.l10n;
-    final focusedContext = _acceptedProjectFocus, focusedProject = _focusedProject;
     final catalog = ref.watch(automationProjectsProvider);
     final runnerService = ref.watch(automationRunnerServiceProvider);
     final portableAvailable =
@@ -2362,7 +2064,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                     _automationMenuItem(
                       key: const ValueKey('automation-portable-import-open'),
                       value: 'portable-import',
-                      label: l.automationPortableImportTitle,
+                      label: l.automationLibraryImportArchive,
                       icon: Icons.create_new_folder_outlined,
                     ),
                   if (widget.service is AutomationGitService)
@@ -2467,7 +2169,53 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(l.automationWorkflowHint),
+          Text(l.automationLibraryHint),
+          if (widget.service is AutomationProjectVersionService || portableAvailable)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (widget.service is AutomationProjectVersionService)
+                    GlassButton(
+                      key: const ValueKey('automation-library-versions'),
+                      label: l.automationVersionsTitle,
+                      icon: Icons.history,
+                      size: _automationControlSize(context),
+                      onPressed: projectMenuCurrent() && revision != null
+                          ? () => _versions(widget.service as AutomationProjectVersionService)
+                          : null,
+                    ),
+                  if (portableAvailable) ...[
+                    GlassButton(
+                      key: const ValueKey('automation-library-export-version'),
+                      label: l.automationLibraryExportVersion,
+                      icon: Icons.ios_share_outlined,
+                      size: _automationControlSize(context),
+                      onPressed: projectMenuCurrent() && project?.revision != null
+                          ? () => _portablePackage(inspect: false)
+                          : null,
+                    ),
+                    if (widget.service is AutomationPortableImportReviewCapability)
+                      GlassButton(
+                        key: const ValueKey('automation-library-import-archive'),
+                        label: l.automationLibraryImportArchive,
+                        icon: Icons.unarchive_outlined,
+                        size: _automationControlSize(context),
+                        onPressed: busy || catalog.asData?.value?.readOnly == true
+                            ? null
+                            : () => _portablePackage(inspect: true, createProject: true),
+                      ),
+                    Tooltip(
+                      message: l.automationLibraryExchangeHint,
+                      child: Icon(Icons.info_outline, size: 18, semanticLabel: l.automationLibraryExchangeHint),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           if (project?.gitSource case final Map<String, dynamic> source)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2512,76 +2260,65 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                   padding: EdgeInsets.zero,
                   child: ListView(
                     children: [
-                      Padding(padding: const EdgeInsets.all(12), child: Text(l.automationProjects)),
-                      if (_contextError)
-                        InfoBanner(
-                          key: const ValueKey('automation-context-error'),
-                          message: l.correlationProjectChanged,
-                          tone: BannerTone.danger,
+                      Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 4), child: Text(l.automationProjects)),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                        child: GlassField(
+                          key: const ValueKey('automation-library-search'),
+                          fieldKey: const ValueKey('automation-library-search-input'),
+                          search: true,
+                          placeholder: l.automationLibrarySearch,
+                          onChanged: (value) => setState(() => libraryQuery = value),
                         ),
-                      if (focusedContext != null && focusedProject != null) ...[
-                        InfoBanner(message: l.correlationProjectFocusHint),
-                        ListTile(
-                          key: ValueKey('automation-context-project-${focusedProject.id}'),
-                          dense: true,
-                          selected: true,
-                          leading: const Icon(Icons.folder_outlined, size: 18),
-                          title: Text(focusedProject.name ?? focusedProject.id),
-                          trailing: GlassButton(
-                            key: const ValueKey('automation-context-open'),
-                            label: l.commonOpen,
-                            onPressed: busy ? null : () => _openContextProject(focusedContext),
-                          ),
-                        ),
-                        TextButton(
-                          key: const ValueKey('automation-context-clear'),
-                          onPressed: () => setState(() {
-                            if (identical(_acceptedProjectFocus, focusedContext)) {
-                              _contextGeneration++;
-                              _acceptedProjectFocus = null;
-                              _focusedProject = null;
-                            }
-                          }),
-                          child: Text(l.commonClose),
-                        ),
-                      ] else
-                        ...catalog.when(
-                          data: (value) => [
-                            if (value?.readOnly == true)
-                              Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNewerSchema)),
-                            if (value?.projects.isEmpty ?? false)
-                              Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNoProjects)),
-                            for (final item in value?.projects ?? <AutomationProject>[])
-                              ListTile(
-                                key: ValueKey('automation-project-${item.id}'),
-                                dense: true,
-                                minTileHeight: 34,
-                                visualDensity: VisualDensity.compact,
-                                selected: item.id == project?.id,
-                                leading: const Icon(Icons.folder_outlined, size: 18),
-                                title: Text(item.name ?? item.id, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                subtitle: item.importState == null
-                                    ? null
-                                    : Text(switch (item.importState) {
-                                        'importing' => l.automationGitReceiving,
-                                        'ready' => l.automationGitReady,
-                                        'failed' => l.automationStateFailed,
-                                        'cancelled' => l.automationStateCancelled,
-                                        'interrupted' => l.automationStateInterrupted,
-                                        _ => l.automationNewerSchema,
-                                      }),
-                                onTap: busy || item.readOnly ? null : () => _select(item),
-                              ),
-                          ],
-                          error: (e, _) => [
-                            Padding(padding: const EdgeInsets.all(12), child: Text(errorMessage(l, e))),
-                            TextButton(
-                              onPressed: () => ref.invalidate(automationProjectsProvider),
-                              child: Text(l.commonRetry),
+                      ),
+                      ...catalog.when(
+                        data: (value) => [
+                          if (value?.readOnly == true)
+                            Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNewerSchema)),
+                          if (value?.projects.isEmpty ?? false)
+                            Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNoProjects)),
+                          if (value?.projects.isNotEmpty == true &&
+                              !(value!.projects.any(
+                                (item) => '${item.name ?? item.id} ${item.sourceKind ?? ''}'.toLowerCase().contains(
+                                  libraryQuery.trim().toLowerCase(),
+                                ),
+                              )))
+                            Padding(padding: const EdgeInsets.all(12), child: Text(l.automationLibraryNoMatches)),
+                          for (final item in (value?.projects ?? <AutomationProject>[]).where(
+                            (item) => '${item.name ?? item.id} ${item.sourceKind ?? ''}'.toLowerCase().contains(
+                              libraryQuery.trim().toLowerCase(),
                             ),
-                          ],
-                          loading: () => [const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())],
-                        ),
+                          ))
+                            ListTile(
+                              key: ValueKey('automation-project-${item.id}'),
+                              dense: true,
+                              minTileHeight: 34,
+                              visualDensity: VisualDensity.compact,
+                              selected: item.id == project?.id,
+                              leading: const Icon(Icons.folder_outlined, size: 18),
+                              title: Text(item.name ?? item.id, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              subtitle: item.importState == null
+                                  ? null
+                                  : Text(switch (item.importState) {
+                                      'importing' => l.automationGitReceiving,
+                                      'ready' => l.automationGitReady,
+                                      'failed' => l.automationStateFailed,
+                                      'cancelled' => l.automationStateCancelled,
+                                      'interrupted' => l.automationStateInterrupted,
+                                      _ => l.automationNewerSchema,
+                                    }),
+                              onTap: busy || item.readOnly ? null : () => _select(item),
+                            ),
+                        ],
+                        error: (e, _) => [
+                          Padding(padding: const EdgeInsets.all(12), child: Text(errorMessage(l, e))),
+                          TextButton(
+                            onPressed: () => ref.invalidate(automationProjectsProvider),
+                            child: Text(l.commonRetry),
+                          ),
+                        ],
+                        loading: () => [const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())],
+                      ),
                       if (project != null) ...[
                         const Divider(),
                         Padding(
@@ -2663,7 +2400,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                       key: const ValueKey('automation-portable-export-open'),
                                       value: 'portable-export',
                                       enabled: project!.revision != null,
-                                      label: l.automationPortableExportAction,
+                                      label: l.automationLibraryExportVersion,
                                     ),
                                   if (widget.service is AutomationInventoryExportService)
                                     _automationMenuItem(
@@ -2677,17 +2414,30 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                             ],
                           ),
                         ),
-                        AutomationFileTree(
-                          key: ValueKey('automation-files-${project!.id}'),
+                        AutomationLibraryFiles(
                           scope: widget.scope,
                           projectId: project!.id,
                           digest: revision?.digest ?? '',
                           entries: revision?.entries ?? const [],
                           selectedPath: file?.path ?? newPath,
                           enabled: !busy,
-                          rootLabel: l.automationTreeRoot,
-                          emptyLabel: l.automationTreeEmpty,
                           onRead: (path) => unawaited(_read(path)),
+                          onCreatePlaybook: project!.readOnly
+                              ? null
+                              : () {
+                                  if (projectMenuCurrent()) _newFile(playbook: true);
+                                },
+                          onCreateRole: project!.readOnly || widget.service is! AutomationScaffoldService
+                              ? null
+                              : () {
+                                  if (projectMenuCurrent()) _newRole(widget.service as AutomationScaffoldService);
+                                },
+                          onAddDependency: project!.readOnly || widget.service is! AutomationDependencyService
+                              ? null
+                              : () {
+                                  if (projectMenuCurrent())
+                                    _dependencies(widget.service as AutomationDependencyService);
+                                },
                           onMove: project!.readOnly || widget.service is! AutomationMoveService || revision == null
                               ? null
                               : (source, directory) => unawaited(_moveProjectFile(source, directory)),
@@ -2944,144 +2694,6 @@ class _AiDraftStale implements Exception {
 
 class _SaveFileIntent extends Intent {
   const _SaveFileIntent();
-}
-
-class _CadvisorInstallDialog extends StatefulWidget {
-  const _CadvisorInstallDialog({required this.owner});
-  final String owner;
-  @override
-  State<_CadvisorInstallDialog> createState() => _CadvisorInstallDialogState();
-}
-
-class _CadvisorInstallDialogState extends State<_CadvisorInstallDialog> {
-  final image = TextEditingController(), imageId = TextEditingController();
-  final port = TextEditingController(text: '19101');
-  late final owner = TextEditingController(text: widget.owner);
-  final containerId = TextEditingController();
-  AutomationCadvisorOperation operation = AutomationCadvisorOperation.install;
-  bool reviewed = false, invalid = false;
-  @override
-  void dispose() {
-    image.dispose();
-    imageId.dispose();
-    port.dispose();
-    owner.dispose();
-    containerId.dispose();
-    super.dispose();
-  }
-
-  void submit() {
-    try {
-      final options = AutomationCadvisorInstallOptions(
-        imageSha256: image.text.trim(),
-        imageId: imageId.text.trim(),
-        owner: owner.text.trim(),
-        port: int.tryParse(port.text) ?? 0,
-        hostAccessReviewed: reviewed,
-        operation: operation,
-        containerId: operation == AutomationCadvisorOperation.install ? null : containerId.text.trim(),
-      );
-      Navigator.pop(context, options);
-    } on FormatException {
-      setState(() => invalid = true);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    return AlertDialog(
-      key: const ValueKey('automation-cadvisor-install-options'),
-      title: Text(l.automationCadvisorLifecycleTitle),
-      content: SizedBox(
-        width: 620,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(l.automationCadvisorLifecycleDraft),
-              GlassSelect<AutomationCadvisorOperation>(
-                key: const ValueKey('cadvisor-lifecycle-operation'),
-                value: operation,
-                expand: true,
-                semanticLabel: l.automationCadvisorLifecycleOperation,
-                items: [
-                  for (final value in AutomationCadvisorOperation.values)
-                    GlassSelectItem(
-                      value: value,
-                      label: switch (value) {
-                        AutomationCadvisorOperation.inspect => l.automationCadvisorLifecycleInspect,
-                        AutomationCadvisorOperation.install => l.automationCadvisorLifecycleInstall,
-                        AutomationCadvisorOperation.start => l.automationCadvisorLifecycleStart,
-                        AutomationCadvisorOperation.stop => l.automationCadvisorLifecycleStop,
-                        AutomationCadvisorOperation.remove => l.automationCadvisorLifecycleRemove,
-                      },
-                    ),
-                ],
-                onChanged: (value) => setState(() {
-                  operation = value;
-                  reviewed = false;
-                  invalid = false;
-                }),
-              ),
-              const SizedBox(height: 12),
-              InfoBanner(tone: BannerTone.warning, message: l.automationCadvisorHostAccess),
-              Text(l.automationCadvisorDockerAccess),
-              const SizedBox(height: 12),
-              TextField(
-                key: const ValueKey('cadvisor-lifecycle-owner'),
-                controller: owner,
-                maxLength: 36,
-                decoration: InputDecoration(labelText: l.automationCadvisorLifecycleOwner),
-              ),
-              if (operation != AutomationCadvisorOperation.install)
-                TextField(
-                  key: const ValueKey('cadvisor-lifecycle-container'),
-                  controller: containerId,
-                  maxLength: 64,
-                  decoration: InputDecoration(labelText: l.automationCadvisorLifecycleContainer),
-                ),
-              TextField(
-                key: const ValueKey('cadvisor-install-image-digest'),
-                controller: image,
-                maxLength: 64,
-                decoration: InputDecoration(labelText: l.automationCadvisorInstallImageDigest),
-              ),
-              TextField(
-                key: const ValueKey('cadvisor-install-image-id'),
-                controller: imageId,
-                maxLength: 71,
-                decoration: InputDecoration(labelText: l.automationCadvisorInstallImageId),
-              ),
-              TextField(
-                key: const ValueKey('cadvisor-install-port'),
-                controller: port,
-                maxLength: 5,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: l.automationCadvisorInstallPort),
-              ),
-              CheckboxListTile(
-                key: const ValueKey('cadvisor-install-consent'),
-                value: reviewed,
-                title: Text(l.automationCadvisorInstallConsent),
-                onChanged: (value) => setState(() => reviewed = value == true),
-              ),
-              if (invalid) Text(l.automationCadvisorInstallInvalid),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.commonCancel)),
-        TextButton(
-          key: const ValueKey('cadvisor-install-compose'),
-          onPressed: reviewed ? submit : null,
-          child: Text(l.automationCadvisorInstallContinue),
-        ),
-      ],
-    );
-  }
 }
 
 class _NameDialog extends StatefulWidget {

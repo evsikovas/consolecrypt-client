@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:consolecrypt/automation/automation_awx_handle_gateway.dart';
 import 'package:consolecrypt/automation/automation_dependency_models.dart';
 import 'package:consolecrypt/automation/automation_portable_import_gateway.dart';
 import 'package:consolecrypt/automation/automation_portable_import_session.dart';
@@ -54,11 +53,10 @@ BridgeError failure(String field, String rule, {String code = 'invalid_input'}) 
 );
 
 void main() {
-  test('production factory is lazy and preserves prior portable/AWX/dependency capabilities', () {
+  test('production factory is lazy and preserves prior portable/dependency capabilities', () {
     final service = RustAutomationService();
     expect(service, isA<AutomationPortableImportReviewCapability>());
     expect(service, isA<AutomationPortableGatewayCapability>());
-    expect(service, isA<AutomationAwxPortCapability>());
     expect(service, isA<AutomationDependencyService>());
     expect(service.createPortableImportReviewGateway(), isA<PortableImportHandleGateway>());
   });

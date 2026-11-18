@@ -159,7 +159,6 @@ struct EmbedTask {
 
 /// AI state of an unlocked vault.
 pub(crate) struct AiSession {
-    pub(super) metrics: Arc<super::monitoring::MetricsRuntime>,
     ctx: Arc<AppCtx>,
     profile_id: ProfileId,
     search_path: Option<PathBuf>,
@@ -208,7 +207,6 @@ impl AiSession {
     ) -> Arc<Self> {
         let events = ctx.events.subscribe();
         Arc::new(Self {
-            metrics: Arc::new(super::monitoring::MetricsRuntime::default()),
             ctx,
             profile_id,
             search_path,
@@ -246,7 +244,6 @@ impl AiSession {
     /// Embedding uses a child of `closed`, so it observes the same retirement.
     pub(crate) fn retire(&self) {
         self.closed.cancel();
-        self.metrics.close();
         for (_, t) in lock(&self.requests).drain() {
             t.cancel();
         }
@@ -582,7 +579,6 @@ impl AiSession {
         drop(local);
         // Reviewed Monitoring requests must not survive a local model/process
         // replacement. Do not hold the provider mutex while taking its registry.
-        self.metrics.invalidate_device();
         Ok(())
     }
 
@@ -594,7 +590,6 @@ impl AiSession {
         {
             local.take();
             drop(local);
-            self.metrics.invalidate_device();
         }
     }
 

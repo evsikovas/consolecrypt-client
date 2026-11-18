@@ -20,7 +20,6 @@ mod context;
 pub(crate) mod automation_context;
 pub(crate) mod dto;
 mod index;
-mod monitoring;
 mod session;
 #[cfg(test)]
 mod tests;

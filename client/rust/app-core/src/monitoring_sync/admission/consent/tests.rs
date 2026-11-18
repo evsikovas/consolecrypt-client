@@ -89,21 +89,21 @@ async fn actual_same_runtime_budget_drop_and_cancel_release_original_slots() {
     let weak = Arc::downgrade(&u);
     let mut leases = Vec::new();
     for _ in 0..7 {
-        leases.push(MonitoringRuntime::begin_owned(weak.clone()).unwrap());
+        leases.push(SettingsReviewRuntime::begin_owned(weak.clone()).unwrap());
     }
-    assert!(MonitoringRuntime::begin_owned(weak.clone()).is_err());
+    assert!(SettingsReviewRuntime::begin_owned(weak.clone()).is_err());
     handle.cancel();
-    let extra = MonitoringRuntime::begin_owned(weak.clone()).unwrap();
-    assert!(MonitoringRuntime::begin_owned(weak.clone()).is_err());
+    let extra = SettingsReviewRuntime::begin_owned(weak.clone()).unwrap();
+    assert!(SettingsReviewRuntime::begin_owned(weak.clone()).is_err());
     drop(extra);
     drop(leases);
     drop(handle);
     let (another, _) = observed(&f).await;
     drop(another);
     let leases: Vec<_> = (0..8)
-        .map(|_| MonitoringRuntime::begin_owned(weak.clone()).unwrap())
+        .map(|_| SettingsReviewRuntime::begin_owned(weak.clone()).unwrap())
         .collect();
-    assert!(MonitoringRuntime::begin_owned(weak).is_err());
+    assert!(SettingsReviewRuntime::begin_owned(weak).is_err());
     drop(leases);
     drop(u);
     f.app.shutdown().await.unwrap();
@@ -211,7 +211,7 @@ async fn actual_original_deadline_retires_review_and_releases_same_budget() {
     assert!(handle.confirm().await.is_err());
     let (_, u) = f.app.unlocked().await.unwrap();
     let leases: Vec<_> = (0..8)
-        .map(|_| MonitoringRuntime::begin_owned(Arc::downgrade(&u)).unwrap())
+        .map(|_| SettingsReviewRuntime::begin_owned(Arc::downgrade(&u)).unwrap())
         .collect();
     drop(leases);
     drop(u);
@@ -223,7 +223,7 @@ async fn existing_auth_transition_blocks_before_any_policy_request() {
     let (handle, path) = observed(&f).await;
     let (raw, _) = input(&f).await;
     let hits = f.server.hits(&path);
-    let transition = f.app.reader_auth_transition();
+    let transition = f.app.original_auth_transition();
     assert!(handle.details_json().await.is_err());
     assert!(
         f.app

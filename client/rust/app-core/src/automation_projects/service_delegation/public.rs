@@ -141,6 +141,13 @@ struct Action {
     runner_id: String,
     expected_runner_revision: u64,
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct ListSchedules {
+    version: u8,
+    profile_id: String,
+    notification_scope_id: String,
+}
 
 struct Frame {
     owner: Arc<Session>,
@@ -195,6 +202,7 @@ impl Frame {
 /// source/pending-bootstrap fence, not a grant or another operation registry.
 #[derive(Clone)]
 pub(super) struct PublicSetup {
+    pub(super) definition: Value,
     runner: Arc<RunnerConnection>,
     namespace: ServiceLocalNamespace,
     host: cc_models::ObjectId,
@@ -387,6 +395,30 @@ fn metadata(
 }
 
 impl AppCore {
+    pub async fn automation_service_schedules_json(&self, input: String) -> AppResult<String> {
+        let request: ListSchedules = parse(&input, 1024)?;
+        let frame = Frame::capture(
+            self,
+            request.version,
+            &request.profile_id,
+            &request.notification_scope_id,
+        )
+        .await?;
+        let ledger = Arc::new(
+            owner_ledger::OwnerLedger::capture_stale(
+                self,
+                frame.owner.clone(),
+                frame.unlock.clone(),
+            )
+            .await?,
+        );
+        let rows = ledger.schedule_metadata(self).await?;
+        frame.current(self).await?;
+        encode(
+            json!({"version":1,"profileId":frame.owner.profile_id,"notificationScopeId":frame.scope,
+            "metadataOnly":true,"records":rows}),
+        )
+    }
     pub async fn automation_service_prepare_json(&self, input: String) -> AppResult<String> {
         let request: Prepare = parse(&input, 128 * 1024)?;
         encode(prepare(self, request).boxed().await?)
@@ -478,6 +510,7 @@ async fn prepare(app: &AppCore, request: Prepare) -> AppResult<Value> {
         let _unlock = frame.owner.hold_unlocked(&u).await?;
         frame.check(&u)?;
         let setup = PublicSetup {
+            definition: definition.clone(),
             runner: runner.clone(),
             namespace: observed.persistent_namespace.clone(),
             host,

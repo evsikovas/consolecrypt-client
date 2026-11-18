@@ -169,6 +169,27 @@ impl OwnerLedger {
     ) -> AppResult<ServiceOwnerSnapshot> {
         self.read_impl(app, false).await
     }
+    pub(super) async fn schedule_metadata(
+        self: &Arc<Self>,
+        app: &AppCore,
+    ) -> AppResult<Vec<serde_json::Value>> {
+        let u = self.unlock.upgrade().ok_or(AppError::VaultLocked)?;
+        let _profile = app.hold_session(&self.owner).await?;
+        let _unlock = self.owner.hold_unlocked(&u).await?;
+        self.check(&u, false)?;
+        let original = self.clone();
+        let rows = self
+            .storage
+            .read(move |tx| -> AppResult<_> {
+                original.with_fresh(false, || {
+                    original.check_sql(tx, false)?;
+                    super::schedules::list(tx, &original.identity)
+                })
+            })
+            .await?;
+        self.check(&u, false)?;
+        Ok(rows)
+    }
     async fn read_impl(
         self: &Arc<Self>,
         app: &AppCore,
@@ -197,7 +218,7 @@ impl OwnerLedger {
         expected: ServiceOwnerSnapshot,
         rows: Vec<ServiceOwnerRecord>,
     ) -> AppResult<ServiceOwnerSnapshot> {
-        self.replace_impl(app, expected, rows, WriteKind::Fresh)
+        self.replace_impl(app, expected, rows, WriteKind::Fresh, None)
             .await
     }
     async fn replace_impl(
@@ -206,6 +227,7 @@ impl OwnerLedger {
         expected: ServiceOwnerSnapshot,
         rows: Vec<ServiceOwnerRecord>,
         kind: WriteKind,
+        schedule: Option<super::schedules::Metadata>,
     ) -> AppResult<ServiceOwnerSnapshot> {
         let fresh = matches!(kind, WriteKind::Fresh);
         let u = self.unlock.upgrade().ok_or(AppError::VaultLocked)?;
@@ -259,6 +281,9 @@ impl OwnerLedger {
                         }
                     }
                     tx.service_owner_compare_exchange(&expected, rows)?;
+                    if let Some(schedule) = schedule {
+                        super::schedules::put(tx, &original.identity, schedule)?;
+                    }
                     original.check_sql(tx, fresh)?;
                     Ok(tx.service_owner_snapshot(&original.identity)?)
                 })
@@ -302,6 +327,7 @@ impl OwnerLedger {
             snapshot,
             rows,
             WriteKind::LocalBlock(service, runner_revision),
+            None,
         )
         .await?;
         Ok(LocallyBlockedRemotelyUnknown)
@@ -509,7 +535,10 @@ impl PendingDelivery {
             status_digest: digest(&confirmed.initial_status.to_json().map_err(|_| invalid())?),
             delivery: ServiceOwnerDelivery::DeliveryUnknown,
         });
-        let snapshot = ledger.replace(app, snapshot, rows).await?;
+        let schedule = super::schedules::Metadata::from_confirmed(confirmed)?;
+        let snapshot = ledger
+            .replace_impl(app, snapshot, rows, WriteKind::Fresh, schedule)
+            .await?;
         Ok(Self {
             ledger,
             snapshot,

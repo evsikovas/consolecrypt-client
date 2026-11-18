@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:consolecrypt/app/critical_notice_owner.dart';
 import 'package:consolecrypt/app/critical_notice_providers.dart';
 import 'package:consolecrypt/app/critical_notice_view.dart';
 import 'package:consolecrypt/app/gate.dart';
@@ -10,24 +9,17 @@ import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/automation/automation_execution_console.dart';
 import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
-import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/job_notice_events.dart';
-import 'package:consolecrypt/monitoring/monitoring_models.dart';
-import 'package:consolecrypt/monitoring/monitoring_pinned_observation.dart';
-import 'package:consolecrypt/monitoring/monitoring_pinned_providers.dart';
-import 'package:consolecrypt/monitoring/monitoring_providers.dart';
-import 'package:consolecrypt/monitoring/monitoring_service.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../helpers/automation_ui_proof.dart';
-import '../helpers/monitoring_fakes.dart';
 import '../helpers/test_app.dart';
 
 const jobId = '11111111-1111-4111-8111-111111111111';
@@ -83,26 +75,12 @@ class _Jobs implements AutomationService, AutomationJobService, AutomationEventS
   }
 }
 
-class _Metrics implements MonitoringBackend {
-  final store = MonitoringTestStore();
-  final services = <MonitoringTestService>[];
-  @override
-  MonitoringSourceStore createSourceStore() => store;
-  @override
-  MonitoringService createService() {
-    final service = MonitoringTestService();
-    services.add(service);
-    return service;
-  }
-}
-
 class _Harness {
-  _Harness(this.container, this.app, this.events, this.jobs, this.metrics, this.profile);
+  _Harness(this.container, this.app, this.events, this.jobs, this.profile);
   final ProviderContainer container;
   final MockBackend app;
   final JobNoticeEventAdapter events;
   final _Jobs jobs;
-  final _Metrics metrics;
   final String profile;
   Future<void> emit(WidgetTester tester, {String state = 'failed', int revision = 1}) async {
     jobs.state = state;
@@ -123,7 +101,7 @@ Future<_Harness> _open(WidgetTester tester, {double width = 1500, bool russian =
   addTearDown(app.dispose);
   await app.debugCreateUnlockedLocalProfile(name: 'Owned notice profile');
   final profile = app.services.profiles.currentProfiles.active!.id.value;
-  final events = JobNoticeEventAdapter(), jobs = _Jobs(), metrics = _Metrics();
+  final events = JobNoticeEventAdapter(), jobs = _Jobs();
   events.acceptScope(originalEpoch: events.epoch, profileId: profile, unlocked: true);
   addTearDown(events.dispose);
   if (russian) {
@@ -136,25 +114,18 @@ Future<_Harness> _open(WidgetTester tester, {double width = 1500, bool russian =
     size: Size(width, 1100),
     locale: russian ? AppLocale.ru : AppLocale.en,
     captureBoundary: true,
-    overrides: [
-      automationServiceProvider.overrideWithValue(jobs),
-      criticalJobEventsProvider.overrideWithValue(events),
-      monitoringBackendProvider.overrideWithValue(metrics),
-    ],
+    overrides: [automationServiceProvider.overrideWithValue(jobs), criticalJobEventsProvider.overrideWithValue(events)],
   );
   final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
   container.read(routerProvider).go(AppRoutes.terminal);
   await settle(tester);
   final owner = container.read(criticalNoticeOwnerProvider);
-  final pin = container.read(monitoringPinnedObservationProvider);
   addTearDown(() {
-    pin?.stop(MonitoringPinStop.manual);
     owner?.clear();
   });
   await container.read(navigationPreferencesControllerProvider).setVisible(profile, 'automation', false);
-  await container.read(navigationPreferencesControllerProvider).setVisible(profile, 'monitoring', false);
   await settle(tester);
-  return _Harness(container, app, events, jobs, metrics, profile);
+  return _Harness(container, app, events, jobs, profile);
 }
 
 Future<void> _tap(WidgetTester tester, String key) async {
@@ -307,53 +278,6 @@ void main() {
     expect(h.jobs.forbidden, isEmpty);
     expect(tester.takeException(), isNull);
   });
-  for (final stale in [false, true]) {
-    testWidgets('pin notice opens exact reviewed source context stale=$stale without querying or rebinding', (
-      tester,
-    ) async {
-      final h = await _open(tester);
-      final other = monitoringFixture.withRecord(id: '44444444-4444-4444-8444-444444444444', revision: 1);
-      h.metrics.store.sources = [monitoringFixture, other];
-      h.container.read(routerProvider).go(AppRoutes.monitoring);
-      await settle(tester);
-      await _tap(tester, 'monitoring-query');
-      await _tap(tester, 'monitoring-auto-settings');
-      await _tap(tester, 'monitoring-observation-pin');
-      expect(h.metrics.services, hasLength(2));
-      final pinned = h.metrics.services.last;
-      tester.widget<GlassSelect<String?>>(find.byType(GlassSelect<String?>).first).onChanged!(other.id);
-      await settle(tester);
-      h.container.read(routerProvider).go(AppRoutes.terminal);
-      await settle(tester);
-      pinned.result = const QueryOutcome(
-        status: 'error',
-        httpStatus: 503,
-        error: MonitoringFailure.local(MonitoringErrorCode.timeout),
-      );
-      await tester.pump(const Duration(seconds: 15));
-      await settle(tester);
-      final owner = h.container.read(criticalNoticeOwnerProvider)!,
-          row = h.container.read(criticalNoticeOwnerProvider)!.state.rows.single;
-      expect(row.pin!.status, CriticalPinStatus.retrying);
-      if (stale) {
-        h.metrics.store.sources = [monitoringFixture.withRecord(revision: 2), other];
-      }
-      await _tap(tester, 'critical-notices-open');
-      await _tap(tester, 'critical-notice-open-${row.id}');
-      expect(h.container.read(routerProvider).routeInformationProvider.value.uri.path, AppRoutes.monitoring);
-      final selector = tester.widget<GlassSelect<String?>>(find.byType(GlassSelect<String?>).first);
-      expect(selector.value, stale ? isNull : monitoringFixture.id);
-      if (stale) {
-        expect(find.byKey(const ValueKey('monitoring-error')), findsOneWidget);
-      }
-      expect(h.metrics.services.first.queries, 1);
-      expect(pinned.queries, 1);
-      expect(h.container.read(navigationPreferencesProvider)!.visible('monitoring'), isFalse);
-      expect(owner.state.rows.single.pin!.sourceRevision, 1);
-      expect(h.jobs.forbidden, isEmpty);
-      expect(tester.takeException(), isNull);
-    });
-  }
   testWidgets('mobile critical notice is available while the tool overlay hides the normal app bar', (tester) async {
     final h = await _open(tester, width: 430);
     expect(

@@ -2,6 +2,7 @@
 //! Separate consent/purpose from a job approval. No Bridge or service activation.
 use super::*;
 mod owner_ledger;
+mod schedules;
 mod public;
 use crate::automation_prepare::PreparedReview;
 use crate::service_credential_issuer::OwnerScope;

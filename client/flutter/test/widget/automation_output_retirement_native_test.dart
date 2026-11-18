@@ -6,7 +6,6 @@ import 'package:consolecrypt/automation/automation_execution_console.dart';
 import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/monitoring/monitoring_providers.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,11 +65,7 @@ class CapturedApi extends Fake implements AutomationJobService, AutomationEventS
 }
 
 Widget host(CapturedApi api) => ProviderScope(
-  overrides: [
-    automationScopeProvider.overrideWithValue(scope),
-    monitoringScopeProvider.overrideWithValue(const MonitoringScope(null, false)),
-    monitoringSessionProvider.overrideWithValue(null),
-  ],
+  overrides: [automationScopeProvider.overrideWithValue(scope)],
   child: MaterialApp(
     theme: AppTheme.dark(platform: TargetPlatform.windows),
     locale: const Locale('en'),

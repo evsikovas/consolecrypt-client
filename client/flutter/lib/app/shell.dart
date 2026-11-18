@@ -29,7 +29,6 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/hosts/connection_picker.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:consolecrypt/kubernetes/kube_gitops_monitor.dart';
-import 'package:consolecrypt/monitoring/monitoring_pinned_view.dart';
 import 'package:consolecrypt/notes/notes_reminders.dart';
 import 'package:consolecrypt/sftp/edit_flows.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
@@ -236,7 +235,6 @@ class _AppShellState extends ConsumerState<AppShell> {
                           child: ExcludeFocus(excluding: minimal, child: const _ShellBanners()),
                         ),
                         if (minimal) const CriticalNoticeAttentionBar(),
-                        const MonitoringPinGlobalBar(),
                         // Offers to recover SFTP edit sessions left by a crash / quit (once per unlock).
                         Expanded(
                           child: ExcludeFocus(

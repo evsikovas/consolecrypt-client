@@ -1,7 +1,7 @@
 //! Native panel mutation admission for the local candidate floor.
 //! A policy/version/checkpoint DTO ALONE is never a write permission.
 use super::*;
-use crate::agent_reader::{OriginalSessionAuth, OriginalSessionProvenance};
+use crate::session_provenance::{OriginalSessionAuth, OriginalSessionProvenance};
 use cc_models::VaultObject;
 use cc_storage_core::{LocalState, Tx};
 use cc_sync_core::SyncError;

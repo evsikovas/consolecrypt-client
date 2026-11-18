@@ -77,6 +77,29 @@ async fn fixture() -> (tempfile::TempDir, AppCore, String) {
 }
 
 #[tokio::test]
+async fn project_version_keeps_exact_saved_files_and_opens_a_separate_copy() {
+    let (_root, app, id) = fixture().await;
+    let revision = app.automation_project_files(id.clone()).await.unwrap();
+    let original = app.automation_project_file(id.clone(), "original.yml".into()).await.unwrap();
+    app.automation_project_save_version(id.clone(), revision.digest.clone(), "Before changes".into())
+        .await.unwrap();
+    app.automation_project_save(id.clone(), original.path, Some(original.sha256), "updated\n".into())
+        .await.unwrap();
+    assert!(app.automation_project_save_version(id.clone(), revision.digest.clone(), "Stale".into())
+        .await.is_err());
+    let rows = app.automation_project_versions(id.clone()).await.unwrap();
+    assert_eq!(rows.as_array().unwrap().len(), 1);
+    assert_eq!(rows[0]["digest"], revision.digest);
+    let saved_id = rows[0]["id"].as_str().unwrap().to_owned();
+    let copy = app.automation_project_open_version(id.clone(), saved_id, "Version copy".into())
+        .await.unwrap();
+    assert_ne!(copy.id, id);
+    assert_eq!(app.automation_project_file(copy.id, "original.yml".into()).await.unwrap().text,
+               "synthetic original\n");
+    assert_eq!(app.automation_project_file(id, "original.yml".into()).await.unwrap().text, "updated\n");
+}
+
+#[tokio::test]
 async fn new_role_project_uses_the_selected_empty_folder_and_preserves_existing_files() {
     let (profile, app, _) = fixture().await;
     let path = profile.path().join("selected-role-folder");

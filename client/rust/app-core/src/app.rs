@@ -44,7 +44,7 @@ pub(crate) struct Inner {
     pub backup_busy: tokio::sync::Mutex<()>,
     /// Browser sign-ins (enterprise OIDC) waiting for their redirect.
     pub enterprise: crate::enterprise_auth::PendingFlows,
-    pub(crate) reader_native: Arc<crate::agent_reader::NativeReaderRuntime>,
+    pub(crate) original_auth: crate::session_provenance::OriginalAuthTransitions,
 }
 
 /// The application facade used by the Flutter UI (via flutter_rust_bridge)
@@ -180,7 +180,7 @@ impl AppCore {
                 prepared_exit: std::sync::Mutex::new(None),
                 backup_busy: tokio::sync::Mutex::new(()),
                 enterprise: Default::default(),
-                reader_native: Arc::new(Default::default()),
+                original_auth: Default::default(),
             }),
         };
         if app.inner.ctx.config.backup_scheduler {

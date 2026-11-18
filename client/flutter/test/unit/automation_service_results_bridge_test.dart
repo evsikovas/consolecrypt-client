@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:consolecrypt/automation/automation_awx_handle_gateway.dart';
 import 'package:consolecrypt/automation/automation_portable_service.dart';
 import 'package:consolecrypt/automation/automation_service_delegation_service.dart';
 import 'package:consolecrypt/automation/automation_service_results.dart';
@@ -40,7 +39,6 @@ void main() {
       final service = RustAutomationService();
       expect(service, isA<AutomationServiceResultsService>());
       expect(service, isA<AutomationServiceDelegationService>());
-      expect(service, isA<AutomationAwxPortCapability>());
       expect(service, isA<AutomationPortableGatewayCapability>());
       expect(api.requests, isEmpty);
       final scope = serviceIntent().scope;

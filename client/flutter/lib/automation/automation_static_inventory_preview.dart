@@ -11,7 +11,7 @@ Map<String, List<String>> previewStaticYamlInventory(List<String> documents) {
   for (final document in documents) {
     final yaml = loadYaml(document);
     final visited = HashSet<Object>.identity();
-    void readGroups(Map values, int depth) {
+    void readGroups(Map<dynamic, dynamic> values, int depth) {
       if (depth > 16 || !visited.add(values)) return;
       for (final MapEntry(:key, :value) in values.entries) {
         if (++nodes > 4000) throw const FormatException();

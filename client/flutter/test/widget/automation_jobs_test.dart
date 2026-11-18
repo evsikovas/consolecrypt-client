@@ -29,7 +29,6 @@ import '../helpers/automation_ui_proof.dart';
 import '../helpers/test_app.dart';
 import '../support/project_environment_fixture.dart' as environment;
 
-
 // Synthetic UI contract only; real admission/SSH execution is verified by the
 // separate native acceptance fixture, not by this mock.
 class _Api implements AutomationService, AutomationRunnerService, AutomationJobService {
@@ -165,23 +164,42 @@ class _InheritanceInventory extends Fake implements InventoryService {
   EffectiveHostConfig result() => const EffectiveHostConfig(
     username: Resolved('inherited-user', ValueSource.group, sourceName: 'Operations folder'),
     port: Resolved(2222, ValueSource.group, sourceName: 'Operations folder'),
-    credentialId: Resolved.unset(), credentialName: null,
+    credentialId: Resolved.unset(),
+    credentialName: null,
     groupPath: ['Operations folder'],
     route: [RouteHop(hostId: ObjectId('00000000-0000-4000-8000-000000000099'), label: 'Explicit bastion route')],
-    routeSource: Resolved('Shared jump', ValueSource.jumpProfile, sourceName: 'Shared jump'));
-  @override Future<EffectiveHostConfig> resolveEffective(Host host) async {
-    previews++; return pending?.future ?? result();
+    routeSource: Resolved('Shared jump', ValueSource.jumpProfile, sourceName: 'Shared jump'),
+  );
+  @override
+  Future<EffectiveHostConfig> resolveEffective(Host host) async {
+    previews++;
+    return pending?.future ?? result();
   }
-  @override Future<Never> revealCredentialSecret(ObjectId id) async { reveals++; throw StateError('not permitted'); }
-  @override Stream<List<Group>> watchGroups() => Stream.value([]);
-  @override Stream<List<Credential>> watchCredentials() => Stream.value([]);
-  @override Stream<List<JumpProfile>> watchJumpProfiles() => Stream.value([]);
-  @override Stream<List<KnownHost>> watchKnownHosts() => Stream.value([]);
+
+  @override
+  Future<Never> revealCredentialSecret(ObjectId id) async {
+    reveals++;
+    throw StateError('not permitted');
+  }
+
+  @override
+  Stream<List<Group>> watchGroups() => Stream.value([]);
+  @override
+  Stream<List<Credential>> watchCredentials() => Stream.value([]);
+  @override
+  Stream<List<JumpProfile>> watchJumpProfiles() => Stream.value([]);
+  @override
+  Stream<List<KnownHost>> watchKnownHosts() => Stream.value([]);
 }
+
 class _InheritanceApi extends _Api {
   final inventory = _InheritanceInventory();
   int connects = 0;
-  @override Future<AutomationJson> connectRunner(String id) async { connects++; return {}; }
+  @override
+  Future<AutomationJson> connectRunner(String id) async {
+    connects++;
+    return {};
+  }
 }
 
 class _Events extends _Api implements AutomationEventService {
@@ -562,6 +580,7 @@ class _ReviewLifecycle extends _Api {
     preparations++;
     return super.prepareRun(request);
   }
+
   @override
   AutomationJson review() => super.review()..['review_id'] = 'review-$preparations';
   @override
@@ -569,6 +588,7 @@ class _ReviewLifecycle extends _Api {
     discarded.add(id);
     await super.discardReview(id);
   }
+
   @override
   Future<AutomationJson> confirmRun(String reviewId) async {
     if (rejectConfirmation) {
@@ -703,25 +723,47 @@ class _OlderRunner extends _Api {
 }
 
 class _EnvironmentJobs extends _Api implements AutomationProjectCredentialsService {
-  final events=RuntimeNoticeEventAdapter();
-  String profile='';
-  bool configured=true;
-  int contexts=0,connects=0;
-  @override Future<AutomationProjectCatalog> projects() async =>const AutomationProjectCatalog(version:1,readOnly:false,
-    deviceLocal:true,projects:[environment.project]);
-  @override Future<AutomationJson> projectCredentialsContext(String id) async {
-    expect(id,environment.projectId);contexts++;
-    final value=environment.context(configured:configured,profile:profile);
-    if(configured) value['policy']=environment.policy(host:host.id.value);
+  final events = RuntimeNoticeEventAdapter();
+  String profile = '';
+  bool configured = true;
+  int contexts = 0, connects = 0;
+  @override
+  Future<AutomationProjectCatalog> projects() async =>
+      const AutomationProjectCatalog(version: 1, readOnly: false, deviceLocal: true, projects: [environment.project]);
+  @override
+  Future<AutomationJson> projectCredentialsContext(String id) async {
+    expect(id, environment.projectId);
+    contexts++;
+    final value = environment.context(configured: configured, profile: profile);
+    if (configured) value['policy'] = environment.policy(host: host.id.value);
     return value;
   }
-  @override Future<AutomationJson> saveProjectCredentials(AutomationJson value) async =>throw StateError('No automatic policy save');
-  @override Future<AutomationJson> connectRunner(String id) async {connects++;return {};}
-  @override AutomationJson review() {
-    final row=super.review()..['project_id']=environment.projectId..['project_revision']=1;
-    if(configured && prepared?['deployment_environment']!=null) { row['deployment_environment']={
-      'id':environment.environmentId,'name':'Staging','production':(row['policy'] as Map)['production'],
-      'policy_sha256':'a'*64,'credential_overrides':[{'host_id':host.id.value,'credential_id':environment.credentialId}]}; }
+
+  @override
+  Future<AutomationJson> saveProjectCredentials(AutomationJson value) async =>
+      throw StateError('No automatic policy save');
+  @override
+  Future<AutomationJson> connectRunner(String id) async {
+    connects++;
+    return {};
+  }
+
+  @override
+  AutomationJson review() {
+    final row = super.review()
+      ..['project_id'] = environment.projectId
+      ..['project_revision'] = 1;
+    if (configured && prepared?['deployment_environment'] != null) {
+      row['deployment_environment'] = {
+        'id': environment.environmentId,
+        'name': 'Staging',
+        'production': (row['policy'] as Map)['production'],
+        'policy_sha256': 'a' * 64,
+        'credential_overrides': [
+          {'host_id': host.id.value, 'credential_id': environment.credentialId},
+        ],
+      };
+    }
     return row;
   }
 }
@@ -734,7 +776,7 @@ Future<ProviderContainer> _open(
   bool openFile = false,
   AppLocale locale = AppLocale.en,
   RuntimeNoticeEventAdapter? serviceEvents,
-  String projectId='project',
+  String projectId = 'project',
 }) async {
   await loadAutomationProofFonts(tester);
   final backend = testBackend();
@@ -758,10 +800,17 @@ Future<ProviderContainer> _open(
     ],
   );
   final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
-  if(service is _EnvironmentJobs) {
-    service.profile=container.read(activeProfileProvider)!.id.value;
-    service.events.acceptScope(originalEpoch:service.events.epoch,nativeProfile:{'id':service.profile,'active':true,
-      'vault_state':'unlocked','notification_scope_id':environment.nonce});
+  if (service is _EnvironmentJobs) {
+    service.profile = container.read(activeProfileProvider)!.id.value;
+    service.events.acceptScope(
+      originalEpoch: service.events.epoch,
+      nativeProfile: {
+        'id': service.profile,
+        'active': true,
+        'vault_state': 'unlocked',
+        'notification_scope_id': environment.nonce,
+      },
+    );
   }
   container.read(routerProvider).go(AppRoutes.automation);
   await settle(tester);
@@ -779,7 +828,6 @@ Future<ProviderContainer> _open(
   return container;
 }
 
-
 class _TaskResultEvents extends _Events {
   @override
   Future<AutomationJson> jobs() async {
@@ -789,17 +837,31 @@ class _TaskResultEvents extends _Events {
     }
     return result;
   }
+
   @override
   AutomationJson page(int after) => {
-    'job_id': 'job-fixture', 'manifest_digest': 'a' * 64,
-    'events': after == 0 ? [{
-      'version': 1, 'job_id': 'job-fixture', 'sequence': 1,
-      'type': 'runner_on_failed', 'timestamp': '2026-11-13T12:00:00Z',
-      'payload': {'host': 'cc_fixture', 'task': 'Task result integration',
-        'task_uuid': '22222222-2222-4222-8222-222222222222',
-        'res': {'changed': false, 'rc': 7, 'msg': 'Recorded task failure from existing event service'}},
-    }] : <AutomationJson>[],
-    'cursor': after == 0 ? 1 : after, 'output_truncated': false, 'state': 'running',
+    'job_id': 'job-fixture',
+    'manifest_digest': 'a' * 64,
+    'events': after == 0
+        ? [
+            {
+              'version': 1,
+              'job_id': 'job-fixture',
+              'sequence': 1,
+              'type': 'runner_on_failed',
+              'timestamp': '2026-11-13T12:00:00Z',
+              'payload': {
+                'host': 'cc_fixture',
+                'task': 'Task result integration',
+                'task_uuid': '22222222-2222-4222-8222-222222222222',
+                'res': {'changed': false, 'rc': 7, 'msg': 'Recorded task failure from existing event service'},
+              },
+            },
+          ]
+        : <AutomationJson>[],
+    'cursor': after == 0 ? 1 : after,
+    'output_truncated': false,
+    'state': 'running',
   };
 }
 
@@ -808,11 +870,19 @@ class _PrivateReview extends _Api {
   @override
   AutomationJson review() {
     frozen = super.review();
-    frozen['parameters'] = {'extra_vars': {'native_frozen_key': 'PRIVATE_APPROVED_VALUE'},
-      'tags': ['PRIVATE_TAG'], 'skip_tags': <String>[], 'diff': false,
-      'vault': {'credentialId': 'PRIVATE_APPROVED_REF'}};
-    frozen['privilege_review'] = {'escalation': 'not_verified',
-      'accounts': [{'host_id': host.id.value, 'username': 'runner'}]};
+    frozen['parameters'] = {
+      'extra_vars': {'native_frozen_key': 'PRIVATE_APPROVED_VALUE'},
+      'tags': ['PRIVATE_TAG'],
+      'skip_tags': <String>[],
+      'diff': false,
+      'vault': {'credentialId': 'PRIVATE_APPROVED_REF'},
+    };
+    frozen['privilege_review'] = {
+      'escalation': 'not_verified',
+      'accounts': [
+        {'host_id': host.id.value, 'username': 'runner'},
+      ],
+    };
     return frozen;
   }
 }
@@ -827,9 +897,13 @@ class _ProductionReview extends _Api {
     (value['policy'] as AutomationJson)['production'] = true;
     if (!missingChallenge) {
       value['owner_confirmation'] = {
-      'policy': 'ownerConfirmationVaultPassphraseV1', 'kind': 'ownerConfirmation', 'required': true,
-      'manifest_digest': 'ab' * 32, 'job_id': '02020202-0202-4202-8202-020202020202',
-      'issued_at': now, 'expires_at': now + 300,
+        'policy': 'ownerConfirmationVaultPassphraseV1',
+        'kind': 'ownerConfirmation',
+        'required': true,
+        'manifest_digest': 'ab' * 32,
+        'job_id': '02020202-0202-4202-8202-020202020202',
+        'issued_at': now,
+        'expires_at': now + 300,
       };
     }
     return value;
@@ -841,133 +915,232 @@ class _ProductionOwner extends _ProductionReview implements AutomationProduction
   final proofs = <StepUpProof>[];
   @override
   Future<AutomationJson> confirmOwnerRun(String reviewId, {required StepUpProof proof}) async {
-    ownerIds.add(reviewId); proofs.add(proof);
+    ownerIds.add(reviewId);
+    proofs.add(proof);
     return {'job_id': 'job-fixture'};
   }
 }
 
-
 class _PublicServiceJobs extends _Api implements AutomationServiceDelegationService {
   int legacyConnects = 0, serviceCalls = 0;
   @override
-  Future<AutomationRunnerCatalog> runners() async => const AutomationRunnerCatalog(readOnly: false,
-    runners: [AutomationRunnerProfile(id: 'runner', name: 'Service connection', readOnly: false,
-      revision: 1, configuration: {'kind':'service_remote','host_id':'owned-host',
-      'identity_id':'11111111-1111-4111-8111-111111111111'})]);
+  Future<AutomationRunnerCatalog> runners() async => const AutomationRunnerCatalog(
+    readOnly: false,
+    runners: [
+      AutomationRunnerProfile(
+        id: 'runner',
+        name: 'Service connection',
+        readOnly: false,
+        revision: 1,
+        configuration: {
+          'kind': 'service_remote',
+          'host_id': 'owned-host',
+          'identity_id': '11111111-1111-4111-8111-111111111111',
+        },
+      ),
+    ],
+  );
   @override
-  Future<AutomationJson> connectRunner(String id) async { legacyConnects++; throw StateError('No legacy service connect'); }
-  Future<AutomationJson> unused() async { serviceCalls++; throw StateError('No service RPC on open/hide'); }
-  @override Future<AutomationJson> prepareServiceDelegation(AutomationJson value) => unused();
-  @override Future<AutomationJson> confirmServiceDelegation(AutomationJson value) => unused();
-  @override Future<AutomationJson> cancelServiceDelegation(AutomationJson value) => unused();
-  @override Future<AutomationJson> serviceDelegationStatus(AutomationJson value) => unused();
-  @override Future<AutomationJson> revokeServiceDelegation(AutomationJson value) => unused();
+  Future<AutomationJson> connectRunner(String id) async {
+    legacyConnects++;
+    throw StateError('No legacy service connect');
+  }
+
+  Future<AutomationJson> unused() async {
+    serviceCalls++;
+    throw StateError('No service RPC on open/hide');
+  }
+
+  @override
+  Future<AutomationJson> prepareServiceDelegation(AutomationJson value) => unused();
+  @override
+  Future<AutomationJson> confirmServiceDelegation(AutomationJson value) => unused();
+  @override
+  Future<AutomationJson> cancelServiceDelegation(AutomationJson value) => unused();
+  @override
+  Future<AutomationJson> serviceDelegationStatus(AutomationJson value) => unused();
+  @override
+  Future<AutomationJson> revokeServiceDelegation(AutomationJson value) => unused();
 }
 
 void main() {
+  testWidgets('short Russian workspace retains an editor above the execution console at 800x600', (tester) async {
+    final api = _ContextEvents()..state = 'failed';
+    await _open(tester, api, size: const Size(800, 600), locale: AppLocale.ru, openFile: true);
+    await tapKey(tester, 'automation-validate-run');
+    await tapKey(tester, 'automation-confirm-run');
+    await settle(tester);
+    final editor = tester.getRect(find.byType(AnsibleCodeEditor));
+    final console = tester.getRect(find.byKey(const ValueKey('automation-execution-panel')));
+    expect(editor.height, greaterThanOrEqualTo(24));
+    expect(editor.bottom, lessThan(console.top));
+    expect(find.byKey(const ValueKey('automation-console-close')).hitTestable(), findsOneWidget);
+    expect(find.byKey(const ValueKey('automation-console-technical-tab')).hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
 
-  testWidgets('short Russian workspace retains an editor above the execution console at 800x600',(tester)async{
-    final api=_ContextEvents()..state='failed';
-    await _open(tester,api,size:const Size(800,600),locale:AppLocale.ru,openFile:true);
-    await tapKey(tester,'automation-validate-run');await tapKey(tester,'automation-confirm-run');await settle(tester);
-    final editor=tester.getRect(find.byType(AnsibleCodeEditor));
-    final console=tester.getRect(find.byKey(const ValueKey('automation-execution-panel')));
-    expect(editor.height,greaterThanOrEqualTo(24));expect(editor.bottom,lessThan(console.top));
-    expect(find.byKey(const ValueKey('automation-console-close')).hitTestable(),findsOneWidget);
-    expect(find.byKey(const ValueKey('automation-console-technical-tab')).hitTestable(),findsOneWidget);
-    expect(tester.takeException(),isNull);
-  },variant:const TargetPlatformVariant({TargetPlatform.windows}));
-
-  testWidgets('SEC01 configured project requires an explicit environment and freezes it in ordinary Run review', (tester) async {
-    final api=_EnvironmentJobs();addTearDown(api.events.dispose);
-    await _open(tester,api,projectId:environment.projectId,serviceEvents:api.events);
-    expect(api.contexts,1);expect(api.connects,0);expect(api.prepared,isNull);
-    final prepare=find.byKey(const ValueKey('automation-validate-run'));
-    expect(tester.widget<FilledButton>(prepare).onPressed,isNull);
-    final form=tester.widget<ListView>(find.byKey(const ValueKey('automation-run-scroll'))).controller!;
-    form.jumpTo(0);await tester.pump();
-    expect(api.contexts,1); // Returning to the kept original selector must not recapture.
-    tester.widget<GlassSelect<String?>>(find.byKey(const ValueKey('deployment-run-selection'))).onChanged!(environment.environmentId);
-    await tester.pump();await tapKey(tester,'automation-validate-run');
-    expect(api.connects,1);
-    expect(api.prepared!['deployment_environment'],{'version':1,'frame':environment.frame(profile:api.profile),
-      'environment_id':environment.environmentId});
-    expect(find.textContaining('Staging'),findsOneWidget);
-    expect(find.text('Native frozen host → credential references'),findsOneWidget);
-    expect(api.confirmations,0);expect(tester.takeException(),isNull);
+  testWidgets('SEC01 configured project requires an explicit environment and freezes it in ordinary Run review', (
+    tester,
+  ) async {
+    final api = _EnvironmentJobs();
+    addTearDown(api.events.dispose);
+    await _open(tester, api, projectId: environment.projectId, serviceEvents: api.events);
+    expect(api.contexts, 1);
+    expect(api.connects, 0);
+    expect(api.prepared, isNull);
+    final prepare = find.byKey(const ValueKey('automation-validate-run'));
+    expect(tester.widget<FilledButton>(prepare).onPressed, isNull);
+    final form = tester.widget<ListView>(find.byKey(const ValueKey('automation-run-scroll'))).controller!;
+    form.jumpTo(0);
+    await tester.pump();
+    expect(api.contexts, 1); // Returning to the kept original selector must not recapture.
+    tester.widget<GlassSelect<String?>>(find.byKey(const ValueKey('deployment-run-selection'))).onChanged!(
+      environment.environmentId,
+    );
+    await tester.pump();
+    await tapKey(tester, 'automation-validate-run');
+    expect(api.connects, 1);
+    expect(api.prepared!['deployment_environment'], {
+      'version': 1,
+      'frame': environment.frame(profile: api.profile),
+      'environment_id': environment.environmentId,
+    });
+    expect(find.textContaining('Staging'), findsOneWidget);
+    expect(find.text('Native frozen host → credential references'), findsOneWidget);
+    expect(api.confirmations, 0);
+    expect(tester.takeException(), isNull);
   });
   testWidgets('SEC01 legacy project keeps the exact omitted request field', (tester) async {
-    final api=_EnvironmentJobs()..configured=false;addTearDown(api.events.dispose);
-    await _open(tester,api,projectId:environment.projectId,serviceEvents:api.events);
-    expect(api.contexts,1);expect(api.connects,0);expect(api.prepared,isNull);
-    await tapKey(tester,'automation-validate-run');
-    expect(api.prepared!.containsKey('deployment_environment'),false);
-    expect(api.connects,1);expect(api.confirmations,0);expect(tester.takeException(),isNull);
+    final api = _EnvironmentJobs()..configured = false;
+    addTearDown(api.events.dispose);
+    await _open(tester, api, projectId: environment.projectId, serviceEvents: api.events);
+    expect(api.contexts, 1);
+    expect(api.connects, 0);
+    expect(api.prepared, isNull);
+    await tapKey(tester, 'automation-validate-run');
+    expect(api.prepared!.containsKey('deployment_environment'), false);
+    expect(api.connects, 1);
+    expect(api.confirmations, 0);
+    expect(tester.takeException(), isNull);
   });
-  testWidgets('SEC01 original boundary during preparation discards the late review without confirmation', (tester) async {
-    final api=_EnvironmentJobs()..pending=Completer<AutomationJson>();addTearDown(api.events.dispose);
-    await _open(tester,api,projectId:environment.projectId,serviceEvents:api.events);
-    final form=tester.widget<ListView>(find.byKey(const ValueKey('automation-run-scroll'))).controller!;
-    form.jumpTo(0);await tester.pump();
-    expect(api.contexts,1); // Returning to the kept original selector must not recapture.
-    tester.widget<GlassSelect<String?>>(find.byKey(const ValueKey('deployment-run-selection'))).onChanged!(environment.environmentId);
-    await tester.pump();await tapKey(tester,'automation-validate-run');
-    expect(api.prepared,isNotNull);api.events.boundary();await settle(tester);
-    api.pending!.complete(api.review());await settle(tester);
-    expect(api.discardedId,'opaque-native-review');expect(api.confirmations,0);
-    expect(find.byKey(const ValueKey('automation-confirm-run')),findsNothing);
-    expect(api.connects,1);expect(tester.takeException(),isNull);
+  testWidgets('SEC01 original boundary during preparation discards the late review without confirmation', (
+    tester,
+  ) async {
+    final api = _EnvironmentJobs()..pending = Completer<AutomationJson>();
+    addTearDown(api.events.dispose);
+    await _open(tester, api, projectId: environment.projectId, serviceEvents: api.events);
+    final form = tester.widget<ListView>(find.byKey(const ValueKey('automation-run-scroll'))).controller!;
+    form.jumpTo(0);
+    await tester.pump();
+    expect(api.contexts, 1); // Returning to the kept original selector must not recapture.
+    tester.widget<GlassSelect<String?>>(find.byKey(const ValueKey('deployment-run-selection'))).onChanged!(
+      environment.environmentId,
+    );
+    await tester.pump();
+    await tapKey(tester, 'automation-validate-run');
+    expect(api.prepared, isNotNull);
+    api.events.boundary();
+    await settle(tester);
+    api.pending!.complete(api.review());
+    await settle(tester);
+    expect(api.discardedId, 'opaque-native-review');
+    expect(api.confirmations, 0);
+    expect(find.byKey(const ValueKey('automation-confirm-run')), findsNothing);
+    expect(api.connects, 1);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('public service action opens original scoped dialog without ordinary connect and route hide retires it', (tester) async {
-    final service = _PublicServiceJobs(), events = RuntimeNoticeEventAdapter(); addTearDown(events.dispose);
-    final container = await _open(tester, service, selectTarget:false, serviceEvents:events);
+  testWidgets('public service action opens original scoped dialog without ordinary connect and route hide retires it', (
+    tester,
+  ) async {
+    final service = _PublicServiceJobs(), events = RuntimeNoticeEventAdapter();
+    addTearDown(events.dispose);
+    final container = await _open(tester, service, selectTarget: false, serviceEvents: events);
     final profile = container.read(activeProfileProvider)!;
-    events.acceptScope(originalEpoch:events.epoch,nativeProfile:{'id':profile.id.value,'active':true,
-      'vault_state':'unlocked','notification_scope_id':'22222222-2222-4222-8222-222222222222'});
+    events.acceptScope(
+      originalEpoch: events.epoch,
+      nativeProfile: {
+        'id': profile.id.value,
+        'active': true,
+        'vault_state': 'unlocked',
+        'notification_scope_id': '22222222-2222-4222-8222-222222222222',
+      },
+    );
     await settle(tester);
-    expect(tester.widget<FilledButton>(find.byKey(const ValueKey('automation-validate-run'))).onPressed,isNull);
-    await tapKey(tester,'automation-service-open');
-    expect(find.byType(AutomationServiceDelegationDialog),findsOneWidget);
-    expect(service.legacyConnects,0);expect(service.serviceCalls,0);
-    container.read(routerProvider).go(AppRoutes.terminal);await settle(tester);
-    expect(find.byType(AutomationServiceDelegationDialog),findsNothing);
-    expect(service.legacyConnects,0);expect(service.serviceCalls,0);expect(tester.takeException(),isNull);
+    expect(tester.widget<FilledButton>(find.byKey(const ValueKey('automation-validate-run'))).onPressed, isNull);
+    await tapKey(tester, 'automation-service-open');
+    expect(find.byType(AutomationServiceDelegationDialog), findsOneWidget);
+    expect(service.legacyConnects, 0);
+    expect(service.serviceCalls, 0);
+    container.read(routerProvider).go(AppRoutes.terminal);
+    await settle(tester);
+    expect(find.byType(AutomationServiceDelegationDialog), findsNothing);
+    expect(service.legacyConnects, 0);
+    expect(service.serviceCalls, 0);
+    expect(tester.takeException(), isNull);
   });
   testWidgets('public service original hub retirement removes only owned dialog without service RPC', (tester) async {
-    final service = _PublicServiceJobs(), events = RuntimeNoticeEventAdapter(); addTearDown(events.dispose);
-    final container = await _open(tester,service,selectTarget:false,serviceEvents:events);
-    final profile=container.read(activeProfileProvider)!;
-    events.acceptScope(originalEpoch:events.epoch,nativeProfile:{'id':profile.id.value,'active':true,
-      'vault_state':'unlocked','notification_scope_id':'22222222-2222-4222-8222-222222222222'});
-    await settle(tester);await tapKey(tester,'automation-service-open');
-    expect(find.byType(AutomationServiceDelegationDialog),findsOneWidget);
-    events.boundary();await settle(tester);
-    expect(find.byType(AutomationServiceDelegationDialog),findsNothing);
-    expect(service.legacyConnects,0);expect(service.serviceCalls,0);expect(tester.takeException(),isNull);
+    final service = _PublicServiceJobs(), events = RuntimeNoticeEventAdapter();
+    addTearDown(events.dispose);
+    final container = await _open(tester, service, selectTarget: false, serviceEvents: events);
+    final profile = container.read(activeProfileProvider)!;
+    events.acceptScope(
+      originalEpoch: events.epoch,
+      nativeProfile: {
+        'id': profile.id.value,
+        'active': true,
+        'vault_state': 'unlocked',
+        'notification_scope_id': '22222222-2222-4222-8222-222222222222',
+      },
+    );
+    await settle(tester);
+    await tapKey(tester, 'automation-service-open');
+    expect(find.byType(AutomationServiceDelegationDialog), findsOneWidget);
+    events.boundary();
+    await settle(tester);
+    expect(find.byType(AutomationServiceDelegationDialog), findsNothing);
+    expect(service.legacyConnects, 0);
+    expect(service.serviceCalls, 0);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('production missing Native owner capability never falls back to ordinary confirm', (tester) async {
-    final service = _ProductionReview(); await _open(tester, service);
-    await tapKey(tester, 'automation-validate-run'); await tapKey(tester, 'automation-confirm-run');
+    final service = _ProductionReview();
+    await _open(tester, service);
+    await tapKey(tester, 'automation-validate-run');
+    await tapKey(tester, 'automation-confirm-run');
     expect(service.confirmations, 0);
     expect(find.byKey(const ValueKey('automation-owner-confirmation-dialog')), findsNothing);
     expect(find.byKey(const ValueKey('automation-confirm-run')), findsNothing);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('production malformed or missing original challenge cannot invoke owner or ordinary path', (tester) async {
-    final service = _ProductionOwner()..missingChallenge = true; await _open(tester, service);
-    await tapKey(tester, 'automation-validate-run'); await tapKey(tester, 'automation-confirm-run');
-    expect(service.confirmations, 0); expect(service.ownerIds, isEmpty);
+  testWidgets('production malformed or missing original challenge cannot invoke owner or ordinary path', (
+    tester,
+  ) async {
+    final service = _ProductionOwner()..missingChallenge = true;
+    await _open(tester, service);
+    await tapKey(tester, 'automation-validate-run');
+    await tapKey(tester, 'automation-confirm-run');
+    expect(service.confirmations, 0);
+    expect(service.ownerIds, isEmpty);
     expect(find.byKey(const ValueKey('automation-owner-confirmation-dialog')), findsNothing);
   });
   testWidgets('production main composer requires separate passphrase action and original review', (tester) async {
-    final service = _ProductionOwner(); await _open(tester, service);
-    await tapKey(tester, 'automation-validate-run'); await tapKey(tester, 'automation-confirm-run');
+    final service = _ProductionOwner();
+    await _open(tester, service);
+    await tapKey(tester, 'automation-validate-run');
+    await tapKey(tester, 'automation-confirm-run');
     expect(find.byKey(const ValueKey('automation-owner-confirmation-dialog')), findsOneWidget);
-    expect(service.ownerIds, isEmpty); expect(service.confirmations, 0);
-    await tester.enterText(find.descendant(of: find.byKey(const ValueKey('automation-owner-passphrase')),
-      matching: find.byType(EditableText)), 'synthetic-passphrase'); await tester.pump();
+    expect(service.ownerIds, isEmpty);
+    expect(service.confirmations, 0);
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('automation-owner-passphrase')),
+        matching: find.byType(EditableText),
+      ),
+      'synthetic-passphrase',
+    );
+    await tester.pump();
     await tapKey(tester, 'automation-owner-confirm');
     expect(service.ownerIds, ['01010101-0101-4101-8101-010101010101']);
     expect(service.confirmations, 0);
@@ -975,15 +1148,21 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   testWidgets('route retirement dismisses production owner dialog before any submission', (tester) async {
-    final service = _ProductionOwner(); final container = await _open(tester, service);
-    await tapKey(tester, 'automation-validate-run'); await tapKey(tester, 'automation-confirm-run');
+    final service = _ProductionOwner();
+    final container = await _open(tester, service);
+    await tapKey(tester, 'automation-validate-run');
+    await tapKey(tester, 'automation-confirm-run');
     expect(find.byKey(const ValueKey('automation-owner-confirmation-dialog')), findsOneWidget);
-    container.read(routerProvider).go(AppRoutes.hosts); await settle(tester);
-    expect(service.ownerIds, isEmpty); expect(service.confirmations, 0);
+    container.read(routerProvider).go(AppRoutes.hosts);
+    await settle(tester);
+    expect(service.ownerIds, isEmpty);
+    expect(service.confirmations, 0);
     expect(find.byKey(const ValueKey('automation-owner-confirmation-dialog')), findsNothing);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('RUN02 variables come from the owned prepared snapshot and raw values are never revealed', (tester) async {
+  testWidgets('RUN02 variables come from the owned prepared snapshot and raw values are never revealed', (
+    tester,
+  ) async {
     final api = _PrivateReview();
     await _open(tester, api);
     final l = tester.element(find.byKey(const ValueKey('automation-validate-run'))).l10n;
@@ -994,13 +1173,21 @@ void main() {
     // A retained service/cache reference cannot alter the already prepared UI.
     (api.frozen['parameters'] as AutomationJson)['extra_vars'] = {'late_cache_key': 'PRIVATE_LATE_VALUE'};
     api.frozen['privilege_review'] = {'escalation': 'future_no_sudo', 'accounts': <Object?>[]};
-    final scroll = find.descendant(of: find.byKey(const ValueKey('automation-run-scroll')), matching: find.byType(Scrollable)).first;
+    final scroll = find
+        .descendant(of: find.byKey(const ValueKey('automation-run-scroll')), matching: find.byType(Scrollable))
+        .first;
     await tester.scrollUntilVisible(find.byKey(const ValueKey('automation-review-variables')), 240, scrollable: scroll);
     await tapKey(tester, 'automation-review-variables');
     expect(find.text('native_frozen_key'), findsOneWidget);
     expect(find.textContaining('mutable_form_key'), findsNothing);
     expect(find.textContaining('late_cache_key'), findsNothing);
-    for (final value in ['PRIVATE_APPROVED_VALUE', 'PRIVATE_APPROVED_REF', 'PRIVATE_TAG', 'PRIVATE_FORM_VALUE', 'PRIVATE_LATE_VALUE']) {
+    for (final value in [
+      'PRIVATE_APPROVED_VALUE',
+      'PRIVATE_APPROVED_REF',
+      'PRIVATE_TAG',
+      'PRIVATE_FORM_VALUE',
+      'PRIVATE_LATE_VALUE',
+    ]) {
       expect(find.textContaining(value), findsNothing);
     }
     expect(find.text('Value hidden'), findsOneWidget);
@@ -1096,7 +1283,10 @@ void main() {
     expect(find.textContaining('inherited from group Operations folder'), findsWidgets);
     expect(find.text('Explicit bastion route'), findsOneWidget);
     expect(find.textContaining('selected Runner during the final run review'), findsOneWidget);
-    expect(service.prepared, isNull); expect(service.confirmations, 0); expect(service.inventory.reveals, 0); expect(service.connects, 0);
+    expect(service.prepared, isNull);
+    expect(service.confirmations, 0);
+    expect(service.inventory.reveals, 0);
+    expect(service.connects, 0);
     await tapKey(tester, 'automation-target-settings-close');
     expect(tester.widget<CheckboxListTile>(find.byKey(ValueKey('automation-target-${service.host.id}'))).value, false);
     expect(tester.takeException(), isNull);
@@ -1105,40 +1295,65 @@ void main() {
     final service = _InheritanceApi()..inventory.pending = Completer<EffectiveHostConfig>();
     final container = await _open(tester, service);
     await tapKey(tester, 'automation-target-settings-${service.host.id.value}');
-    container.read(routerProvider).go(AppRoutes.terminal); await settle(tester);
-    container.read(routerProvider).go(AppRoutes.automation); await settle(tester);
-    service.inventory.pending!.complete(service.inventory.result()); await settle(tester);
+    container.read(routerProvider).go(AppRoutes.terminal);
+    await settle(tester);
+    container.read(routerProvider).go(AppRoutes.automation);
+    await settle(tester);
+    service.inventory.pending!.complete(service.inventory.result());
+    await settle(tester);
     expect(find.byKey(const ValueKey('automation-target-settings-dialog')), findsNothing);
     expect(find.text('inherited-user'), findsNothing);
-    expect(service.prepared, isNull); expect(service.confirmations, 0); expect(service.inventory.reveals, 0); expect(service.connects, 0);
+    expect(service.prepared, isNull);
+    expect(service.confirmations, 0);
+    expect(service.inventory.reveals, 0);
+    expect(service.connects, 0);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('target inheritance edit opens only existing exact host editor without connection or run', (tester) async {
-    final service = _InheritanceApi(); final container = await _open(tester, service);
+  testWidgets('target inheritance edit opens only existing exact host editor without connection or run', (
+    tester,
+  ) async {
+    final service = _InheritanceApi();
+    final container = await _open(tester, service);
     await tapKey(tester, 'automation-target-settings-${service.host.id.value}');
     await tapKey(tester, 'automation-target-settings-edit');
     expect(container.read(routerProvider).routeInformationProvider.value.uri.path, AppRoutes.editHost(service.host.id));
-    expect(service.prepared, isNull); expect(service.confirmations, 0); expect(service.inventory.reveals, 0); expect(service.connects, 0);
+    expect(service.prepared, isNull);
+    expect(service.confirmations, 0);
+    expect(service.inventory.reveals, 0);
+    expect(service.connects, 0);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('disposing only the run composer retires its pending inheritance dialog without touching another section', (tester) async {
-    final service = _InheritanceApi()..inventory.pending = Completer<EffectiveHostConfig>();
+  testWidgets(
+    'disposing only the run composer retires its pending inheritance dialog without touching another section',
+    (tester) async {
+      final service = _InheritanceApi()..inventory.pending = Completer<EffectiveHostConfig>();
+      await _open(tester, service);
+      await tapKey(tester, 'automation-target-settings-${service.host.id.value}');
+      // Existing workspace action, as also reachable through navigation/focus;
+      // no profile/route change is needed to dispose this run composer.
+      tester
+          .widget<GlassButton>(find.byKey(const ValueKey('automation-workspace-projects'), skipOffstage: false))
+          .onPressed!();
+      await settle(tester);
+      expect(find.byKey(const ValueKey('automation-target-settings-dialog')), findsNothing);
+      service.inventory.pending!.complete(service.inventory.result());
+      await settle(tester);
+      expect(find.text('inherited-user'), findsNothing);
+      expect(service.prepared, isNull);
+      expect(service.confirmations, 0);
+      expect(service.connects, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('frozen review shows Native alias and approved username/port without deriving them from display name', (
+    tester,
+  ) async {
+    final service = _Api();
     await _open(tester, service);
-    await tapKey(tester, 'automation-target-settings-${service.host.id.value}');
-    // Existing workspace action, as also reachable through navigation/focus;
-    // no profile/route change is needed to dispose this run composer.
-    tester.widget<GlassButton>(find.byKey(const ValueKey('automation-workspace-projects'), skipOffstage: false)).onPressed!();
-    await settle(tester);
-    expect(find.byKey(const ValueKey('automation-target-settings-dialog')), findsNothing);
-    service.inventory.pending!.complete(service.inventory.result()); await settle(tester);
-    expect(find.text('inherited-user'), findsNothing);
-    expect(service.prepared, isNull); expect(service.confirmations, 0); expect(service.connects, 0);
-    expect(tester.takeException(), isNull);
-  });
-  testWidgets('frozen review shows Native alias and approved username/port without deriving them from display name', (tester) async {
-    final service = _Api(); await _open(tester, service);
     await tapKey(tester, 'automation-validate-run');
-    final scroll = find.descendant(of: find.byKey(const ValueKey('automation-run-scroll')), matching: find.byType(Scrollable)).first;
+    final scroll = find
+        .descendant(of: find.byKey(const ValueKey('automation-run-scroll')), matching: find.byType(Scrollable))
+        .first;
     await tester.scrollUntilVisible(find.text('Ansible alias: cc_fixture'), 160, scrollable: scroll);
     expect(find.text('Ansible alias: cc_fixture'), findsOneWidget);
     expect(find.text('Username: runner'), findsOneWidget);
@@ -1148,24 +1363,42 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('existing history opens output task results and preserves them through polling without another execution', (tester) async {
-    final api = _TaskResultEvents();
+  testWidgets('failed job keeps output and retry without retired metric navigation', (tester) async {
+    final api = _Events()..state = 'failed';
     await _open(tester, api);
     await tapKey(tester, 'automation-workspace-jobs');
+    expect(find.byKey(const ValueKey('automation-events-job-fixture')), findsOneWidget);
+    expect(find.byKey(const ValueKey('automation-retry-job-fixture')), findsOneWidget);
+    expect(find.byKey(const ValueKey('automation-job-metrics-job-fixture')), findsNothing);
     await tapKey(tester, 'automation-events-job-fixture');
     await tapKey(tester, 'automation-console-technical-tab');
-    final initialPages = api.cursors.length;
-    await tapKey(tester, 'automation-task-results-job-fixture');
-    expect(api.cursors.length, initialPages + 1);
-    expect(api.cursors.last, 0);
-    await tapKey(tester, 'automation-task-result-1');
-    expect(find.text('Recorded task failure from existing event service'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 5));
-    await settle(tester);
-    expect(find.text('Recorded task failure from existing event service'), findsOneWidget);
+    expect(find.byKey(const ValueKey('automation-console-job-metrics')), findsNothing);
     expect(api.confirmations, 0);
-    expect(api.cancelledJobs, isEmpty);
-  }, variant: const TargetPlatformVariant({TargetPlatform.windows}));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'existing history opens output task results and preserves them through polling without another execution',
+    (tester) async {
+      final api = _TaskResultEvents();
+      await _open(tester, api);
+      await tapKey(tester, 'automation-workspace-jobs');
+      await tapKey(tester, 'automation-events-job-fixture');
+      await tapKey(tester, 'automation-console-technical-tab');
+      final initialPages = api.cursors.length;
+      await tapKey(tester, 'automation-task-results-job-fixture');
+      expect(api.cursors.length, initialPages + 1);
+      expect(api.cursors.last, 0);
+      await tapKey(tester, 'automation-task-result-1');
+      expect(find.text('Recorded task failure from existing event service'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await settle(tester);
+      expect(find.text('Recorded task failure from existing event service'), findsOneWidget);
+      expect(api.confirmations, 0);
+      expect(api.cancelledJobs, isEmpty);
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.windows}),
+  );
 
   testWidgets('Russian narrow bottom console keeps two compact rows and accessible controls', (tester) async {
     await _open(
@@ -1519,9 +1752,18 @@ void main() {
         tester.widget<SelectableText>(find.byKey(const ValueKey('automation-review-runner'))).data,
         'Runner fixture',
       );
-      expect(tester.widget<SelectableText>(find.byKey(const ValueKey('automation-review-project-revision'))).data, '17');
-      expect(tester.widget<SelectableText>(find.byKey(const ValueKey('automation-review-project-digest'))).data, 'fixture-revision-proof');
-      expect(tester.widget<SelectableText>(find.byKey(const ValueKey('automation-review-inventory-digest'))).data, 'fixture-inventory-proof');
+      expect(
+        tester.widget<SelectableText>(find.byKey(const ValueKey('automation-review-project-revision'))).data,
+        '17',
+      );
+      expect(
+        tester.widget<SelectableText>(find.byKey(const ValueKey('automation-review-project-digest'))).data,
+        'fixture-revision-proof',
+      );
+      expect(
+        tester.widget<SelectableText>(find.byKey(const ValueKey('automation-review-inventory-digest'))).data,
+        'fixture-inventory-proof',
+      );
       expect(tester.widget<SelectableText>(find.byKey(const ValueKey('automation-review-runner-id'))).data, 'runner');
       expect(find.textContaining('Privilege escalation required by playbooks'), findsOneWidget);
       expect(tester.widget<SelectableText>(find.byKey(const ValueKey('automation-review-timeout'))).data, '617');
@@ -1862,9 +2104,13 @@ void main() {
     await tester.ensureVisible(find.textContaining('jump@bastion.example.test:2222'));
     expect(find.textContaining('jump@bastion.example.test:2222 → runner@target.example.test:22'), findsOneWidget);
     expect(find.text('fixture-revision-proof'), findsOneWidget);
-    await tester.scrollUntilVisible(find.byKey(const ValueKey('automation-review-technical')), 280,
-      scrollable: find.descendant(of: find.byKey(const ValueKey('automation-run-scroll')),
-        matching: find.byType(Scrollable)).first);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('automation-review-technical')),
+      280,
+      scrollable: find
+          .descendant(of: find.byKey(const ValueKey('automation-run-scroll')), matching: find.byType(Scrollable))
+          .first,
+    );
     await tester.tap(find.text('Snapshot technical details'));
     await settle(tester);
     await tester.ensureVisible(find.text('fixture-environment-proof'));

@@ -216,10 +216,6 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
 String validationMessage(AppLocalizations l, String field, String rule) {
   if (field == 'automation_credentials') return projectCredentialsIssueMessage(l, projectCredentialsIssueForRule(rule));
   if (field == 'automation_vault') return l.automationVaultChoose;
-  if (field == 'agent_tunnel') {
-    if (rule == 'tls_identity_expired') return l.agentTunnelTlsExpired;
-    if (rule == 'tls_identity_unavailable' || rule == 'tls_identity_unknown') return l.agentTunnelTlsUnavailable;
-  }
   if (field == 'shared_host' && (rule == 'endpoint_changed_review' || rule == 'exact_endpoint_confirmation_required')) {
     return l.sharingEndpointChanged;
   }

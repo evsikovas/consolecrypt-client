@@ -103,7 +103,6 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
           child: Column(
             children: [
               if (hideAppBar) const CriticalNoticeAttentionBar(),
-              const MonitoringPinGlobalBar(),
               Expanded(
                 child: Stack(
                   fit: StackFit.expand,

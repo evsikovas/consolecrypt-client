@@ -54,20 +54,13 @@
 
 //! `broadcast` / `mpsc` receivers.
 
-
-
 mod account;
 
-mod agent_reader;
-
-mod agent_tunnel;
-pub use agent_tunnel::setup::AgentSetupOperation;
+mod session_provenance;
 
 mod ai;
 
 mod app;
-
-mod automation_awx;
 
 pub mod automation_projects;
 
@@ -130,15 +123,11 @@ pub use database_import::{DbImportChoice, DbImportReviewDto};
 pub use database_runtime::{DbLiveSession, DbPreparedQueryDto, DbQueryReviewDto};
 
 pub use docker_compose::{
-
     ComposeEdit, ComposeFileDto, ComposeJobUpdate, ComposeProjectDto, ComposeSaveOutcome,
-
 };
 
 pub use docker_runtime::{
-
-    docker_contains_secret, DockerConnectOutcome, DockerForwardDto, DockerHostDto, DockerSessionDto,
-
+    DockerConnectOutcome, DockerForwardDto, DockerHostDto, DockerSessionDto, docker_contains_secret,
 };
 
 mod device_unlock;
@@ -215,9 +204,8 @@ mod settings_preservation;
 
 mod monitoring_sync;
 
-pub use monitoring_sync::MonitoringSettingsConsent;
-
-mod monitoring_runtime;
+mod host_metrics;
+mod settings_review_runtime;
 
 mod plan;
 
@@ -225,7 +213,7 @@ mod presence;
 
 mod security_key;
 
-pub use presence::{StepUp, StepUpAction, PASSPHRASE_ONLY};
+pub use presence::{PASSPHRASE_ONLY, StepUp, StepUpAction};
 
 mod profile_hints;
 
@@ -285,66 +273,45 @@ mod working_set;
 
 mod writer;
 
-
-
 pub use account::RevealedSecret;
 
 pub use app::AppCore;
 
-pub use agent_reader::ReaderActionHandle;
-
-pub use agent_tunnel::{NodeAssociationOperation, NodeClientIdentityReview, NodeRevocationReview, NodeRotationReview, NodeTunnelControlReview, AgentTunnelRouteOperation, AgentCollectorOperation, AgentExporterOperation, AgentCollectorServiceReview, AgentCollectorServiceRevocationReview};
-
 pub use backup::{BackupFrequencyDto, BackupInfoDto, BackupScheduleDto};
 
 pub use cc_rdp_core::{
-
     CertificateInfo as RdpCertificateInfo, ConnectConfig as RdpConnectConfig,
-
     DirectoryGrant as RdpDirectoryGrant, Input as RdpInput, MouseButton as RdpMouseButton,
-
     PollResult as RdpPollResult, RdpError, SessionCapabilities as RdpSessionCapabilities,
-
     SessionPermissions as RdpSessionPermissions, SessionStatus as RdpSessionStatus,
-
 };
 
-pub use config::{current_platform, default_device_name, AppConfig, KdfPolicy, SecureStoreKind};
+pub use config::{AppConfig, KdfPolicy, SecureStoreKind, current_platform, default_device_name};
 
 pub use dto::*;
 
 pub use edit::{
-
     AppRefDto, EditConflictResolutionDto, EditLeftoverDto, EditSessionDto, EditStatusDto,
-
     EditStopModeDto, EditStopOutcomeDto, OpenWithDto, RemoteMetaDto,
-
 };
 
 pub use enrollment_dto::*;
 
 pub use error::{AppError, AppResult};
 
-pub use automation_awx::runtime::AwxNativeOperation;
-
 pub use host_auth::{AgentKind, HostAuth, HostAuthMode, META_AUTH_PROMPT, META_INLINE_CREDENTIAL};
 
 pub use kubernetes::KubeInventory;
 
 pub use plan::{
-
     PlanDiagnosticDto, PlanPreviewDto, PlanSeverityDto, ResolvedValueDto, RouteHopDto,
-
     ValueSourceDto,
-
 };
 
 pub use rdp_hosts::RdpSavedHostTicket;
 
 pub use sftp_browser::{
-
-    normalize_remote_path, RemoteFileInfoDto, SftpPreviewDto, MAX_PREVIEW_BYTES,
-
+    MAX_PREVIEW_BYTES, RemoteFileInfoDto, SftpPreviewDto, normalize_remote_path,
 };
 
 pub use sharing_api::{ShareNoteLinkDto, SharedNoteDto, SharedNoteInputDto, SharedNotesDto};
@@ -355,21 +322,14 @@ pub use snippets::SnippetSearchHitDto;
 
 pub use ssh_api::OpenSshCommandDto;
 
-pub use ssh_config_import::{ssh_config_preview, SshConfigHostPreview, SshConfigPreview};
+pub use ssh_config_import::{SshConfigHostPreview, SshConfigPreview, ssh_config_preview};
 
 pub use transfers::{
-
     ErrorInfoDto, TransferDirectionDto, TransferJobDto, TransferRequestDto, TransferStateDto,
-
 };
 
-
-
 /// Re-exported for constructing [`AppConfig`].
-
 pub use cc_protocol::version::Platform;
-
-
 
 /// Rust-only integration points (not part of the FRB surface): custom
 
@@ -380,26 +340,15 @@ pub mod platform {
     pub use cc_platform_core::open::{LaunchOutput, LaunchSpec};
 
     pub use cc_platform_core::{
-
-        is_active_name, platform_device_keys, AppRef, DeviceKeyProtector, DeviceKeyStatus,
-
-        ExternalDeviceKeys, FakePrompt, FileOpener, InMemoryDeviceKeys, InMemorySecureStore,
-
-        Launcher, OpenError, OsAuthError, OsAuthKind, OsFamily, SecureStore, SecureStoreError,
-
-        StoreBackedDeviceKeys, UnlockProtection, UnsupportedDeviceKeys,
-
+        AppRef, DeviceKeyProtector, DeviceKeyStatus, ExternalDeviceKeys, FakePrompt, FileOpener,
+        InMemoryDeviceKeys, InMemorySecureStore, Launcher, OpenError, OsAuthError, OsAuthKind,
+        OsFamily, SecureStore, SecureStoreError, StoreBackedDeviceKeys, UnlockProtection,
+        UnsupportedDeviceKeys, is_active_name, platform_device_keys,
     };
-
 }
 
-
-
 #[cfg(test)]
-
 mod sftp_browser_tests;
-
-
 
 #[cfg(test)]
 
@@ -408,82 +357,10 @@ mod tests {
     #[test]
 
     fn facade_is_send_sync() {
-
         fn assert_send_sync<T: Send + Sync + Clone + 'static>() {}
 
         assert_send_sync::<super::AppCore>();
-
     }
-
 }
-
-
 
 pub use automation_projects::portable::gateway::{PortableOperation, PortablePasswordTransfer};
-
-
-
-/// Fixed opt-in owned fixture; absent from production feature selection.
-
-#[cfg(all(feature = "test-harness", target_os = "linux"))]
-
-#[doc(hidden)]
-
-pub async fn __test_harness_owned_public_tunnel_route() {
-
-    AppCore::__owned_public_tunnel_fixture().await;
-
-}
-
-
-/// Fixed test-harness-only reuse of original affected assertion functions.
-#[cfg(all(feature = "test-harness", not(test)))]
-#[doc(hidden)]
-pub mod focused_cadvisor_test_harness;
-
-/// One fixed opt-in original owner fixture; no caller filter or authority API.
-#[cfg(all(feature="test-harness",any(target_os="linux",target_os="windows")))]
-#[doc(hidden)]
-pub async fn __test_harness_owned_normal_lifetime_receiver() {
-    AppCore::__owned_normal_lifetime_receiver_fixture().await;
-}
-
-// Fixed opt-in original revocation cases; no caller selector or authority API.
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub async fn __test_harness_revocation_pending_verified() { AppCore::__owned_revocation_pending_verified().await; }
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub async fn __test_harness_revocation_failed_completion() { AppCore::__owned_revocation_failed_completion().await; }
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub async fn __test_harness_revocation_deadline_generation() { AppCore::__owned_revocation_deadline_generation().await; }
-
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub async fn __test_harness_saved_destination_source_scope() { AppCore::__owned_saved_destination_source_scope().await; }
-
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub async fn __test_harness_local_join_without_control_proof() { AppCore::__owned_local_join_without_control_proof().await; }
-
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub async fn __test_harness_cancel_pending_join_preserves_handle() { AppCore::__owned_cancel_pending_join_preserves_handle().await; }
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub async fn __test_harness_cancel_control_preserves_join_witness() { AppCore::__owned_cancel_control_preserves_join_witness().await; }
-
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub fn __test_harness_relay_expiry_fractional() { AppCore::__owned_relay_expiry_fractional(); }
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub fn __test_harness_relay_expiry_denials() { AppCore::__owned_relay_expiry_denials(); }
-
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub fn __test_harness_outbound_url_canonical_positive() { AppCore::__owned_outbound_url_canonical_positive(); }
-#[cfg(all(feature="test-harness",target_os="linux"))]
-#[doc(hidden)]
-pub fn __test_harness_outbound_url_canonical_negative() { AppCore::__owned_outbound_url_canonical_negative(); }

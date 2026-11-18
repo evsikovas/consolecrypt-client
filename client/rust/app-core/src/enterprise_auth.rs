@@ -391,7 +391,7 @@ impl AppCore {
         display_name: Option<String>,
         allow_new_device_identity: bool,
     ) -> AppResult<EnterpriseOidcChallengeDto> {
-        let _reader_auth_transition = self.reader_auth_transition();
+        let _original_auth_transition = self.original_auth_transition();
         let server_url = crate::validate::server_url(&server_url)?;
         let server_url = server_url.trim().to_owned();
         self.inner.ctx.check_server_url(&server_url)?;
@@ -520,7 +520,7 @@ impl AppCore {
         ticket: String,
         callback_url: Option<String>,
     ) -> AppResult<EnterpriseSignInResultDto> {
-        let _reader_auth_transition = self.reader_auth_transition();
+        let _original_auth_transition = self.original_auth_transition();
         let id = parse_ticket(&ticket)?;
         let pending = {
             let mut st = self.inner.enterprise.lock();
@@ -657,7 +657,7 @@ impl AppCore {
         password: String,
         allow_new_device_identity: bool,
     ) -> AppResult<AuthStateDto> {
-        let _reader_auth_transition = self.reader_auth_transition();
+        let _original_auth_transition = self.original_auth_transition();
         let credential = ldap_credential(login, password)?;
         self.reauthenticate_with(credential, allow_new_device_identity)
             .await
@@ -670,7 +670,7 @@ impl AppCore {
         login: String,
         password: String,
     ) -> AppResult<ProfileInfo> {
-        let _reader_auth_transition = self.reader_auth_transition();
+        let _original_auth_transition = self.original_auth_transition();
         let credential = ldap_credential(login, password)?;
         self.enable_sync_with(server_url, credential).await
     }

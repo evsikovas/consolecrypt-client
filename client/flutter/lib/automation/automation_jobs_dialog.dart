@@ -12,7 +12,6 @@ import 'package:consolecrypt/automation/automation_workspace_panel.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/monitoring/job_metrics_chooser.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -275,7 +274,6 @@ class _AutomationJobsDialogState extends ConsumerState<AutomationJobsDialog> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final metricsScope = widget.scope, metricsService = widget.service;
     if (retryComposer != null) return retryComposer!;
     return AutomationWorkspacePanel(
       embedded: widget.embedded,
@@ -401,44 +399,6 @@ class _AutomationJobsDialogState extends ConsumerState<AutomationJobsDialog> {
                             onPressed: retryBusy ? null : () => widget.onRepairRequested!(job),
                             label: Text(l.automationRepairSuggest),
                           ),
-                        if (job['state'] == 'failed' && jobMetricsAvailable(ref))
-                          TextButton.icon(
-                            key: ValueKey('automation-job-metrics-${job['job_id']}'),
-                            icon: const Icon(Icons.insights_outlined, size: 18),
-                            label: Text(l.correlationJobMetricsTitle),
-                            onPressed: () => showJobMetricsChooser(
-                              context,
-                              ref,
-                              scope: metricsScope,
-                              jobs: metricsService,
-                              job: job,
-                              producerCurrent: () =>
-                                  current &&
-                                  widget.active &&
-                                  visible &&
-                                  identical(widget.scope, metricsScope) &&
-                                  identical(widget.service, metricsService),
-                            ),
-                          ),
-                        if (['succeeded', 'failed', 'cancelled', 'interrupted', 'acknowledged'].contains(job['state']))
-                          TextButton.icon(
-                            key: ValueKey('automation-retry-${job['job_id']}'),
-                            icon: const Icon(Icons.play_arrow, size: 18),
-                            onPressed: retryBusy ? null : () => retry(job),
-                            label: Text(l.automationRetryJob),
-                          ),
-                        TextButton.icon(
-                          key: ValueKey('automation-job-details-${job['job_id']}'),
-                          icon: Icon(
-                            expandedJobs.contains(job['job_id']) ? Icons.expand_less : Icons.expand_more,
-                            size: 18,
-                          ),
-                          onPressed: () => setState(() {
-                            final id = job['job_id'] as String;
-                            if (!expandedJobs.add(id)) expandedJobs.remove(id);
-                          }),
-                          label: Text(l.automationJobDetails),
-                        ),
                       ],
                     ),
                     if (job['state'] == 'unknown') ...[

@@ -13,8 +13,8 @@ use uuid::Uuid;
 
 const PROJECTS: &str = "automation.projects.v1";
 mod git;
-mod agent_installer;
 mod baseline;
+mod versions;
 mod diff;
 mod editor;
 mod groups;

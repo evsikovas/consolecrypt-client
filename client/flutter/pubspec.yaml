@@ -3,7 +3,7 @@ description: "ConsoleCrypt desktop client UI: zero-knowledge E2EE SSH client (Fl
 # Never published to pub.dev; distributed as a desktop application.
 publish_to: 'none'
 
-version: 1.2.0+67028
+version: 1.2.0+67029
 
 environment:
   sdk: ^3.13.4
@@ -102,7 +102,6 @@ flutter:
     - assets/fonts/
     - assets/licenses/
     - assets/kubernetes/
-    - assets/automation/exporters/
 
 # Gradle 9 builds of the native drag-and-drop plugins: Cargokit in the
 # published packages calls the removed Project.exec (vendor/super_native_extensions/NOTICE.md).

@@ -17,11 +17,6 @@ import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
-import 'package:consolecrypt/monitoring/job_context_focus.dart';
-import 'package:consolecrypt/monitoring/job_context_navigation.dart';
-import 'package:consolecrypt/monitoring/job_context_receiver.dart';
-import 'package:consolecrypt/monitoring/monitoring_host_focus.dart';
-import 'package:consolecrypt/monitoring/monitoring_providers.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
@@ -36,8 +31,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:xterm/xterm.dart';
 
 class TerminalScreen extends ConsumerStatefulWidget {
-  const TerminalScreen({super.key, this.contextFocus});
-  final JobContextFocus? contextFocus;
+  const TerminalScreen({super.key});
 
   @override
   ConsumerState<TerminalScreen> createState() => _TerminalScreenState();
@@ -48,66 +42,15 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   /// between the row and the column.
   final _card = GlobalKey();
   late final SidebarCollapsed _sidebar;
-  JobContextFocus? _handledContextFocus;
-  int _contextFocusGeneration = 0;
 
   @override
   void initState() {
     super.initState();
     _sidebar = ref.read(sidebarCollapsedProvider.notifier);
-    _scheduleContextFocus();
-  }
-
-  void _scheduleContextFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (mounted) unawaited(_consumeContextFocus());
-  });
-
-  @override
-  void didUpdateWidget(TerminalScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.contextFocus, widget.contextFocus)) {
-      _contextFocusGeneration++;
-      _scheduleContextFocus();
-    }
-  }
-
-  Future<void> _consumeContextFocus() async {
-    final focus = widget.contextFocus;
-    if (focus == null || identical(focus, _handledContextFocus)) return;
-    _handledContextFocus = focus;
-    final token = ++_contextFocusGeneration;
-    final previousTab = ref.read(terminalTabsProvider).active?.sessionId;
-    bool current() =>
-        mounted &&
-        token == _contextFocusGeneration &&
-        identical(widget.contextFocus, focus) &&
-        GoRouter.of(context).routeInformationProvider.value.uri.path == AppRoutes.terminal &&
-        ref.read(monitoringScopeProvider).current &&
-        identical(ref.read(monitoringSessionProvider)?.correlationScope, focus.scope) &&
-        ref.read(terminalTabsProvider).active?.sessionId == previousTab;
-    try {
-      final ready = await receiveJobContextFocus(
-        ref,
-        focus,
-        destination: JobContextDestination.sshHost,
-        receiverCurrent: () => current() && ModalRoute.of(context)?.isCurrent == true,
-      );
-      if (!mounted || ready == null || !current()) return;
-      // Opening/focusing the chooser does not open a tab or a connection. Only
-      // its separate explicit Connect action can return a target below.
-      final target = await showTerminalTargetPicker(context, contextFocus: ready);
-      if (target == null || !current()) return;
-      if (target is! SshTerminalTarget || target.host.id.value != ready.selection.hostId) return;
-      if (!await recheckJobContextFocus(ref, ready, receiverCurrent: current) || !mounted || !current()) return;
-      await runWithFeedback(context, () => ref.read(terminalTabsProvider.notifier).openTarget(target));
-    } catch (_) {
-      if (mounted && current()) showSnack(context, context.l10n.correlationContextChanged, error: true);
-    }
   }
 
   @override
   void dispose() {
-    _contextFocusGeneration++;
     final sidebar = _sidebar;
     scheduleMicrotask(() => sidebar.setBesideTabs(false));
     super.dispose();
@@ -476,36 +419,6 @@ Future<void> _openTerminalSftp(BuildContext context, WidgetRef ref, TerminalTab 
   });
 }
 
-/// A metadata-only shortcut for the still-active saved SSH target. It never
-/// writes terminal input or opens another terminal/SFTP connection.
-VoidCallback? _terminalMonitoringAction(WidgetRef ref, TerminalTab tab) {
-  final host = tab.host;
-  final scope = ref.watch(monitoringScopeProvider), session = ref.watch(monitoringSessionProvider);
-  final app = ref.watch(appServicesProvider);
-  final saved = ref.watch(hostsProvider).value?.where((value) => value.id == host?.id).firstOrNull;
-  final active = ref.watch(terminalTabsProvider).active;
-  if (host == null ||
-      host.isRdp ||
-      session == null ||
-      !scope.current ||
-      !identical(active, tab) ||
-      saved == null ||
-      !saved.updatedAt.isAtSameMomentAs(host.updatedAt)) {
-    return null;
-  }
-  return () {
-    if (!ref.context.mounted ||
-        !scope.current ||
-        !identical(ref.read(monitoringScopeProvider), scope) ||
-        !identical(ref.read(monitoringSessionProvider), session) ||
-        !identical(ref.read(appServicesProvider), app) ||
-        !identical(ref.read(terminalTabsProvider).active, tab)) {
-      return;
-    }
-    openHostMonitoring(ref, host);
-  };
-}
-
 class _TerminalSftpButton extends ConsumerWidget {
   const _TerminalSftpButton({required this.tab});
   final TerminalTab tab;
@@ -594,21 +507,10 @@ class _SessionToolbar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
     final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
-    final openMetrics = _terminalMonitoringAction(ref, tab);
     return GlassToolbarGroup(
       children: [
         if (minimal) _MinimalTerminalMenu(tab: tab),
         if (!minimal) ...[
-          if (openMetrics != null)
-            GlassIconButton(
-              key: const ValueKey('terminal-host-metrics'),
-              icon: Icons.monitor_heart_outlined,
-              tooltip: l10n.monitoringHostMetrics,
-              style: GlassIconButtonStyle.plain,
-              size: GlassSizes.tab,
-              iconSize: GlassSizes.iconRow,
-              onPressed: openMetrics,
-            ),
           GlassIconButton(
             key: const ValueKey('terminal-snippets'),
             icon: Icons.code_rounded,
@@ -673,7 +575,6 @@ class _MinimalTerminalMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final placement = ref.watch(localSettingsProvider).value?.terminalTabPlacement ?? TerminalTabPlacement.top;
-    final openMetrics = _terminalMonitoringAction(ref, tab);
     return GlassMenuButton<String>(
       key: const ValueKey('terminal-minimal-menu'),
       entries: [
@@ -690,13 +591,6 @@ class _MinimalTerminalMenu extends ConsumerWidget {
         const GlassMenuDivider(),
         GlassMenuItem(value: 'snippets', label: l.terminalSnippets, icon: Icons.code_rounded),
         GlassMenuItem(value: 'ai', label: l.terminalAskAi, icon: Icons.auto_awesome_rounded),
-        if (openMetrics != null)
-          GlassMenuItem(
-            key: const ValueKey('terminal-minimal-host-metrics'),
-            value: 'metrics',
-            label: l.monitoringHostMetrics,
-            icon: Icons.monitor_heart_outlined,
-          ),
         if (tab.host != null) GlassMenuItem(value: 'sftp', label: l.terminalOpenSftp, icon: Icons.folder_copy_rounded),
       ],
       onSelected: (value) async {
@@ -721,8 +615,6 @@ class _MinimalTerminalMenu extends ConsumerWidget {
             attachment.attach(tab, selection);
           }
           ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.ai);
-        } else if (value == 'metrics') {
-          openMetrics?.call();
         } else if (value == 'sftp') {
           await _openTerminalSftp(context, ref, tab);
         } else {

@@ -263,7 +263,7 @@ fn check_project_tx(
     Ok(())
 }
 fn finish_read(
-    auth: &crate::agent_reader::OriginalSessionAuth,
+    auth: &crate::session_provenance::OriginalSessionAuth,
     u: &crate::session::Unlocked,
     mutation: u64,
     until: std::time::Instant,
@@ -300,7 +300,7 @@ fn finish_read(
 impl AppCore {
     /// Read-only references. Remote records never become device-local projects.
     pub async fn automation_project_metadata_catalog(&self) -> AppResult<Value> {
-        let auth = crate::agent_reader::OriginalSessionAuth::capture(self)?;
+        let auth = crate::session_provenance::OriginalSessionAuth::capture(self)?;
         let until = std::time::Instant::now() + std::time::Duration::from_secs(30);
         let (owner, u) = tokio::select! {biased;_=auth.cancelled()=>return Err(invalid()),_=tokio::time::sleep_until(until.into())=>return Err(invalid()),result=self.unlocked()=>result?,};
         let mut shutdown = u.sharing_shutdown.subscribe();
@@ -321,7 +321,7 @@ impl AppCore {
         &self,
         project_id: String,
     ) -> AppResult<Value> {
-        let auth = crate::agent_reader::OriginalSessionAuth::capture(self)?;
+        let auth = crate::session_provenance::OriginalSessionAuth::capture(self)?;
         let until = std::time::Instant::now() + std::time::Duration::from_secs(30);
         let (owner, u) = tokio::select! {biased;_=auth.cancelled()=>return Err(invalid()),_=tokio::time::sleep_until(until.into())=>return Err(invalid()),result=self.unlocked()=>result?,};
         let mut shutdown = u.sharing_shutdown.subscribe();
@@ -362,7 +362,7 @@ impl AppCore {
         }
         let request: Publish = serde_json::from_str(&input).map_err(|_| invalid())?;
         request.validate()?;
-        let auth = crate::agent_reader::OriginalSessionAuth::capture(self)?;
+        let auth = crate::session_provenance::OriginalSessionAuth::capture(self)?;
         let until = std::time::Instant::now() + std::time::Duration::from_secs(30);
         let (owner, u) = tokio::select! {biased;
             _=auth.cancelled()=>return Err(invalid()),

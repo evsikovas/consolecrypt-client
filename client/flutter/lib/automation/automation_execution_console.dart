@@ -9,7 +9,6 @@ import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/monitoring/job_metrics_chooser.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -245,7 +244,6 @@ class _AutomationExecutionConsoleState extends ConsumerState<AutomationExecution
 
   Widget log({required bool technical}) {
     final l = context.l10n;
-    final metricsScope = widget.scope, metricsService = widget.service, metricsJob = job;
     final controller = technical ? technicalScroll : outputScroll;
     final body = NotificationListener<UserScrollNotification>(
       onNotification: (notice) {
@@ -273,30 +271,6 @@ class _AutomationExecutionConsoleState extends ConsumerState<AutomationExecution
             Text(
               l.automationOutputRetired,
               key: ValueKey(technical ? 'automation-retired-technical' : 'automation-retired-output'),
-            ),
-          if (technical && metricsJob?['state'] == 'failed' && jobMetricsAvailable(ref))
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: GlassButton(
-                key: const ValueKey('automation-console-job-metrics'),
-                icon: Icons.insights_outlined,
-                label: l.correlationJobMetricsTitle,
-                onPressed: () => showJobMetricsChooser(
-                  context,
-                  ref,
-                  scope: metricsScope,
-                  jobs: metricsService,
-                  job: metricsJob!,
-                  producerCurrent: () =>
-                      current &&
-                      visible &&
-                      !widget.collapsed &&
-                      selectedTab == 1 &&
-                      identical(widget.scope, metricsScope) &&
-                      identical(widget.service, metricsService) &&
-                      widget.jobId == metricsJob['job_id'],
-                ),
-              ),
             ),
           if (technical && job != null && widget.service is AutomationEventService)
             AutomationTaskResults(

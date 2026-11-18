@@ -6,7 +6,6 @@ import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/job_notice_events.dart';
 import 'package:consolecrypt/core/services/runtime_notice_adapter.dart';
-import 'package:consolecrypt/monitoring/monitoring_pinned_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final class CriticalNoticeScope {
@@ -28,7 +27,7 @@ final criticalRuntimeEventsProvider = Provider<RuntimeNoticeEvents?>(
 final criticalNoticeOwnerProvider = Provider<CriticalNoticeOwner?>((ref) {
   final scope = ref.watch(criticalNoticeScopeProvider);
   final events = ref.watch(criticalJobEventsProvider);
-  final jobs = ref.watch(automationJobServiceProvider), pin = ref.watch(monitoringPinnedObservationProvider);
+  final jobs = ref.watch(automationJobServiceProvider);
   if (!scope.unlocked || scope.profileId == null) return null;
   final owner = CriticalNoticeOwner(
     scope: scope,
@@ -36,7 +35,6 @@ final criticalNoticeOwnerProvider = Provider<CriticalNoticeOwner?>((ref) {
     jobs: jobs,
     events: events,
     runtimeEvents: ref.watch(criticalRuntimeEventsProvider),
-    pin: pin,
     isCurrent: () => identical(ref.read(criticalNoticeScopeProvider), scope),
   );
   ref.onDispose(() => unawaited(owner.dispose()));
