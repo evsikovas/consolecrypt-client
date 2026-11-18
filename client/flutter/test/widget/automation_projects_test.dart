@@ -516,6 +516,8 @@ class _Sources extends _Runners implements AutomationGitService {
   bool started = false;
   String? cancelled;
   String? importRunnerId;
+  String? importUrl;
+  String? importCa;
   int importRunnerConnections = 0;
   Object? gitFailure;
   @override
@@ -561,6 +563,8 @@ class _Sources extends _Runners implements AutomationGitService {
     String? caPem,
   }) async {
     importRunnerId = runnerId;
+    importUrl = url;
+    importCa = caPem;
     if (gitFailure != null) throw gitFailure!;
     started = true;
     return pendingStart == null ? imported : pendingStart!.future;
@@ -569,40 +573,6 @@ class _Sources extends _Runners implements AutomationGitService {
   @override
   Future<void> cancelGit(String id) async {
     cancelled = id;
-  }
-}
-
-class _Groups extends _Runners implements AutomationInventoryService {
-  final folder = Group.create('Independent ConsoleCrypt folder');
-  late final member = Host(
-    id: ObjectId.generate(),
-    name: 'Group fixture member',
-    address: 'member.example.test',
-    groupId: folder.id,
-    createdAt: DateTime.now().toUtc(),
-    updatedAt: DateTime.now().toUtc(),
-  );
-  AutomationJson? saved;
-  int? savedRevision;
-  Completer<AutomationJson>? pendingInventory;
-  AutomationJson document() => {
-    'version': 1,
-    'project_id': 'p',
-    'project_revision': 1,
-    'inventory': {'version': 1, 'groups': <String, dynamic>{}},
-  };
-  @override
-  Future<AutomationJson> inventory(String projectId) async =>
-      pendingInventory == null ? document() : pendingInventory!.future;
-  @override
-  Future<AutomationProject> saveInventory(
-    String projectId, {
-    required int revision,
-    required AutomationJson inventory,
-  }) async {
-    saved = inventory;
-    savedRevision = revision;
-    return const AutomationProject(id: 'p', name: 'Fixture project', readOnly: false, revision: 2);
   }
 }
 
@@ -730,34 +700,44 @@ class _SelectedInventory extends _Inventory implements AutomationInventorySelect
   }
 }
 
-class _YamlInventory extends _Inventory {
+class _StaticInventory extends _Inventory {
+  _StaticInventory(this.format);
+
+  final String format;
+
+  String get inventoryPath => 'inventory/hosts.$format';
+
   @override
-  Future<AutomationProjectRevision> files(String projectId) async => const AutomationProjectRevision(
-    digest: 'yaml-fixture',
+  Future<AutomationProjectRevision> files(String projectId) async => AutomationProjectRevision(
+    digest: 'inventory-fixture',
     bytes: 92,
     entries: [
-      AutomationFileEntry(path: 'playbook.yml', directory: false),
-      AutomationFileEntry(path: 'inventory/hosts.yml', directory: false),
-      AutomationFileEntry(path: 'ansible.cfg', directory: false),
+      const AutomationFileEntry(path: 'playbook.yml', directory: false),
+      AutomationFileEntry(path: inventoryPath, directory: false),
+      const AutomationFileEntry(path: 'ansible.cfg', directory: false),
     ],
   );
 
   @override
-  Future<AutomationProjectFile> readFile(String projectId, String path) async => switch (path) {
-    'ansible.cfg' => const AutomationProjectFile(
-      path: 'ansible.cfg',
-      text: '[defaults]\ninventory = ./inventory/hosts.yml\n',
-      sha256: 'config',
-      lineEndings: 'lf',
-    ),
-    'inventory/hosts.yml' => const AutomationProjectFile(
-      path: 'inventory/hosts.yml',
-      text: 'web:\n  hosts:\n    web_example:\n',
-      sha256: 'inventory',
-      lineEndings: 'lf',
-    ),
-    _ => await super.readFile(projectId, path),
-  };
+  Future<AutomationProjectFile> readFile(String projectId, String path) async {
+    if (path == 'ansible.cfg') {
+      return AutomationProjectFile(
+        path: path,
+        text: '[defaults]\ninventory = ./$inventoryPath\n',
+        sha256: 'config',
+        lineEndings: 'lf',
+      );
+    }
+    if (path == inventoryPath) {
+      return AutomationProjectFile(
+        path: path,
+        text: format == 'ini' ? '[web]\nweb_example\n' : 'web:\n  hosts:\n    web_example:\n',
+        sha256: 'inventory',
+        lineEndings: 'lf',
+      );
+    }
+    return super.readFile(projectId, path);
+  }
 }
 
 AppServices _sameInventoryServices(AppServices services) => AppServices(
@@ -851,7 +831,6 @@ Future<ProviderContainer> _open(
       if (service is _WslSetup) terminalServiceProvider.overrideWithValue(service.terminal),
       if (service is _Editor) fileDialogServiceProvider.overrideWithValue(service.picker),
       if (service is _FolderProjects) fileDialogServiceProvider.overrideWithValue(service.picker),
-      if (service is _Groups) hostsProvider.overrideWith((ref) => Stream.value([service.member])),
       if (service is _Inventory) hostsProvider.overrideWith((ref) => Stream.value([service.member, service.other])),
       if (service is _SetupRunners) hostsProvider.overrideWith((ref) => Stream.value([service.remoteHost])),
       if (service is _SelectedInventory)
@@ -899,7 +878,6 @@ void main() {
           'automation-new-project',
           'automation-git-open',
           'automation-runners-open',
-          'automation-groups-open',
           'automation-inventory-open',
         ]) {
           expect(find.byKey(ValueKey(key)), findsNothing);
@@ -910,10 +888,7 @@ void main() {
             trigger: 'automation-project-actions',
             rows: ['automation-new-project', 'automation-open-folder', 'automation-git-open'],
           ),
-          (
-            trigger: 'automation-settings-menu',
-            rows: ['automation-runners-open', 'automation-groups-open', 'automation-inventory-open'],
-          ),
+          (trigger: 'automation-settings-menu', rows: ['automation-runners-open', 'automation-inventory-open']),
           (
             trigger: 'automation-create-menu',
             rows: ['automation-create-playbook', 'automation-create-role', 'automation-create-file'],
@@ -998,7 +973,7 @@ void main() {
     expect(isEnabled(tester, 'automation-open-run'), isFalse);
     await tapKey(tester, 'automation-settings-menu');
     expect(tester.widget<PopupMenuItem<String>>(find.byKey(const ValueKey('automation-runners-open'))).enabled, isTrue);
-    expect(tester.widget<PopupMenuItem<String>>(find.byKey(const ValueKey('automation-groups-open'))).enabled, isFalse);
+    expect(find.byKey(const ValueKey('automation-groups-open')), findsNothing);
     expect(
       tester.widget<PopupMenuItem<String>>(find.byKey(const ValueKey('automation-inventory-open'))).enabled,
       isFalse,
@@ -1337,27 +1312,31 @@ void main() {
     expect(service.chosenSources, isNull);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('YAML inventory selected by ansible.cfg previews without connecting a Runner', (tester) async {
-    final service = _YamlInventory();
-    await _open(tester, service);
-    await toolbarAction(tester, 'automation-inventory-open');
-    final file = find.byKey(const ValueKey('automation-inventory-file-inventory/hosts.yml'));
-    expect(tester.widget<CheckboxListTile>(file).value, isTrue);
-    final preview = find.byKey(const ValueKey('automation-inventory-start'));
-    expect(tester.widget<FilledButton>(preview).onPressed, isNotNull);
-    await tester.runAsync(() async {
-      await tester.tap(preview);
-      // compute() parses YAML in an isolate.
-      for (var attempt = 0; attempt < 20; attempt++) {
-        await Future<void>.delayed(const Duration(milliseconds: 40));
-        await tester.pump();
-        if (find.text('web_example').evaluate().isNotEmpty) break;
-      }
+  for (final format in ['ini', 'yml']) {
+    testWidgets('${format.toUpperCase()} inventory selected by ansible.cfg previews without connecting a Runner', (
+      tester,
+    ) async {
+      final service = _StaticInventory(format);
+      await _open(tester, service);
+      await toolbarAction(tester, 'automation-inventory-open');
+      final file = find.byKey(ValueKey('automation-inventory-file-${service.inventoryPath}'));
+      expect(tester.widget<CheckboxListTile>(file).value, isTrue);
+      final preview = find.byKey(const ValueKey('automation-inventory-start'));
+      expect(tester.widget<FilledButton>(preview).onPressed, isNotNull);
+      await tester.runAsync(() async {
+        await tester.tap(preview);
+        // The preview parses files in an isolate.
+        for (var attempt = 0; attempt < 20; attempt++) {
+          await Future<void>.delayed(const Duration(milliseconds: 40));
+          await tester.pump();
+          if (find.text('web_example').evaluate().isNotEmpty) break;
+        }
+      });
+      expect(find.text('web_example'), findsOneWidget);
+      expect(service.chosenSources, isNull);
+      expect(tester.takeException(), isNull);
     });
-    expect(find.text('web_example'), findsOneWidget);
-    expect(service.chosenSources, isNull);
-    expect(tester.takeException(), isNull);
-  });
+  }
 
   testWidgets('mixed inventory saves the explicit saved host selection and external preview together', (tester) async {
     final service = _SelectedInventory();
@@ -1745,7 +1724,7 @@ void main() {
     final service = _SetupRunners();
     await openSetup(tester, service);
     await tapKey(tester, 'automation-runner-mode');
-    await tester.tap(find.text('Remote Linux Runner').last);
+    await tester.tap(find.text('Linux over SSH (manual runs)').last);
     await settle(tester);
     await tapKey(tester, 'automation-runner-choose-host');
     await tester.tap(find.text('Runner SSH fixture').last);
@@ -2314,51 +2293,6 @@ void main() {
     expect(find.byKey(const ValueKey('automation-inventory-start')), findsNothing);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('project groups allow multiple memberships while preserving the unsaved editor', (tester) async {
-    final service = _Groups();
-    final originalFolder = service.folder;
-    await _open(tester, service);
-    await tapKey(tester, 'automation-file-playbook.yml');
-    await enterKey(tester, 'automation-editor', '---\n# keep these unsaved edits\n');
-    await toolbarAction(tester, 'automation-groups-open');
-    for (final group in ['web', 'readers']) {
-      await enterKey(tester, 'automation-group-name', group);
-      await tapKey(tester, 'automation-group-add');
-      await tapKey(tester, 'automation-group-host-${service.member.id}');
-    }
-    await enterKey(tester, 'automation-group-name', 'temporary_group');
-    await tapKey(tester, 'automation-group-add');
-    await tapKey(tester, 'automation-group-delete');
-    await tapKey(tester, 'automation-groups-save');
-    expect(service.savedRevision, 1);
-    expect(identical(service.folder, originalFolder), true);
-    expect(service.member.groupId, originalFolder.id);
-    expect(service.saved, {
-      'version': 1,
-      'groups': {
-        'web': [service.member.id.value],
-        'readers': [service.member.id.value],
-      },
-    });
-    expect(
-      tester.widget<TextField>(find.byKey(const ValueKey('automation-editor'))).controller!.text,
-      '---\n# keep these unsaved edits\n',
-    );
-    expect(service.savedExpected, isNull);
-    expect(tester.takeException(), isNull);
-  });
-  testWidgets('late project group metadata cannot reopen a dialog after lock', (tester) async {
-    final service = _Groups()..pendingInventory = Completer<AutomationJson>();
-    final container = await _open(tester, service);
-    await toolbarAction(tester, 'automation-groups-open');
-    await container.read(vaultServiceProvider).lock();
-    await settle(tester);
-    service.pendingInventory!.complete(service.document());
-    await settle(tester);
-    expect(find.byKey(const ValueKey('automation-groups-save')), findsNothing);
-    expect(service.saved, isNull);
-    expect(tester.takeException(), isNull);
-  });
   Future<void> gitInputs(WidgetTester tester) async {
     await toolbarAction(tester, 'automation-git-open');
     await enterKey(tester, 'automation-git-name', 'Imported source');
@@ -2372,6 +2306,7 @@ void main() {
   testWidgets('Git source remains unavailable until verified import completes', (tester) async {
     final service = _Sources();
     await _open(tester, service);
+    await tapKey(tester, 'automation-project-picker-toggle');
     await gitInputs(tester);
     await tapKey(tester, 'automation-git-start');
     expect(service.importRunnerId, '');
@@ -2398,6 +2333,21 @@ void main() {
     await settle(tester);
     expect(service.cancelled, 'imported');
     expect(tester.takeException(), isNull);
+  });
+  testWidgets('anonymous HTTP Git imports stay local and do not send stale HTTPS trust settings', (tester) async {
+    final service = _Sources();
+    await _open(tester, service);
+    await gitInputs(tester);
+    await tester.tap(find.text('Use a custom certificate authority'));
+    await settle(tester);
+    await enterKey(tester, 'automation-git-ca', 'HTTPS only');
+    await enterKey(tester, 'automation-git-url', 'http://git.test/repo.git');
+    expect(find.byKey(const ValueKey('automation-git-ca')), findsNothing);
+    expect(find.textContaining('HTTP downloads are unencrypted'), findsOneWidget);
+    await tapKey(tester, 'automation-git-start');
+    expect(service.importUrl, 'http://git.test/repo.git');
+    expect(service.importCa, isNull);
+    expect(service.importRunnerId, '');
   });
   testWidgets('missing local Git is explained without connecting an Ansible Runner', (tester) async {
     final service = _Sources()
@@ -2735,6 +2685,7 @@ void main() {
       tester.widget<TextField>(find.byKey(const ValueKey('automation-editor'))).controller!.text,
       'my unsaved changes',
     );
+    await tapKey(tester, 'automation-project-picker-toggle');
     await tapKey(tester, 'automation-project-p');
     expect(find.text('Save changes to this file?'), findsOneWidget);
     await tester.tap(find.text('Cancel').last);

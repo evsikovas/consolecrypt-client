@@ -26,14 +26,14 @@ def main():
     Path('/work/no-hooks').mkdir(mode=0o700)
     # These are separate argv entries. No shell, inherited home, agent, credential
     # helper, global/system config, submodule update, checkout filter or hooks.
-    options=[git,'--no-pager','-c','protocol.allow=never','-c','protocol.https.allow=always',
+    options=[git,'--no-pager','-c','protocol.allow=never','-c','protocol.https.allow=always','-c','protocol.http.allow=always',
         '-c','credential.helper=','-c','core.hooksPath=/work/no-hooks','-c','core.fsmonitor=false',
         '-c','http.followRedirects=false','-c','http.extraHeader=','-c','http.lowSpeedLimit=1',
         '-c','http.lowSpeedTime=15','-c','transfer.fsckObjects=true','-c','fetch.fsckObjects=true']
     env={'PATH':'/usr/bin:/bin','HOME':'/work/home','LANG':'C.UTF-8','LC_ALL':'C.UTF-8',
          'GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null','GIT_ATTR_NOSYSTEM':'1',
          'GIT_TERMINAL_PROMPT':'0','GIT_ASKPASS':'','GIT_NO_REPLACE_OBJECTS':'1',
-         'GIT_ALLOW_PROTOCOL':'https','GIT_SSH_COMMAND':'/usr/bin/false'}
+         'GIT_ALLOW_PROTOCOL':'http:https','GIT_SSH_COMMAND':'/usr/bin/false'}
     if spec['custom_ca']:env['GIT_SSL_CAINFO']='/tool/git-ca.pem'
 
     def read(args,limit):

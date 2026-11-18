@@ -20,7 +20,6 @@ mod inventory_binding;
 mod inventory_source;
 mod json;
 mod launch;
-pub mod monitoring_node_plan;
 mod network;
 mod probe;
 mod project;
@@ -188,5 +187,3 @@ mod service_owner_status;
 mod service_restart;
 
 pub use service_remote::{ServicePeerObservation, ServiceRemoteConfig, ServiceState};
-
-pub use project::publication::agent_installer_seed::{AgentInstallOperation, AgentInstallerSeed};

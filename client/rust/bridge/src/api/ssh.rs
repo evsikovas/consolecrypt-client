@@ -6,12 +6,39 @@ use crate::api::error::BridgeError;
 use crate::frb_generated::StreamSink;
 use crate::state::{self, to_json, with_core};
 use cc_app_core::{
-    AppCore, AppEvent, TerminalChunk, TerminalStatusDto, TransferDirectionDto, TransferJobDto,
+    AppCore, AppEvent, StandaloneLocalTerminals, TerminalChunk, TerminalStatusDto, TransferDirectionDto, TransferJobDto,
     TransferRequestDto, TransferStateDto,
 };
+use std::sync::OnceLock;
 use tokio::sync::broadcast::error::RecvError;
 
 // ---- terminals ---------------------------------------------------------------------
+
+static TERMINAL_ONLY: OnceLock<StandaloneLocalTerminals> = OnceLock::new();
+
+pub(crate) fn terminal_only_requested() -> bool {
+    std::env::args_os().skip(1).any(|arg| arg == "--terminal-only")
+}
+
+/// Initialize the local PTYs in the dedicated process and return the default shell.
+pub async fn terminal_only_start() -> Result<String, BridgeError> {
+    if !terminal_only_requested() || state::core_opt().is_some() {
+        return Err(BridgeError::invalid("terminal", "requires a terminal-only process"));
+    }
+    let terminals = TERMINAL_ONLY.get_or_init(StandaloneLocalTerminals::default);
+    state::run(async move { to_json(&terminals.default_profile().await?) }).await
+}
+
+pub async fn terminal_only_shutdown() -> Result<(), BridgeError> {
+    if let Some(terminals) = TERMINAL_ONLY.get() {
+        state::run(async move {
+            terminals.shutdown().await;
+            Ok(())
+        })
+        .await?;
+    }
+    Ok(())
+}
 
 /// Kind of a [`TerminalFrame`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,6 +116,9 @@ pub async fn terminal_open(host_id: String, cols: u32, rows: u32) -> Result<Stri
 
 /// Device-local shell profiles. Executables and argv remain owned by Rust.
 pub async fn terminal_local_profiles() -> Result<String, BridgeError> {
+    if let Some(terminals) = TERMINAL_ONLY.get() {
+        return state::run(async move { to_json(&terminals.profiles().await?) }).await;
+    }
     with_core(move |c| async move { to_json(&c.local_terminal_profiles().await?) }).await
 }
 
@@ -97,6 +127,9 @@ pub async fn terminal_open_local(
     cols: u32,
     rows: u32,
 ) -> Result<String, BridgeError> {
+    if let Some(terminals) = TERMINAL_ONLY.get() {
+        return state::run(async move { to_json(&terminals.open(&profile_id, cols, rows).await?) }).await;
+    }
     with_core(
         move |c| async move { to_json(&c.open_local_terminal(profile_id, cols, rows).await?) },
     )
@@ -109,13 +142,11 @@ pub async fn terminal_attach(
     terminal_id: String,
     sink: StreamSink<TerminalFrame>,
 ) -> Result<(), BridgeError> {
-    let core = state::core()?;
-    let attachment = state::run(async move {
-        core.attach_terminal(terminal_id)
-            .await
-            .map_err(BridgeError::from)
-    })
-    .await?;
+    let attachment = if let Some(terminals) = TERMINAL_ONLY.get() {
+        state::run(async move { Ok(terminals.attach(&terminal_id).await?) }).await?
+    } else {
+        with_core(move |core| async move { Ok(core.attach_terminal(terminal_id).await?) }).await?
+    };
     let mut output = attachment.output;
     if sink.add(TerminalFrame::data(attachment.snapshot)).is_err() {
         return Ok(());
@@ -133,15 +164,24 @@ pub async fn terminal_attach(
 
 /// Keyboard / paste input (UTF-8 bytes).
 pub async fn terminal_write(terminal_id: String, data: Vec<u8>) -> Result<(), BridgeError> {
+    if let Some(terminals) = TERMINAL_ONLY.get() {
+        return state::run(async move { Ok(terminals.write(&terminal_id, &data).await?) }).await;
+    }
     with_core(move |c| async move { Ok(c.terminal_write(terminal_id, data).await?) }).await
 }
 
 pub async fn terminal_resize(terminal_id: String, cols: u32, rows: u32) -> Result<(), BridgeError> {
+    if let Some(terminals) = TERMINAL_ONLY.get() {
+        return state::run(async move { Ok(terminals.resize(&terminal_id, cols, rows).await?) }).await;
+    }
     with_core(move |c| async move { Ok(c.terminal_resize(terminal_id, cols, rows).await?) }).await
 }
 
 /// Close the channel and forget the (local-only) scrollback.
 pub async fn terminal_close(terminal_id: String) -> Result<(), BridgeError> {
+    if let Some(terminals) = TERMINAL_ONLY.get() {
+        return state::run(async move { Ok(terminals.close(&terminal_id).await?) }).await;
+    }
     with_core(move |c| async move { Ok(c.close_terminal(terminal_id).await?) }).await
 }
 

@@ -495,6 +495,19 @@ pub fn build_provider(
     })
 }
 
+/// The application-managed llama.cpp server accepts schema-constrained chat.
+/// Saved OpenAI-compatible endpoints keep their ordinary capability defaults.
+pub fn build_device_local_provider(
+    cfg: &AiProviderConfig,
+    api_key: SecretString,
+) -> Result<Arc<dyn LlmProvider>> {
+    let settings = ProviderSettings::from_config(cfg)?;
+    if settings.locality() != Locality::Loopback {
+        return Err(AiError::InvalidInput("device AI must use loopback".into()));
+    }
+    Ok(Arc::new(OpenAiCompatibleProvider::device_local(settings, api_key)?))
+}
+
 /// Turn a non-streaming call into a one-shot stream.
 pub(crate) fn single_shot_stream(resp: ChatResponse) -> ChatStream {
     let mut events: Vec<Result<ChatEvent>> = Vec::new();

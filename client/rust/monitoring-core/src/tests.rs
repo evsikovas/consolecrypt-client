@@ -883,9 +883,9 @@ fn probe_requires_real_expected_data() {
 }
 
 #[test]
-fn saved_agent_destination_roundtrip_is_data_not_a_transport_grant() {
+fn legacy_destination_roundtrip_is_data_not_a_transport_grant() {
     let mut config = source("http://127.0.0.1:9090/tenant".into());
-    config.route = Route::AgentDestination {
+    config.route = Route::LegacyDestination {
         association_id: "11111111-1111-4111-8111-111111111111".into(),
         host_id: "22222222-2222-4222-8222-222222222222".into(),
         destination_ip: "127.0.0.1".into(), destination_port: 9090,
@@ -906,7 +906,7 @@ fn saved_agent_destination_roundtrip_is_data_not_a_transport_grant() {
 }
 
 #[test]
-fn saved_agent_destination_rejects_noncanonical_data_but_preserves_logical_origin() {
+fn legacy_destination_rejects_noncanonical_data_but_preserves_logical_origin() {
     let valid = json!({"id":"saved", "name":"Agent source", "endpoint":"http://127.0.0.1:9090",
         "route":{"kind":"agentDestination","associationId":"11111111-1111-4111-8111-111111111111",
         "hostId":"22222222-2222-4222-8222-222222222222","destinationIp":"127.0.0.1","destinationPort":9090},
@@ -922,7 +922,7 @@ fn saved_agent_destination_rejects_noncanonical_data_but_preserves_logical_origi
         let mut logical=valid.clone();logical["endpoint"]=json!(endpoint);
         let source=serde_json::from_value::<SourceConfig>(logical).unwrap();
         assert!(source.validate().is_ok());assert_eq!(source.endpoint,endpoint);
-        assert!(matches!(source.route,Route::AgentDestination{destination_port:9090,..}));
+        assert!(matches!(source.route,Route::LegacyDestination{destination_port:9090,..}));
     }
     let mut ipv6=valid;ipv6["endpoint"]=json!("http://[::1]:9090");ipv6["route"]["destinationIp"]=json!("::1");
     assert!(serde_json::from_value::<SourceConfig>(ipv6).unwrap().validate().is_ok());

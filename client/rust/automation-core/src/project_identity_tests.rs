@@ -110,3 +110,36 @@ fn project_move_preserves_file_bytes_and_refuses_clobber_or_stale_source() {
     assert!(root.read_file("old/run.yml").is_err());
     assert_eq!(root.read_file("run.yml").unwrap().sha256, source.sha256);
 }
+
+#[test]
+fn project_file_menu_renames_and_removes_only_the_reviewed_entry() {
+    let fixture = tempfile::tempdir().unwrap();
+    let root = ProjectRoot::open(fixture.path()).unwrap();
+    let original = root.write_file("role/main.yml", None, "---\n").unwrap();
+    let sibling = root.write_file("role/existing.yml", None, "keep\n").unwrap();
+    assert!(root.edit_file_entry("role/main.yml", Some("existing.yml"), &original.sha256).is_err());
+    assert!(root.edit_file_entry("role/main.yml", Some("../outside.yml"), &original.sha256).is_err());
+    assert!(root.edit_file_entry("role/main.yml", None, &sibling.sha256).is_err());
+    root.edit_file_entry("role/main.yml", Some("tasks.yml"), &original.sha256).unwrap();
+    assert!(root.read_file("role/main.yml").is_err());
+    assert_eq!(root.read_file("role/tasks.yml").unwrap().sha256, original.sha256);
+    root.edit_file_entry("role/tasks.yml", None, &original.sha256).unwrap();
+    assert!(root.read_file("role/tasks.yml").is_err());
+    assert_eq!(root.read_file("role/existing.yml").unwrap().text, "keep\n");
+}
+
+#[test]
+fn project_directory_menu_renames_reviewed_folder_and_removes_empty_folder() {
+    let fixture = tempfile::tempdir().unwrap();
+    let root = ProjectRoot::open(fixture.path()).unwrap();
+    let file = root.write_file("tasks/main.yml", None, "---\n").unwrap();
+    let before = root.revision().unwrap();
+    assert!(root.edit_directory_entry("tasks", None, &before.digest).is_err());
+    root.edit_directory_entry("tasks", Some("renamed"), &before.digest).unwrap();
+    assert!(root.read_file("tasks/main.yml").is_err());
+    assert_eq!(root.read_file("renamed/main.yml").unwrap().sha256, file.sha256);
+    root.edit_file_entry("renamed/main.yml", None, &file.sha256).unwrap();
+    assert!(root.edit_directory_entry("renamed", None, &before.digest).is_err());
+    root.edit_directory_entry("renamed", None, &root.revision().unwrap().digest).unwrap();
+    assert!(!fixture.path().join("renamed").exists());
+}

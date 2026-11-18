@@ -10,6 +10,8 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
 import 'package:consolecrypt/keepass/kdbx_documents.dart';
+import 'package:consolecrypt/keepass/kdbx_entry_icons.dart';
+import 'package:consolecrypt/keepass/kdbx_nerd_icons.dart';
 import 'package:consolecrypt/keepass/kdbx_workspace.dart';
 import 'package:consolecrypt/keepass/password_generator_dialog.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
@@ -129,6 +131,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
     final fields = entry == null
         ? <String, Object?>{}
         : (await client.request('get', {'id': entry['id']}))! as KdbxData;
+    fields['customIcon'] = session.iconFor(entry);
     if (!mounted || !_current || !manager.current(session)) {
       fields.clear();
       return;
@@ -189,7 +192,12 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
     );
     try {
       if (input != null && _current && manager.current(session)) {
-        await manager.request(session, 'group', {'name': input['Title'], 'parent': parent});
+        await manager.request(session, 'group', {
+          'name': input['Title'],
+          'parent': parent,
+          'icon': input['icon'],
+          'customIcon': input['customIcon'],
+        });
       }
     } finally {
       input?.clear();
@@ -203,7 +211,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
       id != session.data['root'] &&
       session.rows('groups').any((row) => row['id'] == id && row['recycled'] != true);
 
-  Future<void> _renameGroup(String id) => _run(() async {
+  Future<void> _renameGroup(String id, {bool icon = false}) => _run(() async {
     final manager = _manager;
     final session = _session!;
     if (!_groupCurrent(manager, session, id)) return;
@@ -213,15 +221,20 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
       secure: true,
       builder: (_) => _KdbxFormDialog(
         valid: session.validity,
-        title: context.l10n.keepassRenameGroup,
+        title: icon ? context.l10n.keepassChooseEntryIcon : context.l10n.keepassRenameGroup,
         groupOnly: true,
         location: session.source.name,
-        initial: {'Title': row['label']},
+        initial: {'Title': row['label'], 'icon': row['icon'], 'customIcon': session.iconFor(row)},
       ),
     );
     try {
       if (input != null && _groupCurrent(manager, session, id)) {
-        await manager.request(session, 'renameGroup', {'id': id, 'name': input['Title']});
+        await manager.request(session, 'renameGroup', {
+          'id': id,
+          'name': input['Title'],
+          'icon': input['icon'],
+          'customIcon': input['customIcon'],
+        });
       }
     } finally {
       input?.clear();
@@ -553,6 +566,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
       }),
       onGroupAction: (id, action) => unawaited(switch (action) {
         'rename' => _renameGroup(id),
+        'icon' => _renameGroup(id, icon: true),
         'empty' => _emptyTrash(id),
         'purge' => _purgeGroup(id),
         _ => _deleteGroup(id),
@@ -636,6 +650,9 @@ class _KdbxFormDialogState extends ConsumerState<_KdbxFormDialog> {
   final _removed = <(TextEditingController, TextEditingController)>[];
   String? _keyFile;
   late String? _chosenGroup = widget.group;
+  late int? _entryIcon;
+  Uint8List? _customIcon;
+  bool _entryIconChanged = false;
   String? _error;
   Future<void> _generatePassword() async {
     final generated = await showPasswordGenerator(context, valid: widget.valid, allowUse: true);
@@ -653,6 +670,8 @@ class _KdbxFormDialogState extends ConsumerState<_KdbxFormDialog> {
   @override
   void initState() {
     super.initState();
+    _entryIcon = widget.initial['icon'] as int?;
+    _customIcon = widget.initial['customIcon'] as Uint8List?;
     _fields = {
       for (final key in ['Title', 'UserName', 'Password', 'URL', 'Notes', 'confirm'])
         key: TextEditingController(text: widget.initial[key] as String? ?? ''),
@@ -737,6 +756,8 @@ class _KdbxFormDialogState extends ConsumerState<_KdbxFormDialog> {
         if (e.key != 'confirm') e.key: e.value.text,
       'keyFile': _keyFile,
       if (widget.groups.isNotEmpty) 'group': _chosenGroup,
+      if (_entryIconChanged && _customIcon == null) 'icon': _entryIcon,
+      if (_entryIconChanged && _customIcon != null) 'customIcon': _customIcon,
       'custom': {for (final field in _custom) field.$1.text: field.$2.text},
     };
     closeDialog(context, result);
@@ -799,6 +820,55 @@ class _KdbxFormDialogState extends ConsumerState<_KdbxFormDialog> {
                       autofocus: true,
                       decoration: InputDecoration(
                         labelText: widget.groupOnly ? l.keepassGroupName : l.keepassEntryTitle,
+                      ),
+                    ),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Wrap(
+                        spacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (_customIcon != null) kdbxIconPreview(_customIcon, Icons.image_outlined, size: 24),
+                          GlassMenuButton<int>(
+                            entries: [
+                              GlassMenuItem(
+                                key: const ValueKey('keepass-nerd-icons'),
+                                value: -1,
+                                label: l.keepassNerdIconTitle,
+                                icon: Icons.grid_view_outlined,
+                              ),
+                              for (final option in kdbxEntryIcons.entries)
+                                GlassMenuItem(
+                                  key: ValueKey('keepass-entry-icon-${option.key.index}'),
+                                  value: option.key.index,
+                                  label: l.keepassEntryIconName(option.key.name),
+                                  icon: option.value,
+                                  checked:
+                                      _customIcon == null &&
+                                      option.key.index == (_entryIcon ?? (widget.groupOnly ? 48 : 0)),
+                                ),
+                            ],
+                            onSelected: (icon) async {
+                              if (!mounted || !widget.valid.value) return;
+                              final image = icon == -1 ? await chooseKdbxNerdIcon(context) : null;
+                              if (!mounted || !widget.valid.value || (icon == -1 && image == null)) return;
+                              setState(() {
+                                _entryIcon = icon == -1 ? null : icon;
+                                _customIcon = image;
+                                _entryIconChanged = true;
+                              });
+                            },
+                            builder: (context, open) => GlassButton(
+                              key: const ValueKey('keepass-entry-icon'),
+                              label: l.keepassChooseEntryIcon,
+                              icon: kdbxEntryIcon(
+                                _entryIcon,
+                                fallback: widget.groupOnly ? Icons.folder_outlined : Icons.key_outlined,
+                              ),
+                              onPressed: widget.valid.value ? open : null,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     if (!widget.groupOnly) ...[

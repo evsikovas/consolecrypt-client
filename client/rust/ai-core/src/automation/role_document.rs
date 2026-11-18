@@ -19,7 +19,7 @@ pub(super) fn instructions(path: &str) -> &'static str {
             "The requested file is an Ansible role HANDLERS file. Return a YAML sequence of handler tasks, with names for notify/listen. Do not wrap it in a play, hosts, tasks or handlers. Edit only the requested file; do not create a project, playbook or additional files."
         }
         Some("tasks") => {
-            "The requested file is an Ansible role TASKS file. Return a YAML sequence of tasks, with no play/hosts/tasks wrapper. The caller playbook chooses hosts and applies the role. Keep role variables as explicit inputs; use notify only for existing handlers, or describe required handler work in warnings rather than adding files. Edit only the requested file; do not create a project or playbook."
+            "The requested file is an Ansible role TASKS file. Its content is a YAML sequence of tasks. For a connectivity check, the exact shape is:\n- name: Check Ansible connectivity\n  ansible.builtin.ping: {}\nDo not add hosts or a tasks wrapper. The calling playbook selects the hosts. List required role variables explicitly, and use notify only for an existing handler."
         }
         Some("meta") => {
             "The requested file is Ansible role METADATA. Return a YAML mapping of role metadata, not a play or task list. Declare external role dependencies in the proposal's dependencies as well as metadata. Edit only the requested file."

@@ -7,10 +7,8 @@ The destination must be new; this tool cannot overwrite an existing checkout.
 from __future__ import annotations
 
 import argparse
-import hashlib
 from pathlib import Path, PurePosixPath
 import shutil
-import stat
 import subprocess
 
 ROOT_FILES = {
@@ -45,23 +43,6 @@ PRIVATE_SUFFIXES = {
     '.zip', '.deb', '.rpm', '.dylib', '.dll', '.so', '.a', '.o', '.env',
 }
 
-AGENT_PRIVATE_DIRS = {'cache', '.cache', 'evidence', 'state', 'private', 'artifacts', 'examples'}
-AGENT_DOCUMENTS = {
-    'agent/README.md', 'agent/BUILDING.md', 'agent/THIRD_PARTY.md',
-    'agent/OPERATOR_TUN.md',
-    'agent/delivery/MONITORING_CONFIG_BACKUP.md',
-    'agent/delivery/roles/consolecrypt_monitoring_prefix/README.md',
-    'agent/delivery/roles/consolecrypt_agent_profile/README.md',
-    'agent/delivery/roles/consolecrypt_agent_identity/README.md',
-    'agent/delivery/roles/consolecrypt_config_candidate/README.md',
-    'agent/identity/vendor/libsqlite3-sys/README.md',
-    'agent/identity/vendor/libsqlite3-sys/Upgrade.md',
-    'agent/identity/vendor/libsqlite3-sys/CONSOLECRYPT_BACKPORT.md',
-}
-AGENT_WHEEL = 'agent/third_party/websockets/websockets-17.4-py3-none-any.whl'
-AGENT_WHEEL_SHA256 = 'c6bd2c9781915592b209160d0f017d4c7c82ad53075e6b0c24d2a89299e7f9e9'
-
-
 def publishable(name: str) -> bool:
     path = PurePosixPath(name)
     if path.is_absolute() or '..' in path.parts:
@@ -70,11 +51,15 @@ def publishable(name: str) -> bool:
         return True
     if name.startswith('server/web/') or name.startswith('server/deploy/evsikov.'):
         return False
-    if not path.parts or path.parts[0] not in {'client', 'crates', 'server', 'docs', 'agent', 'runner'}:
+    if not path.parts or path.parts[0] not in {'client', 'crates', 'server', 'docs', 'runner'}:
         return False
     if path.parts[0] == 'runner' and not (
         name.startswith(('runner/src/', 'runner/setup/', 'runner/deployment/', 'runner/tests/', 'runner/test-fixture/'))
-        or name in {'runner/pyproject.toml', 'runner/environment.json', 'runner/requirements-linux-x86_64-py312.lock', 'runner/requirements-linux-x86_64-py314.lock'}
+        or name in {
+            'runner/pyproject.toml', 'runner/environment.json',
+            'runner/requirements-linux-x86_64-py312.lock', 'runner/requirements-linux-x86_64-py314.lock',
+            'runner/requirements-linux-aarch64-py312.lock', 'runner/requirements-linux-aarch64-py313.lock',
+        }
     ):
         return False
     if any(part in PRIVATE_DIRS for part in path.parts):
@@ -84,16 +69,6 @@ def publishable(name: str) -> bool:
     lowered_name = path.name.lower()
     if (lowered_name.startswith('.env') or '.env.' in lowered_name) and not lowered_name.endswith('.env.example'):
         return False
-    if path.parts[0] == 'agent':
-        if ('\\' in name or ':' in name or str(path) != name
-                or any(part in AGENT_PRIVATE_DIRS for part in path.parts)
-                or path.suffix.lower() in {'.elf', '.test'}):
-            return False
-        if path.suffix.lower() == '.whl':
-            return name == AGENT_WHEEL
-        if path.suffix.lower() == '.md':
-            return name in AGENT_DOCUMENTS or path.name.upper() in {'LICENSE.MD', 'NOTICE.MD', 'COPYING.MD'}
-        return True
     if path.parts[0] == 'docs':
         return name.startswith('docs/public/') or name == 'docs/brand/consolecrypt.svg'
     # Keep only curated user-facing docs; vendored license notices are retained.
@@ -115,19 +90,6 @@ def export(root: Path, destination: Path) -> list[str]:
             raise ValueError(f'Refusing source symlink: {name}')
         if not source.is_file():
             raise ValueError(f'Missing source file: {name}')
-        if name.startswith('agent/'):
-            info = source.lstat()
-            if (not stat.S_ISREG(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400
-                    or source.resolve(strict=True) != source.absolute() or info.st_size > 32 * 1024**2):
-                raise ValueError(f'Regular bounded Agent source required: {name}')
-            with source.open('rb') as stream:
-                if stream.read(4).startswith((b'\x7fELF', b'MZ')):
-                    raise ValueError(f'Agent executable artifact refused: {name}')
-            if name == AGENT_WHEEL:
-                with source.open('rb') as stream:
-                    wheel_sha256 = hashlib.file_digest(stream, 'sha256').hexdigest()
-                if info.st_size != 212900 or wheel_sha256 != AGENT_WHEEL_SHA256:
-                    raise ValueError('Agent wheel differs from the pinned pure-Python source')
     destination.mkdir(parents=True)
     for name in selected:
         target = destination / name

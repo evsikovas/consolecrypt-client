@@ -1,4 +1,4 @@
-"""Explicit public HTTPS source import; no repository code or credential access."""
+"""Explicit anonymous HTTP(S) import; no repository code or credential access."""
 import base64
 import hashlib
 import os
@@ -23,13 +23,13 @@ GIT_METADATA='.consolecrypt-git-source.json'
 
 def validate_source(url,reference):
     require(isinstance(url,str) and 0<len(url)<=2048 and '\\' not in url and not any(c.isspace() or ord(c)<32 for c in url),
-            'git_url','Use an HTTPS repository URL without embedded credentials')
+            'git_url','Use an HTTP(S) repository URL without embedded credentials')
     try:
         parsed=urlsplit(url)
-        valid=(parsed.scheme=='https' and parsed.hostname and parsed.username is None and parsed.password is None
+        valid=(parsed.scheme in ('http','https') and parsed.hostname and parsed.username is None and parsed.password is None
                and (parsed.port is None or 1<=parsed.port<=65535) and not parsed.query and not parsed.fragment)
     except ValueError:valid=False
-    require(valid,'git_url','Use an HTTPS repository URL without embedded credentials')
+    require(valid,'git_url','Use an HTTP(S) repository URL without embedded credentials')
     require(isinstance(reference,str) and 0<len(reference)<=240 and not reference.startswith(('-', '/'))
             and re.fullmatch(r'[A-Za-z0-9_./-]+',reference) is not None and '..' not in reference
             and '//' not in reference and not reference.endswith(('/','.','.lock')),
@@ -106,6 +106,7 @@ def capture_git(repository,url,reference,cancel,*,ca_pem=None):
     validate_source(url,reference)
     require(not cancel.is_set(),'cancelled','Git import was cancelled')
     if ca_pem is not None:
+        require(urlsplit(url).scheme == 'https','git_ca','Custom trust roots require HTTPS')
         require(isinstance(ca_pem,str) and ca_pem.isascii() and 0<len(ca_pem)<=64*1024 and
                 re.fullmatch(r'(?:-----BEGIN CERTIFICATE-----\s+[A-Za-z0-9+/=\r\n]+-----END CERTIFICATE-----\s*)+',ca_pem) is not None,
                 'git_ca','Only public PEM certificates are accepted as custom trust roots')

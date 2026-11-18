@@ -39,7 +39,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationProjectProfileFolder => 'Сохранить в локальном профиле ConsoleCrypt';
 
   @override
-  String get automationProjectChooseFolder => 'Выбрать пустую папку…';
+  String get automationProjectChooseFolder => 'Выбрать папку…';
 
   @override
   String get automationProjectUseProfile => 'Использовать папку профиля';
@@ -49,15 +49,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationInventoryRunnerHelp =>
-      'Имена хостов и групп из YAML можно посмотреть сразу. Выберите Runner, чтобы проверить inventory через Ansible и сохранить настройки.';
+      'Имена хостов и групп из INI и YAML можно посмотреть сразу. Для полной проверки через Ansible и сохранения выберите Runner.';
 
   @override
   String get automationInventoryYamlPreviewFailed =>
-      'Не удалось прочитать статический YAML inventory. Выберите файл со списком хостов или проверьте его через Runner.';
+      'Не удалось прочитать статический inventory в формате INI или YAML. Выберите файл inventory или проверьте его через Runner.';
 
   @override
   String get automationInventoryYamlPreviewHelp =>
-      'Хосты и группы, перечисленные в файле. Для подготовки запуска проверьте inventory через Runner.';
+      'Имена из файлов. Диапазоны хостов и переменные Ansible обрабатывает при проверке.';
 
   @override
   String get automationInventoryYamlPreviewEmpty => 'Хосты и группы не найдены.';
@@ -14364,7 +14364,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get keepassDropHint => 'Перетащите запись на папку, чтобы переместить её.';
 
   @override
-  String get keepassUngrouped => 'Без папки';
+  String get keepassUngrouped => 'Без группы';
 
   @override
   String get keepassAutosaving => 'Сохраняем изменения…';
@@ -14619,7 +14619,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationNoRunners => 'Нет сохранённых окружений Runner.';
 
   @override
-  String get automationRemoteRunner => 'Удалённый Linux Runner';
+  String get automationRemoteRunner => 'Linux по SSH (ручной запуск)';
 
   @override
   String get automationLocalRunner => 'Локальный Runner';
@@ -14932,10 +14932,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationGitHint =>
-      'Git на этом компьютере скачивает публичный HTTPS-репозиторий в локальный профиль ConsoleCrypt. При импорте считываются файлы проекта. Подмодули и закрытые репозитории недоступны.';
+      'Git на этом компьютере импортирует HTTP- или HTTPS-репозиторий в локальный профиль ConsoleCrypt. Репозиторий должен быть доступен без учётных данных.';
 
   @override
-  String get automationGitUrl => 'HTTPS-адрес репозитория';
+  String get automationGitUrl => 'Адрес репозитория (HTTP или HTTPS)';
 
   @override
   String get automationGitReference => 'Ветка или тег';
@@ -14947,7 +14947,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationGitCa => 'Публичный сертификат CA в PEM (без приватного ключа)';
 
   @override
-  String get automationGitFields => 'Укажите название, HTTPS-адрес, ветку или тег.';
+  String get automationGitFields => 'Укажите название проекта, адрес репозитория и ветку или тег.';
 
   @override
   String get automationGitReceiving => 'Получение и проверка файлов…';
@@ -14977,7 +14977,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationGroupsHint =>
-      'Группы действуют только в этом проекте и не меняют папки хостов. Один хост может входить в несколько групп. Запуск получает доступ только к отдельно выбранным целям.';
+      'Укажите имя группы в плейбуке, чтобы обратиться к набору хостов. При запуске выберите нужные хосты.';
 
   @override
   String get automationGroupsInvalid =>
@@ -15280,7 +15280,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationSetupMissing => 'Сначала подготовьте';
 
   @override
-  String get automationSetupPython => 'Linux x64 и Python 3.12 или 3.14';
+  String get automationSetupPython => 'Python 3.12 или 3.14 для Linux x64, Python 3.12 или 3.13 для Linux ARM64';
 
   @override
   String get automationSetupNotFound =>
@@ -15899,7 +15899,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationFolderDirectHint =>
-      'Свяжите группу с папкой хостов или скопируйте её текущий состав. Вложенные папки не включаются. Хосты для запуска выбираются отдельно.';
+      'Привяжите папку, чтобы состав группы обновлялся вместе с ней, или скопируйте хосты один раз. Вложенные папки пропускаются.';
 
   @override
   String get automationFolderSelect => 'Папка хостов ConsoleCrypt';
@@ -16619,14 +16619,14 @@ class AppLocalizationsRu extends AppLocalizations {
       'Закройте инструкцию, обновите список дистрибутивов, явно выберите нужный и нажмите «Найти окружение». Отсутствующие пакеты показаны отдельно. Установите их через «Выполнить в окружении», повторите поиск и явно установите или выберите Runner.';
 
   @override
-  String get automationServiceConnectionMode => 'Постоянный Linux Runner';
+  String get automationServiceConnectionMode => 'Служба Linux (запуск по расписанию)';
 
   @override
   String get automationServiceConnectionIdentity => 'Идентификатор установленной службы (UUID)';
 
   @override
   String get automationServiceConnectionHint =>
-      'Выберите сохранённый SSH-хост и ID установленной службы ConsoleCrypt. Расписание и доверие проверяются отдельно при подготовке делегирования.';
+      'Выберите сохранённый SSH-хост и укажите UUID установленной службы ConsoleCrypt Runner. После подтверждения доступа служба сможет выполнять задания по расписанию при закрытом приложении.';
 
   @override
   String get automationServiceConnectionManageHint =>
@@ -17011,59 +17011,57 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationAuditRouteDigest => 'Digest согласованного маршрута';
 
   @override
-  String get automationDeploymentTitle => 'Окружения развёртывания и ссылки SSH';
+  String get automationDeploymentTitle => 'Профили SSH-доступа';
 
   @override
   String get automationDeploymentHint =>
-      'Проект хранит ссылки на credentials для каждого окружения. Явно выберите существующие SSH-хосты и credentials для всех целей и промежуточных хостов. Аутентификация Runner и прокси настраивается отдельно. Пароли и ключи не копируются.';
+      'Профиль нужен, когда проекту требуются другие данные для входа по SSH. По умолчанию используются данные из карточек хостов.';
 
   @override
   String get automationDeploymentUnavailable =>
       'Исходный контекст credentials проекта недоступен или изменился. Закройте и заново откройте настройки или форму запуска перед новым выбором.';
 
   @override
-  String get automationDeploymentLegacy =>
-      'Политика credentials проекта не настроена: используется прежняя конфигурация credentials хостов.';
+  String get automationDeploymentLegacy => 'Используются данные для входа из карточек хостов.';
 
   @override
-  String get automationDeploymentChoose => 'Явно выберите окружение развёртывания';
+  String get automationDeploymentChoose => 'Выберите профиль доступа';
 
   @override
-  String get automationDeploymentNew => 'Новое окружение';
+  String get automationDeploymentNew => 'Новый профиль';
 
   @override
-  String get automationDeploymentAdd => 'Добавить окружение';
+  String get automationDeploymentAdd => 'Добавить профиль';
 
   @override
-  String get automationDeploymentProduction =>
-      'Production-окружение: требуется дополнительное подтверждение владельца.';
+  String get automationDeploymentProduction => 'Для запуска на рабочих серверах нужно подтверждение владельца';
 
   @override
   String get automationDeploymentProductionHint =>
-      'Окружение не отменяет production-риск, уже заданный для цели или группы. Native повторно проверяет совокупный риск при подготовке и подтверждении.';
+      'Для хостов, отмеченных как рабочие, всегда нужно подтверждение владельца.';
 
   @override
-  String get automationDeploymentAddReference => 'Выбрать хост и ссылку на credential';
+  String get automationDeploymentAddReference => 'Добавить хост и учётные данные';
 
   @override
-  String get automationDeploymentReferenceMissing => 'Credential по этой ссылке недоступен';
+  String get automationDeploymentReferenceMissing => 'Учётные данные недоступны';
 
   @override
   String get automationDeploymentReuse =>
-      'Один существующий credential можно осознанно выбрать для разных проектов или окружений. Глобальный credential хоста не меняется. Отсутствие ссылки для цели или промежуточного хоста блокирует подготовку.';
+      'Выберите данные для входа на каждый хост. Если есть промежуточный SSH-хост, добавьте и его.';
 
   @override
-  String get automationDeploymentRemoveTitle => 'Удалить политику credentials проекта';
+  String get automationDeploymentRemoveTitle => 'Использовать данные из карточек хостов';
 
   @override
   String get automationDeploymentRemoveHint =>
-      'После сохранения удаления проект вернётся к прежней конфигурации credentials хостов. Уже допущенные задания сохраняют исходные замороженные ссылки и сроки.';
+      'После сохранения проект будет использовать данные для входа из карточек хостов.';
 
   @override
   String get automationDeploymentFrozenReferences => 'Замороженные Native ссылки хост → credential';
 
   @override
-  String get automationDeploymentRefresh => 'Повторно прочитать контекст проекта';
+  String get automationDeploymentRefresh => 'Обновить профили';
 
   @override
   String get automationDeploymentErrorRequired => 'Перед подготовкой проекта явно выберите окружение развёртывания.';
@@ -17148,35 +17146,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationMetadataPublish => 'Синхронизировать настройки';
 
   @override
-  String get hostAgentMenu => 'Подготовить действие Linux Agent';
-
-  @override
-  String get hostAgentObservedUnknown =>
-      'Версия установленного Agent и доступность обновления ещё не прочитаны. Подготовка проекта не проверяет, не устанавливает и не обновляет Agent.';
-
-  @override
-  String get hostAgentTargetChanged =>
-      'Этот SSH-хост изменился или недоступен. Закройте окно и откройте действие заново у этого хоста.';
-
-  @override
-  String hostAgentReturn(String host) {
-    return 'Вернуться к $host';
-  }
-
-  @override
-  String get hostAgentProjectUnavailable =>
-      'Созданный проект недоступен в исходном рабочем пространстве. Откройте его явно из списка проектов.';
-
-  @override
-  String hostAgentLastObservedVersion(String version, String time) {
-    return 'Последняя наблюдённая версия Agent: $version · прочитано $time';
-  }
-
-  @override
-  String get hostAgentLastObservedHint =>
-      'Из того же аутентифицированного heartbeat и настроенного Host. Прошлое наблюдение не подтверждает текущую готовность, наличие обновления или завершённую установку.';
-
-  @override
   String get automationWorkflowHint =>
       'Выберите плейбук, хосты или группу, проверьте и запустите. Ansible работает в выбранном Runner.';
 
@@ -17194,6 +17163,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationVaultManual => 'Ввести пароль';
+
+  @override
+  String get automationVaultSavedPassword => 'Сохранённый пароль';
+
+  @override
+  String get automationVaultManualRunHint => 'Только для этого запуска.';
+
+  @override
+  String get automationVaultManualLinked =>
+      'У проекта уже есть привязка к сохранённому паролю Vault. Выберите сохранённый пароль для этого проекта.';
 
   @override
   String get automationVaultProjectFile => '.vault/password проекта';
@@ -17399,4 +17378,116 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationSchedulesUnknown => 'Доставка не подтверждена';
+
+  @override
+  String get automationRemoteRunnerPurpose =>
+      'ConsoleCrypt запускает Runner на этом сервере по SSH, когда вы запускаете задачу из приложения.';
+
+  @override
+  String get automationGitHttpHint =>
+      'Загрузка по HTTP идёт без шифрования. Используйте HTTPS, если он доступен, и проверьте импортированные файлы перед запуском.';
+
+  @override
+  String get automationFileCopyPath => 'Копировать относительный путь';
+
+  @override
+  String automationFileDeleteConfirm(String path) {
+    return 'Удалить файл проекта $path с диска?';
+  }
+
+  @override
+  String automationDirectoryDeleteConfirm(String path) {
+    return 'Удалить пустую папку $path?';
+  }
+
+  @override
+  String get automationProjectCopyFolder => 'Копировать путь к папке';
+
+  @override
+  String get automationProjectRemove => 'Удалить из библиотеки';
+
+  @override
+  String automationProjectRemoveConfirm(String name) {
+    return 'Удалить «$name» из библиотеки? Файлы проекта останутся на диске.';
+  }
+
+  @override
+  String get automationDeploymentDeleteProfile => 'Удалить профиль';
+
+  @override
+  String get automationGroupAdd => 'Добавить группу';
+
+  @override
+  String get automationGroupEmpty => 'Групп пока нет';
+
+  @override
+  String get automationGroupChoose => 'Выберите группу';
+
+  @override
+  String automationGroupUse(String group) {
+    return 'В плейбуке укажите hosts: $group';
+  }
+
+  @override
+  String get automationGroupUnlinkToEdit => 'Чтобы переименовать или удалить группу, сначала отвяжите папку.';
+
+  @override
+  String get automationDirectoryNewFile => 'Новый файл…';
+
+  @override
+  String get keepassChooseEntryIcon => 'Выбрать значок';
+
+  @override
+  String keepassEntryIconName(String icon) {
+    String _temp0 = intl.Intl.selectLogic(icon, {
+      'Key': 'По умолчанию',
+      'LockOpen': 'Замок',
+      'Identity': 'Личность',
+      'World': 'Сайт',
+      'EMail': 'Почта',
+      'NetworkServer': 'Сервер',
+      'Monitor': 'Компьютер',
+      'Console': 'Терминал',
+      'Homebanking': 'Банк',
+      'Certificate': 'Сертификат',
+      'Book': 'Книга',
+      'Star': 'Звезда',
+      'Folder': 'Папка',
+      'other': 'Значок',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get terminalOnlyPalette => 'Палитра команд';
+
+  @override
+  String get terminalOnlyNewWindow => 'Открыть новое окно';
+
+  @override
+  String get terminalOnlyWindowError => 'Не удалось открыть новое окно терминала.';
+
+  @override
+  String get terminalOnlyShellError => 'Не удалось открыть локальную оболочку.';
+
+  @override
+  String get terminalOnlyShellExited => 'Оболочка завершила работу.';
+
+  @override
+  String get terminalLocalShellSearch => 'Поиск локальных оболочек';
+
+  @override
+  String get terminalLocalShellNoMatch => 'Подходящих оболочек нет';
+
+  @override
+  String get navigationDragHint => 'Перетаскивайте разделы, чтобы менять порядок. Галочки управляют видимостью.';
+
+  @override
+  String get keepassNerdIconSearch => 'Поиск значков по названию';
+
+  @override
+  String get keepassNerdIconTitle => 'Значки Nerd Fonts';
+
+  @override
+  String get keepassNerdIconLoadFailed => 'Не удалось загрузить значки';
 }

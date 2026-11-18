@@ -91,6 +91,34 @@ void main() {
     variant: TargetPlatformVariant.only(TargetPlatform.windows),
   );
 
+  testWidgets('dragging sections orders the sidebar and persists until reset', (tester) async {
+    final (backend, container) = await pumpMinimalTerminal(tester);
+    final profile = container.read(activeProfileProvider)!.id.value;
+    final dialog = showNavigationCustomization(tester.element(find.byKey(const ValueKey('nav-all-sections'))));
+    await settle(tester);
+    final hosts = find.byKey(const ValueKey('order-nav-hosts'));
+    final original = tester.getTopLeft(hosts);
+    final credentials = find.byKey(const ValueKey('drag-nav-credentials'));
+    final drag = await tester.startGesture(tester.getCenter(credentials));
+    await drag.moveBy(const Offset(0, -18));
+    await tester.pump();
+    await drag.moveTo(original + const Offset(16, 26));
+    await tester.pump(const Duration(milliseconds: 300));
+    await drag.up();
+    await settle(tester);
+    final prefs = backend.services.settings.currentLocal.navigationByProfile[profile]!;
+    expect(prefs.order.first, 'credentials');
+    final sidebarCredentials = find.byKey(const ValueKey('nav-credentials'));
+    final sidebarHosts = find.byKey(const ValueKey('nav-hosts'));
+    expect(tester.getTopLeft(sidebarCredentials).dy, lessThan(tester.getTopLeft(sidebarHosts).dy));
+    await tapKey(tester, 'navigation-restore-defaults');
+    expect(backend.services.settings.currentLocal.navigationByProfile[profile]!.order, isEmpty);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await settle(tester);
+    await dialog;
+    expect(tester.getTopLeft(sidebarHosts).dy, lessThan(tester.getTopLeft(sidebarCredentials).dy));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('narrow sidebar dialog remains scrollable and keyboard-accessible', (tester) async {
     final (_, container) = await pumpMinimalTerminal(tester, size: const Size(720, 640));
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
@@ -101,7 +129,14 @@ void main() {
     await settle(tester);
     expect(container.read(appCommandsProvider).any((c) => c.id == AppCommandId.customizeSidebar), isTrue);
     expect(find.byKey(const ValueKey('navigation-customization')), findsOneWidget);
-    await tester.ensureVisible(find.byKey(const ValueKey('pin-nav-settings')));
+    final settings = find.byKey(const ValueKey('pin-nav-settings'));
+    await tester.scrollUntilVisible(
+      settings,
+      160,
+      scrollable: find
+          .descendant(of: find.byKey(const ValueKey('navigation-customization')), matching: find.byType(Scrollable))
+          .last,
+    );
     expect(find.byKey(const ValueKey('navigation-restore-defaults')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);

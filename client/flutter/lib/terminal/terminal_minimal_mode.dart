@@ -3,6 +3,9 @@ import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// A separate local-terminal process started with --terminal-only.
+final terminalOnlyModeProvider = Provider<bool>((ref) => false);
+
 /// Presentation only: never owns or restarts a terminal session. Not synced.
 final terminalMinimalModeProvider = NotifierProvider<TerminalMinimalMode, bool>(TerminalMinimalMode.new);
 

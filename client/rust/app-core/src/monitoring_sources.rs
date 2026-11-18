@@ -160,7 +160,7 @@ fn validate_configuration(configuration: &SourceConfig) -> AppResult<()> {
 }
 
 fn validate_refs(u: &Unlocked, configuration: &SourceConfig) -> AppResult<()> {
-    if let cc_monitoring_core::Route::SshHost { host_id } | cc_monitoring_core::Route::AgentDestination { host_id, .. } = &configuration.route {
+    if let cc_monitoring_core::Route::SshHost { host_id } | cc_monitoring_core::Route::LegacyDestination { host_id, .. } = &configuration.route {
         canonical_id(host_id)?;
         let id = crate::dto::parse_id("monitoring_ssh_host", host_id)?;
         if u.working().host(id).is_none() {

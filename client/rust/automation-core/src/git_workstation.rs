@@ -118,6 +118,8 @@ impl Git {
                 "-c",
                 "protocol.https.allow=always",
                 "-c",
+                "protocol.http.allow=always",
+                "-c",
                 "http.sslVerify=true",
                 "-c",
                 "http.followRedirects=false",

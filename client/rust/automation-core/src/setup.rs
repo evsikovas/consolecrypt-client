@@ -281,7 +281,7 @@ pub async fn setup_remote_environment(
     install: bool,
 ) -> Result<Value> {
     let command = format!(
-        "for cc_python in /usr/bin/python3.12 /usr/bin/python3.14 /usr/bin/python3; do if [ -x \"$cc_python\" ]; then exec \"$cc_python\" -I -c '{}'; fi; done; exit 69",
+        "case \"$(/usr/bin/uname -m)\" in aarch64) cc_versions='3.12 3.13 3';; *) cc_versions='3.12 3.14 3';; esac; for cc_version in $cc_versions; do cc_python=/usr/bin/python$cc_version; if [ -x \"$cc_python\" ]; then exec \"$cc_python\" -I -c '{}'; fi; done; exit 69",
         builtin_setup_script()?.replace('\'', "'\"'\"'")
     );
     let input = setup_payload(install, false)?;

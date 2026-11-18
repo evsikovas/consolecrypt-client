@@ -1,35 +1,18 @@
 //! Shared account/profile lifetime fences for Automation/settings writes.
-//! Extracted from the withdrawn Reader feature; no Reader transport or grants.
 use crate::session::{Session, Unlocked};
 use crate::{AppCore, AppError, AppResult};
-use cc_crypto_core::agent_reader::{AgentReaderContextV1, AgentReaderHash, AgentReaderTenantV1};
 use cc_protocol::vaults::{VaultRole, VaultState};
 use cc_protocol::{DeviceId, UserId, VaultId};
 use cc_storage_core::{Profile, ProfileKind};
 use cc_sync_core::ReaderAuthenticatedSubject;
-use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
 fn invalid() -> AppError {
-    AppError::invalid("agent_reader", "reader_authenticated_owner_changed")
+    AppError::invalid("owner_binding", "authenticated_owner_changed")
 }
-fn hash(domain: &[u8], value: &BTreeMap<&str, String>) -> AppResult<AgentReaderHash> {
-    let bytes = serde_json::to_vec(value).map_err(|_| invalid())?;
-    if bytes.len() > 8192 {
-        return Err(invalid());
-    }
-    let mut h = Sha256::new();
-    h.update(domain);
-    h.update([0]);
-    h.update(bytes);
-    Ok(AgentReaderHash::from_bytes(h.finalize().into()))
-}
-
-/// Shared by the existing AppCore-owned NativeReaderRuntime. Bumped before
-/// session().await at authentication transition entry, not by a late UI event.
+/// Advanced at the start of an authentication transition, before reading the session.
 #[derive(Clone)]
 pub(crate) struct OriginalAuthTransitions(Arc<TransitionInner>);
 struct TransitionInner {
@@ -137,7 +120,7 @@ impl AppCore {
 
 #[derive(Clone)]
 pub(super) enum OriginalOwnerBinding {
-    Local { hash: AgentReaderHash },
+    Local,
     Personal(Arc<PersonalOwner>),
 }
 pub(super) struct PersonalOwner {
@@ -147,7 +130,6 @@ pub(super) struct PersonalOwner {
     vault: VaultId,
     // Public VRK commitment only. Never an unlocked vault or private key.
     vault_commitment: [u8; 32],
-    hash: AgentReaderHash,
 }
 impl OriginalOwnerBinding {
     pub async fn capture(
@@ -162,16 +144,7 @@ impl OriginalOwnerBinding {
             return Err(invalid());
         }
         match profile.kind {
-            ProfileKind::Local if profile.user_id.is_none() && owner.api_opt().is_none() => {
-                let hash = hash(
-                    b"consolecrypt.native.reader.local-owner.v1",
-                    &BTreeMap::from([
-                        ("format", "cc-native-reader-local-owner/v1".into()),
-                        ("profileId", owner.profile_id.to_string()),
-                    ]),
-                )?;
-                Ok(Self::Local { hash })
-            }
+            ProfileKind::Local if profile.user_id.is_none() && owner.api_opt().is_none() => Ok(Self::Local),
             ProfileKind::Synced => {
                 let api = owner.api_opt().ok_or_else(invalid)?;
                 let authenticated = api.capture_reader_auth().await.map_err(|_| invalid())?;
@@ -185,51 +158,18 @@ impl OriginalOwnerBinding {
                 {
                     return Err(invalid());
                 }
-                let server_hash = hash(
-                    b"consolecrypt.native.reader.account-server.v1",
-                    &BTreeMap::from([("serverUrl", authenticated.server_url().to_owned())]),
-                )?;
-                let hash = hash(
-                    b"consolecrypt.native.reader.personal-owner.v1",
-                    &BTreeMap::from([
-                        ("format", "cc-native-reader-personal-owner/v1".into()),
-                        ("userId", user.to_string()),
-                        (
-                            "serverOriginHash",
-                            serde_json::to_value(server_hash)
-                                .map_err(|_| invalid())?
-                                .as_str()
-                                .ok_or_else(invalid)?
-                                .to_owned(),
-                        ),
-                        ("personalVaultId", vault.to_string()),
-                    ]),
-                )?;
                 let binding = Self::Personal(Arc::new(PersonalOwner {
                     device: owner.device_id(),
                     authenticated,
                     user,
                     vault,
                     vault_commitment: confirmed_vault_commitment(owner).await?,
-                    hash,
                 }));
                 binding.verify(owner, profile).await?;
                 Ok(binding)
             }
             _ => Err(invalid()),
         }
-    }
-    pub fn is_personal(&self) -> bool {
-        matches!(self, Self::Personal(_))
-    }
-    pub fn hash(&self) -> AgentReaderHash {
-        match self {
-            Self::Local { hash } => *hash,
-            Self::Personal(p) => p.hash,
-        }
-    }
-    pub fn snapshot_hash(&self) -> Option<AgentReaderHash> {
-        self.is_personal().then(|| self.hash())
     }
     pub fn check_vault(&self, unlocked: &Arc<Unlocked>) -> AppResult<()> {
         if let Self::Personal(p) = self {
@@ -242,20 +182,9 @@ impl OriginalOwnerBinding {
         }
         Ok(())
     }
-    pub fn check_context(&self, context: &AgentReaderContextV1) -> AppResult<()> {
-        match (self, &context.tenant) {
-            (Self::Local { .. }, AgentReaderTenantV1::LocalProfile { .. }) => Ok(()),
-            (Self::Personal(p), AgentReaderTenantV1::PersonalAccount { id })
-                if id.as_uuid().to_string() == p.user.to_string() =>
-            {
-                Ok(())
-            }
-            _ => Err(invalid()),
-        }
-    }
     pub fn is_current(&self, owner: &Arc<Session>) -> bool {
         match self {
-            Self::Local { .. } => owner.api_opt().is_none(),
+            Self::Local => owner.api_opt().is_none(),
             Self::Personal(p) => {
                 owner
                     .api_opt()
@@ -271,7 +200,7 @@ impl OriginalOwnerBinding {
         f: impl FnOnce() -> AppResult<T>,
     ) -> AppResult<T> {
         match self {
-            Self::Local { .. } if owner.api_opt().is_none() => f(),
+            Self::Local if owner.api_opt().is_none() => f(),
             Self::Personal(p) => {
                 let api = owner.api_opt().ok_or_else(invalid)?;
                 p.authenticated
@@ -287,7 +216,7 @@ impl OriginalOwnerBinding {
         f: impl FnOnce() -> AppResult<T>,
     ) -> AppResult<T> {
         match self {
-            Self::Local { .. } if owner.api_opt().is_none() => f(),
+            Self::Local if owner.api_opt().is_none() => f(),
             Self::Personal(p) => {
                 let api = owner.api_opt().ok_or_else(invalid)?;
                 p.authenticated
@@ -299,7 +228,7 @@ impl OriginalOwnerBinding {
     }
     pub async fn cancelled(&self) {
         match self {
-            Self::Local { .. } => std::future::pending::<()>().await,
+            Self::Local => std::future::pending::<()>().await,
             Self::Personal(p) => p.authenticated.cancelled().await,
         }
     }
@@ -311,7 +240,7 @@ impl OriginalOwnerBinding {
             return Err(invalid());
         }
         match self {
-            Self::Local { .. }
+            Self::Local
                 if profile.kind == ProfileKind::Local && profile.user_id.is_none() =>
             {
                 Ok(())
@@ -380,7 +309,7 @@ fn canonical_profile_server(profile: &Profile) -> AppResult<String> {
     Ok(url.to_string())
 }
 
-/// Shared original-session provenance only; never Reader or Node authority.
+/// Provenance of the session that began an operation.
 #[derive(Clone)]
 pub(crate) struct OriginalSessionAuth(OriginalAuthEpoch);
 impl OriginalSessionAuth {
@@ -414,13 +343,13 @@ impl OriginalSessionProvenance {
     /// Original account subject only; never captures or refreshes authorization.
     pub(crate) async fn cancelled(&self) {
         match &self.0 {
-            OriginalOwnerBinding::Local { .. } => std::future::pending::<()>().await,
+            OriginalOwnerBinding::Local => std::future::pending::<()>().await,
             OriginalOwnerBinding::Personal(owner) => owner.authenticated.cancelled().await,
         }
     }
     pub(crate) fn personal_user_id(&self) -> Option<UserId> {
         match &self.0 {
-            OriginalOwnerBinding::Local { .. } => None,
+            OriginalOwnerBinding::Local => None,
             OriginalOwnerBinding::Personal(p) => Some(p.user),
         }
     }

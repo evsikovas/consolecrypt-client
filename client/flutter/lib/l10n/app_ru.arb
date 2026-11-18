@@ -26,12 +26,12 @@
   "automationProjectRole": "\u0420\u043e\u043b\u044c Ansible \u0438 \u043f\u043b\u0435\u0439\u0431\u0443\u043a",
   "automationProjectRoleName": "\u0418\u043c\u044f \u0440\u043e\u043b\u0438",
   "automationProjectProfileFolder": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0432 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u043e\u043c \u043f\u0440\u043e\u0444\u0438\u043b\u0435 ConsoleCrypt",
-  "automationProjectChooseFolder": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043f\u0443\u0441\u0442\u0443\u044e \u043f\u0430\u043f\u043a\u0443\u2026",
+  "automationProjectChooseFolder": "Выбрать папку…",
   "automationProjectUseProfile": "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u044c \u043f\u0430\u043f\u043a\u0443 \u043f\u0440\u043e\u0444\u0438\u043b\u044f",
   "automationProjectChooseFolderError": "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u0432\u044b\u0431\u043e\u0440 \u043f\u0430\u043f\u043a\u0438.",
-  "automationInventoryRunnerHelp": "\u0418\u043c\u0435\u043d\u0430 \u0445\u043e\u0441\u0442\u043e\u0432 \u0438 \u0433\u0440\u0443\u043f\u043f \u0438\u0437 YAML \u043c\u043e\u0436\u043d\u043e \u043f\u043e\u0441\u043c\u043e\u0442\u0440\u0435\u0442\u044c \u0441\u0440\u0430\u0437\u0443. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 Runner, \u0447\u0442\u043e\u0431\u044b \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c inventory \u0447\u0435\u0440\u0435\u0437 Ansible \u0438 \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438.",
-  "automationInventoryYamlPreviewFailed": "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0439 YAML inventory. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0444\u0430\u0439\u043b \u0441\u043e \u0441\u043f\u0438\u0441\u043a\u043e\u043c \u0445\u043e\u0441\u0442\u043e\u0432 \u0438\u043b\u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0435\u0433\u043e \u0447\u0435\u0440\u0435\u0437 Runner.",
-  "automationInventoryYamlPreviewHelp": "\u0425\u043e\u0441\u0442\u044b \u0438 \u0433\u0440\u0443\u043f\u043f\u044b, \u043f\u0435\u0440\u0435\u0447\u0438\u0441\u043b\u0435\u043d\u043d\u044b\u0435 \u0432 \u0444\u0430\u0439\u043b\u0435. \u0414\u043b\u044f \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0438 \u0437\u0430\u043f\u0443\u0441\u043a\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 inventory \u0447\u0435\u0440\u0435\u0437 Runner.",
+  "automationInventoryRunnerHelp": "Имена хостов и групп из INI и YAML можно посмотреть сразу. Для полной проверки через Ansible и сохранения выберите Runner.",
+  "automationInventoryYamlPreviewFailed": "Не удалось прочитать статический inventory в формате INI или YAML. Выберите файл inventory или проверьте его через Runner.",
+  "automationInventoryYamlPreviewHelp": "Имена из файлов. Диапазоны хостов и переменные Ansible обрабатывает при проверке.",
   "automationInventoryYamlPreviewEmpty": "\u0425\u043e\u0441\u0442\u044b \u0438 \u0433\u0440\u0443\u043f\u043f\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b.",
   "automationConfigFromFile": "\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043a \u2014 ansible.cfg \u0432 \u043a\u043e\u0440\u043d\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430. \u041f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u043c\u044b\u0435 \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u044b \u0438\u0437 \u0444\u0430\u0439\u043b\u0430.",
   "automationConfigNewFile": "\u041f\u0440\u0438 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0438 \u0444\u0430\u0439\u043b ansible.cfg \u0431\u0443\u0434\u0435\u0442 \u0441\u043e\u0437\u0434\u0430\u043d \u0432 \u043a\u043e\u0440\u043d\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430.",
@@ -7119,7 +7119,7 @@
   "@keepassDropHint": {
     "description": "KDBX password manager workspace"
   },
-  "keepassUngrouped": "\u0411\u0435\u0437 \u043f\u0430\u043f\u043a\u0438",
+  "keepassUngrouped": "Без группы",
   "@keepassUngrouped": {
     "description": "KDBX password manager workspace"
   },
@@ -7456,7 +7456,7 @@
   "@automationNoRunners": {
     "description": "Runner configuration and explicit environment diagnostics"
   },
-  "automationRemoteRunner": "\u0423\u0434\u0430\u043b\u0451\u043d\u043d\u044b\u0439 Linux Runner",
+  "automationRemoteRunner": "Linux по SSH (ручной запуск)",
   "@automationRemoteRunner": {
     "description": "Runner configuration and explicit environment diagnostics"
   },
@@ -7856,11 +7856,11 @@
   "@automationGitName": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationGitHint": "Git \u043d\u0430 \u044d\u0442\u043e\u043c \u043a\u043e\u043c\u043f\u044c\u044e\u0442\u0435\u0440\u0435 \u0441\u043a\u0430\u0447\u0438\u0432\u0430\u0435\u0442 \u043f\u0443\u0431\u043b\u0438\u0447\u043d\u044b\u0439 HTTPS-\u0440\u0435\u043f\u043e\u0437\u0438\u0442\u043e\u0440\u0438\u0439 \u0432 \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u043f\u0440\u043e\u0444\u0438\u043b\u044c ConsoleCrypt. \u041f\u0440\u0438 \u0438\u043c\u043f\u043e\u0440\u0442\u0435 \u0441\u0447\u0438\u0442\u044b\u0432\u0430\u044e\u0442\u0441\u044f \u0444\u0430\u0439\u043b\u044b \u043f\u0440\u043e\u0435\u043a\u0442\u0430. \u041f\u043e\u0434\u043c\u043e\u0434\u0443\u043b\u0438 \u0438 \u0437\u0430\u043a\u0440\u044b\u0442\u044b\u0435 \u0440\u0435\u043f\u043e\u0437\u0438\u0442\u043e\u0440\u0438\u0438 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b.",
+  "automationGitHint": "Git на этом компьютере импортирует HTTP- или HTTPS-репозиторий в локальный профиль ConsoleCrypt. Репозиторий должен быть доступен без учётных данных.",
   "@automationGitHint": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationGitUrl": "HTTPS-\u0430\u0434\u0440\u0435\u0441 \u0440\u0435\u043f\u043e\u0437\u0438\u0442\u043e\u0440\u0438\u044f",
+  "automationGitUrl": "Адрес репозитория (HTTP или HTTPS)",
   "@automationGitUrl": {
     "description": "Explicitly reviewed automation job execution and history"
   },
@@ -7876,7 +7876,7 @@
   "@automationGitCa": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationGitFields": "\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435, HTTPS-\u0430\u0434\u0440\u0435\u0441, \u0432\u0435\u0442\u043a\u0443 \u0438\u043b\u0438 \u0442\u0435\u0433.",
+  "automationGitFields": "Укажите название проекта, адрес репозитория и ветку или тег.",
   "@automationGitFields": {
     "description": "Explicitly reviewed automation job execution and history"
   },
@@ -7912,7 +7912,7 @@
   "@automationGroupName": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationGroupsHint": "\u0413\u0440\u0443\u043f\u043f\u044b \u0434\u0435\u0439\u0441\u0442\u0432\u0443\u044e\u0442 \u0442\u043e\u043b\u044c\u043a\u043e \u0432 \u044d\u0442\u043e\u043c \u043f\u0440\u043e\u0435\u043a\u0442\u0435 \u0438 \u043d\u0435 \u043c\u0435\u043d\u044f\u044e\u0442 \u043f\u0430\u043f\u043a\u0438 \u0445\u043e\u0441\u0442\u043e\u0432. \u041e\u0434\u0438\u043d \u0445\u043e\u0441\u0442 \u043c\u043e\u0436\u0435\u0442 \u0432\u0445\u043e\u0434\u0438\u0442\u044c \u0432 \u043d\u0435\u0441\u043a\u043e\u043b\u044c\u043a\u043e \u0433\u0440\u0443\u043f\u043f. \u0417\u0430\u043f\u0443\u0441\u043a \u043f\u043e\u043b\u0443\u0447\u0430\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f \u0442\u043e\u043b\u044c\u043a\u043e \u043a \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u043c \u0446\u0435\u043b\u044f\u043c.",
+  "automationGroupsHint": "Укажите имя группы в плейбуке, чтобы обратиться к набору хостов. При запуске выберите нужные хосты.",
   "@automationGroupsHint": {
     "description": "Explicitly reviewed automation job execution and history"
   },
@@ -8277,7 +8277,7 @@
   "@automationSetupMissing": {
     "description": "Explicit local or WSL Runner setup"
   },
-  "automationSetupPython": "Linux x64 \u0438 Python 3.12 \u0438\u043b\u0438 3.14",
+  "automationSetupPython": "Python 3.12 или 3.14 для Linux x64, Python 3.12 или 3.13 для Linux ARM64",
   "@automationSetupPython": {
     "description": "Explicit local or WSL Runner setup"
   },
@@ -8886,7 +8886,7 @@
   "noticesRuntimeUnavailable": "\u041f\u043e\u0442\u043e\u043a \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0439 \u0437\u0430\u043a\u0440\u044b\u0442. \u0421\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435 \u043d\u0430\u0431\u043b\u044e\u0434\u0435\u043d\u0438\u044f \u043e\u0442\u043d\u043e\u0441\u044f\u0442\u0441\u044f \u043a \u043f\u0440\u043e\u0448\u043b\u043e\u043c\u0443; \u0434\u043b\u044f \u043d\u043e\u0432\u043e\u0433\u043e \u043d\u0430\u0431\u043b\u044e\u0434\u0435\u043d\u0438\u044f \u043f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 ConsoleCrypt.",
   "noticesRuntimeIncomplete": "\u0427\u0430\u0441\u0442\u044c \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0439 \u043c\u043e\u0433\u043b\u0430 \u0431\u044b\u0442\u044c \u043f\u0440\u043e\u043f\u0443\u0449\u0435\u043d\u0430. \u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u0437\u0430\u0434\u0430\u043d\u0438\u0439 \u043d\u0435 \u0432\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442 \u044d\u0442\u0443 \u0438\u0441\u0442\u043e\u0440\u0438\u044e; \u043f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0441\u043e\u043e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0439 \u0440\u0430\u0437\u0434\u0435\u043b.",
   "noticesRuntimeHelp": "\u042d\u0442\u043e \u043d\u0430\u0431\u043b\u044e\u0434\u0435\u043d\u0438\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f. \u041f\u0435\u0440\u0435\u0445\u043e\u0434 \u0432 \u0440\u0430\u0437\u0434\u0435\u043b \u043d\u0435 \u043f\u0435\u0440\u0435\u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0430\u0435\u0442, \u043d\u0435 \u043f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0435\u0442 \u0438 \u043d\u0435 \u043f\u043e\u0432\u0442\u043e\u0440\u044f\u0435\u0442 \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0438. \u0417\u0430\u043a\u0440\u044b\u0442\u0430\u044f \u0441\u0435\u0441\u0441\u0438\u044f \u043d\u0435 \u043e\u0437\u043d\u0430\u0447\u0430\u0435\u0442 \u0443\u0441\u043f\u0435\u0448\u043d\u043e\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u044b.",
-  "automationFolderDirectHint": "\u0421\u0432\u044f\u0436\u0438\u0442\u0435 \u0433\u0440\u0443\u043f\u043f\u0443 \u0441 \u043f\u0430\u043f\u043a\u043e\u0439 \u0445\u043e\u0441\u0442\u043e\u0432 \u0438\u043b\u0438 \u0441\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u0435\u0451 \u0442\u0435\u043a\u0443\u0449\u0438\u0439 \u0441\u043e\u0441\u0442\u0430\u0432. \u0412\u043b\u043e\u0436\u0435\u043d\u043d\u044b\u0435 \u043f\u0430\u043f\u043a\u0438 \u043d\u0435 \u0432\u043a\u043b\u044e\u0447\u0430\u044e\u0442\u0441\u044f. \u0425\u043e\u0441\u0442\u044b \u0434\u043b\u044f \u0437\u0430\u043f\u0443\u0441\u043a\u0430 \u0432\u044b\u0431\u0438\u0440\u0430\u044e\u0442\u0441\u044f \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e.",
+  "automationFolderDirectHint": "Привяжите папку, чтобы состав группы обновлялся вместе с ней, или скопируйте хосты один раз. Вложенные папки пропускаются.",
   "automationFolderSelect": "\u041f\u0430\u043f\u043a\u0430 \u0445\u043e\u0441\u0442\u043e\u0432 ConsoleCrypt",
   "automationFolderMissing": "\u041f\u0430\u043f\u043a\u0430 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430",
   "automationFolderUnavailable": "\u0421\u043e\u0441\u0442\u0430\u0432 \u043f\u0430\u043f\u043a\u0438 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0443\u044e \u043f\u0430\u043f\u043a\u0443 \u0438\u043b\u0438 \u0443\u0434\u0430\u043b\u0438\u0442\u0435 \u043f\u0440\u0438\u0432\u044f\u0437\u043a\u0443. \u041f\u0435\u0440\u0435\u0434 \u0437\u0430\u043f\u0443\u0441\u043a\u043e\u043c \u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f \u043d\u043e\u0432\u0430\u044f \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0430.",
@@ -9552,9 +9552,9 @@
   "automationWslPreparationUser": "\u041e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u0434\u0438\u0441\u0442\u0440\u0438\u0431\u0443\u0442\u0438\u0432 \u0438\u0437 \u043c\u0435\u043d\u044e \u00ab\u041f\u0443\u0441\u043a\u00bb. \u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u0435 \u043f\u0435\u0440\u0432\u044b\u0439 \u0437\u0430\u043f\u0443\u0441\u043a \u0438 \u0441\u043e\u0437\u0434\u0430\u0439\u0442\u0435 \u043e\u0431\u044b\u0447\u043d\u043e\u0433\u043e \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f Linux \u0441 \u043f\u0430\u0440\u043e\u043b\u0435\u043c. ConsoleCrypt \u043d\u0435 \u0437\u0430\u043f\u0440\u0430\u0448\u0438\u0432\u0430\u0435\u0442 \u0438 \u043d\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442 \u043f\u0430\u0440\u043e\u043b\u044c sudo.",
   "automationWslPreparationRunnerTitle": "4. \u0412\u0435\u0440\u043d\u0443\u0442\u044c\u0441\u044f \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435",
   "automationWslPreparationRunner": "\u0417\u0430\u043a\u0440\u043e\u0439\u0442\u0435 \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044e, \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u0435 \u0441\u043f\u0438\u0441\u043e\u043a \u0434\u0438\u0441\u0442\u0440\u0438\u0431\u0443\u0442\u0438\u0432\u043e\u0432, \u044f\u0432\u043d\u043e \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043d\u0443\u0436\u043d\u044b\u0439 \u0438 \u043d\u0430\u0436\u043c\u0438\u0442\u0435 \u00ab\u041d\u0430\u0439\u0442\u0438 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435\u00bb. \u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0435 \u043f\u0430\u043a\u0435\u0442\u044b \u043f\u043e\u043a\u0430\u0437\u0430\u043d\u044b \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e. \u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0435 \u0438\u0445 \u0447\u0435\u0440\u0435\u0437 \u00ab\u0412\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0432 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0438\u00bb, \u043f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u043e\u0438\u0441\u043a \u0438 \u044f\u0432\u043d\u043e \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0435 \u0438\u043b\u0438 \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 Runner.",
-  "automationServiceConnectionMode": "\u041f\u043e\u0441\u0442\u043e\u044f\u043d\u043d\u044b\u0439 Linux Runner",
+  "automationServiceConnectionMode": "Служба Linux (запуск по расписанию)",
   "automationServiceConnectionIdentity": "\u0418\u0434\u0435\u043d\u0442\u0438\u0444\u0438\u043a\u0430\u0442\u043e\u0440 \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0439 \u0441\u043b\u0443\u0436\u0431\u044b (UUID)",
-  "automationServiceConnectionHint": "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0439 SSH-\u0445\u043e\u0441\u0442 \u0438 ID \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0439 \u0441\u043b\u0443\u0436\u0431\u044b ConsoleCrypt. \u0420\u0430\u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u0438 \u0434\u043e\u0432\u0435\u0440\u0438\u0435 \u043f\u0440\u043e\u0432\u0435\u0440\u044f\u044e\u0442\u0441\u044f \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e \u043f\u0440\u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0435 \u0434\u0435\u043b\u0435\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f.",
+  "automationServiceConnectionHint": "Выберите сохранённый SSH-хост и укажите UUID установленной службы ConsoleCrypt Runner. После подтверждения доступа служба сможет выполнять задания по расписанию при закрытом приложении.",
   "automationServiceConnectionManageHint": "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c\u0442\u0435 \u0440\u0430\u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c\u0441\u044f, \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0438\u043b\u0438 \u043e\u0442\u043e\u0437\u0432\u0430\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f.",
   "automationServiceDelegate": "\u041f\u0435\u0440\u0435\u0434\u0430\u0442\u044c \u0440\u0430\u0441\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0438\u0441\u0443",
   "@automationServiceDelegate": {
@@ -10040,22 +10040,22 @@
   "@automationAuditRouteDigest": {
     "description": "Read-only closed original Native job metadata; no credentials, authority, current-identity fallback or immutability claim."
   },
-  "automationDeploymentTitle": "\u041e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u044f \u0440\u0430\u0437\u0432\u0451\u0440\u0442\u044b\u0432\u0430\u043d\u0438\u044f \u0438 \u0441\u0441\u044b\u043b\u043a\u0438 SSH",
-  "automationDeploymentHint": "\u041f\u0440\u043e\u0435\u043a\u0442 \u0445\u0440\u0430\u043d\u0438\u0442 \u0441\u0441\u044b\u043b\u043a\u0438 \u043d\u0430 credentials \u0434\u043b\u044f \u043a\u0430\u0436\u0434\u043e\u0433\u043e \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u044f. \u042f\u0432\u043d\u043e \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0435 SSH-\u0445\u043e\u0441\u0442\u044b \u0438 credentials \u0434\u043b\u044f \u0432\u0441\u0435\u0445 \u0446\u0435\u043b\u0435\u0439 \u0438 \u043f\u0440\u043e\u043c\u0435\u0436\u0443\u0442\u043e\u0447\u043d\u044b\u0445 \u0445\u043e\u0441\u0442\u043e\u0432. \u0410\u0443\u0442\u0435\u043d\u0442\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f Runner \u0438 \u043f\u0440\u043e\u043a\u0441\u0438 \u043d\u0430\u0441\u0442\u0440\u0430\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e. \u041f\u0430\u0440\u043e\u043b\u0438 \u0438 \u043a\u043b\u044e\u0447\u0438 \u043d\u0435 \u043a\u043e\u043f\u0438\u0440\u0443\u044e\u0442\u0441\u044f.",
+  "automationDeploymentTitle": "Профили SSH-доступа",
+  "automationDeploymentHint": "Профиль нужен, когда проекту требуются другие данные для входа по SSH. По умолчанию используются данные из карточек хостов.",
   "automationDeploymentUnavailable": "\u0418\u0441\u0445\u043e\u0434\u043d\u044b\u0439 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442 credentials \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0438\u043b\u0438 \u0438\u0437\u043c\u0435\u043d\u0438\u043b\u0441\u044f. \u0417\u0430\u043a\u0440\u043e\u0439\u0442\u0435 \u0438 \u0437\u0430\u043d\u043e\u0432\u043e \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u0438\u043b\u0438 \u0444\u043e\u0440\u043c\u0443 \u0437\u0430\u043f\u0443\u0441\u043a\u0430 \u043f\u0435\u0440\u0435\u0434 \u043d\u043e\u0432\u044b\u043c \u0432\u044b\u0431\u043e\u0440\u043e\u043c.",
-  "automationDeploymentLegacy": "\u041f\u043e\u043b\u0438\u0442\u0438\u043a\u0430 credentials \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u043d\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d\u0430: \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u0442\u0441\u044f \u043f\u0440\u0435\u0436\u043d\u044f\u044f \u043a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044f credentials \u0445\u043e\u0441\u0442\u043e\u0432.",
-  "automationDeploymentChoose": "\u042f\u0432\u043d\u043e \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435 \u0440\u0430\u0437\u0432\u0451\u0440\u0442\u044b\u0432\u0430\u043d\u0438\u044f",
-  "automationDeploymentNew": "\u041d\u043e\u0432\u043e\u0435 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435",
-  "automationDeploymentAdd": "\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435",
-  "automationDeploymentProduction": "Production-\u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435: \u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f \u0434\u043e\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0435 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435 \u0432\u043b\u0430\u0434\u0435\u043b\u044c\u0446\u0430.",
-  "automationDeploymentProductionHint": "\u041e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435 \u043d\u0435 \u043e\u0442\u043c\u0435\u043d\u044f\u0435\u0442 production-\u0440\u0438\u0441\u043a, \u0443\u0436\u0435 \u0437\u0430\u0434\u0430\u043d\u043d\u044b\u0439 \u0434\u043b\u044f \u0446\u0435\u043b\u0438 \u0438\u043b\u0438 \u0433\u0440\u0443\u043f\u043f\u044b. Native \u043f\u043e\u0432\u0442\u043e\u0440\u043d\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u044f\u0435\u0442 \u0441\u043e\u0432\u043e\u043a\u0443\u043f\u043d\u044b\u0439 \u0440\u0438\u0441\u043a \u043f\u0440\u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0435 \u0438 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0438.",
-  "automationDeploymentAddReference": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0445\u043e\u0441\u0442 \u0438 \u0441\u0441\u044b\u043b\u043a\u0443 \u043d\u0430 credential",
-  "automationDeploymentReferenceMissing": "Credential \u043f\u043e \u044d\u0442\u043e\u0439 \u0441\u0441\u044b\u043b\u043a\u0435 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d",
-  "automationDeploymentReuse": "\u041e\u0434\u0438\u043d \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0439 credential \u043c\u043e\u0436\u043d\u043e \u043e\u0441\u043e\u0437\u043d\u0430\u043d\u043d\u043e \u0432\u044b\u0431\u0440\u0430\u0442\u044c \u0434\u043b\u044f \u0440\u0430\u0437\u043d\u044b\u0445 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432 \u0438\u043b\u0438 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0439. \u0413\u043b\u043e\u0431\u0430\u043b\u044c\u043d\u044b\u0439 credential \u0445\u043e\u0441\u0442\u0430 \u043d\u0435 \u043c\u0435\u043d\u044f\u0435\u0442\u0441\u044f. \u041e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u0435 \u0441\u0441\u044b\u043b\u043a\u0438 \u0434\u043b\u044f \u0446\u0435\u043b\u0438 \u0438\u043b\u0438 \u043f\u0440\u043e\u043c\u0435\u0436\u0443\u0442\u043e\u0447\u043d\u043e\u0433\u043e \u0445\u043e\u0441\u0442\u0430 \u0431\u043b\u043e\u043a\u0438\u0440\u0443\u0435\u0442 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0443.",
-  "automationDeploymentRemoveTitle": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u043f\u043e\u043b\u0438\u0442\u0438\u043a\u0443 credentials \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
-  "automationDeploymentRemoveHint": "\u041f\u043e\u0441\u043b\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f \u0443\u0434\u0430\u043b\u0435\u043d\u0438\u044f \u043f\u0440\u043e\u0435\u043a\u0442 \u0432\u0435\u0440\u043d\u0451\u0442\u0441\u044f \u043a \u043f\u0440\u0435\u0436\u043d\u0435\u0439 \u043a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u0438 credentials \u0445\u043e\u0441\u0442\u043e\u0432. \u0423\u0436\u0435 \u0434\u043e\u043f\u0443\u0449\u0435\u043d\u043d\u044b\u0435 \u0437\u0430\u0434\u0430\u043d\u0438\u044f \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u044e\u0442 \u0438\u0441\u0445\u043e\u0434\u043d\u044b\u0435 \u0437\u0430\u043c\u043e\u0440\u043e\u0436\u0435\u043d\u043d\u044b\u0435 \u0441\u0441\u044b\u043b\u043a\u0438 \u0438 \u0441\u0440\u043e\u043a\u0438.",
+  "automationDeploymentLegacy": "Используются данные для входа из карточек хостов.",
+  "automationDeploymentChoose": "Выберите профиль доступа",
+  "automationDeploymentNew": "Новый профиль",
+  "automationDeploymentAdd": "Добавить профиль",
+  "automationDeploymentProduction": "Для запуска на рабочих серверах нужно подтверждение владельца",
+  "automationDeploymentProductionHint": "Для хостов, отмеченных как рабочие, всегда нужно подтверждение владельца.",
+  "automationDeploymentAddReference": "Добавить хост и учётные данные",
+  "automationDeploymentReferenceMissing": "Учётные данные недоступны",
+  "automationDeploymentReuse": "Выберите данные для входа на каждый хост. Если есть промежуточный SSH-хост, добавьте и его.",
+  "automationDeploymentRemoveTitle": "Использовать данные из карточек хостов",
+  "automationDeploymentRemoveHint": "После сохранения проект будет использовать данные для входа из карточек хостов.",
   "automationDeploymentFrozenReferences": "\u0417\u0430\u043c\u043e\u0440\u043e\u0436\u0435\u043d\u043d\u044b\u0435 Native \u0441\u0441\u044b\u043b\u043a\u0438 \u0445\u043e\u0441\u0442 \u2192 credential",
-  "automationDeploymentRefresh": "\u041f\u043e\u0432\u0442\u043e\u0440\u043d\u043e \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u0442\u044c \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442 \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
+  "automationDeploymentRefresh": "Обновить профили",
   "@automationDeploymentTitle": {
     "description": "Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI."
   },
@@ -10196,47 +10196,6 @@
   "@automationMetadataPublish": {
     "description": "Encrypted project reference catalog UI: automationMetadataPublish"
   },
-  "hostAgentMenu": "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 Linux Agent",
-  "@hostAgentMenu": {
-    "description": "Host-specific source creation/navigation only; no installed/runtime/update/trust claim."
-  },
-  "hostAgentObservedUnknown": "\u0412\u0435\u0440\u0441\u0438\u044f \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0433\u043e Agent \u0438 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e\u0441\u0442\u044c \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f \u0435\u0449\u0451 \u043d\u0435 \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u043d\u044b. \u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u043d\u0435 \u043f\u0440\u043e\u0432\u0435\u0440\u044f\u0435\u0442, \u043d\u0435 \u0443\u0441\u0442\u0430\u043d\u0430\u0432\u043b\u0438\u0432\u0430\u0435\u0442 \u0438 \u043d\u0435 \u043e\u0431\u043d\u043e\u0432\u043b\u044f\u0435\u0442 Agent.",
-  "@hostAgentObservedUnknown": {
-    "description": "Host-specific source creation/navigation only; no installed/runtime/update/trust claim."
-  },
-  "hostAgentTargetChanged": "\u042d\u0442\u043e\u0442 SSH-\u0445\u043e\u0441\u0442 \u0438\u0437\u043c\u0435\u043d\u0438\u043b\u0441\u044f \u0438\u043b\u0438 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d. \u0417\u0430\u043a\u0440\u043e\u0439\u0442\u0435 \u043e\u043a\u043d\u043e \u0438 \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u0437\u0430\u043d\u043e\u0432\u043e \u0443 \u044d\u0442\u043e\u0433\u043e \u0445\u043e\u0441\u0442\u0430.",
-  "@hostAgentTargetChanged": {
-    "description": "Host-specific source creation/navigation only; no installed/runtime/update/trust claim."
-  },
-  "hostAgentReturn": "\u0412\u0435\u0440\u043d\u0443\u0442\u044c\u0441\u044f \u043a {host}",
-  "@hostAgentReturn": {
-    "description": "Host-specific source creation/navigation only; no installed/runtime/update/trust claim.",
-    "placeholders": {
-      "host": {
-        "type": "String"
-      }
-    }
-  },
-  "hostAgentProjectUnavailable": "\u0421\u043e\u0437\u0434\u0430\u043d\u043d\u044b\u0439 \u043f\u0440\u043e\u0435\u043a\u0442 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0432 \u0438\u0441\u0445\u043e\u0434\u043d\u043e\u043c \u0440\u0430\u0431\u043e\u0447\u0435\u043c \u043f\u0440\u043e\u0441\u0442\u0440\u0430\u043d\u0441\u0442\u0432\u0435. \u041e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u0435\u0433\u043e \u044f\u0432\u043d\u043e \u0438\u0437 \u0441\u043f\u0438\u0441\u043a\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432.",
-  "@hostAgentProjectUnavailable": {
-    "description": "Host-specific source creation/navigation only; no installed/runtime/update/trust claim."
-  },
-  "hostAgentLastObservedVersion": "Последняя наблюдённая версия Agent: {version} · прочитано {time}",
-  "@hostAgentLastObservedVersion": {
-    "description": "Read-only original heartbeat snapshot metadata in Host Agent lifecycle; local UTC receive time, never Ready.",
-    "placeholders": {
-      "version": {
-        "type": "String"
-      },
-      "time": {
-        "type": "String"
-      }
-    }
-  },
-  "hostAgentLastObservedHint": "Из того же аутентифицированного heartbeat и настроенного Host. Прошлое наблюдение не подтверждает текущую готовность, наличие обновления или завершённую установку.",
-  "@hostAgentLastObservedHint": {
-    "description": "Qualifies previously observed heartbeat version; no remote action or readiness claim."
-  },
   "automationWorkflowHint": "Выберите плейбук, хосты или группу, проверьте и запустите. Ansible работает в выбранном Runner.",
   "@automationWorkflowHint": {
     "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
@@ -10246,6 +10205,9 @@
   "automationVaultDecrypt": "Расшифровать YAML",
   "automationVaultPasswordSource": "Источник пароля",
   "automationVaultManual": "Ввести пароль",
+  "automationVaultSavedPassword": "Сохранённый пароль",
+  "automationVaultManualRunHint": "Только для этого запуска.",
+  "automationVaultManualLinked": "У проекта уже есть привязка к сохранённому паролю Vault. Выберите сохранённый пароль для этого проекта.",
   "automationVaultProjectFile": ".vault/password проекта",
   "automationVaultPassword": "Пароль Ansible Vault",
   "automationVaultFileHint": "Изменяется только выбранный сохранённый YAML. Пароль проекта остаётся локально и не включается в снимок запуска.",
@@ -10499,5 +10461,102 @@
   "@automationSchedulesBlocked": {"description": "Server Runner schedules."},
   "@automationSchedulesAcknowledged": {"description": "Server Runner schedules."},
   "@automationSchedulesPending": {"description": "Server Runner schedules."},
-  "@automationSchedulesUnknown": {"description": "Server Runner schedules."}
+  "@automationSchedulesUnknown": {"description": "Server Runner schedules."},
+  "automationRemoteRunnerPurpose": "ConsoleCrypt запускает Runner на этом сервере по SSH, когда вы запускаете задачу из приложения.",
+  "automationGitHttpHint": "Загрузка по HTTP идёт без шифрования. Используйте HTTPS, если он доступен, и проверьте импортированные файлы перед запуском.",
+  "automationFileCopyPath": "Копировать относительный путь",
+  "automationFileDeleteConfirm": "Удалить файл проекта {path} с диска?",
+  "automationDirectoryDeleteConfirm": "Удалить пустую папку {path}?",
+  "automationProjectCopyFolder": "Копировать путь к папке",
+  "automationProjectRemove": "Удалить из библиотеки",
+  "automationProjectRemoveConfirm": "Удалить «{name}» из библиотеки? Файлы проекта останутся на диске.",
+  "automationDeploymentDeleteProfile": "Удалить профиль",
+  "automationGroupAdd": "Добавить группу",
+  "automationGroupEmpty": "Групп пока нет",
+  "automationGroupChoose": "Выберите группу",
+  "automationGroupUse": "В плейбуке укажите hosts: {group}",
+  "automationGroupUnlinkToEdit": "Чтобы переименовать или удалить группу, сначала отвяжите папку.",
+  "automationDirectoryNewFile": "Новый файл…",
+  "@automationGroupUse": {
+    "placeholders": {
+      "group": {
+        "type": "String"
+      }
+    }
+  },
+  "@automationDeploymentDeleteProfile": {
+    "description": "Automation dialog action or message."
+  },
+  "@automationGroupAdd": {
+    "description": "Automation dialog action or message."
+  },
+  "@automationGroupEmpty": {
+    "description": "Automation dialog action or message."
+  },
+  "@automationGroupChoose": {
+    "description": "Automation dialog action or message."
+  },
+  "@automationGroupUnlinkToEdit": {
+    "description": "Automation dialog action or message."
+  },
+  "@automationDirectoryNewFile": {
+    "description": "Automation dialog action or message."
+  },
+  "keepassChooseEntryIcon": "Выбрать значок",
+  "@keepassChooseEntryIcon": {
+    "description": "Button to choose an icon for a password entry."
+  },
+  "keepassEntryIconName": "{icon, select, Key{По умолчанию} LockOpen{Замок} Identity{Личность} World{Сайт} EMail{Почта} NetworkServer{Сервер} Monitor{Компьютер} Console{Терминал} Homebanking{Банк} Certificate{Сертификат} Book{Книга} Star{Звезда} Folder{Папка} other{Значок}}",
+  "@keepassEntryIconName": {
+    "description": "Name of a KeePass entry icon.",
+    "placeholders": {
+      "icon": {
+        "type": "String"
+      }
+    }
+  },
+  "terminalOnlyPalette": "Палитра команд",
+  "@terminalOnlyPalette": {
+    "description": "Desktop terminal-only window."
+  },
+  "terminalOnlyNewWindow": "Открыть новое окно",
+  "@terminalOnlyNewWindow": {
+    "description": "Desktop terminal-only window."
+  },
+  "terminalOnlyWindowError": "Не удалось открыть новое окно терминала.",
+  "@terminalOnlyWindowError": {
+    "description": "Desktop terminal-only window."
+  },
+  "terminalOnlyShellError": "Не удалось открыть локальную оболочку.",
+  "@terminalOnlyShellError": {
+    "description": "Desktop terminal-only window."
+  },
+  "terminalOnlyShellExited": "Оболочка завершила работу.",
+  "@terminalOnlyShellExited": {
+    "description": "Desktop terminal-only window."
+  },
+  "terminalLocalShellSearch": "Поиск локальных оболочек",
+  "@terminalLocalShellSearch": {
+    "description": "Label for a desktop interface control."
+  },
+  "terminalLocalShellNoMatch": "Подходящих оболочек нет",
+  "@terminalLocalShellNoMatch": {
+    "description": "Label for a desktop interface control."
+  },
+  "navigationDragHint": "Перетаскивайте разделы, чтобы менять порядок. Галочки управляют видимостью.",
+  "@navigationDragHint": {
+    "description": "Label for a desktop interface control."
+  },
+  "keepassNerdIconSearch": "Поиск значков по названию",
+  "@keepassNerdIconSearch": {
+    "description": "Label for a desktop interface control."
+  },
+  "keepassNerdIconTitle": "Значки Nerd Fonts",
+  "@keepassNerdIconTitle": {
+    "description": "Label for a desktop interface control."
+  },
+  "keepassNerdIconLoadFailed": "Не удалось загрузить значки",
+  "@keepassNerdIconLoadFailed": {
+    "description": "Label for a desktop interface control."
+  }
 }

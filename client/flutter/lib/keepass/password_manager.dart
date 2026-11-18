@@ -51,6 +51,7 @@ class PasswordVaultSession {
   Object? saveError;
   final validity = ValueNotifier(true);
   List<KdbxData> rows(String key) => [for (final row in data[key] as List<Object?>? ?? []) row! as KdbxData];
+  Uint8List? iconFor(KdbxData? row) => (data['icons'] as Map?)?[row?['iconId']] as Uint8List?;
 }
 
 /// Owns workers for the unlocked ConsoleCrypt profile, independently of UI.

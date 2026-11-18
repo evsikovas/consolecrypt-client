@@ -1,6 +1,0 @@
----
-- name: Reload explicitly enabled enrollment SSH role
-  ansible.builtin.service:
-    name: ssh
-    state: reloaded
-  when: cc_agent_enrollment_activate | bool

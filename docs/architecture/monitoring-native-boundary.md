@@ -37,7 +37,7 @@ error codes; backend errors/warnings/partial data remain visible.
 An endpoint, token, password or replacement source configuration in a read
 request is rejected. Native fetches the saved source and checks the profile and
 unlock lifetime. Direct transport is the first integrated route. An unsupported
-SSH/Agent route fails before credential lookup, without falling back to direct.
+SSH route fails before credential lookup, without falling back to direct.
 No exporter or metrics listener is opened by viewing a graph.
 
 Auth references name existing personal Password Credential objects. A Basic
@@ -60,7 +60,7 @@ transport and response-size/series/point budgets are independently enforced.
 
 Selectors are query filters, not access control. An unrestricted backend token
 can still read that backend according to its server permissions. Tenant/gateway
-enforcement and SSH/Agent routes require separate integration and acceptance.
+enforcement and SSH routes require separate integration and acceptance.
 Metric snapshots are processed within the metric backend's trust boundary and
 do not acquire vault end-to-end encryption automatically.
 
@@ -94,7 +94,7 @@ inside the existing 35-second read deadline and per-unlock/source concurrency.
 
 The separate generic query workspace still accepts user PromQL under the saved
 source's authority. Typed panel selectors do not create backend tenant isolation.
-SSH/Agent monitoring routes and a complete production Agent rollout remain
+SSH monitoring routes remain
 unimplemented. Passing local catalog, loopback HTTP and widget tests does not
 certify the full platform matrix or mixed-version synchronization.
 
@@ -145,7 +145,7 @@ reject late results. Desktop focus loss alone does not stop it. Transient
 failures retain explicitly stale previous values and last-success UTC, with
 bounded backoff and stop after three consecutive failures. Permanent/source
 errors clear state. Restart/unlock never resumes automatically or counts as
-user activity. This is not rolling history or an Agent background service.
+user activity. The client collects data while the view is active.
 
 Workspace evidence: Tasks/monitoring-pin-accepted-combined-tests.log (269 scoped
 UI tests), monitoring-r12-active-gated-catalog-sync-tests.log (48 AppCore tests),
@@ -343,69 +343,3 @@ Exporter templates remain inspect-first. Creating a template does not install a
 service. After a separately approved successful job, the exporter workflow
 verifies fresh data against the selected source and host. Saving its explicit
 binding and opening the panel are separate actions.
-
-## Agent telemetry and association: current client source
-
-The existing **Linux Agent** dialog combines fixed public-file owner-export
-reviews with separate Reader telemetry actions. It uses saved source/binding/
-SSH-host and known-host references. Each review and read remains bound to the
-original profile/unlock and foreground context. Opening the dialog never
-enrolls an Agent, renews a grant or starts a metric read. Selecting public files
-alone establishes no trust: Native validates the original owner and the exact
-fixed purpose. Exporting a reviewed signed offer/certificate does not prove that
-the Agent applied it. Transferred copies may remain outside the client; cancelling
-a later action does not delete those copies. Reader telemetry permission is
-separate from Node ownership/Tunnel admission and never grants job execution.
-
-Current indicators and bounded local history are snapshots. The UI displays
-observed UTC time and, for heartbeat data, the actual bounded Agent version.
-Version text does not attest the installed binary, establish compatibility or
-provide an update action. Collector running/disabled/stopped/not-running/
-starting/degraded/blocked/unknown metadata is shown as recorded information.
-Missing values stay Unknown; a legacy zero running gauge means only not-running,
-with no invented cause. Local history is available only while the Agent can be
-read and does not guarantee complete coverage of the selected period. Browsing
-the already loaded history pages does not perform another request. An unavailable
-read does not load a new dataset; retry requires a separate explicit review.
-
-The additional **Agent association** flow is optional source integration. Its
-production port is currently unbound while the trusted Native public factory,
-generated adapter and corresponding paired acceptance are completed. The action
-therefore remains hidden in the ordinary backend. UI contract tests are not
-proof of a current installed Agent, a public Relay deployment or a live Tunnel.
-
-When that real capability is supplied, the staged flow is: explicitly read local
-status; select an actual saved personal Native SSH host and its Native revision;
-then explicitly probe the fixed enrollment subsystem. Local status performs no
-SSH probe. No local association record does not mean that the remote Agent is
-unenrolled. A local Associated record is historical data, not a live permission
-or reachability check.
-
-A missing client TLS identity has a separate creation review and confirmation.
-This creates only the Native-managed P256 client identity under its fixed
-approximately 30-UTC-day certificate policy. Probe never creates or replaces it;
-pending, unavailable and expired identities are not automatically reset or
-rotated. Creating this identity does not enroll an Agent or start a probe.
-
-The SSH transaction has two separate consumed approvals: the original offer,
-then the observed claim before issuing its certificate. The review shows the
-actual public keys/fingerprints, original owner identity and distinct Node
-context, exact decimal epochs/checkpoints, client certificate digest and the
-remaining original review time. The fixed public review budget starts at idle
-registration and is not renewed by reading details or moving to the next stage.
-Native also caps the requested certificate lifetime by the owner pin and existing
-client certificate expiry; the final actual expiry is displayed. These UI values
-never replace Native admission checks.
-
-Lock, profile/service/trust changes, route retirement or expiry invalidate the
-original view. Cancellation is a request. Only the issued operation's separate
-cleanup observation can report observed or unknown cleanup; neither cancellation
-nor cleanup proves rollback, remote drain or revocation. An ambiguous mutating
-result stays Unknown, with no automatic retry or re-enrollment. The client accepts
-no caller owner pin, PEM, command, URL, epoch or replacement trust key.
-
-The independently provisioned fixed admin/enrollment SSH subsystem is a
-prerequisite; the base Agent profile and these UI changes do not install or enable
-it. See [the Agent source boundaries](../../agent/README.md). Ordinary Prometheus
-source configuration and queries retain their existing path and credential policy.
-

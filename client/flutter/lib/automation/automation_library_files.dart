@@ -19,6 +19,7 @@ class AutomationLibraryFiles extends StatefulWidget {
     this.selectedPath,
     this.enabled = true,
     this.onMove,
+    this.onContextMenu,
     this.onCreatePlaybook,
     this.onCreateRole,
     this.onAddDependency,
@@ -30,6 +31,7 @@ class AutomationLibraryFiles extends StatefulWidget {
   final bool enabled;
   final ValueChanged<String> onRead;
   final void Function(AutomationFileDrag, String)? onMove;
+  final void Function(AutomationFileDrag, Offset)? onContextMenu;
   final VoidCallback? onCreatePlaybook, onCreateRole, onAddDependency;
 
   @override
@@ -148,6 +150,7 @@ class _AutomationLibraryFilesState extends State<AutomationLibraryFiles> {
             emptyLabel: l.automationTreeEmpty,
             onRead: widget.onRead,
             onMove: widget.onMove,
+            onContextMenu: widget.onContextMenu,
           )
         else ...[
           if (view == AutomationLibraryFilesView.roles)
@@ -163,23 +166,36 @@ class _AutomationLibraryFilesState extends State<AutomationLibraryFiles> {
               ),
             ),
           for (final entry in paths)
-            Tooltip(
-              message: entry.path,
-              child: ListTile(
-                key: ValueKey('automation-library-item-${entry.path}'),
-                dense: true,
-                minTileHeight: 36,
-                selected: entry.path == widget.selectedPath,
-                leading: Icon(
-                  view == AutomationLibraryFilesView.roles ? Icons.extension_outlined : Icons.description_outlined,
-                  size: 18,
+            GestureDetector(
+              onSecondaryTapDown: !widget.enabled || widget.onContextMenu == null
+                  ? null
+                  : (details) => widget.onContextMenu!(
+                      AutomationFileDrag(
+                        scope: widget.scope,
+                        projectId: widget.projectId,
+                        digest: widget.digest,
+                        path: entry.path,
+                      ),
+                      details.globalPosition,
+                    ),
+              child: Tooltip(
+                message: entry.path,
+                child: ListTile(
+                  key: ValueKey('automation-library-item-${entry.path}'),
+                  dense: true,
+                  minTileHeight: 36,
+                  selected: entry.path == widget.selectedPath,
+                  leading: Icon(
+                    view == AutomationLibraryFilesView.roles ? Icons.extension_outlined : Icons.description_outlined,
+                    size: 18,
+                  ),
+                  title: Text(
+                    view == AutomationLibraryFilesView.roles ? entry.path.split('/')[1] : entry.path,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: widget.enabled ? () => widget.onRead(entry.path) : null,
                 ),
-                title: Text(
-                  view == AutomationLibraryFilesView.roles ? entry.path.split('/')[1] : entry.path,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                onTap: widget.enabled ? () => widget.onRead(entry.path) : null,
               ),
             ),
         ],

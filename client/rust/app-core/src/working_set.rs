@@ -281,59 +281,6 @@ impl WorkingSet {
             .collect()
     }
 
-    /// Bounded public choice metadata only; no whole-vault clone or revision
-    /// inferred from updatedAt. Shared/team Host rows never enter this list.
-    pub(crate) fn native_association_host_choices(&self) -> Option<Vec<(ObjectId, i64, String)>> {
-        self.ssh_host_choices(true)
-    }
-    /// Installer SOURCE references only; no dial, key policy change or grant.
-    /// Ask/OpenSSH remain ordinary targets for later normal Run verification.
-    pub(crate) fn agent_installer_host_choices(&self) -> Option<Vec<(ObjectId,i64,String)>> {
-        self.ssh_host_choices(false)
-    }
-    fn ssh_host_choices(&self, strict_only:bool)->Option<Vec<(ObjectId,i64,String)>> {
-        let g = self.read();
-        if g.entries.len() > 16_384 {
-            return None;
-        }
-        let mut rows = Vec::new();
-        for (id, entry) in &g.entries {
-            let Item::Object(object) = &entry.item else {
-                continue;
-            };
-            let VaultObject::Host(host) = object.as_ref() else {
-                continue;
-            };
-            if g.origin.contains_key(id)
-                || strict_only && (host.backend != cc_models::host::SshBackend::Native
-                    || host.host_key_policy != cc_models::host::HostKeyPolicy::Strict)
-                || crate::sharing_bindings::host_sharing_binding(host)
-                    .ok()?
-                    .is_some()
-            {
-                continue;
-            }
-            if entry.revision <= 0 || rows.len() >= 64 {
-                return None;
-            }
-            let mut label = String::new();
-            for ch in host.name.chars() {
-                if ch.is_control() {
-                    return None;
-                }
-                if label.len() + ch.len_utf8() > 256 {
-                    break;
-                }
-                label.push(ch)
-            }
-            if label.is_empty() {
-                return None;
-            }
-            rows.push((*id, entry.revision, label));
-        }
-        Ok::<_, ()>(rows).ok()
-    }
-
     /// Bounded original key records for explicit service-local route consent.
     pub(crate) fn service_key_trust_records(
         &self,

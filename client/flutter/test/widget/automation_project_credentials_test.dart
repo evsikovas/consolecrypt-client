@@ -74,6 +74,8 @@ class _Harness {
   Future<void> pump(
     WidgetTester tester, {
     bool selector = false,
+    Locale locale = const Locale('en'),
+    double textScale = 1,
     void Function(bool, ProjectCredentialsContext?, String?, bool Function())? changed,
   }) async {
     establish();
@@ -103,7 +105,11 @@ class _Harness {
           ),
         ],
         child: MaterialApp(
-          locale: const Locale('en'),
+          locale: locale,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
           home: Scaffold(
@@ -145,6 +151,22 @@ class _Harness {
 }
 
 void main() {
+  testWidgets('Russian access profile separates input, production option and host list on a narrow screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(460, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await _Harness().pump(tester, locale: const Locale('ru'), textScale: 1.3);
+    final name = find.byKey(const ValueKey('deployment-name'));
+    final production = find.byKey(const ValueKey('deployment-production'));
+    final reference = find.byKey(ValueKey('deployment-reference-${f.hostId}'));
+    expect(tester.getRect(name).bottom + 8, lessThanOrEqualTo(tester.getRect(production).top));
+    expect(tester.getRect(production).bottom + 8, lessThanOrEqualTo(tester.getRect(reference).top));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('coded schema refusal is visible after the actual metadata read catch', (tester) async {
     final h = _Harness();
     h.api.readFailure = const AppException(

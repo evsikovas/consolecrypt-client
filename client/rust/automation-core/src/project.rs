@@ -349,26 +349,86 @@ impl ProjectRoot {
 
     /// Move a reviewed file without replacing an existing destination.
     pub fn move_file(&self, source: &str, directory: &str, expected_sha256: &str) -> Result<()> {
-        validate_project_path(source)?;
-        let (source_parent, name) = self.parent(source, false)?;
+        let name = source.rsplit('/').next().unwrap_or_default();
         let target = if directory.is_empty() {
-            name.clone()
+            name.to_string()
         } else {
             format!("{directory}/{name}")
         };
-        if source == target
-            || [source, target.as_str()].contains(&crate::GIT_SOURCE_FILE)
-            || [source, target.as_str()].into_iter().any(is_vault_password_path)
-        {
+        self.change_file(source, Some(&target), expected_sha256)
+    }
+
+    /// Rename in the original directory, or delete one reviewed regular file.
+    pub fn edit_file_entry(&self, source: &str, new_name: Option<&str>, expected_sha256: &str) -> Result<()> {
+        let target = match new_name {
+            Some(name) => {
+                if name.contains('/') {
+                    return Err(AutomationError::Invalid("enter a file name, not a path"));
+                }
+                validate_project_path(name)?;
+                Some(match source.rsplit_once('/') {
+                    Some((directory, _)) => format!("{directory}/{name}"),
+                    None => name.to_string(),
+                })
+            }
+            None => None,
+        };
+        self.change_file(source, target.as_deref(), expected_sha256)
+    }
+
+    /// Rename a reviewed directory or remove it once empty.
+    pub fn edit_directory_entry(&self, source: &str, new_name: Option<&str>, expected_digest: &str) -> Result<()> {
+        fn protected(path: &str) -> bool {
+            path.split('/').any(|part| {
+                let part = part.trim_end_matches([' ', '.']);
+                part.eq_ignore_ascii_case(".git") || part.eq_ignore_ascii_case(".vault")
+            })
+        }
+        validate_project_path(source)?;
+        if protected(source) {
+            return Err(AutomationError::Invalid("cannot change protected project directories"));
+        }
+        if let Some(name) = new_name {
+            validate_project_path(name)?;
+            if name.contains('/') || protected(name) {
+                return Err(AutomationError::Invalid("enter a directory name, not a path"));
+            }
+        }
+        let (parent, name) = self.parent(source, false)?;
+        let directory = self.child_directory(&parent, &name)?;
+        let current = self.revision()?;
+        if current.digest != expected_digest || !current.entries.iter().any(|e| {
+            matches!(e, ProjectEntry::Directory { path } if path == source)
+        }) {
             return Err(AutomationError::FileChanged);
         }
-        let (target_parent, _) = self.parent(&target, false)?;
-        if [source, target.as_str()]
-            .iter()
-            .any(|p| p.split('/').any(|part| part == ".git"))
-        {
-            return Err(AutomationError::Invalid("cannot move Git metadata"));
+        if let Some(target) = new_name {
+            if target == name { return Err(AutomationError::FileChanged); }
+            publication::rename_project_directory(&parent, &name, target, directory)?;
+        } else {
+            if directory.entries()?.next().is_some() {
+                return Err(AutomationError::Invalid("project directory is not empty"));
+            }
+            directory.remove_open_dir()?;
         }
+        Ok(())
+    }
+
+    fn change_file(&self, source: &str, target: Option<&str>, expected_sha256: &str) -> Result<()> {
+        if target == Some(source) {
+            return Err(AutomationError::FileChanged);
+        }
+        for path in std::iter::once(source).chain(target) {
+            validate_project_path(path)?;
+            if path.eq_ignore_ascii_case(crate::GIT_SOURCE_FILE)
+                || is_vault_password_path(path)
+                || path.split('/').any(|part| part.eq_ignore_ascii_case(".git"))
+            {
+                return Err(AutomationError::Invalid("cannot change protected project files"));
+            }
+        }
+        let (source_parent, name) = self.parent(source, false)?;
+        let destination = target.map(|path| self.parent(path, false)).transpose()?;
         #[cfg(unix)]
         let mut file = self.open_file(source)?;
         #[cfg(windows)]
@@ -397,17 +457,25 @@ impl ProjectRoot {
             {
                 return Err(AutomationError::FileChanged);
             }
-            rustix::fs::renameat_with(
-                &source_parent,
-                &name,
-                &target_parent,
-                &name,
-                rustix::fs::RenameFlags::NOREPLACE,
-            )
-            .map_err(|error| AutomationError::Io(error.into()))?;
+            if let Some((target_parent, target_name)) = destination {
+                rustix::fs::renameat_with(
+                    &source_parent,
+                    &name,
+                    &target_parent,
+                    &target_name,
+                    rustix::fs::RenameFlags::NOREPLACE,
+                )
+                .map_err(|error| AutomationError::Io(error.into()))?;
+            } else {
+                source_parent.remove_file(&name)?;
+            }
         }
         #[cfg(windows)]
-        publication::rename_project_move_file(&file, &target_parent, &name)?;
+        if let Some((target_parent, target_name)) = destination {
+            publication::rename_project_move_file(&file, &target_parent, &target_name)?;
+        } else {
+            publication::delete_project_file(&file)?;
+        }
         Ok(())
     }
 

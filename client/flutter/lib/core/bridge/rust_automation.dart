@@ -59,6 +59,8 @@ final class RustAutomationService
         AutomationFolderBindingService,
         AutomationInventorySelectionService,
         AutomationMoveService,
+        AutomationFileActionsService,
+        AutomationProjectRemovalService,
         AutomationNewProjectService,
         AutomationScaffoldService {
   late final _projectMetadata = RustAutomationProjectMetadataPort(
@@ -94,9 +96,11 @@ final class RustAutomationService
   @override
   Future<AutomationProject> openProjectVersion(String projectId, String versionId, {required String name}) async =>
       AutomationProject.fromJson(
-        jsonDecode(await _automationGuard(() => native.automationProjectOpenVersion(
-          id: projectId, versionId: versionId, name: name,
-        ))) as AutomationJson,
+        jsonDecode(
+          await _automationGuard(
+            () => native.automationProjectOpenVersion(id: projectId, versionId: versionId, name: name),
+          ),
+        ) as AutomationJson,
       );
 
   @override
@@ -627,6 +631,27 @@ final class RustAutomationService
       expectedSha256: expectedSha256,
     ),
   );
+
+  @override
+  Future<void> editProjectFileEntry(
+    String projectId, {
+    required String path,
+    required String expectedSha256,
+    required String action,
+    String? newName,
+  }) => _automationGuard(
+    () => native.automationProjectEditFileEntry(
+      id: projectId,
+      path: path,
+      expectedSha256: expectedSha256,
+      action: action,
+      newName: newName,
+    ),
+  );
+
+  @override
+  Future<void> removeProject(String projectId, {required int revision}) =>
+      _automationGuard(() => native.automationProjectRemove(id: projectId, expectedRevision: revision));
 
   @override
   Future<AutomationProject> renameProject(String id, {required int revision, required String name}) async =>

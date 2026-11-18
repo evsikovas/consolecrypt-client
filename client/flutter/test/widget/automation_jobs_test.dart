@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' as io;
 
 import 'package:consolecrypt/app/critical_notice_providers.dart';
@@ -17,6 +18,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/inventory_service.dart';
 import 'package:consolecrypt/core/services/runtime_notice_adapter.dart';
 import 'package:flutter/services.dart';
@@ -156,6 +158,58 @@ class _Api implements AutomationService, AutomationRunnerService, AutomationJobS
 
   @override
   Future<void> acknowledgeUnknown(String id, {required bool acceptPartialChanges}) async {}
+}
+
+class _ManualVaultApi extends _Api implements AutomationVaultSelectionService, AutomationRunSecretService {
+  String profile = '';
+  final events = RuntimeNoticeEventAdapter();
+  SecretText? usedVault, usedBecome;
+
+  @override
+  Future<AutomationJson> connectRunner(String id) async => {
+    'probe': {'capabilities': {'vault_ephemeral_v1': true}},
+  };
+
+  @override
+  Future<AutomationJson> vaultContext(String projectId) async => {
+    'version': 1,
+    'frame': {
+      'version': 1,
+      'profileId': profile,
+      'notificationScopeId': environment.nonce,
+      'projectId': projectId,
+      'projectRevision': 1,
+      'catalogSha256': 'a' * 64,
+      'revisionDigest': 'b' * 64,
+      'directoryIdentity': 'c' * 64,
+      'referenceSha256': null,
+    },
+  };
+
+  @override
+  Future<AutomationJson> selectVault(AutomationJson selection) async => fail('Manual input must not write a reference');
+
+  @override
+  Future<AutomationJson> prepareRun(AutomationJson request) async => fail('Manual input requires the typed secret port');
+
+  @override
+  Future<AutomationJson> prepareRunWithSecrets(
+    AutomationJson request, {
+    required String profileId,
+    required String notificationScopeId,
+    SecretText? vaultPassword,
+    SecretText? becomePassword,
+    bool useProjectVaultPassword = false,
+  }) async {
+    expect(profileId, profile);
+    expect(notificationScopeId, environment.nonce);
+    expect(useProjectVaultPassword, isFalse);
+    expect(vaultPassword?.expose(), 'manual-vault-fixture');
+    expect(becomePassword?.expose(), 'sudo-fixture');
+    usedVault = vaultPassword;
+    usedBecome = becomePassword;
+    return super.prepareRun(request);
+  }
 }
 
 class _InheritanceInventory extends Fake implements InventoryService {
@@ -964,6 +1018,58 @@ class _PublicServiceJobs extends _Api implements AutomationServiceDelegationServ
 }
 
 void main() {
+  testWidgets('inline Vault and sudo reach the typed launch port once without secret JSON', (tester) async {
+    final service = _ManualVaultApi();
+    addTearDown(service.events.dispose);
+    final container = await _open(tester, service, serviceEvents: service.events);
+    service.profile = container.read(activeProfileProvider)!.id.value;
+    service.events.acceptScope(
+      originalEpoch: service.events.epoch,
+      nativeProfile: {
+        'id': service.profile,
+        'active': true,
+        'vault_state': 'unlocked',
+        'notification_scope_id': environment.nonce,
+      },
+    );
+    await tapKey(tester, 'automation-vault-enable');
+    tester
+        .widget<GlassSelect<bool>>(find.byKey(const ValueKey('automation-vault-password-source')))
+        .onChanged!(true);
+    await settle(tester);
+    expect(isEnabled(tester, 'automation-validate-run'), isFalse);
+    final manual = find.byKey(const ValueKey('automation-vault-manual-password'));
+    final field = find.descendant(of: manual, matching: find.byType(TextFormField));
+    await tester.ensureVisible(field);
+    await tester.enterText(field, 'manual-vault-fixture');
+    await settle(tester);
+    expect(isEnabled(tester, 'automation-validate-run'), isTrue);
+    await tapKey(tester, 'automation-run-passwords');
+    expect(find.byKey(const ValueKey('automation-launch-vault-enable')), findsNothing);
+    await tapKey(tester, 'automation-launch-become-enable');
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('automation-launch-become-password')),
+        matching: find.byType(TextFormField),
+      ),
+      'sudo-fixture',
+    );
+    await settle(tester);
+    await tapKey(tester, 'automation-launch-passwords-apply');
+    await tapKey(tester, 'automation-validate-run');
+    expect(service.prepared, isNotNull);
+    expect(service.prepared, isNot(contains('vault_selection')));
+    expect(service.prepared, isNot(contains('vault_credential_id')));
+    expect(service.prepared?['cancel_on_lock'], isTrue);
+    final serialized = jsonEncode(service.prepared);
+    expect(serialized, isNot(contains('manual-vault-fixture')));
+    expect(serialized, isNot(contains('sudo-fixture')));
+    expect(service.usedVault?.isWiped, isTrue);
+    expect(service.usedBecome?.isWiped, isTrue);
+    expect(service.confirmations, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('short Russian workspace retains an editor above the execution console at 800x600', (tester) async {
     final api = _ContextEvents()..state = 'failed';
     await _open(tester, api, size: const Size(800, 600), locale: AppLocale.ru, openFile: true);

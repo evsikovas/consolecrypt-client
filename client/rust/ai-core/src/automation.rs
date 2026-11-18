@@ -18,7 +18,7 @@ Return only a JSON object with exactly these fields:
 Exactly one file, using the requested path. No authority, targets, approval or execution fields.
 Dependency installation, privilege escalation and execution require separate user review.
 ansible.builtin is included in ansible-core; do not list it as an external dependency.
-Do not silently omit required inputs: list required variables and dependencies explicitly."#;
+Do not silently omit required inputs: list required variables and dependencies explicitly. Use an empty array for a list with no entries. The content field holds plain YAML, without Markdown fences."#;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

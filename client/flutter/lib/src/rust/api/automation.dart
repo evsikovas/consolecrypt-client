@@ -257,6 +257,9 @@ Future<String> automationProjectRename({required String id, required int expecte
 Future<String> automationProjectScaffold({required String name, String? directory, String? role}) =>
     RustLib.instance.api.crateApiAutomationAutomationProjectScaffold(name: name, directory: directory, role: role);
 
+Future<void> automationProjectRemove({required String id, required int expectedRevision}) =>
+    RustLib.instance.api.crateApiAutomationAutomationProjectRemove(id: id, expectedRevision: expectedRevision);
+
 Future<String> automationProjectFiles({required String id}) =>
     RustLib.instance.api.crateApiAutomationAutomationProjectFiles(id: id);
 
@@ -294,6 +297,20 @@ Future<void> automationProjectMoveFile({
   path: path,
   directory: directory,
   expectedSha256: expectedSha256,
+);
+
+Future<void> automationProjectEditFileEntry({
+  required String id,
+  required String path,
+  required String expectedSha256,
+  required String action,
+  String? newName,
+}) => RustLib.instance.api.crateApiAutomationAutomationProjectEditFileEntry(
+  id: id,
+  path: path,
+  expectedSha256: expectedSha256,
+  action: action,
+  newName: newName,
 );
 
 /// Profile-local named Ansible group to existing ConsoleCrypt folder DATA.

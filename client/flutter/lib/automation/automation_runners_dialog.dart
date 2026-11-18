@@ -170,6 +170,7 @@ class _AutomationRunnersDialogState extends ConsumerState<AutomationRunnersDialo
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
                                   children: [
                                     if (runner.configuration?['kind'] != 'service_remote') GlassButton(
                                       key: ValueKey('automation-diagnose-${runner.id}'),
@@ -201,6 +202,8 @@ class _AutomationRunnersDialogState extends ConsumerState<AutomationRunnersDialo
                                         key: ValueKey('automation-edit-runner-${runner.id}'),
                                         tooltip: l.commonEdit,
                                         icon: Icons.edit_outlined,
+                                      size: GlassControlSize.sm.height,
+                                      iconSize: 14,
                                         onPressed: checking != null || runner.readOnly
                                             ? null
                                             : () => setState(() {
@@ -213,11 +216,15 @@ class _AutomationRunnersDialogState extends ConsumerState<AutomationRunnersDialo
                                     GlassIconButton(
                                       tooltip: l.automationDisconnectRunner,
                                       icon: Icons.link_off,
+                                      size: GlassControlSize.sm.height,
+                                      iconSize: 14,
                                       onPressed: checking != null || runner.readOnly ? null : () => disconnect(runner),
                                     ),
                                     GlassIconButton(
                                       tooltip: l.automationForgetRunner,
                                       icon: Icons.delete_outline,
+                                      size: GlassControlSize.sm.height,
+                                      iconSize: 14,
                                       onPressed: checking != null || runner.readOnly
                                           ? null
                                           : () => disconnect(runner, forget: true),
@@ -873,7 +880,7 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
         Expanded(
           child: ListView(
             children: [
-              Text(l.automationSetupHint),
+              if (!serviceMode) Text(l.automationSetupHint),
               if (widget.initial != null) Text(l.automationEditRunnerHint),
               const SizedBox(height: 12),
               field(l.commonName, name),
@@ -900,6 +907,10 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
                 ],
               ),
               const SizedBox(height: 12),
+              if (mode == 'remote') ...[
+                Text(l.automationRemoteRunnerPurpose),
+                const SizedBox(height: 8),
+              ],
               if (mode == 'wsl') ...[
                 FutureBuilder<LocalShellProfiles>(
                   future: profiles,

@@ -27,6 +27,7 @@ import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,8 +68,9 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
       tags = TextEditingController(),
       skipTags = TextEditingController();
   final timeout = TextEditingController(text: '300'), forks = TextEditingController(text: '2');
+  final manualVaultPassword = TextEditingController();
   final selectedHosts = <String>{};
-  final formScroll = ScrollController();
+  final formScroll = ScrollController(), targetsScroll = ScrollController();
   String? runner, playbook;
   bool apply = false, cancelOnLock = true, diff = false, busy = false, confirmed = false;
   bool scopeValid = true;
@@ -77,6 +79,9 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
   bool vaultEnabled = false;
   AutomationJson? vaultSelection;
   AutomationLaunchPasswords? launchPasswords;
+  bool get hasManualVaultPassword => vaultEnabled && vaultSelection == null && manualVaultPassword.text.isNotEmpty;
+  bool get needsVaultPassword => vaultEnabled && vaultSelection == null && !hasManualVaultPassword;
+  bool get hasLaunchPasswords => hasManualVaultPassword || launchPasswords?.hasAny == true;
   ProjectCredentialsContext? deploymentContext;
   String? deploymentEnvironmentId;
   bool deploymentReady = false;
@@ -109,6 +114,9 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
       if (!scopeValid) {
         launchPasswords?.wipe();
         launchPasswords = null;
+        scheduleMicrotask(() {
+          if (mounted) manualVaultPassword.clear();
+        });
       }
     }, fireImmediately: true);
     for (final controller in [variables, tags, skipTags, timeout, forks]) {
@@ -321,6 +329,8 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
   @override
   void dispose() {
     launchPasswords?.wipe();
+    manualVaultPassword.clear();
+    manualVaultPassword.dispose();
     _retireServiceDelegation?.call();
     _retireServiceDelegation = null;
     _retireOwnerConfirmation?.call();
@@ -335,6 +345,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
       }
     }
     formScroll.dispose();
+    targetsScroll.dispose();
     for (final controller in [variables, tags, skipTags, timeout, forks]) {
       controller.dispose();
     }
@@ -370,14 +381,21 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
   }
 
   Future<void> validate() async {
-    if (busy || inventoryLoading || inventoryError != null) return;
+    if (!current || busy || inventoryLoading || inventoryError != null) return;
     final launchPasswordsUnavailable = context.l10n.automationRunPasswordsUnavailable;
     final selected = ref.read(automationRunnersProvider).value?.runners.where((item) => item.id == runner).firstOrNull;
     if (selected?.configuration?['kind'] == 'service_remote') {
       setState(() => error = FormatException(context.l10n.automationServiceUseDelegation));
       return;
     }
-    if (vaultEnabled && vaultSelection == null || !deploymentAvailable) return;
+    if (needsVaultPassword || !deploymentAvailable) return;
+    if (hasManualVaultPassword) {
+      launchPasswords = AutomationLaunchPasswords(
+        vaultPassword: SecretText(manualVaultPassword.text),
+        becomePassword: launchPasswords?.becomePassword,
+      );
+      manualVaultPassword.clear();
+    }
     setState(() {
       busy = true;
       error = null;
@@ -432,7 +450,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
       }
       final probe = connected['probe'];
       final capabilities = probe is Map ? probe['capabilities'] : null;
-      if (vaultEnabled && (capabilities is! Map || capabilities['vault_job_v1'] != true)) {
+      if (vaultEnabled && vaultSelection != null && (capabilities is! Map || capabilities['vault_job_v1'] != true)) {
         throw const AutomationRunnerUpdateRequired();
       }
       final AutomationJson result;
@@ -508,7 +526,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
     if (busy || !current || _retireServiceDelegation != null || widget.service is! AutomationServiceDelegationService) {
       return;
     }
-    if (launchPasswords?.hasAny == true) {
+    if (hasLaunchPasswords) {
       setState(() => error = FormatException(context.l10n.automationRunPasswordsUnavailable));
       return;
     }
@@ -1079,70 +1097,84 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                           _draftGeneration++;
                         }),
                       ),
-                    Text(l.automationTargets),
-                    if (inventoryLoading) const LinearProgressIndicator(),
-                    if (inventoryError != null)
-                      Text(
-                        inventoryError is FormatException
-                            ? (inventoryError as FormatException).message
-                            : errorMessage(l, inventoryError!),
-                      ),
-                    if (inventoryConfiguration != null)
-                      Text(externalOnly ? l.automationInventoryExternalOnly : l.automationInventoryMixed),
-                    if (hosts.isLoading) const LinearProgressIndicator(),
-                    if (hosts.hasError) Text(errorMessage(l, hosts.error!)),
-                    const SizedBox(height: 8),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 216),
-                      child: ClipRect(
-                        child: ListView(
-                          key: const ValueKey('automation-run-targets'),
-                          primary: false,
-                          shrinkWrap: true,
-                          padding: EdgeInsets.zero,
-                          children: [
-                            for (final host in hosts.value ?? <Host>[])
-                              if (host.protocol == HostProtocol.ssh &&
-                                  !inventoryLoading &&
-                                  inventoryError == null &&
-                                  (!externalOnly || boundAliases.containsKey(host.id.value)) &&
-                                  (externalOnly ||
-                                      inventorySavedHosts == null ||
-                                      inventorySavedHosts!.contains(host.id.value) ||
-                                      boundAliases.containsKey(host.id.value)) &&
-                                  (widget.retryOf == null ||
-                                      (widget.retryOf!['host_ids'] as List).contains(host.id.value)))
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(minHeight: 72),
-                                  child: CheckboxListTile(
-                                    key: ValueKey('automation-target-${host.id}'),
-                                    dense: true,
-                                    value: selectedHosts.contains(host.id.value),
-                                    title: Text(
-                                      boundAliases.containsKey(host.id.value)
-                                          ? '${boundAliases[host.id.value]} · ${host.name}'
-                                          : host.name,
-                                    ),
-                                    subtitle: Text(host.address),
-                                    secondary: IconButton(
-                                      key: ValueKey('automation-target-settings-${host.id.value}'),
-                                      tooltip: l.automationTargetSettings,
-                                      icon: const Icon(Icons.tune_outlined),
-                                      onPressed: busy ? null : () => targetSettings(host),
-                                    ),
-                                    onChanged: busy
-                                        ? null
-                                        : (value) => setState(() {
-                                            if (value == true) {
-                                              selectedHosts.add(host.id.value);
-                                            } else {
-                                              selectedHosts.remove(host.id.value);
-                                            }
-                                          }),
-                                  ),
-                                ),
-                          ],
-                        ),
+                    const SizedBox(height: 10),
+                    ContentSurface(
+                      kind: ContentSurfaceKind.inset,
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(l.automationTargets, style: Theme.of(context).textTheme.titleSmall),
+                          if (inventoryLoading) const LinearProgressIndicator(),
+                          if (inventoryError != null)
+                            Text(
+                              inventoryError is FormatException
+                                  ? (inventoryError as FormatException).message
+                                  : errorMessage(l, inventoryError!),
+                            ),
+                          if (inventoryConfiguration != null)
+                            Text(externalOnly ? l.automationInventoryExternalOnly : l.automationInventoryMixed),
+                          if (hosts.isLoading) const LinearProgressIndicator(),
+                          if (hosts.hasError) Text(errorMessage(l, hosts.error!)),
+                          const SizedBox(height: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 216),
+                            child: Scrollbar(
+                              controller: targetsScroll,
+                              thumbVisibility: true,
+                              trackVisibility: true,
+                              child: ListView(
+                                controller: targetsScroll,
+                                key: const ValueKey('automation-run-targets'),
+                                primary: false,
+                                shrinkWrap: true,
+                                padding: const EdgeInsetsDirectional.only(end: 12),
+                                children: [
+                                  for (final host in hosts.value ?? <Host>[])
+                                    if (host.protocol == HostProtocol.ssh &&
+                                        !inventoryLoading &&
+                                        inventoryError == null &&
+                                        (!externalOnly || boundAliases.containsKey(host.id.value)) &&
+                                        (externalOnly ||
+                                            inventorySavedHosts == null ||
+                                            inventorySavedHosts!.contains(host.id.value) ||
+                                            boundAliases.containsKey(host.id.value)) &&
+                                        (widget.retryOf == null ||
+                                            (widget.retryOf!['host_ids'] as List).contains(host.id.value)))
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(minHeight: 52),
+                                        child: CheckboxListTile(
+                                          key: ValueKey('automation-target-${host.id}'),
+                                          dense: true,
+                                          value: selectedHosts.contains(host.id.value),
+                                          title: Text(
+                                            boundAliases.containsKey(host.id.value)
+                                                ? '${boundAliases[host.id.value]} · ${host.name}'
+                                                : host.name,
+                                          ),
+                                          subtitle: Text(host.address),
+                                          secondary: IconButton(
+                                            key: ValueKey('automation-target-settings-${host.id.value}'),
+                                            tooltip: l.automationTargetSettings,
+                                            icon: const Icon(Icons.tune_outlined),
+                                            onPressed: busy ? null : () => targetSettings(host),
+                                          ),
+                                          onChanged: busy
+                                              ? null
+                                              : (value) => setState(() {
+                                                  if (value == true) {
+                                                    selectedHosts.add(host.id.value);
+                                                  } else {
+                                                    selectedHosts.remove(host.id.value);
+                                                  }
+                                                }),
+                                        ),
+                                      ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -1171,6 +1203,11 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                         projectId: widget.project.id,
                         service: widget.service as AutomationVaultSelectionService,
                         busy: busy || launchPasswords?.hasVault == true,
+                        manualPassword: widget.service is AutomationRunSecretService ? manualVaultPassword : null,
+                        onManualChanged: () => setState(() {
+                          if (hasManualVaultPassword) cancelOnLock = true;
+                          _draftGeneration++;
+                        }),
                         onChanged: (enabled, selected) => setState(() {
                           vaultEnabled = enabled;
                           vaultSelection = selected;
@@ -1192,7 +1229,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                       CheckboxListTile(
                         value: cancelOnLock,
                         title: Text(l.automationCancelOnLock),
-                        onChanged: busy || launchPasswords?.hasAny == true
+                        onChanged: busy || hasLaunchPasswords
                             ? null
                             : (value) => setState(() => cancelOnLock = value ?? true),
                       ),
@@ -1291,11 +1328,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
             FilledButton(
               key: const ValueKey('automation-validate-run'),
               onPressed:
-                  busy ||
-                      !deploymentAvailable ||
-                      inventoryLoading ||
-                      inventoryError != null ||
-                      vaultEnabled && vaultSelection == null
+                  busy || !deploymentAvailable || inventoryLoading || inventoryError != null || needsVaultPassword
                   ? null
                   : serviceSelected
                   ? null

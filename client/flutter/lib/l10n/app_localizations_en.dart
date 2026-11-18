@@ -40,7 +40,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationProjectProfileFolder => 'Save in the local ConsoleCrypt profile';
 
   @override
-  String get automationProjectChooseFolder => 'Choose an empty folder…';
+  String get automationProjectChooseFolder => 'Choose folder…';
 
   @override
   String get automationProjectUseProfile => 'Use profile folder';
@@ -50,15 +50,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationInventoryRunnerHelp =>
-      'Preview YAML host and group names on this device. Choose a Runner to validate the inventory with Ansible and save it.';
+      'Preview host and group names from INI or YAML. Choose a Runner to validate the inventory with Ansible and save it.';
 
   @override
   String get automationInventoryYamlPreviewFailed =>
-      'This file could not be read as static YAML inventory. Select an inventory file or check it with a Runner.';
+      'Could not read static INI or YAML inventory. Select an inventory file or check it with a Runner.';
 
   @override
   String get automationInventoryYamlPreviewHelp =>
-      'Hosts and groups declared in the file. Use a Runner to resolve the inventory for a job.';
+      'Literal names from the files. Ansible resolves host ranges and variables during validation.';
 
   @override
   String get automationInventoryYamlPreviewEmpty => 'No hosts or groups were found.';
@@ -14034,7 +14034,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepassDropHint => 'Drag entries onto a folder to move them.';
 
   @override
-  String get keepassUngrouped => 'No folder';
+  String get keepassUngrouped => 'Ungrouped';
 
   @override
   String get keepassAutosaving => 'Saving changes…';
@@ -14290,7 +14290,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationNoRunners => 'No saved Runner environments.';
 
   @override
-  String get automationRemoteRunner => 'Remote Linux Runner';
+  String get automationRemoteRunner => 'Linux over SSH (manual runs)';
 
   @override
   String get automationLocalRunner => 'Local Runner';
@@ -14602,10 +14602,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationGitHint =>
-      'Git on this computer downloads a public HTTPS repository into the local ConsoleCrypt profile. Importing reads project files. Submodules and private repositories are unavailable.';
+      'Git on this computer imports an HTTP or HTTPS repository into your local ConsoleCrypt profile. The repository must be readable without credentials.';
 
   @override
-  String get automationGitUrl => 'HTTPS repository URL';
+  String get automationGitUrl => 'Repository URL (HTTP or HTTPS)';
 
   @override
   String get automationGitReference => 'Branch or tag';
@@ -14617,7 +14617,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationGitCa => 'Public CA certificate in PEM (no private key)';
 
   @override
-  String get automationGitFields => 'Enter a name, HTTPS URL, and branch or tag.';
+  String get automationGitFields => 'Enter the project name, repository URL and branch or tag.';
 
   @override
   String get automationGitReceiving => 'Receiving and verifying files…';
@@ -14647,7 +14647,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationGroupsHint =>
-      'Groups belong to this project and do not change host folders. A host can belong to multiple groups. A job can access only targets explicitly selected for that run.';
+      'Use a group name in the playbook to target a set of hosts. Select the actual hosts when you run it.';
 
   @override
   String get automationGroupsInvalid =>
@@ -14950,7 +14950,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationSetupMissing => 'Prerequisites needed';
 
   @override
-  String get automationSetupPython => 'Linux x64 and Python 3.12 or 3.14';
+  String get automationSetupPython => 'Python 3.12 or 3.14 on Linux x64, or Python 3.12 or 3.13 on Linux ARM64';
 
   @override
   String get automationSetupNotFound =>
@@ -15565,7 +15565,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationFolderDirectHint =>
-      'Link this group to a host folder, or copy its current members once. Subfolders are excluded. Run targets are selected separately.';
+      'Link a host folder to keep the group in sync, or copy its current members. Subfolders are excluded.';
 
   @override
   String get automationFolderSelect => 'ConsoleCrypt host folder';
@@ -16282,14 +16282,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Close this guide, refresh the distribution list, explicitly select your distribution and choose Find environment. Missing packages are shown separately. Use Run in environment to install prerequisites, then repeat detection and explicitly install or select Runner.';
 
   @override
-  String get automationServiceConnectionMode => 'Persistent Linux Runner';
+  String get automationServiceConnectionMode => 'Linux service (scheduled runs)';
 
   @override
   String get automationServiceConnectionIdentity => 'Installed service identity (UUID)';
 
   @override
   String get automationServiceConnectionHint =>
-      'Choose the saved SSH host and the identity ID from the installed ConsoleCrypt service. Its schedule and trust are reviewed separately when preparing a delegation.';
+      'Connect an installed ConsoleCrypt Runner service using its saved SSH host and service UUID. Once authorized, the service can run schedules while this application is closed.';
 
   @override
   String get automationServiceConnectionManageHint =>
@@ -16671,58 +16671,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationAuditRouteDigest => 'Approved route digest';
 
   @override
-  String get automationDeploymentTitle => 'Deployment environments and SSH references';
+  String get automationDeploymentTitle => 'SSH access profiles';
 
   @override
   String get automationDeploymentHint =>
-      'This project stores credential references for each environment. Select existing SSH hosts and credentials explicitly, including every target and jump host. Runner and proxy authentication remain separate. No password or key is copied.';
+      'Use a profile when this project needs different SSH credentials. Otherwise it uses the credentials saved on each host.';
 
   @override
   String get automationDeploymentUnavailable =>
       'The original project credential context is unavailable or changed. Close and reopen settings or the run form before making a new selection.';
 
   @override
-  String get automationDeploymentLegacy =>
-      'No project credential policy: the existing Host credential configuration applies.';
+  String get automationDeploymentLegacy => 'Using the SSH credentials saved on each host.';
 
   @override
-  String get automationDeploymentChoose => 'Choose a deployment environment explicitly';
+  String get automationDeploymentChoose => 'Choose an access profile';
 
   @override
-  String get automationDeploymentNew => 'New environment';
+  String get automationDeploymentNew => 'New profile';
 
   @override
-  String get automationDeploymentAdd => 'Add environment';
+  String get automationDeploymentAdd => 'Add profile';
 
   @override
-  String get automationDeploymentProduction => 'Production environment: additional owner confirmation is required.';
+  String get automationDeploymentProduction => 'Production hosts require owner confirmation';
 
   @override
-  String get automationDeploymentProductionHint =>
-      'An environment cannot remove production risk already recorded on a target or group. Native checks the combined risk again during preparation and confirmation.';
+  String get automationDeploymentProductionHint => 'Hosts marked as production always require owner confirmation.';
 
   @override
-  String get automationDeploymentAddReference => 'Choose host and credential reference';
+  String get automationDeploymentAddReference => 'Add host and credentials';
 
   @override
-  String get automationDeploymentReferenceMissing => 'Referenced credential unavailable';
+  String get automationDeploymentReferenceMissing => 'Credentials unavailable';
 
   @override
-  String get automationDeploymentReuse =>
-      'You may explicitly reuse the same existing credential across projects or environments. This does not change the global Host credential. Missing target or jump-host references block preparation.';
+  String get automationDeploymentReuse => 'Choose saved credentials for each host, including any jump hosts.';
 
   @override
-  String get automationDeploymentRemoveTitle => 'Remove project credential policy';
+  String get automationDeploymentRemoveTitle => 'Use credentials from host cards';
 
   @override
   String get automationDeploymentRemoveHint =>
-      'Saving this removal returns the project to its existing Host credential configuration. Previously admitted jobs keep their original frozen references and deadlines.';
+      'After you save, the project will use the credentials saved on each host.';
 
   @override
   String get automationDeploymentFrozenReferences => 'Native frozen host → credential references';
 
   @override
-  String get automationDeploymentRefresh => 'Read project context again';
+  String get automationDeploymentRefresh => 'Reload profiles';
 
   @override
   String get automationDeploymentErrorRequired =>
@@ -16807,35 +16804,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationMetadataPublish => 'Sync project settings';
 
   @override
-  String get hostAgentMenu => 'Prepare Linux Agent action';
-
-  @override
-  String get hostAgentObservedUnknown =>
-      'Installed Agent version and update availability have not been read. Preparing a project does not inspect, install or update an Agent.';
-
-  @override
-  String get hostAgentTargetChanged =>
-      'This SSH host changed or is unavailable. Close this window and open the action again from that host.';
-
-  @override
-  String hostAgentReturn(String host) {
-    return 'Return to $host';
-  }
-
-  @override
-  String get hostAgentProjectUnavailable =>
-      'The created project is unavailable in the original workspace. Open it explicitly from Projects.';
-
-  @override
-  String hostAgentLastObservedVersion(String version, String time) {
-    return 'Last observed Agent version: $version · read at $time';
-  }
-
-  @override
-  String get hostAgentLastObservedHint =>
-      'From the same authenticated heartbeat and configured Host. This past observation does not confirm current readiness, update availability or a completed installation.';
-
-  @override
   String get automationWorkflowHint =>
       'Choose a playbook and hosts or a group, review and run. Ansible runs in the selected Runner.';
 
@@ -16853,6 +16821,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationVaultManual => 'Enter password';
+
+  @override
+  String get automationVaultSavedPassword => 'Saved password';
+
+  @override
+  String get automationVaultManualRunHint => 'Only for this launch.';
+
+  @override
+  String get automationVaultManualLinked =>
+      'This project already links a saved Vault password. Choose the saved password for this project.';
 
   @override
   String get automationVaultProjectFile => 'Project .vault/password';
@@ -17056,4 +17034,116 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationSchedulesUnknown => 'Delivery unconfirmed';
+
+  @override
+  String get automationRemoteRunnerPurpose =>
+      'ConsoleCrypt starts the Runner on this server over SSH when you launch a job from the app.';
+
+  @override
+  String get automationGitHttpHint =>
+      'HTTP downloads are unencrypted. Use HTTPS when available and review the imported files before running tasks.';
+
+  @override
+  String get automationFileCopyPath => 'Copy relative path';
+
+  @override
+  String automationFileDeleteConfirm(String path) {
+    return 'Delete the project file $path from disk?';
+  }
+
+  @override
+  String automationDirectoryDeleteConfirm(String path) {
+    return 'Delete the empty folder $path?';
+  }
+
+  @override
+  String get automationProjectCopyFolder => 'Copy folder path';
+
+  @override
+  String get automationProjectRemove => 'Remove from library';
+
+  @override
+  String automationProjectRemoveConfirm(String name) {
+    return 'Remove $name from the library? Its files will stay on disk.';
+  }
+
+  @override
+  String get automationDeploymentDeleteProfile => 'Delete profile';
+
+  @override
+  String get automationGroupAdd => 'Add group';
+
+  @override
+  String get automationGroupEmpty => 'No groups yet';
+
+  @override
+  String get automationGroupChoose => 'Choose a group';
+
+  @override
+  String automationGroupUse(String group) {
+    return 'In the playbook, use hosts: $group';
+  }
+
+  @override
+  String get automationGroupUnlinkToEdit => 'Unlink the folder before renaming or deleting this group.';
+
+  @override
+  String get automationDirectoryNewFile => 'New file…';
+
+  @override
+  String get keepassChooseEntryIcon => 'Choose icon';
+
+  @override
+  String keepassEntryIconName(String icon) {
+    String _temp0 = intl.Intl.selectLogic(icon, {
+      'Key': 'Default',
+      'LockOpen': 'Lock',
+      'Identity': 'Identity',
+      'World': 'Website',
+      'EMail': 'Email',
+      'NetworkServer': 'Server',
+      'Monitor': 'Computer',
+      'Console': 'Terminal',
+      'Homebanking': 'Bank',
+      'Certificate': 'Certificate',
+      'Book': 'Book',
+      'Star': 'Star',
+      'Folder': 'Folder',
+      'other': 'Icon',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get terminalOnlyPalette => 'Command palette';
+
+  @override
+  String get terminalOnlyNewWindow => 'Open new window';
+
+  @override
+  String get terminalOnlyWindowError => 'Could not open a new terminal window.';
+
+  @override
+  String get terminalOnlyShellError => 'Could not open the local shell.';
+
+  @override
+  String get terminalOnlyShellExited => 'The shell has exited.';
+
+  @override
+  String get terminalLocalShellSearch => 'Search local shells';
+
+  @override
+  String get terminalLocalShellNoMatch => 'No matching shells';
+
+  @override
+  String get navigationDragHint => 'Drag sections to reorder them. Use the checkboxes to show or hide them.';
+
+  @override
+  String get keepassNerdIconSearch => 'Search icons by name';
+
+  @override
+  String get keepassNerdIconTitle => 'Nerd Fonts icons';
+
+  @override
+  String get keepassNerdIconLoadFailed => 'Could not load icons';
 }

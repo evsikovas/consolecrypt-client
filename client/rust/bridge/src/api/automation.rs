@@ -474,6 +474,13 @@ pub async fn automation_project_scaffold(
     }).await
 }
 
+pub async fn automation_project_remove(id: String, expected_revision: u64) -> Result<(), BridgeError> {
+    with_core(move |c| async move {
+        c.automation_project_remove(id, expected_revision).await?;
+        Ok(())
+    }).await
+}
+
 pub async fn automation_project_files(id: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.automation_project_files(id).await?) }).await
 }
@@ -527,6 +534,19 @@ pub async fn automation_project_move_file(
 ) -> Result<(), BridgeError> {
     with_core(move |c| async move {
         c.automation_project_move_file(id, path, directory, expected_sha256).await?;
+        Ok(())
+    }).await
+}
+
+pub async fn automation_project_edit_file_entry(
+    id: String,
+    path: String,
+    expected_sha256: String,
+    action: String,
+    new_name: Option<String>,
+) -> Result<(), BridgeError> {
+    with_core(move |c| async move {
+        c.automation_project_edit_file_entry(id, path, expected_sha256, action, new_name).await?;
         Ok(())
     }).await
 }

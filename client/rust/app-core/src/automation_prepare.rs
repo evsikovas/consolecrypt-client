@@ -739,6 +739,13 @@ impl AppCore {
             folders.watch(&unlocked, cancel.clone())?;
         }
         let snapshot = unlocked.working().snapshot();
+        if !context.external_inventory.as_ref().is_some_and(|config| {
+            config.mode == cc_automation_core::InventoryMode::ExternalOnly
+        }) {
+            crate::automation_projects::folder_bindings::add_host_groups(
+                &mut context.inventory, &snapshot, &request.host_ids,
+            )?;
+        }
         let mut dependency_roots = if execution_credentials.is_some() {
             Vec::new()
         } else {

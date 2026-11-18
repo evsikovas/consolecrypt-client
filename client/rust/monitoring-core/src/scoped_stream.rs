@@ -95,116 +95,13 @@ impl Drop for ConnectionTask {
     }
 }
 
-/// Exactly two fixed capability requests on one original Agent stream.
-/// This private value cannot reconnect or accept a caller URL/query.
-pub(crate) struct ProbeSession {
-    sender: hyper::client::conn::http1::SendRequest<Empty<Bytes>>,
-    connection: ConnectionTask,
-    connector: Arc<dyn MonitoringSourceConnector>,
-    base: url::Url,
-    end: std::time::Instant,
-    data_end: std::time::Instant,
-    remaining: usize,
-    timeout_seconds: u64,
-    limit: usize,
-    sent: u8,
-    reusable: bool,
-}
-impl ProbeSession {
-    pub(crate) async fn next_fixed(&mut self, authorization: Option<&reqwest::header::HeaderValue>)
-        -> Result<(Vec<u8>, u16), Error> {
-        let end = tokio::time::Instant::from_std(self.data_end);
-        tokio::time::timeout_at(end, self.next_fixed_before(authorization)).await
-            .map_err(|_| Error::new(ErrorCode::Timeout, "Monitoring probe timed out"))?
-    }
-    async fn next_fixed_before(&mut self, authorization: Option<&reqwest::header::HeaderValue>)
-        -> Result<(Vec<u8>, u16), Error> {
-        if self.sent >= 2 || !self.reusable || self.sender.is_closed()
-            || !self.connector.is_current() { return Err(failed()); }
-        if std::time::Instant::now() >= self.data_end {
-            return Err(Error::new(ErrorCode::Timeout,"Monitoring probe timed out"));
-        }
-        if self.remaining == 0 {
-            return Err(Error::new(ErrorCode::ResponseTooLarge, "Monitoring response exceeds byte budget"));
-        }
-        let range = self.sent == 1;
-        self.sent += 1; // A failed dispatch cannot be retried as another request.
-        let mut url = self.base.join(if range {"api/v1/query_range"} else {"api/v1/query"})
-            .map_err(|_| failed())?;
-        {
-            let mut fields = url.query_pairs_mut();
-            fields.append_pair("query", "vector(1)");
-            if range {
-                fields.append_pair("start", "0").append_pair("end", "1").append_pair("step", "1");
-            } else { fields.append_pair("time", "1"); }
-            fields.append_pair("timeout", &format!("{}s", self.timeout_seconds))
-                .append_pair("limit", &self.limit.to_string());
-        }
-        let authority = &url[url::Position::BeforeHost..url::Position::AfterPort];
-        let mut frame = hyper::Request::builder().method(hyper::Method::GET)
-            .uri(&url[url::Position::BeforePath..]).header(hyper::header::HOST, authority)
-            .header(hyper::header::CONNECTION, if range {"close"} else {"keep-alive"});
-        if let Some(header) = authorization { frame=frame.header(hyper::header::AUTHORIZATION,header); }
-        // The SAME HTTP/1 dispatcher must be ready again after its prior body.
-        // Waiting here stays inside next_fixed's original data deadline.
-        if self.sender.ready().await.is_err() {self.reusable=false;return Err(failed());}
-        if !self.connector.is_current() {self.reusable=false;return Err(failed());}
-        if std::time::Instant::now()>=self.data_end {
-            self.reusable=false;return Err(Error::new(ErrorCode::Timeout,"Monitoring probe timed out"));
-        }
-        let mut response=match self.sender.send_request(frame.body(Empty::<Bytes>::new()).map_err(|_|failed())?).await {
-            Ok(response)=>response,Err(_)=>{self.reusable=false;return Err(failed());}
-        };
-        let status=response.status().as_u16();
-        self.reusable=!range && response.version()==hyper::Version::HTTP_11
-            && !response.headers().get_all(hyper::header::CONNECTION).iter().any(|value|
-                value.to_str().map(|text|text.split(',').any(|v|v.trim().eq_ignore_ascii_case("close"))).unwrap_or(true));
-        if response.status().is_redirection() {
-            self.reusable=false;
-            return Err(Error::new(ErrorCode::Transport,"Monitoring redirects are disabled").with_http(status));
-        }
-        if response.headers().get(hyper::header::CONTENT_LENGTH).is_some_and(|value|
-            value.to_str().ok().and_then(|text|text.parse::<u64>().ok()).is_none_or(|n|n>self.remaining as u64)) {
-            self.reusable=false;
-            return Err(Error::new(ErrorCode::ResponseTooLarge,"Monitoring response exceeds byte budget").with_http(status));
-        }
-        let mut bytes=Vec::new();
-        while let Some(frame)=response.body_mut().frame().await {
-            let frame=match frame {Ok(frame)=>frame,Err(_)=>{self.reusable=false;return Err(failed());}};
-            if let Some(data)=frame.data_ref() {
-                if data.len()>self.remaining {
-                    self.reusable=false;
-                    return Err(Error::new(ErrorCode::ResponseTooLarge,"Monitoring response exceeds byte budget").with_http(status));
-                }
-                self.remaining-=data.len();bytes.extend_from_slice(data);
-            }
-        }
-        if !self.connector.is_current() {
-            self.reusable=false;return Err(failed());
-        }
-        if std::time::Instant::now()>=self.data_end {
-            self.reusable=false;return Err(Error::new(ErrorCode::Timeout,"Monitoring probe timed out"));
-        }
-        Ok((bytes,status))
-    }
-    pub(crate) async fn close_join(&mut self) -> Result<(),Error> {
-        self.reusable=false;
-        self.connection.0.abort();
-        match tokio::time::timeout_at(tokio::time::Instant::from_std(self.end),&mut self.connection.0).await {
-            Ok(Ok(()))=>Ok(()),
-            Ok(Err(error)) if error.is_cancelled()=>Ok(()),
-            _=>Err(failed()),
-        }
-    }
-}
-
 impl ScopedHttp {
     pub(crate) fn new(
         source: &SourceConfig,
         connector: Arc<dyn MonitoringSourceConnector>,
     ) -> Result<Self, Error> {
         let endpoint = source.validate()?;
-        if !matches!(source.route, Route::SshHost { .. } | Route::AgentTunnel { .. } | Route::AgentDestination { .. }) || source != connector.source() {
+        if !matches!(source.route, Route::SshHost { .. }) || source != connector.source() {
             return Err(Error::new(
                 ErrorCode::UnsupportedRoute,
                 "Original scoped source adapter required",
@@ -240,34 +137,6 @@ impl ScopedHttp {
             source: source.clone(),
             tls,
         })
-    }
-
-    pub(crate) async fn probe_session(&self, budgets: &crate::Budgets, end: std::time::Instant)
-        -> Result<ProbeSession,Error> {
-        // Reserve cleanup inside the SAME absolute deadline; never add time to it.
-        let data_end=end.checked_sub(std::time::Duration::from_millis(100)).ok_or_else(failed)?;
-        if !matches!(self.source.route,Route::AgentDestination{..}|Route::AgentTunnel{..})
-            || !self.connector.is_current() || std::time::Instant::now()>=data_end {return Err(failed());}
-        let open=async {
-        let base=self.source.validate()?;
-        let io=BoundIo{inner:self.connector.connect().await?,connector:self.connector.clone()};
-        if !self.connector.is_current() {return Err(failed());}
-        let io:MonitoringIo=if let Some(tls)=&self.tls {
-            let host=match base.host().ok_or_else(failed)? {
-                url::Host::Ipv6(ip)=>ip.to_string(),host=>host.to_string(),
-            };
-            let name=ServerName::try_from(host).map_err(|_|failed())?;
-            Box::new(tokio_rustls::TlsConnector::from(tls.clone()).connect(name,io).await
-                .map_err(|_|Error::new(ErrorCode::Transport,"Monitoring TLS verification failed"))?)
-        }else{Box::new(io)};
-        let(sender,connection)=hyper::client::conn::http1::Builder::new().max_buf_size(32*1024)
-            .handshake(TokioIo::new(io)).await.map_err(|_|failed())?;
-        Ok(ProbeSession{sender,connection:ConnectionTask(tokio::spawn(async move{let _=connection.await;})),
-            connector:self.connector.clone(),base,end,data_end,remaining:budgets.max_response_bytes,
-            timeout_seconds:budgets.timeout_seconds,limit:budgets.max_series+1,sent:0,reusable:true})
-        };
-        tokio::time::timeout_at(tokio::time::Instant::from_std(data_end),open).await
-            .map_err(|_|Error::new(ErrorCode::Timeout,"Monitoring probe timed out"))?
     }
 
     pub(crate) async fn get(

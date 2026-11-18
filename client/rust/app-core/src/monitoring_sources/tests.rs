@@ -360,7 +360,7 @@ fn legacy_model_defaults_and_generic_dto_conversion_preserve_raw_catalog_without
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn saved_agent_destination_is_durable_data_and_unknown_host_is_denied() {
+async fn legacy_destination_is_durable_data_and_unknown_host_is_denied() {
     let (_directory, app) = setup().await;
     let mut events=app.subscribe_events();
     let host = app.save_host(crate::HostDto::new("Agent host", "host-fixture.example.invalid")).await.unwrap();
@@ -370,13 +370,13 @@ async fn saved_agent_destination_is_durable_data_and_unknown_host_is_denied() {
             if ids.iter().any(|id|id==&host.id){break}
         }}
     }).await.unwrap();drop(events);
-    let route = cc_monitoring_core::Route::AgentDestination {
+    let route = cc_monitoring_core::Route::LegacyDestination {
         association_id: "11111111-1111-4111-8111-111111111111".into(),
         host_id: host.id.clone(), destination_ip: "127.0.0.1".into(), destination_port: 9090,
     };
     let mut source = config();source.endpoint = "http://127.0.0.1:9090".into();source.route = route.clone();
     let mut unknown_host = source.clone();
-    if let cc_monitoring_core::Route::AgentDestination { host_id, .. } = &mut unknown_host.route {
+    if let cc_monitoring_core::Route::LegacyDestination { host_id, .. } = &mut unknown_host.route {
         *host_id="22222222-2222-4222-8222-222222222222".into();
     }
     assert!(app.monitoring_source_create(0, unknown_host).await.is_err());

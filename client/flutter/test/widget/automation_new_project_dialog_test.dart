@@ -33,7 +33,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Create')).onPressed, isNull);
     await tester.enterText(find.byKey(const ValueKey('automation-new-project-role')), 'app_setup');
-    await tester.tap(find.text('Choose an empty folder…'));
+    await tester.tap(find.text('Choose folder…'));
     await tester.pumpAndSettle();
     expect(find.text('D:/work/ansible'), findsOneWidget);
     await tester.tap(find.text('Create'));

@@ -30,9 +30,6 @@ mod aead;
 mod automation;
 mod production_owner;
 pub use production_owner::{OwnerConfirmation, ProductionOwnerPolicy, PRODUCTION_OWNER_DOMAIN, production_manifest_digest};
-pub mod agent_reader;
-mod agent_tunnel;
-mod agent_reader_node_owner;
 mod backup;
 mod device;
 pub use automation::verify_automation_manifest;
@@ -110,11 +107,3 @@ mod service_job;
 pub use service_job::{ServiceScheduledSlot, ServiceJobApproval, SignedServiceScheduledJob};
 
 pub use service_delegation::{ServiceOwnerStatusVerifier, VerifiedServiceOwnerStatus, SignedServiceRevocation};
-
-mod collector_service;
-
-mod agent_collector_credentials;
-pub use agent_collector_credentials::{PreparedCollectorCredentialOwner, collector_credential_binding, open_collector_credential, collector_basic_password_supported, CollectorCredentialEnvelope, CollectorCredentialBundle};
-
-mod collector_service_credentials;
-pub use collector_service_credentials::{PreparedCollectorServiceCredentialOwner,CollectorServiceCredentialFrame,collector_service_credential_binding,preflight_collector_service_credential_set,open_collector_service_credential_set};

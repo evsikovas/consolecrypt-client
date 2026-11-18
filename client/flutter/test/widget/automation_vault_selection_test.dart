@@ -57,6 +57,7 @@ Future<void> mount(
   VaultService service,
   List<({bool enabled, AutomationJson? selection})> changes, {
   AutomationScope ownerScope = scope,
+  TextEditingController? manualPassword,
 }) async {
   final date = DateTime.utc(2026);
   await tester.pumpWidget(
@@ -94,6 +95,7 @@ Future<void> mount(
               scope: scope,
               projectId: project,
               service: service,
+              manualPassword: manualPassword,
               onChanged: (enabled, selection) => changes.add((enabled: enabled, selection: selection)),
             ),
           ),
@@ -109,6 +111,43 @@ void pick(WidgetTester tester) => tester
     .onChanged!(credential);
 
 void main() {
+  testWidgets('manual input is masked and cleared when switching sources', (tester) async {
+    final service = VaultService(), changes = <({bool enabled, AutomationJson? selection})>[];
+    final password = TextEditingController();
+    addTearDown(password.dispose);
+    await mount(tester, service, changes, manualPassword: password);
+    await tapKey(tester, 'automation-vault-enable');
+    final source = find.byKey(const ValueKey('automation-vault-password-source'));
+    tester.widget<GlassSelect<bool>>(source).onChanged!(true);
+    await settle(tester);
+    final field = find.byKey(const ValueKey('automation-vault-manual-password'));
+    expect(
+      tester.widget<EditableText>(find.descendant(of: field, matching: find.byType(EditableText))).obscureText,
+      isTrue,
+    );
+    await tester.enterText(find.descendant(of: field, matching: find.byType(TextFormField)), 'fixture-password');
+    expect(service.requests, isEmpty);
+    tester.widget<GlassSelect<bool>>(source).onChanged!(false);
+    await settle(tester);
+    expect(field, findsNothing);
+    expect(password.text, isEmpty);
+    expect(find.byKey(const ValueKey('automation-vault-credential')), findsOneWidget);
+  });
+
+  testWidgets('a linked project explains why its launch uses the saved password', (tester) async {
+    final service = VaultService(), changes = <({bool enabled, AutomationJson? selection})>[];
+    final password = TextEditingController();
+    addTearDown(password.dispose);
+    (service.response['frame'] as AutomationJson)['referenceSha256'] = 'd' * 64;
+    await mount(tester, service, changes, manualPassword: password);
+    await tapKey(tester, 'automation-vault-enable');
+    tester.widget<GlassSelect<bool>>(find.byKey(const ValueKey('automation-vault-password-source'))).onChanged!(true);
+    await settle(tester);
+    expect(find.textContaining('already links a saved Vault password'), findsOneWidget);
+    expect(find.byKey(const ValueKey('automation-vault-manual-password')), findsNothing);
+    expect(service.requests, isEmpty);
+  });
+
   testWidgets('existing ref is not consent; explicit selection writes only metadata then enables request', (
     tester,
   ) async {

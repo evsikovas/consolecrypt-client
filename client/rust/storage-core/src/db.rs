@@ -1,8 +1,6 @@
 //! Synchronous database handle (one SQLCipher connection).
 
-mod tunnel_tls;
 
-pub use tunnel_tls::{TunnelTlsOwner,TunnelTlsPublic,TunnelTlsPhase,TunnelTlsSnapshot};
 
 
 
@@ -373,30 +371,3 @@ impl Tx<'_> {
     }
 
 }
-
-
-
-
-
-mod node_association;
-
-mod node_tunnel_access;
-
-mod node_tunnel_preference;
-
-mod node_outbound_control;
-
-pub use node_outbound_control::NodeOutboundControlReference;
-
-pub use node_tunnel_preference::NodeTunnelDestination;
-
-pub use node_tunnel_access::{NodeTunnelAccessEvent, NodeTunnelAccessRecord, NodeTunnelAccessRow};
-
-pub use node_association::{
-
-    NodeAssociationCertificate, NodeAssociationOwner, NodeAssociationPersonalOwner,
-
-    NodeCollectorService,NodeCollectorServiceCredentialSet, NodeCollectorServiceRevocation, NodeAssociationPhase, NodeAssociationPublic, NodeAssociationRecord, NodeAssociationRevocation, NodeAssociationRotation, NodeAssociationSnapshot,
-
-};
-

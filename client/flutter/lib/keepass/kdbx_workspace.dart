@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
+import 'package:consolecrypt/keepass/kdbx_entry_icons.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
@@ -534,6 +535,12 @@ class KdbxWorkspace extends StatelessWidget {
         label: context.l10n.commonRename,
         icon: Icons.edit_outlined,
       ),
+      GlassMenuItem(
+        key: const ValueKey('keepass-group-icon'),
+        value: 'icon',
+        label: context.l10n.keepassChooseEntryIcon,
+        icon: Icons.image_outlined,
+      ),
       const GlassMenuDivider(),
       GlassMenuItem(
         key: const ValueKey('keepass-group-delete'),
@@ -607,16 +614,7 @@ class KdbxWorkspace extends StatelessWidget {
                 selected: all ? group == null : group == id,
                 selectedColor: Theme.of(context).colorScheme.onSurface,
                 selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
-                leading: Icon(
-                  all
-                      ? Icons.view_list_outlined
-                      : id == session!.data['root']
-                      ? Icons.inbox_outlined
-                      : id == session!.data['recycleBin']
-                      ? Icons.delete_outline_rounded
-                      : Icons.folder_outlined,
-                  size: 18,
-                ),
+                leading: _folderIcon(id, all: all),
                 title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: !all && id != session!.data['root'] && session!.rows('groups').any((row) => row['id'] == id)
                     ? _groupMenu(context, id)
@@ -627,6 +625,19 @@ class KdbxWorkspace extends StatelessWidget {
           ),
         ),
       );
+
+  Widget _folderIcon(String id, {required bool all}) {
+    if (all) return const Icon(Icons.view_list_outlined, size: 18);
+    final opened = session!;
+    if (id == opened.data['root']) return const Icon(Icons.inbox_outlined, size: 18);
+    if (id == opened.data['recycleBin']) return const Icon(Icons.delete_outline_rounded, size: 18);
+    final row = opened.rows('groups').where((row) => row['id'] == id).firstOrNull;
+    return kdbxIconPreview(
+      opened.iconFor(row),
+      kdbxEntryIcon(row?['icon'] as int?, fallback: Icons.folder_outlined),
+      size: 18,
+    );
+  }
 
   Widget _sidebar(BuildContext context) {
     final l = context.l10n;
@@ -765,12 +776,17 @@ class KdbxWorkspace extends StatelessWidget {
                           : (details) => unawaited(_entryContext(context, entry, details.globalPosition)),
                       child: ListTile(
                         key: ValueKey('keepass-entry-${entry['id']}'),
-                        minTileHeight: 84,
-                        minVerticalPadding: 16,
+                        minTileHeight: AppPlatform.isMobile ? 60 : 48,
+                        minVerticalPadding: 6,
+                        dense: !AppPlatform.isMobile,
                         selected: selected?['id'] == entry['id'],
                         selectedColor: Theme.of(context).colorScheme.onSurface,
                         selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
-                        leading: const Icon(Icons.key_outlined, size: 22),
+                        leading: kdbxIconPreview(
+                          session!.iconFor(entry),
+                          kdbxEntryIcon(entry['icon'] as int?),
+                          size: 20,
+                        ),
                         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
                         subtitle: subtitle.isEmpty
                             ? null
@@ -910,6 +926,8 @@ class KdbxWorkspace extends StatelessWidget {
               GlassIconButton(
                 icon: Icons.delete_outline_rounded,
                 tooltip: entry['recycled'] == true ? l.keepassDeletePermanently : l.commonDelete,
+                size: GlassControlSize.md.height,
+                iconSize: 16,
                 onPressed: busy ? null : () => onDelete(entry),
               ),
             ],
@@ -1126,6 +1144,8 @@ class KdbxWorkspace extends StatelessWidget {
                     key: const ValueKey('keepass-database-actions'),
                     icon: Icons.more_vert_rounded,
                     tooltip: l.keepassMore,
+                    size: GlassControlSize.md.height,
+                    iconSize: 16,
                     onPressed: busy ? null : open,
                   ),
                 ),

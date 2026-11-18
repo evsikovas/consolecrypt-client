@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:consolecrypt/automation/automation_service.dart';
+import 'package:consolecrypt/automation/automation_technical_block.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -286,17 +287,19 @@ class AutomationHumanEvents extends StatelessWidget {
             aliases: aliases,
             viewState: viewState,
           ),
-        ExpansionTile(
-          key: const ValueKey('automation-event-technical'),
-          initiallyExpanded: viewState?.jsonOpen ?? false,
-          onExpansionChanged: (open) {
-            if (viewState != null) viewState!.jsonOpen = open;
-          },
-          title: Text(l.automationExecutionTechnical),
-          children: [
-            if (technicalJson.length > 16384) Text(l.automationOutputLimited),
-            SelectableText(technicalJson.length > 16384 ? '${technicalJson.substring(0, 16384)}…' : technicalJson),
-          ],
+        AutomationTechnicalBlock(
+          child: ExpansionTile(
+            key: const ValueKey('automation-event-technical'),
+            initiallyExpanded: viewState?.jsonOpen ?? false,
+            onExpansionChanged: (open) {
+              if (viewState != null) viewState!.jsonOpen = open;
+            },
+            title: Text(l.automationExecutionTechnical),
+            children: [
+              if (technicalJson.length > 16384) Text(l.automationOutputLimited),
+              SelectableText(technicalJson.length > 16384 ? '${technicalJson.substring(0, 16384)}…' : technicalJson),
+            ],
+          ),
         ),
       ],
     );
@@ -329,45 +332,55 @@ class _EventEntryState extends State<_EventEntry> {
     final l = context.l10n, details = automationEventDiagnostics(widget.event);
     final censored = details is Map && details['censored'] == true;
     final diagnostic = open && !censored ? automationDiagnosticText(details) : (text: '', limited: false);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final line in automationHumanEventLines(widget.event, widget.aliases))
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: SelectableText(line, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-          ),
-        if (censored)
-          Text(l.automationEventCensored)
-        else if (details != null) ...[
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              key: ValueKey('automation-event-diagnostics-${widget.event['sequence']}'),
-              onPressed: toggle,
-              icon: Icon(open ? Icons.expand_less : Icons.expand_more, size: 16),
-              label: Text(l.automationEventDiagnostics),
-            ),
-          ),
-          if (open)
-            ContentSurface(
-              kind: ContentSurfaceKind.inset,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [if (diagnostic.limited) Text(l.automationOutputLimited), SelectableText(diagnostic.text)],
+    final lines = automationHumanEventLines(widget.event, widget.aliases);
+    if (lines.isEmpty && details == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: ContentSurface(
+        kind: ContentSurfaceKind.inset,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final line in lines)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: SelectableText(line, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
               ),
-            ),
-        ],
-      ],
+            if (censored)
+              Text(l.automationEventCensored)
+            else if (details != null) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: ValueKey('automation-event-diagnostics-${widget.event['sequence']}'),
+                  onPressed: toggle,
+                  icon: Icon(open ? Icons.expand_less : Icons.expand_more, size: 16),
+                  label: Text(l.automationEventDiagnostics),
+                ),
+              ),
+              if (open)
+                ContentSurface(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (diagnostic.limited) Text(l.automationOutputLimited),
+                      SelectableText(diagnostic.text),
+                    ],
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
 
-
 /// A fixed projection of one Native-verified journal page. It retains neither
 /// arbitrary module payloads nor task-name-based identity/aggregate guesses.
-({List<AutomationJson> rows, int cursor, bool limited, int count})
-automationTaskResultPage(
+({List<AutomationJson> rows, int cursor, bool limited, int count}) automationTaskResultPage(
   AutomationJson page, {
   required String jobId,
   required String digest,
@@ -398,23 +411,14 @@ automationTaskResultPage(
     }
     sequence++;
     final kind = value['type'];
-    if (!const {
-      'runner_on_ok',
-      'runner_on_failed',
-      'runner_on_unreachable',
-      'runner_on_skipped',
-    }.contains(kind)) {
+    if (!const {'runner_on_ok', 'runner_on_failed', 'runner_on_unreachable', 'runner_on_skipped'}.contains(kind)) {
       continue;
     }
     final payload = value['payload'];
-    if (payload is! Map ||
-        payload['host'] is! String ||
-        !aliases.containsKey(payload['host'])) {
+    if (payload is! Map || payload['host'] is! String || !aliases.containsKey(payload['host'])) {
       continue;
     }
-    final result = payload['res'] is Map
-        ? payload['res'] as Map
-        : const <String, Object?>{};
+    final result = payload['res'] is Map ? payload['res'] as Map : const <String, Object?>{};
     final censored =
         payload['_ansible_no_log'] == true ||
         payload['no_log'] == true ||
@@ -424,9 +428,7 @@ automationTaskResultPage(
     // Legacy/malformed UUIDs remain independent sequence rows; never merge
     // identically named tasks or treat a display name as a task identifier.
     final validId =
-        taskId is String &&
-        RegExp(r'^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$')
-            .hasMatch(taskId);
+        taskId is String && RegExp(r'^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$').hasMatch(taskId);
     rows.add({
       'sequence': sequence,
       'timestamp': automationSafeEventText(value['timestamp']),
@@ -444,19 +446,12 @@ automationTaskResultPage(
           (result['rc'] as int) >= -2147483648 &&
           (result['rc'] as int) <= 2147483647)
         'rc': result['rc'],
-      if (!censored &&
-          const {'runner_on_failed', 'runner_on_unreachable'}.contains(kind) &&
-          result['msg'] is String)
+      if (!censored && const {'runner_on_failed', 'runner_on_unreachable'}.contains(kind) && result['msg'] is String)
         'error': automationSafeEventText(result['msg']),
     });
   }
   if (cursor != sequence) throw const FormatException('task_cursor');
-  return (
-    rows: rows,
-    cursor: cursor,
-    limited: page['output_truncated'] as bool,
-    count: events.length,
-  );
+  return (rows: rows, cursor: cursor, limited: page['output_truncated'] as bool, count: events.length);
 }
 
 /// Explicit, bounded reads through the existing event service. Opening the
@@ -485,17 +480,10 @@ class _AutomationTaskResultsState extends State<AutomationTaskResults> {
   final expanded = <int>{};
   List<AutomationJson> rows = [];
   int after = 0, cursor = 0, count = 0, generation = 0;
-  bool open = false,
-      busy = false,
-      loaded = false,
-      failed = false,
-      limited = false;
+  bool open = false, busy = false, loaded = false, failed = false, limited = false;
   Object? inFlight;
-  String get jobId =>
-      widget.job['job_id'] is String ? widget.job['job_id'] as String : '';
-  String get digest => widget.job['manifest_digest'] is String
-      ? widget.job['manifest_digest'] as String
-      : '';
+  String get jobId => widget.job['job_id'] is String ? widget.job['job_id'] as String : '';
+  String get digest => widget.job['manifest_digest'] is String ? widget.job['manifest_digest'] as String : '';
   bool get current => mounted && widget.active && widget.isCurrent();
 
   @override
@@ -505,8 +493,7 @@ class _AutomationTaskResultsState extends State<AutomationTaskResults> {
         !identical(oldWidget.scopeIdentity, widget.scopeIdentity) ||
         oldWidget.job['job_id'] != jobId ||
         oldWidget.job['manifest_digest'] != digest ||
-        jsonEncode(automationApprovedAliases(oldWidget.job)) !=
-            jsonEncode(automationApprovedAliases(widget.job))) {
+        jsonEncode(automationApprovedAliases(oldWidget.job)) != jsonEncode(automationApprovedAliases(widget.job))) {
       generation++;
       rows = [];
       previous.clear();
@@ -533,15 +520,10 @@ class _AutomationTaskResultsState extends State<AutomationTaskResults> {
   }
 
   Future<void> read() async {
-    if (inFlight != null ||
-        !current ||
-        !open ||
-        jobId.isEmpty ||
-        !RegExp(r'^[0-9a-f]{64}$').hasMatch(digest)) {
+    if (inFlight != null || !current || !open || jobId.isEmpty || !RegExp(r'^[0-9a-f]{64}$').hasMatch(digest)) {
       return;
     }
-    final originalService = widget.service,
-        originalScope = widget.scopeIdentity;
+    final originalService = widget.service, originalScope = widget.scopeIdentity;
     final originalJob = jobId, originalDigest = digest, requested = after;
     final aliases = automationApprovedAliases(widget.job), token = ++generation;
     final flight = Object();
@@ -559,11 +541,7 @@ class _AutomationTaskResultsState extends State<AutomationTaskResults> {
       failed = false;
     });
     try {
-      final page = await originalService.jobEvents(
-        originalJob,
-        after: requested,
-        limit: 50,
-      );
+      final page = await originalService.jobEvents(originalJob, after: requested, limit: 50);
       if (!original()) return;
       final view = automationTaskResultPage(
         page,
@@ -635,17 +613,10 @@ class _AutomationTaskResultsState extends State<AutomationTaskResults> {
       'runner_on_failed' => l.automationResultFailed,
       'runner_on_unreachable' => l.automationResultUnreachable,
       'runner_on_skipped' => l.automationResultSkipped,
-      _ =>
-        value['changed'] == true
-            ? l.automationResultChanged
-            : l.automationResultOk,
+      _ => value['changed'] == true ? l.automationResultChanged : l.automationResultOk,
     };
-    final task = (value['task'] as String).isEmpty
-        ? l.automationTaskUnnamed
-        : value['task'] as String;
-    final stamp = (value['timestamp'] as String).isEmpty
-        ? l.automationResultMissing
-        : value['timestamp'] as String;
+    final task = (value['task'] as String).isEmpty ? l.automationTaskUnnamed : value['task'] as String;
+    final stamp = (value['timestamp'] as String).isEmpty ? l.automationResultMissing : value['timestamp'] as String;
     final changedLabel = value['changed'] == null
         ? l.automationResultMissing
         : value['changed'] == true
@@ -667,9 +638,7 @@ class _AutomationTaskResultsState extends State<AutomationTaskResults> {
         }
       },
       title: Text(task, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        l.automationTaskHostState(value['host_label'] as String, state),
-      ),
+      subtitle: Text(l.automationTaskHostState(value['host_label'] as String, state)),
       children: [
         Padding(
           padding: const EdgeInsets.all(8),
@@ -678,23 +647,15 @@ class _AutomationTaskResultsState extends State<AutomationTaskResults> {
             children: [
               SelectableText(task),
               Text(l.automationTaskEventReference(seq.toString(), stamp)),
-              if (value['task_id'] != null)
-                SelectableText(
-                  l.automationTaskIdentity(value['task_id'] as String),
-                ),
-              if ((value['action'] as String).isNotEmpty)
-                Text(l.automationTaskModule(value['action'] as String)),
+              if (value['task_id'] != null) SelectableText(l.automationTaskIdentity(value['task_id'] as String)),
+              if ((value['action'] as String).isNotEmpty) Text(l.automationTaskModule(value['action'] as String)),
               Text('${l.automationResultChanged}: $changedLabel'),
               Text('${l.automationResultExitCode}: $exitLabel'),
               if (value['truncated'] == true) Text(l.automationOutputLimited),
               if (value['censored'] == true)
                 Text(l.automationEventCensored)
-              else if (value['error'] is String &&
-                  (value['error'] as String).isNotEmpty)
-                SelectableText(
-                  value['error'] as String,
-                  key: ValueKey('automation-task-error-$seq'),
-                ),
+              else if (value['error'] is String && (value['error'] as String).isNotEmpty)
+                SelectableText(value['error'] as String, key: ValueKey('automation-task-error-$seq')),
             ],
           ),
         ),
@@ -746,27 +707,17 @@ class _AutomationTaskResultsState extends State<AutomationTaskResults> {
           children: [
             TextButton(
               key: const ValueKey('automation-task-first'),
-              onPressed: inFlight != null || after == 0 || !widget.active
-                  ? null
-                  : firstPage,
+              onPressed: inFlight != null || after == 0 || !widget.active ? null : firstPage,
               child: Text(l.automationTaskFirstPage),
             ),
             TextButton(
               key: const ValueKey('automation-task-previous'),
-              onPressed: inFlight != null || previous.isEmpty || !widget.active
-                  ? null
-                  : () => move(false),
+              onPressed: inFlight != null || previous.isEmpty || !widget.active ? null : () => move(false),
               child: Text(l.automationPreviousEvents),
             ),
             TextButton(
               key: const ValueKey('automation-task-next'),
-              onPressed:
-                  inFlight != null ||
-                      !loaded ||
-                      cursor <= after ||
-                      !widget.active
-                  ? null
-                  : () => move(true),
+              onPressed: inFlight != null || !loaded || cursor <= after || !widget.active ? null : () => move(true),
               child: Text(l.automationMoreEvents),
             ),
             TextButton(
@@ -797,13 +748,7 @@ class _AutomationTaskResultsState extends State<AutomationTaskResults> {
             message: l.automationTaskReadFailed,
             tone: BannerTone.danger,
           ),
-        if (loaded)
-          Text(
-            l.automationTaskEventPage(
-              (count == 0 ? after : after + 1).toString(),
-              cursor.toString(),
-            ),
-          ),
+        if (loaded) Text(l.automationTaskEventPage((count == 0 ? after : after + 1).toString(), cursor.toString())),
         if (limited) Text(l.automationOutputLimited),
         if (loaded && shown.isEmpty) Text(l.automationTaskNoMatchingResults),
         for (final value in shown) row(value),

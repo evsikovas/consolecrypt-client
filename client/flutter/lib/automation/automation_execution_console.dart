@@ -6,6 +6,7 @@ import 'package:consolecrypt/automation/automation_job_admission_audit.dart';
 import 'package:consolecrypt/automation/automation_job_result.dart';
 import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
+import 'package:consolecrypt/automation/automation_technical_block.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -273,22 +274,26 @@ class _AutomationExecutionConsoleState extends ConsumerState<AutomationExecution
               key: ValueKey(technical ? 'automation-retired-technical' : 'automation-retired-output'),
             ),
           if (technical && job != null && widget.service is AutomationEventService)
-            AutomationTaskResults(
-              key: ValueKey('console-task-results-${widget.jobId}'),
-              service: widget.service as AutomationEventService,
-              job: job!,
-              scopeIdentity: widget.scope,
-              active: visible && !widget.collapsed && selectedTab == 1,
-              isCurrent: () => current,
+            AutomationTechnicalBlock(
+              child: AutomationTaskResults(
+                key: ValueKey('console-task-results-${widget.jobId}'),
+                service: widget.service as AutomationEventService,
+                job: job!,
+                scopeIdentity: widget.scope,
+                active: visible && !widget.collapsed && selectedTab == 1,
+                isCurrent: () => current,
+              ),
             ),
           AutomationHumanEvents(events: events, job: job, technical: technical, viewState: technicalState),
           if (technical && job?.containsKey('admission_audit') == true)
-            AutomationJobAdmissionAuditView(
-              job: job!,
-              expanded: resultState.auditOpen,
-              page: resultState.auditPage,
-              onExpanded: (open) => setState(() => resultState.auditOpen = open),
-              onPage: (page) => setState(() => resultState.auditPage = page),
+            AutomationTechnicalBlock(
+              child: AutomationJobAdmissionAuditView(
+                job: job!,
+                expanded: resultState.auditOpen,
+                page: resultState.auditPage,
+                onExpanded: (open) => setState(() => resultState.auditOpen = open),
+                onPage: (page) => setState(() => resultState.auditPage = page),
+              ),
             ),
           if (technical && job?['runner_result'] != null)
             AutomationJobResult(

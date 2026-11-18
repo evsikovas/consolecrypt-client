@@ -1,8 +1,0 @@
----
-cc_agent_release_bootstrap_approved: false
-cc_agent_release_bootstrap_verifier: ''
-cc_agent_release_bootstrap_public_key: ''
-cc_agent_release_bootstrap_verifier_sha256: ''
-cc_agent_release_bootstrap_public_key_sha256: ''
-cc_agent_release_bootstrap_public_key_fingerprint: ''
-cc_agent_release_bootstrap_platform: ''

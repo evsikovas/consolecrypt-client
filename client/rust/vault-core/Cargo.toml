@@ -11,7 +11,6 @@ publish.workspace = true
 
 [dependencies]
 cc-crypto-core.workspace = true
-cc-agent-node-wire.workspace = true
 # Only the SecureStore trait is used here. (`default-features = false` would
 # need the root workspace entry to disable defaults first.)
 cc-platform-core.workspace = true

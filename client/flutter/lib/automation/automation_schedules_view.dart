@@ -184,6 +184,7 @@ class _AutomationSchedulesViewState extends ConsumerState<AutomationSchedulesVie
         Wrap(
           spacing: 8,
           runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             GlassButton(
               label: l.automationSchedulesNew,
@@ -201,6 +202,8 @@ class _AutomationSchedulesViewState extends ConsumerState<AutomationSchedulesVie
             ),
             GlassIconButton(
               icon: Icons.refresh_rounded,
+              size: GlassControlSize.md.height,
+              iconSize: 16,
               tooltip: l.commonRetry,
               onPressed: request == null || records?.isLoading == true ? null : () => ref.invalidate(_catalog(request)),
             ),

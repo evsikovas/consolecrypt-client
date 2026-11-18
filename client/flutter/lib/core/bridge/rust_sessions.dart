@@ -64,11 +64,16 @@ final class RustTerminalService
         KubernetesTerminalService,
         DockerTerminalService,
         RuntimeTerminalService {
-  RustTerminalService(this._hub) {
-    _hub.onPrompt = _routePrompt;
+  RustTerminalService(RustBackend hub) : _hub = hub {
+    hub.onPrompt = _routePrompt;
   }
 
-  final RustBackend _hub;
+  RustTerminalService.localOnly(LocalShellProfile? initial) : _hub = null {
+    if (initial != null) _localProfiles[initial.id] = initial;
+  }
+
+  final RustBackend? _hub;
+  final _localProfiles = <String, LocalShellProfile>{};
   final Map<TerminalSessionId, _Session> _sessions = {};
 
   _Session _session(TerminalSessionId id) =>
@@ -77,23 +82,30 @@ final class RustTerminalService
 
   @override
   Future<TerminalSessionHandle> open({required ObjectId hostId, required TerminalSize size}) async {
-    if (!_hub.hosts.value.any((h) => h.id == hostId)) {
+    final hub = _hub;
+    if (hub == null || !hub.hosts.value.any((h) => h.id == hostId)) {
       throw const AppException(AppErrorCode.notFound, 'Host not found', reason: AppErrorReason.hostNotFound);
     }
-    final host = _hub.hosts.value.firstWhere((h) => h.id == hostId);
+    final host = hub.hosts.value.firstWhere((h) => h.id == hostId);
     return _open(SshTerminalTarget(host), size);
   }
 
   @override
   Future<LocalShellProfiles> listLocalProfiles() async {
     final j = decodeObject(await guard(rs_ssh.terminalLocalProfiles));
-    return LocalShellProfiles.fromJson(j);
+    final profiles = LocalShellProfiles.fromJson(j);
+    if (_hub == null) {
+      _localProfiles
+        ..clear()
+        ..addEntries(profiles.profiles.map((profile) => MapEntry(profile.id, profile)));
+    }
+    return profiles;
   }
 
   @override
   Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size}) async {
-    final profiles = await listLocalProfiles();
-    final profile = profiles.profiles.where((p) => p.id == profileId).firstOrNull;
+    final profile =
+        _localProfiles[profileId] ?? (await listLocalProfiles()).profiles.where((p) => p.id == profileId).firstOrNull;
     if (profile == null) {
       throw const AppException(AppErrorCode.notFound, 'Local shell is unavailable');
     }
@@ -295,18 +307,21 @@ final class RustTerminalService
   }
 
   String _hostPattern(_Session s) {
-    final host = _hub.hosts.value.where((h) => h.id == s.hostId).firstOrNull;
+    final host = _hub?.hosts.value.where((h) => h.id == s.hostId).firstOrNull;
     if (host == null) return '';
     final effective = _resolver.resolve(host);
     return hostPattern(host.address, effective.port.value ?? defaultSshPort);
   }
 
-  EffectiveConfigResolver get _resolver => EffectiveConfigResolver(
-    hosts: _hub.hosts.value,
-    groups: _hub.groups.value,
-    credentials: _hub.credentials.value,
-    jumpProfiles: _hub.jumpProfiles.value,
-  );
+  EffectiveConfigResolver get _resolver {
+    final hub = _hub!;
+    return EffectiveConfigResolver(
+      hosts: hub.hosts.value,
+      groups: hub.groups.value,
+      credentials: hub.credentials.value,
+      jumpProfiles: hub.jumpProfiles.value,
+    );
+  }
 
   void _onFrame(_Session s, rs_ssh.TerminalFrame f, {bool reset = false}) {
     switch (f.kind) {
@@ -330,6 +345,8 @@ final class RustTerminalService
 
   /// Claims a core prompt for the connecting session it belongs to.
   Future<bool> _routePrompt(Json prompt) async {
+    final hub = _hub;
+    if (hub == null) return false;
     final (kind, body) = switch (prompt) {
       {'HostKey': final Map<Object?, Object?> b} => (_PromptKind.hostKey, b),
       {'Password': final Map<Object?, Object?> b} => (_PromptKind.password, b),
@@ -358,7 +375,7 @@ final class RustTerminalService
             ),
           );
       case _PromptKind.password:
-        final host = _hub.hosts.value.where((h) => h.id == s.hostId).firstOrNull;
+        final host = hub.hosts.value.where((h) => h.id == s.hostId).firstOrNull;
         final username = host == null ? '' : _resolver.resolve(host).username.value ?? '';
         s
           ..event(const TerminalStateChanged(SessionConnectionState.awaitingPassword))
@@ -370,7 +387,7 @@ final class RustTerminalService
             ),
           );
       case _PromptKind.passphrase:
-        final host = _hub.hosts.value.where((h) => h.id == s.hostId).firstOrNull;
+        final host = hub.hosts.value.where((h) => h.id == s.hostId).firstOrNull;
         s
           ..event(const TerminalStateChanged(SessionConnectionState.awaitingPassword))
           ..event(

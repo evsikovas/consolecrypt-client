@@ -194,23 +194,6 @@ impl Storage {
     }
 
     /// Original fixed TLS identity row; same FULL durable worker/kernel.
-    pub async fn write_tunnel_tls<T,E,F>(&self,f:F)->std::result::Result<T,crate::ReaderAuthorityWriteError<E>>
-    where F:FnOnce(&Tx<'_>)->std::result::Result<T,E>+Send+'static,T:Send+'static,E:From<StorageError>+Send+'static {
-        self.call(move |db|db.tunnel_tls_write(f)).await
-    }
-
-    pub async fn write_node_association<T, E, F>(
-        &self,
-        f: F,
-    ) -> std::result::Result<T, crate::ReaderAuthorityWriteError<E>>
-    where
-        F: FnOnce(&Tx<'_>) -> std::result::Result<T, E> + Send + 'static,
-        T: Send + 'static,
-        E: From<StorageError> + Send + 'static,
-    {
-        self.call(move |db| db.node_association_write(f)).await
-    }
-
     /// Run `f` in a read transaction.
     pub async fn read<T, E, F>(&self, f: F) -> Result<T, E>
     where

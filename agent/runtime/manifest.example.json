@@ -1,9 +1,0 @@
-{
-  "schema_version": 1,
-  "agent_id": "be42e704-c1ac-4c4f-9dc5-b08d384e6ab0",
-  "host_id": "36fdf84b-e33a-46f3-b9b4-e301215b1dd3",
-  "bind_host": "127.0.0.1",
-  "port": 18080,
-  "sample_interval_seconds": 15,
-  "history": {"max_bytes": 268435456, "max_age_seconds": 86400, "max_points": 5760}
-}

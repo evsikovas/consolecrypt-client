@@ -153,6 +153,9 @@ fn info(core: &AppCore, already_initialized: bool) -> CoreInfo {
 /// Create the global core (idempotent: a running core is kept, e.g. after a
 /// Flutter hot restart). Call once at start-up, before anything else.
 pub async fn core_init(config: CoreConfig) -> Result<CoreInfo, BridgeError> {
+    if super::ssh::terminal_only_requested() {
+        return Err(BridgeError::invalid("startup", "vault unavailable in terminal-only mode"));
+    }
     if let Some(core) = state::core_opt() {
         return Ok(info(&core, true));
     }

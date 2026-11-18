@@ -254,6 +254,19 @@ async fn device_local_provider_is_ephemeral_scoped_and_keeps_command_policy() {
             .code(),
         "confirmation_required"
     );
+    let draft_context = f.app.automation_ai_prepare(
+        DEVICE_LOCAL_PROVIDER_ID.into(),
+        "Check host connectivity using Ansible ping".into(),
+        "roles/probe/tasks/main.yml".into(),
+        None,
+    ).await.unwrap();
+    f.mock.push_chat(r#"{"version":1,"description":"Check connectivity","files":[{"path":"roles/probe/tasks/main.yml","content":"- name: Check connectivity\n  ansible.builtin.ping: {}\n"}],"variables":[],"dependencies":[],"expected_changes":[],"checks":[],"warnings":[]}"#);
+    let draft = f.app.automation_ai_generate(draft_context["review_id"].as_str().unwrap().into()).await.unwrap();
+    assert!(draft["files"][0]["content"].as_str().unwrap().contains("ansible.builtin.ping"));
+    let captured: serde_json::Value = serde_json::from_str(&f.mock.requests().last().unwrap().body).unwrap();
+    assert_eq!(captured["response_format"]["type"], "json_schema");
+    assert_eq!(captured.pointer("/response_format/json_schema/schema/properties/files/items/properties/path/const").unwrap(), "roles/probe/tasks/main.yml");
+    assert!(f.fake.execs.lock().unwrap().is_empty());
     // An old completion cannot clear the newly registered process.
     f.app
         .clear_device_local_ai_provider(uuid::Uuid::new_v4().to_string())

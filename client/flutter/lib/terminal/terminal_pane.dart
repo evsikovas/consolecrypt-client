@@ -20,9 +20,10 @@ import 'package:xterm/xterm.dart';
 /// Keeps native terminal selection and mouse reporting; selected text or
 /// Shift+right-click opts into the local menu even in a mouse-aware TUI.
 class TerminalPane extends ConsumerStatefulWidget {
-  const TerminalPane({required this.tab, this.active = true, super.key});
+  const TerminalPane({required this.tab, this.active = true, this.onShortcut, super.key});
   final TerminalTab tab;
   final bool active;
+  final bool Function(KeyEvent)? onShortcut;
 
   @override
   ConsumerState<TerminalPane> createState() => _TerminalPaneState();
@@ -208,28 +209,33 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(terminalMinimalModeProvider, (_, _) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _activate());
-    });
+    final standalone = ref.watch(terminalOnlyModeProvider);
+    if (!standalone) {
+      ref.listen(terminalMinimalModeProvider, (_, _) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _activate());
+      });
+    }
     final tab = widget.tab;
     final fontSize = ref.watch(localSettingsProvider.select((s) => s.value?.terminalFontSize ?? 13));
     final font = ref.watch(terminalFontProvider);
-    final dispatcher = ref.read(appCommandDispatcherProvider);
+    final dispatcher = standalone ? null : ref.read(appCommandDispatcherProvider);
     final scheme = ref.watch(
       localSettingsProvider.select((s) => s.value?.terminalColorScheme ?? TerminalColorScheme.system),
     );
     final custom = ref.watch(localSettingsProvider.select((s) => s.value?.customTerminalColors));
-    ref.listen(workspaceToolsProvider.select((s) => s.selected), (previous, next) {
-      if (previous == null || next != null) return;
-      // In a compact window the dismissing click belongs to the tool barrier,
-      // so the terminal never receives pointerDown. Wait for ExcludeFocus to
-      // lift, then restore input only in the visible, active workspace.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && TickerMode.valuesOf(context).enabled && ref.read(workspaceToolsProvider).selected == null) {
-          _activate();
-        }
+    if (!standalone) {
+      ref.listen(workspaceToolsProvider.select((s) => s.selected), (previous, next) {
+        if (previous == null || next != null) return;
+        // In a compact window the dismissing click belongs to the tool barrier,
+        // so the terminal never receives pointerDown. Wait for ExcludeFocus to
+        // lift, then restore input only in the visible, active workspace.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && TickerMode.valuesOf(context).enabled && ref.read(workspaceToolsProvider).selected == null) {
+            _activate();
+          }
+        });
       });
-    });
+    }
     return RepaintBoundary(
       child: ExcludeFocus(
         excluding: !widget.active,
@@ -323,7 +329,9 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
                     return KeyEventResult.handled;
                   }
                 }
-                if (dispatcher.handleKeyEvent(event)) return KeyEventResult.handled;
+                if (widget.onShortcut?.call(event) == true || dispatcher?.handleKeyEvent(event) == true) {
+                  return KeyEventResult.handled;
+                }
                 // Windows can deliver the Unicode WM_CHAR value on KeyEvent
                 // without forwarding it to xterm's custom TextInputClient.
                 // Consume printable hardware input here: returning handled also

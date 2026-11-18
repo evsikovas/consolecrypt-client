@@ -85,7 +85,7 @@ impl MonitoringClient {
         budgets.validate()?;
         if !matches!(
             (&source.route, &scoped),
-            (Route::Direct, None) | (Route::SshHost { .. } | Route::AgentTunnel { .. } | Route::AgentDestination { .. }, Some(_))
+            (Route::Direct, None) | (Route::SshHost { .. }, Some(_))
         ) {
             return Err(Error::new(
                 ErrorCode::UnsupportedRoute,
@@ -237,52 +237,10 @@ impl MonitoringClient {
     }
     /// Tests behavior, never a backend product/version string.
     pub async fn probe(&self) -> Capabilities {
-        if matches!(self.source.route,Route::AgentDestination{..}|Route::AgentTunnel{..}) {
-            return self.probe_original_agent().await;
-        }
         let query = capability(self.query("vector(1)", Some(1.0)).await, false);
         let query_range = capability(self.query_range("vector(1)", 0.0, 1.0, 1.0).await, true);
         Capabilities { query, query_range }
     }
-    async fn probe_original_agent(&self) -> Capabilities {
-        let unavailable=|error:Error|Capabilities{query:capability(Err(error.clone()),false),query_range:capability(Err(error),true)};
-        if let Err(error)=self.validate_query("vector(1)"){return unavailable(error)}
-        if let Err(error)=self.ensure_authorization(){return unavailable(error)}
-        let _permit=match self.permits.clone().try_acquire_owned(){
-            Ok(permit)=>permit,Err(_)=>return unavailable(Error::new(ErrorCode::Busy,"Monitoring request concurrency budget reached")),
-        };
-        let end=Instant::now()+Duration::from_secs(self.budgets.timeout_seconds);
-        let end=self.credential.as_ref().map(|c|c.expires.min(end)).unwrap_or(end);
-        let authorization=match self.credential.as_ref().map(|credential|HeaderValue::from_str(&credential.authorization)).transpose(){
-            Ok(mut header)=>{if let Some(value)=&mut header{value.set_sensitive(true)}header},
-            Err(_)=>return unavailable(Error::new(ErrorCode::AuthUnavailable,"Invalid credential grant")),
-        };
-        let scoped=match &self.scoped {Some(scoped)=>scoped,None=>return unavailable(Error::new(ErrorCode::UnsupportedRoute,"Original scoped source adapter required"))};
-        let mut session=match tokio::time::timeout_at(tokio::time::Instant::from_std(end),scoped.probe_session(&self.budgets,end)).await {
-            Ok(Ok(session))=>session,Ok(Err(error))=>return unavailable(error),
-            Err(_)=>return unavailable(Error::new(ErrorCode::Timeout,"Monitoring probe timed out")),
-        };
-        let mut results=Vec::with_capacity(2);
-        for range in [false,true] {
-            let result=async {
-                self.ensure_authorization()?;
-                let(bytes,status)=session.next_fixed(authorization.as_ref()).await?;
-                let(value,status)=self.decode_response(&bytes,status)?;
-                let outcome=parse::envelope(value,status,&self.budgets,range.then_some(1.0)).map_err(|error|error.with_http(status))?;
-                if range && outcome.data.as_ref().is_some_and(|data|!matches!(data,QueryData::Matrix{..})) {return Err(parse::invalid().with_http(status))}
-                if range && outcome.data.as_ref().is_some_and(|data|match data {
-                    QueryData::Matrix{series}=>series.iter().any(|series|series.samples.len()>2||series.samples.iter().any(|s|s.timestamp<0.0||s.timestamp>1.0)),
-                    _=>false,
-                }) {return Err(parse::invalid().with_http(status))}
-                self.ensure_authorization()?;Ok(outcome)
-            }.await;
-            results.push(capability(result,range));
-        }
-        if let Err(error)=session.close_join().await {return unavailable(error)}
-        Capabilities{query:results.remove(0),query_range:results.remove(0)}
-    }
-
-    /// Label values, including __name__ for metric names; bounded and TTL cached.
     pub async fn label_values(&self, label: &str) -> Result<LabelValues, Error> {
         self.ensure_authorization()?;
         if label.is_empty()

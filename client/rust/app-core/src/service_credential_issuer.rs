@@ -49,12 +49,6 @@ pub(crate) struct ServiceRecipientSelection {
     pub delegation_expires_at: u64,
 }
 
-// Private material policy, never a caller JSON selector or secret callback.
-enum MaterialPurpose {
-    ExistingService,
-    CollectorBasicPassword { expected_username: String },
-}
-
 /// Bounded opaque one-use owner review. No plaintext, key, general lookup, or
 /// serializable approval token. Profile/account/team remain distinct: initial
 /// issuer supports localProfile ONLY, not a ProfileId disguised as account ID.
@@ -122,24 +116,6 @@ impl ServiceCredentialReview {
         self,
         app: &AppCore,
     ) -> AppResult<ServiceCredentialCapsule> {
-        self.approve_and_seal_for(app, MaterialPurpose::ExistingService).await
-    }
-
-    /// Collector-only closed material projection. The username must come from
-    /// the SAME explicitly selected saved credential metadata/revision and its
-    /// signed scope. No secret is exported when file readers would change it.
-    pub(crate) async fn approve_and_seal_collector_basic_password(
-        self, app: &AppCore, expected_username: String,
-    ) -> AppResult<ServiceCredentialCapsule> {
-        if self.metadata.username() != Some(expected_username.as_str()) {
-            return Err(invalid());
-        }
-        self.approve_and_seal_for(app, MaterialPurpose::CollectorBasicPassword { expected_username }).await
-    }
-
-    async fn approve_and_seal_for(
-        self, app: &AppCore, purpose: MaterialPurpose,
-    ) -> AppResult<ServiceCredentialCapsule> {
         let deadline = tokio::time::Instant::from_std(self.deadline);
         let u = self.unlock.upgrade().ok_or(AppError::VaultLocked)?;
         let mut shutdown = u.sharing_shutdown.subscribe();
@@ -181,12 +157,6 @@ impl ServiceCredentialReview {
             if value.is_empty() || value.len() > 16 * 1024 {
                 return Err(invalid());
             }
-            if let MaterialPurpose::CollectorBasicPassword { expected_username } = &purpose {
-                if self.metadata.username() != Some(expected_username.as_str())
-                    || !cc_crypto_core::collector_basic_password_supported(value.as_bytes()) {
-                    return Err(invalid());
-                }
-            }
             let issued = now()?;
             let capsule = self.owner_scope.with_current(&self.owner, || {
                 identity
@@ -201,10 +171,6 @@ impl ServiceCredentialReview {
             })?;
             self.check_held(&u)?;
             if u.working().version() != version {
-                return Err(invalid());
-            }
-            if matches!(purpose, MaterialPurpose::CollectorBasicPassword { .. })
-                && capsule.to_json().map_err(|_| invalid())?.len() > 8192 {
                 return Err(invalid());
             }
             Ok(capsule)
@@ -345,6 +311,3 @@ impl AppCore {
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(test)]
-mod collector_tests;

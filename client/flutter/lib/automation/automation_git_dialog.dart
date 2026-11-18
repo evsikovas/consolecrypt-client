@@ -27,6 +27,7 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
   Object? error;
   Timer? timer;
   bool get current => mounted && identical(ref.read(automationScopeProvider), widget.scope);
+  bool get plainHttp => Uri.tryParse(url.text.trim())?.scheme == 'http';
   @override
   void initState() {
     super.initState();
@@ -65,7 +66,7 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
         runnerId: '',
         url: url.text.trim(),
         reference: reference.text.trim(),
-        caPem: customCa ? ca.text : null,
+        caPem: customCa && !plainHttp ? ca.text : null,
       );
       if (!current) {
         if (scopeValid) {
@@ -131,6 +132,7 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
     child: TextField(
       key: ValueKey(key),
       controller: controller,
+      onChanged: identical(controller, url) ? (_) => setState(() {}) : null,
       enabled: !busy && id == null,
       minLines: multiline ? 3 : 1,
       maxLines: multiline ? 8 : 1,
@@ -155,12 +157,14 @@ class _AutomationGitDialogState extends ConsumerState<AutomationGitDialog> {
             field(l.automationGitUrl, url, 'automation-git-url'),
             field(l.automationGitReference, reference, 'automation-git-reference'),
             const SizedBox(height: 12),
-            CheckboxListTile(
-              value: customCa,
-              title: Text(l.automationGitCustomCa),
-              onChanged: busy || id != null ? null : (value) => setState(() => customCa = value ?? false),
-            ),
-            if (customCa) field(l.automationGitCa, ca, 'automation-git-ca', multiline: true),
+            if (plainHttp) Text(l.automationGitHttpHint),
+            if (!plainHttp)
+              CheckboxListTile(
+                value: customCa,
+                title: Text(l.automationGitCustomCa),
+                onChanged: busy || id != null ? null : (value) => setState(() => customCa = value ?? false),
+              ),
+            if (!plainHttp && customCa) field(l.automationGitCa, ca, 'automation-git-ca', multiline: true),
             if (busy) ...[const LinearProgressIndicator(), Text(l.automationGitReceiving)],
             if (error != null)
               Text(

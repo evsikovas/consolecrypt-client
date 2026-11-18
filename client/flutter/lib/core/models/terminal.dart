@@ -116,13 +116,27 @@ final class LocalShellProfile {
     required this.shell,
     this.distribution,
   });
+  factory LocalShellProfile.fromJson(Map<String, dynamic> json) => LocalShellProfile(
+    id: json['id'] as String,
+    kind: json['kind'] as String,
+    label: json['label'] as String,
+    shell: json['shell'] as String,
+    distribution: json['distribution'] as String?,
+  );
   final String id, kind, label, shell;
   final String? distribution;
 }
 
 /// Observation from the existing fixed WSL discovery, not feature/install state.
 enum WslDiscoveryStatus {
-  executableMissing, spawnFailed, timedOut, ioFailed, outputTooLarge, nonzeroExit, empty, available;
+  executableMissing,
+  spawnFailed,
+  timedOut,
+  ioFailed,
+  outputTooLarge,
+  nonzeroExit,
+  empty,
+  available;
 
   static WslDiscoveryStatus? fromJson(Object? value) => switch (value) {
     'executable_missing' => executableMissing,
@@ -142,8 +156,7 @@ final class LocalShellProfiles {
   factory LocalShellProfiles.fromJson(Map<String, dynamic> json) => LocalShellProfiles(
     profiles: [
       for (final p in (json['profiles'] as List? ?? const []).cast<Map<String, dynamic>>())
-        LocalShellProfile(id: p['id'] as String, kind: p['kind'] as String,
-          label: p['label'] as String, shell: p['shell'] as String, distribution: p['distribution'] as String?),
+        LocalShellProfile.fromJson(p),
     ],
     unavailableReason: json['unavailable_reason'] as String?,
     wslDiscovery: WslDiscoveryStatus.fromJson(json['wsl_discovery']),

@@ -321,7 +321,7 @@ pub use sharing_dto::*;
 
 pub use snippets::SnippetSearchHitDto;
 
-pub use ssh_api::OpenSshCommandDto;
+pub use ssh_api::{OpenSshCommandDto, StandaloneLocalTerminals};
 
 pub use ssh_config_import::{SshConfigHostPreview, SshConfigPreview, ssh_config_preview};
 

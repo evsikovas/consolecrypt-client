@@ -159,6 +159,25 @@ Future<void> choose(WidgetTester tester, String folder) async {
 }
 
 void main() {
+  testWidgets('renaming keeps members and deleting another group takes effect on save', (tester) async {
+    final service = _Folders();
+    service.groups['docker_hosts'] = [service.member.id.value];
+    await _open(tester, service);
+    await tapKey(tester, 'automation-group-rename');
+    await tester.enterText(find.byKey(const ValueKey('automation-group-new-name')), 'web_hosts');
+    await tapKey(tester, 'automation-group-rename-accept');
+    expect(find.text('In the playbook, use hosts: web_hosts'), findsOneWidget);
+    await tapKey(tester, 'automation-ansible-group');
+    await tapKey(tester, 'automation-ansible-group-manual');
+    await tapKey(tester, 'automation-group-delete');
+    expect(service.saved, isNull);
+    await tapKey(tester, 'automation-groups-save');
+    expect(service.saved!['groups'], {
+      'web_hosts': [service.member.id.value],
+    });
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('folder selection uses stable ID despite duplicate labels and explicit link CAS', (tester) async {
     final service = _Folders();
     await _open(tester, service);

@@ -19,7 +19,7 @@ final navigationPreferencesProvider = Provider<NavigationPreferences?>((ref) {
   return ref.watch(localSettingsProvider).value?.navigationByProfile[profile];
 });
 
-/// This controller only changes visibility. It never navigates, disposes a
+/// This controller changes device-local sidebar preferences. It never navigates, disposes a
 /// workspace, changes permissions or touches the synced vault settings.
 final navigationPreferencesControllerProvider = Provider(NavigationPreferencesController.new);
 
@@ -61,6 +61,28 @@ final class NavigationPreferencesController {
         navigationByProfile: {
           ...current.navigationByProfile,
           profileId: NavigationPreferences(visibility: visibility),
+        },
+      ),
+    );
+  }
+
+  Future<void> reorder(String profileId, List<String> arranged) async {
+    if (ref.read(appStageProvider) != AppStage.unlocked || ref.read(activeProfileProvider)?.id.value != profileId)
+      return;
+    final available = ref.read(availableNavigationSectionsProvider).map((item) => item.id).toSet();
+    if (arranged.any((id) => !available.contains(id)) || arranged.toSet().length != arranged.length) return;
+    final settings = ref.read(settingsServiceProvider);
+    final current = settings.currentLocal;
+    final preferences = current.navigationByProfile[profileId] ?? _defaults();
+    if (!preferences.supported) return;
+    await settings.updateLocal(
+      current.copyWith(
+        navigationByProfile: {
+          ...current.navigationByProfile,
+          profileId: NavigationPreferences(
+            visibility: preferences.visibility,
+            order: [...arranged, ...preferences.order.where((id) => !arranged.contains(id))],
+          ),
         },
       ),
     );
@@ -184,30 +206,67 @@ class _NavigationCustomization extends ConsumerWidget {
     final preferences = ref.watch(navigationPreferencesProvider);
     final synced = ref.watch(activeProfileProvider)?.isSynced ?? false;
     final editable = preferences?.supported ?? true;
+    final available = ref.watch(availableNavigationSectionsProvider).where((item) => !item.syncedOnly || synced);
+    final items = preferences?.ordered(available, (item) => item.id) ?? available.toList();
     return GlassDialog(
       key: const ValueKey('navigation-customization'),
       title: l.navigationCustomize,
-      content: SingleChildScrollView(
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .68),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(editable ? l.navigationCustomizeHint : l.navigationFutureVersion),
+            Text(editable ? l.navigationDragHint : l.navigationFutureVersion),
             const SizedBox(height: 8),
-            for (final item in ref.watch(availableNavigationSectionsProvider))
-              if (!item.syncedOnly || synced)
-                CheckboxListTile(
-                  key: ValueKey('pin-nav-${item.id}'),
-                  secondary: navigationSectionIcon(item),
-                  title: Text(shellBranchLabel(item.branch, l)),
-                  value: preferences?.visible(item.id, defaultVisible: item.defaultPinned) ?? item.defaultPinned,
-                  onChanged: !editable
-                      ? null
-                      : (value) => runWithFeedback(
-                          context,
-                          () =>
-                              ref.read(navigationPreferencesControllerProvider).setVisible(profileId, item.id, value!),
+            Flexible(
+              child: ReorderableListView.builder(
+                buildDefaultDragHandles: false,
+                shrinkWrap: true,
+                itemCount: items.length,
+                onReorderItem: (oldIndex, newIndex) {
+                  if (!editable || oldIndex == newIndex) return;
+                  final ids = [for (final item in items) item.id];
+                  ids.insert(newIndex, ids.removeAt(oldIndex));
+                  unawaited(
+                    runWithFeedback(
+                      context,
+                      () => ref.read(navigationPreferencesControllerProvider).reorder(profileId, ids),
+                    ),
+                  );
+                },
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return Row(
+                    key: ValueKey('order-nav-${item.id}'),
+                    children: [
+                      if (editable)
+                        ReorderableDragStartListener(
+                          key: ValueKey('drag-nav-${item.id}'),
+                          index: index,
+                          child: const Padding(padding: EdgeInsets.all(10), child: Icon(Icons.drag_indicator_rounded)),
                         ),
-                ),
+                      Expanded(
+                        child: CheckboxListTile(
+                          key: ValueKey('pin-nav-${item.id}'),
+                          secondary: navigationSectionIcon(item),
+                          title: Text(shellBranchLabel(item.branch, l)),
+                          value:
+                              preferences?.visible(item.id, defaultVisible: item.defaultPinned) ?? item.defaultPinned,
+                          onChanged: !editable
+                              ? null
+                              : (value) => runWithFeedback(
+                                  context,
+                                  () => ref
+                                      .read(navigationPreferencesControllerProvider)
+                                      .setVisible(profileId, item.id, value!),
+                                ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

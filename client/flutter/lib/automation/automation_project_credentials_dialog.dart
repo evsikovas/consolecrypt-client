@@ -251,37 +251,49 @@ class _State extends ConsumerState<AutomationProjectCredentialsDialog> {
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 10,
             children: [
-              InfoBanner(tone: BannerTone.info, message: l.automationDeploymentHint),
+              Text(l.automationDeploymentHint),
               if (loading || saving) const LinearProgressIndicator(),
               if (failed) InfoBanner(tone: BannerTone.warning, message: projectCredentialsIssueMessage(l, issue)),
               if (original == null && !loading) TextButton(onPressed: load, child: Text(l.automationDeploymentRefresh)),
               if (original != null) ...[
-                if (original!.policy == null) Text(l.automationDeploymentLegacy),
-                GlassSelect<String?>(
-                  value: selected,
-                  expand: true,
-                  onChanged: saving ? null : (v) => setState(() => selected = v),
-                  items: [
-                    GlassSelectItem(value: null, label: l.automationDeploymentChoose),
-                    for (final value in drafts)
-                      GlassSelectItem(
-                        value: value.id,
-                        label: value.name.text.isEmpty ? l.automationDeploymentNew : value.name.text,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (drafts.isNotEmpty)
+                      SizedBox(
+                        width: 240,
+                        child: GlassSelect<String?>(
+                          value: selected,
+                          expand: true,
+                          onChanged: saving ? null : (v) => setState(() => selected = v),
+                          items: [
+                            GlassSelectItem(value: null, label: l.automationDeploymentChoose),
+                            for (final value in drafts)
+                              GlassSelectItem(
+                                value: value.id,
+                                label: value.name.text.isEmpty ? l.automationDeploymentNew : value.name.text,
+                              ),
+                          ],
+                        ),
                       ),
+                    TextButton.icon(
+                      key: const ValueKey('deployment-add-environment'),
+                      onPressed: saving || drafts.length >= 16
+                          ? null
+                          : () => setState(() {
+                              final value = _Draft(generateUuidV4(), '', false, const []);
+                              drafts.add(value);
+                              selected = value.id;
+                              removePolicy = false;
+                            }),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: Text(l.automationDeploymentAdd),
+                    ),
                   ],
-                ),
-                TextButton(
-                  key: const ValueKey('deployment-add-environment'),
-                  onPressed: saving || drafts.length >= 16
-                      ? null
-                      : () => setState(() {
-                          final value = _Draft(generateUuidV4(), '', false, const []);
-                          drafts.add(value);
-                          selected = value.id;
-                          removePolicy = false;
-                        }),
-                  child: Text(l.automationDeploymentAdd),
                 ),
                 if (env != null) ...[
                   TextField(
@@ -296,47 +308,67 @@ class _State extends ConsumerState<AutomationProjectCredentialsDialog> {
                     onChanged: saving ? null : (v) => setState(() => env.production = v == true),
                     title: Text(l.automationDeploymentProduction),
                   ),
-                  Text(l.automationDeploymentProductionHint),
-                  for (final reference in env.references)
-                    ListTile(
-                      key: ValueKey('deployment-reference-${reference.hostId}'),
-                      title: Text(
-                        hosts.where((v) => v.id.value == reference.hostId).firstOrNull?.name ?? reference.hostId,
-                      ),
-                      subtitle: Text(
-                        credentials.where((v) => v.id.value == reference.credentialId).firstOrNull?.name ??
-                            l.automationDeploymentReferenceMissing,
-                      ),
-                      onTap: saving ? null : () => chooseReference(env, hostId: reference.hostId),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.remove_circle_outline),
-                        onPressed: saving ? null : () => setState(() => env.references.remove(reference)),
-                      ),
+                  ContentSurface(
+                    padding: const EdgeInsets.all(10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: 6,
+                      children: [
+                        Text(l.automationDeploymentReuse),
+                        for (final reference in env.references)
+                          ListTile(
+                            key: ValueKey('deployment-reference-${reference.hostId}'),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                            dense: true,
+                            title: Text(
+                              hosts.where((v) => v.id.value == reference.hostId).firstOrNull?.name ?? reference.hostId,
+                            ),
+                            subtitle: Text(
+                              credentials.where((v) => v.id.value == reference.credentialId).firstOrNull?.name ??
+                                  l.automationDeploymentReferenceMissing,
+                            ),
+                            onTap: saving ? null : () => chooseReference(env, hostId: reference.hostId),
+                            trailing: IconButton(
+                              tooltip: l.commonRemove,
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed: saving ? null : () => setState(() => env.references.remove(reference)),
+                            ),
+                          ),
+                        TextButton.icon(
+                          key: const ValueKey('deployment-add-reference'),
+                          onPressed: saving || env.references.length >= 256 ? null : () => chooseReference(env),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: Text(l.automationDeploymentAddReference),
+                        ),
+                      ],
                     ),
-                  TextButton(
-                    key: const ValueKey('deployment-add-reference'),
-                    onPressed: saving || env.references.length >= 256 ? null : () => chooseReference(env),
-                    child: Text(l.automationDeploymentAddReference),
-                  ),
-                  Text(l.automationDeploymentReuse),
-                  TextButton(
-                    key: const ValueKey('deployment-delete-environment'),
-                    onPressed: saving
-                        ? null
-                        : () => setState(() {
-                            drafts.remove(env);
-                            env.name.dispose();
-                            selected = drafts.firstOrNull?.id;
-                          }),
-                    child: Text(l.commonDelete),
                   ),
                 ],
-                if (original!.policy != null)
-                  TextButton(
-                    key: const ValueKey('deployment-remove-policy'),
-                    onPressed: saving ? null : requestRemoval,
-                    child: Text(l.automationDeploymentRemoveTitle),
-                  ),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    if (env != null)
+                      TextButton(
+                        key: const ValueKey('deployment-delete-environment'),
+                        onPressed: saving
+                            ? null
+                            : () => setState(() {
+                                drafts.remove(env);
+                                env.name.dispose();
+                                selected = drafts.firstOrNull?.id;
+                              }),
+                        child: Text(l.automationDeploymentDeleteProfile),
+                      ),
+                    if (original!.policy != null)
+                      TextButton(
+                        key: const ValueKey('deployment-remove-policy'),
+                        onPressed: saving ? null : requestRemoval,
+                        child: Text(l.automationDeploymentRemoveTitle),
+                      ),
+                  ],
+                ),
                 if (removePolicy) InfoBanner(tone: BannerTone.warning, message: l.automationDeploymentRemoveHint),
               ],
             ],

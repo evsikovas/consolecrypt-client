@@ -12,7 +12,8 @@ class BootstrapCapabilityTests(unittest.TestCase):
         key=setup['_environment_key']
         for system,machine,minor,expected in [('linux','x86_64',12,'linux-x86_64-py312'),
                 ('linux','x86_64',14,'linux-x86_64-py314'),('linux','aarch64',12,'linux-aarch64-py312'),
-                ('linux','aarch64',14,None),('linux','arm64',12,None),('darwin','arm64',12,None)]:
+                ('linux','aarch64',13,'linux-aarch64-py313'),('linux','aarch64',14,None),
+                ('linux','arm64',12,None),('darwin','arm64',12,None)]:
             with self.subTest(system=system,machine=machine,minor=minor),patch.dict(key.__globals__,
                     sys=SimpleNamespace(platform=system,version_info=SimpleNamespace(major=3,minor=minor)),
                     platform=SimpleNamespace(machine=lambda:machine)):

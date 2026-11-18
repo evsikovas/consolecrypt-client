@@ -36,7 +36,8 @@ impl GitProjectSource {
                 .url
                 .chars()
                 .any(|c| c.is_control() || c.is_whitespace())
-            || url.scheme() != "https"
+            || !matches!(url.scheme(), "http" | "https")
+            || (url.scheme() == "http" && self.ca_sha256.is_some())
             || url.host_str().is_none()
             || !url.username().is_empty()
             || url.password().is_some()

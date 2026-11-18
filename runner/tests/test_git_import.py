@@ -29,13 +29,14 @@ from consolecrypt_runner.revisions import RevisionRepository
 
 class GitInputTests(unittest.TestCase):
     def test_import_source_never_embeds_credentials_or_executes_a_transport(self):
-        for url in ('file:///tmp/repo','ssh://git@example.test/repo','ext::bad','http://example.test/repo',
+        for url in ('file:///tmp/repo','ssh://git@example.test/repo','ext::bad','http://user:secret@example.test/repo',
                     'https://user:secret@example.test/repo','https://example.test/repo?token=secret',
                     'https://example.test/repo#secret','https://example.test:0/repo','https://example.test\\repo'):
             with self.subTest(url=url),self.assertRaises(RunnerError):validate_source(url,'main')
         for reference in ('-c','../main','main~1','main:other','refs//heads','branch.lock'):
             with self.subTest(reference=reference),self.assertRaises(RunnerError):validate_source('https://example.test/repo',reference)
         validate_source('https://example.test/repo.git','release/1.0')
+        validate_source('http://example.test/repo.git','release/1.0')
 
     def test_corrupt_or_truncated_stream_never_becomes_a_completed_snapshot(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -118,6 +119,7 @@ class GitTlsFixture(unittest.TestCase):
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         self.addCleanup(lambda:(server.shutdown(),server.server_close(),thread.join(timeout=3)))
         self.url=f'https://127.0.0.1:{server.server_port}/repo.git'
+        self.handler=Handler
         self.store=RevisionRepository(self.root/'revisions')
     def git(self,*args):
         return subprocess.run(['/usr/bin/git','-c','core.hooksPath=/nonexistent','-c','commit.gpgsign=false',*args],
@@ -125,6 +127,19 @@ class GitTlsFixture(unittest.TestCase):
     def commit(self):
         self.git('-C',str(self.repo),'add','--all')
         self.git('-C',str(self.repo),'-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-m','Owned fixture')
+    def test_real_anonymous_http_import_records_a_plain_origin(self):
+        server=ThreadingHTTPServer(('127.0.0.1',0),self.handler)
+        thread=threading.Thread(target=server.serve_forever,daemon=True)
+        thread.start()
+        self.addCleanup(lambda:(server.shutdown(),server.server_close(),thread.join(timeout=3)))
+        url=f'http://127.0.0.1:{server.server_port}/repo.git'
+        captured=capture_git(self.store,url,'main',threading.Event())
+        root,_=self.store.read(captured['revision_id'])
+        self.assertEqual(captured['source']['url'],url)
+        self.assertEqual(captured['source']['commit'],self.expected)
+        self.assertIsNone(captured['source']['ca_sha256'])
+        self.assertTrue((root/'playbook.yml').is_file())
+        self.assertFalse((root/'.git').exists())
     def test_real_https_import_preserves_binary_modes_and_ignores_user_configuration(self):
         marker=self.root/'must-not-execute'
         config=self.root/'user.gitconfig'

@@ -1,3 +1,0 @@
-# Fixed zero-argument bridge. The service nologin policy is NOT relaxed.
-Defaults:cc-agent-enroll env_reset,!requiretty,!use_pty,!log_input,!log_output
-cc-agent-enroll ALL=(consolecrypt-agent:consolecrypt-agent) NOPASSWD: NOSETENV: NOLOG_INPUT: NOLOG_OUTPUT: /usr/libexec/consolecrypt-agent/enrollment-worker ""

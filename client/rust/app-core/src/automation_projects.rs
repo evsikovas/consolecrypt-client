@@ -37,6 +37,28 @@ pub(crate) struct GitImportActive {
     pub cancel: tokio_util::sync::CancellationToken,
 }
 
+#[cfg(test)]
+mod catalog_removal_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn removing_project_checks_revision_and_preserves_directory() {
+        let fixture = tempfile::tempdir().unwrap();
+        let app = AppCore::new(crate::AppConfig::for_tests(fixture.path().join("profile").to_string_lossy())).unwrap();
+        app.create_local_profile("Library fixture".into(), "synthetic fixture passphrase 42".into()).await.unwrap();
+        let external = fixture.path().join("workspace");
+        std::fs::create_dir(&external).unwrap();
+        std::fs::write(external.join("playbook.yml"), "---\n").unwrap();
+        let project = app.automation_project_create("Library entry".into(), Some(external.to_string_lossy().into_owned())).await.unwrap();
+        let rev = project.revision.unwrap();
+        assert!(app.automation_project_remove(project.id.clone(), rev + 1).await.is_err());
+        assert_eq!(app.automation_projects().await.unwrap().projects.len(), 1);
+        app.automation_project_remove(project.id, rev).await.unwrap();
+        assert!(app.automation_projects().await.unwrap().projects.is_empty());
+        assert_eq!(std::fs::read_to_string(external.join("playbook.yml")).unwrap(), "---\n");
+    }
+}
+
 pub(crate) fn automation_io_slot(
     owner: &crate::session::Session,
 ) -> AppResult<tokio::sync::OwnedSemaphorePermit> {
@@ -369,6 +391,29 @@ impl AppCore {
         self.automation_project_context_original(id, owner, Arc::downgrade(&unlocked)).await
     }
 
+    pub async fn automation_project_remove(&self, id: String, expected_revision: u64) -> AppResult<()> {
+        project_id(&id)?;
+        let (owner, unlocked) = self.unlocked().await?;
+        let profile_path = owner.dir.clone();
+        let _profile = self.hold_session(&owner).await?;
+        let _generation = owner.hold_unlocked(&unlocked).await?;
+        owner.storage()?.write(move |transaction| {
+            let mut catalog: Catalog = transaction.setting_get(PROJECTS)?.unwrap_or_default();
+            let row = catalog.records.get(&id).ok_or_else(|| AppError::not_found("automation project", &id))?;
+            if catalog.version != 1
+                || !managed::supported_at(profile_path.as_deref(), &id, row)
+                || summary(&id, row, false).read_only
+                || row.get("revision").and_then(Value::as_u64) != Some(expected_revision) {
+                return Err(AppError::invalid("automation_project", "project changed or is read-only"));
+            }
+            // Dropping the catalog link keeps managed and externally selected
+            // directories available to the user and preserves job history.
+            catalog.records.remove(&id);
+            transaction.setting_set(PROJECTS, &catalog)?;
+            Ok::<_, AppError>(())
+        }).await
+    }
+
     // The existing loader, bound to an issued original owner. Never recaptures
     // a later global Core/session after a portable operation ACK.
     pub(crate) async fn automation_project_context_original(
@@ -502,7 +547,36 @@ impl AppCore {
         directory: String,
         expected_sha256: String,
     ) -> AppResult<()> {
-        let context = self.automation_project_context(&id).await?;
+        self.automation_project_change_file(&id, move |root| root.move_file(&path, &directory, &expected_sha256)).await
+    }
+
+    pub async fn automation_project_edit_file_entry(
+        &self,
+        id: String,
+        path: String,
+        expected_sha256: String,
+        action: String,
+        new_name: Option<String>,
+    ) -> AppResult<()> {
+        match (action.as_str(), new_name.as_deref()) {
+            ("rename" | "rename_directory", Some(_)) | ("delete" | "delete_directory", None) => {}
+            _ => return Err(AppError::invalid("project_file", "invalid file action")),
+        }
+        self.automation_project_change_file(&id, move |root| {
+            if matches!(action.as_str(), "rename_directory" | "delete_directory") {
+                root.edit_directory_entry(&path, new_name.as_deref(), &expected_sha256)
+            } else {
+                root.edit_file_entry(&path, new_name.as_deref(), &expected_sha256)
+            }
+        }).await
+    }
+
+    async fn automation_project_change_file(
+        &self,
+        id: &str,
+        edit: impl FnOnce(&cc_automation_core::ProjectRoot) -> cc_automation_core::Result<()> + Send + 'static,
+    ) -> AppResult<()> {
+        let context = self.automation_project_context(id).await?;
         let retained_io = managed::admit_io(self, &context).await?;
         let io_slot = retained_io.clone();
         let source = context.root_selection.clone();
@@ -510,10 +584,10 @@ impl AppCore {
             let _io_slot = io_slot;
             let root = source.open()?;
             root.recheck()?;
-            root.move_file(&path, &directory, &expected_sha256).map_err(automation_error)?;
+            edit(&root).map_err(automation_error)?;
             root.recheck()?;
             Ok(())
-        }).await.map_err(|_| AppError::internal("project move worker stopped"))??;
+        }).await.map_err(|_| AppError::internal("project file worker stopped"))??;
         context.check_after_io(self).await?;
         drop(retained_io);
         Ok(())

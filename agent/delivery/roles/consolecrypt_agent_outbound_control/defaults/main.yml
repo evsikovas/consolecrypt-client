@@ -1,9 +1,0 @@
----
-# Explicit reviewed infrastructure only. No service/channel activation by default.
-cc_agent_outbound_control_enabled: false
-cc_agent_outbound_control_approved: false
-cc_agent_outbound_control_start: false
-cc_agent_outbound_control_service_uid: 0
-cc_agent_outbound_control_service_gid: 0
-# Must match the existing root-installed transport JSON; no DNS/URI/firewall mask.
-cc_agent_outbound_control_relay_ip: ''

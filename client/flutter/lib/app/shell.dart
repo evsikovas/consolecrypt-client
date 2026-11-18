@@ -336,14 +336,14 @@ class _Sidebar extends ConsumerWidget {
         : 0;
     final l10n = context.l10n;
     final preferences = ref.watch(navigationPreferencesProvider);
-    final items = ref
+    final available = ref
         .watch(availableNavigationSectionsProvider)
         .where(
           (i) =>
               (!i.syncedOnly || (profile?.isSynced ?? false)) &&
               (preferences?.visible(i.id, defaultVisible: i.defaultPinned) ?? i.defaultPinned),
-        )
-        .toList();
+        );
+    final items = preferences?.ordered(available, (item) => item.id) ?? available.toList();
     return GlassSidebar(
       navigationWrapper: (child) => NavigationContextArea(child: child),
       style: style,

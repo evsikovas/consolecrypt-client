@@ -1,8 +1,0 @@
----
-galaxy_info:
-  role_name: consolecrypt_agent_release_trust
-  author: ConsoleCrypt
-  description: Explicit create-only public Agent release trust provisioning
-  license: AGPL-3.0-only
-  min_ansible_version: '2.20'
-dependencies: []

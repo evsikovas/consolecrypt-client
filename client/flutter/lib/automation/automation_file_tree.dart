@@ -3,11 +3,18 @@ import 'dart:math' as math;
 import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Internal drag data contains references only, never file contents or secrets.
+/// Internal tree operations carry references only.
 final class AutomationFileDrag {
-  const AutomationFileDrag({required this.scope, required this.projectId, required this.digest, required this.path});
+  const AutomationFileDrag({
+    required this.scope,
+    required this.projectId,
+    required this.digest,
+    required this.path,
+    this.directory = false,
+  });
   final Object scope;
   final String projectId, digest, path;
+  final bool directory;
 }
 
 final class AutomationTreeNode {
@@ -61,6 +68,7 @@ class AutomationFileTree extends StatefulWidget {
     this.selectedPath,
     this.enabled = true,
     this.onMove,
+    this.onContextMenu,
     super.key,
   });
   final Object scope;
@@ -70,6 +78,7 @@ class AutomationFileTree extends StatefulWidget {
   final bool enabled;
   final ValueChanged<String> onRead;
   final void Function(AutomationFileDrag source, String destinationDirectory)? onMove;
+  final void Function(AutomationFileDrag source, Offset position)? onContextMenu;
   @override
   State<AutomationFileTree> createState() => _AutomationFileTreeState();
 }
@@ -119,6 +128,13 @@ class _AutomationFileTreeState extends State<AutomationFileTree> {
     final open = expanded.contains(node.path), selected = node.path == widget.selectedPath;
     final name = root ? widget.rootLabel : node.name;
     final colors = Theme.of(context).colorScheme;
+    final fileRef = AutomationFileDrag(
+      scope: widget.scope,
+      projectId: widget.projectId,
+      digest: widget.digest,
+      path: node.path,
+      directory: node.directory,
+    );
     final height = math.max(28.0, MediaQuery.textScalerOf(context).scale(13) * 1.4 + 8);
     Widget content = Semantics(
       button: true,
@@ -128,37 +144,45 @@ class _AutomationFileTreeState extends State<AutomationFileTree> {
         message: root ? widget.rootLabel : node.path,
         child: InkWell(
           key: root ? const ValueKey('automation-file-root') : ValueKey('automation-file-${node.path}'),
+          onSecondaryTapDown: widget.enabled && widget.onContextMenu != null
+              ? (details) => widget.onContextMenu!(fileRef, details.globalPosition)
+              : null,
           onTap: node.directory
               ? () => setState(() => open ? expanded.remove(node.path) : expanded.add(node.path))
               : widget.enabled
               ? () => widget.onRead(node.path)
               : null,
-          child: Container(
-            constraints: BoxConstraints(minHeight: height),
-            padding: EdgeInsets.only(left: 6 + depth * 12.0, right: 8),
-            color: selected ? colors.primary.withValues(alpha: .14) : null,
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  child: node.directory ? Icon(open ? Icons.expand_more : Icons.chevron_right, size: 16) : null,
-                ),
-                Icon(
-                  node.directory
-                      ? (open ? Icons.folder_open_outlined : Icons.folder_outlined)
-                      : Icons.description_outlined,
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+          child: LayoutBuilder(
+            builder: (context, constraints) => Container(
+              constraints: BoxConstraints(minHeight: height),
+              padding: EdgeInsets.only(
+                left: math.min(6 + depth * 12.0, math.max(0.0, constraints.maxWidth - 84)),
+                right: 8,
+              ),
+              color: selected ? colors.primary.withValues(alpha: .14) : null,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    child: node.directory ? Icon(open ? Icons.expand_more : Icons.chevron_right, size: 16) : null,
                   ),
-                ),
-              ],
+                  Icon(
+                    node.directory
+                        ? (open ? Icons.folder_open_outlined : Icons.folder_outlined)
+                        : Icons.description_outlined,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -184,12 +208,7 @@ class _AutomationFileTreeState extends State<AutomationFileTree> {
       );
     } else if (widget.enabled && widget.onMove != null) {
       content = Draggable<AutomationFileDrag>(
-        data: AutomationFileDrag(
-          scope: widget.scope,
-          projectId: widget.projectId,
-          digest: widget.digest,
-          path: node.path,
-        ),
+        data: fileRef,
         dragAnchorStrategy: pointerDragAnchorStrategy,
         feedback: Material(
           elevation: 4,

@@ -48,7 +48,7 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
   List<AutomationJson> resolvedSources = [];
   List<AutomationJson> frozenSources = [], rows = [];
   List<AutomationJson> conflicts = [];
-  Map<String, List<String>>? yamlPreview;
+  Map<String, List<String>>? staticPreview;
   int conflictCount = 0;
   String? runner, previewId;
   String mode = 'external_only';
@@ -76,6 +76,7 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
     decisionNavigator = Navigator.of(context);
     return child;
   }
+
   bool get current {
     if (!mounted || retired) return false;
     if (ownerMatches()) return true;
@@ -86,7 +87,9 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
   void retire() {
     if (retired || !mounted) return;
     retired = true;
-    timer?.cancel(); debounce?.cancel(); pageEpoch++;
+    timer?.cancel();
+    debounce?.cancel();
+    pageEpoch++;
     pendingPage = false;
     final id = previewId;
     previewId = null;
@@ -105,28 +108,45 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
   @override
   void didUpdateWidget(AutomationInventoryDialog oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(widget.scope, originalScope) || !identical(widget.service, originalService) ||
-        !identical(widget.files, originalFiles) || widget.projectId != originalProject ||
-        !identical(widget.originalCurrent, parentCurrent)) { retire(); }
+    if (!identical(widget.scope, originalScope) ||
+        !identical(widget.service, originalService) ||
+        !identical(widget.files, originalFiles) ||
+        widget.projectId != originalProject ||
+        !identical(widget.originalCurrent, parentCurrent)) {
+      retire();
+    }
   }
 
   @override
   void initState() {
     super.initState();
-    originalScope = widget.scope; originalService = widget.service;
-    originalFiles = widget.files; originalProject = widget.projectId; parentCurrent = widget.originalCurrent;
+    originalScope = widget.scope;
+    originalService = widget.service;
+    originalFiles = widget.files;
+    originalProject = widget.projectId;
+    parentCurrent = widget.originalCurrent;
     final app = ref.read(appServicesProvider), runtime = ref.read(criticalRuntimeEventsProvider);
     final epoch = runtime?.currentScope.epoch, router = ref.read(routerProvider);
     final uri = router.routeInformationProvider.value.uri;
     final runners = ref.read(automationRunnerServiceProvider);
     originalRunners = runners;
-    ownerMatches = () => parentCurrent?.call() != false && uri.path == AppRoutes.automation && identical(ref.read(automationScopeProvider), originalScope) && originalScope.unlocked &&
-      identical(ref.read(appServicesProvider), app) && identical(ref.read(automationServiceProvider), originalFiles) &&
-      identical(ref.read(automationRunnerServiceProvider), runners) &&
-      identical(ref.read(criticalRuntimeEventsProvider), runtime) && runtime?.currentScope.epoch == epoch &&
-      runtime?.currentScope.streamUnavailable != true && identical(ref.read(routerProvider), router) &&
-      router.routeInformationProvider.value.uri == uri;
-    void observe() { if (!ownerMatches()) retire(); }
+    ownerMatches = () =>
+        parentCurrent?.call() != false &&
+        uri.path == AppRoutes.automation &&
+        identical(ref.read(automationScopeProvider), originalScope) &&
+        originalScope.unlocked &&
+        identical(ref.read(appServicesProvider), app) &&
+        identical(ref.read(automationServiceProvider), originalFiles) &&
+        identical(ref.read(automationRunnerServiceProvider), runners) &&
+        identical(ref.read(criticalRuntimeEventsProvider), runtime) &&
+        runtime?.currentScope.epoch == epoch &&
+        runtime?.currentScope.streamUnavailable != true &&
+        identical(ref.read(routerProvider), router) &&
+        router.routeInformationProvider.value.uri == uri;
+    void observe() {
+      if (!ownerMatches()) retire();
+    }
+
     ownerSubscriptions = [
       ref.listenManual(appServicesProvider, (_, _) => observe()),
       ref.listenManual(automationScopeProvider, (_, _) => observe()),
@@ -134,8 +154,11 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
       ref.listenManual(automationRunnerServiceProvider, (_, _) => observe()),
       ref.listenManual(criticalRuntimeEventsProvider, (_, _) => observe()),
     ];
-    ownerNotices = runtime?.watchRuntimeNotices().listen((_) => observe(),
-      onError: (Object _, StackTrace _) => retire(), onDone: retire);
+    ownerNotices = runtime?.watchRuntimeNotices().listen(
+      (_) => observe(),
+      onError: (Object _, StackTrace _) => retire(),
+      onDone: retire,
+    );
     router.routeInformationProvider.addListener(observe);
     removeRouteObserver = () => router.routeInformationProvider.removeListener(observe);
     ref.listenManual(
@@ -143,7 +166,10 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
       (_, next) => scopeValid = identical(next, originalScope),
       fireImmediately: true,
     );
-    if (!current) { scheduleMicrotask(retire); return; }
+    if (!current) {
+      scheduleMicrotask(retire);
+      return;
+    }
     load();
   }
 
@@ -154,7 +180,9 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
   @override
   void dispose() {
     retired = true;
-    for (final subscription in ownerSubscriptions) { subscription.close(); }
+    for (final subscription in ownerSubscriptions) {
+      subscription.close();
+    }
     unawaited(ownerNotices?.cancel());
     removeRouteObserver();
     timer?.cancel();
@@ -267,26 +295,31 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
     }
   }
 
-  bool get canPreviewYaml => selected.isNotEmpty && selected.every(
-    (path) => !directories.contains(path) && RegExp(r'\.(yaml|yml|json)$', caseSensitive: false).hasMatch(path),
-  );
+  bool get canPreviewStatic =>
+      selected.isNotEmpty &&
+      selected.every(
+        (path) => !directories.contains(path) && RegExp(r'\.(ini|yaml|yml|json)$', caseSensitive: false).hasMatch(path),
+      );
 
-  Future<void> previewYaml() async {
-    if (!current || busy || !canPreviewYaml) return;
+  Future<void> previewStatic() async {
+    if (!current || busy || !canPreviewStatic) return;
     setState(() {
       busy = true;
       error = null;
-      yamlPreview = null;
+      staticPreview = null;
     });
     try {
-      final documents = <String>[];
+      final documents = <String, String>{};
+      var size = 0;
       for (final path in selected) {
         final file = await originalFiles.readFile(originalProject, path);
         if (!current) return;
-        documents.add(file.text);
+        size += file.text.length;
+        if (size > 1024 * 1024) throw const FormatException();
+        documents[path] = file.text;
       }
-      final groups = await compute(previewStaticYamlInventory, documents);
-      if (current) setState(() => yamlPreview = groups);
+      final groups = await compute(previewStaticInventory, documents);
+      if (current) setState(() => staticPreview = groups);
     } catch (_) {
       if (current) setState(() => error = FormatException(context.l10n.automationInventoryYamlPreviewFailed));
     } finally {
@@ -295,7 +328,8 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
   }
 
   Future<void> start() async {
-    if (!current || busy ||
+    if (!current ||
+        busy ||
         loading ||
         previewId != null ||
         runner == null ||
@@ -511,7 +545,11 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
             items: [
               GlassSelectItem(value: null, label: l.automationInventoryFolder),
               for (final folder in folders.value ?? <Group>[])
-                GlassSelectItem(value: folder.id.value, label: folder.name),
+                GlassSelectItem(
+                  value: folder.id.value,
+                  label: folder.name,
+                  subtitle: 'hosts: ${inventoryGroupName(folder.name, folder.id.value)}',
+                ),
             ],
             onChanged: busy || loading
                 ? null
@@ -588,20 +626,23 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
     if (!current || busy || revision == null) return;
     final yes = await showGlassDialog<bool>(
       context,
-      builder: (decisionContext) => ownDecision(decisionContext, AutomationScopeGuard(
-        scope: originalScope,
-        builder: (context) => AlertDialog(
-          title: Text(context.l10n.automationInventoryClear),
-          content: Text(context.l10n.automationInventoryClearHint),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(context.l10n.automationInventoryClear),
-            ),
-          ],
+      builder: (decisionContext) => ownDecision(
+        decisionContext,
+        AutomationScopeGuard(
+          scope: originalScope,
+          builder: (context) => AlertDialog(
+            title: Text(context.l10n.automationInventoryClear),
+            content: Text(context.l10n.automationInventoryClearHint),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(context.l10n.automationInventoryClear),
+              ),
+            ],
+          ),
         ),
-      )),
+      ),
     );
     if (yes != true || !mounted || !current) return;
     setState(() => busy = true);
@@ -651,19 +692,22 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
                 : () async {
                     final choice = await showGlassDialog<_HostChoice>(
                       context,
-                      builder: (decisionContext) => ownDecision(decisionContext, AutomationScopeGuard(
-                        scope: originalScope,
-                        builder: (_) => _HostPicker(
-                          hosts: hosts
-                              .where(
-                                (host) =>
-                                    host.id.value == hostId ||
-                                    !bindings.values.any((b) => b['host_id'] == host.id.value),
-                              )
-                              .toList(),
-                          hasBinding: hostId != null,
+                      builder: (decisionContext) => ownDecision(
+                        decisionContext,
+                        AutomationScopeGuard(
+                          scope: originalScope,
+                          builder: (_) => _HostPicker(
+                            hosts: hosts
+                                .where(
+                                  (host) =>
+                                      host.id.value == hostId ||
+                                      !bindings.values.any((b) => b['host_id'] == host.id.value),
+                                )
+                                .toList(),
+                            hasBinding: hostId != null,
+                          ),
                         ),
-                      )),
+                      ),
                     );
                     if (current && choice != null) bind(choice.id);
                   },
@@ -848,7 +892,7 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
 
   Widget filePicker(AsyncValue<AutomationRunnerCatalog?> runners, List<String> missing) {
     final l = context.l10n;
-    final groups = yamlPreview?.entries.toList(growable: false);
+    final groups = staticPreview?.entries.toList(growable: false);
     return ContentSurface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -889,10 +933,7 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
                 if (!item.readOnly) GlassSelectItem(value: item.id, label: item.name ?? item.id),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(l.automationInventoryRunnerHelp),
-          ),
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text(l.automationInventoryRunnerHelp)),
           if (runners.hasError) Text(errorMessage(l, runners.error!)),
           const SizedBox(height: 12),
           Text(l.automationInventoryFiles),
@@ -915,7 +956,7 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
                         ? null
                         : (value) => setState(() {
                             value == true ? selected.add(path) : selected.remove(path);
-                            yamlPreview = null;
+                            staticPreview = null;
                             error = null;
                           }),
                   );
@@ -929,10 +970,12 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
               subtitle: Text(l.automationInventoryMissingFile),
               trailing: IconButton(
                 icon: const Icon(Icons.close),
-                onPressed: busy ? null : () => setState(() {
-                  selected.remove(path);
-                  yamlPreview = null;
-                }),
+                onPressed: busy
+                    ? null
+                    : () => setState(() {
+                        selected.remove(path);
+                        staticPreview = null;
+                      }),
               ),
             ),
           const SizedBox(height: 12),
@@ -1049,13 +1092,13 @@ class _AutomationInventoryDialogState extends ConsumerState<AutomationInventoryD
         if (previewId == null && (!unified || sourceKind != 'saved'))
           FilledButton(
             key: const ValueKey('automation-inventory-start'),
-              onPressed: busy || loading || selected.isEmpty || missing.isNotEmpty
-                  ? null
-                  : runner != null
-                  ? start
-                  : canPreviewYaml
-                  ? previewYaml
-                  : null,
+            onPressed: busy || loading || selected.isEmpty || missing.isNotEmpty
+                ? null
+                : runner != null
+                ? start
+                : canPreviewStatic
+                ? previewStatic
+                : null,
             child: Text(l.automationInventoryPreview),
           ),
         if (ready)

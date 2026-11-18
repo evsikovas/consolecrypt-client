@@ -39,7 +39,9 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
         ? ref.watch(kubeGitOpsAlertsProvider.select((alerts) => alerts.values.fold(0, (sum, count) => sum + count)))
         : 0;
     final preferences = ref.watch(navigationPreferencesProvider);
-    final primary = _defaultPrimary.where((branch) => preferences?.visible(branch.name) ?? true).toList();
+    final primary = (preferences?.ordered(_defaultPrimary, (branch) => branch.name) ?? _defaultPrimary)
+        .where((branch) => preferences?.visible(branch.name) ?? true)
+        .toList();
     final selected = _more ? primary.length : primary.indexOf(_navigationBranch(branch));
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     final rdpVisible = branch == ShellBranch.rdp && !_more && !toolsOpen;

@@ -18,9 +18,6 @@ impl VaultCredentialMetadata {
     pub(crate) fn credential(&self) -> ObjectId {
         self.credential.id
     }
-    pub(crate) fn username(&self) -> Option<&str> {
-        self.credential.username.as_deref()
-    }
     pub(crate) fn fences(&self) -> BTreeMap<ObjectId, i64> {
         BTreeMap::from([
             (self.credential.id, self.credential_revision),
@@ -43,40 +40,6 @@ impl std::io::Write for MetadataBudget {
     }
 }
 impl WorkingSet {
-    pub(crate) fn collector_service_credential_choices(
-        &self,
-    ) -> Option<Vec<(ObjectId, i64, String)>> {
-        let inner = self.read();
-        if inner.entries.len() > MAX_ENTRIES {
-            return None;
-        }
-        let mut rows = Vec::new();
-        for (id, entry) in &inner.entries {
-            if entry.kind() != ObjectKind::Credential {
-                continue;
-            }
-            let Some(value) = metadata(&inner, *id) else {
-                continue;
-            };
-            let Some(username) = value.username() else {
-                continue;
-            };
-            if username.is_empty() || username.len() > 256 || username.chars().any(char::is_control)
-            {
-                continue;
-            }
-            if rows.len() >= 64 {
-                return None;
-            }
-            let name = &value.credential.name;
-            if name.is_empty() || name.len() > 256 || name.chars().any(char::is_control) {
-                return None;
-            }
-            rows.push((*id, value.credential_revision, name.clone()));
-        }
-        rows.sort_by_key(|row| row.0);
-        Some(rows)
-    }
     /// A personal Password credential, its exact referenced personal Password
     /// secret metadata, and absence of an inline-host owner under ONE read lock.
     /// Borrowed traversal is capped16,384 entries; only this <=64KiB credential

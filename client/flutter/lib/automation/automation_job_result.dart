@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:consolecrypt/automation/automation_job_result_metadata.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
+import 'package:consolecrypt/automation/automation_technical_block.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:material_ui/material_ui.dart';
@@ -63,95 +64,105 @@ class _AutomationJobResultState extends State<AutomationJobResult> {
       'skipped': l.automationResultSkipped,
     };
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (result?['exit_code'] case final int code) Text('${l.automationResultExitCode}: $code'),
+        if (result?['exit_code'] case final int code)
+          AutomationTechnicalBlock(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text('${l.automationResultExitCode}: $code'),
+          ),
         if (evidence?['remote_changes_may_be_partial'] == true || result?['remote_changes_may_be_partial'] == true)
           InfoBanner(
             key: ValueKey('automation-result-partial-${widget.job['job_id']}'),
             tone: BannerTone.warning,
             message: l.automationResultPartial,
           ),
-        ExpansionTile(
-          key: ValueKey('automation-result-hosts-${widget.job['job_id']}'),
-          initiallyExpanded: view.hostsOpen,
-          onExpansionChanged: (open) => setState(() => view.hostsOpen = open),
-          title: Text(l.automationResultHosts),
-          children: [
-            Text(l.automationResultMissingHint),
-            if (aliases.isEmpty) Text(l.automationResultNoHosts),
-            for (final alias in shown)
-              Padding(
-                key: ValueKey('automation-result-host-$alias'),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        AutomationTechnicalBlock(
+          child: ExpansionTile(
+            key: ValueKey('automation-result-hosts-${widget.job['job_id']}'),
+            initiallyExpanded: view.hostsOpen,
+            onExpansionChanged: (open) => setState(() => view.hostsOpen = open),
+            title: Text(l.automationResultHosts),
+            children: [
+              Text(l.automationResultMissingHint),
+              if (aliases.isEmpty) Text(l.automationResultNoHosts),
+              for (final alias in shown)
+                Padding(
+                  key: ValueKey('automation-result-host-$alias'),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SelectableText(alias),
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 4,
+                        children: [
+                          for (final metric in metrics.entries)
+                            Text('${metric.value}: ${_count(stats, metric.key, alias) ?? l.automationResultMissing}'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              if (aliases.length > pageSize)
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    SelectableText(alias),
-                    Wrap(
-                      spacing: 14,
-                      runSpacing: 4,
-                      children: [
-                        for (final metric in metrics.entries)
-                          Text('${metric.value}: ${_count(stats, metric.key, alias) ?? l.automationResultMissing}'),
-                      ],
+                    TextButton(
+                      key: const ValueKey('automation-result-previous'),
+                      onPressed: selectedPage > 0 ? () => setState(() => view.page = selectedPage - 1) : null,
+                      child: Text(l.automationInventoryPrevious),
+                    ),
+                    Text('${selectedPage + 1} / ${lastPage + 1}'),
+                    TextButton(
+                      key: const ValueKey('automation-result-next'),
+                      onPressed: selectedPage < lastPage ? () => setState(() => view.page = selectedPage + 1) : null,
+                      child: Text(l.automationInventoryNext),
                     ),
                   ],
                 ),
-              ),
-            if (aliases.length > pageSize)
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  TextButton(
-                    key: const ValueKey('automation-result-previous'),
-                    onPressed: selectedPage > 0 ? () => setState(() => view.page = selectedPage - 1) : null,
-                    child: Text(l.automationInventoryPrevious),
-                  ),
-                  Text('${selectedPage + 1} / ${lastPage + 1}'),
-                  TextButton(
-                    key: const ValueKey('automation-result-next'),
-                    onPressed: selectedPage < lastPage ? () => setState(() => view.page = selectedPage + 1) : null,
-                    child: Text(l.automationInventoryNext),
-                  ),
-                ],
-              ),
-          ],
-        ),
-        ExpansionTile(
-          key: ValueKey('automation-result-environment-${widget.job['job_id']}'),
-          initiallyExpanded: view.environmentOpen,
-          onExpansionChanged: (open) => setState(() => view.environmentOpen = open),
-          title: Text(l.automationResultEnvironment),
-          children: [
-            if (identity == null)
-              Text(l.automationResultEnvironmentMissing)
-            else ...[
-              Text /* l10n-ignore: localized receipt and platform data */ (
-                '${l.automationResultEnvironmentHint} ${_text(identity['system'])} · ${_text(identity['machine'])}',
-              ), // l10n-ignore: localized receipt label plus platform identity
-              Text('Python: ${_text(identity['python'])}'), // l10n-ignore: Python product name and recorded version
-              Text /* l10n-ignore: product name and version */ (
-                /* l10n-ignore: product version */ 'ConsoleCrypt Runner: ${_text(identity['helper'])}',
-              ), // l10n-ignore: ConsoleCrypt Runner product name and recorded version
-              for (final name in ['ansible-core', 'ansible-runner', 'ansible-lint'])
-                Text /* l10n-ignore: package name and version */ (
-                  '$name: ${_text(_map(packages?[name])?['actual'])}',
-                ), // l10n-ignore: package name and recorded version
             ],
-          ],
+          ),
         ),
-        ExpansionTile(
-          key: ValueKey('automation-result-details-${widget.job['job_id']}'),
-          initiallyExpanded: view.detailsOpen,
-          title: Text(l.automationResultDetails),
-          onExpansionChanged: (open) => setState(() => view.detailsOpen = open),
-          children: [
-            Text(l.automationResultDetailsFiltered),
-            if (metadata?.recognized == false) Text(l.automationResultDetailsUnknown),
-            if (truncated) Text(l.automationOutputLimited),
-            SelectableText(truncated ? '${details.substring(0, detailsLimit)}…' : details),
-          ],
+        AutomationTechnicalBlock(
+          child: ExpansionTile(
+            key: ValueKey('automation-result-environment-${widget.job['job_id']}'),
+            initiallyExpanded: view.environmentOpen,
+            onExpansionChanged: (open) => setState(() => view.environmentOpen = open),
+            title: Text(l.automationResultEnvironment),
+            children: [
+              if (identity == null)
+                Text(l.automationResultEnvironmentMissing)
+              else ...[
+                Text /* l10n-ignore: localized receipt and platform data */ (
+                  '${l.automationResultEnvironmentHint} ${_text(identity['system'])} · ${_text(identity['machine'])}',
+                ), // l10n-ignore: localized receipt label plus platform identity
+                Text('Python: ${_text(identity['python'])}'), // l10n-ignore: Python product name and recorded version
+                Text /* l10n-ignore: product name and version */ (
+                  /* l10n-ignore: product version */ 'ConsoleCrypt Runner: ${_text(identity['helper'])}',
+                ), // l10n-ignore: ConsoleCrypt Runner product name and recorded version
+                for (final name in ['ansible-core', 'ansible-runner', 'ansible-lint'])
+                  Text /* l10n-ignore: package name and version */ (
+                    '$name: ${_text(_map(packages?[name])?['actual'])}',
+                  ), // l10n-ignore: package name and recorded version
+              ],
+            ],
+          ),
+        ),
+        AutomationTechnicalBlock(
+          child: ExpansionTile(
+            key: ValueKey('automation-result-details-${widget.job['job_id']}'),
+            initiallyExpanded: view.detailsOpen,
+            title: Text(l.automationResultDetails),
+            onExpansionChanged: (open) => setState(() => view.detailsOpen = open),
+            children: [
+              Text(l.automationResultDetailsFiltered),
+              if (metadata?.recognized == false) Text(l.automationResultDetailsUnknown),
+              if (truncated) Text(l.automationOutputLimited),
+              SelectableText(truncated ? '${details.substring(0, detailsLimit)}…' : details),
+            ],
+          ),
         ),
       ],
     );

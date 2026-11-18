@@ -567,7 +567,7 @@ impl AiSession {
             created_at: now,
             updated_at: now,
         };
-        let provider = cc_ai_core::build_provider(&config, Some(api_key))?;
+        let provider = cc_ai_core::build_device_local_provider(&config, api_key)?;
         let mut local = lock(&self.device_local);
         self.check_open()?;
         // A running conversation uses the provider captured by its request.

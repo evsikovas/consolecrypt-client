@@ -16,7 +16,6 @@ import 'package:consolecrypt/automation/automation_dependency_models.dart';
 import 'package:consolecrypt/automation/automation_execution_console.dart';
 import 'package:consolecrypt/automation/automation_file_tree.dart';
 import 'package:consolecrypt/automation/automation_git_dialog.dart';
-import 'package:consolecrypt/automation/automation_groups_dialog.dart';
 import 'package:consolecrypt/automation/automation_inventory_dialog.dart';
 import 'package:consolecrypt/automation/automation_inventory_export.dart';
 import 'package:consolecrypt/automation/automation_inventory_export_dialog.dart';
@@ -109,6 +108,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
   VoidCallback? _retireExternalEditor;
   int workspacePage = 0;
   String libraryQuery = '';
+  bool projectsExpanded = false;
   Widget? runComposer;
   int jobsReviewEpoch = 0;
   String? executionJob;
@@ -616,18 +616,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       }
       unawaited(notices?.cancel());
       live.dispose();
-    }
-  }
-
-  Future<void> _groups(AutomationInventoryService service) async {
-    if (busy || project == null || project!.readOnly) return;
-    final originalId = project!.id;
-    final result = await _dialog<AutomationProject>(
-      (_) => AutomationGroupsDialog(scope: widget.scope, projectId: originalId, service: service),
-    );
-    if (current && result != null && project?.id == originalId) {
-      setState(() => project = result);
-      ref.invalidate(automationProjectsProvider);
     }
   }
 
@@ -1205,6 +1193,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       busy = true;
       error = null;
       project = selected;
+      projectsExpanded = false;
       repairOrigin = null;
       revision = null;
       file = null;
@@ -1443,16 +1432,19 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         busy = true;
         error = null;
       });
-      final application = await picker.chooseApplication(
-        label: labels.sftpApplications,
-        confirmButtonText: labels.sftpChooseApplication,
-      );
+      final editor = ref.read(settingsServiceProvider).currentLocal.sftpDefaultEditor;
+      final application =
+          editor?.value ??
+          await picker.chooseApplication(
+            label: labels.sftpApplications,
+            confirmButtonText: labels.sftpChooseApplication,
+          );
       if (!original() || application == null) return;
       await service.openProjectEditor(
         selected.id,
         path,
         expectedSha256: sha,
-        editor: {'kind': 'path', 'value': application},
+        editor: {'kind': editor?.kind.wireName ?? 'path', 'value': application},
       );
       // Disk changes are read only by explicit Reload; the saved SHA still
       // protects a later ordinary save from overwriting concurrent edits.
@@ -1543,26 +1535,103 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     if (original() && creationError != null) setState(() => error = creationError);
   }
 
-  Future<void> _rename() async {
+  Future<void> _rename([AutomationProject? item]) async {
     // Project-source metadata is retained when only the display name changes.
-    final selected = project;
-    if (selected == null || busy || selected.readOnly) return;
+    final selected = item ?? project;
+    if (selected == null || busy || selected.readOnly || selected.revision == null) return;
+    final token = request;
+    final service = widget.service;
     final name = await _name(context.l10n.commonRename, initial: selected.name ?? '');
-    if (name == null || !current) return;
+    if (name == null || !current || busy || request != token || !identical(widget.service, service)) return;
     setState(() {
       busy = true;
       error = null;
     });
     try {
-      final result = await widget.service.renameProject(selected.id, revision: selected.revision!, name: name);
+      final result = await service.renameProject(selected.id, revision: selected.revision!, name: name);
       if (current) {
-        setState(() => project = result);
+        if (project?.id == selected.id) setState(() => project = result);
         ref.invalidate(automationProjectsProvider);
       }
     } catch (e) {
       if (current) setState(() => error = e);
     } finally {
       if (current) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _projectEntryMenu(AutomationProject item, Offset position) async {
+    if (busy || !current) return;
+    final l = context.l10n;
+    final service = widget.service;
+    var token = request;
+    bool valid() => current && request == token && identical(widget.service, service);
+    final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final offset = overlay.globalToLocal(position);
+    final editable = !item.readOnly && item.revision != null;
+    final action = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromSize(offset & Size.zero, overlay.size),
+      items: [
+        _automationMenuItem(value: 'open', label: l.commonOpen, icon: Icons.folder_open, enabled: !item.readOnly),
+        if (item.path?.isNotEmpty == true)
+          _automationMenuItem(value: 'copy', label: l.automationProjectCopyFolder, icon: Icons.copy_outlined),
+        if (editable) _automationMenuItem(value: 'rename', label: l.commonRename, icon: Icons.edit_outlined),
+        if (editable && service is AutomationProjectRemovalService)
+          _automationMenuItem(value: 'remove', label: l.automationProjectRemove, icon: Icons.delete_outline),
+      ],
+    );
+    if (!valid() || busy) return;
+    switch (action) {
+      case 'open':
+        if (project?.id != item.id) await _select(item);
+      case 'copy':
+        await Clipboard.setData(ClipboardData(text: item.path!));
+      case 'rename':
+        await _rename(item);
+      case 'remove':
+        final accepted = await _dialog<bool>(
+          (context) => AlertDialog(
+            title: Text(l.automationProjectRemove),
+            content: Text(l.automationProjectRemoveConfirm(item.name ?? item.id)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.commonCancel)),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l.automationProjectRemove)),
+            ],
+          ),
+        );
+        if (accepted != true || !valid() || busy) return;
+        if (project?.id == item.id &&
+            !await _leaveFile(originalCurrent: valid, ownSaveRequest: (next) => token = next)) {
+          return;
+        }
+        if (!valid() || busy) return;
+        setState(() {
+          busy = true;
+          error = null;
+        });
+        try {
+          await (service as AutomationProjectRemovalService).removeProject(item.id, revision: item.revision!);
+          if (!valid()) return;
+          if (project?.id == item.id) {
+            setState(() {
+              project = null;
+              revision = null;
+              file = null;
+              newPath = null;
+              aiDraft = null;
+              repairOrigin = null;
+              requirementsSavedPending = false;
+              dirty = false;
+              editor.clear();
+            });
+          }
+          ref.invalidate(automationProjectsProvider);
+        } catch (failure) {
+          if (valid()) setState(() => error = failure);
+        } finally {
+          if (valid()) setState(() => busy = false);
+        }
     }
   }
 
@@ -1690,25 +1759,108 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
   }
 
-  Future<void> _moveProjectFile(AutomationFileDrag source, String directory) async {
+  Future<void> _entryMenu(AutomationFileDrag entry, Offset position) async {
+    final l = context.l10n;
+    final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final offset = overlay.globalToLocal(position);
+    final original = project;
+    final token = request;
+    final pathLower = entry.path.toLowerCase();
+    final protected =
+        pathLower.split('/').contains('.git') ||
+        pathLower == '.vault/password' ||
+        entry.directory && (pathLower == '.vault' || pathLower.startsWith('.vault/'));
+    final canCreate = entry.directory && original?.readOnly == false && !protected;
+    final editAllowed =
+        original?.readOnly == false &&
+        widget.service is AutomationFileActionsService &&
+        entry.path.isNotEmpty &&
+        !protected;
+    final emptyDirectory =
+        entry.directory && !(revision?.entries.any((item) => item.path.startsWith('${entry.path}/')) ?? false);
+    bool valid() =>
+        current &&
+        !busy &&
+        request == token &&
+        identical(project, original) &&
+        entry.digest == revision?.digest &&
+        identical(widget.scope, entry.scope);
+    final action = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromSize(offset & Size.zero, overlay.size),
+      items: [
+        if (entry.directory)
+          _automationMenuItem(
+            value: 'new-file',
+            label: l.automationDirectoryNewFile,
+            icon: Icons.note_add_outlined,
+            enabled: canCreate,
+          )
+        else
+          _automationMenuItem(value: 'open', label: l.commonOpen, icon: Icons.description_outlined),
+        if (entry.path.isNotEmpty)
+          _automationMenuItem(value: 'copy', label: l.automationFileCopyPath, icon: Icons.copy_outlined),
+        if (editAllowed) ...[
+          _automationMenuItem(value: 'rename', label: l.commonRename, icon: Icons.edit_outlined),
+          if (!entry.directory || emptyDirectory)
+            _automationMenuItem(value: 'delete', label: l.commonDelete, icon: Icons.delete_outline),
+        ],
+      ],
+    );
+    if (!valid() || action == null) return;
+    switch (action) {
+      case 'open':
+        await _read(entry.path);
+      case 'new-file':
+        await _newFile(inDirectory: entry.path);
+      case 'copy':
+        await Clipboard.setData(ClipboardData(text: entry.path));
+      case 'rename':
+        final name = await _name(l.commonRename, initial: entry.path.split('/').last);
+        if (name != null && valid()) await _changeProjectFile(entry, newName: name);
+      case 'delete':
+        final confirmed = await _dialog<bool>(
+          (context) => AlertDialog(
+            title: Text(l.commonDelete),
+            content: Text(
+              entry.directory
+                  ? l.automationDirectoryDeleteConfirm(entry.path)
+                  : l.automationFileDeleteConfirm(entry.path),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l.commonCancel)),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l.commonDelete)),
+            ],
+          ),
+        );
+        if (confirmed == true && valid()) await _changeProjectFile(entry, delete: true);
+    }
+  }
+
+  Future<void> _changeProjectFile(
+    AutomationFileDrag source, {
+    String? directory,
+    String? newName,
+    bool delete = false,
+  }) async {
     final originalProject = project, service = widget.service, tree = revision;
     if (!current ||
         busy ||
         originalProject == null ||
         originalProject.readOnly ||
         tree == null ||
-        service is! AutomationMoveService ||
+        (directory != null ? service is! AutomationMoveService : service is! AutomationFileActionsService) ||
         !identical(source.scope, widget.scope) ||
         source.projectId != originalProject.id ||
         source.digest != tree.digest ||
-        !tree.entries.any((e) => e.path == source.path && !e.directory)) {
+        !tree.entries.any((e) => e.path == source.path && e.directory == source.directory)) {
       return;
     }
-    final basename = source.path.split('/').last;
-    final target = directory.isEmpty ? basename : '$directory/$basename';
-    if (target == source.path ||
-        automationFileHierarchy(tree.entries).at(directory)?.directory != true ||
-        automationFileHierarchy(tree.entries).at(target) != null) {
+    final parts = source.path.split('/');
+    final parent = directory ?? parts.take(parts.length - 1).join('/');
+    final basename = newName ?? parts.last;
+    final target = parent.isEmpty ? basename : '$parent/$basename';
+    if (!delete && (target == source.path || automationFileHierarchy(tree.entries).at(parent)?.directory != true)) {
       return;
     }
     final router = ref.read(routerProvider),
@@ -1727,7 +1879,9 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
 
     router.routeInformationProvider.addListener(observe);
-    final movingSelection = file?.path == source.path;
+    final selectedPath = file?.path ?? newPath;
+    final movingSelection =
+        selectedPath == source.path || (source.directory && selectedPath?.startsWith('${source.path}/') == true);
     try {
       if (!valid()) return;
       if (movingSelection && !await _leaveFile(originalCurrent: valid, ownSaveRequest: (next) => token = next) ||
@@ -1739,36 +1893,53 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         busy = true;
         error = null;
       });
-      AutomationProjectFile? originalFile = movingSelection ? file! : null;
-      var expectedSha = originalFile?.sha256 ?? tree.entries.firstWhere((e) => e.path == source.path).sha256;
+      final originalFile = movingSelection ? file : null;
+      var expectedSha = source.directory
+          ? revision?.digest
+          : originalFile?.sha256 ?? tree.entries.firstWhere((e) => e.path == source.path).sha256;
       if (expectedSha == null) {
-        originalFile = await service.readFile(originalProject.id, source.path);
-        if (originalFile.path != source.path) throw const AutomationFileConflict();
-        expectedSha = originalFile.sha256;
+        if (source.directory) throw const AutomationFileConflict();
+        final snapshotFile = await service.readFile(originalProject.id, source.path);
+        if (snapshotFile.path != source.path) throw const AutomationFileConflict();
+        expectedSha = snapshotFile.sha256;
       }
       if (!valid()) return;
-      await (service as AutomationMoveService).moveProjectFile(
-        originalProject.id,
-        sourcePath: source.path,
-        destinationDirectory: directory,
-        expectedSha256: expectedSha,
-      );
+      if (directory != null) {
+        await (service as AutomationMoveService).moveProjectFile(
+          originalProject.id,
+          sourcePath: source.path,
+          destinationDirectory: directory,
+          expectedSha256: expectedSha,
+        );
+      } else {
+        await (service as AutomationFileActionsService).editProjectFileEntry(
+          originalProject.id,
+          path: source.path,
+          expectedSha256: expectedSha,
+          action: source.directory
+              ? (delete ? 'delete_directory' : 'rename_directory')
+              : (delete ? 'delete' : 'rename'),
+          newName: newName,
+        );
+      }
       if (!valid()) return;
       // The Native move keeps the exact CAS-checked bytes. Keep the editor at
       // the new path even if the following read-only tree refresh fails.
       if (movingSelection) {
         setState(() {
-          file = AutomationProjectFile(
-            path: target,
-            text: originalFile!.text,
-            sha256: originalFile.sha256,
-            lineEndings: originalFile.lineEndings,
-          );
+          file = delete || originalFile == null
+              ? null
+              : AutomationProjectFile(
+                  path: '$target${originalFile.path.substring(source.path.length)}',
+                  text: originalFile.text,
+                  sha256: originalFile.sha256,
+                  lineEndings: originalFile.lineEndings,
+                );
           newPath = null;
           aiDraft = null;
           repairOrigin = null;
           requirementsSavedPending = false;
-          editor.text = originalFile.text;
+          editor.text = file?.text ?? '';
           dirty = false;
         });
       }
@@ -1782,7 +1953,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
   }
 
-  Future<void> _newFile({bool playbook = false}) async {
+  Future<void> _newFile({bool playbook = false, String? inDirectory}) async {
     if (busy || project == null || !await _leaveFile() || !current || !mounted) return;
     var suggestion = 'playbook.yml';
     if (playbook) {
@@ -1791,11 +1962,17 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         suggestion = 'playbook_$index.yml';
       }
     }
-    final path = await _name(
-      playbook ? context.l10n.automationNewPlaybook : context.l10n.automationOtherFile,
+    final id = project!.id, token = request;
+    final name = await _name(
+      playbook
+          ? context.l10n.automationNewPlaybook
+          : inDirectory != null
+          ? context.l10n.automationDirectoryNewFile
+          : context.l10n.automationOtherFile,
       initial: playbook ? suggestion : '',
     );
-    if (path == null || !current) return;
+    if (name == null || !current || request != token || project?.id != id) return;
+    final path = (inDirectory?.isNotEmpty == true) ? '$inDirectory/$name' : name;
     if (playbook &&
         (!RegExp(r'\.(yml|yaml)$', caseSensitive: false).hasMatch(path) ||
             path.startsWith('/') ||
@@ -2126,14 +2303,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                         icon: Icons.sync_outlined,
                         enabled: projectMenuCurrent(),
                       ),
-                    if (widget.service is AutomationInventoryService)
-                      _automationMenuItem(
-                        key: const ValueKey('automation-groups-open'),
-                        value: 'groups',
-                        label: l.automationGroups,
-                        icon: Icons.account_tree_outlined,
-                        enabled: projectMenuCurrent(),
-                      ),
                     if (widget.service is AutomationSourceInventoryService)
                       _automationMenuItem(
                         key: const ValueKey('automation-inventory-open'),
@@ -2158,9 +2327,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                     if (value == 'metadata' && widget.service is AutomationProjectMetadataService) {
                       _metadata(widget.service as AutomationProjectMetadataService);
                     }
-                    if (value == 'groups' && widget.service is AutomationInventoryService) {
-                      _groups(widget.service as AutomationInventoryService);
-                    }
                     if (value == 'inventory' && widget.service is AutomationSourceInventoryService) {
                       _inventory(widget.service as AutomationSourceInventoryService);
                     }
@@ -2168,8 +2334,6 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(l.automationLibraryHint),
           if (widget.service is AutomationProjectVersionService || portableAvailable)
             Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -2202,16 +2366,13 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                       GlassButton(
                         key: const ValueKey('automation-library-import-archive'),
                         label: l.automationLibraryImportArchive,
+                        tooltip: l.automationLibraryExchangeHint,
                         icon: Icons.unarchive_outlined,
                         size: _automationControlSize(context),
                         onPressed: busy || catalog.asData?.value?.readOnly == true
                             ? null
                             : () => _portablePackage(inspect: true, createProject: true),
                       ),
-                    Tooltip(
-                      message: l.automationLibraryExchangeHint,
-                      child: Icon(Icons.info_outline, size: 18, semanticLabel: l.automationLibraryExchangeHint),
-                    ),
                   ],
                 ],
               ),
@@ -2258,192 +2419,238 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                 final tree = ContentSurface(
                   key: const ValueKey('automation-project-tree'),
                   padding: EdgeInsets.zero,
-                  child: ListView(
-                    children: [
-                      Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 4), child: Text(l.automationProjects)),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                        child: GlassField(
-                          key: const ValueKey('automation-library-search'),
-                          fieldKey: const ValueKey('automation-library-search-input'),
-                          search: true,
-                          placeholder: l.automationLibrarySearch,
-                          onChanged: (value) => setState(() => libraryQuery = value),
-                        ),
-                      ),
-                      ...catalog.when(
-                        data: (value) => [
-                          if (value?.readOnly == true)
-                            Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNewerSchema)),
-                          if (value?.projects.isEmpty ?? false)
-                            Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNoProjects)),
-                          if (value?.projects.isNotEmpty == true &&
-                              !(value!.projects.any(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(GlassTokens.of(context).radii.card),
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+                      children: [
+                        if (project != null) ...[
+                          Padding(
+                            key: const ValueKey('automation-project-header'),
+                            padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    key: const ValueKey('automation-project-picker-toggle'),
+                                    onSecondaryTapDown: busy
+                                        ? null
+                                        : (details) => unawaited(_projectEntryMenu(project!, details.globalPosition)),
+                                    onTap: () => setState(() {
+                                      projectsExpanded = !projectsExpanded;
+                                      if (!projectsExpanded) libraryQuery = '';
+                                    }),
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Row(
+                                      children: [
+                                        Icon(projectsExpanded ? Icons.expand_more : Icons.chevron_right, size: 16),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            project!.name ?? project!.id,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                _AutomationActionMenu(
+                                  triggerKey: const ValueKey('automation-create-menu'),
+                                  enabled: !busy && !project!.readOnly,
+                                  tooltip: l.commonCreate,
+                                  onSelected: (value) {
+                                    if (!projectMenuCurrent()) return;
+                                    if (value == 'playbook') {
+                                      _newFile(playbook: true);
+                                    } else if (value == 'role' && widget.service is AutomationScaffoldService) {
+                                      _newRole(widget.service as AutomationScaffoldService);
+                                    } else if (value == 'file') {
+                                      _newFile();
+                                    }
+                                  },
+                                  entries: [
+                                    _automationMenuItem(
+                                      key: const ValueKey('automation-create-playbook'),
+                                      value: 'playbook',
+                                      label: l.automationNewPlaybook,
+                                    ),
+                                    if (widget.service is AutomationScaffoldService)
+                                      _automationMenuItem(
+                                        key: const ValueKey('automation-create-role'),
+                                        value: 'role',
+                                        label: l.automationCreateRole,
+                                      ),
+                                    _automationMenuItem(
+                                      key: const ValueKey('automation-create-file'),
+                                      value: 'file',
+                                      label: l.automationOtherFile,
+                                    ),
+                                  ],
+                                  icon: Icons.add,
+                                ),
+                                const SizedBox(width: 6),
+                                _AutomationActionMenu(
+                                  triggerKey: const ValueKey('automation-project-menu'),
+                                  tooltip: l.glassMoreActions,
+                                  enabled: !busy && !project!.readOnly,
+                                  icon: Icons.more_horiz,
+                                  onSelected: (value) {
+                                    if (!projectMenuCurrent()) return;
+                                    if (value == 'rename') _rename();
+                                    if (value == 'config') _ansibleConfig();
+                                    if (value == 'reload') _select(project!);
+                                    if (value == 'portable-export') _portablePackage(inspect: false);
+                                    if (value == 'inventory-export' &&
+                                        widget.service is AutomationInventoryExportService) {
+                                      _exportInventory(widget.service as AutomationInventoryExportService);
+                                    }
+                                  },
+                                  entries: [
+                                    _automationMenuItem(
+                                      key: const ValueKey('automation-rename-project'),
+                                      value: 'rename',
+                                      label: l.commonRename,
+                                    ),
+                                    _automationMenuItem(
+                                      key: const ValueKey('automation-ansible-settings'),
+                                      value: 'config',
+                                      label: l.automationConfigTitle,
+                                    ),
+                                    _automationMenuItem(
+                                      key: const ValueKey('automation-reload-project'),
+                                      value: 'reload',
+                                      label: l.commonRetry,
+                                    ),
+                                    if (portableAvailable)
+                                      _automationMenuItem(
+                                        key: const ValueKey('automation-portable-export-open'),
+                                        value: 'portable-export',
+                                        enabled: project!.revision != null,
+                                        label: l.automationLibraryExportVersion,
+                                      ),
+                                    if (widget.service is AutomationInventoryExportService)
+                                      _automationMenuItem(
+                                        key: const ValueKey('automation-inventory-export-open'),
+                                        value: 'inventory-export',
+                                        enabled: project!.revision != null,
+                                        label: l.automationInventoryExportAction,
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (project == null || projectsExpanded) ...[
+                          Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 4), child: Text(l.automationProjects)),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                            child: GlassField(
+                              key: const ValueKey('automation-library-search'),
+                              fieldKey: const ValueKey('automation-library-search-input'),
+                              search: true,
+                              placeholder: l.automationLibrarySearch,
+                              onChanged: (value) => setState(() => libraryQuery = value),
+                            ),
+                          ),
+                          ...catalog.when(
+                            data: (value) => [
+                              if (value?.readOnly == true)
+                                Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNewerSchema)),
+                              if (value?.projects.isEmpty ?? false)
+                                Padding(padding: const EdgeInsets.all(12), child: Text(l.automationNoProjects)),
+                              if (value?.projects.isNotEmpty == true &&
+                                  !(value!.projects.any(
+                                    (item) => '${item.name ?? item.id} ${item.sourceKind ?? ''}'.toLowerCase().contains(
+                                      libraryQuery.trim().toLowerCase(),
+                                    ),
+                                  )))
+                                Padding(padding: const EdgeInsets.all(12), child: Text(l.automationLibraryNoMatches)),
+                              for (final item in (value?.projects ?? <AutomationProject>[]).where(
                                 (item) => '${item.name ?? item.id} ${item.sourceKind ?? ''}'.toLowerCase().contains(
                                   libraryQuery.trim().toLowerCase(),
                                 ),
-                              )))
-                            Padding(padding: const EdgeInsets.all(12), child: Text(l.automationLibraryNoMatches)),
-                          for (final item in (value?.projects ?? <AutomationProject>[]).where(
-                            (item) => '${item.name ?? item.id} ${item.sourceKind ?? ''}'.toLowerCase().contains(
-                              libraryQuery.trim().toLowerCase(),
-                            ),
-                          ))
-                            ListTile(
-                              key: ValueKey('automation-project-${item.id}'),
-                              dense: true,
-                              minTileHeight: 34,
-                              visualDensity: VisualDensity.compact,
-                              selected: item.id == project?.id,
-                              leading: const Icon(Icons.folder_outlined, size: 18),
-                              title: Text(item.name ?? item.id, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              subtitle: item.importState == null
-                                  ? null
-                                  : Text(switch (item.importState) {
-                                      'importing' => l.automationGitReceiving,
-                                      'ready' => l.automationGitReady,
-                                      'failed' => l.automationStateFailed,
-                                      'cancelled' => l.automationStateCancelled,
-                                      'interrupted' => l.automationStateInterrupted,
-                                      _ => l.automationNewerSchema,
-                                    }),
-                              onTap: busy || item.readOnly ? null : () => _select(item),
-                            ),
-                        ],
-                        error: (e, _) => [
-                          Padding(padding: const EdgeInsets.all(12), child: Text(errorMessage(l, e))),
-                          TextButton(
-                            onPressed: () => ref.invalidate(automationProjectsProvider),
-                            child: Text(l.commonRetry),
-                          ),
-                        ],
-                        loading: () => [const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())],
-                      ),
-                      if (project != null) ...[
-                        const Divider(),
-                        Padding(
-                          key: const ValueKey('automation-project-header'),
-                          padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(project!.name ?? project!.id, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              ),
-                              _AutomationActionMenu(
-                                triggerKey: const ValueKey('automation-create-menu'),
-                                enabled: !busy && !project!.readOnly,
-                                tooltip: l.commonCreate,
-                                onSelected: (value) {
-                                  if (!projectMenuCurrent()) return;
-                                  if (value == 'playbook') {
-                                    _newFile(playbook: true);
-                                  } else if (value == 'role' && widget.service is AutomationScaffoldService) {
-                                    _newRole(widget.service as AutomationScaffoldService);
-                                  } else if (value == 'file') {
-                                    _newFile();
-                                  }
-                                },
-                                entries: [
-                                  _automationMenuItem(
-                                    key: const ValueKey('automation-create-playbook'),
-                                    value: 'playbook',
-                                    label: l.automationNewPlaybook,
+                              ))
+                                GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onSecondaryTapDown: busy
+                                      ? null
+                                      : (details) => unawaited(_projectEntryMenu(item, details.globalPosition)),
+                                  child: ListTile(
+                                    key: ValueKey('automation-project-${item.id}'),
+                                    dense: true,
+                                    minTileHeight: 34,
+                                    visualDensity: VisualDensity.compact,
+                                    selected: item.id == project?.id,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    leading: const Icon(Icons.folder_outlined, size: 18),
+                                    title: Text(item.name ?? item.id, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    subtitle: item.importState == null
+                                        ? null
+                                        : Text(switch (item.importState) {
+                                            'importing' => l.automationGitReceiving,
+                                            'ready' => l.automationGitReady,
+                                            'failed' => l.automationStateFailed,
+                                            'cancelled' => l.automationStateCancelled,
+                                            'interrupted' => l.automationStateInterrupted,
+                                            _ => l.automationNewerSchema,
+                                          }),
+                                    onTap: busy || item.readOnly ? null : () => _select(item),
                                   ),
-                                  if (widget.service is AutomationScaffoldService)
-                                    _automationMenuItem(
-                                      key: const ValueKey('automation-create-role'),
-                                      value: 'role',
-                                      label: l.automationCreateRole,
-                                    ),
-                                  _automationMenuItem(
-                                    key: const ValueKey('automation-create-file'),
-                                    value: 'file',
-                                    label: l.automationOtherFile,
-                                  ),
-                                ],
-                                icon: Icons.add,
-                              ),
-                              _AutomationActionMenu(
-                                triggerKey: const ValueKey('automation-project-menu'),
-                                tooltip: l.glassMoreActions,
-                                enabled: !busy && !project!.readOnly,
-                                icon: Icons.more_horiz,
-                                onSelected: (value) {
-                                  if (!projectMenuCurrent()) return;
-                                  if (value == 'rename') _rename();
-                                  if (value == 'config') _ansibleConfig();
-                                  if (value == 'reload') _select(project!);
-                                  if (value == 'portable-export') _portablePackage(inspect: false);
-                                  if (value == 'inventory-export' &&
-                                      widget.service is AutomationInventoryExportService) {
-                                    _exportInventory(widget.service as AutomationInventoryExportService);
-                                  }
-                                },
-                                entries: [
-                                  _automationMenuItem(
-                                    key: const ValueKey('automation-rename-project'),
-                                    value: 'rename',
-                                    label: l.commonRename,
-                                  ),
-                                  _automationMenuItem(
-                                    key: const ValueKey('automation-ansible-settings'),
-                                    value: 'config',
-                                    label: l.automationConfigTitle,
-                                  ),
-                                  _automationMenuItem(
-                                    key: const ValueKey('automation-reload-project'),
-                                    value: 'reload',
-                                    label: l.commonRetry,
-                                  ),
-                                  if (portableAvailable)
-                                    _automationMenuItem(
-                                      key: const ValueKey('automation-portable-export-open'),
-                                      value: 'portable-export',
-                                      enabled: project!.revision != null,
-                                      label: l.automationLibraryExportVersion,
-                                    ),
-                                  if (widget.service is AutomationInventoryExportService)
-                                    _automationMenuItem(
-                                      key: const ValueKey('automation-inventory-export-open'),
-                                      value: 'inventory-export',
-                                      enabled: project!.revision != null,
-                                      label: l.automationInventoryExportAction,
-                                    ),
-                                ],
+                                ),
+                            ],
+                            error: (e, _) => [
+                              Padding(padding: const EdgeInsets.all(12), child: Text(errorMessage(l, e))),
+                              TextButton(
+                                onPressed: () => ref.invalidate(automationProjectsProvider),
+                                child: Text(l.commonRetry),
                               ),
                             ],
+                            loading: () => [
+                              const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator()),
+                            ],
                           ),
-                        ),
-                        AutomationLibraryFiles(
-                          scope: widget.scope,
-                          projectId: project!.id,
-                          digest: revision?.digest ?? '',
-                          entries: revision?.entries ?? const [],
-                          selectedPath: file?.path ?? newPath,
-                          enabled: !busy,
-                          onRead: (path) => unawaited(_read(path)),
-                          onCreatePlaybook: project!.readOnly
-                              ? null
-                              : () {
-                                  if (projectMenuCurrent()) _newFile(playbook: true);
-                                },
-                          onCreateRole: project!.readOnly || widget.service is! AutomationScaffoldService
-                              ? null
-                              : () {
-                                  if (projectMenuCurrent()) _newRole(widget.service as AutomationScaffoldService);
-                                },
-                          onAddDependency: project!.readOnly || widget.service is! AutomationDependencyService
-                              ? null
-                              : () {
-                                  if (projectMenuCurrent())
-                                    _dependencies(widget.service as AutomationDependencyService);
-                                },
-                          onMove: project!.readOnly || widget.service is! AutomationMoveService || revision == null
-                              ? null
-                              : (source, directory) => unawaited(_moveProjectFile(source, directory)),
-                        ),
+                        ],
+                        if (project != null) ...[
+                          const Divider(height: 8),
+                          AutomationLibraryFiles(
+                            scope: widget.scope,
+                            projectId: project!.id,
+                            digest: revision?.digest ?? '',
+                            entries: revision?.entries ?? const [],
+                            selectedPath: file?.path ?? newPath,
+                            enabled: !busy,
+                            onRead: (path) => unawaited(_read(path)),
+                            onCreatePlaybook: project!.readOnly
+                                ? null
+                                : () {
+                                    if (projectMenuCurrent()) _newFile(playbook: true);
+                                  },
+                            onCreateRole: project!.readOnly || widget.service is! AutomationScaffoldService
+                                ? null
+                                : () {
+                                    if (projectMenuCurrent()) _newRole(widget.service as AutomationScaffoldService);
+                                  },
+                            onAddDependency: project!.readOnly || widget.service is! AutomationDependencyService
+                                ? null
+                                : () {
+                                    if (projectMenuCurrent()) {
+                                      _dependencies(widget.service as AutomationDependencyService);
+                                    }
+                                  },
+                            onMove: project!.readOnly || widget.service is! AutomationMoveService || revision == null
+                                ? null
+                                : (source, directory) => unawaited(_changeProjectFile(source, directory: directory)),
+                            onContextMenu: revision == null
+                                ? null
+                                : (entry, position) => unawaited(_entryMenu(entry, position)),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 );
                 final body = ContentSurface(
@@ -2470,11 +2677,12 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                     spacing: 6,
                                     runSpacing: 4,
                                     children: [
-                                      GlassButton(
+                                      GlassIconButton(
                                         key: const ValueKey('automation-save'),
-                                        label: l.commonSave,
+                                        tooltip: l.commonSave,
                                         icon: Icons.save_outlined,
-                                        size: _automationControlSize(context),
+                                        size: AppPlatform.isMobile ? 40 : 28,
+                                        iconSize: 16,
                                         onPressed: !dirty || busy ? null : _save,
                                       ),
                                       if (file != null &&
@@ -2482,37 +2690,42 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                           project?.revision != null &&
                                           widget.service is AutomationVaultFileService &&
                                           (file!.path.endsWith('.yml') || file!.path.endsWith('.yaml')))
-                                        GlassButton(
+                                        GlassIconButton(
                                           key: const ValueKey('automation-vault-file-open'),
-                                          label: l.automationVaultFileTitle,
+                                          tooltip: l.automationVaultFileTitle,
                                           icon: Icons.lock_outline,
-                                          size: _automationControlSize(context),
+                                          size: AppPlatform.isMobile ? 40 : 28,
+                                          iconSize: 16,
                                           onPressed: busy ? null : () => unawaited(_vaultFile()),
                                         ),
                                       if (!AppPlatform.isMobile &&
                                           file != null &&
                                           widget.service is AutomationEditorService) ...[
-                                        IconButton(
+                                        GlassIconButton(
                                           key: const ValueKey('automation-open-editor'),
+                                          size: AppPlatform.isMobile ? 40 : 28,
+                                          iconSize: 16,
                                           tooltip: l.automationOpenEditor,
                                           onPressed: busy
                                               ? null
                                               : () => _externalEditor(widget.service as AutomationEditorService),
-                                          icon: const Icon(Icons.open_in_new, size: 18),
+                                          icon: Icons.open_in_new,
                                         ),
-                                        IconButton(
+                                        GlassIconButton(
                                           key: const ValueKey('automation-reload-file'),
+                                          size: AppPlatform.isMobile ? 40 : 28,
+                                          iconSize: 16,
                                           tooltip: l.automationReloadFile,
                                           onPressed: busy ? null : () => _read(file!.path),
-                                          icon: const Icon(Icons.refresh, size: 18),
+                                          icon: Icons.refresh,
                                         ),
                                       ],
                                       if (widget.service case final AutomationAiService ai)
-                                        GlassButton(
+                                        GlassIconButton(
                                           key: const ValueKey('automation-ai-open'),
-                                          label: l.automationAiTitle,
                                           tooltip: l.automationAiTitle,
-                                          size: _automationControlSize(context),
+                                          size: AppPlatform.isMobile ? 40 : 28,
+                                          iconSize: 16,
                                           onPressed:
                                               busy ||
                                                   !((file?.path ?? newPath ?? '').endsWith('.yml') ||
@@ -2672,8 +2885,8 @@ class _AutomationActionMenu extends StatelessWidget {
         ? GlassIconButton(
             key: triggerKey,
             icon: icon,
-            size: 32,
-            iconSize: 18,
+            size: AppPlatform.isMobile ? 40 : 24,
+            iconSize: 16,
             tooltip: tooltip!,
             onPressed: enabled ? () => open(context) : null,
           )

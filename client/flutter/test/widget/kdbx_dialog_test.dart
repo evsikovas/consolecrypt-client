@@ -876,7 +876,7 @@ void main() {
     });
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
-  testWidgets('both dividers resize panes, clamp safely and entries are taller', (tester) async {
+  testWidgets('both dividers resize panes, clamp safely and desktop entries stay compact', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
@@ -890,7 +890,10 @@ void main() {
     await settle(tester);
     final entry = session!.rows('entries').single;
     final row = find.byKey(ValueKey('keepass-entry-${entry['id']}'));
-    expect(tester.getSize(row).height, greaterThanOrEqualTo(84));
+    expect(tester.getSize(row).height, inInclusiveRange(44, 56));
+    final toolbarButton = find.byKey(const ValueKey('keepass-new-entry'));
+    final toolbarMenu = find.byKey(const ValueKey('keepass-database-actions'));
+    expect(tester.getSize(toolbarMenu).height, tester.getSize(toolbarButton).height);
     await tester.tap(row);
     await settle(tester);
     final pane = find.byKey(const ValueKey('keepass-details-pane'));

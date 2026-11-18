@@ -33,8 +33,9 @@ pub enum Route {
         #[serde(rename = "routeId")]
         route_id: String,
     },
-    /// Persistent destination metadata. A separately approved current route is required.
-    AgentDestination {
+    /// Read legacy settings for export and synchronization compatibility.
+    #[serde(rename = "agentDestination")]
+    LegacyDestination {
         #[serde(rename = "associationId")]
         association_id: String,
         #[serde(rename = "hostId")]
@@ -44,7 +45,8 @@ pub enum Route {
         #[serde(rename = "destinationPort")]
         destination_port: u16,
     },
-    AgentTunnel {
+    #[serde(rename = "agentTunnel")]
+    LegacyTunnel {
         #[serde(rename = "routeId")]
         route_id: String,
     },
@@ -169,7 +171,7 @@ impl SourceConfig {
         {
             return Err(bad());
         }
-        if let Route::AgentDestination { association_id, host_id, destination_ip, destination_port } = &self.route {
+        if let Route::LegacyDestination { association_id, host_id, destination_ip, destination_port } = &self.route {
             fn canonical_id(value: &str) -> bool {
                 value.len() == 36 && value != "00000000-0000-0000-0000-000000000000"
                     && value.bytes().enumerate().all(|(i, b)| if [8,13,18,23].contains(&i) {

@@ -834,19 +834,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-agent-node-wire"
-version = "0.1.0"
-dependencies = [
- "ed25519-dalek",
- "hex",
- "serde",
- "serde_json",
- "sha2 0.11.0",
- "uuid",
- "zeroize",
-]
-
-[[package]]
 name = "cc-ai-core"
 version = "0.1.0"
 dependencies = [
@@ -1024,7 +1011,6 @@ dependencies = [
  "argon2",
  "base64 0.22.1",
  "bip39",
- "cc-agent-node-wire",
  "cc-models",
  "cc-protocol",
  "chacha20poly1305",
@@ -1451,7 +1437,6 @@ dependencies = [
 name = "cc-vault-core"
 version = "0.1.0"
 dependencies = [
- "cc-agent-node-wire",
  "cc-crypto-core",
  "cc-models",
  "cc-platform-core",

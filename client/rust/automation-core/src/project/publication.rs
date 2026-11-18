@@ -18,7 +18,6 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
-pub(crate) mod agent_installer_seed;
 mod namespace;
 pub(crate) mod portable_import;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -1329,6 +1328,14 @@ fn checked_ready(
     }
     Ok((ready, has_target))
 }
+pub(super) fn rename_project_directory(parent: &Dir, source: &str, target: &str, opened: Dir) -> Result<()> {
+    let expected = identity(&opened)?;
+    // The Windows mutation opens its own DELETE handle and rechecks identity.
+    drop(opened);
+    rename_new(parent, source, target, &expected)?;
+    require(identity(&namespace::open_child(parent, target)?)? == expected)
+}
+
 fn rename_new(parent: &Dir, stage: &str, target: &str, expected: &DirectoryIdentity) -> Result<()> {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
@@ -1457,4 +1464,4 @@ pub(crate) fn check_publication_base(
     namespace.recheck_base(original)
 }
 #[cfg(windows)]
-pub(super) use windows::{open_project_move_file, rename_project_move_file};
+pub(super) use windows::{delete_project_file, open_project_move_file, rename_project_move_file};

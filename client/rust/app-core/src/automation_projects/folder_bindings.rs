@@ -5,9 +5,65 @@ use crate::{
     working_set::{FolderSnapshot, FolderWatch},
 };
 use cc_automation_core::ProjectInventory;
-use cc_models::ObjectId;
+use cc_models::{ObjectId, VaultObject};
 use sha2::{Digest, Sha256};
 const FIELD: &str = "group_folder_bindings";
+
+/// Add ConsoleCrypt groups using only hosts already chosen for this run.
+/// The same snapshot is revision-watched by the connection planner.
+pub(crate) fn add_host_groups(
+    inventory: &mut ProjectInventory,
+    snapshot: &BTreeMap<ObjectId, crate::working_set::Entry>,
+    hosts: &[String],
+) -> AppResult<()> {
+    use crate::working_set::Item;
+    for host in hosts {
+        let uuid = Uuid::parse_str(host).map_err(|_| invalid())?;
+        if inventory.selected_hosts.as_ref().is_some_and(|ids| !ids.contains(&uuid)) {
+            continue;
+        }
+        let id: ObjectId = uuid.into();
+        let Some(Item::Object(host)) = snapshot.get(&id).map(|entry| &entry.item) else {
+            continue;
+        };
+        let VaultObject::Host(host) = host.as_ref() else {
+            continue;
+        };
+        let mut folder = host.group_id;
+        let mut visited = std::collections::BTreeSet::new();
+        while let Some(folder_id) = folder {
+            if !visited.insert(folder_id) {
+                return Err(invalid());
+            }
+            let Some(Item::Object(group)) = snapshot.get(&folder_id).map(|entry| &entry.item) else {
+                return Err(invalid());
+            };
+            let VaultObject::Group(group) = group.as_ref() else {
+                return Err(invalid());
+            };
+            let name = inventory_group_name(&group.name, &folder_id.to_string());
+            let members = inventory.groups.entry(name).or_default();
+            if !members.contains(&uuid) {
+                members.push(uuid);
+            }
+            folder = group.parent_id;
+        }
+    }
+    inventory.normalize().map_err(automation_error)
+}
+
+fn inventory_group_name(label: &str, id: &str) -> String {
+    let mut name: String = label.trim().chars().map(|c| {
+        if c.is_ascii_alphanumeric() || c == '_' { c } else { '_' }
+    }).take(92).collect();
+    if !name.bytes().any(|b| b.is_ascii_alphanumeric()) {
+        return format!("group_{}", id.replace('-', ""));
+    }
+    if name.as_bytes()[0].is_ascii_digit() || matches!(name.as_str(), "all" | "ungrouped" | "_meta") {
+        name.insert_str(0, "cc_");
+    }
+    name
+}
 fn invalid() -> AppError {
     AppError::invalid(
         "automation_folder_binding",

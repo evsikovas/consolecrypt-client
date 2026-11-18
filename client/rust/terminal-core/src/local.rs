@@ -11,6 +11,8 @@ pub use wsl_discovery::WslDiscoveryStatus;
 #[serde(rename_all = "snake_case")]
 pub enum LocalShellKind {
     Zsh,
+    Bash,
+    Posix,
     Powershell,
     Cmd,
     Wsl,
@@ -72,18 +74,29 @@ struct Discovery {
     wsl_discovery: Option<WslDiscoveryStatus>,
 }
 
-async fn discover() -> Result<Discovery, TerminalError> {
-    #[cfg(target_os = "macos")]
+async fn discover(_include_wsl: bool) -> Result<Discovery, TerminalError> {
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
+        let (zsh_id, bash_id, sh_id) = if cfg!(target_os = "macos") {
+            ("macos:zsh", "macos:bash", "macos:sh")
+        } else {
+            ("linux:zsh", "linux:bash", "linux:sh")
+        };
+        let mut profiles = vec![
+            LaunchProfile::new(zsh_id, LocalShellKind::Zsh, "zsh", "zsh", "/bin/zsh", &["-il"]),
+            LaunchProfile::new(bash_id, LocalShellKind::Bash, "bash", "bash", "/bin/bash", &["-il"]),
+            LaunchProfile::new(sh_id, LocalShellKind::Posix, "sh", "sh", "/bin/sh", &["-il"]),
+        ];
+        profiles.retain(|p| p.program.is_file());
+        if let Some(shell) = std::env::var_os("SHELL") {
+            // Prefer the system login shell only when it is one of the
+            // fixed, locally discovered executables.
+            if let Some(index) = profiles.iter().position(|profile| profile.program.as_os_str() == shell.as_os_str()) {
+                profiles.swap(0, index);
+            }
+        }
         Ok(Discovery {
-            profiles: vec![LaunchProfile::new(
-                "macos:zsh",
-                LocalShellKind::Zsh,
-                "zsh",
-                "zsh",
-                "/bin/zsh",
-                &["-il"],
-            )],
+            profiles,
             wsl_discovery: None,
         })
     }
@@ -128,6 +141,9 @@ async fn discover() -> Result<Discovery, TerminalError> {
             }
         }
         profiles.retain(|p| p.program.is_file());
+        if !_include_wsl {
+            return Ok(Discovery { profiles, wsl_discovery: None });
+        }
         let wsl = system.join("wsl.exe");
         let observed = match std::fs::metadata(&wsl) {
             Ok(metadata) if metadata.is_file() => {
@@ -181,7 +197,7 @@ async fn discover() -> Result<Discovery, TerminalError> {
             wsl_discovery: Some(observed.status),
         })
     }
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     Ok(Discovery {
         profiles: Vec::new(),
         wsl_discovery: None,
@@ -192,7 +208,11 @@ async fn discover() -> Result<Discovery, TerminalError> {
 use wsl_discovery::decode_wsl_names;
 
 pub async fn profiles() -> Result<LocalShellProfiles, TerminalError> {
-    Ok(project_profiles(discover().await?))
+    Ok(project_profiles(discover(true).await?))
+}
+
+pub async fn default_profile() -> Result<Option<LocalShellProfile>, TerminalError> {
+    Ok(discover(false).await?.profiles.into_iter().next().map(|p| p.info))
 }
 
 fn project_profiles(discovered: Discovery) -> LocalShellProfiles {
@@ -213,7 +233,7 @@ pub async fn open(
     profile_id: &str,
     size: TerminalSize,
 ) -> Result<(LocalShellProfile, OpenedShell), TerminalError> {
-    let profile = discover()
+    let profile = discover(profile_id.starts_with("wsl:"))
         .await?
         .profiles
         .into_iter()
@@ -1096,7 +1116,7 @@ mod tests {
 
     #[cfg(windows)]
     async fn windows_shell(id: &str) -> OpenedShell {
-        let mut profile = discover()
+        let mut profile = discover(true)
             .await
             .unwrap()
             .profiles

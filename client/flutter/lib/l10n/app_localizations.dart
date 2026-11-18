@@ -149,7 +149,7 @@ abstract class AppLocalizations {
   /// Label or help text for automationProjectChooseFolder.
   ///
   /// In en, this message translates to:
-  /// **'Choose an empty folder…'**
+  /// **'Choose folder…'**
   String get automationProjectChooseFolder;
 
   /// Label or help text for automationProjectUseProfile.
@@ -167,19 +167,19 @@ abstract class AppLocalizations {
   /// Label or help text for automationInventoryRunnerHelp.
   ///
   /// In en, this message translates to:
-  /// **'Preview YAML host and group names on this device. Choose a Runner to validate the inventory with Ansible and save it.'**
+  /// **'Preview host and group names from INI or YAML. Choose a Runner to validate the inventory with Ansible and save it.'**
   String get automationInventoryRunnerHelp;
 
   /// Label or help text for automationInventoryYamlPreviewFailed.
   ///
   /// In en, this message translates to:
-  /// **'This file could not be read as static YAML inventory. Select an inventory file or check it with a Runner.'**
+  /// **'Could not read static INI or YAML inventory. Select an inventory file or check it with a Runner.'**
   String get automationInventoryYamlPreviewFailed;
 
   /// Label or help text for automationInventoryYamlPreviewHelp.
   ///
   /// In en, this message translates to:
-  /// **'Hosts and groups declared in the file. Use a Runner to resolve the inventory for a job.'**
+  /// **'Literal names from the files. Ansible resolves host ranges and variables during validation.'**
   String get automationInventoryYamlPreviewHelp;
 
   /// Label or help text for automationInventoryYamlPreviewEmpty.
@@ -24683,7 +24683,7 @@ abstract class AppLocalizations {
   /// KDBX password manager workspace
   ///
   /// In en, this message translates to:
-  /// **'No folder'**
+  /// **'Ungrouped'**
   String get keepassUngrouped;
 
   /// KDBX password manager workspace
@@ -25151,7 +25151,7 @@ abstract class AppLocalizations {
   /// Runner configuration and explicit environment diagnostics
   ///
   /// In en, this message translates to:
-  /// **'Remote Linux Runner'**
+  /// **'Linux over SSH (manual runs)'**
   String get automationRemoteRunner;
 
   /// Runner configuration and explicit environment diagnostics
@@ -25751,13 +25751,13 @@ abstract class AppLocalizations {
   /// Explicitly reviewed automation job execution and history
   ///
   /// In en, this message translates to:
-  /// **'Git on this computer downloads a public HTTPS repository into the local ConsoleCrypt profile. Importing reads project files. Submodules and private repositories are unavailable.'**
+  /// **'Git on this computer imports an HTTP or HTTPS repository into your local ConsoleCrypt profile. The repository must be readable without credentials.'**
   String get automationGitHint;
 
   /// Explicitly reviewed automation job execution and history
   ///
   /// In en, this message translates to:
-  /// **'HTTPS repository URL'**
+  /// **'Repository URL (HTTP or HTTPS)'**
   String get automationGitUrl;
 
   /// Explicitly reviewed automation job execution and history
@@ -25781,7 +25781,7 @@ abstract class AppLocalizations {
   /// Explicitly reviewed automation job execution and history
   ///
   /// In en, this message translates to:
-  /// **'Enter a name, HTTPS URL, and branch or tag.'**
+  /// **'Enter the project name, repository URL and branch or tag.'**
   String get automationGitFields;
 
   /// Explicitly reviewed automation job execution and history
@@ -25835,7 +25835,7 @@ abstract class AppLocalizations {
   /// Explicitly reviewed automation job execution and history
   ///
   /// In en, this message translates to:
-  /// **'Groups belong to this project and do not change host folders. A host can belong to multiple groups. A job can access only targets explicitly selected for that run.'**
+  /// **'Use a group name in the playbook to target a set of hosts. Select the actual hosts when you run it.'**
   String get automationGroupsHint;
 
   /// Explicitly reviewed automation job execution and history
@@ -26375,7 +26375,7 @@ abstract class AppLocalizations {
   /// Explicit local or WSL Runner setup
   ///
   /// In en, this message translates to:
-  /// **'Linux x64 and Python 3.12 or 3.14'**
+  /// **'Python 3.12 or 3.14 on Linux x64, or Python 3.12 or 3.13 on Linux ARM64'**
   String get automationSetupPython;
 
   /// Explicit local or WSL Runner setup
@@ -27467,7 +27467,7 @@ abstract class AppLocalizations {
   /// Explains live direct folder membership versus one-time copy without selecting run targets.
   ///
   /// In en, this message translates to:
-  /// **'Link this group to a host folder, or copy its current members once. Subfolders are excluded. Run targets are selected separately.'**
+  /// **'Link a host folder to keep the group in sync, or copy its current members. Subfolders are excluded.'**
   String get automationFolderDirectHint;
 
   /// Label for choosing a saved ConsoleCrypt host folder by identity.
@@ -28739,7 +28739,7 @@ abstract class AppLocalizations {
   /// Persistent Linux service connection metadata form; never installation, activation or authority.
   ///
   /// In en, this message translates to:
-  /// **'Persistent Linux Runner'**
+  /// **'Linux service (scheduled runs)'**
   String get automationServiceConnectionMode;
 
   /// Persistent Linux service connection metadata form; never installation, activation or authority.
@@ -28751,7 +28751,7 @@ abstract class AppLocalizations {
   /// Persistent Linux service connection metadata form; never installation, activation or authority.
   ///
   /// In en, this message translates to:
-  /// **'Choose the saved SSH host and the identity ID from the installed ConsoleCrypt service. Its schedule and trust are reviewed separately when preparing a delegation.'**
+  /// **'Connect an installed ConsoleCrypt Runner service using its saved SSH host and service UUID. Once authorized, the service can run schedules while this application is closed.'**
   String get automationServiceConnectionHint;
 
   /// Persistent Linux service connection metadata form; never installation, activation or authority.
@@ -29429,13 +29429,13 @@ abstract class AppLocalizations {
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'Deployment environments and SSH references'**
+  /// **'SSH access profiles'**
   String get automationDeploymentTitle;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'This project stores credential references for each environment. Select existing SSH hosts and credentials explicitly, including every target and jump host. Runner and proxy authentication remain separate. No password or key is copied.'**
+  /// **'Use a profile when this project needs different SSH credentials. Otherwise it uses the credentials saved on each host.'**
   String get automationDeploymentHint;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
@@ -29447,67 +29447,67 @@ abstract class AppLocalizations {
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'No project credential policy: the existing Host credential configuration applies.'**
+  /// **'Using the SSH credentials saved on each host.'**
   String get automationDeploymentLegacy;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'Choose a deployment environment explicitly'**
+  /// **'Choose an access profile'**
   String get automationDeploymentChoose;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'New environment'**
+  /// **'New profile'**
   String get automationDeploymentNew;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'Add environment'**
+  /// **'Add profile'**
   String get automationDeploymentAdd;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'Production environment: additional owner confirmation is required.'**
+  /// **'Production hosts require owner confirmation'**
   String get automationDeploymentProduction;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'An environment cannot remove production risk already recorded on a target or group. Native checks the combined risk again during preparation and confirmation.'**
+  /// **'Hosts marked as production always require owner confirmation.'**
   String get automationDeploymentProductionHint;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'Choose host and credential reference'**
+  /// **'Add host and credentials'**
   String get automationDeploymentAddReference;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'Referenced credential unavailable'**
+  /// **'Credentials unavailable'**
   String get automationDeploymentReferenceMissing;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'You may explicitly reuse the same existing credential across projects or environments. This does not change the global Host credential. Missing target or jump-host references block preparation.'**
+  /// **'Choose saved credentials for each host, including any jump hosts.'**
   String get automationDeploymentReuse;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'Remove project credential policy'**
+  /// **'Use credentials from host cards'**
   String get automationDeploymentRemoveTitle;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'Saving this removal returns the project to its existing Host credential configuration. Previously admitted jobs keep their original frozen references and deadlines.'**
+  /// **'After you save, the project will use the credentials saved on each host.'**
   String get automationDeploymentRemoveHint;
 
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
@@ -29519,7 +29519,7 @@ abstract class AppLocalizations {
   /// Explicit project/environment SSH credential reference settings and frozen run review; no secret values or authority from UI.
   ///
   /// In en, this message translates to:
-  /// **'Read project context again'**
+  /// **'Reload profiles'**
   String get automationDeploymentRefresh;
 
   /// Fixed actionable Native project/environment error code. Never includes raw exception prose, credential values or references.
@@ -29660,48 +29660,6 @@ abstract class AppLocalizations {
   /// **'Sync project settings'**
   String get automationMetadataPublish;
 
-  /// Host-specific source creation/navigation only; no installed/runtime/update/trust claim.
-  ///
-  /// In en, this message translates to:
-  /// **'Prepare Linux Agent action'**
-  String get hostAgentMenu;
-
-  /// Host-specific source creation/navigation only; no installed/runtime/update/trust claim.
-  ///
-  /// In en, this message translates to:
-  /// **'Installed Agent version and update availability have not been read. Preparing a project does not inspect, install or update an Agent.'**
-  String get hostAgentObservedUnknown;
-
-  /// Host-specific source creation/navigation only; no installed/runtime/update/trust claim.
-  ///
-  /// In en, this message translates to:
-  /// **'This SSH host changed or is unavailable. Close this window and open the action again from that host.'**
-  String get hostAgentTargetChanged;
-
-  /// Host-specific source creation/navigation only; no installed/runtime/update/trust claim.
-  ///
-  /// In en, this message translates to:
-  /// **'Return to {host}'**
-  String hostAgentReturn(String host);
-
-  /// Host-specific source creation/navigation only; no installed/runtime/update/trust claim.
-  ///
-  /// In en, this message translates to:
-  /// **'The created project is unavailable in the original workspace. Open it explicitly from Projects.'**
-  String get hostAgentProjectUnavailable;
-
-  /// Read-only original heartbeat snapshot metadata in Host Agent lifecycle; local UTC receive time, never Ready.
-  ///
-  /// In en, this message translates to:
-  /// **'Last observed Agent version: {version} · read at {time}'**
-  String hostAgentLastObservedVersion(String version, String time);
-
-  /// Qualifies previously observed heartbeat version; no remote action or readiness claim.
-  ///
-  /// In en, this message translates to:
-  /// **'From the same authenticated heartbeat and configured Host. This past observation does not confirm current readiness, update availability or a completed installation.'**
-  String get hostAgentLastObservedHint;
-
   /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
   ///
   /// In en, this message translates to:
@@ -29737,6 +29695,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter password'**
   String get automationVaultManual;
+
+  /// Source option for selecting a saved Ansible Vault password.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved password'**
+  String get automationVaultSavedPassword;
+
+  /// Hint under the inline one-launch Vault password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Only for this launch.'**
+  String get automationVaultManualRunHint;
+
+  /// Explains the launch requirement when the project already has a Vault credential reference.
+  ///
+  /// In en, this message translates to:
+  /// **'This project already links a saved Vault password. Choose the saved password for this project.'**
+  String get automationVaultManualLinked;
 
   /// Ansible Vault selected YAML file operation: automationVaultProjectFile.
   ///
@@ -30121,6 +30097,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delivery unconfirmed'**
   String get automationSchedulesUnknown;
+
+  /// What the manual SSH Runner connection is used for
+  ///
+  /// In en, this message translates to:
+  /// **'ConsoleCrypt starts the Runner on this server over SSH when you launch a job from the app.'**
+  String get automationRemoteRunnerPurpose;
+
+  /// Transport warning for an HTTP repository
+  ///
+  /// In en, this message translates to:
+  /// **'HTTP downloads are unencrypted. Use HTTPS when available and review the imported files before running tasks.'**
+  String get automationGitHttpHint;
+
+  /// File menu action to copy its path relative to the project
+  ///
+  /// In en, this message translates to:
+  /// **'Copy relative path'**
+  String get automationFileCopyPath;
+
+  /// Confirmation before deleting a project file
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the project file {path} from disk?'**
+  String automationFileDeleteConfirm(String path);
+
+  /// Delete the empty folder {path}?
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the empty folder {path}?'**
+  String automationDirectoryDeleteConfirm(String path);
+
+  /// Copy folder path
+  ///
+  /// In en, this message translates to:
+  /// **'Copy folder path'**
+  String get automationProjectCopyFolder;
+
+  /// Remove from library
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from library'**
+  String get automationProjectRemove;
+
+  /// Remove {name} from the library? Its files will stay on disk.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from the library? Its files will stay on disk.'**
+  String automationProjectRemoveConfirm(String name);
+
+  /// Automation dialog action or message.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profile'**
+  String get automationDeploymentDeleteProfile;
+
+  /// Automation dialog action or message.
+  ///
+  /// In en, this message translates to:
+  /// **'Add group'**
+  String get automationGroupAdd;
+
+  /// Automation dialog action or message.
+  ///
+  /// In en, this message translates to:
+  /// **'No groups yet'**
+  String get automationGroupEmpty;
+
+  /// Automation dialog action or message.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a group'**
+  String get automationGroupChoose;
+
+  /// No description provided for @automationGroupUse.
+  ///
+  /// In en, this message translates to:
+  /// **'In the playbook, use hosts: {group}'**
+  String automationGroupUse(String group);
+
+  /// Automation dialog action or message.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink the folder before renaming or deleting this group.'**
+  String get automationGroupUnlinkToEdit;
+
+  /// Automation dialog action or message.
+  ///
+  /// In en, this message translates to:
+  /// **'New file…'**
+  String get automationDirectoryNewFile;
+
+  /// Button to choose an icon for a password entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose icon'**
+  String get keepassChooseEntryIcon;
+
+  /// Name of a KeePass entry icon.
+  ///
+  /// In en, this message translates to:
+  /// **'{icon, select, Key{Default} LockOpen{Lock} Identity{Identity} World{Website} EMail{Email} NetworkServer{Server} Monitor{Computer} Console{Terminal} Homebanking{Bank} Certificate{Certificate} Book{Book} Star{Star} Folder{Folder} other{Icon}}'**
+  String keepassEntryIconName(String icon);
+
+  /// Desktop terminal-only window.
+  ///
+  /// In en, this message translates to:
+  /// **'Command palette'**
+  String get terminalOnlyPalette;
+
+  /// Desktop terminal-only window.
+  ///
+  /// In en, this message translates to:
+  /// **'Open new window'**
+  String get terminalOnlyNewWindow;
+
+  /// Desktop terminal-only window.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open a new terminal window.'**
+  String get terminalOnlyWindowError;
+
+  /// Desktop terminal-only window.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the local shell.'**
+  String get terminalOnlyShellError;
+
+  /// Desktop terminal-only window.
+  ///
+  /// In en, this message translates to:
+  /// **'The shell has exited.'**
+  String get terminalOnlyShellExited;
+
+  /// Label for a desktop interface control.
+  ///
+  /// In en, this message translates to:
+  /// **'Search local shells'**
+  String get terminalLocalShellSearch;
+
+  /// Label for a desktop interface control.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching shells'**
+  String get terminalLocalShellNoMatch;
+
+  /// Label for a desktop interface control.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag sections to reorder them. Use the checkboxes to show or hide them.'**
+  String get navigationDragHint;
+
+  /// Label for a desktop interface control.
+  ///
+  /// In en, this message translates to:
+  /// **'Search icons by name'**
+  String get keepassNerdIconSearch;
+
+  /// Label for a desktop interface control.
+  ///
+  /// In en, this message translates to:
+  /// **'Nerd Fonts icons'**
+  String get keepassNerdIconTitle;
+
+  /// Label for a desktop interface control.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load icons'**
+  String get keepassNerdIconLoadFailed;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

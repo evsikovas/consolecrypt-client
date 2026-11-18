@@ -1,7 +1,0 @@
----
-galaxy_info:
-  role_name: consolecrypt_monitoring_prefix
-  author: ConsoleCrypt
-  description: Owned-prefix monitoring configuration without host service or disk changes
-  min_ansible_version: '2.20'
-dependencies: []

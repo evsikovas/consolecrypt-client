@@ -58,6 +58,33 @@ impl Fixture {
         capture(&self.app, &context).await.unwrap().unwrap()
     }
 }
+
+#[tokio::test]
+async fn saved_groups_use_only_selected_hosts_and_include_parent_groups() {
+    let f = Fixture::new().await;
+    let (_, u) = f.app.unlocked().await.unwrap();
+    let parent = Group::new("Test Servers");
+    let mut folder = f.folder.clone();
+    folder.parent_id = Some(parent.id);
+    let mut other = Host::new("Unselected server", "192.0.2.2");
+    other.group_id = Some(folder.id);
+    u.writer.put(VaultObject::Group(parent)).await.unwrap();
+    u.writer.put(VaultObject::Group(folder)).await.unwrap();
+    u.writer.put(VaultObject::Host(other.clone())).await.unwrap();
+    let host_id = Uuid::parse_str(&f.host.id.to_string()).unwrap();
+    let selected = vec![f.host.id.to_string(), other.id.to_string()];
+    let mut inventory = ProjectInventory {
+        version: 2,
+        selected_hosts: Some(vec![host_id]),
+        ..ProjectInventory::default()
+    };
+    add_host_groups(&mut inventory, &u.working().snapshot(), &selected).unwrap();
+    assert_eq!(inventory.groups["Docker_folder"], vec![host_id]);
+    assert_eq!(inventory.groups["Test_Servers"], vec![host_id]);
+    drop(u);
+    f.app.shutdown().await.unwrap();
+}
+
 #[tokio::test]
 async fn live_direct_ids_are_profile_local_cas_and_never_move_or_grant_hosts() {
     let f = Fixture::new().await;

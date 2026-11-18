@@ -71,7 +71,7 @@ pub use pipeline::{LlmMode, SearchOptions, SearchOutcome};
 pub use policy::{
     ApprovedCommand, ExecutionGate, HostRef, PolicyError, ProposalOrigin, RunProposal,
 };
-pub use provider::{build_provider, Capabilities, LlmProvider, ProviderSettings};
+pub use provider::{build_device_local_provider, build_provider, Capabilities, LlmProvider, ProviderSettings};
 pub use risk::{classify, combine_with_ai, CommandDialect, RiskAssessment, RiskLevel};
 pub use sanitizer::{PrivacyProfile, SanitizedText, SanitizerSession};
 pub use snippet::{render_snippet, RenderDialect, Template, VariableForm};

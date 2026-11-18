@@ -57,6 +57,20 @@ abstract interface class AutomationMoveService {
   });
 }
 
+abstract interface class AutomationFileActionsService {
+  Future<void> editProjectFileEntry(
+    String projectId, {
+    required String path,
+    required String expectedSha256,
+    required String action,
+    String? newName,
+  });
+}
+
+abstract interface class AutomationProjectRemovalService {
+  Future<void> removeProject(String projectId, {required int revision});
+}
+
 abstract interface class AutomationNewProjectService {
   Future<AutomationProject> scaffoldProject({required String name, String? directory, String? role});
 }

@@ -3,7 +3,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "agent-node-wire",
     "crypto-core",
     "platform-core",
     "vault-core",
@@ -54,7 +53,6 @@ cc-protocol = { git = "https://github.com/evsikovas/consolecrypt-server.git", re
 cc-models = { path = "../../crates/models" }
 
 # internal crates
-cc-agent-node-wire = { path = "agent-node-wire" }
 cc-crypto-core = { path = "crypto-core" }
 cc-platform-core = { path = "platform-core", default-features = false }
 cc-vault-core = { path = "vault-core" }

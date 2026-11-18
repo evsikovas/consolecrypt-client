@@ -1,5 +1,5 @@
 //! Small audited Win32 boundary. No ambient paths, handle ownership transfer,
-//! overwrite/delete, network, token privileges or global configuration changes.
+//! overwrite, network, token privileges or global configuration changes.
 #![cfg(windows)]
 #![deny(unsafe_op_in_unsafe_fn)]
 use std::{
@@ -15,7 +15,7 @@ use windows_sys::Wdk::Storage::FileSystem::{
 };
 use windows_sys::Win32::{
     Foundation::{RtlNtStatusToDosError, WAIT_OBJECT_0},
-    Storage::FileSystem::GetVolumeInformationByHandleW,
+    Storage::FileSystem::{FILE_DISPOSITION_INFO, FileDispositionInfo, GetVolumeInformationByHandleW, SetFileInformationByHandle},
     System::{
         IO::IO_STATUS_BLOCK,
         Threading::{INFINITE, WaitForSingleObject},
@@ -194,6 +194,22 @@ pub(in crate::project) fn rename_project_move_file(
 ) -> io::Result<()> {
     use std::os::windows::io::AsHandle;
     HEALTH.run(|| rename_admitted(file.as_handle(), target.as_handle(), name))
+}
+
+pub(in crate::project) fn delete_project_file(file: &cap_std::fs::File) -> io::Result<()> {
+    use std::os::windows::io::AsHandle;
+    let info = FILE_DISPOSITION_INFO { DeleteFile: true };
+    // SAFETY: this is the checked DELETE handle. The fixed-size structure lives
+    // through the call and Windows removes this file when the handle closes.
+    let ok = unsafe {
+        SetFileInformationByHandle(
+            file.as_handle().as_raw_handle(),
+            FileDispositionInfo,
+            ptr::from_ref(&info).cast(),
+            size_of::<FILE_DISPOSITION_INFO>() as u32,
+        )
+    };
+    if ok == 0 { Err(io::Error::last_os_error()) } else { Ok(()) }
 }
 
 fn rename_admitted(

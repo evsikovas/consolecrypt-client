@@ -115,7 +115,7 @@ def _environment_key():
     version = f'{sys.version_info.major}.{sys.version_info.minor}'
     machine = platform.machine()
     if sys.platform == 'linux' and (machine == 'x86_64' and version in ('3.12', '3.14')
-                                    or machine == 'aarch64' and version == '3.12'):
+                                    or machine == 'aarch64' and version in ('3.12', '3.13')):
         return f'linux-{machine}-py{sys.version_info.major}{sys.version_info.minor}'
     return None
 
@@ -216,7 +216,7 @@ def install(payload):
         if (not isinstance(content, str) or str(parts) != name or parts.is_absolute()
                 or '..' in parts.parts or '\\' in name
                 or not (name.startswith('src/consolecrypt_runner/') and name.endswith(('.py', '.json'))
-                        or re.fullmatch(r'requirements-linux-(?:x86_64-py(?:312|314)|aarch64-py312)\.lock', name))):
+                        or re.fullmatch(r'requirements-linux-(?:x86_64-py(?:312|314)|aarch64-py(?:312|313))\.lock', name))):
             raise ValueError('invalid_package')
         total += len(content.encode())
     if total > 4 * 1024 * 1024:
