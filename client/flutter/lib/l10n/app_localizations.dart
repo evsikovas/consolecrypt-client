@@ -27725,7 +27725,7 @@ abstract class AppLocalizations {
   /// Explicit portable saved-project package UI: automationPortableWarning.
   ///
   /// In en, this message translates to:
-  /// **'Only selected saved files are packaged. They can contain hardcoded passwords or other private data. Known control files are excluded; file contents are not automatically cleaned.'**
+  /// **'The archive uses saved project files. Known secret and control files are excluded. Other files may contain passwords or private data.'**
   String get automationPortableWarning;
 
   /// Explicit portable saved-project package UI: automationPortableExcluded.
@@ -27733,6 +27733,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Excluded from the package'**
   String get automationPortableExcluded;
+
+  /// Export all project files allowed in the package.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole project'**
+  String get automationPortableWholeProject;
+
+  /// Choose which files to include in a package.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose files'**
+  String get automationPortableChooseFiles;
+
+  /// Size or file count limit for encrypted project packages.
+  ///
+  /// In en, this message translates to:
+  /// **'The archive can hold up to 1,000 files and 16 MiB in total. Each file must be at most 1 MiB. To continue, choose fewer or smaller files.'**
+  String get automationPortableSizeLimit;
+
+  /// Count and formatted size of project files selected for export.
+  ///
+  /// In en, this message translates to:
+  /// **'Files ({files}) · {size}'**
+  String automationPortableContents(int files, String size);
 
   /// Explicit portable saved-project package UI: automationPortableExport.
   ///

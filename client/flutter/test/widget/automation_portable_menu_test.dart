@@ -178,7 +178,7 @@ void main() {
     expect(files.saves, 0);
     expect(files.opens, 0);
   });
-  testWidgets('Save choice saves current file before Native source capture and never auto-selects or exports', (
+  testWidgets('Save choice saves the current file before Native source capture and waits for export confirmation', (
     tester,
   ) async {
     final (_, service, gateway, files) = await open(tester);

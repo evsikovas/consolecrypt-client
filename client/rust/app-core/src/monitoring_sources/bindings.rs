@@ -145,6 +145,7 @@ fn no_duplicate(catalog: &Catalog, except: Option<&str>, binding: &HostBinding) 
     Ok(())
 }
 
+#[cfg(test)]
 impl AppCore {
     /// The user's explicit first CreateBinding atomically migrates v1 -> v2.
     /// Source-only writes never migrate v1 or add technical enablement fields.

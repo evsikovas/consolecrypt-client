@@ -210,17 +210,17 @@ void main() {
     expect(find.textContaining('5 of 8 running'), findsOneWidget);
 
     // Running compose projects alphabetically, loose containers after them.
-    final monitoring = tester.getTopLeft(find.byKey(const ValueKey('docker-group-monitoring')));
+    final proxy = tester.getTopLeft(find.byKey(const ValueKey('docker-group-proxy')));
     final shop = tester.getTopLeft(find.byKey(const ValueKey('docker-group-shop')));
     final standalone = tester.getTopLeft(find.byKey(const ValueKey('docker-group-')));
-    expect(monitoring.dy, lessThan(shop.dy));
+    expect(proxy.dy, lessThan(shop.dy));
     expect(shop.dy, lessThan(standalone.dy));
     expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-title-'))).data, 'Containers');
     expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-shop'))).data, '4/4 running');
-    expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-monitoring'))).data, '1/2 running');
+    expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-proxy'))).data, '1/2 running');
     expect(find.text('(web)'), findsOneWidget);
     expect(find.text('0.0.0.0:8080→80/tcp'), findsOneWidget);
-    expect(find.text('127.0.0.1:9090→9090/tcp'), findsOneWidget);
+    expect(find.text('127.0.0.1:9090→80/tcp'), findsOneWidget);
     final api = _id(tester, 'shop-api-1');
     expect(find.byKey(ValueKey('docker-health-$api')), findsOneWidget);
     expect(find.textContaining(api.substring(0, 12)), findsWidgets);
@@ -234,17 +234,17 @@ void main() {
     expect(find.text('shop-web-1'), findsOneWidget);
 
     // Hide stopped containers and filter by image.
-    expect(find.text('monitoring-grafana-1'), findsOneWidget);
+    expect(find.text('proxy-cache-1'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('docker-filter-running')));
     await settle(tester);
-    expect(find.text('monitoring-grafana-1'), findsNothing);
+    expect(find.text('proxy-cache-1'), findsNothing);
     expect(find.text('backup-once'), findsNothing);
     expect(find.text('queue-worker'), findsOneWidget);
     await tester.enterText(find.byKey(const ValueKey('docker-filter-input')), 'postgres');
     await tester.pump();
     expect(find.text('shop-postgres-1'), findsOneWidget);
     expect(find.text('shop-web-1'), findsNothing);
-    expect(find.byKey(const ValueKey('docker-group-monitoring')), findsNothing);
+    expect(find.byKey(const ValueKey('docker-group-proxy')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -288,21 +288,21 @@ void main() {
     expect(service.actions, [(web, DockerAction.stop)]);
     expect(find.byKey(ValueKey('docker-start-$web')), findsOneWidget);
 
-    final grafana = _id(tester, 'monitoring-grafana-1');
-    await tapKey(tester, 'docker-menu-button-$grafana');
+    final cache = _id(tester, 'proxy-cache-1');
+    await tapKey(tester, 'docker-menu-button-$cache');
     await tapKey(tester, 'docker-menu-remove');
-    expect(find.text('Remove monitoring-grafana-1?'), findsOneWidget);
+    expect(find.text('Remove proxy-cache-1?'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('confirm-cancel')));
     await settle(tester);
     expect(service.actions.where((a) => a.$2 == DockerAction.remove), isEmpty);
-    expect(find.text('monitoring-grafana-1'), findsOneWidget);
+    expect(find.text('proxy-cache-1'), findsOneWidget);
 
-    await tapKey(tester, 'docker-menu-button-$grafana');
+    await tapKey(tester, 'docker-menu-button-$cache');
     await tapKey(tester, 'docker-menu-remove');
     await tester.tap(find.byKey(const ValueKey('confirm-ok')));
     await settle(tester);
-    expect(service.actions.last, (grafana, DockerAction.remove));
-    expect(find.text('monitoring-grafana-1'), findsNothing);
+    expect(service.actions.last, (cache, DockerAction.remove));
+    expect(find.text('proxy-cache-1'), findsNothing);
 
     final redis = _id(tester, 'shop-redis-1');
     await tapKey(tester, 'docker-menu-button-$redis');

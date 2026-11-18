@@ -16052,10 +16052,25 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationPortableWarning =>
-      'В пакет войдут только выбранные сохранённые файлы. В них могут быть пароли и другие личные данные. Известные служебные файлы исключены, но содержимое файлов не очищается автоматически.';
+      'В архив входят сохранённые файлы проекта. Служебные файлы и известные файлы с секретами исключаются. В остальных файлах могут быть пароли или личные данные.';
 
   @override
   String get automationPortableExcluded => 'Исключён из пакета';
+
+  @override
+  String get automationPortableWholeProject => 'Весь проект';
+
+  @override
+  String get automationPortableChooseFiles => 'Выбрать файлы';
+
+  @override
+  String get automationPortableSizeLimit =>
+      'В архив можно добавить до 1 000 файлов общим объёмом до 16 МиБ. Максимальный размер одного файла — 1 МиБ. Чтобы продолжить, сократите выбор.';
+
+  @override
+  String automationPortableContents(int files, String size) {
+    return 'Файлы ($files) · $size';
+  }
 
   @override
   String get automationPortableExport => 'Сохранить пакет';

@@ -59,6 +59,18 @@ final class AutomationPortableController extends ChangeNotifier {
     _emit();
   }
 
+  void selectAll() {
+    if (!current || busy || review == null) return;
+    _selectAvailable(review!);
+    _emit();
+  }
+
+  void _selectAvailable(PortableContext context) {
+    _selected
+      ..clear()
+      ..addAll(context.choices.where((choice) => choice.selectable).map((choice) => choice.path));
+  }
+
   void _failed() {
     imported = null;
     exported = null;
@@ -92,7 +104,7 @@ final class AutomationPortableController extends ChangeNotifier {
         throw const PortablePackageFailure('portable_context_changed');
       }
       review = value;
-      _selected.clear();
+      _selectAvailable(value);
       phase = PortablePhase.selecting;
       _emit();
     } catch (_) {

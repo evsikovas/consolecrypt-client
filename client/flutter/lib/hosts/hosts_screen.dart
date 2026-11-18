@@ -719,7 +719,7 @@ class _HostTile extends ConsumerWidget {
     );
     final noteTarget = hostNoteContext(host).target;
     final noteCount = (ref.watch(notesProvider).value ?? const <Note>[]).where((n) => n.target == noteTarget).length;
-    Widget actions({bool metricLabel = false}) => Row(
+    final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (noteCount > 0) ...[
@@ -735,23 +735,12 @@ class _HostTile extends ConsumerWidget {
           const SizedBox(width: GlassSpacing.s4),
         ],
         if (metricsAvailable) ...[
-          if (metricLabel)
-            GlassButton(
-              key: ValueKey('host-metrics-${host.id.value}'),
-              label: l10n.hostMetricsTitle,
-              icon: Icons.show_chart_rounded,
-              size: GlassControlSize.sm,
-              style: GlassButtonStyle.plain,
-              onPressed: () => context.go(AppRoutes.hostMetrics(host.id)),
-            )
-          else
-            GlassIconButton(
-              key: ValueKey('host-metrics-${host.id.value}'),
-              icon: Icons.show_chart_rounded,
-              tooltip: l10n.hostMetricsTitle,
-              style: GlassIconButtonStyle.plain,
-              onPressed: () => context.go(AppRoutes.hostMetrics(host.id)),
-            ),
+          GlassIconButton(
+            key: ValueKey('host-metrics-${host.id.value}'),
+            icon: Icons.show_chart_rounded,
+            tooltip: l10n.hostMetricsTitle,
+            onPressed: () => context.go(AppRoutes.hostMetrics(host.id)),
+          ),
           const SizedBox(width: GlassSpacing.s4),
         ],
         GlassIconButton(
@@ -934,7 +923,7 @@ class _HostTile extends ConsumerWidget {
               ),
             ],
           ),
-          trailing: actions(),
+          trailing: actions,
           onTap: () => connectToHost(context, ref, host),
         ),
       );
@@ -989,21 +978,19 @@ class _HostTile extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) => Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        host.tags.isEmpty ? (host.isRdp ? 'RDP' : 'SSH') : host.tags.join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: t.caption.copyWith(color: tokens.secondaryLabel),
-                      ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      host.tags.isEmpty ? (host.isRdp ? 'RDP' : 'SSH') : host.tags.join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.caption.copyWith(color: tokens.secondaryLabel),
                     ),
-                    const SizedBox(width: 8),
-                    actions(metricLabel: constraints.maxWidth >= 300),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  actions,
+                ],
               ),
             ],
           ),

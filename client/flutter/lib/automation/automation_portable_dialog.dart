@@ -19,6 +19,10 @@ final class PortableDialogLabels {
     required this.confirmPassword,
     required this.warning,
     required this.knownExcluded,
+    required this.wholeProject,
+    required this.chooseFiles,
+    required this.sizeLimit,
+    required this.contents,
     required this.export,
     required this.inspect,
     required this.cancel,
@@ -33,6 +37,9 @@ final class PortableDialogLabels {
       confirmPassword,
       warning,
       knownExcluded,
+      wholeProject,
+      chooseFiles,
+      sizeLimit,
       export,
       inspect,
       cancel,
@@ -40,6 +47,7 @@ final class PortableDialogLabels {
       failed,
       publicationBlocked;
   final String Function(int files, int bytes, int excluded) summary;
+  final String Function(int files, int bytes) contents;
 }
 
 /// Scope itself is the EXISTING original AutomationScope. This route removes
@@ -62,6 +70,7 @@ class AutomationPortableDialog extends ConsumerStatefulWidget {
 
 class _PortableDialogState extends ConsumerState<AutomationPortableDialog> {
   final password = TextEditingController(), confirmation = TextEditingController();
+  bool chooseFiles = false;
   bool get _sameOriginalProfile => widget.originalScope.profileId == widget.controller.scope.profileId;
   @override
   void initState() {
@@ -121,6 +130,9 @@ class _PortableDialogState extends ConsumerState<AutomationPortableDialog> {
       return const SizedBox.shrink();
     }
     final review = controller.review, imported = controller.imported;
+    final selection = controller.selected;
+    final size = review?.selectionSize(selection);
+    final exportReady = selection.isNotEmpty && size?.tooLarge == false;
     return AlertDialog(
       title: Text(widget.importMode ? l.importTitle : l.exportTitle),
       content: SizedBox(
@@ -143,27 +155,40 @@ class _PortableDialogState extends ConsumerState<AutomationPortableDialog> {
                   Text(l.summary(imported.files, imported.bytes, imported.exclusions)),
                   Text(l.publicationBlocked, key: const ValueKey('portable-import-blocked')),
                 ],
-                if (!widget.importMode)
-                  SizedBox(
-                    height: ((review?.choices.length ?? 0).clamp(1, 4) * 64).toDouble(),
-                    child: ListView(
-                      children: [
-                        for (final choice in review?.choices ?? const <PortableChoice>[])
-                          CheckboxListTile(
-                            key: ValueKey('portable-path-${choice.path}'),
-                            value: controller.selected.contains(choice.path),
-                            onChanged: controller.busy || !choice.selectable
-                                ? null
-                                : (v) => controller.select(choice.path, v == true),
-                            title: Tooltip(
-                              message: choice.path,
-                              child: Text(choice.path, maxLines: 2, overflow: TextOverflow.ellipsis),
-                            ),
-                            subtitle: choice.selectable ? null : Text(l.knownExcluded),
-                          ),
-                      ],
-                    ),
+                if (size != null && !widget.importMode) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      ChoiceChip(
+                        key: const ValueKey('portable-whole-project'),
+                        selected: !chooseFiles,
+                        label: Text(l.wholeProject),
+                        onSelected: controller.busy
+                            ? null
+                            : (_) {
+                                controller.selectAll();
+                                setState(() => chooseFiles = false);
+                              },
+                      ),
+                      ChoiceChip(
+                        key: const ValueKey('portable-choose-files'),
+                        selected: chooseFiles,
+                        label: Text(l.chooseFiles),
+                        onSelected: controller.busy ? null : (_) => setState(() => chooseFiles = true),
+                      ),
+                    ],
                   ),
+                  Text(l.contents(size.files, size.bytes)),
+                  if (size.tooLarge)
+                    InfoBanner(
+                      message: l.sizeLimit,
+                      tone: BannerTone.danger,
+                      key: const ValueKey('portable-size-limit'),
+                    ),
+                  if (chooseFiles) _fileList(review!.choices, selection),
+                  const SizedBox(height: 12),
+                ],
                 SecretField(
                   key: const ValueKey('portable-password'),
                   controller: password,
@@ -195,10 +220,35 @@ class _PortableDialogState extends ConsumerState<AutomationPortableDialog> {
         // There is no Import/Install/Commit action until real Native publication CAS.
         FilledButton(
           key: const ValueKey('portable-submit'),
-          onPressed: controller.busy || !widget.importMode && controller.selected.isEmpty ? null : _submit,
+          onPressed: controller.busy || !widget.importMode && !exportReady ? null : _submit,
           child: Text(widget.importMode ? l.inspect : l.export),
         ),
       ],
+    );
+  }
+
+  Widget _fileList(List<PortableChoice> choices, Set<String> selection) {
+    final rows = choices.where((choice) => !choice.directory || choice.selectable).toList();
+    return SizedBox(
+      height: (rows.length.clamp(1, 4) * 64).toDouble(),
+      child: ListView.builder(
+        itemCount: rows.length,
+        itemBuilder: (context, index) {
+          final choice = rows[index];
+          return CheckboxListTile(
+            key: ValueKey('portable-path-${choice.path}'),
+            value: selection.contains(choice.path),
+            onChanged: widget.controller.busy || !choice.selectable
+                ? null
+                : (value) => widget.controller.select(choice.path, value == true),
+            title: Tooltip(
+              message: choice.path,
+              child: Text(choice.path, maxLines: 2, overflow: TextOverflow.ellipsis),
+            ),
+            subtitle: choice.selectable ? null : Text(widget.labels.knownExcluded),
+          );
+        },
+      ),
     );
   }
 }

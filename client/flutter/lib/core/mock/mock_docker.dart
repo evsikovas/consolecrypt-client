@@ -328,15 +328,15 @@ class MockDockerService implements DockerService {
   final composeFiles = <String, String>{
     '/srv/shop/compose.yaml': _shopCompose, // l10n-ignore: demo path
     '/srv/shop/compose.override.yaml': _shopOverride, // l10n-ignore: demo path
-    '/opt/monitoring/docker-compose.yml': _monitoringCompose, // l10n-ignore: demo path
+    '/opt/proxy/docker-compose.yml': _proxyCompose, // l10n-ignore: demo path
   };
 
   /// Files the demo SSH user may not read.
-  static const composeRootOnly = '/opt/monitoring/docker-compose.secrets.yml'; // l10n-ignore: demo path
+  static const composeRootOnly = '/opt/proxy/docker-compose.secrets.yml'; // l10n-ignore: demo path
 
   static const _composeLayout = {
     'shop': ['/srv/shop/compose.yaml', '/srv/shop/compose.override.yaml'], // l10n-ignore: demo paths
-    'monitoring': ['/opt/monitoring/docker-compose.yml', composeRootOnly], // l10n-ignore: demo paths
+    'proxy': ['/opt/proxy/docker-compose.yml', composeRootOnly], // l10n-ignore: demo paths
   };
 
   /// Backups written by saves, for tests.
@@ -345,13 +345,13 @@ class MockDockerService implements DockerService {
   final _composeJobs = <String, String>{};
 
   /// Directories the demo reports as writable by other users.
-  static const composeSharedDirs = ['/opt/monitoring']; // l10n-ignore: demo path
+  static const composeSharedDirs = ['/opt/proxy']; // l10n-ignore: demo path
 
   /// Literal secrets in the demo files and how the core masks them.
   static const _composeSecrets = {
     'demo-redis-pass': '••••••', // l10n-ignore: demo
     'https://demo-sentry-key@o1.ingest.example.org/7': '••••••', // l10n-ignore: demo
-    'demo-grafana-admin': '••••••', // l10n-ignore: demo
+    'demo-cache-admin': '••••••', // l10n-ignore: demo
   };
 
   static String composeDigest(String text) =>
@@ -522,15 +522,15 @@ volumes:
       LOG_LEVEL: debug
 '''; // l10n-ignore: demo file
 
-  static const _monitoringCompose = '''services:
-  prometheus:
-    image: prom/prometheus:v2.54.1
+  static const _proxyCompose = '''services:
+  nginx:
+    image: nginx:1.27-alpine
     ports:
-      - "127.0.0.1:9090:9090"
-  grafana:
-    image: grafana/grafana:11.2.0
+      - "127.0.0.1:9090:80"
+  cache:
+    image: redis:7-alpine
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: demo-grafana-admin
+      DEMO_CACHE_TOKEN: demo-cache-admin
 '''; // l10n-ignore: demo file
 
   static DockerContainer _copy(DockerContainer c, {required DockerContainerState state, required String status}) =>
@@ -629,23 +629,23 @@ volumes:
         ip: '172.18.0.3',
       ),
       c(
-        'monitoring-prometheus-1',
-        'prom/prometheus:v2.54.1',
+        'proxy-nginx-1',
+        'nginx:1.27-alpine',
         running,
         'Up 26 hours',
-        project: 'monitoring',
-        service: 'prometheus',
-        ports: const [DockerPort(privatePort: 9090, publicPort: 9090, protocol: 'tcp', ip: '127.0.0.1')],
+        project: 'proxy',
+        service: 'nginx',
+        ports: const [DockerPort(privatePort: 80, publicPort: 9090, protocol: 'tcp', ip: '127.0.0.1')],
         ip: '172.19.0.2',
       ),
       c(
-        'monitoring-grafana-1',
-        'grafana/grafana:11.2.0',
+        'proxy-cache-1',
+        'redis:7-alpine',
         DockerContainerState.exited,
         'Exited (1) 2 hours ago',
-        project: 'monitoring',
-        service: 'grafana',
-        ports: const [DockerPort(privatePort: 3000, protocol: 'tcp')],
+        project: 'proxy',
+        service: 'cache',
+        ports: const [DockerPort(privatePort: 6379, protocol: 'tcp')],
         ip: '172.19.0.3',
       ),
       c(

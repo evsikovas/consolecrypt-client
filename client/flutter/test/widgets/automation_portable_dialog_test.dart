@@ -20,6 +20,10 @@ final labels = PortableDialogLabels(
   confirmPassword: 'Confirm separate password',
   warning: 'Explicit source selection can contain hardcoded secrets. No credential/Vault lookup.',
   knownExcluded: 'Excluded by Native policy',
+  wholeProject: 'Whole project',
+  chooseFiles: 'Choose files',
+  sizeLimit: 'Archive size limit exceeded',
+  contents: (files, bytes) => '$files files, $bytes bytes selected',
   export: 'Export new file',
   inspect: 'Inspect package',
   cancel: 'Cancel',
@@ -78,15 +82,14 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('explicit selected file and separate confirmedpassword issue exactlyoneserviceexport', (tester) async {
+  testWidgets('whole project exports all eligible files without opening the selection', (tester) async {
     final service = fixture.Service(), files = fixture.Files(), c = fixture.controller(service, files);
     const scope = AutomationScope(fixture.profile, true);
     await open(tester, c, scope);
     expect(service.exports, 0);
-    expect(c.selected, isEmpty);
-    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('portable-path-.env'))).onChanged, isNull);
-    await tester.tap(find.byKey(const ValueKey('portable-path-play.yml')));
-    await tester.pump();
+    expect(c.selected, {'play.yml', 'roles/demo/tasks/main.yml'});
+    expect(find.byType(CheckboxListTile), findsNothing);
+    expect(find.text('2 files, 60 bytes selected'), findsOneWidget);
     for (final key in ['portable-password', 'portable-confirm-password']) {
       await tester.enterText(
         find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(EditableText)),
@@ -96,6 +99,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('portable-submit')));
     await tester.pumpAndSettle();
     expect(service.exports, 1);
+    expect(service.request?['selectedPaths'], ['play.yml', 'roles/demo/tasks/main.yml']);
     expect(find.byKey(const ValueKey('portable-exported')), findsOneWidget);
     expect(files.finishes, 1);
     expect(tester.widgetList<EditableText>(find.byType(EditableText)).every((e) => e.controller.text.isEmpty), isTrue);
@@ -110,8 +114,16 @@ void main() {
         c = fixture.controller(service, files, current: () => current);
     const scope = AutomationScope(fixture.profile, true);
     await open(tester, c, scope);
+    await tester.tap(find.byKey(const ValueKey('portable-choose-files')));
+    await tester.pump();
+    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('portable-path-.env'))).onChanged, isNull);
     await tester.tap(find.byKey(const ValueKey('portable-path-play.yml')));
     await tester.pump();
+    expect(c.selected, {'roles/demo/tasks/main.yml'});
+    await tester.ensureVisible(find.byKey(const ValueKey('portable-whole-project')));
+    await tester.tap(find.byKey(const ValueKey('portable-whole-project')));
+    await tester.pumpAndSettle();
+    expect(c.selected, {'play.yml', 'roles/demo/tasks/main.yml'});
     for (final key in ['portable-password', 'portable-confirm-password']) {
       await tester.enterText(
         find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(EditableText)),
@@ -135,6 +147,22 @@ void main() {
     await tester.pump();
     expect(files.finishes, 0);
     expect(tester.takeException(), isNull);
+  });
+  testWidgets('oversized whole selection prompts a narrower choice before the save picker', (tester) async {
+    final project = fixture.contextJson();
+    (project['choices'] as List<Map<String, dynamic>>).first['bytes'] = 1024 * 1024 + 1;
+    final service = fixture.Service()
+      ..contextWait = (Completer<PortableContext>()..complete(PortableContext.fromJson(project)));
+    final files = fixture.Files(), c = fixture.controller(service, files);
+    await open(tester, c, const AutomationScope(fixture.profile, true));
+    expect(find.byKey(const ValueKey('portable-size-limit')), findsOneWidget);
+    expect(files.saves, 0);
+    await tester.tap(find.byKey(const ValueKey('portable-choose-files')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('portable-path-play.yml')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('portable-size-limit')), findsNothing);
+    expect(c.selected, {'roles/demo/tasks/main.yml'});
   });
   testWidgets('rejected second inspection removes the previous summary and shows a boxed failure', (tester) async {
     final service = fixture.Service(), files = fixture.Files(), c = fixture.controller(service, files);

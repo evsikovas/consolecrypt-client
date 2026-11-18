@@ -43,20 +43,22 @@ Future<ProviderContainer> open(
   WidgetTester tester,
   fixture.Service service, {
   String sourceKind = 'managed',
+  Size size = const Size(1100, 1200),
+  String runnerName = 'Fixture runner',
 }) async {
-  await tester.binding.setSurfaceSize(const Size(1100, 1200));
+  await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         automationScopeProvider.overrideWithValue(scope),
         automationRunnersProvider.overrideWith(
-          (_) async => const AutomationRunnerCatalog(
+          (_) async => AutomationRunnerCatalog(
             readOnly: false,
             runners: [
               AutomationRunnerProfile(
                 id: fixture.runner,
-                name: 'Fixture runner',
+                name: runnerName,
                 readOnly: false,
                 revision: 1,
               ),
@@ -137,6 +139,24 @@ Future<void> finish(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('input fields stay separated and scroll in a narrow dependencies dialog', (tester) async {
+    final service = fixture.Service();
+    final runnerName = 'Fixture runner ${'long name ' * 12}';
+    await open(tester, service, size: const Size(480, 550), runnerName: runnerName);
+    Finder field(String name) => find.byKey(ValueKey('dependency-$name'));
+    for (final (above, below) in [('runner', 'kind'), ('kind', 'name'), ('name', 'version')]) {
+      expect(tester.getRect(field(below)).top - tester.getRect(field(above)).bottom, greaterThanOrEqualTo(8));
+    }
+    await tap(tester, 'dependency-runner');
+    await tester.tap(find.textContaining(runnerName).last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(field('sha'));
+    expect(field('sha').hitTestable(), findsOneWidget);
+    expect(service.requests, isEmpty);
+    expect(tester.takeException(), isNull);
+    await finish(tester);
+  });
+
   testWidgets(
     'manual Runner/source review does not start network until explicit Download',
     (tester) async {

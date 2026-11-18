@@ -6,6 +6,10 @@ const portablePackageExtension = 'ccproject';
 // Native v1 source+manifest+fixed envelope limit; contract test checks the actual Native serializer witness.
 const portableMaxEncryptedBytes = 17301600;
 const portableMaxExportRequestBytes = 262144;
+// Mirrors the v1 Native package tree limits for feedback before the save picker.
+const _maxPackageFiles = 1000;
+const _maxPackageBytes = 16 * 1024 * 1024;
+const _maxFileBytes = 1024 * 1024;
 // A picker filter is not validation. Native still validates the entire local
 // path, parent, ASCII leaf, no-overwrite and original source/scope independently.
 bool portablePackageFilename(String path) {
@@ -114,10 +118,27 @@ final class PortableContext {
   final String projectId, digest, projectStamp;
   final int projectRevision;
   final List<PortableChoice> choices;
+  ({int files, int bytes, bool tooLarge}) selectionSize(Set<String> paths) {
+    var files = 0, bytes = 0;
+    var oversizedFile = false;
+    for (final choice in choices) {
+      if (choice.directory || !paths.contains(choice.path)) continue;
+      files++;
+      bytes += choice.bytes;
+      oversizedFile |= choice.bytes > _maxFileBytes;
+    }
+    return (
+      files: files,
+      bytes: bytes,
+      tooLarge: oversizedFile || files > _maxPackageFiles || bytes > _maxPackageBytes,
+    );
+  }
+
   Map<String, dynamic> selection(Set<String> paths) {
     if (paths.isEmpty ||
         paths.length > 2000 ||
-        !choices.where((e) => e.selectable).map((e) => e.path).toSet().containsAll(paths)) {
+        !choices.where((e) => e.selectable).map((e) => e.path).toSet().containsAll(paths) ||
+        selectionSize(paths).tooLarge) {
       throw const PortablePackageFailure('portable_selection_invalid');
     }
     final request = {

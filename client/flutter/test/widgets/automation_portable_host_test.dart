@@ -312,12 +312,11 @@ void main() {
     expect(find.byKey(const ValueKey('portable-exported')), findsNothing);
   });
   testWidgets(
-    'export requires explicit individual file selection and trusted save picker; no arbitrary directory or execution',
+    'whole project export still requires explicit submit and the trusted save picker',
     (tester) async {
       final (_, gateway, _, files, _) = await open(tester);
       await tap(tester, 'portable-host-open');
       expect(files.saves, 0);
-      await tap(tester, 'portable-path-play.yml');
       await password(tester, confirm: true);
       await tap(tester, 'portable-submit');
       expect(files.saves, 1);

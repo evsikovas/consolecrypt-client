@@ -15715,10 +15715,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationPortableWarning =>
-      'Only selected saved files are packaged. They can contain hardcoded passwords or other private data. Known control files are excluded; file contents are not automatically cleaned.';
+      'The archive uses saved project files. Known secret and control files are excluded. Other files may contain passwords or private data.';
 
   @override
   String get automationPortableExcluded => 'Excluded from the package';
+
+  @override
+  String get automationPortableWholeProject => 'Whole project';
+
+  @override
+  String get automationPortableChooseFiles => 'Choose files';
+
+  @override
+  String get automationPortableSizeLimit =>
+      'The archive can hold up to 1,000 files and 16 MiB in total. Each file must be at most 1 MiB. To continue, choose fewer or smaller files.';
+
+  @override
+  String automationPortableContents(int files, String size) {
+    return 'Files ($files) · $size';
+  }
 
   @override
   String get automationPortableExport => 'Save package';

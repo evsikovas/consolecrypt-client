@@ -18,6 +18,7 @@ Map<String, dynamic> contextJson() => {
   'projectStamp': 'b' * 64,
   'choices': [
     {'path': 'play.yml', 'bytes': 24, 'directory': false, 'selectable': true},
+    {'path': 'roles/demo/tasks/main.yml', 'bytes': 36, 'directory': false, 'selectable': true},
     {'path': '.env', 'bytes': 44, 'directory': false, 'selectable': false},
   ],
 };
@@ -133,18 +134,18 @@ void main() {
     final c = context();
     expect(() => c.selection({'.env'}), throwsA(isA<PortablePackageFailure>()));
   });
-  test('load never auto selects; explicit selection uses exactNative original metadata', () async {
+  test('whole project includes all eligible saved paths and only exports on submit', () async {
     final service = Service(), files = Files(), c = controller(service, files);
     await c.load();
-    expect(c.selected, isEmpty);
+    const allFiles = {'play.yml', 'roles/demo/tasks/main.yml'};
+    expect(c.selected, allFiles);
     expect(service.exports, 0);
     c.select('.env', true);
-    expect(c.selected, isEmpty);
-    c.select('play.yml', true);
+    expect(c.selected, allFiles);
     final password = SecretText('synthetic package password'), confirmation = SecretText('synthetic package password');
     await c.export(password, confirmation);
     expect(service.exports, 1);
-    expect(service.request, context().selection({'play.yml'}));
+    expect(service.request, context().selection(allFiles));
     expect(service.destination, files.savePath);
     expect(c.phase, PortablePhase.exported);
     expect(password.isWiped && confirmation.isWiped, isTrue);
@@ -373,6 +374,9 @@ void main() {
   test('empty explicit selection returns a visible failure rather than an unhandled export Future', () async {
     final service = Service(), files = Files(), c = controller(service, files);
     await c.load();
+    for (final path in c.selected) {
+      c.select(path, false);
+    }
     final password = SecretText('synthetic package password'), confirmation = SecretText('synthetic package password');
     await c.export(password, confirmation);
     expect(c.phase, PortablePhase.failed);

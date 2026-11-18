@@ -172,6 +172,7 @@ pub(crate) fn panel_for_request(
     Ok(row.definition.clone())
 }
 
+#[cfg(test)]
 impl AppCore {
     pub async fn monitoring_panel_definition(
         &self,

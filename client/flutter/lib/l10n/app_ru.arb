@@ -8947,13 +8947,33 @@
   "@automationPortableConfirmPassword": {
     "description": "Explicit portable saved-project package UI: automationPortableConfirmPassword."
   },
-  "automationPortableWarning": "\u0412 \u043f\u0430\u043a\u0435\u0442 \u0432\u043e\u0439\u0434\u0443\u0442 \u0442\u043e\u043b\u044c\u043a\u043e \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435 \u0444\u0430\u0439\u043b\u044b. \u0412 \u043d\u0438\u0445 \u043c\u043e\u0433\u0443\u0442 \u0431\u044b\u0442\u044c \u043f\u0430\u0440\u043e\u043b\u0438 \u0438 \u0434\u0440\u0443\u0433\u0438\u0435 \u043b\u0438\u0447\u043d\u044b\u0435 \u0434\u0430\u043d\u043d\u044b\u0435. \u0418\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0435 \u0441\u043b\u0443\u0436\u0435\u0431\u043d\u044b\u0435 \u0444\u0430\u0439\u043b\u044b \u0438\u0441\u043a\u043b\u044e\u0447\u0435\u043d\u044b, \u043d\u043e \u0441\u043e\u0434\u0435\u0440\u0436\u0438\u043c\u043e\u0435 \u0444\u0430\u0439\u043b\u043e\u0432 \u043d\u0435 \u043e\u0447\u0438\u0449\u0430\u0435\u0442\u0441\u044f \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438.",
+  "automationPortableWarning": "В архив входят сохранённые файлы проекта. Служебные файлы и известные файлы с секретами исключаются. В остальных файлах могут быть пароли или личные данные.",
   "@automationPortableWarning": {
     "description": "Explicit portable saved-project package UI: automationPortableWarning."
   },
   "automationPortableExcluded": "\u0418\u0441\u043a\u043b\u044e\u0447\u0451\u043d \u0438\u0437 \u043f\u0430\u043a\u0435\u0442\u0430",
   "@automationPortableExcluded": {
     "description": "Explicit portable saved-project package UI: automationPortableExcluded."
+  },
+  "automationPortableWholeProject": "Весь проект",
+  "@automationPortableWholeProject": {
+    "description": "Export all project files allowed in the package."
+  },
+  "automationPortableChooseFiles": "Выбрать файлы",
+  "@automationPortableChooseFiles": {
+    "description": "Choose which files to include in a package."
+  },
+  "automationPortableSizeLimit": "В архив можно добавить до 1 000 файлов общим объёмом до 16 МиБ. Максимальный размер одного файла — 1 МиБ. Чтобы продолжить, сократите выбор.",
+  "@automationPortableSizeLimit": {
+    "description": "Size or file count limit for encrypted project packages."
+  },
+  "automationPortableContents": "Файлы ({files}) · {size}",
+  "@automationPortableContents": {
+    "description": "Count and formatted size of project files selected for export.",
+    "placeholders": {
+      "files": {"type": "int"},
+      "size": {"type": "String"}
+    }
   },
   "automationPortableExport": "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0430\u043a\u0435\u0442",
   "@automationPortableExport": {

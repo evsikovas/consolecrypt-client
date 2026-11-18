@@ -275,11 +275,13 @@ class _AutomationDependencyDialogState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
+              spacing: 8,
               children: [
                 Text(l.firstInstall),
                 if (!managed) Text(l.managedOnly),
                 DropdownButtonFormField<String>(
                   key: const ValueKey('dependency-runner'),
+                  isExpanded: true,
                   initialValue:
                       rows.any(
                         (r) =>
@@ -297,6 +299,7 @@ class _AutomationDependencyDialogState
                           value: row.id,
                           child: Text(
                             '${row.name ?? row.id} \u00b7 ${row.revision}',
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                   ],
@@ -313,6 +316,7 @@ class _AutomationDependencyDialogState
                 ),
                 DropdownButtonFormField<String>(
                   key: const ValueKey('dependency-kind'),
+                  isExpanded: true,
                   initialValue: kind,
                   decoration: InputDecoration(labelText: l.kind),
                   items: [
@@ -354,7 +358,6 @@ class _AutomationDependencyDialogState
                         : 120,
                   ),
                 if (selected != null) ...[
-                  const SizedBox(height: 12),
                   Text(l.networkNotice),
                   SelectableText(selected.proposal.url),
                   SelectableText(selected.networkOrigin),

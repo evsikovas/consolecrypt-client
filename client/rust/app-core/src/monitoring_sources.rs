@@ -342,6 +342,7 @@ pub(crate) fn source_for_request(
     Ok(row.configuration.clone())
 }
 
+#[cfg(test)]
 impl AppCore {
     pub async fn monitoring_sources(&self) -> AppResult<MonitoringCatalogView> {
         let (owner, u) = self.unlocked().await?;

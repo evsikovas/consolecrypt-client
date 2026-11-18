@@ -35,7 +35,7 @@ windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_Secu
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-rustix = { version = "=1.1.5", features = ["fs", "process"] }
+rustix = { version = "=1.1.6", features = ["fs", "process"] }
 
 [dev-dependencies]
 tempfile.workspace = true

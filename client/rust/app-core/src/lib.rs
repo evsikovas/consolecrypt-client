@@ -198,7 +198,8 @@ pub mod logging;
 
 mod loopback;
 
-pub mod monitoring_sources;
+// Legacy encrypted settings compatibility. Desktop exports no monitoring API.
+mod monitoring_sources;
 
 mod settings_preservation;
 

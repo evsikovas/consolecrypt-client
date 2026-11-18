@@ -21266,13 +21266,33 @@
   "@automationPortableConfirmPassword": {
     "description": "Explicit portable saved-project package UI: automationPortableConfirmPassword."
   },
-  "automationPortableWarning": "Only selected saved files are packaged. They can contain hardcoded passwords or other private data. Known control files are excluded; file contents are not automatically cleaned.",
+  "automationPortableWarning": "The archive uses saved project files. Known secret and control files are excluded. Other files may contain passwords or private data.",
   "@automationPortableWarning": {
     "description": "Explicit portable saved-project package UI: automationPortableWarning."
   },
   "automationPortableExcluded": "Excluded from the package",
   "@automationPortableExcluded": {
     "description": "Explicit portable saved-project package UI: automationPortableExcluded."
+  },
+  "automationPortableWholeProject": "Whole project",
+  "@automationPortableWholeProject": {
+    "description": "Export all project files allowed in the package."
+  },
+  "automationPortableChooseFiles": "Choose files",
+  "@automationPortableChooseFiles": {
+    "description": "Choose which files to include in a package."
+  },
+  "automationPortableSizeLimit": "The archive can hold up to 1,000 files and 16 MiB in total. Each file must be at most 1 MiB. To continue, choose fewer or smaller files.",
+  "@automationPortableSizeLimit": {
+    "description": "Size or file count limit for encrypted project packages."
+  },
+  "automationPortableContents": "Files ({files}) · {size}",
+  "@automationPortableContents": {
+    "description": "Count and formatted size of project files selected for export.",
+    "placeholders": {
+      "files": {"type": "int"},
+      "size": {"type": "String"}
+    }
   },
   "automationPortableExport": "Save package",
   "@automationPortableExport": {

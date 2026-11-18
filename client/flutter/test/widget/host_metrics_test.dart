@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:consolecrypt/app/critical_notice_providers.dart';
 import 'package:consolecrypt/app/gate.dart';
@@ -69,6 +70,17 @@ void main() {
 
     final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
     final router = container.read(routerProvider);
+    final button = find.byKey(ValueKey('host-metrics-${host.id.value}'));
+    expect(find.descendant(of: button, matching: find.byIcon(Icons.show_chart_rounded)), findsOneWidget);
+    expect(find.text('Host metrics'), findsNothing);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: tester.getCenter(button));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('Host metrics'), findsOneWidget);
+    await mouse.removePointer();
+    await tester.pumpAndSettle();
     expect(metrics.watches, isEmpty);
     await tapKey(tester, 'host-metrics-${host.id.value}');
     expect(router.state.uri.path, AppRoutes.hostMetrics(host.id));

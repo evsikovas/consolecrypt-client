@@ -236,7 +236,7 @@ fn bounded_version_and_exact_maximum_roster_never_truncate_into_compatibility() 
     assert_eq!(result.state, MonitoringSyncState::ServerAdmissionUnverified);
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn current_production_floor_is_undeclared_local_is_not_sync_ready_and_reported_versions_really_travel(
+async fn declared_floor_does_not_grant_admission_and_reported_client_versions_travel(
 ) {
     let temp = tempfile::tempdir().unwrap();
     let local = app(&temp.path().join("local"), "2.0.0");
@@ -261,7 +261,7 @@ async fn current_production_floor_is_undeclared_local_is_not_sync_ready_and_repo
     let vault = register(&a, &server, "monitoring-compat@example.invalid").await;
     assert_eq!(
         a.monitoring_settings_sync_readiness().await.unwrap().state,
-        MonitoringSyncState::FloorUndeclared
+        MonitoringSyncState::ServerAdmissionUnverified
     );
     let b = app(&temp.path().join("b"), "1.0.0");
     login(&b, &server, "monitoring-compat@example.invalid", &vault).await;
@@ -471,7 +471,8 @@ async fn two_real_appcores_transport_existing_v3_generic_edits_stale_source_and_
         .await
         .unwrap_err();
     assert!(
-        matches!(denied,crate::AppError::InvalidInput{ref field,ref reason} if field=="monitoring_panels"&&reason=="panel_sync_admission_required")
+        matches!(&denied,crate::AppError::InvalidInput{field,reason} if field=="monitoring_sync"&&reason=="policy_unavailable"),
+        "{denied:?}"
     );
     assert_eq!(raw(&b).await, before);
     a.lock().await.unwrap();
@@ -492,7 +493,7 @@ async fn two_real_appcores_transport_existing_v3_generic_edits_stale_source_and_
     ciphertext_only(&server, &vault, &settings, QUERY);
     assert_eq!(
         a.monitoring_settings_sync_readiness().await.unwrap().state,
-        MonitoringSyncState::FloorUndeclared
+        MonitoringSyncState::ServerAdmissionUnverified
     );
     assert!(server.request_proof_stats().valid > 0);
     assert_eq!(server.request_proof_stats().rejected, 0);
