@@ -24,6 +24,7 @@ pub mod inventory;
 pub mod kubernetes;
 pub mod password_vault;
 pub mod profiles;
+pub mod project_settings_sync;
 pub mod rdp;
 pub mod rdp_hosts;
 pub mod sftp;

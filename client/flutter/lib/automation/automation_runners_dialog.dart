@@ -128,7 +128,7 @@ class _AutomationRunnersDialogState extends ConsumerState<AutomationRunnersDialo
               )
             : ListView(
                 children: [
-                  Text(l.automationRunnerHint),
+                  Text(AppPlatform.isMobile ? l.automationMobileRunnerRequired : l.automationRunnerHint),
                   const SizedBox(height: 12),
                   ...catalog.when(
                     data: (value) => [
@@ -882,6 +882,7 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
                     'setup_command_too_large' => l.automationSetupCommandTooLarge,
                     'setup_python_missing' => l.automationSetupPythonMissing,
                     'setup_macos_python_missing' => l.automationMacRunnerPython,
+                    'setup_macos_python_unsupported' => l.automationMacRunnerPythonUnsupported,
                     'environment_check_failed' when macNative => l.automationMacRunnerIsolationFailed,
                     _ => l.automationSetupFailed,
                   }

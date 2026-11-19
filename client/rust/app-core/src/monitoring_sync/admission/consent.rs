@@ -176,7 +176,10 @@ impl Review {
         let floor = RELEASED_PRESERVATION_FLOOR.and_then(ReleasedFloor::parse);
         let can_confirm = floor.is_some()
             && self.readiness.state == MonitoringSyncState::ServerAdmissionUnverified
-            && p.state() == MonitoringPolicyState::Off;
+            && p.state() == MonitoringPolicyState::Off
+            && floor.as_ref().is_some_and(|floor| {
+                p.offer_minimum_client_version() == Some(floor.0.to_string().as_str())
+            });
         let can_recheck = p.state() == MonitoringPolicyState::Enabled;
         let state = match p.state() {
             MonitoringPolicyState::Off => "off",

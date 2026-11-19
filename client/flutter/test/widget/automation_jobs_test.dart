@@ -19,6 +19,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/file_dialog_service.dart';
 import 'package:consolecrypt/core/services/inventory_service.dart';
 import 'package:consolecrypt/core/services/runtime_notice_adapter.dart';
 import 'package:flutter/services.dart';
@@ -167,7 +168,9 @@ class _ManualVaultApi extends _Api implements AutomationVaultSelectionService, A
 
   @override
   Future<AutomationJson> connectRunner(String id) async => {
-    'probe': {'capabilities': {'vault_ephemeral_v1': true}},
+    'probe': {
+      'capabilities': {'vault_ephemeral_v1': true},
+    },
   };
 
   @override
@@ -190,7 +193,8 @@ class _ManualVaultApi extends _Api implements AutomationVaultSelectionService, A
   Future<AutomationJson> selectVault(AutomationJson selection) async => fail('Manual input must not write a reference');
 
   @override
-  Future<AutomationJson> prepareRun(AutomationJson request) async => fail('Manual input requires the typed secret port');
+  Future<AutomationJson> prepareRun(AutomationJson request) async =>
+      fail('Manual input requires the typed secret port');
 
   @override
   Future<AutomationJson> prepareRunWithSecrets(
@@ -319,6 +323,66 @@ class _Events extends _Api implements AutomationEventService {
   Future<AutomationJson> jobEvents(String id, {required int after, int limit = 50}) async {
     cursors.add(after);
     return pendingEvents != null ? pendingEvents!.future : page(after);
+  }
+}
+
+class _MobileRunnerApi extends _Events {
+  _MobileRunnerApi({this.hasRemoteRunner = true}) {
+    state = 'succeeded';
+  }
+  final bool hasRemoteRunner;
+  final connected = <String>[];
+  AutomationProjectFile? savedFile;
+
+  @override
+  Future<AutomationProjectFile> saveFile(
+    String projectId, {
+    required String path,
+    required String text,
+    String? expectedSha256,
+  }) async {
+    expect(expectedSha256, isNull);
+    return savedFile = await super.saveFile(projectId, path: path, text: text);
+  }
+
+  @override
+  Future<AutomationRunnerCatalog> runners() async => AutomationRunnerCatalog(
+    readOnly: false,
+    runners: [
+      const AutomationRunnerProfile(
+        id: 'local',
+        name: 'Workstation Runner',
+        readOnly: false,
+        configuration: {'kind': 'local'},
+      ),
+      if (hasRemoteRunner)
+        const AutomationRunnerProfile(
+          id: 'runner',
+          name: 'Remote Runner fixture',
+          readOnly: false,
+          configuration: {'kind': 'remote'},
+        ),
+    ],
+  );
+
+  @override
+  Future<AutomationJson> connectRunner(String id) async {
+    connected.add(id);
+    return {};
+  }
+
+  @override
+  AutomationJson review() => super.review()..['origin'] = {'kind': 'remote', 'host': 'runner.example.test'};
+}
+
+class _PlaybookPicker extends Fake implements FileDialogService {
+  _PlaybookPicker(this.path);
+  final String path;
+
+  @override
+  Future<String?> chooseOpenFile({List<String> extensions = const []}) async {
+    expect(extensions, ['yml', 'yaml']);
+    return path;
   }
 }
 
@@ -828,6 +892,9 @@ Future<ProviderContainer> _open(
   Size size = const Size(1400, 900),
   bool selectTarget = true,
   bool openFile = false,
+  bool selectRunner = true,
+  bool viaMobileMenu = false,
+  FileDialogService? playbookPicker,
   AppLocale locale = AppLocale.en,
   RuntimeNoticeEventAdapter? serviceEvents,
   String projectId = 'project',
@@ -848,6 +915,7 @@ Future<ProviderContainer> _open(
     captureBoundary: io.Platform.environment['CONSOLECRYPT_UI_PROOF_DIR'] != null,
     overrides: [
       automationServiceProvider.overrideWithValue(service),
+      if (playbookPicker != null) fileDialogServiceProvider.overrideWithValue(playbookPicker),
       if (serviceEvents != null) criticalRuntimeEventsProvider.overrideWithValue(serviceEvents),
       if (service is _InheritanceApi) inventoryServiceProvider.overrideWithValue(service.inventory),
       hostsProvider.overrideWith((ref) => Stream.value([service.host, if (service is _InventoryJobs) service.unbound])),
@@ -866,13 +934,27 @@ Future<ProviderContainer> _open(
       },
     );
   }
-  container.read(routerProvider).go(AppRoutes.automation);
-  await settle(tester);
+  if (viaMobileMenu) {
+    await tester.tap(find.text(tester.element(find.byType(Navigator).first).l10n.mobileMore));
+    await settle(tester);
+    await tapKey(tester, 'mobile-nav-automation');
+  } else {
+    container.read(routerProvider).go(AppRoutes.automation);
+    await settle(tester);
+  }
   await tapKey(tester, 'automation-project-$projectId');
+  if (playbookPicker != null) return container;
   if (openFile) await tapKey(tester, 'automation-file-playbook.yml');
-  await tapKey(tester, 'automation-open-run');
-  final selects = find.byType(GlassSelect<String?>);
-  tester.widget<GlassSelect<String?>>(selects.first).onChanged!('runner');
+  await tapKey(tester, viaMobileMenu && openFile ? 'automation-phone-editor-run' : 'automation-open-run');
+  if (selectRunner && viaMobileMenu) {
+    await tapKey(tester, 'automation-run-runner');
+    expect(find.text('Workstation Runner'), findsNothing);
+    await tester.tap(find.text('Remote Runner fixture').last);
+    await settle(tester);
+  } else if (selectRunner) {
+    final select = find.byKey(const ValueKey('automation-run-runner'));
+    tester.widget<GlassSelect<String?>>(select).onChanged!('runner');
+  }
   await tester.pump();
   if (selectTarget) {
     await tester.ensureVisible(find.byKey(ValueKey('automation-target-${service.host.id}')));
@@ -1018,6 +1100,75 @@ class _PublicServiceJobs extends _Api implements AutomationServiceDelegationServ
 }
 
 void main() {
+  testWidgets('phone opens an existing YAML file as a new playbook without overwriting the project', (tester) async {
+    final directory = io.Directory.systemTemp.createTempSync('cc-mobile-playbook-');
+    addTearDown(() => directory.deleteSync(recursive: true));
+    const text = '---\n- hosts: all\n  gather_facts: false\n';
+    final file = io.File('${directory.path}/playbook.yml')..writeAsStringSync(text);
+    final service = _MobileRunnerApi();
+    await _open(tester, service, size: const Size(360, 780), playbookPicker: _PlaybookPicker(file.path));
+    await tapKey(tester, 'automation-project-actions');
+    await tester.runAsync(() async {
+      await tester.tap(find.byKey(const ValueKey('automation-import-playbook')));
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 25));
+        if (find.byType(AnsibleCodeEditor).evaluate().isNotEmpty) return;
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+      }
+    });
+    await settle(tester);
+    expect(tester.widget<AnsibleCodeEditor>(find.byType(AnsibleCodeEditor)).controller.text, text);
+    expect(service.savedFile, isNull);
+    expect(service.connected, isEmpty);
+    await tapKey(tester, 'automation-save');
+    expect(service.savedFile?.path, 'playbook_2.yml');
+    expect(service.savedFile?.text, text);
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
+
+  testWidgets('phone opens a playbook, runs on a selected SSH host and displays full-width output', (tester) async {
+    final service = _MobileRunnerApi();
+    await _open(
+      tester,
+      service,
+      size: const Size(360, 780),
+      locale: AppLocale.ru,
+      openFile: true,
+      viaMobileMenu: true,
+      selectTarget: false,
+    );
+    final selector = tester.widget<GlassSelect<String?>>(find.byKey(const ValueKey('automation-run-runner')));
+    expect(selector.items.map((item) => item.value), [null, 'runner']);
+    expect(service.connected, isEmpty);
+    await tapKey(tester, 'automation-target-${service.host.id}');
+    await tapKey(tester, 'automation-validate-run');
+    expect(service.connected, ['runner']);
+    expect(service.prepared?['host_ids'], [service.host.id.value]);
+    expect(service.confirmations, 0);
+    await tapKey(tester, 'automation-confirm-run');
+    expect(service.confirmations, 1);
+    expect(find.byType(AutomationExecutionConsole).hitTestable(), findsOneWidget);
+    expect(find.byKey(const ValueKey('automation-execution-panel')), findsNothing);
+    expect(find.textContaining('fixture-event-one'), findsOneWidget);
+    await tapKey(tester, 'automation-console-technical-tab');
+    await tapKey(tester, 'automation-workspace-projects');
+    expect(find.byType(AnsibleCodeEditor).hitTestable(), findsOneWidget);
+    await tapKey(tester, 'automation-phone-editor-files');
+    expect(find.byKey(const ValueKey('automation-project-tree')).hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
+
+  testWidgets('phone without a remote Runner links directly from the run form to Runner settings', (tester) async {
+    final service = _MobileRunnerApi(hasRemoteRunner: false);
+    await _open(tester, service, size: const Size(360, 740), selectRunner: false, selectTarget: false);
+    expect(isEnabled(tester, 'automation-validate-run'), isFalse);
+    await tapKey(tester, 'automation-add-mobile-runner');
+    expect(find.byType(AutomationRunnersDialog), findsOneWidget);
+    expect(find.text('Workstation Runner'), findsNothing);
+    expect(service.connected, isEmpty);
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
+
   testWidgets('inline Vault and sudo reach the typed launch port once without secret JSON', (tester) async {
     final service = _ManualVaultApi();
     addTearDown(service.events.dispose);
@@ -1033,9 +1184,7 @@ void main() {
       },
     );
     await tapKey(tester, 'automation-vault-enable');
-    tester
-        .widget<GlassSelect<bool>>(find.byKey(const ValueKey('automation-vault-password-source')))
-        .onChanged!(true);
+    tester.widget<GlassSelect<bool>>(find.byKey(const ValueKey('automation-vault-password-source'))).onChanged!(true);
     await settle(tester);
     expect(isEnabled(tester, 'automation-validate-run'), isFalse);
     final manual = find.byKey(const ValueKey('automation-vault-manual-password'));

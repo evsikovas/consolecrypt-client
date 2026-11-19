@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io' show File, FileSystemEntity, FileSystemEntityType;
 import 'dart:math' as math;
 
 import 'package:consolecrypt/app/critical_notice_owner.dart';
@@ -35,8 +37,8 @@ import 'package:consolecrypt/automation/automation_project_metadata.dart';
 import 'package:consolecrypt/automation/automation_project_metadata_dialog.dart';
 import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/automation/automation_run_dialog.dart';
-import 'package:consolecrypt/automation/automation_schedules_view.dart';
 import 'package:consolecrypt/automation/automation_runners_dialog.dart';
+import 'package:consolecrypt/automation/automation_schedules_view.dart';
 import 'package:consolecrypt/automation/automation_scope_guard.dart';
 import 'package:consolecrypt/automation/automation_secret_view.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
@@ -79,6 +81,7 @@ class _ProjectWorkspace extends ConsumerStatefulWidget {
 }
 
 class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
+  static const _executionPage = 4;
   final editor = KubeYamlController();
   AutomationProject? project;
   AutomationProjectRevision? revision;
@@ -109,12 +112,14 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
   int workspacePage = 0;
   String libraryQuery = '';
   bool projectsExpanded = false;
+  bool _showPhoneEditor = false;
   Widget? runComposer;
   int jobsReviewEpoch = 0;
   String? executionJob;
   bool consoleCollapsed = false;
   double consoleHeight = 260;
   bool get current => mounted && identical(ref.read(automationScopeProvider), widget.scope);
+  bool get _phoneWorkspace => AppPlatform.isMobile && MediaQuery.sizeOf(context).width < 600;
   // Project source may contain secrets not recognized by the display mask.
   // Keep every editor selection on the protected, expiring clipboard path.
   Future<bool> _copyEditorSelection(String text) async {
@@ -242,14 +247,18 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       repairOrigin = null;
       executionJob = id;
       consoleCollapsed = false;
-      if (workspacePage == 2 || workspacePage == 1) workspacePage = 0;
+      if (_phoneWorkspace) {
+        workspacePage = _executionPage;
+      } else if (workspacePage == 2 || workspacePage == 1) {
+        workspacePage = 0;
+      }
     });
   }
 
   void _openExecution(String id) => setState(() {
     executionJob = id;
     consoleCollapsed = false;
-    workspacePage = 0;
+    workspacePage = _phoneWorkspace ? _executionPage : 0;
   });
 
   void _showProjects() => setState(() {
@@ -263,6 +272,21 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     workspacePage = 3;
     runComposer = null;
   });
+
+  Future<void> _backToPhoneFiles() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (busy || !await _leaveFile() || !current) return;
+    setState(() {
+      _showPhoneEditor = false;
+      if (dirty) {
+        newPath = null;
+        aiDraft = null;
+        requirementsSavedPending = false;
+        editor.text = file?.text ?? '';
+        dirty = false;
+      }
+    });
+  }
 
   Future<void> _portablePackage({required bool inspect, bool createProject = false}) async {
     final service = widget.service;
@@ -759,8 +783,9 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
             discardLabel: context.l10n.automationPortableUseSaved,
             ownSaveRequest: (next) => token = next,
           ) ||
-          !original())
+          !original()) {
         return;
+      }
       final digest = revision?.digest;
       if (digest == null || !original()) return;
       final opened = await _dialog<AutomationProject>(
@@ -1194,6 +1219,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       error = null;
       project = selected;
       projectsExpanded = false;
+      _showPhoneEditor = false;
       repairOrigin = null;
       revision = null;
       file = null;
@@ -1224,6 +1250,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       if (current && token == request) {
         setState(() {
           file = result;
+          _showPhoneEditor = true;
           repairOrigin = null;
           aiDraft = null;
           requirementsSavedPending = false;
@@ -1486,7 +1513,13 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
             (_) => AutomationNewProjectDialog(chooseDirectory: picker.chooseDirectory),
           );
     if (!mounted || !current || (scaffold != null && options == null)) return;
-    final directory = folder ? await picker.chooseDirectory() : options?.directory;
+    String? directory;
+    try {
+      directory = folder ? await picker.chooseDirectory() : options?.directory;
+    } catch (_) {
+      if (mounted && current) setState(() => error = FormatException(context.l10n.automationProjectChooseFolderError));
+      return;
+    }
     if (!mounted || !current || originalCurrent?.call() == false || (folder && directory == null)) return;
     final parts = directory?.replaceAll('\\', '/').split('/').where((part) => part.isNotEmpty).toList();
     final name =
@@ -1665,6 +1698,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     if (!current || token != request || project?.id != id || result == null) return;
     setState(() {
       file = original;
+      _showPhoneEditor = true;
       repairOrigin = null;
       newPath = original == null ? 'ansible.cfg' : null;
       aiDraft = null;
@@ -1983,6 +2017,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     }
     setState(() {
       file = null;
+      _showPhoneEditor = true;
       repairOrigin = null;
       newPath = path;
       aiDraft = null;
@@ -1993,6 +2028,81 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       dirty = true;
       error = null;
     });
+  }
+
+  Future<void> _importPlaybook() async {
+    final selected = project;
+    if (busy ||
+        selected == null ||
+        selected.readOnly ||
+        !await _leaveFile() ||
+        !mounted ||
+        !current ||
+        project != selected) {
+      return;
+    }
+    final token = ++request;
+    final picker = ref.read(fileDialogServiceProvider);
+    final router = ref.read(routerProvider);
+    final uri = router.routeInformationProvider.value.uri;
+    final invalidFile = context.l10n.automationImportPlaybookInvalid;
+    bool original() =>
+        current &&
+        token == request &&
+        project == selected &&
+        workspacePage == 0 &&
+        ref.read(routerProvider) == router &&
+        router.routeInformationProvider.value.uri == uri;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final path = await picker.chooseOpenFile(extensions: const ['yml', 'yaml']);
+      if (!original() || path == null) return;
+      final name = path.replaceAll('\\', '/').split('/').last;
+      final suffix = RegExp(r'\.(yml|yaml)$', caseSensitive: false).firstMatch(name);
+      if (suffix == null ||
+          name.contains(RegExp(r'[:\x00-\x1f\x7f]')) ||
+          FileSystemEntity.typeSync(path, followLinks: false) != FileSystemEntityType.file) {
+        throw FormatException(invalidFile);
+      }
+      const maxBytes = 256 * 1024;
+      final input = await File(path).open();
+      String text;
+      try {
+        final bytes = await input.read(maxBytes + 1);
+        if (bytes.isEmpty || bytes.length > maxBytes || bytes.contains(0)) throw FormatException(invalidFile);
+        text = utf8.decode(bytes);
+      } finally {
+        await input.close();
+      }
+      if (!original()) return;
+      final occupied = {
+        for (final entry in revision?.entries ?? const <AutomationFileEntry>[]) entry.path.toLowerCase(),
+      };
+      final base = String.fromCharCodes(name.substring(0, suffix.start).runes.take(56));
+      final stem = base.isEmpty ? 'playbook' : base;
+      final ext = name.substring(suffix.start);
+      var destination = '$stem$ext';
+      for (var index = 2; occupied.contains(destination.toLowerCase()); index++) {
+        destination = '${stem}_$index$ext';
+      }
+      setState(() {
+        _showPhoneEditor = true;
+        file = null;
+        newPath = destination;
+        repairOrigin = null;
+        aiDraft = null;
+        requirementsSavedPending = false;
+        editor.text = text;
+        dirty = true;
+      });
+    } catch (_) {
+      if (original()) setState(() => error = FormatException(invalidFile));
+    } finally {
+      if (current && token == request) setState(() => busy = false);
+    }
   }
 
   Future<void> _newRole(AutomationScaffoldService service) async {
@@ -2012,6 +2122,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       if (!current) return;
       setState(() {
         file = result;
+        _showPhoneEditor = true;
         newPath = null;
         aiDraft = null;
         requirementsSavedPending = false;
@@ -2032,7 +2143,21 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
     final l = context.l10n;
     final jobs = ref.watch(automationJobServiceProvider);
     if (workspacePage != 0) _retireExternalEditor?.call();
-    final visiblePage = workspacePage >= 0 && workspacePage <= 3 ? workspacePage : 0;
+    final fullConsole = _phoneWorkspace || workspacePage == _executionPage;
+    final visiblePage = workspacePage;
+    Widget execution({required bool fullPage}) => AutomationExecutionConsole(
+      key: ValueKey(executionJob),
+      scope: widget.scope,
+      service: jobs!,
+      jobId: executionJob!,
+      collapsed: !fullPage && consoleCollapsed,
+      onToggle: fullPage ? null : () => setState(() => consoleCollapsed = !consoleCollapsed),
+      onHistory: () => setState(() => workspacePage = 1),
+      onClose: () => setState(() {
+        executionJob = null;
+        if (fullPage) workspacePage = 1;
+      }),
+    );
     Widget navigation(String key, int page, IconData icon, String label, VoidCallback select) => Semantics(
       selected: visiblePage == page,
       child: GlassButton(
@@ -2053,7 +2178,13 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              navigation('automation-workspace-projects', 0, Icons.folder_open, l.automationLibrary, _showProjects),
+              navigation(
+                'automation-workspace-projects',
+                0,
+                Icons.folder_open,
+                l.automationLibrary,
+                _phoneWorkspace && visiblePage == 0 && _showPhoneEditor ? _backToPhoneFiles : _showProjects,
+              ),
               if (jobs != null)
                 navigation(
                   'automation-workspace-jobs',
@@ -2076,6 +2207,14 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                   Icons.play_arrow,
                   l.automationRunSetup,
                   () => setState(() => workspacePage = 2),
+                ),
+              if (executionJob != null && fullConsole && jobs != null)
+                navigation(
+                  'automation-mobile-execution-open',
+                  _executionPage,
+                  Icons.terminal,
+                  l.automationExecutionOutput,
+                  () => setState(() => workspacePage = _executionPage),
                 ),
             ],
           ),
@@ -2122,10 +2261,17 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                             }
                           },
                         ),
+                        if (executionJob != null && fullConsole && jobs != null)
+                          TickerMode(
+                            enabled: visiblePage == _executionPage,
+                            child: Padding(padding: const EdgeInsets.all(12), child: execution(fullPage: true)),
+                          )
+                        else
+                          const SizedBox.shrink(),
                       ],
                     ),
                   ),
-                  if (executionJob != null && jobs != null) ...[
+                  if (executionJob != null && jobs != null && !fullConsole) ...[
                     if (!consoleCollapsed)
                       Semantics(
                         label: l.automationExecutionResize,
@@ -2155,16 +2301,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                     SizedBox(
                       key: const ValueKey('automation-execution-panel'),
                       height: panelHeight,
-                      child: AutomationExecutionConsole(
-                        key: ValueKey(executionJob),
-                        scope: widget.scope,
-                        service: jobs,
-                        jobId: executionJob!,
-                        collapsed: consoleCollapsed,
-                        onToggle: () => setState(() => consoleCollapsed = !consoleCollapsed),
-                        onHistory: () => setState(() => workspacePage = 1),
-                        onClose: () => setState(() => executionJob = null),
-                      ),
+                      child: execution(fullPage: false),
                     ),
                   ],
                 ],
@@ -2184,6 +2321,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
         widget.service is AutomationPortableGatewayCapability && ref.watch(criticalRuntimeEventsProvider) != null;
     final menuProject = project;
     final menuRequest = request;
+    final editingOnPhone = _phoneWorkspace && _showPhoneEditor && (file != null || newPath != null);
     bool projectMenuCurrent() =>
         current &&
         !busy &&
@@ -2196,145 +2334,155 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            key: const ValueKey('automation-project-toolbar'),
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(l.automationTitle, style: Theme.of(context).textTheme.titleLarge),
-              if (ref.watch(automationJobServiceProvider) case final jobService?) ...[
-                GlassButton.prominent(
-                  key: const ValueKey('automation-open-run'),
-                  label: l.automationRun,
-                  icon: Icons.play_arrow,
-                  size: _automationControlSize(context),
-                  onPressed: busy || project == null ? null : () => _run(jobService),
-                ),
-              ],
-              _AutomationActionMenu(
-                triggerKey: const ValueKey('automation-project-actions'),
-                label: l.automationProjectMenu,
-                icon: Icons.expand_more,
-                enabled: !busy && catalog.asData?.value?.readOnly != true,
-                entries: [
-                  _automationMenuItem(
-                    key: const ValueKey('automation-new-project'),
-                    value: 'new',
-                    label: l.automationNewProject,
-                    icon: Icons.add,
+          if (!editingOnPhone)
+            Wrap(
+              key: const ValueKey('automation-project-toolbar'),
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(l.automationTitle, style: Theme.of(context).textTheme.titleLarge),
+                if (ref.watch(automationJobServiceProvider) case final jobService?) ...[
+                  GlassButton.prominent(
+                    key: const ValueKey('automation-open-run'),
+                    label: l.automationRun,
+                    icon: Icons.play_arrow,
+                    size: _automationControlSize(context),
+                    onPressed: busy || project == null ? null : () => _run(jobService),
                   ),
-                  _automationMenuItem(
-                    key: const ValueKey('automation-open-folder'),
-                    value: 'folder',
-                    label: l.automationOpenFolder,
-                    icon: Icons.folder_open,
-                  ),
-                  if (portableAvailable)
-                    _automationMenuItem(
-                      key: const ValueKey('automation-portable-inspect-open'),
-                      value: 'portable-inspect',
-                      label: l.automationPortableInspectAction,
-                      icon: Icons.inventory_2_outlined,
-                    ),
-                  if (portableAvailable && widget.service is AutomationPortableImportReviewCapability)
-                    _automationMenuItem(
-                      key: const ValueKey('automation-portable-import-open'),
-                      value: 'portable-import',
-                      label: l.automationLibraryImportArchive,
-                      icon: Icons.create_new_folder_outlined,
-                    ),
-                  if (widget.service is AutomationGitService)
-                    _automationMenuItem(
-                      key: const ValueKey('automation-git-open'),
-                      value: 'git',
-                      label: l.automationGitImport,
-                      icon: Icons.download_outlined,
-                    ),
                 ],
-                onSelected: (value) {
-                  if (!current || busy || ref.read(automationProjectsProvider).value?.readOnly == true) return;
-                  if (value == 'new') _create();
-                  if (value == 'folder') _create(folder: true);
-                  if (value == 'portable-inspect') _portablePackage(inspect: true);
-                  if (value == 'portable-import') _portablePackage(inspect: true, createProject: true);
-                  if (value == 'git' && widget.service is AutomationGitService) {
-                    _git(widget.service as AutomationGitService);
-                  }
-                },
-              ),
-              if (runnerService != null ||
-                  widget.service is AutomationInventoryService ||
-                  widget.service is AutomationDependencyService ||
-                  widget.service is AutomationSourceInventoryService)
                 _AutomationActionMenu(
-                  triggerKey: const ValueKey('automation-settings-menu'),
-                  label: l.settingsTitle,
+                  triggerKey: const ValueKey('automation-project-actions'),
+                  label: l.automationProjectMenu,
                   icon: Icons.expand_more,
+                  enabled: !busy && catalog.asData?.value?.readOnly != true,
                   entries: [
-                    if (runnerService != null)
+                    _automationMenuItem(
+                      key: const ValueKey('automation-new-project'),
+                      value: 'new',
+                      label: l.automationNewProject,
+                      icon: Icons.add,
+                    ),
+                    _automationMenuItem(
+                      key: const ValueKey('automation-open-folder'),
+                      value: 'folder',
+                      label: l.automationOpenFolder,
+                      icon: Icons.folder_open,
+                    ),
+                    if (AppPlatform.isMobile)
                       _automationMenuItem(
-                        key: const ValueKey('automation-runners-open'),
-                        value: 'runners',
-                        label: l.automationRunners,
-                        icon: Icons.settings_ethernet,
+                        key: const ValueKey('automation-import-playbook'),
+                        value: 'import-playbook',
+                        label: l.automationImportPlaybook,
+                        icon: Icons.file_open_outlined,
+                        enabled: projectMenuCurrent() && revision != null,
                       ),
-                    if (widget.service is AutomationDependencyService)
+                    if (portableAvailable)
                       _automationMenuItem(
-                        key: const ValueKey('automation-dependencies-open'),
-                        value: 'dependencies',
-                        label: l.automationDependencyTitle,
-                        icon: Icons.extension_outlined,
-                        enabled: projectMenuCurrent(),
+                        key: const ValueKey('automation-portable-inspect-open'),
+                        value: 'portable-inspect',
+                        label: l.automationPortableInspectAction,
+                        icon: Icons.inventory_2_outlined,
                       ),
-                    if (widget.service is AutomationProjectCredentialsService)
+                    if (portableAvailable && widget.service is AutomationPortableImportReviewCapability)
                       _automationMenuItem(
-                        key: const ValueKey('automation-project-credentials-open'),
-                        value: 'credentials',
-                        label: l.automationDeploymentTitle,
-                        icon: Icons.key_outlined,
-                        enabled: projectMenuCurrent(),
+                        key: const ValueKey('automation-portable-import-open'),
+                        value: 'portable-import',
+                        label: l.automationLibraryImportArchive,
+                        icon: Icons.create_new_folder_outlined,
                       ),
-                    if (widget.service is AutomationProjectMetadataService)
+                    if (widget.service is AutomationGitService)
                       _automationMenuItem(
-                        key: const ValueKey('automation-project-metadata-open'),
-                        value: 'metadata',
-                        label: l.automationMetadataTitle,
-                        icon: Icons.sync_outlined,
-                        enabled: projectMenuCurrent(),
-                      ),
-                    if (widget.service is AutomationSourceInventoryService)
-                      _automationMenuItem(
-                        key: const ValueKey('automation-inventory-open'),
-                        value: 'inventory',
-                        label: l.automationInventorySources,
-                        icon: Icons.playlist_add_check,
-                        enabled: projectMenuCurrent(),
+                        key: const ValueKey('automation-git-open'),
+                        value: 'git',
+                        label: l.automationGitImport,
+                        icon: Icons.download_outlined,
                       ),
                   ],
                   onSelected: (value) {
-                    if (!current) return;
-                    if (value == 'runners' && runnerService != null) {
-                      _dialog<void>((_) => AutomationRunnersDialog(scope: widget.scope, service: runnerService));
-                    }
-                    if (!projectMenuCurrent()) return;
-                    if (value == 'dependencies' && widget.service is AutomationDependencyService) {
-                      _dependencies(widget.service as AutomationDependencyService);
-                    }
-                    if (value == 'credentials' && widget.service is AutomationProjectCredentialsService) {
-                      _credentials(widget.service as AutomationProjectCredentialsService);
-                    }
-                    if (value == 'metadata' && widget.service is AutomationProjectMetadataService) {
-                      _metadata(widget.service as AutomationProjectMetadataService);
-                    }
-                    if (value == 'inventory' && widget.service is AutomationSourceInventoryService) {
-                      _inventory(widget.service as AutomationSourceInventoryService);
+                    if (!current || busy || ref.read(automationProjectsProvider).value?.readOnly == true) return;
+                    if (value == 'new') _create();
+                    if (value == 'folder') _create(folder: true);
+                    if (value == 'import-playbook' && projectMenuCurrent()) unawaited(_importPlaybook());
+                    if (value == 'portable-inspect') _portablePackage(inspect: true);
+                    if (value == 'portable-import') _portablePackage(inspect: true, createProject: true);
+                    if (value == 'git' && widget.service is AutomationGitService) {
+                      _git(widget.service as AutomationGitService);
                     }
                   },
                 ),
-            ],
-          ),
-          if (widget.service is AutomationProjectVersionService || portableAvailable)
+                if (runnerService != null ||
+                    widget.service is AutomationInventoryService ||
+                    widget.service is AutomationDependencyService ||
+                    widget.service is AutomationSourceInventoryService)
+                  _AutomationActionMenu(
+                    triggerKey: const ValueKey('automation-settings-menu'),
+                    label: l.settingsTitle,
+                    icon: Icons.expand_more,
+                    entries: [
+                      if (runnerService != null)
+                        _automationMenuItem(
+                          key: const ValueKey('automation-runners-open'),
+                          value: 'runners',
+                          label: l.automationRunners,
+                          icon: Icons.settings_ethernet,
+                        ),
+                      if (widget.service is AutomationDependencyService)
+                        _automationMenuItem(
+                          key: const ValueKey('automation-dependencies-open'),
+                          value: 'dependencies',
+                          label: l.automationDependencyTitle,
+                          icon: Icons.extension_outlined,
+                          enabled: projectMenuCurrent(),
+                        ),
+                      if (widget.service is AutomationProjectCredentialsService)
+                        _automationMenuItem(
+                          key: const ValueKey('automation-project-credentials-open'),
+                          value: 'credentials',
+                          label: l.automationDeploymentTitle,
+                          icon: Icons.key_outlined,
+                          enabled: projectMenuCurrent(),
+                        ),
+                      if (widget.service is AutomationProjectMetadataService)
+                        _automationMenuItem(
+                          key: const ValueKey('automation-project-metadata-open'),
+                          value: 'metadata',
+                          label: l.automationMetadataTitle,
+                          icon: Icons.sync_outlined,
+                          enabled: projectMenuCurrent(),
+                        ),
+                      if (widget.service is AutomationSourceInventoryService)
+                        _automationMenuItem(
+                          key: const ValueKey('automation-inventory-open'),
+                          value: 'inventory',
+                          label: l.automationInventorySources,
+                          icon: Icons.playlist_add_check,
+                          enabled: projectMenuCurrent(),
+                        ),
+                    ],
+                    onSelected: (value) {
+                      if (!current) return;
+                      if (value == 'runners' && runnerService != null) {
+                        _dialog<void>((_) => AutomationRunnersDialog(scope: widget.scope, service: runnerService));
+                      }
+                      if (!projectMenuCurrent()) return;
+                      if (value == 'dependencies' && widget.service is AutomationDependencyService) {
+                        _dependencies(widget.service as AutomationDependencyService);
+                      }
+                      if (value == 'credentials' && widget.service is AutomationProjectCredentialsService) {
+                        _credentials(widget.service as AutomationProjectCredentialsService);
+                      }
+                      if (value == 'metadata' && widget.service is AutomationProjectMetadataService) {
+                        _metadata(widget.service as AutomationProjectMetadataService);
+                      }
+                      if (value == 'inventory' && widget.service is AutomationSourceInventoryService) {
+                        _inventory(widget.service as AutomationSourceInventoryService);
+                      }
+                    },
+                  ),
+              ],
+            ),
+          if (!editingOnPhone && (widget.service is AutomationProjectVersionService || portableAvailable))
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Wrap(
@@ -2377,7 +2525,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                 ],
               ),
             ),
-          if (project?.gitSource case final Map<String, dynamic> source)
+          if (project?.gitSource case final Map<String, dynamic> source when !editingOnPhone)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2579,11 +2727,14 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                   onSecondaryTapDown: busy
                                       ? null
                                       : (details) => unawaited(_projectEntryMenu(item, details.globalPosition)),
+                                  onLongPressStart: busy || !_phoneWorkspace
+                                      ? null
+                                      : (details) => unawaited(_projectEntryMenu(item, details.globalPosition)),
                                   child: ListTile(
                                     key: ValueKey('automation-project-${item.id}'),
-                                    dense: true,
-                                    minTileHeight: 34,
-                                    visualDensity: VisualDensity.compact,
+                                    dense: !_phoneWorkspace,
+                                    minTileHeight: _phoneWorkspace ? 48 : 34,
+                                    visualDensity: _phoneWorkspace ? VisualDensity.standard : VisualDensity.compact,
                                     selected: item.id == project?.id,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                                     leading: const Icon(Icons.folder_outlined, size: 18),
@@ -2663,6 +2814,14 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                             Row(
                               key: const ValueKey('automation-editor-toolbar'),
                               children: [
+                                if (editingOnPhone)
+                                  GlassIconButton(
+                                    key: const ValueKey('automation-phone-editor-files'),
+                                    tooltip: l.automationLibraryFiles,
+                                    icon: Icons.arrow_back,
+                                    size: 40,
+                                    onPressed: busy ? null : _backToPhoneFiles,
+                                  ),
                                 Expanded(
                                   child: Text /* l10n-ignore: filename and dirty marker */ (
                                     '${file?.path ?? newPath}${dirty ? ' •' : ''}', // l10n-ignore: document path and dirty marker
@@ -2677,6 +2836,14 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                     spacing: 6,
                                     runSpacing: 4,
                                     children: [
+                                      if (ref.watch(automationJobServiceProvider) case final jobs? when editingOnPhone)
+                                        GlassIconButton(
+                                          key: const ValueKey('automation-phone-editor-run'),
+                                          tooltip: l.automationRun,
+                                          icon: Icons.play_arrow,
+                                          size: 40,
+                                          onPressed: busy ? null : () => _run(jobs),
+                                        ),
                                       GlassIconButton(
                                         key: const ValueKey('automation-save'),
                                         tooltip: l.commonSave,
@@ -2776,6 +2943,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                           ],
                         ),
                 );
+                if (_phoneWorkspace) return editingOnPhone ? body : tree;
                 if (compact) {
                   return Column(
                     children: [

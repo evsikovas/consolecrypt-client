@@ -1,4 +1,4 @@
-"""Run with the managed Python 3.12 environment on an Apple Silicon Mac."""
+"""Run with a managed Python 3.12 or 3.15 environment on an Apple Silicon Mac."""
 from pathlib import Path
 import sys
 import tempfile
@@ -44,6 +44,14 @@ class MacRunnerTests(unittest.TestCase):
             self.assertTrue(report.valid, report.to_json())
             parameters = {'extra_vars': {}, 'tags': [], 'skip_tags': [], 'diff': False}
             inventory = {'all': {'hosts': {'localhost': {'ansible_connection': 'local'}}}}
+            target_check = run_macos_worker(
+                revision, [sys.executable, '-m', 'consolecrypt_runner.validation_worker', 'syntax'],
+                input_bytes=encode({'playbook': 'playbook.yml', 'inventory': inventory,
+                                    'parameters': parameters, 'require_host_match': True}),
+                timeout=45,
+            )
+            self.assertEqual(target_check.exit_code, 0, target_check.output)
+            self.assertIn('playbook target match verified (1 approved hosts', target_check.output)
             body = encode({'playbook': 'playbook.yml', 'mode': 'run', 'forks': 1,
                            'inventory': inventory, 'parameters': parameters})
             worker = run_macos_worker(revision, [sys.executable, '-m', 'consolecrypt_runner.execution_worker'],

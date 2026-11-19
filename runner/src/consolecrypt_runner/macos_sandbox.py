@@ -42,10 +42,12 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
         base = Path(sys.base_prefix).resolve(strict=True)
         interpreter = Path(sys.executable).resolve(strict=True)
         # Limit readable interpreter files to supported Python installations.
-        require(prefix != base and (base.is_relative_to('/opt/homebrew/Cellar/python@3.12') or
-                base.is_relative_to('/usr/local/Cellar/python@3.12') or
-                base == Path('/Library/Frameworks/Python.framework/Versions/3.12')),
-                'sandbox_python', 'Use a Python 3.12 virtual environment from Homebrew or Python.org')
+        version = f'{sys.version_info.major}.{sys.version_info.minor}'
+        require(prefix != base and version in ('3.12', '3.15') and
+                (base.is_relative_to(f'/opt/homebrew/Cellar/python@{version}') or
+                 base.is_relative_to(f'/usr/local/Cellar/python@{version}') or
+                 base == Path(f'/Library/Frameworks/Python.framework/Versions/{version}')),
+                'sandbox_python', 'Use a Python 3.12 or 3.15 virtual environment from Homebrew or Python.org')
         profile = [
             '(version 1)', '(deny default)', '(allow process-fork)', '(allow process-exec*)',
             '(allow signal (target same-sandbox))', '(allow process-info* (target same-sandbox))',
@@ -100,8 +102,11 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
         path_rule('file-read* file-map-executable', 'literal', interpreter)
         aliases = _symlink_paths(sys.executable)
         aliases.update(_symlink_paths(sys._base_executable))
+        libraries = ('mpdecimal', 'openssl@3', 'readline', 'sqlite', 'xz', 'zstd', 'gettext', 'libb2')
+        if version == '3.15':
+            libraries += ('openssl@4', 'expat')
         for homebrew in ('/opt/homebrew/opt', '/usr/local/opt'):
-            for package in ('mpdecimal', 'openssl@3', 'readline', 'sqlite', 'xz', 'zstd', 'gettext', 'libb2'):
+            for package in libraries:
                 library = Path(homebrew) / package / 'lib'
                 if library.is_dir():
                     path_rule('file-read* file-map-executable', 'subpath', library.resolve(strict=True))

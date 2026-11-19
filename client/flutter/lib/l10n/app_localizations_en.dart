@@ -14287,6 +14287,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Connect a prepared local environment or Linux server. Diagnostics do not install components or run a playbook.';
 
   @override
+  String get automationMobileRunnerRequired =>
+      'On a phone, runs use a Linux Runner over SSH. Add a Runner from your saved SSH hosts.';
+
+  @override
   String get automationNoRunners => 'No saved Runner environments.';
 
   @override
@@ -14963,11 +14967,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationMacRunnerNative =>
-      'Run Ansible on this Apple Silicon Mac with Python 3.12. ConsoleCrypt installs the Ansible components into a separate local environment.';
+      'Run Ansible natively on Apple Silicon with Python 3.15 or 3.12. ConsoleCrypt prepares a separate environment.';
 
   @override
   String get automationMacRunnerPython =>
-      'Install Python 3.12 for Apple Silicon from Homebrew or Python.org, then search again.';
+      'ConsoleCrypt couldn’t find Python 3.15 or 3.12 for Apple Silicon. Install either version from Homebrew or Python.org and search again.';
+
+  @override
+  String get automationMacRunnerPythonUnsupported =>
+      'Python was found. The local Runner needs CPython 3.15 or 3.12 for Apple Silicon from Homebrew or Python.org.';
 
   @override
   String get automationMacRunnerArchitecture => 'Apple Silicon (arm64)';
@@ -16774,6 +16782,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationMetadataTitle => 'Project settings sync';
 
   @override
+  String get automationSettingsSyncSetup => 'Set up settings sync';
+
+  @override
+  String get automationSettingsSyncEnable => 'Enable sync';
+
+  @override
+  String automationSettingsSyncConfirmHint(String version) {
+    return 'Enable project settings sync for the personal vaults in this account. Devices need ConsoleCrypt $version or later to keep syncing.';
+  }
+
+  @override
+  String get automationSettingsSyncRefreshHint =>
+      'Sync is enabled. Refresh the catalog to get settings from your other devices.';
+
+  @override
+  String get automationSettingsSyncUpdateDevices =>
+      'Update ConsoleCrypt on this account’s devices, then open sync setup again.';
+
+  @override
+  String get automationSettingsSyncUnavailable =>
+      'The server could not confirm settings sync. Check that it supports settings sync and that you are signed in as the owner of a personal vault.';
+
+  @override
+  String get automationSettingsSyncEnabled => 'Sync is ready. You can now save the project settings to your account.';
+
+  @override
   String get automationMetadataHint =>
       'Sync settings and references separately from project files. Imported references cannot run a playbook.';
 
@@ -16986,6 +17020,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationLibraryImportArchive => 'Import project archive';
+
+  @override
+  String get automationImportPlaybook => 'Open playbook file';
+
+  @override
+  String get automationImportPlaybookInvalid => 'Choose a UTF-8 playbook file (.yml or .yaml) up to 256 KB.';
 
   @override
   String get automationLibraryExchangeHint =>

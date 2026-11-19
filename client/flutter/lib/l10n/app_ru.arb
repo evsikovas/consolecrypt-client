@@ -7452,6 +7452,10 @@
   "@automationRunnerHint": {
     "description": "Runner configuration and explicit environment diagnostics"
   },
+  "automationMobileRunnerRequired": "На телефоне задания выполняются на Linux Runner по SSH. Добавьте Runner, выбрав сохранённый SSH-хост.",
+  "@automationMobileRunnerRequired": {
+    "description": "Explains how to add a supported Runner from a mobile device."
+  },
   "automationNoRunners": "\u041d\u0435\u0442 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0445 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0439 Runner.",
   "@automationNoRunners": {
     "description": "Runner configuration and explicit environment diagnostics"
@@ -8293,11 +8297,15 @@
   "@automationSetupBusy": {
     "description": "Explicit local or WSL Runner setup"
   },
-  "automationMacRunnerNative": "Ansible запускается на этом Mac с Apple Silicon через Python 3.12. ConsoleCrypt установит компоненты Ansible в отдельное локальное окружение.",
+  "automationMacRunnerNative": "Ansible запускается нативно на Mac с Apple Silicon через Python 3.15 или 3.12. ConsoleCrypt подготовит отдельное окружение.",
   "@automationMacRunnerNative": {
     "description": "Guide users to set up a native macOS Runner"
   },
-  "automationMacRunnerPython": "Установите Python 3.12 для Apple Silicon из Homebrew или с Python.org и повторите поиск.",
+  "automationMacRunnerPython": "ConsoleCrypt не нашёл Python 3.15 или 3.12 для Apple Silicon. Установите одну из версий через Homebrew или с Python.org и повторите поиск.",
+  "automationMacRunnerPythonUnsupported": "Python найден. Для локального Runner нужен CPython 3.15 или 3.12 для Apple Silicon из Homebrew или с Python.org.",
+  "@automationMacRunnerPythonUnsupported": {
+    "description": "Python was found, but the native macOS Runner needs a supported version and architecture"
+  },
   "@automationMacRunnerPython": {
     "description": "Interpreter requirement for a local macOS Runner"
   },
@@ -10157,6 +10165,20 @@
     "description": "Fixed actionable Native project/environment error code. Never includes raw exception prose, credential values or references."
   },
   "automationMetadataTitle": "\u0421\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043a \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
+  "automationSettingsSyncSetup": "Настроить синхронизацию",
+  "@automationSettingsSyncSetup": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncEnable": "Включить синхронизацию",
+  "@automationSettingsSyncEnable": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncConfirmHint": "Включите синхронизацию настроек проектов для личных хранилищ этого аккаунта. Для синхронизации на всех устройствах нужен ConsoleCrypt {version} или новее.",
+  "@automationSettingsSyncConfirmHint": {"description":"Project settings synchronization setup","placeholders":{"version":{"type":"String"}}},
+  "automationSettingsSyncRefreshHint": "Синхронизация включена. Обновите каталог, чтобы получить настройки с других устройств.",
+  "@automationSettingsSyncRefreshHint": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncUpdateDevices": "Обновите ConsoleCrypt на устройствах этого аккаунта и снова откройте настройки синхронизации.",
+  "@automationSettingsSyncUpdateDevices": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncUnavailable": "Синхронизация настроек не подтверждена. Проверьте поддержку на сервере и вход под владельцем личного хранилища.",
+  "@automationSettingsSyncUnavailable": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncEnabled": "Можно синхронизировать настройки проекта с аккаунтом.",
+  "@automationSettingsSyncEnabled": {"description":"Project settings synchronization setup"},
   "@automationMetadataTitle": {
     "description": "Encrypted project reference catalog UI: automationMetadataTitle"
   },
@@ -10425,6 +10447,14 @@
   "automationLibraryImportArchive": "Импорт архива проекта",
   "@automationLibraryImportArchive": {
     "description": "Explicit portable project archive exchange: automationLibraryImportArchive."
+  },
+  "automationImportPlaybook": "Открыть файл плейбука",
+  "@automationImportPlaybook": {
+    "description": "Open an existing YAML playbook as a new draft in the current project on a phone."
+  },
+  "automationImportPlaybookInvalid": "Выберите файл плейбука в UTF-8 (.yml или .yaml) размером до 256 КБ.",
+  "@automationImportPlaybookInvalid": {
+    "description": "Error when the selected playbook file cannot be opened as text."
   },
   "automationLibraryExchangeHint": "Экспортируйте текущий снимок проекта и передайте архив коллеге. При импорте создаётся отдельный проект.",
   "@automationLibraryExchangeHint": {

@@ -21,8 +21,8 @@ class AutomationExecutionConsole extends ConsumerStatefulWidget {
     required this.service,
     required this.jobId,
     required this.collapsed,
-    required this.onToggle,
     required this.onHistory,
+    this.onToggle,
     this.onClose,
   });
   static const double collapsedHeight = 36;
@@ -30,8 +30,8 @@ class AutomationExecutionConsole extends ConsumerStatefulWidget {
   final AutomationJobService service;
   final String jobId;
   final bool collapsed;
-  final VoidCallback onToggle, onHistory;
-  final VoidCallback? onClose;
+  final VoidCallback onHistory;
+  final VoidCallback? onToggle, onClose;
   @override
   ConsumerState<AutomationExecutionConsole> createState() => _AutomationExecutionConsoleState();
 }
@@ -348,12 +348,13 @@ class _AutomationExecutionConsoleState extends ConsumerState<AutomationExecution
         control('automation-console-history', l.automationJobs, Icons.history, widget.onHistory),
         if (terminal && widget.onClose != null)
           control('automation-console-close', l.commonClose, Icons.close, widget.onClose),
-        control(
-          'automation-console-collapse',
-          widget.collapsed ? l.automationExecutionExpand : l.automationExecutionCollapse,
-          widget.collapsed ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-          widget.onToggle,
-        ),
+        if (widget.onToggle != null)
+          control(
+            'automation-console-collapse',
+            widget.collapsed ? l.automationExecutionExpand : l.automationExecutionCollapse,
+            widget.collapsed ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+            widget.onToggle,
+          ),
       ],
     );
     Widget tab(int index, String label) => Semantics(

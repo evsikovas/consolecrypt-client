@@ -39,12 +39,17 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "terminaldesktopicon"; Description: "{cm:TerminalDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+[CustomMessages]
+english.TerminalDesktopIcon=Create a desktop shortcut for ConsoleCrypt Terminal
+russian.TerminalDesktopIcon=Создать ярлык ConsoleCrypt Terminal на рабочем столе
 [Files]
 Source: "{#AppSource}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Icons]
 Name: "{autoprograms}\ConsoleCrypt"; Filename: "{app}\ConsoleCrypt.exe"
 Name: "{autoprograms}\ConsoleCrypt Terminal"; Filename: "{app}\ConsoleCrypt.exe"; Parameters: "--terminal-only"
 Name: "{autodesktop}\ConsoleCrypt"; Filename: "{app}\ConsoleCrypt.exe"; Tasks: desktopicon
+Name: "{autodesktop}\ConsoleCrypt Terminal"; Filename: "{app}\ConsoleCrypt.exe"; Parameters: "--terminal-only"; Tasks: terminaldesktopicon
 [Run]
 Filename: "{app}\ConsoleCrypt.exe"; Description: "{cm:LaunchProgram,ConsoleCrypt}"; Flags: nowait postinstall skipifsilent
 ; In-app update (/SILENT /RELAUNCH=1): start the updated app again.

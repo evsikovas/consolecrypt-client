@@ -17,6 +17,7 @@ import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart' show withStepUp;
 import 'package:consolecrypt/core/bridge/rust_automation_portable.dart';
 import 'package:consolecrypt/core/bridge/rust_automation_project_metadata.dart';
+import 'package:consolecrypt/core/bridge/rust_project_settings_sync.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
@@ -29,6 +30,7 @@ final class RustAutomationService
         AutomationService,
         AutomationProjectCredentialsService,
         AutomationProjectMetadataService,
+        AutomationProjectSettingsSyncService,
         AutomationProjectVersionService,
         AutomationScheduleCatalogService,
         AutomationServiceDelegationService,
@@ -78,6 +80,10 @@ final class RustAutomationService
   @override
   Future<AutomationJson> publishProjectMetadata(AutomationJson originalFrame) =>
       _projectMetadata.publishProjectMetadata(originalFrame);
+
+  @override
+  Future<ProjectSettingsReview> prepareProjectSettingsSync(String profileId, String nonce) =>
+      prepareRustProjectSettingsSync(profileId, nonce);
 
   @override
   Future<AutomationJson> scheduleCatalog(AutomationJson request) async => jsonDecode(
@@ -718,6 +724,7 @@ Future<T> _automationGuard<T>(Future<T> Function() action) async {
           'setup_command_too_large',
           'setup_python_missing',
           'setup_macos_python_missing',
+          'setup_macos_python_unsupported',
           'environment_check_failed',
           'setup_unavailable',
           'invalid_package',

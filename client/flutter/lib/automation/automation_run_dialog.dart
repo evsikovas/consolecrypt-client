@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:consolecrypt/app/critical_notice_providers.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/automation/automation_dependency_dialog.dart' show DependencyOriginalGuard;
 import 'package:consolecrypt/automation/automation_deployment_environment_selection.dart';
@@ -973,6 +974,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
     final visibleRunners = (runners.value?.runners ?? <AutomationRunnerProfile>[]).where(
       (item) => !item.readOnly && (!widget.scheduleOnly || item.configuration?['kind'] == 'service_remote'),
     );
+    final mobileRunnerMissing = AppPlatform.isMobile && runners.hasValue && visibleRunners.isEmpty;
     final checked = review;
     final validation = checked?['validation'] as AutomationJson?;
     final capturedRevision = checked?['revision'] as AutomationJson?;
@@ -1052,6 +1054,7 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                     ],
                     const SizedBox(height: 12),
                     GlassSelect<String?>(
+                      key: const ValueKey('automation-run-runner'),
                       value: runner,
                       expand: true,
                       semanticLabel: l.automationChooseRunner,
@@ -1064,6 +1067,20 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
                     if (runners.hasError) Text(errorMessage(l, runners.error!)),
                     if (widget.scheduleOnly && !runners.isLoading && visibleRunners.isEmpty)
                       InfoBanner(tone: BannerTone.info, message: l.automationSchedulesRunnerRequired),
+                    if (mobileRunnerMissing) ...[
+                      if (!widget.scheduleOnly)
+                        InfoBanner(tone: BannerTone.info, message: l.automationMobileRunnerRequired),
+                      if (ref.watch(automationRunnerServiceProvider) != null)
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton.icon(
+                            key: const ValueKey('automation-add-mobile-runner'),
+                            onPressed: busy ? null : configureRunner,
+                            icon: const Icon(Icons.settings_ethernet),
+                            label: Text(l.automationConfigureRunner),
+                          ),
+                        ),
+                    ],
                     if (serviceSelected)
                       InfoBanner(
                         tone: BannerTone.info,
@@ -1328,7 +1345,12 @@ class _AutomationRunDialogState extends ConsumerState<AutomationRunDialog> {
             FilledButton(
               key: const ValueKey('automation-validate-run'),
               onPressed:
-                  busy || !deploymentAvailable || inventoryLoading || inventoryError != null || needsVaultPassword
+                  busy ||
+                      !deploymentAvailable ||
+                      inventoryLoading ||
+                      inventoryError != null ||
+                      needsVaultPassword ||
+                      mobileRunnerMissing
                   ? null
                   : serviceSelected
                   ? null

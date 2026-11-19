@@ -10,7 +10,7 @@ import re
 import shutil
 import sys
 
-from . import VERSION, PROTOCOL_VERSION
+from . import VERSION, PROTOCOL_VERSION, expected_ansible_core_version
 from .protocol import decode, encode
 from .sandbox import probe_sandbox
 from .integrity import dependency_fingerprint
@@ -32,7 +32,7 @@ def environment_receipt(report, approved_digest):
     return {'version': 1, 'environment_digest': approved_digest,
             'identity': decode(raw, max_bytes=64 * 1024)}
 
-PACKAGES = {"ansible-core": "2.20.11", "ansible-runner": "2.4.3", "ansible-lint": "26.11.0",
+PACKAGES = {"ansible-core": expected_ansible_core_version(), "ansible-runner": "2.4.3", "ansible-lint": "26.11.0",
             "cryptography": "50.0.2", "PyYAML": "6.0.3"}
 
 

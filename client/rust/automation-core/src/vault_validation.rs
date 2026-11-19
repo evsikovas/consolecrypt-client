@@ -58,10 +58,18 @@ impl VaultValidationRuntime {
         let approved_code = [&pin, &legacy].iter().any(|approved|
             value["environment_digest"] == approved["environment_digest"]
                 && value["helper_digest"] == approved["helper_digest"])
-            // Keep the exact previously reviewed Linux environment usable
-            // after expanding the bundled helper to include macOS.
-            || (value["environment_digest"] == "bae8a4ae4e6b78bcbcac5ca6174c50e188e022dc969476f1466ad7fe3e1d7331"
-                && value["helper_digest"] == "7ae56c6de89564d6d4420c679b4a9e377a56fe731971e4c217a0b562d5e5ad6b");
+            // Keep previously reviewed Linux environments usable when the
+            // bundled helper gains another macOS interpreter profile.
+            || matches!(
+                (value["environment_digest"].as_str(), value["helper_digest"].as_str()),
+                (
+                    Some("bae8a4ae4e6b78bcbcac5ca6174c50e188e022dc969476f1466ad7fe3e1d7331"),
+                    Some("7ae56c6de89564d6d4420c679b4a9e377a56fe731971e4c217a0b562d5e5ad6b")
+                ) | (
+                    Some("b25d68ca5967c0bf17bbdf5b0482d8e9554033ce0d4855d1ebad6eddf5a5157e"),
+                    Some("95706aa1cfd2c80a77cb8e0b2a0e1d1b0f953e8bdcefdeaec6343748b7029a6a")
+                )
+            );
         let mut identity = serde_json::Map::new();
         for key in [
             "helper",

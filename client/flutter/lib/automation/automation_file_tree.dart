@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -135,13 +136,15 @@ class _AutomationFileTreeState extends State<AutomationFileTree> {
       path: node.path,
       directory: node.directory,
     );
-    final height = math.max(28.0, MediaQuery.textScalerOf(context).scale(13) * 1.4 + 8);
+    final touch = AppPlatform.isMobile && MediaQuery.sizeOf(context).width < 600;
+    final height = math.max(touch ? 44.0 : 28.0, MediaQuery.textScalerOf(context).scale(13) * 1.4 + 8);
     Widget content = Semantics(
       button: true,
       selected: selected,
       expanded: node.directory ? open : null,
       child: Tooltip(
         message: root ? widget.rootLabel : node.path,
+        triggerMode: touch ? TooltipTriggerMode.manual : null,
         child: InkWell(
           key: root ? const ValueKey('automation-file-root') : ValueKey('automation-file-${node.path}'),
           onSecondaryTapDown: widget.enabled && widget.onContextMenu != null
@@ -188,6 +191,12 @@ class _AutomationFileTreeState extends State<AutomationFileTree> {
         ),
       ),
     );
+    if (touch && widget.enabled && widget.onContextMenu != null) {
+      content = GestureDetector(
+        onLongPressStart: (details) => widget.onContextMenu!(fileRef, details.globalPosition),
+        child: content,
+      );
+    }
     if (node.directory) {
       final row = content;
       content = DragTarget<AutomationFileDrag>(
@@ -206,7 +215,7 @@ class _AutomationFileTreeState extends State<AutomationFileTree> {
           child: row,
         ),
       );
-    } else if (widget.enabled && widget.onMove != null) {
+    } else if (!touch && widget.enabled && widget.onMove != null) {
       content = Draggable<AutomationFileDrag>(
         data: fileRef,
         dragAnchorStrategy: pointerDragAnchorStrategy,

@@ -114,6 +114,11 @@ try {
     Copy-Item -Recurse $Built $AppOut
     if ($Runtime) { Copy-Item (Join-Path $Runtime '*.dll') $AppOut -Force }
     $RequiredBundle = @('ConsoleCrypt.exe', 'flutter_windows.dll', 'cc_bridge.dll', 'data\icudtl.dat')
+    $TerminalLauncher = Join-Path $Src 'client\packaging\windows\ConsoleCrypt Terminal.cmd'
+    if (Test-Path -LiteralPath $TerminalLauncher -PathType Leaf) {
+        Copy-Item -LiteralPath $TerminalLauncher -Destination $AppOut
+        $RequiredBundle += 'ConsoleCrypt Terminal.cmd'
+    }
     if (-not $Debug) {
         # The optional llama.cpp child runs from appdata and resolves these
         # app-local CRT libraries through the application's directory in PATH.

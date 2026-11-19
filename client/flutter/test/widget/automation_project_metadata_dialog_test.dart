@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:consolecrypt/automation/automation_project_metadata.dart';
 import 'package:consolecrypt/automation/automation_project_metadata_dialog.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -12,6 +14,35 @@ import '../support/project_metadata_fixture.dart' as f;
 final publish = find.byKey(const ValueKey('project-metadata-publish'));
 final refresh = find.byKey(const ValueKey('project-metadata-refresh'));
 final row = find.byKey(const ValueKey('project-metadata-record-${f.projectId}'));
+
+final class _ConsentFixture extends f.MetadataFake
+    implements AutomationProjectSettingsSyncService, ProjectSettingsReview {
+  int confirmations = 0;
+  int cancellations = 0;
+  final scope = {'version': 1, 'profileId': f.profile, 'notificationScopeId': f.nonce, 'scope': 'allPersonalVaults'};
+
+  @override
+  Future<ProjectSettingsReview> prepareProjectSettingsSync(String profileId, String nonce) async {
+    expect(profileId, f.profile);
+    expect(nonce, f.nonce);
+    return this;
+  }
+
+  @override
+  Future<String> details() async => jsonEncode({...scope, 'canConfirm': true, 'releasedMinimumClientVersion': '2.0.0'});
+
+  @override
+  Future<String> confirm() async {
+    confirmations++;
+    return jsonEncode({...scope, 'action': 'accountPolicyConfirmed'});
+  }
+
+  @override
+  Future<String> recheckCheckpoint() async => throw StateError('Expected owner confirmation');
+
+  @override
+  void cancel() => cancellations++;
+}
 
 Future<ValueNotifier<bool>> host(WidgetTester tester, f.MetadataFake service, {String language = 'en'}) async {
   final live = ValueNotifier(true);
@@ -59,6 +90,21 @@ Future<void> tap(WidgetTester tester, Finder button) async {
 }
 
 void main() {
+  testWidgets('account setup presents the minimum and waits for explicit owner confirmation', (tester) async {
+    final service = _ConsentFixture()..candidate = true;
+    await host(tester, service, language: 'ru');
+    await open(tester);
+    final l = AppLocalizations.of(tester.element(publish));
+    await tap(tester, find.widgetWithText(GlassButton, l.automationSettingsSyncSetup));
+    expect(find.text(l.automationSettingsSyncConfirmHint('2.0.0')), findsOneWidget);
+    expect(service.confirmations, 0);
+    await tap(tester, find.widgetWithText(GlassButton, l.automationSettingsSyncEnable));
+    expect(find.text(l.automationSettingsSyncEnabled), findsOneWidget);
+    expect(service.confirmations, 1);
+    expect(service.publishes, 0);
+    expect(service.cancellations, 1);
+  });
+
   testWidgets('opening reads context once and time/rebuild never publishes', (tester) async {
     final service = f.MetadataFake()..candidate = true;
     await host(tester, service);

@@ -42,7 +42,9 @@ class TerminalOnlyApp extends StatelessWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      // material_ui widgets look up their own Material and Cupertino delegates.
+      localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+      localeListResolutionCallback: resolveSystemLocale,
       home: _TerminalOnlyScreen(initialShell: initialShell, openWindow: openWindow),
     ),
   );
@@ -390,6 +392,8 @@ class _ShellPaletteState extends State<_ShellPalette> {
                     if (_windowFailed) Text(l.terminalOnlyWindowError),
                     if (snapshot.connectionState == ConnectionState.waiting)
                       const LinearProgressIndicator()
+                    else if (snapshot.hasError)
+                      Text(l.terminalOnlyShellError)
                     else if (matches.isEmpty)
                       Text(_query.isEmpty ? l.terminalLocalUnavailable : l.terminalLocalShellNoMatch)
                     else

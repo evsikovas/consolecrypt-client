@@ -10,6 +10,17 @@ abstract interface class AutomationProjectMetadataService {
   Future<AutomationJson> publishProjectMetadata(AutomationJson originalFrame);
 }
 
+abstract interface class AutomationProjectSettingsSyncService {
+  Future<ProjectSettingsReview> prepareProjectSettingsSync(String profileId, String nonce);
+}
+
+abstract interface class ProjectSettingsReview {
+  Future<String> details();
+  Future<String> confirm();
+  Future<String> recheckCheckpoint();
+  void cancel();
+}
+
 Never _bad() => throw const FormatException('automation_metadata_changed_or_unavailable');
 final _uuid = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
 final _digest = RegExp(r'^[0-9a-f]{64}$');

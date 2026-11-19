@@ -1,6 +1,7 @@
 """Built-in macOS, Linux and WSL setup. Never reads a project or installs system packages."""
 from __future__ import annotations
 
+import base64
 import hashlib
 import importlib.util
 import json
@@ -47,6 +48,8 @@ def managed_root():
 # Missing/ambiguous/unsupported fields remain unknown; no Linux defaults inferred.
 _OS_RELEASE_BYTES = 8192
 _OS_RELEASE_FIELDS = {'ID': 'id', 'VERSION_ID': 'version_id', 'PRETTY_NAME': 'pretty_name'}
+_MACOS_PYYAML_WHEEL = 'vendor/pyyaml-6.0.3-py3-none-any.whl'
+_MACOS_PYYAML_SHA256 = 'b377f6c8f576b6dd8e2ae2452845f82bd860c301bef2cc83200f622ea91038e6'
 
 
 def _release_value(raw):
@@ -117,8 +120,8 @@ def _environment_key():
     if sys.platform == 'linux' and (machine == 'x86_64' and version in ('3.12', '3.14')
                                     or machine == 'aarch64' and version in ('3.12', '3.13')):
         return f'linux-{machine}-py{sys.version_info.major}{sys.version_info.minor}'
-    if sys.platform == 'darwin' and machine == 'arm64' and version == '3.12':
-        return 'darwin-arm64-py312'
+    if sys.platform == 'darwin' and machine == 'arm64' and version in ('3.12', '3.15'):
+        return f'darwin-arm64-py{sys.version_info.major}{sys.version_info.minor}'
     return None
 
 
@@ -221,11 +224,20 @@ def install(payload):
         if (not isinstance(content, str) or str(parts) != name or parts.is_absolute()
                 or '..' in parts.parts or '\\' in name
                 or not (name.startswith('src/consolecrypt_runner/') and name.endswith(('.py', '.json'))
-                        or re.fullmatch(r'requirements-(?:linux-(?:x86_64-py(?:312|314)|aarch64-py(?:312|313))|darwin-arm64-py312)\.lock', name))):
+                        or name == _MACOS_PYYAML_WHEEL
+                        or re.fullmatch(r'requirements-(?:linux-(?:x86_64-py(?:312|314)|aarch64-py(?:312|313))|darwin-arm64-py(?:312|315))\.lock', name))):
             raise ValueError('invalid_package')
         total += len(content.encode())
     if total > 4 * 1024 * 1024:
         raise ValueError('package_too_large')
+    wheel = None
+    if key == 'darwin-arm64-py315':
+        try:
+            wheel = base64.b64decode(files[_MACOS_PYYAML_WHEEL], validate=True)
+        except (KeyError, ValueError):
+            raise ValueError('invalid_package') from None
+        if hashlib.sha256(wheel).hexdigest() != _MACOS_PYYAML_SHA256:
+            raise ValueError('invalid_package')
     fingerprint = payload.get('package_fingerprint')
     if fingerprint is not None and (not isinstance(fingerprint, str) or re.fullmatch(r'[0-9a-f]{64}', fingerprint) is None):
         raise ValueError('invalid_package')
@@ -234,10 +246,19 @@ def install(payload):
     directory.mkdir(mode=0o700)  # Exclusive; no existing environment is replaced.
     os.umask(0o077)
     for name, content in files.items():
+        if name == _MACOS_PYYAML_WHEEL:
+            continue
         target = directory / name
         target.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
         with target.open('x', encoding='utf-8', newline='\n') as stream:
             stream.write(content)
+    additional_wheels = []
+    if wheel is not None:
+        target = directory / _MACOS_PYYAML_WHEEL
+        target.parent.mkdir(mode=0o700)
+        with target.open('xb') as stream:
+            stream.write(wheel)
+        additional_wheels = ['--find-links', str(target.parent)]
     clean_env = {'HOME': str(directory), 'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8',
                  'PYTHONDONTWRITEBYTECODE': '1', 'PYTHONNOUSERSITE': '1',
                  'PIP_CONFIG_FILE': os.devnull}
@@ -249,7 +270,7 @@ def install(payload):
         subprocess.run([python, '-I', '-m', 'pip', '--isolated', 'install', '--no-input',
                         '--disable-pip-version-check', '--no-cache-dir', '--only-binary=:all:',
                         '--index-url', 'https://pypi.org/simple', '--require-hashes',
-                        '-r', str(directory / lock_name)], env=clean_env, stdin=subprocess.DEVNULL,
+                        *additional_wheels, '-r', str(directory / lock_name)], env=clean_env, stdin=subprocess.DEVNULL,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=600)
         expected = json.loads(files[f'src/consolecrypt_runner/environments/{key}.json'])
         if 'pip' not in expected['packages']:

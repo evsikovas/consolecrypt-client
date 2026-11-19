@@ -5,13 +5,22 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
+const ANSIBLE_CORE_VERSION: &str = "2.20.11";
 const PACKAGES: [(&str, &str); 5] = [
-    ("ansible-core", "2.20.11"),
+    ("ansible-core", ANSIBLE_CORE_VERSION),
     ("ansible-runner", "2.4.3"),
     ("ansible-lint", "26.11.0"),
     ("cryptography", "50.0.2"),
     ("PyYAML", "6.0.3"),
 ];
+
+pub(crate) fn ansible_core_version(system: &str, machine: &str, python: &str) -> &'static str {
+    if system == "Darwin" && machine == "arm64" && python.starts_with("3.15.") {
+        "2.22.0"
+    } else {
+        ANSIBLE_CORE_VERSION
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProbePackage {
@@ -118,6 +127,11 @@ impl EnvironmentProbe {
             ));
         }
         for (name, expected) in PACKAGES {
+            let expected = if name == "ansible-core" {
+                ansible_core_version(&probe.system, &probe.machine, &probe.python)
+            } else {
+                expected
+            };
             let package = probe
                 .packages
                 .get(name)
@@ -253,6 +267,22 @@ mod tests {
             let mut mutated = fixture();
             *mutated.pointer_mut(pointer).unwrap() = value;
             assert!(EnvironmentProbe::parse(mutated).is_err(), "{pointer}");
+        }
+    }
+    #[test]
+    fn arm64_macos_python_315_requires_its_ansible_pin() {
+        let mut value = fixture();
+        value["system"] = json!("Darwin");
+        value["machine"] = json!("arm64");
+        value["python"] = json!("3.15.0");
+        assert!(EnvironmentProbe::parse(value.clone()).is_err());
+        value["packages"]["ansible-core"] =
+            json!({"expected":"2.22.0","actual":"2.22.0","compatible":true});
+        assert!(EnvironmentProbe::parse(value.clone()).is_ok());
+        for (field, different) in [("system", "Linux"), ("machine", "x86_64"), ("python", "3.12.3")] {
+            let mut other = value.clone();
+            other[field] = json!(different);
+            assert!(EnvironmentProbe::parse(other).is_err(), "{field}");
         }
     }
     #[test]

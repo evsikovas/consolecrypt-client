@@ -19485,6 +19485,10 @@
   "@automationRunnerHint": {
     "description": "Runner configuration and explicit environment diagnostics"
   },
+  "automationMobileRunnerRequired": "On a phone, runs use a Linux Runner over SSH. Add a Runner from your saved SSH hosts.",
+  "@automationMobileRunnerRequired": {
+    "description": "Explains how to add a supported Runner from a mobile device."
+  },
   "automationNoRunners": "No saved Runner environments.",
   "@automationNoRunners": {
     "description": "Runner configuration and explicit environment diagnostics"
@@ -20326,11 +20330,15 @@
   "@automationSetupBusy": {
     "description": "Explicit local or WSL Runner setup"
   },
-  "automationMacRunnerNative": "Run Ansible on this Apple Silicon Mac with Python 3.12. ConsoleCrypt installs the Ansible components into a separate local environment.",
+  "automationMacRunnerNative": "Run Ansible natively on Apple Silicon with Python 3.15 or 3.12. ConsoleCrypt prepares a separate environment.",
   "@automationMacRunnerNative": {
     "description": "Guide users to set up a native macOS Runner"
   },
-  "automationMacRunnerPython": "Install Python 3.12 for Apple Silicon from Homebrew or Python.org, then search again.",
+  "automationMacRunnerPython": "ConsoleCrypt couldn’t find Python 3.15 or 3.12 for Apple Silicon. Install either version from Homebrew or Python.org and search again.",
+  "automationMacRunnerPythonUnsupported": "Python was found. The local Runner needs CPython 3.15 or 3.12 for Apple Silicon from Homebrew or Python.org.",
+  "@automationMacRunnerPythonUnsupported": {
+    "description": "Python was found, but the native macOS Runner needs a supported version and architecture"
+  },
   "@automationMacRunnerPython": {
     "description": "Interpreter requirement for a local macOS Runner"
   },
@@ -22632,6 +22640,20 @@
     "description": "Fixed actionable Native project/environment error code. Never includes raw exception prose, credential values or references."
   },
   "automationMetadataTitle": "Project settings sync",
+  "automationSettingsSyncSetup": "Set up settings sync",
+  "@automationSettingsSyncSetup": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncEnable": "Enable sync",
+  "@automationSettingsSyncEnable": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncConfirmHint": "Enable project settings sync for the personal vaults in this account. Devices need ConsoleCrypt {version} or later to keep syncing.",
+  "@automationSettingsSyncConfirmHint": {"description":"Project settings synchronization setup","placeholders":{"version":{"type":"String"}}},
+  "automationSettingsSyncRefreshHint": "Sync is enabled. Refresh the catalog to get settings from your other devices.",
+  "@automationSettingsSyncRefreshHint": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncUpdateDevices": "Update ConsoleCrypt on this account’s devices, then open sync setup again.",
+  "@automationSettingsSyncUpdateDevices": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncUnavailable": "The server could not confirm settings sync. Check that it supports settings sync and that you are signed in as the owner of a personal vault.",
+  "@automationSettingsSyncUnavailable": {"description":"Project settings synchronization setup"},
+  "automationSettingsSyncEnabled": "Sync is ready. You can now save the project settings to your account.",
+  "@automationSettingsSyncEnabled": {"description":"Project settings synchronization setup"},
   "@automationMetadataTitle": {
     "description": "Encrypted project reference catalog UI: automationMetadataTitle"
   },
@@ -22909,6 +22931,14 @@
   "automationLibraryImportArchive": "Import project archive",
   "@automationLibraryImportArchive": {
     "description": "Explicit portable project archive exchange: automationLibraryImportArchive."
+  },
+  "automationImportPlaybook": "Open playbook file",
+  "@automationImportPlaybook": {
+    "description": "Open an existing YAML playbook as a new draft in the current project on a phone."
+  },
+  "automationImportPlaybookInvalid": "Choose a UTF-8 playbook file (.yml or .yaml) up to 256 KB.",
+  "@automationImportPlaybookInvalid": {
+    "description": "Error when the selected playbook file cannot be opened as text."
   },
   "automationLibraryExchangeHint": "Export the current project snapshot and pass the archive to a teammate. Import creates a separate project.",
   "@automationLibraryExchangeHint": {

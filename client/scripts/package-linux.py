@@ -85,6 +85,7 @@ def stage_bundle(root: Path, bundle: Path, stage: Path, version: str) -> dict:
     launcher.chmod(0o755)
     copies = {
         'consolecrypt.desktop': 'usr/share/applications/io.consolecrypt.consolecrypt.desktop',
+        'consolecrypt-terminal.desktop': 'usr/share/applications/io.consolecrypt.consolecrypt.terminal.desktop',
         'consolecrypt.metainfo.xml': 'usr/share/metainfo/io.consolecrypt.consolecrypt.metainfo.xml',
         'consolecrypt.svg': 'usr/share/icons/hicolor/scalable/apps/io.consolecrypt.consolecrypt.svg',
     }
@@ -162,6 +163,7 @@ def build_packages(root: Path, bundle: Path, output: Path, version: str) -> dict
             f'mkdir -p "%{{buildroot}}"\ncp -a "{stage}/." "%{{buildroot}}/"\n'
             '%files\n%defattr(-,root,root,-)\n/opt/consolecrypt\n/usr/bin/consolecrypt\n'
             '/usr/share/applications/io.consolecrypt.consolecrypt.desktop\n'
+            '/usr/share/applications/io.consolecrypt.consolecrypt.terminal.desktop\n'
             '/usr/share/metainfo/io.consolecrypt.consolecrypt.metainfo.xml\n'
             '/usr/share/icons/hicolor/scalable/apps/io.consolecrypt.consolecrypt.svg\n'
             '/usr/share/doc/consolecrypt\n')

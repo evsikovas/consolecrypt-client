@@ -1,4 +1,5 @@
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,7 +20,12 @@ final automationRunnersProvider = FutureProvider.autoDispose<AutomationRunnerCat
   final scope = ref.watch(automationScopeProvider);
   final service = ref.watch(automationRunnerServiceProvider);
   if (!scope.unlocked || service == null) return null;
-  return service.runners();
+  final catalog = await service.runners();
+  if (!AppPlatform.isMobile) return catalog;
+  return AutomationRunnerCatalog(
+    readOnly: catalog.readOnly,
+    runners: catalog.runners.where((runner) => runner.configuration?['kind'] != 'local').toList(),
+  );
 });
 
 final class AutomationScope {

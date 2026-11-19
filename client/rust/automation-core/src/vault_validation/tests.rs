@@ -261,12 +261,21 @@ fn marker_context_mismatch_fails_and_non_vault_summary_also_omits_raw_diagnostic
 fn only_exact_censused_helper_and_entire_environment_identity_get_loader_budget() {
     let pin: Value = serde_json::from_str(include_str!("runtime-pin-v1.json")).unwrap();
     assert!(VaultValidationRuntime::parse_pinned_probe(pin.clone()).is_ok());
-    let mut previous = pin.clone();
-    previous["environment_digest"] =
-        json!("bae8a4ae4e6b78bcbcac5ca6174c50e188e022dc969476f1466ad7fe3e1d7331");
-    previous["helper_digest"] =
-        json!("7ae56c6de89564d6d4420c679b4a9e377a56fe731971e4c217a0b562d5e5ad6b");
-    assert!(VaultValidationRuntime::parse_pinned_probe(previous).is_ok());
+    for (environment, helper) in [
+        (
+            "bae8a4ae4e6b78bcbcac5ca6174c50e188e022dc969476f1466ad7fe3e1d7331",
+            "7ae56c6de89564d6d4420c679b4a9e377a56fe731971e4c217a0b562d5e5ad6b",
+        ),
+        (
+            "b25d68ca5967c0bf17bbdf5b0482d8e9554033ce0d4855d1ebad6eddf5a5157e",
+            "95706aa1cfd2c80a77cb8e0b2a0e1d1b0f953e8bdcefdeaec6343748b7029a6a",
+        ),
+    ] {
+        let mut previous = pin.clone();
+        previous["environment_digest"] = json!(environment);
+        previous["helper_digest"] = json!(helper);
+        assert!(VaultValidationRuntime::parse_pinned_probe(previous).is_ok());
+    }
     for (pointer, value) in [
         ("/helper_digest", json!("d".repeat(64))),
         ("/environment_digest", json!("d".repeat(64))),

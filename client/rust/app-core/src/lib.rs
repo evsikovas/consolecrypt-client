@@ -204,6 +204,7 @@ mod monitoring_sources;
 mod settings_preservation;
 
 mod monitoring_sync;
+pub use monitoring_sync::MonitoringSettingsConsent as ProjectSettingsSyncConsent;
 
 mod host_metrics;
 mod settings_review_runtime;

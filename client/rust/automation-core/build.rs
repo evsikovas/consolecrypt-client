@@ -1,4 +1,5 @@
 //! Embed only the public helper sources and pinned dependency locks.
+use base64::{Engine, engine::general_purpose::STANDARD};
 use std::{env, fs, path::Path};
 fn collect(root: &Path, path: &Path, files: &mut Vec<(String, String)>) {
     for entry in fs::read_dir(path).expect("Runner source directory") {
@@ -35,10 +36,17 @@ fn main() {
         "requirements-linux-aarch64-py312.lock",
         "requirements-linux-aarch64-py313.lock",
         "requirements-darwin-arm64-py312.lock",
+        "requirements-darwin-arm64-py315.lock",
     ] {
         println!("cargo:rerun-if-changed={}", root.join(name).display());
-        files.push((name.into(), fs::read_to_string(root.join(name)).unwrap()));
+        files.push((
+            name.into(),
+            fs::read_to_string(root.join(name)).unwrap().replace("\r\n", "\n"),
+        ));
     }
+    let wheel = "vendor/pyyaml-6.0.3-py3-none-any.whl";
+    println!("cargo:rerun-if-changed={}", root.join(wheel).display());
+    files.push((wheel.into(), STANDARD.encode(fs::read(root.join(wheel)).unwrap())));
     files.sort();
     let source = format!("const SETUP_FILES: &[(&str, &str)] = &{:?};", files);
     fs::write(

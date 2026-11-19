@@ -1,5 +1,6 @@
 import 'package:consolecrypt/automation/automation_project_metadata.dart';
 import 'package:consolecrypt/automation/automation_project_metadata_controller.dart';
+import 'package:consolecrypt/automation/automation_project_settings_sync_dialog.dart';
 import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -59,6 +60,20 @@ class _MetadataDialogState extends State<AutomationProjectMetadataDialog> {
     super.dispose();
   }
 
+  Future<void> _syncSetup(AutomationProjectSettingsSyncService service) async {
+    await showGlassDialog<void>(
+      context,
+      barrierDismissible: false,
+      builder: (_) => AutomationProjectSettingsSyncDialog(
+        service: service,
+        profileId: widget.profileId,
+        nonce: widget.nonce,
+        originalLive: widget.originalLive,
+      ),
+    );
+    if (mounted && controller.current) await controller.loadContext();
+  }
+
   String? _issue(BuildContext context) {
     final l = context.l10n;
     if (controller.phase == ProjectMetadataPhase.publicationUnknown) return l.automationMetadataUnknown;
@@ -78,6 +93,7 @@ class _MetadataDialogState extends State<AutomationProjectMetadataDialog> {
   Widget build(BuildContext context) {
     final l = context.l10n, rows = controller.catalog?.records ?? const <ProjectMetadataRecord>[];
     final message = _issue(context), retired = controller.phase == ProjectMetadataPhase.retired;
+    final service = widget.service;
     return GlassDialog(
       title: l.automationMetadataTitle,
       icon: Icons.sync_outlined,
@@ -94,6 +110,21 @@ class _MetadataDialogState extends State<AutomationProjectMetadataDialog> {
                   Text(widget.project.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 8),
                   InfoBanner(message: l.automationMetadataHint),
+                  if (service is AutomationProjectSettingsSyncService &&
+                      controller.catalog?.releasedFloor != null &&
+                      controller.issue != ProjectMetadataIssue.localOnly) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: GlassButton(
+                        label: l.automationSettingsSyncSetup,
+                        icon: Icons.settings_outlined,
+                        onPressed: controller.busy || retired
+                            ? null
+                            : () => _syncSetup(service as AutomationProjectSettingsSyncService),
+                      ),
+                    ),
+                  ],
                   if (message != null) ...[
                     const SizedBox(height: 8),
                     InfoBanner(

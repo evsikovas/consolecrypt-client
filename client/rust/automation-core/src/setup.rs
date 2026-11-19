@@ -11,6 +11,7 @@ include!(concat!(env!("OUT_DIR"), "/runner_package.rs"));
 const SCRIPT: &str = include_str!("../../../../runner/setup/environment.py");
 const PYTHON_PREFLIGHT: &str = include_str!("setup/python_preflight.sh");
 const MACOS_PYTHON_PREFLIGHT: &str = include_str!("setup/macos_python_preflight.sh");
+const MAX_SETUP_SCRIPT_BYTES: usize = 16 * 1024;
 
 pub(crate) fn builtin_setup_script() -> Result<String> {
     use base64::{Engine, engine::general_purpose::STANDARD};
@@ -40,31 +41,36 @@ pub(crate) fn builtin_setup_script() -> Result<String> {
     let script = format!(
         "import sys,json\ntry:\n import base64,zlib\n _cc_codes=[compile(s,'<consolecrypt-setup>','exec',dont_inherit=True) for s in json.loads(zlib.decompress(base64.b64decode('{encoded}')))]\nexcept Exception:\n print(json.dumps({{'ok':False,'error':'setup_bootstrap_failed'}}));sys.exit(70)\nfor _cc_code in _cc_codes:exec(_cc_code,globals())\n"
     );
-    if script.len() > 15 * 1024 {
+    if script.len() > MAX_SETUP_SCRIPT_BYTES {
         return Err(AutomationError::Remote("setup_command_too_large".into()));
     }
     Ok(script)
 }
 
 fn command_budget(command: &std::process::Command) -> Result<()> {
-    // Conservative Windows quoting bound: each UTF-16 code unit can need at
-    // most one extra backslash, plus quotes/separator per argument and NUL.
+    // Windows quoting can add a backslash for each quote or backslash, plus
+    // two enclosing quotes and a separator. Count non-ASCII as UTF-16.
     fn units(value: &std::ffi::OsStr) -> usize {
         #[cfg(windows)]
         {
             use std::os::windows::ffi::OsStrExt;
-            value.encode_wide().count()
+            value
+                .encode_wide()
+                .map(|unit| 1 + usize::from(unit == u16::from(b'\\') || unit == u16::from(b'"')))
+                .sum()
         }
         #[cfg(not(windows))]
         {
-            value.to_string_lossy().encode_utf16().count()
+            value
+                .to_string_lossy()
+                .encode_utf16()
+                .map(|unit| 1 + usize::from(unit == u16::from(b'\\') || unit == u16::from(b'"')))
+                .sum()
         }
     }
     let units = std::iter::once(command.get_program())
         .chain(command.get_args())
-        .try_fold(1usize, |total, value| {
-            total.checked_add(units(value).checked_mul(2)?.checked_add(4)?)
-        });
+        .try_fold(1usize, |total, value| total.checked_add(units(value).checked_add(4)?));
     if units.is_none_or(|units| units > 32767) {
         return Err(AutomationError::Remote("setup_command_too_large".into()));
     }
@@ -113,7 +119,11 @@ impl SetupTarget {
     pub fn command(&self) -> Result<std::process::Command> {
         let mut command = match self {
             Self::Native if cfg!(any(target_os = "linux", target_os = "macos")) => {
-                std::process::Command::new("/bin/sh")
+                let mut command = std::process::Command::new("/bin/sh");
+                if cfg!(target_os = "macos") {
+                    command.current_dir("/");
+                }
+                command
             }
             Self::Wsl { distribution, user } if cfg!(target_os = "windows") => {
                 if distribution.is_empty()
@@ -274,7 +284,13 @@ fn setup_result(output: &[u8], success: bool, install: bool) -> Result<Value> {
         let manifest: Value =
             serde_json::from_str(include_str!("../../../../runner/environment.json"))
                 .map_err(|_| AutomationError::Protocol("invalid built-in environment manifest"))?;
-        result["required_packages"] = manifest["packages"].clone();
+        let mut packages = manifest["packages"].clone();
+        packages["ansible-core"] = json!(crate::probe::ansible_core_version(
+            result["system"].as_str().unwrap_or_default(),
+            result["machine"].as_str().unwrap_or_default(),
+            result["python"].as_str().unwrap_or_default(),
+        ));
+        result["required_packages"] = packages;
     }
     Ok(result)
 }
@@ -312,7 +328,7 @@ mod tests {
         use base64::{Engine, engine::general_purpose::STANDARD};
         use std::io::Read;
         let script = builtin_setup_script().unwrap();
-        assert!(script.len() <= 15 * 1024);
+        assert!(script.len() <= MAX_SETUP_SCRIPT_BYTES);
         let encoded = script
             .split("base64.b64decode('")
             .nth(1)
@@ -372,6 +388,9 @@ mod tests {
     }
     #[test]
     fn builtin_package_contains_exact_locks_and_no_local_state() {
+        use base64::{Engine, engine::general_purpose::STANDARD};
+        use sha2::{Digest, Sha256};
+        const WHEEL: &str = "vendor/pyyaml-6.0.3-py3-none-any.whl";
         assert!(SETUP_FILES.len() > 30 && SETUP_FILES.len() < 128);
         assert!(
             SETUP_FILES
@@ -382,8 +401,16 @@ mod tests {
             SETUP_FILES
                 .iter()
                 .all(|(path, _)| path.starts_with("src/consolecrypt_runner/")
-                    || path.starts_with("requirements-"))
+                    || path.starts_with("requirements-")
+                    || *path == WHEEL)
         );
+        let wheel = SETUP_FILES.iter().find(|(path, _)| *path == WHEEL).unwrap();
+        let lock = SETUP_FILES
+            .iter()
+            .find(|(path, _)| *path == "requirements-darwin-arm64-py315.lock")
+            .unwrap();
+        let hash = hex::encode(Sha256::digest(STANDARD.decode(wheel.1).unwrap()));
+        assert!(lock.1.contains(&format!("PyYAML==6.0.3 --hash=sha256:{hash}")));
         assert!(
             SETUP_FILES
                 .iter()
@@ -475,7 +502,8 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(error, AutomationError::Remote(code) if code == "setup_macos_python_missing"));
-        assert!(MACOS_PYTHON_PREFLIGHT.contains("/opt/homebrew/bin/python3.12"));
+        assert!(MACOS_PYTHON_PREFLIGHT.contains("in 3.15 3.12"));
+        assert!(MACOS_PYTHON_PREFLIGHT.contains("/opt/homebrew/bin/python$cc_version"));
     }
 
     #[test]

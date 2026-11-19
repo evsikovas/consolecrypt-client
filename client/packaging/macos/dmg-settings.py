@@ -2,7 +2,8 @@
 import os
 
 application = defines['app']  # noqa: F821 — injected by dmgbuild
-files = [application]
+terminal = defines.get('terminal')  # noqa: F821
+files = [application] + ([terminal] if terminal else [])
 symlinks = {'Applications': '/Applications'}
 format = 'UDZO'
 filesystem = 'HFS+'
@@ -10,6 +11,8 @@ background = defines['background']  # noqa: F821
 # Keep icons and native black Finder labels on the light installation area.
 # The arrow in the 2x background is centered at approximately (384, 326).
 icon_locations = {os.path.basename(application): (230, 326), 'Applications': (538, 326)}
+if terminal:
+    icon_locations[os.path.basename(terminal)] = (230, 438)
 window_rect = ((160, 120), (768, 512))
 default_view = 'icon-view'
 show_status_bar = False

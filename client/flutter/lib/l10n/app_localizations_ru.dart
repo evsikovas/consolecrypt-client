@@ -14616,6 +14616,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Подключите подготовленное локальное окружение или Linux-сервер. Проверка не устанавливает компоненты и не запускает playbook.';
 
   @override
+  String get automationMobileRunnerRequired =>
+      'На телефоне задания выполняются на Linux Runner по SSH. Добавьте Runner, выбрав сохранённый SSH-хост.';
+
+  @override
   String get automationNoRunners => 'Нет сохранённых окружений Runner.';
 
   @override
@@ -15293,11 +15297,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationMacRunnerNative =>
-      'Ansible запускается на этом Mac с Apple Silicon через Python 3.12. ConsoleCrypt установит компоненты Ansible в отдельное локальное окружение.';
+      'Ansible запускается нативно на Mac с Apple Silicon через Python 3.15 или 3.12. ConsoleCrypt подготовит отдельное окружение.';
 
   @override
   String get automationMacRunnerPython =>
-      'Установите Python 3.12 для Apple Silicon из Homebrew или с Python.org и повторите поиск.';
+      'ConsoleCrypt не нашёл Python 3.15 или 3.12 для Apple Silicon. Установите одну из версий через Homebrew или с Python.org и повторите поиск.';
+
+  @override
+  String get automationMacRunnerPythonUnsupported =>
+      'Python найден. Для локального Runner нужен CPython 3.15 или 3.12 для Apple Silicon из Homebrew или с Python.org.';
 
   @override
   String get automationMacRunnerArchitecture => 'Apple Silicon (arm64)';
@@ -17115,6 +17123,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationMetadataTitle => 'Синхронизация настроек проекта';
 
   @override
+  String get automationSettingsSyncSetup => 'Настроить синхронизацию';
+
+  @override
+  String get automationSettingsSyncEnable => 'Включить синхронизацию';
+
+  @override
+  String automationSettingsSyncConfirmHint(String version) {
+    return 'Включите синхронизацию настроек проектов для личных хранилищ этого аккаунта. Для синхронизации на всех устройствах нужен ConsoleCrypt $version или новее.';
+  }
+
+  @override
+  String get automationSettingsSyncRefreshHint =>
+      'Синхронизация включена. Обновите каталог, чтобы получить настройки с других устройств.';
+
+  @override
+  String get automationSettingsSyncUpdateDevices =>
+      'Обновите ConsoleCrypt на устройствах этого аккаунта и снова откройте настройки синхронизации.';
+
+  @override
+  String get automationSettingsSyncUnavailable =>
+      'Синхронизация настроек не подтверждена. Проверьте поддержку на сервере и вход под владельцем личного хранилища.';
+
+  @override
+  String get automationSettingsSyncEnabled => 'Можно синхронизировать настройки проекта с аккаунтом.';
+
+  @override
   String get automationMetadataHint =>
       'Настройки и ссылки синхронизируются отдельно от файлов проекта. Полученные ссылки сами не запускают плейбук.';
 
@@ -17329,6 +17363,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get automationLibraryImportArchive => 'Импорт архива проекта';
+
+  @override
+  String get automationImportPlaybook => 'Открыть файл плейбука';
+
+  @override
+  String get automationImportPlaybookInvalid => 'Выберите файл плейбука в UTF-8 (.yml или .yaml) размером до 256 КБ.';
 
   @override
   String get automationLibraryExchangeHint =>

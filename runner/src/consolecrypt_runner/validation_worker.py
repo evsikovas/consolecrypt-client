@@ -6,6 +6,7 @@ import sys
 import uuid
 import stat
 
+from . import expected_ansible_core_version
 from .errors import RunnerError, require
 from .inventory import safe_yaml
 from .input_contract import check_declared_inputs
@@ -59,8 +60,8 @@ def check_playbook_targets(playbook, inventory_path, variables_path, approved_al
         from ansible.plugins.loader import add_all_plugin_dirs
         from ansible.utils.collection_loader import AnsibleCollectionConfig
 
-        require(__version__ == '2.20.11', 'validation_ansible_version',
-                'Target matching requires the pinned Ansible 2.20.11 runtime')
+        require(__version__ == expected_ansible_core_version(), 'validation_ansible_version',
+                'Target matching requires the pinned Ansible runtime for this interpreter')
         argv=['ansible-playbook','--list-hosts','-i',str(inventory_path),'--extra-vars','@'+str(variables_path)]
         if vault_client is not None:
             require(vault_client=='/tool/vault-password-client','vault_client','Invalid trusted Vault client')

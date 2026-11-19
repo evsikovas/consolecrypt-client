@@ -69,7 +69,7 @@ AutomationJson reply({bool published = false}) => {
   'catalog': catalog(revision: published ? 1 : 0, floor: '2.0.0', withRecord: published),
 };
 
-final class MetadataFake implements AutomationProjectMetadataService {
+class MetadataFake implements AutomationProjectMetadataService {
   int reads = 0, catalogs = 0, publishes = 0;
   bool candidate = false;
   Completer<AutomationJson>? pending;

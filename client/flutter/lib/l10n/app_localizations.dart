@@ -25142,6 +25142,12 @@ abstract class AppLocalizations {
   /// **'Connect a prepared local environment or Linux server. Diagnostics do not install components or run a playbook.'**
   String get automationRunnerHint;
 
+  /// Explains how to add a supported Runner from a mobile device.
+  ///
+  /// In en, this message translates to:
+  /// **'On a phone, runs use a Linux Runner over SSH. Add a Runner from your saved SSH hosts.'**
+  String get automationMobileRunnerRequired;
+
   /// Runner configuration and explicit environment diagnostics
   ///
   /// In en, this message translates to:
@@ -26399,14 +26405,20 @@ abstract class AppLocalizations {
   /// Guide users to set up a native macOS Runner
   ///
   /// In en, this message translates to:
-  /// **'Run Ansible on this Apple Silicon Mac with Python 3.12. ConsoleCrypt installs the Ansible components into a separate local environment.'**
+  /// **'Run Ansible natively on Apple Silicon with Python 3.15 or 3.12. ConsoleCrypt prepares a separate environment.'**
   String get automationMacRunnerNative;
 
   /// Interpreter requirement for a local macOS Runner
   ///
   /// In en, this message translates to:
-  /// **'Install Python 3.12 for Apple Silicon from Homebrew or Python.org, then search again.'**
+  /// **'ConsoleCrypt couldn’t find Python 3.15 or 3.12 for Apple Silicon. Install either version from Homebrew or Python.org and search again.'**
   String get automationMacRunnerPython;
+
+  /// Python was found, but the native macOS Runner needs a supported version and architecture
+  ///
+  /// In en, this message translates to:
+  /// **'Python was found. The local Runner needs CPython 3.15 or 3.12 for Apple Silicon from Homebrew or Python.org.'**
+  String get automationMacRunnerPythonUnsupported;
 
   /// Architecture requirement for the native macOS Runner
   ///
@@ -29606,6 +29618,48 @@ abstract class AppLocalizations {
   /// **'Project settings sync'**
   String get automationMetadataTitle;
 
+  /// Project settings synchronization setup
+  ///
+  /// In en, this message translates to:
+  /// **'Set up settings sync'**
+  String get automationSettingsSyncSetup;
+
+  /// Project settings synchronization setup
+  ///
+  /// In en, this message translates to:
+  /// **'Enable sync'**
+  String get automationSettingsSyncEnable;
+
+  /// Project settings synchronization setup
+  ///
+  /// In en, this message translates to:
+  /// **'Enable project settings sync for the personal vaults in this account. Devices need ConsoleCrypt {version} or later to keep syncing.'**
+  String automationSettingsSyncConfirmHint(String version);
+
+  /// Project settings synchronization setup
+  ///
+  /// In en, this message translates to:
+  /// **'Sync is enabled. Refresh the catalog to get settings from your other devices.'**
+  String get automationSettingsSyncRefreshHint;
+
+  /// Project settings synchronization setup
+  ///
+  /// In en, this message translates to:
+  /// **'Update ConsoleCrypt on this account’s devices, then open sync setup again.'**
+  String get automationSettingsSyncUpdateDevices;
+
+  /// Project settings synchronization setup
+  ///
+  /// In en, this message translates to:
+  /// **'The server could not confirm settings sync. Check that it supports settings sync and that you are signed in as the owner of a personal vault.'**
+  String get automationSettingsSyncUnavailable;
+
+  /// Project settings synchronization setup
+  ///
+  /// In en, this message translates to:
+  /// **'Sync is ready. You can now save the project settings to your account.'**
+  String get automationSettingsSyncEnabled;
+
   /// Encrypted project reference catalog UI: automationMetadataHint
   ///
   /// In en, this message translates to:
@@ -30001,6 +30055,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import project archive'**
   String get automationLibraryImportArchive;
+
+  /// Open an existing YAML playbook as a new draft in the current project on a phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Open playbook file'**
+  String get automationImportPlaybook;
+
+  /// Error when the selected playbook file cannot be opened as text.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a UTF-8 playbook file (.yml or .yaml) up to 256 KB.'**
+  String get automationImportPlaybookInvalid;
 
   /// Explicit portable project archive exchange: automationLibraryExchangeHint.
   ///
