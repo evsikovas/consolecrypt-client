@@ -19005,6 +19005,10 @@
     "description": "Open the SSH terminal tab's server in the SFTP browser"
   },
   "keepassDatabases": "Databases",
+  "keepassRecentDatabases": "Recent databases",
+  "@keepassRecentDatabases": {
+    "description": "Password manager heading for the last opened databases"
+  },
   "keepassHello": "Biometrics / device PIN",
   "keepassSecurityKey": "FIDO2 security key",
   "keepassQuickHelp": "Open with the master password first. Then enable a separate local key protected by system biometrics/device PIN or a FIDO2 key with PRF support. This setting is specific to this device.",

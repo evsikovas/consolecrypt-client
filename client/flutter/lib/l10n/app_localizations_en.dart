@@ -13951,6 +13951,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepassDatabases => 'Databases';
 
   @override
+  String get keepassRecentDatabases => 'Recent databases';
+
+  @override
   String get keepassHello => 'Biometrics / device PIN';
 
   @override

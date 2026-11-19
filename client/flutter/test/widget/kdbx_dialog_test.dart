@@ -6,6 +6,7 @@ import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/core/bridge/mapping.dart' show localSettingsFromJson, localSettingsToJson;
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -1479,6 +1480,79 @@ void main() {
     await tapKey(tester, 'confirm-ok');
     expect(container.read(vaultSettingsProvider).value!.passwordVaults, isEmpty);
     expect(manager.sources, isEmpty);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('welcome shows five recent databases and reopens them through the unlock dialog', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(1440, 900));
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    container.read(routerProvider).go(AppRoutes.passwords);
+    await settle(tester);
+    final manager = container.read(passwordManagerProvider);
+    final settings = container.read(settingsServiceProvider);
+    final local = KdbxSource.local(fixturePath);
+    final otherFiles = [for (var i = 1; i <= 5; i++) KdbxSource.local('${temp.path}/Other$i.kdbx')];
+    final otherProfile = KdbxSource.local('${temp.path}/OtherProfile.kdbx');
+    const connection = PasswordVaultConnection(
+      id: 'recent-webdav',
+      name: 'Shared passwords',
+      url: 'https://dav.example/Passwords.kdbx',
+    );
+    final remote = KdbxSource.dav(connection);
+    await settings.updateVault(container.read(vaultSettingsProvider).value!.copyWith(passwordVaults: [connection]));
+    await settings.updateLocal(
+      settings.currentLocal.copyWith(
+        passwordVaultFiles: [
+          for (final source in [local, ...otherFiles]) {'profile': manager.profile, 'path': source.path},
+          {'profile': 'another-profile', 'path': otherProfile.path},
+        ],
+      ),
+    );
+    await settle(tester);
+
+    Finder row(KdbxSource source) => find.byKey(ValueKey('keepass-recent-source-${source.id}'));
+    expect(find.text('Recent databases'), findsOneWidget);
+    expect(manager.recentSources.map((source) => source.id), otherFiles.reversed.map((source) => source.id));
+    expect(row(otherFiles.last), findsOneWidget);
+    expect(row(local), findsNothing);
+    expect(row(remote), findsNothing);
+    expect(row(otherProfile), findsNothing);
+
+    await settings.updateLocal(
+      settings.currentLocal.copyWith(
+        passwordVaultRecentByProfile: {
+          manager.profile: [remote.id],
+        },
+      ),
+    );
+    await tester.runAsync(() => manager.open(local, password: SecretText('fixture-password')));
+    manager.lock(local);
+    final persisted = localSettingsFromJson(localSettingsToJson(settings.currentLocal));
+    expect(persisted.passwordVaultRecentByProfile[manager.profile], [
+      local.id,
+      remote.id,
+      ...otherFiles.reversed.take(3).map((source) => source.id),
+    ]);
+    await settings.updateLocal(persisted);
+    await settle(tester);
+    expect(row(otherFiles[1]), findsNothing);
+    expect(tester.getTopLeft(row(local)).dy, lessThan(tester.getTopLeft(row(remote)).dy));
+
+    await tester.tap(row(local));
+    await settle(tester);
+    await enterKey(tester, 'keepass-password', 'fixture-password');
+    await tapKey(tester, 'keepass-submit');
+    await waitFor(tester, find.byKey(ValueKey('keepass-source-${local.id}')));
+    expect(manager.selected, local.id);
+
+    manager.lock(local);
+    await settle(tester);
+    await tester.tap(row(remote));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('keepass-password')), findsOneWidget);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 

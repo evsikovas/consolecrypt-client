@@ -145,6 +145,7 @@ final class LocalSettings {
   const LocalSettings({
     this.savedForwards = const [],
     this.passwordVaultFiles = const [],
+    this.passwordVaultRecentByProfile = const {},
     this.themeMode = AppThemeMode.system,
     this.uiFontScale = 1,
     this.uiAccentColor,
@@ -202,6 +203,10 @@ final class LocalSettings {
 
   /// Local paths scoped by profile id. Never sent to sync.
   final List<Map<String, String>> passwordVaultFiles;
+
+  /// Recently opened source IDs in newest-first order. No unlock material.
+  static const passwordVaultRecentLimit = 5;
+  final Map<String, List<String>> passwordVaultRecentByProfile;
   final List<SavedForward> savedForwards;
   final double terminalFontSize;
 
@@ -290,6 +295,7 @@ final class LocalSettings {
   LocalSettings copyWith({
     List<SavedForward>? savedForwards,
     List<Map<String, String>>? passwordVaultFiles,
+    Map<String, List<String>>? passwordVaultRecentByProfile,
     AppThemeMode? themeMode,
     double? uiFontScale,
     int? uiAccentColor,
@@ -330,6 +336,7 @@ final class LocalSettings {
   }) => LocalSettings(
     savedForwards: savedForwards ?? this.savedForwards,
     passwordVaultFiles: passwordVaultFiles ?? this.passwordVaultFiles,
+    passwordVaultRecentByProfile: passwordVaultRecentByProfile ?? this.passwordVaultRecentByProfile,
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
     uiAccentColor: resetUiColors ? null : (uiAccentColor ?? this.uiAccentColor),

@@ -122,16 +122,47 @@ class PasswordManager {
     return all.values.toList();
   }
 
-  Future<void> remember(KdbxSource source) async {
+  List<KdbxSource> get recentSources => _recentSources(ref.read(settingsServiceProvider).currentLocal);
+
+  List<KdbxSource> _recentSources(LocalSettings local) {
+    if (!valid) return [];
+    final available = {for (final source in sources) source.id: source};
+    final ordered = <String>{
+      ...?local.passwordVaultRecentByProfile[profile],
+      // Older builds already move a file to the end of the catalog on open.
+      for (final file in local.passwordVaultFiles.reversed)
+        if (file['profile'] == profile) KdbxSource.local(file['path']!).id,
+    };
+    return ordered.map((id) => available[id]).nonNulls.take(LocalSettings.passwordVaultRecentLimit).toList();
+  }
+
+  Future<void> _remember(KdbxSource source) async {
     check();
-    if (source.remote) return;
     final settings = ref.read(settingsServiceProvider);
     final local = settings.currentLocal;
-    final files = local.passwordVaultFiles
-        .where((f) => f['profile'] != profile || KdbxSource.local(f['path']!).id != source.id)
-        .toList();
-    files.add({'profile': profile, 'path': source.path});
-    await settings.updateLocal(local.copyWith(passwordVaultFiles: files));
+    final files = source.remote
+        ? local.passwordVaultFiles
+        : [
+            for (final file in local.passwordVaultFiles)
+              if (file['profile'] != profile || KdbxSource.local(file['path']!).id != source.id) file,
+            {'profile': profile, 'path': source.path},
+          ];
+    final recent = <String>{source.id, for (final entry in _recentSources(local)) entry.id};
+    try {
+      await settings.updateLocal(
+        local.copyWith(
+          passwordVaultFiles: files,
+          passwordVaultRecentByProfile: {
+            ...local.passwordVaultRecentByProfile,
+            profile: recent.take(LocalSettings.passwordVaultRecentLimit).toList(),
+          },
+        ),
+      );
+    } catch (_) {
+      // A remote session already has its saved connection. A failed history
+      // write must not make a successful WebDAV unlock fail.
+      if (!source.remote) rethrow;
+    }
     check();
     notify();
   }
@@ -288,7 +319,7 @@ class PasswordManager {
       final session = PasswordVaultSession(source, client, data, dav?.etag, dav?.fingerprint);
       sessions[source.id] = session;
       selected = source.id;
-      await remember(source);
+      await _remember(source);
       notify();
       return session;
     } catch (_) {

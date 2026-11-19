@@ -843,6 +843,7 @@ List<FileEntry> sortEntries(Iterable<FileEntry> entries) => entries.toList()
 Json localSettingsToJson(LocalSettings s) => {
   'saved_forwards': [for (final p in s.savedForwards) p.toJson()],
   'password_vault_files': s.passwordVaultFiles,
+  'password_vault_recent_by_profile': s.passwordVaultRecentByProfile,
   'theme_mode': s.themeMode.name,
   'ui_font_scale': s.uiFontScale,
   'ui_font_scale_version': 2,
@@ -886,6 +887,7 @@ LocalSettings localSettingsFromJson(Json j) {
   const d = LocalSettings();
   int? rgb(Object? value) => value is int && value >= 0 && value <= 0xFFFFFF ? value : null;
   final scale = j['ui_font_scale'];
+  final recentVaults = j['password_vault_recent_by_profile'];
   // Old 90% becomes 100% exactly; migrate once without shrinking twice.
   final normalizedScale = scale is num && scale.isFinite
       ? scale.toDouble() / (j['ui_font_scale_version'] == 2 ? 1 : LocalSettings.uiFontBase)
@@ -900,6 +902,16 @@ LocalSettings localSettingsFromJson(Json j) {
         if (p is Map && p['profile'] is String && p['path'] is String)
           {'profile': p['profile'] as String, 'path': p['path'] as String},
     ],
+    passwordVaultRecentByProfile: {
+      if (recentVaults is Map)
+        for (final entry in recentVaults.entries)
+          if (entry.key is String && entry.value is List)
+            entry.key as String: (entry.value as List)
+                .whereType<String>()
+                .toSet()
+                .take(LocalSettings.passwordVaultRecentLimit)
+                .toList(),
+    },
     themeMode: _byWire(AppThemeMode.values, (e) => e.name, j['theme_mode'], d.themeMode),
     uiFontScale: normalizedScale.clamp(LocalSettings.uiFontScaleMin, LocalSettings.uiFontScaleMax),
     uiAccentColor: rgb(j['ui_accent_color']),

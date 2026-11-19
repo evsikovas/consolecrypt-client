@@ -14281,6 +14281,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get keepassDatabases => 'Базы паролей';
 
   @override
+  String get keepassRecentDatabases => 'Недавние базы';
+
+  @override
   String get keepassHello => 'Биометрия / PIN устройства';
 
   @override

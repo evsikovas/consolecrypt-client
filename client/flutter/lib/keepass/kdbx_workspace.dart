@@ -203,58 +203,59 @@ class KdbxWorkspace extends StatelessWidget {
         ),
       );
 
-  Widget _sourceTile(BuildContext context, KdbxSource source, {ValueChanged<String>? onAction}) => GestureDetector(
-    onSecondaryTapDown: busy
-        ? null
-        : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
-    onLongPressStart: busy || !AppPlatform.isMobile
-        ? null
-        : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
-    child: ListTile(
-      key: ValueKey('keepass-source-${source.id}'),
-      dense: true,
-      visualDensity: VisualDensity.standard,
-      minTileHeight: source.remote ? 56 : 48,
-      minVerticalPadding: 4,
-      minLeadingWidth: 20,
-      horizontalTitleGap: 10,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      titleAlignment: ListTileTitleAlignment.center,
-      selected: session?.source.id == source.id,
-      selectedColor: Theme.of(context).colorScheme.onSurface,
-      selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
-      leading: Icon(
-        manager.sessions.containsKey(source.id) ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
-        size: 18,
-      ),
-      title: Text(
-        source.name,
-        key: ValueKey('keepass-source-title-${source.id}'),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: source.remote ? const Text('WebDAV') : null, // l10n-ignore: protocol.
-      onTap: busy ? null : () => onAction != null ? onAction('open') : onSource(source),
-      trailing: source.remote
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _sourceMenu(context, source, onAction: onAction),
-                const SizedBox(width: 4),
-                GlassIconButton(
-                  key: ValueKey('keepass-source-settings-${source.id}'),
-                  icon: Icons.settings_outlined,
-                  size: 28,
-                  iconSize: 18,
-                  style: GlassIconButtonStyle.plain,
-                  tooltip: context.l10n.commonEdit,
-                  onPressed: busy ? null : () => onAction != null ? onAction('settings') : onEditSource(source),
-                ),
-              ],
-            )
-          : _sourceMenu(context, source, onAction: onAction),
-    ),
-  );
+  Widget _sourceTile(BuildContext context, KdbxSource source, {ValueChanged<String>? onAction, bool recent = false}) =>
+      GestureDetector(
+        onSecondaryTapDown: busy
+            ? null
+            : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
+        onLongPressStart: busy || !AppPlatform.isMobile
+            ? null
+            : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
+        child: ListTile(
+          key: ValueKey('${recent ? 'keepass-recent-source' : 'keepass-source'}-${source.id}'),
+          dense: true,
+          visualDensity: VisualDensity.standard,
+          minTileHeight: source.remote ? 56 : 48,
+          minVerticalPadding: 4,
+          minLeadingWidth: 20,
+          horizontalTitleGap: 10,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          titleAlignment: ListTileTitleAlignment.center,
+          selected: session?.source.id == source.id,
+          selectedColor: Theme.of(context).colorScheme.onSurface,
+          selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
+          leading: Icon(
+            manager.sessions.containsKey(source.id) ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+            size: 18,
+          ),
+          title: Text(
+            source.name,
+            key: ValueKey('keepass-source-title-${source.id}'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: source.remote ? const Text('WebDAV') : null, // l10n-ignore: protocol.
+          onTap: busy ? null : () => onAction != null ? onAction('open') : onSource(source),
+          trailing: source.remote
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _sourceMenu(context, source, onAction: onAction),
+                    const SizedBox(width: 4),
+                    GlassIconButton(
+                      key: ValueKey('keepass-source-settings-${source.id}'),
+                      icon: Icons.settings_outlined,
+                      size: 28,
+                      iconSize: 18,
+                      style: GlassIconButtonStyle.plain,
+                      tooltip: context.l10n.commonEdit,
+                      onPressed: busy ? null : () => onAction != null ? onAction('settings') : onEditSource(source),
+                    ),
+                  ],
+                )
+              : _sourceMenu(context, source, onAction: onAction),
+        ),
+      );
 
   Widget _unlockOthers(BuildContext context) => Builder(
     builder: (buttonContext) => GlassIconButton(
@@ -322,33 +323,40 @@ class KdbxWorkspace extends StatelessWidget {
     ),
   );
 
-  Widget _sources(BuildContext context, {bool welcome = false}) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Padding(
-        key: const ValueKey('keepass-databases-header'),
-        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-        child: Row(
-          children: [
-            Expanded(child: Text(context.l10n.keepassDatabases, style: Theme.of(context).textTheme.titleSmall)),
-            if (manager.sources.any((s) => !manager.sessions.containsKey(s.id))) _unlockOthers(context),
-            if (!welcome) _addMenu(context),
-          ],
+  Widget _sources(BuildContext context, {bool welcome = false}) {
+    final sources = manager.sources;
+    final visible = welcome ? manager.recentSources : sources.where((s) => manager.sessions.containsKey(s.id));
+    final tiles = [for (final source in visible) _sourceTile(context, source, recent: welcome)];
+    final l = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          key: const ValueKey('keepass-databases-header'),
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  welcome && tiles.isNotEmpty ? l.keepassRecentDatabases : l.keepassDatabases,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              if (sources.any((s) => !manager.sessions.containsKey(s.id))) _unlockOthers(context),
+              if (!welcome) _addMenu(context),
+            ],
+          ),
         ),
-      ),
-      Flexible(
-        child: ListView(
-          shrinkWrap: welcome,
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          children: [
-            for (final source in manager.sources.where((s) => manager.sessions.containsKey(s.id)))
-              _sourceTile(context, source),
-          ],
-        ),
-      ),
-    ],
-  );
+        if (welcome)
+          ...tiles
+        else
+          Flexible(
+            child: ListView(padding: const EdgeInsets.symmetric(vertical: 4), children: tiles),
+          ),
+      ],
+    );
+  }
 
   bool _entryAvailable(PasswordVaultSession opened, String id) =>
       !busy &&
@@ -483,10 +491,7 @@ class KdbxWorkspace extends StatelessWidget {
                 if (manager.sources.isNotEmpty) ...[
                   const SizedBox(height: 28),
                   const Divider(),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 240),
-                    child: _sources(context, welcome: true),
-                  ),
+                  _sources(context, welcome: true),
                 ],
               ],
             ),

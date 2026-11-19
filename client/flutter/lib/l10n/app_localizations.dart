@@ -24518,6 +24518,12 @@ abstract class AppLocalizations {
   /// **'Databases'**
   String get keepassDatabases;
 
+  /// Password manager heading for the last opened databases
+  ///
+  /// In en, this message translates to:
+  /// **'Recent databases'**
+  String get keepassRecentDatabases;
+
   /// Password manager: keepassHello
   ///
   /// In en, this message translates to:
