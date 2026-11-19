@@ -59,6 +59,7 @@ jobs:
           sys.path.insert(0, sys.argv[1])
           from consolecrypt_runner import macos_sandbox
           from consolecrypt_runner.probe import probe
+          print('Interpreter:', sys.executable, Path(sys.executable).resolve(), sys._base_executable, flush=True)
           run = macos_sandbox.run_macos_worker
           bounded = macos_sandbox.run_bounded
           def trace_worker(*args, **kwargs):
@@ -82,6 +83,9 @@ jobs:
           """
                       subprocess.run([str(installation / 'venv/bin/python'), '-IB', '-c', diagnostic,
                                       str(installation / 'src')], timeout=30)
+                      subprocess.run(['/usr/bin/log', 'show', '--last', '2m', '--style', 'compact',
+                                      '--predicate', 'eventMessage CONTAINS "deny" AND eventMessage CONTAINS "sandbox-exec"'],
+                                     timeout=25)
               raise SystemExit(response.get('error', 'native_runner_install_failed'))
           paths = response['result']['paths']
           subprocess.run([paths['python'], '-B', '-m', 'unittest', 'discover',

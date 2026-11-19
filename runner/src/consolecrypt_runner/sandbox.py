@@ -124,7 +124,7 @@ def bubblewrap_argv(workspace: Path, command: list[str], *, extra_readonly=(), s
 
 def run_bounded(argv: list[str], *, timeout=120, cancel: threading.Event | None = None,
                 output_limit=1024 * 1024, grace=15, environment=None, on_chunk=None, vault_channel=None,
-                job_input=None, validation_input=None, input_bytes=None) -> ProcessResult:
+                job_input=None, validation_input=None, input_bytes=None, cwd=None) -> ProcessResult:
     require(os.name == "posix", "unsupported_backend", "Runner process control requires Unix")
     require(0 < timeout <= 86400 and 0 <= output_limit <= 50 * 1024 * 1024,
             "process_limit", "Invalid process limits")
@@ -169,7 +169,7 @@ def run_bounded(argv: list[str], *, timeout=120, cancel: threading.Event | None 
         descriptor_options['pass_fds'] = tuple(inherited)
     process = subprocess.Popen(argv, stdin=subprocess.DEVNULL if input_bytes is None else subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               start_new_session=True, close_fds=True, env=environment, **descriptor_options)
+                               start_new_session=True, close_fds=True, env=environment, cwd=cwd, **descriptor_options)
     spawn_observed_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     terminate_at = None
     with selectors.DefaultSelector() as selector:

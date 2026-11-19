@@ -13,6 +13,22 @@ from .sandbox import run_bounded
 SANDBOX_EXEC = '/usr/bin/sandbox-exec'
 
 
+def _symlink_paths(path):
+    pending = list(Path(path).parts[1:])
+    current = Path('/')
+    links = set()
+    while pending:
+        current /= pending.pop(0)
+        if not current.is_symlink():
+            continue
+        require(current not in links and len(links) < 32, 'sandbox_python', 'Unexpected interpreter symlink chain')
+        links.add(current)
+        target = Path(os.path.abspath(current.parent / current.readlink()))
+        pending = list(target.parts[1:]) + pending
+        current = Path('/')
+    return links
+
+
 def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, input_bytes=None, **limits):
     require(sys.platform == 'darwin' and os.getuid() != 0 and os.access(SANDBOX_EXEC, os.X_OK),
             'sandbox_unavailable', 'Native macOS sandbox is unavailable')
@@ -78,11 +94,14 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
         # Homebrew's interpreter can live outside sys.base_prefix, and the
         # venv executable is reached through this fixed interpreter symlink.
         path_rule('file-read* file-map-executable', 'literal', interpreter)
+        aliases = _symlink_paths(sys.executable)
+        aliases.update(_symlink_paths(sys._base_executable))
         for homebrew in ('/opt/homebrew/opt', '/usr/local/opt'):
             for package in ('mpdecimal', 'openssl@3', 'readline', 'sqlite', 'xz', 'zstd', 'gettext', 'libb2'):
                 library = Path(homebrew) / package / 'lib'
                 if library.is_dir():
                     path_rule('file-read* file-map-executable', 'subpath', library.resolve(strict=True))
+                    aliases.update(_symlink_paths(library))
         for file in ('/dev/null', '/dev/random', '/dev/urandom', '/private/etc/group',
                      '/private/etc/passwd', '/private/etc/localtime'):
             path_rule('file-read*', 'literal', file)
@@ -93,11 +112,13 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
             profile.extend(['(allow system-socket (socket-domain AF_UNIX))',
                             f'(allow network-outbound (remote unix-socket (literal (param "{name}"))))'])
             env['CC_BROKER_SOCKET'] = str(broker)
+        for link in aliases:
+            ancestors.update([link, *link.parents])
         for ancestor in sorted(ancestors):
             path_rule('file-read-metadata', 'literal', ancestor)
         argv = [SANDBOX_EXEC, *parameters, '-p', '\n'.join(profile), sys.executable,
                 '-m', 'consolecrypt_runner.child', '--', *command]
-        return run_bounded(argv, environment=env, input_bytes=input_bytes, **limits)
+        return run_bounded(argv, environment=env, cwd=work, input_bytes=input_bytes, **limits)
 
 
 def probe_macos_sandbox():
