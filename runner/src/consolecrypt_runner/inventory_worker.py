@@ -64,7 +64,8 @@ def emit(value):
 
 
 def main():
-    specification=decode(Path('/tool/inventory-input.json').read_bytes())
+    from .worker_paths import SOURCE, tool
+    specification=decode(tool('inventory-input.json').read_bytes())
     require(set(specification)=={'sources','entries'},'inventory_sources','Invalid trusted source input')
     sources=validate_sources(specification['sources'])
     entries=specification['entries']
@@ -74,7 +75,7 @@ def main():
             'inventory_size','Combined inventory sources exceed the byte limit')
     parsed=[];variables=[]
     for source in sources:
-        body=read_source(Path('/project'),entries[source['path']])
+        body=read_source(SOURCE,entries[source['path']])
         if source['format'] in ('group_vars','host_vars'):
             variables.append((source['path'],source['format'],variable_target(source['path'],source['format']),body))
             continue

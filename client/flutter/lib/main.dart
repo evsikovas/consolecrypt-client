@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/bridge/startup_error_app.dart';
 import 'package:consolecrypt/core/models/terminal.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/src/rust/api/ssh.dart' as rs_ssh;
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_only_app.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

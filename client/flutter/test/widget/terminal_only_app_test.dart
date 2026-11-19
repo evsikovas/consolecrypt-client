@@ -27,16 +27,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<TerminalPane>(find.byType(TerminalPane)).tab.target.label, 'zsh');
 
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('terminal-only-new-window')), findsOneWidget);
-    expect(find.text('zsh'), findsWidgets);
-    expect(find.text('bash'), findsOneWidget);
-    expect(find.text('Hosts'), findsNothing);
-
-    await tapKey(tester, 'terminal-only-shell-macos:bash');
+      for (final (key, physicalKey) in [
+        (LogicalKeyboardKey.keyK, PhysicalKeyboardKey.keyK),
+        (LogicalKeyboardKey.keyT, PhysicalKeyboardKey.keyT),
+        (LogicalKeyboardKey.keyN, PhysicalKeyboardKey.keyN),
+        (const LogicalKeyboardKey(0x043b), PhysicalKeyboardKey.keyK), // Russian keyboard layout.
+      ]) {
+      final terminal = tester.widget<TerminalPane>(find.byType(TerminalPane));
+      await tester.tap(find.byWidget(terminal));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+        await tester.sendKeyEvent(key, physicalKey: physicalKey);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('terminal-only-search')), findsOneWidget);
+      expect(find.byKey(const ValueKey('terminal-only-new-window')), findsOneWidget);
+      expect(find.text('zsh'), findsWidgets);
+      expect(find.byKey(const ValueKey('terminal-only-shell-macos:bash')), findsOneWidget);
+      expect(find.text('Hosts'), findsNothing);
+      await tapKey(tester, 'terminal-only-shell-macos:bash');
+    }
     expect(tester.widget<TerminalPane>(find.byType(TerminalPane)).tab.target.label, 'bash');
     await tapKey(tester, 'terminal-only-palette');
     await tapKey(tester, 'terminal-only-new-window');
@@ -45,9 +54,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-  testWidgets('Windows palette and both new-tab shortcuts select a shell; tabs can move without reconnecting', (
-    tester,
-  ) async {
+  testWidgets('Ctrl shortcuts select a shell and tabs can move without reconnecting', (tester) async {
     const powershell = LocalShellProfile(
       id: 'windows:pwsh',
       kind: 'powershell',
@@ -80,5 +87,5 @@ void main() {
     expect(tester.widget<ListView>(strip).scrollDirection, Axis.horizontal);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
-  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.linux}));
 }

@@ -7496,7 +7496,7 @@
   "@automationProbeOnly": {
     "description": "Runner configuration and explicit environment diagnostics"
   },
-  "automationPreparedEnvironment": "\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u0443\u0436\u0435 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u043e\u0435 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435. \u041f\u0443\u0442\u0438 \u0434\u043e\u043b\u0436\u043d\u044b \u0431\u044b\u0442\u044c \u0430\u0431\u0441\u043e\u043b\u044e\u0442\u043d\u044b\u043c\u0438 \u0438 \u043e\u0442\u043d\u043e\u0441\u0438\u0442\u044c\u0441\u044f \u043a \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u043c\u0443 Linux/macOS \u0443\u0437\u043b\u0443, \u0430 \u043d\u0435 \u043a Windows.",
+  "automationPreparedEnvironment": "Укажите абсолютные пути на машине, где установлен Runner.",
   "@automationPreparedEnvironment": {
     "description": "Runner configuration and explicit environment diagnostics"
   },
@@ -8005,7 +8005,7 @@
   "@automationInventoryExternalOnly": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationInventoryMixed": "\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a \u0438 \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435 \u0445\u043e\u0441\u0442\u044b",
+  "automationInventoryMixed": "Гибрид",
   "@automationInventoryMixed": {
     "description": "Explicitly reviewed automation job execution and history"
   },
@@ -8269,7 +8269,7 @@
   "@automationInstallRunner": {
     "description": "Explicit local or WSL Runner setup"
   },
-  "automationInstallRunnerPlan": "\u0411\u0443\u0434\u0435\u0442 \u0441\u043e\u0437\u0434\u0430\u043d\u043e \u043d\u043e\u0432\u043e\u0435 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435 \u0432 \u0443\u043a\u0430\u0437\u0430\u043d\u043d\u043e\u0439 \u043f\u0430\u043f\u043a\u0435 \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e Linux-\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f. \u0418\u0437 PyPI \u0431\u0443\u0434\u0443\u0442 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043d\u044b \u0437\u0430\u043a\u0440\u0435\u043f\u043b\u0451\u043d\u043d\u044b\u0435 \u0432\u0435\u0440\u0441\u0438\u0438 Ansible, Runner, lint \u0438 \u0438\u0445 \u0437\u0430\u0432\u0438\u0441\u0438\u043c\u043e\u0441\u0442\u0435\u0439 \u0441 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u043e\u0439 SHA-256. \u0417\u0430\u0442\u0435\u043c \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043c \u0432\u0435\u0440\u0441\u0438\u0438 \u0438 \u0438\u0437\u043e\u043b\u044f\u0446\u0438\u044e. \u041d\u0443\u0436\u0435\u043d \u0438\u043d\u0442\u0435\u0440\u043d\u0435\u0442. \u0421\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0439 Python, \u043f\u0430\u043a\u0435\u0442\u044b \u041e\u0421, WSL-\u0434\u0438\u0441\u0442\u0440\u0438\u0431\u0443\u0442\u0438\u0432\u044b \u0438 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0435 Runner \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u044f\u044e\u0442\u0441\u044f. \u0423\u0441\u0442\u0430\u043d\u043e\u0432\u043a\u0430 \u043c\u043e\u0436\u0435\u0442 \u0437\u0430\u043d\u044f\u0442\u044c \u0434\u043e 14 \u043c\u0438\u043d\u0443\u0442. \u041f\u043b\u0435\u0439\u0431\u0443\u043a\u0438 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u044e\u0442\u0441\u044f.",
+  "automationInstallRunnerPlan": "ConsoleCrypt создаст Runner в домашней папке выбранного пользователя и загрузит закреплённые версии пакетов Ansible из PyPI. Установка проверит SHA-256 и изоляцию. Нужен интернет, установка может занять до 14 минут.",
   "@automationInstallRunnerPlan": {
     "description": "Explicit local or WSL Runner setup"
   },
@@ -8293,6 +8293,34 @@
   "@automationSetupBusy": {
     "description": "Explicit local or WSL Runner setup"
   },
+  "automationMacRunnerNative": "Ansible запускается на этом Mac с Apple Silicon через Python 3.12. ConsoleCrypt установит компоненты Ansible в отдельное локальное окружение.",
+  "@automationMacRunnerNative": {
+    "description": "Guide users to set up a native macOS Runner"
+  },
+  "automationMacRunnerPython": "Установите Python 3.12 для Apple Silicon из Homebrew или с Python.org и повторите поиск.",
+  "@automationMacRunnerPython": {
+    "description": "Interpreter requirement for a local macOS Runner"
+  },
+  "automationMacRunnerArchitecture": "Apple Silicon (arm64)",
+  "@automationMacRunnerArchitecture": {
+    "description": "Architecture requirement for the native macOS Runner"
+  },
+  "automationMacRunnerIsolationFailed": "Не удалось проверить изоляцию macOS или установленные пакеты Runner.",
+  "@automationMacRunnerIsolationFailed": {
+    "description": "Native macOS Runner readiness check failed"
+  },
+  "automationMacProcessIsolation": "Защита процессов Runner",
+  "@automationMacProcessIsolation": {
+    "description": "Label for macOS worker process isolation check"
+  },
+  "automationSelectAllTargets": "Выбрать все",
+  "@automationSelectAllTargets": {
+    "description": "Select all eligible hosts in the job target list"
+  },
+  "automationTargetLimit": "За один запуск можно выбрать до {limit} хостов.",
+  "@automationTargetLimit": {
+    "placeholders": {"limit": {"type": "int"}}
+  },
   "automationSetupFailed": "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c Runner. \u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f \u043a PyPI \u0438 \u043d\u0430\u043b\u0438\u0447\u0438\u0435 \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0445 \u043f\u0430\u043a\u0435\u0442\u043e\u0432, \u0437\u0430\u0442\u0435\u043c \u043f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u043e\u0438\u0441\u043a. \u0421\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0435 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u044f \u043d\u0435 \u0437\u0430\u043c\u0435\u043d\u0435\u043d\u044b.",
   "@automationSetupFailed": {
     "description": "Explicit local or WSL Runner setup"
@@ -8309,7 +8337,7 @@
   "@automationInventorySavedHosts": {
     "description": "Saved ConsoleCrypt inventory source selection"
   },
-  "automationInventoryFilesOnly": "\u0424\u0430\u0439\u043b\u044b \u043f\u0440\u043e\u0435\u043a\u0442\u0430",
+  "automationInventoryFilesOnly": "Файл Inventory",
   "@automationInventoryFilesOnly": {
     "description": "Saved ConsoleCrypt inventory source selection"
   },
@@ -10522,6 +10550,10 @@
   "terminalOnlyNewWindow": "Открыть новое окно",
   "@terminalOnlyNewWindow": {
     "description": "Desktop terminal-only window."
+  },
+  "terminalOnlyOpen": "Открыть «Только терминал»",
+  "@terminalOnlyOpen": {
+    "description": "Open a separate ConsoleCrypt window for local shells"
   },
   "terminalOnlyWindowError": "Не удалось открыть новое окно терминала.",
   "@terminalOnlyWindowError": {

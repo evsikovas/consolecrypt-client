@@ -23,6 +23,7 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/snippets/run_flow.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/services.dart';
@@ -815,6 +816,17 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
           title: l10n.paletteNewLocalTerminal,
           enabled: !_openingLocal && _openingHost == null,
           onSelect: () => unawaited(_newLocalTerminal()),
+        ),
+      if (!AppPlatform.isMobile)
+        _Item(
+          key: const ValueKey('palette-terminal-only'),
+          group: _Group.actions,
+          icon: Icons.open_in_new_rounded,
+          title: l10n.terminalOnlyOpen,
+          onSelect: () async {
+            final opened = await showTerminalOnlyWindow(context);
+            if (opened && mounted) _close();
+          },
         ),
       _Item(
         group: _Group.actions,

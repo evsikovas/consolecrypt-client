@@ -717,6 +717,8 @@ Future<T> _automationGuard<T>(Future<T> Function() action) async {
           'setup_bootstrap_failed',
           'setup_command_too_large',
           'setup_python_missing',
+          'setup_macos_python_missing',
+          'environment_check_failed',
           'setup_unavailable',
           'invalid_package',
           'unsafe_directory',

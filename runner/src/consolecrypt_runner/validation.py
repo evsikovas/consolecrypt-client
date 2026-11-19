@@ -64,7 +64,7 @@ def validate_project(root: Path, snapshot: ProjectSnapshot, playbook: str, *, ca
         require(len(body)<=6*1024*1024,'validation_inputs','Private validation input exceeds its budget')
         mounts = []
         if any(entry['path'] == LOCK_FILE for entry in snapshot.entries):
-            metadata = Path(temporary) / 'snapshot.json'
+            metadata = Path(temporary) / 'project-snapshot.json'
             snapshot_body = encode(snapshot.to_json())
             require(len(snapshot_body) <= 32 * 1024 * 1024, 'dependency_snapshot', 'Snapshot metadata exceeds budget')
             metadata.write_bytes(snapshot_body)
@@ -72,16 +72,23 @@ def validate_project(root: Path, snapshot: ProjectSnapshot, playbook: str, *, ca
             mounts.append((metadata, '/tool/project-snapshot.json'))
         for name in commands:
             command = [sys.executable, '-m', 'consolecrypt_runner.validation_worker', name]
-            with ExitStack() as phase_scope:
-                inputs = phase_scope.enter_context(EphemeralValidationInput(body))
-                broker=phase_scope.enter_context(vault_phase_factory(name)) if vault_phase_factory is not None else None
-                channel=phase_scope.enter_context(vault_sidecar_factory(name)) if vault_sidecar_factory is not None else None
-                require(broker is None or channel is None,'vault_phase','Ambiguous Vault password source')
-                phase_mounts=mounts+([(broker.client_script,'/tool/vault-password-client')] if broker is not None else [])
-                argv=bubblewrap_argv(root,command,extra_readonly=phase_mounts,socket_directory=broker.directory if broker is not None else None,vault_channel=channel,validation_input=inputs)
-                if broker is not None:
-                    split=argv.index('--');argv[split:split]=['--setenv','ANSIBLE_VAULT_PASSWORD_FILE','/tool/vault-password-client']
-                result=run_bounded(argv,timeout=120,cancel=cancel,output_limit=128*1024,grace=1 if broker is not None else 15,vault_channel=channel,validation_input=inputs)
+            if sys.platform == 'darwin':
+                from .macos_sandbox import run_macos_worker
+                require(vault_phase_factory is None and vault_sidecar_factory is None,
+                        'validation_unavailable', 'One-shot Vault validation requires the Linux Runner')
+                result = run_macos_worker(root, command, tool_directory=temporary, input_bytes=body,
+                                          timeout=120, cancel=cancel, output_limit=128*1024)
+            else:
+                with ExitStack() as phase_scope:
+                    inputs = phase_scope.enter_context(EphemeralValidationInput(body))
+                    broker=phase_scope.enter_context(vault_phase_factory(name)) if vault_phase_factory is not None else None
+                    channel=phase_scope.enter_context(vault_sidecar_factory(name)) if vault_sidecar_factory is not None else None
+                    require(broker is None or channel is None,'vault_phase','Ambiguous Vault password source')
+                    phase_mounts=mounts+([(broker.client_script,'/tool/vault-password-client')] if broker is not None else [])
+                    argv=bubblewrap_argv(root,command,extra_readonly=phase_mounts,socket_directory=broker.directory if broker is not None else None,vault_channel=channel,validation_input=inputs)
+                    if broker is not None:
+                        split=argv.index('--');argv[split:split]=['--setenv','ANSIBLE_VAULT_PASSWORD_FILE','/tool/vault-password-client']
+                    result=run_bounded(argv,timeout=120,cancel=cancel,output_limit=128*1024,grace=1 if broker is not None else 15,vault_channel=channel,validation_input=inputs)
             fields = result.validation_fields()
             if name == 'syntax':
                 completed = result.exit_code == 0 and not (result.cancelled or result.timed_out or result.truncated)

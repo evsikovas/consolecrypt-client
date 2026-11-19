@@ -43,6 +43,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#AppSource}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Icons]
 Name: "{autoprograms}\ConsoleCrypt"; Filename: "{app}\ConsoleCrypt.exe"
+Name: "{autoprograms}\ConsoleCrypt Terminal"; Filename: "{app}\ConsoleCrypt.exe"; Parameters: "--terminal-only"
 Name: "{autodesktop}\ConsoleCrypt"; Filename: "{app}\ConsoleCrypt.exe"; Tasks: desktopicon
 [Run]
 Filename: "{app}\ConsoleCrypt.exe"; Description: "{cm:LaunchProgram,ConsoleCrypt}"; Flags: nowait postinstall skipifsilent

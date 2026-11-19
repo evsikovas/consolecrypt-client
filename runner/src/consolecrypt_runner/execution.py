@@ -5,6 +5,7 @@ from contextlib import ExitStack
 import hashlib
 from pathlib import Path
 import sys
+import tempfile
 import threading
 import time
 
@@ -210,18 +211,33 @@ class InteractiveExecutor:
                                  **({'become_native':True} if become_native else {}),
                                  **({'vault_execution':True} if 'vault' in parameters else {})})
             with ExitStack() as execution_scope:
-                inputs = execution_scope.enter_context(EphemeralJobInput(input_body))
-                del input_body
-                self.store.transition(job_id, 'running')
-                execution_scope.enter_context(JobBroker(directory / 'transport', verified, self.channel, cancel))
-                vault=None
-                if 'vault' in parameters:
-                    from .vault_sidecar import PinnedVaultSidecar
-                    vault=execution_scope.enter_context(PinnedVaultSidecar(self.helper.root,parameters['vault'],'execution',snapshot.digest,verified.digest))
-                result = run_bounded(bubblewrap_argv(root, [sys.executable, '-m', 'consolecrypt_runner.execution_worker'],
-                    socket_directory=directory / 'transport',vault_channel=vault,job_input=inputs),
-                    timeout=min(manifest['policy']['timeout_seconds'], max(1, manifest['access_expires_at'] - time.time())),
-                    cancel=cancel, output_limit=1024 * 1024, on_chunk=chunks,vault_channel=vault,job_input=inputs)
+                command = [sys.executable, '-m', 'consolecrypt_runner.execution_worker']
+                limits = dict(timeout=min(manifest['policy']['timeout_seconds'],
+                                          max(1, manifest['access_expires_at'] - time.time())),
+                              cancel=cancel, output_limit=1024 * 1024, on_chunk=chunks)
+                if sys.platform == 'darwin':
+                    from .macos_sandbox import run_macos_worker
+                    require('vault' not in parameters, 'execution_unavailable',
+                            'One-shot Vault channel requires the Linux Runner')
+                    transport = Path(execution_scope.enter_context(
+                        tempfile.TemporaryDirectory(prefix='cc-transport-', dir='/private/tmp'))) / 'job'
+                    execution_scope.enter_context(JobBroker(transport, verified, self.channel, cancel))
+                    self.store.transition(job_id, 'running')
+                    result = run_macos_worker(root, command, broker=transport / 'broker.sock',
+                                              input_bytes=input_body, **limits)
+                else:
+                    inputs = execution_scope.enter_context(EphemeralJobInput(input_body))
+                    del input_body
+                    self.store.transition(job_id, 'running')
+                    execution_scope.enter_context(JobBroker(directory / 'transport', verified, self.channel, cancel))
+                    vault = None
+                    if 'vault' in parameters:
+                        from .vault_sidecar import PinnedVaultSidecar
+                        vault = execution_scope.enter_context(PinnedVaultSidecar(
+                            self.helper.root, parameters['vault'], 'execution', snapshot.digest, verified.digest))
+                    result = run_bounded(bubblewrap_argv(root, command, socket_directory=directory / 'transport',
+                                         vault_channel=vault, job_input=inputs), **limits,
+                                         vault_channel=vault, job_input=inputs)
             verify_snapshot(root, snapshot)
             known = summary is not None and type(summary.get('exit_code')) is int and summary['exit_code'] == result.exit_code
             outcome = {'exit_code': result.exit_code, 'summary': summary, 'timed_out': result.timed_out,

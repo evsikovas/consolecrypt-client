@@ -123,7 +123,8 @@ def bubblewrap_argv(workspace: Path, command: list[str], *, extra_readonly=(), s
 
 
 def run_bounded(argv: list[str], *, timeout=120, cancel: threading.Event | None = None,
-                output_limit=1024 * 1024, grace=15, environment=None, on_chunk=None, vault_channel=None, job_input=None, validation_input=None) -> ProcessResult:
+                output_limit=1024 * 1024, grace=15, environment=None, on_chunk=None, vault_channel=None,
+                job_input=None, validation_input=None, input_bytes=None) -> ProcessResult:
     require(os.name == "posix", "unsupported_backend", "Runner process control requires Unix")
     require(0 < timeout <= 86400 and 0 <= output_limit <= 50 * 1024 * 1024,
             "process_limit", "Invalid process limits")
@@ -132,6 +133,9 @@ def run_bounded(argv: list[str], *, timeout=120, cancel: threading.Event | None 
     cancelled = timed_out = truncated = False
     output = bytearray()
     require(job_input is None or validation_input is None, 'job_input', 'Ambiguous private input')
+    require(input_bytes is None or (type(input_bytes) is bytes and len(input_bytes) <= 6 * 1024 * 1024
+            and job_input is None and validation_input is None and vault_channel is None),
+            'job_input', 'Invalid private pipe input')
     descriptor_options = {}
     inherited = []
     if vault_channel is not None:
@@ -163,7 +167,8 @@ def run_bounded(argv: list[str], *, timeout=120, cancel: threading.Event | None 
     if inherited:
         require(len(inherited) == len(set(inherited)), 'job_input', 'Duplicate private setup descriptor')
         descriptor_options['pass_fds'] = tuple(inherited)
-    process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    process = subprocess.Popen(argv, stdin=subprocess.DEVNULL if input_bytes is None else subprocess.PIPE,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                start_new_session=True, close_fds=True, env=environment, **descriptor_options)
     spawn_observed_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     terminate_at = None
@@ -171,6 +176,10 @@ def run_bounded(argv: list[str], *, timeout=120, cancel: threading.Event | None 
         os.set_blocking(process.stdout.fileno(), False)
         selector.register(process.stdout, selectors.EVENT_READ)
         try:
+            if process.stdin is not None:
+                os.set_blocking(process.stdin.fileno(), False)
+                selector.register(process.stdin, selectors.EVENT_WRITE)
+                remaining = memoryview(input_bytes)
             while selector.get_map() or process.poll() is None:
                 now = time.monotonic()
                 if terminate_at is None and ((cancel and cancel.is_set()) or now >= deadline):
@@ -191,6 +200,18 @@ def run_bounded(argv: list[str], *, timeout=120, cancel: threading.Event | None 
                     if now >= terminate_at + 2:
                         break
                 for key, _ in selector.select(timeout=0.1):
+                    if key.fileobj is process.stdin:
+                        try:
+                            if remaining:
+                                remaining = remaining[os.write(key.fd, remaining[:65536]):]
+                        except BlockingIOError:
+                            continue
+                        except BrokenPipeError:
+                            remaining = remaining[:0]
+                        if not remaining:
+                            selector.unregister(key.fileobj)
+                            process.stdin.close()
+                        continue
                     chunk = os.read(key.fileobj.fileno(), 65536)
                     if not chunk:
                         selector.unregister(key.fileobj)
@@ -211,12 +232,17 @@ def run_bounded(argv: list[str], *, timeout=120, cancel: threading.Event | None 
                     pass
                 process.wait(timeout=5)
             process.stdout.close()
+            if process.stdin is not None:
+                process.stdin.close()
     exit_observed_utc = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     return ProcessResult(code, output.decode("utf-8", errors="replace"), truncated, cancelled, timed_out,
                          int((time.monotonic() - start) * 1000), spawn_observed_utc, exit_observed_utc)
 
 
 def probe_sandbox():
+    if sys.platform == "darwin":
+        from .macos_sandbox import probe_macos_sandbox
+        return probe_macos_sandbox()
     if sys.platform != "linux" or os.getuid() == 0 or not shutil.which("bwrap"):
         return {"filesystem": False, "pid": False, "network": False, "reason": "sandbox_unavailable"}
     import tempfile

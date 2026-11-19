@@ -34,6 +34,7 @@ fn main() {
         "requirements-linux-x86_64-py314.lock",
         "requirements-linux-aarch64-py312.lock",
         "requirements-linux-aarch64-py313.lock",
+        "requirements-darwin-arm64-py312.lock",
     ] {
         println!("cargo:rerun-if-changed={}", root.join(name).display());
         files.push((name.into(), fs::read_to_string(root.join(name)).unwrap()));

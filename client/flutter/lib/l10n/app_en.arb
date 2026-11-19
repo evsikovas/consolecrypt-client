@@ -19529,7 +19529,7 @@
   "@automationProbeOnly": {
     "description": "Runner configuration and explicit environment diagnostics"
   },
-  "automationPreparedEnvironment": "Specify an existing prepared environment. Paths must be absolute and belong to the selected Linux/macOS node, not Windows.",
+  "automationPreparedEnvironment": "Enter absolute paths on the machine where the Runner is installed.",
   "@automationPreparedEnvironment": {
     "description": "Runner configuration and explicit environment diagnostics"
   },
@@ -20038,7 +20038,7 @@
   "@automationInventoryExternalOnly": {
     "description": "Explicitly reviewed automation job execution and history"
   },
-  "automationInventoryMixed": "Source and selected saved hosts",
+  "automationInventoryMixed": "Hybrid",
   "@automationInventoryMixed": {
     "description": "Explicitly reviewed automation job execution and history"
   },
@@ -20302,7 +20302,7 @@
   "@automationInstallRunner": {
     "description": "Explicit local or WSL Runner setup"
   },
-  "automationInstallRunnerPlan": "Create a new environment in the selected Linux user\u2019s directory. Download pinned Ansible, Runner, lint and dependencies from PyPI with SHA-256 verification, then check versions and isolation. Internet is required. System Python, OS packages, WSL distributions and existing Runners are unchanged. Setup may take up to 14 minutes. No playbook runs.",
+  "automationInstallRunnerPlan": "ConsoleCrypt creates a Runner in the selected user's directory and downloads pinned Ansible packages from PyPI. Setup verifies the SHA-256 hashes and the sandbox. It needs internet access and can take up to 14 minutes.",
   "@automationInstallRunnerPlan": {
     "description": "Explicit local or WSL Runner setup"
   },
@@ -20326,6 +20326,34 @@
   "@automationSetupBusy": {
     "description": "Explicit local or WSL Runner setup"
   },
+  "automationMacRunnerNative": "Run Ansible on this Apple Silicon Mac with Python 3.12. ConsoleCrypt installs the Ansible components into a separate local environment.",
+  "@automationMacRunnerNative": {
+    "description": "Guide users to set up a native macOS Runner"
+  },
+  "automationMacRunnerPython": "Install Python 3.12 for Apple Silicon from Homebrew or Python.org, then search again.",
+  "@automationMacRunnerPython": {
+    "description": "Interpreter requirement for a local macOS Runner"
+  },
+  "automationMacRunnerArchitecture": "Apple Silicon (arm64)",
+  "@automationMacRunnerArchitecture": {
+    "description": "Architecture requirement for the native macOS Runner"
+  },
+  "automationMacRunnerIsolationFailed": "Runner setup could not verify the macOS sandbox or the installed packages.",
+  "@automationMacRunnerIsolationFailed": {
+    "description": "Native macOS Runner readiness check failed"
+  },
+  "automationMacProcessIsolation": "Worker process protection",
+  "@automationMacProcessIsolation": {
+    "description": "Label for macOS worker process isolation check"
+  },
+  "automationSelectAllTargets": "Select all",
+  "@automationSelectAllTargets": {
+    "description": "Select all eligible hosts in the job target list"
+  },
+  "automationTargetLimit": "Select up to {limit} hosts per job.",
+  "@automationTargetLimit": {
+    "placeholders": {"limit": {"type": "int"}}
+  },
   "automationSetupFailed": "Runner setup failed. Check PyPI access and system prerequisites, then scan again. Existing environments were not replaced.",
   "@automationSetupFailed": {
     "description": "Explicit local or WSL Runner setup"
@@ -20342,7 +20370,7 @@
   "@automationInventorySavedHosts": {
     "description": "Saved ConsoleCrypt inventory source selection"
   },
-  "automationInventoryFilesOnly": "Project files",
+  "automationInventoryFilesOnly": "Inventory file",
   "@automationInventoryFilesOnly": {
     "description": "Saved ConsoleCrypt inventory source selection"
   },
@@ -23032,6 +23060,10 @@
   "terminalOnlyNewWindow": "Open new window",
   "@terminalOnlyNewWindow": {
     "description": "Desktop terminal-only window."
+  },
+  "terminalOnlyOpen": "Open Terminal Only",
+  "@terminalOnlyOpen": {
+    "description": "Open a separate ConsoleCrypt window for local shells"
   },
   "terminalOnlyWindowError": "Could not open a new terminal window.",
   "@terminalOnlyWindowError": {

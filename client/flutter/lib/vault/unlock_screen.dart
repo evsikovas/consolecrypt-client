@@ -1,5 +1,6 @@
 import 'package:consolecrypt/account/profile_switcher.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
@@ -12,6 +13,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:consolecrypt/settings/security_key_settings.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -149,6 +151,15 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> with WidgetsBinding
             icon: Icons.fingerprint_rounded,
             label: l10n.unlockWithOsAuth(status?.deviceUnlock.authName(l10n) ?? l10n.platformSystemAuthentication),
           ),
+          if (!AppPlatform.isMobile) ...[
+            const SizedBox(height: GlassSpacing.s8),
+            GlassButton.plain(
+              key: const ValueKey('unlock-terminal-only'),
+              icon: Icons.terminal_rounded,
+              label: l10n.terminalOnlyOpen,
+              onPressed: () => showTerminalOnlyWindow(context),
+            ),
+          ],
           if (status?.securityKey.available ?? false) ...[
             const SizedBox(height: GlassSpacing.s8),
             GlassButton(

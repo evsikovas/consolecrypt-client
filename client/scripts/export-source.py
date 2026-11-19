@@ -59,6 +59,7 @@ def publishable(name: str) -> bool:
             'runner/pyproject.toml', 'runner/environment.json',
             'runner/requirements-linux-x86_64-py312.lock', 'runner/requirements-linux-x86_64-py314.lock',
             'runner/requirements-linux-aarch64-py312.lock', 'runner/requirements-linux-aarch64-py313.lock',
+            'runner/requirements-darwin-arm64-py312.lock',
         }
     ):
         return False

@@ -253,6 +253,11 @@ impl HelperLaunch {
         if cancel.is_cancelled() {
             return Err(AutomationError::Closed);
         }
+        if cfg!(target_os = "macos") && matches!(self, Self::Native { .. }) {
+            return Err(AutomationError::Invalid(
+                "dependency installation requires a Linux Runner",
+            ));
+        }
         let (command, expected) = self.dependency_command(operation)?;
         let local = Self::spawn_command(command, None).await?;
         crate::DependencyHelperConnection::local(local, expected, cancel).await

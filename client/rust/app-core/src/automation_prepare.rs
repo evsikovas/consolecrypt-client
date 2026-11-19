@@ -696,10 +696,16 @@ impl AppCore {
                 "update the selected Runner to use trusted worker bootstrap",
             )
         })?;
+        let local_macos_sandbox = cfg!(target_os = "macos")
+            && matches!(&runner.configuration, AutomationRunnerConfig::Local {
+                launch: cc_automation_core::HelperLaunch::Native { .. }
+            })
+            && probe.system == "Darwin"
+            && probe.capabilities.get("macos_worker_sandbox_v1") == Some(&true);
         if !probe.dependencies_ready
             || !probe.non_root
             || !probe.sandbox.filesystem
-            || !probe.sandbox.pid
+            || !(probe.sandbox.pid || local_macos_sandbox)
             || !probe.sandbox.network
         {
             return Err(invalid("isolated execution environment is unavailable"));

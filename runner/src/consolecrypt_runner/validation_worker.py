@@ -115,10 +115,12 @@ def _vault_client(spec):
     return str(path)
 
 def main():
-    with Path('/tool/validation-input.json').open('rb') as source:
+    from .worker_paths import input_source, tool, WORK, PROJECT
+
+    with input_source('validation-input.json') as source:
         spec = decode(source.read(6*1024*1024+1),max_bytes=6*1024*1024)
     vault_client=_vault_client(spec)
-    directory = Path('/work/validation')
+    directory = WORK / 'validation'
     directory.mkdir(mode=0o700)
     inventory = directory / 'inventory.json'
     variables = directory / 'variables.json'
@@ -127,14 +129,14 @@ def main():
     os.environ['ANSIBLE_INVENTORY'] = str(inventory)
     if sys.argv[1] == 'syntax':
         snapshot = None
-        if contract_path(Path('/work/project'), LOCK_FILE).exists():
-            with Path('/tool/project-snapshot.json').open('rb') as metadata:
+        if contract_path(PROJECT, LOCK_FILE).exists():
+            with tool('project-snapshot.json').open('rb') as metadata:
                 snapshot = decode(metadata.read(32 * 1024 * 1024 + 1), max_bytes=32 * 1024 * 1024)
-        dependencies = check_locked_dependencies(Path('/work/project'), snapshot)
+        dependencies = check_locked_dependencies(PROJECT, snapshot)
         if dependencies:
             print(f'ConsoleCrypt: locked dependency trees verified ({dependencies})', flush=True)
-        count=check_declared_inputs(Path('/work/project'),spec['playbook'],spec['parameters']['extra_vars'])
-        count += check_project_requirements(Path('/work/project'),spec['playbook'],spec['parameters']['extra_vars'])
+        count=check_declared_inputs(PROJECT,spec['playbook'],spec['parameters']['extra_vars'])
+        count += check_project_requirements(PROJECT,spec['playbook'],spec['parameters']['extra_vars'])
         if count:
             print(f'ConsoleCrypt: required execution inputs satisfied ({count})',flush=True)
         require(type(spec.get('require_host_match', False)) is bool,
@@ -149,7 +151,7 @@ def main():
     else:
         config = {}
         for candidate in ('.ansible-lint', '.ansible-lint.yml', '.ansible-lint.yaml', '.config/ansible-lint.yml', '.config/ansible-lint.yaml'):
-            path = Path('/work/project') / candidate
+            path = PROJECT / candidate
             if path.is_file():
                 require(path.stat().st_size <= 1024 * 1024, 'lint_config_size', 'Lint configuration exceeds limit')
                 config = safe_yaml(path.read_text(encoding='utf-8'))
@@ -159,7 +161,7 @@ def main():
         require(isinstance(extra_vars, dict), 'lint_config', 'Lint extra_vars must be a mapping')
         config['extra_vars'] = {**extra_vars, **spec['parameters']['extra_vars']}
         # Keep relative rule/exclude paths relative to the copied project.
-        generated = Path('/work/project') / ('.cc-lint-' + uuid.uuid4().hex + '.json')
+        generated = PROJECT / ('.cc-lint-' + uuid.uuid4().hex + '.json')
         with generated.open('x', encoding='utf-8') as output:
             json.dump(config, output)
         argv = [str(Path(sys.prefix) / 'bin/ansible-lint'), '--offline', '--nocolor', '--format', 'json',

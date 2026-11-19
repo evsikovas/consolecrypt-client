@@ -315,10 +315,17 @@ class _RunnerProbe extends StatelessWidget {
     final tools = result['tools'];
     final ssh = tools is Map ? tools['ssh'] : null;
     final helper = result['helper'] is String ? result['helper'] as String : l.automationResultMissing;
+    final capabilities = result['capabilities'];
+    final macOS = result['system'] == 'Darwin';
+    final processIsolation = macOS
+        ? capabilities is Map && capabilities['macos_worker_sandbox_v1'] == true
+        : sandbox['pid'] == true;
     final ready =
         result['dependencies_ready'] == true &&
         result['non_root'] == true &&
-        ['filesystem', 'network', 'pid'].every((key) => sandbox[key] == true);
+        sandbox['filesystem'] == true &&
+        sandbox['network'] == true &&
+        processIsolation;
     final components = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -346,7 +353,7 @@ class _RunnerProbe extends StatelessWidget {
         _CheckRow(label: l.automationNonRoot, ready: result['non_root'] == true),
         _CheckRow(label: l.automationFilesystemIsolation, ready: sandbox['filesystem'] == true),
         _CheckRow(label: l.automationNetworkIsolation, ready: sandbox['network'] == true),
-        _CheckRow(label: l.automationProcessIsolation, ready: sandbox['pid'] == true),
+        _CheckRow(label: macOS ? l.automationMacProcessIsolation : l.automationProcessIsolation, ready: processIsolation),
       ],
     );
     return Column(
@@ -457,14 +464,15 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
       serviceIdentity = TextEditingController(),
       root = TextEditingController();
   bool get serviceMode => mode == 'service_remote';
+  bool get macNative => AppPlatform.isMacOS && mode == 'native';
   bool get serviceCapability => widget.service is AutomationServiceDelegationService;
   bool get validServiceIdentity => RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
       .hasMatch(serviceIdentity.text.trim()) && serviceIdentity.text.trim() != '00000000-0000-0000-0000-000000000000';
-  late String mode = AppPlatform.isMobile
-      ? 'remote'
-      : AppPlatform.isWindows
+  late String mode = AppPlatform.isWindows
       ? 'wsl'
-      : 'native';
+      : AppPlatform.isLinux || AppPlatform.isMacOS
+      ? 'native'
+      : 'remote';
   String? distribution;
   Host? host;
   String? savedHostId;
@@ -479,9 +487,10 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
 
   void publishActions() {
     if (!mounted || !actionsReady) return;
-    widget.actions.value = (busy: busy, canSave: serviceMode
+    final ready = serviceMode
         ? serviceCapability && name.text.trim().isNotEmpty && validServiceIdentity && (host != null || savedHostId != null)
-        : ![python, module, root].any((field) => field.text.isEmpty));
+        : ![python, module, root].any((field) => field.text.isEmpty);
+    widget.actions.value = (busy: busy, canSave: ready);
   }
 
   AutomationJson? detected;
@@ -872,6 +881,8 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
                     'setup_bootstrap_failed' => l.automationSetupBootstrapFailed,
                     'setup_command_too_large' => l.automationSetupCommandTooLarge,
                     'setup_python_missing' => l.automationSetupPythonMissing,
+                    'setup_macos_python_missing' => l.automationMacRunnerPython,
+                    'environment_check_failed' when macNative => l.automationMacRunnerIsolationFailed,
                     _ => l.automationSetupFailed,
                   }
                 : errorMessage(l, error!),
@@ -880,7 +891,10 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
         Expanded(
           child: ListView(
             children: [
-              if (!serviceMode) Text(l.automationSetupHint),
+              if (macNative)
+                Text(l.automationMacRunnerNative, key: const ValueKey('automation-macos-runner-help'))
+              else if (!serviceMode)
+                Text(l.automationSetupHint),
               if (widget.initial != null) Text(l.automationEditRunnerHint),
               const SizedBox(height: 12),
               field(l.commonName, name),
@@ -896,7 +910,7 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
                         publishActions();
                       }),
                 items: [
-                  if (!AppPlatform.isMobile)
+                  if (AppPlatform.isWindows || AppPlatform.isLinux || AppPlatform.isMacOS)
                     GlassSelectItem(
                       value: AppPlatform.isWindows ? 'wsl' : 'native',
                       label: AppPlatform.isWindows ? 'WSL2' : l.automationLocalRunner,
@@ -1063,7 +1077,8 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
                       // l10n-ignore: localized missing-component label plus package identifiers
                       '${l.automationSetupMissing}: ${(result['missing'] as List).map((key) => switch (key) {
                         'bwrap' => 'bubblewrap',
-                        'supported_python' => l.automationSetupPython,
+                        'macos_architecture' => l.automationMacRunnerArchitecture,
+                        'supported_python' => macNative ? l.automationMacRunnerPython : l.automationSetupPython,
                         'python_venv' => 'python3-venv / ensurepip',
                         'non_root_user' => l.automationLinuxUser,
                         'wsl2' => 'WSL2',
@@ -1157,7 +1172,7 @@ class _RunnerFormState extends ConsumerState<_RunnerForm> {
                 if (busy) Text(l.automationSetupBusy),
                 if (setupId != null) TextButton(onPressed: cancelSetup, child: Text(l.commonCancel)),
               ],
-              if (!serviceMode && widget.service is AutomationRunnerCleanupService) ...[
+              if (!serviceMode && !macNative && widget.service is AutomationRunnerCleanupService) ...[
                 const SizedBox(height: 8),
                 GlassButton(
                   key: const ValueKey('automation-open-cleanup'),

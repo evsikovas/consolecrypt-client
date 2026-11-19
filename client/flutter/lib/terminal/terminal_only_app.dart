@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/theme.dart';
@@ -8,6 +7,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
@@ -16,18 +16,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-const terminalOnlyFlag = '--terminal-only';
-
-Future<void> _openTerminalWindow() async {
-  await Process.start(Platform.resolvedExecutable, [terminalOnlyFlag], mode: ProcessStartMode.detached);
-}
-
 class TerminalOnlyApp extends StatelessWidget {
   const TerminalOnlyApp({
     super.key,
     required this.service,
     required this.initialShell,
-    this.openWindow = _openTerminalWindow,
+    this.openWindow = openTerminalOnlyWindow,
   });
 
   final TerminalService service;
@@ -73,11 +67,18 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
   @override
   void initState() {
     super.initState();
+    FocusManager.instance.addEarlyKeyEventHandler(_shortcut);
     if (widget.initialShell case final profile?) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_openShell(profile));
       });
     }
+  }
+
+  @override
+  void dispose() {
+    FocusManager.instance.removeEarlyKeyEventHandler(_shortcut);
+    super.dispose();
   }
 
   Future<void> _openShell(LocalShellProfile profile) async {
@@ -110,14 +111,34 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     }
   }
 
-  bool _shortcut(KeyEvent event) {
-    if (event is! KeyDownEvent ||
-        !const [LogicalKeyboardKey.keyK, LogicalKeyboardKey.keyN, LogicalKeyboardKey.keyT].contains(event.logicalKey) ||
-        !AppPlatform.primary(event.logicalKey).accepts(event, HardwareKeyboard.instance)) {
-      return false;
+  Future<void> _newWindow() async {
+    try {
+      await widget.openWindow();
+    } on Object {
+      if (mounted) showSnack(context, context.l10n.terminalOnlyWindowError, error: true);
     }
-    unawaited(_palette());
-    return true;
+  }
+
+  KeyEventResult _shortcut(KeyEvent event) {
+    final keys = HardwareKeyboard.instance;
+    final primary = AppPlatform.usesMeta
+        ? keys.isMetaPressed && !keys.isControlPressed
+        : keys.isControlPressed && !keys.isMetaPressed;
+    if (event is KeyUpEvent || !primary || keys.isAltPressed) return KeyEventResult.ignored;
+
+    final physical = event.physicalKey;
+    final logical = event.logicalKey;
+    final newWindow =
+        keys.isShiftPressed && (physical == PhysicalKeyboardKey.keyN || logical == LogicalKeyboardKey.keyN);
+    final palette =
+        !keys.isShiftPressed &&
+        (const [PhysicalKeyboardKey.keyK, PhysicalKeyboardKey.keyT, PhysicalKeyboardKey.keyN].contains(physical) ||
+            const [LogicalKeyboardKey.keyK, LogicalKeyboardKey.keyT, LogicalKeyboardKey.keyN].contains(logical));
+    if (newWindow || palette) {
+      if (event is KeyDownEvent) unawaited(newWindow ? _newWindow() : _palette());
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   Widget _tabs(TerminalTabsState state, TerminalTabsController controller, {required bool left}) {
@@ -209,10 +230,9 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     final active = tabs.active;
     final l = context.l10n;
     final left = _placement == TerminalTabPlacement.left;
-    return Scaffold(
-      body: Focus(
-        autofocus: active == null,
-        onKeyEvent: (_, event) => _shortcut(event) ? KeyEventResult.handled : KeyEventResult.ignored,
+    final screen = Scaffold(
+      body: FocusScope(
+        autofocus: true,
         child: Flex(
           direction: left ? Axis.horizontal : Axis.vertical,
           children: [
@@ -234,11 +254,7 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
                               onPressed: () => unawaited(_palette()),
                             ),
                           )
-                        : TerminalPane(
-                            key: ValueKey((active.sessionId, active.renderGeneration)),
-                            tab: active,
-                            onShortcut: _shortcut,
-                          ),
+                        : TerminalPane(key: ValueKey((active.sessionId, active.renderGeneration)), tab: active),
                   ),
                   if (active?.state == SessionConnectionState.disconnected)
                     Padding(
@@ -251,6 +267,44 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
           ],
         ),
       ),
+    );
+    if (!AppPlatform.isMacOS) return screen;
+    return PlatformMenuBar(
+      menus: [
+        const PlatformMenu(
+          label: 'ConsoleCrypt',
+          menus: [
+            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.hide),
+            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit),
+          ],
+        ),
+        PlatformMenu(
+          label: l.menuFile,
+          menus: [
+            PlatformMenuItem(
+              label: l.terminalOnlyNewWindow,
+              shortcut: AppPlatform.primary(LogicalKeyboardKey.keyN, shift: true),
+              onSelected: () => unawaited(_newWindow()),
+            ),
+            PlatformMenuItem(
+              label: l.commandNewTabPickerTitle,
+              shortcut: AppPlatform.primary(LogicalKeyboardKey.keyT),
+              onSelected: () => unawaited(_palette()),
+            ),
+          ],
+        ),
+        PlatformMenu(
+          label: l.menuView,
+          menus: [
+            PlatformMenuItem(
+              label: l.terminalOnlyPalette,
+              shortcut: AppPlatform.primary(LogicalKeyboardKey.keyK),
+              onSelected: () => unawaited(_palette()),
+            ),
+          ],
+        ),
+      ],
+      child: screen,
     );
   }
 }
@@ -302,49 +356,61 @@ class _ShellPaletteState extends State<_ShellPalette> {
                   .where((p) => '${p.label} ${p.id} ${p.shell}'.toLowerCase().contains(_query))
                   .toList();
               final showNewWindow = l.terminalOnlyNewWindow.toLowerCase().contains(_query);
-              return ListView(
-                shrinkWrap: true,
-                primary: false,
+              return Padding(
                 padding: const EdgeInsets.all(16),
-                children: [
-                  Text(l.terminalOnlyPalette, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 12),
-                  TextField(
-                    key: const ValueKey('terminal-only-search'),
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      hintText: l.terminalLocalShellSearch,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(l.terminalOnlyPalette, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const ValueKey('terminal-only-search'),
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        hintText: l.terminalLocalShellSearch,
+                      ),
+                      onChanged: (value) => setState(() => _query = value.trim().toLowerCase()),
+                      onSubmitted: (_) {
+                        if (matches.isNotEmpty) {
+                          Navigator.pop(context, matches.first);
+                        } else if (showNewWindow) {
+                          unawaited(_openWindow());
+                        }
+                      },
                     ),
-                    onChanged: (value) => setState(() => _query = value.trim().toLowerCase()),
-                    onSubmitted: (_) {
-                      if (matches.isNotEmpty) {
-                        Navigator.pop(context, matches.first);
-                      } else if (showNewWindow) {
-                        unawaited(_openWindow());
-                      }
-                    },
-                  ),
-                  if (showNewWindow)
-                    ListTile(
-                      key: const ValueKey('terminal-only-new-window'),
-                      leading: const Icon(Icons.open_in_new_rounded),
-                      title: Text(l.terminalOnlyNewWindow),
-                      onTap: _openingWindow ? null : () => unawaited(_openWindow()),
-                    ),
-                  if (_windowFailed) Text(l.terminalOnlyWindowError),
-                  if (snapshot.connectionState == ConnectionState.waiting)
-                    const LinearProgressIndicator()
-                  else if (matches.isEmpty)
-                    Text(_query.isEmpty ? l.terminalLocalUnavailable : l.terminalLocalShellNoMatch),
-                  for (final profile in matches)
-                    ListTile(
-                      key: ValueKey('terminal-only-shell-${profile.id}'),
-                      leading: const Icon(Icons.terminal_rounded),
-                      title: Text(profile.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      onTap: _openingWindow ? null : () => Navigator.pop(context, profile),
-                    ),
-                ],
+                    if (showNewWindow)
+                      ListTile(
+                        key: const ValueKey('terminal-only-new-window'),
+                        leading: const Icon(Icons.open_in_new_rounded),
+                        title: Text(l.terminalOnlyNewWindow),
+                        onTap: _openingWindow ? null : () => unawaited(_openWindow()),
+                      ),
+                    if (_windowFailed) Text(l.terminalOnlyWindowError),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const LinearProgressIndicator()
+                    else if (matches.isEmpty)
+                      Text(_query.isEmpty ? l.terminalLocalUnavailable : l.terminalLocalShellNoMatch)
+                    else
+                      Flexible(
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          primary: false,
+                          itemCount: matches.length,
+                          itemBuilder: (context, index) {
+                            final profile = matches[index];
+                            return ListTile(
+                              key: ValueKey('terminal-only-shell-${profile.id}'),
+                              leading: const Icon(Icons.terminal_rounded),
+                              title: Text(profile.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              onTap: _openingWindow ? null : () => Navigator.pop(context, profile),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
               );
             },
           ),

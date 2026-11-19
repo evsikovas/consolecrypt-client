@@ -47,6 +47,8 @@ import 'package:consolecrypt/l10n/app_localizations.dart';
 
 /// Localized, user-presentable text for any error surfaced by a service call.
 String errorMessage(AppLocalizations l, Object error) => switch (error) {
+  AppException(:final args) when args['field'] == 'automation_runner' &&
+      args['rule'] == 'setup_macos_python_missing' => l.automationMacRunnerPython,
   AppException() => _reasonMessage(l, error) ?? errorCodeMessage(l, error.code, args: error.args),
   ValidationError() => validationMessage(l, error.field, error.reason),
   _ => l.errorUnknown,

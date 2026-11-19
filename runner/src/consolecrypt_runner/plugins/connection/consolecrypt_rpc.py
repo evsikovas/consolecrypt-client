@@ -72,7 +72,7 @@ class Connection(ConnectionBase):
                 raise ValueError('frame limit')
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
                 connection.settimeout(3615)
-                connection.connect('/run/consolecrypt/broker.sock')
+                connection.connect(os.environ.get('CC_BROKER_SOCKET', '/run/consolecrypt/broker.sock'))
                 connection.sendall(raw)
                 with connection.makefile('rb') as incoming:
                     response = incoming.readline(MAX_FRAME_BYTES + 1)

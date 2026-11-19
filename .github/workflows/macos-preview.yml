@@ -11,6 +11,49 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  native-runner-smoke:
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/macos-native-runner-check'
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install and exercise the native Runner
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          test "$(uname -m)" = arm64
+          python=/opt/homebrew/bin/python3.12
+          test -x "$python" || brew install python@3.12
+          "$python" -IB - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          root = Path('runner')
+          src = root / 'src/consolecrypt_runner'
+          files = {path.relative_to(root).as_posix(): path.read_text(encoding='utf-8')
+                   for path in src.rglob('*') if path.suffix in ('.py', '.json') and path.is_file()}
+          name = 'requirements-darwin-arm64-py312.lock'
+          files[name] = (root / name).read_text(encoding='utf-8')
+          with subprocess.Popen([sys.executable, '-IB', str(root / 'setup/environment.py')],
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE) as installer:
+              installer.stdin.write(json.dumps({'action': 'install', 'files': files}).encode() + b'\n')
+              installer.stdin.flush()
+              response = json.loads(installer.stdout.readline(65536))
+              status = installer.wait(timeout=10)
+          if status or not response['ok']:
+              raise SystemExit(response.get('error', 'native_runner_install_failed'))
+          paths = response['result']['paths']
+          subprocess.run([paths['python'], '-B', '-m', 'unittest', 'discover',
+                          '-s', 'runner/tests', '-p', 'test_macos_runner.py', '-v'],
+                         env={**os.environ, 'PYTHONPATH': paths['module_dir']},
+                         check=True, timeout=180)
+          PY
+
   macos:
     if: github.repository == 'evsikovas/consolecrypt-client' && github.ref == 'refs/heads/ci/desktop-preview-67034'
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]

@@ -14321,8 +14321,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'These are environment diagnostics. Execution requires separate project and target validation and job approval.';
 
   @override
-  String get automationPreparedEnvironment =>
-      'Specify an existing prepared environment. Paths must be absolute and belong to the selected Linux/macOS node, not Windows.';
+  String get automationPreparedEnvironment => 'Enter absolute paths on the machine where the Runner is installed.';
 
   @override
   String get automationDistribution => 'Choose a WSL distribution';
@@ -14725,7 +14724,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationInventoryExternalOnly => 'Only explicitly bound source entries';
 
   @override
-  String get automationInventoryMixed => 'Source and selected saved hosts';
+  String get automationInventoryMixed => 'Hybrid';
 
   @override
   String get automationInventoryBound => 'Explicit bindings';
@@ -14944,7 +14943,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationInstallRunnerPlan =>
-      'Create a new environment in the selected Linux user’s directory. Download pinned Ansible, Runner, lint and dependencies from PyPI with SHA-256 verification, then check versions and isolation. Internet is required. System Python, OS packages, WSL distributions and existing Runners are unchanged. Setup may take up to 14 minutes. No playbook runs.';
+      'ConsoleCrypt creates a Runner in the selected user\'s directory and downloads pinned Ansible packages from PyPI. Setup verifies the SHA-256 hashes and the sandbox. It needs internet access and can take up to 14 minutes.';
 
   @override
   String get automationSetupMissing => 'Prerequisites needed';
@@ -14963,6 +14962,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationSetupBusy => 'Checking or installing the environment. The result will appear here.';
 
   @override
+  String get automationMacRunnerNative =>
+      'Run Ansible on this Apple Silicon Mac with Python 3.12. ConsoleCrypt installs the Ansible components into a separate local environment.';
+
+  @override
+  String get automationMacRunnerPython =>
+      'Install Python 3.12 for Apple Silicon from Homebrew or Python.org, then search again.';
+
+  @override
+  String get automationMacRunnerArchitecture => 'Apple Silicon (arm64)';
+
+  @override
+  String get automationMacRunnerIsolationFailed =>
+      'Runner setup could not verify the macOS sandbox or the installed packages.';
+
+  @override
+  String get automationMacProcessIsolation => 'Worker process protection';
+
+  @override
+  String get automationSelectAllTargets => 'Select all';
+
+  @override
+  String automationTargetLimit(int limit) {
+    return 'Select up to $limit hosts per job.';
+  }
+
+  @override
   String get automationSetupFailed =>
       'Runner setup failed. Check PyPI access and system prerequisites, then scan again. Existing environments were not replaced.';
 
@@ -14977,7 +15002,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationInventorySavedHosts => 'ConsoleCrypt hosts';
 
   @override
-  String get automationInventoryFilesOnly => 'Project files';
+  String get automationInventoryFilesOnly => 'Inventory file';
 
   @override
   String get automationInventorySavedHint =>
@@ -17119,6 +17144,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get terminalOnlyNewWindow => 'Open new window';
+
+  @override
+  String get terminalOnlyOpen => 'Open Terminal Only';
 
   @override
   String get terminalOnlyWindowError => 'Could not open a new terminal window.';

@@ -1,4 +1,4 @@
-"""Built-in local/WSL setup. Never reads a project or installs system packages."""
+"""Built-in macOS, Linux and WSL setup. Never reads a project or installs system packages."""
 from __future__ import annotations
 
 import hashlib
@@ -117,6 +117,8 @@ def _environment_key():
     if sys.platform == 'linux' and (machine == 'x86_64' and version in ('3.12', '3.14')
                                     or machine == 'aarch64' and version in ('3.12', '3.13')):
         return f'linux-{machine}-py{sys.version_info.major}{sys.version_info.minor}'
+    if sys.platform == 'darwin' and machine == 'arm64' and version == '3.12':
+        return 'darwin-arm64-py312'
     return None
 
 
@@ -132,9 +134,12 @@ def scan(expected_package_fingerprint=None):
     version = f'{sys.version_info.major}.{sys.version_info.minor}'
     machine = platform.machine()
     supported = _environment_key() is not None
-    tools = {name: shutil.which(name, path='/usr/bin:/bin') is not None for name in ('bwrap', 'git', 'ssh')}
+    tools = {name: shutil.which(name, path='/usr/bin:/bin') is not None for name in
+             (('sandbox-exec', 'git', 'ssh') if sys.platform == 'darwin' else ('bwrap', 'git', 'ssh'))}
     missing = [name for name, available in tools.items() if not available]
-    if not supported:
+    if sys.platform == 'darwin' and machine != 'arm64':
+        missing.append('macos_architecture')
+    elif not supported:
         missing.append('supported_python')
     if importlib.util.find_spec('venv') is None or importlib.util.find_spec('ensurepip') is None:
         missing.append('python_venv')
@@ -143,11 +148,11 @@ def scan(expected_package_fingerprint=None):
     if str(Path(user.pw_dir)).startswith('/mnt/'):
         missing.append('linux_home')
     try:
-        if os.statvfs(user.pw_dir).f_flag & os.ST_NOEXEC:
+        if os.statvfs(user.pw_dir).f_flag & getattr(os, 'ST_NOEXEC', 0):
             missing.append('executable_home')
     except OSError:
         missing.append('executable_home')
-    if supported and uid and tools['bwrap']:
+    if supported and uid and tools.get('bwrap'):
         try:
             tested = subprocess.run(['/usr/bin/bwrap', '--unshare-all', '--die-with-parent',
                                      '--ro-bind', '/', '/', '--', '/usr/bin/true'],
@@ -216,7 +221,7 @@ def install(payload):
         if (not isinstance(content, str) or str(parts) != name or parts.is_absolute()
                 or '..' in parts.parts or '\\' in name
                 or not (name.startswith('src/consolecrypt_runner/') and name.endswith(('.py', '.json'))
-                        or re.fullmatch(r'requirements-linux-(?:x86_64-py(?:312|314)|aarch64-py(?:312|313))\.lock', name))):
+                        or re.fullmatch(r'requirements-(?:linux-(?:x86_64-py(?:312|314)|aarch64-py(?:312|313))|darwin-arm64-py312)\.lock', name))):
             raise ValueError('invalid_package')
         total += len(content.encode())
     if total > 4 * 1024 * 1024:
@@ -264,8 +269,11 @@ def install(payload):
         if len(process.stdout) > 65536:
             raise ValueError('invalid_probe')
         probe = json.loads(process.stdout)
-        if (not probe['dependencies_ready'] or not probe['non_root']
-                or not all(probe['sandbox'][key] for key in ('filesystem', 'network', 'pid'))):
+        sandbox = probe['sandbox']
+        process_isolation = (probe['capabilities'].get('macos_worker_sandbox_v1', False)
+                             if sys.platform == 'darwin' else sandbox['pid'])
+        if not (probe['dependencies_ready'] and probe['non_root'] and sandbox['filesystem']
+                and sandbox['network'] and process_isolation):
             raise ValueError('environment_check_failed')
         (directory / 'state').mkdir(mode=0o700)
         paths = {'python': python, 'module_dir': str(directory / 'src'), 'root': str(directory / 'state')}
@@ -275,6 +283,10 @@ def install(payload):
         with (directory / 'installation.json').open('x', encoding='utf-8') as stream:
             json.dump(receipt, stream)
         return {'version': 1, 'paths': paths, 'probe': probe}
+    except ValueError as error:
+        if str(error) == 'environment_check_failed':
+            raise
+        raise ValueError('installation_failed') from None
     except Exception:
         # Preserve a failed installation for diagnosis. Never publish it as a
         # ready candidate, delete arbitrary paths, or overwrite another Runner.

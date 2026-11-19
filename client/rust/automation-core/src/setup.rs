@@ -1,4 +1,4 @@
-//! Explicit setup of a device-local Linux/WSL Runner. Only fixed Native shell
+//! Explicit setup of a device-local macOS, Linux or WSL Runner. Only fixed shell
 //! preflight; no caller shell interpolation, system package changes, target
 //! credentials or project code are involved.
 use crate::{AutomationError, Result};
@@ -10,6 +10,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 include!(concat!(env!("OUT_DIR"), "/runner_package.rs"));
 const SCRIPT: &str = include_str!("../../../../runner/setup/environment.py");
 const PYTHON_PREFLIGHT: &str = include_str!("setup/python_preflight.sh");
+const MACOS_PYTHON_PREFLIGHT: &str = include_str!("setup/macos_python_preflight.sh");
 
 pub(crate) fn builtin_setup_script() -> Result<String> {
     use base64::{Engine, engine::general_purpose::STANDARD};
@@ -154,7 +155,11 @@ impl SetupTarget {
         };
         command.args([
             "-c",
-            PYTHON_PREFLIGHT,
+            if cfg!(target_os = "macos") {
+                MACOS_PYTHON_PREFLIGHT
+            } else {
+                PYTHON_PREFLIGHT
+            },
             "consolecrypt-setup-preflight",
             "-I",
             "-c",
@@ -442,7 +447,14 @@ mod tests {
         let command = target.command().unwrap();
         let args: Vec<_> = command.get_args().map(|v| v.to_str().unwrap()).collect();
         let shell = args.iter().position(|v| *v == "-c").unwrap();
-        assert_eq!(args[shell + 1], PYTHON_PREFLIGHT);
+        assert_eq!(
+            args[shell + 1],
+            if cfg!(target_os = "macos") {
+                MACOS_PYTHON_PREFLIGHT
+            } else {
+                PYTHON_PREFLIGHT
+            }
+        );
         assert_eq!(
             args[shell + 2..shell + 5],
             ["consolecrypt-setup-preflight", "-I", "-c"]
@@ -452,6 +464,18 @@ mod tests {
         assert!(!PYTHON_PREFLIGHT.contains("Owned distro"));
         assert!(!PYTHON_PREFLIGHT.contains("alice"));
         assert!(PYTHON_PREFLIGHT.contains("exec /usr/bin/python3 \"$@\""));
+    }
+
+    #[test]
+    fn macos_missing_python_has_a_specific_diagnostic() {
+        let error = setup_result(
+            br#"{"ok":false,"error":"setup_macos_python_missing"}"#,
+            false,
+            false,
+        )
+        .unwrap_err();
+        assert!(matches!(error, AutomationError::Remote(code) if code == "setup_macos_python_missing"));
+        assert!(MACOS_PYTHON_PREFLIGHT.contains("/opt/homebrew/bin/python3.12"));
     }
 
     #[test]

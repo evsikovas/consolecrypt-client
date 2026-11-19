@@ -9,3 +9,9 @@ Terminal=false
 Categories=Network;RemoteAccess;
 Keywords=SSH;SFTP;terminal;server;
 StartupWMClass=io.consolecrypt.consolecrypt
+Actions=TerminalOnly;
+
+[Desktop Action TerminalOnly]
+Name=Open Terminal Only
+Name[ru]=Открыть «Только терминал»
+Exec=consolecrypt --terminal-only

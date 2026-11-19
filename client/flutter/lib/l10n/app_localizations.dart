@@ -25211,7 +25211,7 @@ abstract class AppLocalizations {
   /// Runner configuration and explicit environment diagnostics
   ///
   /// In en, this message translates to:
-  /// **'Specify an existing prepared environment. Paths must be absolute and belong to the selected Linux/macOS node, not Windows.'**
+  /// **'Enter absolute paths on the machine where the Runner is installed.'**
   String get automationPreparedEnvironment;
 
   /// Runner configuration and explicit environment diagnostics
@@ -25967,7 +25967,7 @@ abstract class AppLocalizations {
   /// Explicitly reviewed automation job execution and history
   ///
   /// In en, this message translates to:
-  /// **'Source and selected saved hosts'**
+  /// **'Hybrid'**
   String get automationInventoryMixed;
 
   /// Explicitly reviewed automation job execution and history
@@ -26363,7 +26363,7 @@ abstract class AppLocalizations {
   /// Explicit local or WSL Runner setup
   ///
   /// In en, this message translates to:
-  /// **'Create a new environment in the selected Linux user’s directory. Download pinned Ansible, Runner, lint and dependencies from PyPI with SHA-256 verification, then check versions and isolation. Internet is required. System Python, OS packages, WSL distributions and existing Runners are unchanged. Setup may take up to 14 minutes. No playbook runs.'**
+  /// **'ConsoleCrypt creates a Runner in the selected user\'s directory and downloads pinned Ansible packages from PyPI. Setup verifies the SHA-256 hashes and the sandbox. It needs internet access and can take up to 14 minutes.'**
   String get automationInstallRunnerPlan;
 
   /// Explicit local or WSL Runner setup
@@ -26396,6 +26396,48 @@ abstract class AppLocalizations {
   /// **'Checking or installing the environment. The result will appear here.'**
   String get automationSetupBusy;
 
+  /// Guide users to set up a native macOS Runner
+  ///
+  /// In en, this message translates to:
+  /// **'Run Ansible on this Apple Silicon Mac with Python 3.12. ConsoleCrypt installs the Ansible components into a separate local environment.'**
+  String get automationMacRunnerNative;
+
+  /// Interpreter requirement for a local macOS Runner
+  ///
+  /// In en, this message translates to:
+  /// **'Install Python 3.12 for Apple Silicon from Homebrew or Python.org, then search again.'**
+  String get automationMacRunnerPython;
+
+  /// Architecture requirement for the native macOS Runner
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Silicon (arm64)'**
+  String get automationMacRunnerArchitecture;
+
+  /// Native macOS Runner readiness check failed
+  ///
+  /// In en, this message translates to:
+  /// **'Runner setup could not verify the macOS sandbox or the installed packages.'**
+  String get automationMacRunnerIsolationFailed;
+
+  /// Label for macOS worker process isolation check
+  ///
+  /// In en, this message translates to:
+  /// **'Worker process protection'**
+  String get automationMacProcessIsolation;
+
+  /// Select all eligible hosts in the job target list
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get automationSelectAllTargets;
+
+  /// No description provided for @automationTargetLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Select up to {limit} hosts per job.'**
+  String automationTargetLimit(int limit);
+
   /// Explicit local or WSL Runner setup
   ///
   /// In en, this message translates to:
@@ -26423,7 +26465,7 @@ abstract class AppLocalizations {
   /// Saved ConsoleCrypt inventory source selection
   ///
   /// In en, this message translates to:
-  /// **'Project files'**
+  /// **'Inventory file'**
   String get automationInventoryFilesOnly;
 
   /// Saved ConsoleCrypt inventory source selection
@@ -30211,6 +30253,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open new window'**
   String get terminalOnlyNewWindow;
+
+  /// Open a separate ConsoleCrypt window for local shells
+  ///
+  /// In en, this message translates to:
+  /// **'Open Terminal Only'**
+  String get terminalOnlyOpen;
 
   /// Desktop terminal-only window.
   ///

@@ -83,11 +83,16 @@ def capture_inventory(repository,revision_id,sources,cancel):
             'inventory_size','Combined inventory sources exceed their byte limit')
     require(not cancel.is_set(),'cancelled','Inventory preview was cancelled')
     with tempfile.TemporaryDirectory(prefix='inventory-',dir=repository.root.parent) as temporary:
-        specification=Path(temporary)/'input.json';atomic_json(specification,{'sources':sources,'entries':selected})
+        specification=Path(temporary)/'inventory-input.json';atomic_json(specification,{'sources':sources,'entries':selected})
         receiver=InventoryReceiver()
-        result=run_bounded(bubblewrap_argv(root,[sys.executable,'-m','consolecrypt_runner.inventory_worker'],
-            extra_readonly=[(specification,'/tool/inventory-input.json')]),timeout=60,cancel=cancel,
-            grace=15,output_limit=0,on_chunk=receiver.feed)
+        command = [sys.executable, '-m', 'consolecrypt_runner.inventory_worker']
+        limits = dict(timeout=60, cancel=cancel, output_limit=0, on_chunk=receiver.feed)
+        if sys.platform == 'darwin':
+            from .macos_sandbox import run_macos_worker
+            result = run_macos_worker(root, command, tool_directory=temporary, **limits)
+        else:
+            result = run_bounded(bubblewrap_argv(root, command,
+                                 extra_readonly=[(specification, '/tool/inventory-input.json')]), **limits)
     require(result.exit_code==0 and not result.cancelled and not result.timed_out and not cancel.is_set()
             and receiver.complete and not receiver.buffer,'inventory_preview_failed',
             'Static inventory could not be normalized; no preview was published')

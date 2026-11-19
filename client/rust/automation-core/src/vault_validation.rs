@@ -55,8 +55,13 @@ impl VaultValidationRuntime {
                 .map_err(|_| AutomationError::Invalid("invalid reviewed Vault runtime pin"))?;
         let legacy:serde_json::Value=serde_json::from_str(include_str!("vault_validation/runtime-pin-v1-legacy.json"))
             .map_err(|_|AutomationError::Invalid("invalid reviewed legacy Vault runtime pin"))?;
-        let approved_code=[&pin,&legacy].iter().any(|approved|
-            value["environment_digest"]==approved["environment_digest"] && value["helper_digest"]==approved["helper_digest"]);
+        let approved_code = [&pin, &legacy].iter().any(|approved|
+            value["environment_digest"] == approved["environment_digest"]
+                && value["helper_digest"] == approved["helper_digest"])
+            // Keep the exact previously reviewed Linux environment usable
+            // after expanding the bundled helper to include macOS.
+            || (value["environment_digest"] == "bae8a4ae4e6b78bcbcac5ca6174c50e188e022dc969476f1466ad7fe3e1d7331"
+                && value["helper_digest"] == "7ae56c6de89564d6d4420c679b4a9e377a56fe731971e4c217a0b562d5e5ad6b");
         let mut identity = serde_json::Map::new();
         for key in [
             "helper",

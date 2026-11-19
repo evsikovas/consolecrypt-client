@@ -1,4 +1,5 @@
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -6,6 +7,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/language_picker.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -175,10 +177,23 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
           const SizedBox(height: GlassSpacing.s16),
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: GlassButton.plain(
-              onPressed: () => context.go(AppRoutes.restore),
-              icon: Icons.settings_backup_restore_rounded,
-              label: l10n.welcomeRestoreFromBackup,
+            child: Wrap(
+              spacing: GlassSpacing.s8,
+              runSpacing: GlassSpacing.s4,
+              children: [
+                GlassButton.plain(
+                  onPressed: () => context.go(AppRoutes.restore),
+                  icon: Icons.settings_backup_restore_rounded,
+                  label: l10n.welcomeRestoreFromBackup,
+                ),
+                if (!AppPlatform.isMobile && state.active == null)
+                  GlassButton.plain(
+                    key: const ValueKey('welcome-terminal-only'),
+                    onPressed: () => showTerminalOnlyWindow(context),
+                    icon: Icons.terminal_rounded,
+                    label: l10n.terminalOnlyOpen,
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: GlassSpacing.s4),

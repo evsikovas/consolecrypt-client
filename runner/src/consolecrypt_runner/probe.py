@@ -58,8 +58,8 @@ def probe():
         source.update(b'\x00')
         source.update(file.read_bytes())
         source.update(b'\x00')
-    lock_file = package_root / 'environments' / f'linux-{platform.machine()}-py{sys.version_info.major}{sys.version_info.minor}.json'
-    lock = json.loads(lock_file.read_text(encoding='utf-8')) if lock_file.is_file() and sys.platform == 'linux' else None
+    lock_file = package_root / 'environments' / f'{sys.platform}-{platform.machine()}-py{sys.version_info.major}{sys.version_info.minor}.json'
+    lock = json.loads(lock_file.read_text(encoding='utf-8')) if lock_file.is_file() else None
     lock_matches = lock is not None and installed == lock['packages']
     identity = {"helper": VERSION, "protocol": PROTOCOL_VERSION, "python": platform.python_version(),
                 "system": platform.system(), "machine": platform.machine(), "packages": packages,
@@ -69,19 +69,21 @@ def probe():
     sandbox = probe_sandbox()
     dependencies_ready = sys.version_info >= (3, 12) and lock_matches and dependency_digest is not None and all(item["compatible"] for item in packages.values())
     non_root = os.name == "posix" and os.getuid() != 0
+    macos_worker = sys.platform == 'darwin' and sandbox.get('process_control') is True
+    isolated = sandbox['filesystem'] and sandbox['network'] and (sandbox['pid'] or macos_worker)
+    ready = dependencies_ready and non_root and isolated
+    linux_worker = sys.platform == 'linux' and ready
     return {**identity, "environment_digest": hashlib.sha256(encode(identity)).hexdigest(),
             "non_root": non_root, "wsl": "microsoft" in platform.release().lower(), "sandbox": sandbox,
             "tools": {name: shutil.which(name) is not None for name in ("ssh", "ssh-agent", "git", "bwrap")},
-            "capabilities": {"project_snapshot": os.name == "posix", "validate": dependencies_ready and non_root and sandbox["network"],
+            "capabilities": {"project_snapshot": os.name == "posix", "validate": ready,
                              "trusted_worker_bootstrap_v1": True,
-                             "vault_job_v1": sys.platform=='linux' and dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
-                             "become_native_v1": sys.platform=='linux' and dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
-                             "vault_ephemeral_v1": sys.platform=='linux' and dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
-                             "target_match_v1": dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
-                             "declared_inputs_v1": dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
-                             "locked_dependencies_v1": dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
-                             "project_requirements_v1": dependencies_ready and non_root and all(sandbox[key] for key in ('filesystem','pid','network')),
+                             **({'macos_worker_sandbox_v1': ready} if sys.platform == 'darwin' else {}),
+                             "vault_job_v1": linux_worker, "become_native_v1": ready,
+                             "vault_ephemeral_v1": linux_worker,
+                             "target_match_v1": ready, "declared_inputs_v1": ready,
+                             "locked_dependencies_v1": ready, "project_requirements_v1": ready,
                              "static_inventory_sources": non_root and sys.version_info>=(3,12) and dependency_digest is not None
-                                 and packages['PyYAML']['compatible'] and all(sandbox[key] for key in ('filesystem','pid','network')),
+                                 and packages['PyYAML']['compatible'] and isolated,
                              "execute": False, "strict_egress": False, "service": False},
             "dependencies_ready": dependencies_ready}
