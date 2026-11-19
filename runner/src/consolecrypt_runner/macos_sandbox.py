@@ -93,6 +93,8 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
             path_rule('file-read* file-map-executable', 'subpath', folder)
         # dyld reads the root directory itself before it can load the system cache.
         path_rule('file-read*', 'literal', '/')
+        # Python's import finder enumerates the package's parent before opening modules.
+        path_rule('file-read*', 'literal', helper.parent)
         # Homebrew's interpreter can live outside sys.base_prefix, and the
         # venv executable is reached through this fixed interpreter symlink.
         path_rule('file-read* file-map-executable', 'literal', interpreter)
