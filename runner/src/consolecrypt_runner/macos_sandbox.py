@@ -89,7 +89,8 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
         for folder in (source, tool, work, '/usr/share'):
             path_rule('file-read*', 'subpath', folder)
         for folder in (helper, prefix, base, '/System/Library', '/usr/lib', '/usr/bin',
-                       '/bin', '/private/var/db/dyld'):
+                       '/bin', '/private/var/db/dyld', '/System/Cryptexes/OS',
+                       '/System/Volumes/Preboot/Cryptexes/OS'):
             path_rule('file-read* file-map-executable', 'subpath', folder)
         # Homebrew's interpreter can live outside sys.base_prefix, and the
         # venv executable is reached through this fixed interpreter symlink.

@@ -51,7 +51,7 @@ jobs:
                   installations = list(package_root.iterdir())
                   if len(installations) == 1:
                       installation = installations[0]
-                      diagnostic = """
+                      diagnostic = r"""
           import json
           from pathlib import Path
           import sys
@@ -71,6 +71,23 @@ jobs:
           def trace_process(*args, **kwargs):
               result = bounded(*args, **kwargs)
               print('Sandbox probe exit:', result.exit_code, result.output, flush=True)
+              if result.exit_code:
+                  argv = args[0]
+                  pos = argv.index('-p') + 1
+                  params = list(argv[:pos + 1])
+                  params[pos] = params[pos].replace('(deny default)', '(deny default (with report))')
+                  options = {**kwargs, 'output_limit': 20000}
+                  for label, command in (
+                          ('system binary', ['/usr/bin/true']),
+                          ('python bootstrap', [sys.executable, '-IBS', '-c', 'print("Python started", flush=True)']),
+                          ('python imports', [sys.executable, '-IB', '-c',
+                                              'import resource,socket,ssl,sqlite3; print("Python imports succeeded", flush=True)'])):
+                      trial = bounded(params + command, **options)
+                      print(label, trial.exit_code, trial.output, flush=True)
+                  params[pos] += '\n(allow file-read-metadata)'
+                  trial = bounded(params + [sys.executable, '-IB', '-c', 'print("Python started", flush=True)'],
+                                  **options)
+                  print('metadata-only diagnostic:', trial.exit_code, trial.output, flush=True)
               return result
           with patch.object(macos_sandbox, 'run_macos_worker', trace_worker), patch.object(
                   macos_sandbox, 'run_bounded', trace_process):
@@ -83,9 +100,6 @@ jobs:
           """
                       subprocess.run([str(installation / 'venv/bin/python'), '-IB', '-c', diagnostic,
                                       str(installation / 'src')], timeout=30)
-                      subprocess.run(['/usr/bin/log', 'show', '--last', '2m', '--style', 'compact',
-                                      '--predicate', 'eventMessage CONTAINS "deny" AND eventMessage CONTAINS "sandbox-exec"'],
-                                     timeout=25)
               raise SystemExit(response.get('error', 'native_runner_install_failed'))
           paths = response['result']['paths']
           subprocess.run([paths['python'], '-B', '-m', 'unittest', 'discover',
