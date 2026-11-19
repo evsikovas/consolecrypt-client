@@ -49,7 +49,7 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
         profile = [
             '(version 1)', '(deny default)', '(allow process-fork)', '(allow process-exec*)',
             '(allow signal (target same-sandbox))', '(allow process-info* (target same-sandbox))',
-            '(allow sysctl-read (sysctl-name-prefix "hw.") (sysctl-name "kern.osrelease")'
+            '(allow sysctl-read (sysctl-name-prefix "hw.") (sysctl-name "kern.hostname") (sysctl-name "kern.osrelease")'
             ' (sysctl-name "kern.ostype") (sysctl-name "kern.osversion")'
             ' (sysctl-name "kern.osproductversion") (sysctl-name "kern.version")'
             ' (sysctl-name "kern.argmax") (sysctl-name "kern.maxfilesperproc")'
