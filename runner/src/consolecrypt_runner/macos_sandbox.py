@@ -24,13 +24,14 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
         helper = Path(__file__).resolve().parent
         prefix = Path(sys.prefix).resolve(strict=True)
         base = Path(sys.base_prefix).resolve(strict=True)
+        interpreter = Path(sys.executable).resolve(strict=True)
         # Limit readable interpreter files to supported Python installations.
         require(prefix != base and (base.is_relative_to('/opt/homebrew/Cellar/python@3.12') or
                 base.is_relative_to('/usr/local/Cellar/python@3.12') or
                 base == Path('/Library/Frameworks/Python.framework/Versions/3.12')),
                 'sandbox_python', 'Use a Python 3.12 virtual environment from Homebrew or Python.org')
         profile = [
-            '(version 1)', '(deny default)', '(allow process-fork)', '(allow process-exec)',
+            '(version 1)', '(deny default)', '(allow process-fork)', '(allow process-exec*)',
             '(allow signal (target same-sandbox))', '(allow process-info* (target same-sandbox))',
             '(allow sysctl-read (sysctl-name-prefix "hw.") (sysctl-name "kern.osrelease")'
             ' (sysctl-name "kern.ostype") (sysctl-name "kern.osversion")'
@@ -62,21 +63,26 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
         ancestors = set()
 
         def path_rule(operation, filter_name, path):
-            if operation == 'file-read*':
+            if operation.startswith('file-read*'):
                 ancestors.update(Path(path).parents)
             name = f'CC_PATH_{len(parameters) // 2}'
             parameters.extend(['-D', f'{name}={path}'])
             profile.append(f'(allow {operation} ({filter_name} (param "{name}")))')
             return name
 
-        for folder in (source, tool, helper, prefix, base, work, '/System/Library',
-                       '/usr/lib', '/usr/share', '/usr/bin', '/bin', '/private/var/db/dyld'):
+        for folder in (source, tool, work, '/usr/share'):
             path_rule('file-read*', 'subpath', folder)
+        for folder in (helper, prefix, base, '/System/Library', '/usr/lib', '/usr/bin',
+                       '/bin', '/private/var/db/dyld'):
+            path_rule('file-read* file-map-executable', 'subpath', folder)
+        # Homebrew's interpreter can live outside sys.base_prefix, and the
+        # venv executable is reached through this fixed interpreter symlink.
+        path_rule('file-read* file-map-executable', 'literal', interpreter)
         for homebrew in ('/opt/homebrew/opt', '/usr/local/opt'):
             for package in ('mpdecimal', 'openssl@3', 'readline', 'sqlite', 'xz', 'zstd', 'gettext', 'libb2'):
                 library = Path(homebrew) / package / 'lib'
                 if library.is_dir():
-                    path_rule('file-read*', 'subpath', library.resolve(strict=True))
+                    path_rule('file-read* file-map-executable', 'subpath', library.resolve(strict=True))
         for file in ('/dev/null', '/dev/random', '/dev/urandom', '/private/etc/group',
                      '/private/etc/passwd', '/private/etc/localtime'):
             path_rule('file-read*', 'literal', file)
@@ -132,6 +138,7 @@ def bind_ip():
 network = denied(bind_ip)
 network = network and denied(lambda: connect(sys.argv[4]))
 process = denied(lambda: os.kill(os.getppid(), 0))
+print(f'filesystem={filesystem}, network={network}, process={process}', flush=True)
 sys.exit(0 if filesystem and network and process else 1)
 '''
         try:

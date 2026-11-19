@@ -69,10 +69,10 @@
     "cffi": "2.1.1",
     "pip": "24.0"
   },
-  "helper_digest": "8ceb3ab2660f07fdbce34eb6d7f7d1e7db1b65ea5c6ebee33dca66e37b24264e",
+  "helper_digest": "20a7485bc4d27e8d4d23b9fa73d2c933719baec460770dbf2aa69a1491bd31cf",
   "dependency_lock": "8115cf5d1fc41cd6cff80e927ab5f0bb81d2ab76f5e41889ff643ac009c4ebcd",
   "dependency_files_digest": "be5661952cdf29854419d7663715c462c139519bf9955f077488e1e9ba34656d",
-  "environment_digest": "1406ff2baddc310bb6c8bd037fd7d4fda3358b78175c724655ea222b2a3fde9e",
+  "environment_digest": "66fb1ba27aac1b938d19a75ed938869a97967ef7767fba7e0f8831d5602239e1",
   "non_root": true,
   "wsl": true,
   "sandbox": {
