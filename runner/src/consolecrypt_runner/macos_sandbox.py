@@ -115,11 +115,20 @@ def run_macos_worker(workspace, command, *, tool_directory=None, broker=None, in
                      '/private/etc/passwd', '/private/etc/localtime'):
             path_rule('file-read*', 'literal', file)
         path_rule('file-write*', 'subpath', work)
+        if version == '3.15' or broker is not None:
+            profile.append('(allow system-socket (socket-domain AF_UNIX))')
+        if version == '3.15':
+            # Ansible 2.22 starts a private multiprocessing RPC listener in
+            # TMPDIR. Only sockets in this job's temporary directory are reachable.
+            name = f'CC_PATH_{len(parameters) // 2}'
+            parameters.extend(['-D', f'{name}={work / "tmp"}'])
+            sock = f'unix-socket (subpath (param "{name}"))'
+            profile.extend([f'(allow network-bind (local {sock}))',
+                            f'(allow network-outbound (remote {sock}))'])
         if broker is not None:
             broker = Path(broker).resolve(strict=True)
             name = path_rule('file-read*', 'literal', broker)
-            profile.extend(['(allow system-socket (socket-domain AF_UNIX))',
-                            f'(allow network-outbound (remote unix-socket (literal (param "{name}"))))'])
+            profile.append(f'(allow network-outbound (remote unix-socket (literal (param "{name}"))))')
             env['CC_BROKER_SOCKET'] = str(broker)
         for link in aliases:
             ancestors.update([link, *link.parents])
@@ -167,6 +176,14 @@ def bind_ip():
         client.bind(('127.0.0.1', 0))
 network = denied(bind_ip)
 network = network and denied(lambda: connect(sys.argv[4]))
+if sys.version_info[:2] == (3, 15):
+    local = str(pathlib.Path(os.environ['TMPDIR']) / 'probe.sock')
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
+        listener.bind(local)
+        listener.listen()
+        connect(local)
+        peer, _ = listener.accept()
+        peer.close()
 process = denied(lambda: os.kill(os.getppid(), 0))
 print(f'filesystem={filesystem}, network={network}, process={process}', flush=True)
 sys.exit(0 if filesystem and network and process else 1)
