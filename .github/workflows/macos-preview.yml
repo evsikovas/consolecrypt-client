@@ -46,6 +46,42 @@ jobs:
               response = json.loads(installer.stdout.readline(65536))
               status = installer.wait(timeout=10)
           if status or not response['ok']:
+              if response.get('error') == 'environment_check_failed':
+                  package_root = Path.home() / '.local/share/consolecrypt/runner-environments'
+                  installations = list(package_root.iterdir())
+                  if len(installations) == 1:
+                      installation = installations[0]
+                      diagnostic = """
+          import json
+          from pathlib import Path
+          import sys
+          from unittest.mock import patch
+          sys.path.insert(0, sys.argv[1])
+          from consolecrypt_runner import macos_sandbox
+          from consolecrypt_runner.probe import probe
+          run = macos_sandbox.run_macos_worker
+          bounded = macos_sandbox.run_bounded
+          def trace_worker(*args, **kwargs):
+              try:
+                  return run(*args, **kwargs)
+              except (OSError, macos_sandbox.RunnerError) as error:
+                  print('Sandbox bootstrap:', error, flush=True)
+                  raise
+          def trace_process(*args, **kwargs):
+              result = bounded(*args, **kwargs)
+              print('Sandbox probe exit:', result.exit_code, result.output, flush=True)
+              return result
+          with patch.object(macos_sandbox, 'run_macos_worker', trace_worker), patch.object(
+                  macos_sandbox, 'run_bounded', trace_process):
+              result = probe()
+          manifest = Path(sys.argv[1]) / 'consolecrypt_runner/environments/darwin-arm64-py312.json'
+          expected = json.loads(manifest.read_text())['packages']
+          print('Sandbox:', result['sandbox'])
+          print('Package differences:', sorted(set(expected.items()) ^ set(result['installed'].items())))
+          print('Package content fingerprint:', bool(result['dependency_files_digest']))
+          """
+                      subprocess.run([str(installation / 'venv/bin/python'), '-IB', '-c', diagnostic,
+                                      str(installation / 'src')], timeout=30)
               raise SystemExit(response.get('error', 'native_runner_install_failed'))
           paths = response['result']['paths']
           subprocess.run([paths['python'], '-B', '-m', 'unittest', 'discover',
