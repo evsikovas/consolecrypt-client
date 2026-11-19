@@ -2,12 +2,17 @@ name: macOS and Android preview builds
 
 on:
   workflow_dispatch:
+    inputs:
+      include_android:
+        description: Build the Android test APK
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: consolecrypt-macos-preview-${{ github.ref }}
+  group: consolecrypt-macos-preview-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -198,7 +203,7 @@ jobs:
             dist/macos/SHA256SUMS-macos.txt
 
   android:
-    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67036'
+    if: inputs.include_android && github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67036'
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 180
     env:

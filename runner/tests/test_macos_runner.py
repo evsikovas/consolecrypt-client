@@ -13,6 +13,25 @@ from consolecrypt_runner.revisions import RevisionRepository
 from consolecrypt_runner.validation import validate_project
 
 
+# Only the synthetic playbook can reach this diagnostic. The release worker
+# still routes job results through its privacy filter and drops raw output.
+_EXECUTION_FIXTURE = """
+import runpy
+import sys
+from ansible_runner.utils import OutputEventFilter
+
+original = OutputEventFilter.write
+
+def observe_output(self, data):
+    if isinstance(data, str):
+        print(data[:2048], end='', file=sys.stderr, flush=True)
+    return original(self, data)
+
+OutputEventFilter.write = observe_output
+runpy.run_module('consolecrypt_runner.execution_worker', run_name='__main__')
+"""
+
+
 @unittest.skipUnless(sys.platform == 'darwin', 'Native macOS required')
 class MacRunnerTests(unittest.TestCase):
     def test_validate_and_execute_playbook_inside_verified_worker(self):
@@ -54,7 +73,7 @@ class MacRunnerTests(unittest.TestCase):
             self.assertIn('playbook target match verified (1 approved hosts', target_check.output)
             body = encode({'playbook': 'playbook.yml', 'mode': 'run', 'forks': 1,
                            'inventory': inventory, 'parameters': parameters})
-            worker = run_macos_worker(revision, [sys.executable, '-m', 'consolecrypt_runner.execution_worker'],
+            worker = run_macos_worker(revision, [sys.executable, '-c', _EXECUTION_FIXTURE],
                                       input_bytes=body, timeout=45)
             self.assertEqual(worker.exit_code, 0, worker.output)
             self.assertIn('runner_on_ok', worker.output)
