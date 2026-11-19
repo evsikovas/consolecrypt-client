@@ -137,7 +137,14 @@ void main() {
       final l = tester.element(find.byType(CriticalNoticePanel)).l10n;
       final label = criticalNoticeTitle(l, h.owner.state.rows.single);
       expect(find.text(label), findsOneWidget);
-      if (domain == 'terminal') expect(label, contains('Session closed'));
+      if (domain == 'terminal') {
+        expect(label, contains('Session closed'));
+        final open = find.byKey(ValueKey('critical-notice-open-${h.id(domain)}'));
+        final dismiss = find.byKey(ValueKey('critical-notice-dismiss-${h.id(domain)}'));
+        expect(tester.getSize(dismiss).height, tester.getSize(open).height);
+        expect(tester.getCenter(dismiss).dy, tester.getCenter(open).dy);
+        expect(tester.widget<GlassIconButton>(dismiss).size, tester.widget<GlassButton>(open).size.height);
+      }
       await _tap(tester, 'critical-notice-open-${h.id(domain)}');
       expect(h.container.read(routerProvider).routeInformationProvider.value.uri.path, route);
       expect(h.container.read(criticalNoticeOpenIntentProvider), isNull);

@@ -264,6 +264,7 @@ class _CriticalNoticePanelState extends State<CriticalNoticePanel> {
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   GlassButton(
                                     key: ValueKey('critical-notice-open-${row.id}'),
@@ -286,6 +287,8 @@ class _CriticalNoticePanelState extends State<CriticalNoticePanel> {
                                     key: ValueKey('critical-notice-dismiss-${row.id}'),
                                     icon: Icons.close,
                                     tooltip: l.noticesDismiss,
+                                    size: GlassControlSize.sm.height,
+                                    iconSize: GlassSizes.iconBadge,
                                     onPressed: () => widget.owner.dismissRow(row),
                                   ),
                                 ],

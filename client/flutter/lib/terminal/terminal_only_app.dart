@@ -45,6 +45,7 @@ class TerminalOnlyApp extends StatelessWidget {
       // material_ui widgets look up their own Material and Cupertino delegates.
       localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
       localeListResolutionCallback: resolveSystemLocale,
+      builder: (_, child) => GlassAppScope(unifiedTitlebar: AppPlatform.isMacOS, child: child!),
       home: _TerminalOnlyScreen(initialShell: initialShell, openWindow: openWindow),
     ),
   );
@@ -64,7 +65,9 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
   bool _opening = false;
   bool _paletteOpen = false;
   String? _error;
-  TerminalTabPlacement _placement = TerminalTabPlacement.top;
+  TerminalTabPlacement _placement = TerminalTabPlacement.left;
+  bool _tabsCollapsed = true;
+  double _tabWidth = GlassTabColumn.defaultWidth;
 
   @override
   void initState() {
@@ -143,86 +146,59 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     return KeyEventResult.ignored;
   }
 
-  Widget _tabs(TerminalTabsState state, TerminalTabsController controller, {required bool left}) {
+  Widget _toolbar() {
     final l = context.l10n;
-    final buttons = [
-      GlassIconButton(
-        key: const ValueKey('terminal-only-new-tab'),
-        icon: Icons.add_rounded,
-        tooltip: '${l.commandNewTabPickerTitle} (${AppPlatform.shortcutLabel(LogicalKeyboardKey.keyT)})',
-        size: 28,
-        iconSize: 16,
-        onPressed: () => unawaited(_palette()),
-      ),
-      GlassIconButton(
-        key: const ValueKey('terminal-only-palette'),
-        icon: Icons.keyboard_command_key_rounded,
-        tooltip: '${l.terminalOnlyPalette} (${AppPlatform.shortcutLabel(LogicalKeyboardKey.keyK)})',
-        size: 28,
-        iconSize: 16,
-        onPressed: () => unawaited(_palette()),
-      ),
-      PopupMenuButton<TerminalTabPlacement>(
-        key: const ValueKey('terminal-only-tab-placement'),
-        icon: Icon(left ? Icons.view_sidebar_outlined : Icons.tab_rounded, size: 16),
-        tooltip: left ? l.terminalMinimalTabsLeft : l.terminalMinimalTabsTop,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 160),
-        onSelected: (value) => setState(() => _placement = value),
-        itemBuilder: (context) => [
-          CheckedPopupMenuItem(
-            key: const ValueKey('terminal-only-tabs-top'),
-            value: TerminalTabPlacement.top,
-            checked: !left,
-            child: Text(l.terminalMinimalTabsTop),
-          ),
-          CheckedPopupMenuItem(
-            key: const ValueKey('terminal-only-tabs-left'),
-            value: TerminalTabPlacement.left,
-            checked: left,
-            child: Text(l.terminalMinimalTabsLeft),
-          ),
-        ],
-      ),
-    ];
-    return Flex(
-      direction: left ? Axis.vertical : Axis.horizontal,
+    return GlassToolbarGroup(
+      key: const ValueKey('terminal-only-toolbar'),
       children: [
-        Expanded(
-          child: ListView.separated(
-            key: const ValueKey('terminal-only-tabs'),
-            scrollDirection: left ? Axis.vertical : Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            itemCount: state.tabs.length,
-            separatorBuilder: (_, _) => left ? const SizedBox(height: 4) : const SizedBox(width: 4),
-            itemBuilder: (context, index) {
-              final tab = state.tabs[index];
-              final button = GlassButton(
-                key: ValueKey(tab.sessionId),
-                label: tab.target.label,
-                expand: left,
-                style: identical(state.active, tab) ? GlassButtonStyle.prominent : GlassButtonStyle.plain,
-                onPressed: () => controller.activate(index),
-              );
-              return Row(
-                children: [
-                  if (left) Expanded(child: button) else button,
-                  GlassIconButton(
-                    icon: Icons.close_rounded,
-                    tooltip: l.commonClose,
-                    size: 24,
-                    iconSize: 14,
-                    style: GlassIconButtonStyle.plain,
-                    onPressed: () => unawaited(controller.close(tab)),
-                  ),
-                ],
-              );
-            },
+        GlassMenuButton<TerminalTabPlacement>(
+          entries: [
+            GlassMenuItem(
+              key: const ValueKey('terminal-only-tabs-top'),
+              value: TerminalTabPlacement.top,
+              checked: _placement == TerminalTabPlacement.top,
+              label: l.terminalMinimalTabsTop,
+            ),
+            GlassMenuItem(
+              key: const ValueKey('terminal-only-tabs-left'),
+              value: TerminalTabPlacement.left,
+              checked: _placement == TerminalTabPlacement.left,
+              label: l.terminalMinimalTabsLeft,
+            ),
+          ],
+          onSelected: (value) {
+            if (mounted) setState(() => _placement = value);
+          },
+          builder: (_, open) => GlassIconButton(
+            key: const ValueKey('terminal-only-tab-placement'),
+            icon: Icons.tune_rounded,
+            tooltip: l.terminalMinimalOptions,
+            style: GlassIconButtonStyle.plain,
+            size: GlassSizes.tab,
+            iconSize: GlassSizes.iconRow,
+            onPressed: open,
           ),
         ),
-        Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: buttons),
+        GlassIconButton(
+          key: const ValueKey('terminal-only-palette'),
+          icon: Icons.keyboard_command_key_rounded,
+          tooltip: '${l.terminalOnlyPalette} (${AppPlatform.shortcutLabel(LogicalKeyboardKey.keyK)})',
+          style: GlassIconButtonStyle.plain,
+          size: GlassSizes.tab,
+          iconSize: GlassSizes.iconRow,
+          onPressed: () => unawaited(_palette()),
+        ),
       ],
     );
+  }
+
+  Future<void> _tabMenu(TerminalTab tab, Offset anchor, TerminalTabsController controller) async {
+    final close = await showGlassMenu<bool>(
+      context: context,
+      anchor: anchor & Size.zero,
+      entries: [GlassMenuItem(value: true, label: GlassStrings.of(context).closeTab, icon: Icons.close_rounded)],
+    );
+    if (mounted && close == true) await controller.closeTab(tab);
   }
 
   @override
@@ -232,41 +208,114 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     final active = tabs.active;
     final l = context.l10n;
     final left = _placement == TerminalTabPlacement.left;
+    final toolbar = _toolbar();
+    final chrome = GlassScope.of(context);
+    final header = left || chrome.unifiedTitlebar;
+    final background = AppTheme.terminalTheme(Theme.of(context).brightness).background;
+    final items = [
+      for (final tab in tabs.tabs)
+        GlassTab(
+          key: ValueKey(tab.sessionId),
+          title: tab.displayTitle,
+          state: switch (tab.state) {
+            SessionConnectionState.connected => GlassTabState.connected,
+            SessionConnectionState.disconnected => GlassTabState.disconnected,
+            _ => GlassTabState.reconnecting,
+          },
+        ),
+    ];
+    final selected = items.isEmpty ? null : tabs.activeIndex.clamp(0, items.length - 1);
+    void newTab() => unawaited(_palette());
+    void closeTab(int i) => unawaited(controller.closeTab(tabs.tabs[i]));
+    void menu(int i, Offset anchor) => unawaited(_tabMenu(tabs.tabs[i], anchor, controller));
     final screen = Scaffold(
-      body: FocusScope(
-        autofocus: true,
-        child: Flex(
-          direction: left ? Axis.horizontal : Axis.vertical,
-          children: [
-            SizedBox(
-              height: left ? double.infinity : 36,
-              width: left ? 156 : double.infinity,
-              child: _tabs(tabs, controller, left: left),
-            ),
-            Expanded(
-              child: Column(
+      backgroundColor: background,
+      body: GlassBlurSuppressor(
+        budget: chrome.budget,
+        child: FocusScope(
+          autofocus: true,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(GlassSpacing.s4, 0, GlassSpacing.s4, GlassSpacing.s4),
+            child: LayoutBuilder(
+              builder: (context, bounds) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (_opening || active?.state == SessionConnectionState.connecting) const LinearProgressIndicator(),
-                  if (_error != null) Padding(padding: const EdgeInsets.all(8), child: Text(_error!)),
-                  Expanded(
-                    child: active == null
-                        ? Center(
-                            child: GlassButton(
-                              label: l.paletteNewLocalTerminal,
-                              onPressed: () => unawaited(_palette()),
-                            ),
-                          )
-                        : TerminalPane(key: ValueKey((active.sessionId, active.renderGeneration)), tab: active),
-                  ),
-                  if (active?.state == SessionConnectionState.disconnected)
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(active!.exited ? l.terminalOnlyShellExited : l.terminalOnlyShellError),
+                  if (header)
+                    GlassToolbar(
+                      leadingInset: chrome.unifiedTitlebar ? chrome.trafficLightsLeading : 0,
+                      trailing: [toolbar],
                     ),
+                  if (!left)
+                    GlassTabStrip(
+                      key: const ValueKey('terminal-only-tab-strip'),
+                      tabs: items,
+                      activeIndex: selected,
+                      onSelect: controller.activate,
+                      onClose: closeTab,
+                      onContextMenu: menu,
+                      onAdd: newTab,
+                      onReorder: controller.moveTab,
+                      trailing: header ? null : toolbar,
+                    ),
+                  const SizedBox(height: GlassSpacing.s4),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (left)
+                          GlassTabColumn(
+                            key: const ValueKey('terminal-only-tab-column'),
+                            tabs: items,
+                            activeIndex: selected,
+                            width: _tabWidth,
+                            maxWidth: (bounds.maxWidth - 360 - GlassTabColumn.handleWidth).clamp(
+                              0.0,
+                              GlassTabColumn.defaultMaxWidth,
+                            ),
+                            collapsed: _tabsCollapsed,
+                            onSelect: controller.activate,
+                            onClose: closeTab,
+                            onContextMenu: menu,
+                            onAdd: newTab,
+                            onReorder: controller.moveTab,
+                            onResize: (width) => setState(() => _tabWidth = width),
+                            onCollapsedChanged: (value) => setState(() => _tabsCollapsed = value),
+                          ),
+                        Expanded(
+                          key: const ValueKey('terminal-only-viewport'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s6, vertical: GlassSpacing.s4),
+                            child: Column(
+                              children: [
+                                if (_opening || active?.state == SessionConnectionState.connecting)
+                                  const LinearProgressIndicator(),
+                                if (_error != null) Padding(padding: const EdgeInsets.all(8), child: Text(_error!)),
+                                Expanded(
+                                  child: active == null
+                                      ? Center(
+                                          child: GlassButton(label: l.paletteNewLocalTerminal, onPressed: newTab),
+                                        )
+                                      : TerminalPane(
+                                          key: ValueKey((active.sessionId, active.renderGeneration)),
+                                          tab: active,
+                                        ),
+                                ),
+                                if (active?.state == SessionConnectionState.disconnected)
+                                  Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Text(active!.exited ? l.terminalOnlyShellExited : l.terminalOnlyShellError),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

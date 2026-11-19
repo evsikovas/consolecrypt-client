@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   native-runner-smoke:
-    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67037'
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67038'
     runs-on: macos-15
     timeout-minutes: 20
     strategy:
@@ -152,11 +152,11 @@ jobs:
 
   macos:
     needs: native-runner-smoke
-    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67037'
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67038'
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 120
     env:
-      CC_BUILD_NUMBER: '67037'
+      CC_BUILD_NUMBER: '67038'
       CARGO_BUILD_JOBS: '3'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -172,7 +172,7 @@ jobs:
           set -euo pipefail
           cd dist/macos
           version=$(cat ConsoleCrypt.version)
-          [[ "$version" == '1.2.0+67037' ]]
+          [[ "$version" == '1.2.0+67038' ]]
           codesign --verify --deep --strict ConsoleCrypt.app
           for binary in ConsoleCrypt.app/Contents/MacOS/ConsoleCrypt ConsoleCrypt.app/Contents/Frameworks/cc_bridge.framework/Versions/A/cc_bridge; do
             archs=" $(lipo -archs "$binary") "
@@ -192,22 +192,22 @@ jobs:
           shasum -a 256 "ConsoleCrypt-$version-macos-universal-preview.dmg" "ConsoleCrypt-$version-macos-universal.zip" > SHA256SUMS-macos.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: macos-preview-67037
+          name: macos-preview-67038
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
           path: |
-            dist/macos/ConsoleCrypt-1.2.0+67037-macos-universal-preview.dmg
-            dist/macos/ConsoleCrypt-1.2.0+67037-macos-universal.zip
+            dist/macos/ConsoleCrypt-1.2.0+67038-macos-universal-preview.dmg
+            dist/macos/ConsoleCrypt-1.2.0+67038-macos-universal.zip
             dist/macos/ConsoleCrypt.version
             dist/macos/SHA256SUMS-macos.txt
 
   android:
-    if: inputs.include_android && github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67037'
+    if: inputs.include_android && github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67038'
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 180
     env:
-      CC_BUILD_NUMBER: '67037'
+      CC_BUILD_NUMBER: '67038'
       CARGO_BUILD_JOBS: '3'
       ANDROID_HOME: ${{ vars.ANDROID_HOME }}
       JAVA_HOME: ${{ vars.JAVA_HOME }}
@@ -225,19 +225,19 @@ jobs:
           set -euo pipefail
           cd dist/android
           version=$(cat ConsoleCrypt.version)
-          [[ "$version" == '1.2.0+67037' ]]
+          [[ "$version" == '1.2.0+67038' ]]
           aapt="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}/build-tools/36.0.0/aapt"
           badging=$("$aapt" dump badging ConsoleCrypt-android-arm64.apk)
-          grep -F "versionCode='67037'" <<< "$badging"
+          grep -F "versionCode='67038'" <<< "$badging"
           mv ConsoleCrypt-android-arm64.apk "ConsoleCrypt-$version-android-arm64.apk"
           shasum -a 256 "ConsoleCrypt-$version-android-arm64.apk" > SHA256SUMS-android.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: android-preview-67037
+          name: android-preview-67038
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
           path: |
-            dist/android/ConsoleCrypt-1.2.0+67037-android-arm64.apk
+            dist/android/ConsoleCrypt-1.2.0+67038-android-arm64.apk
             dist/android/ConsoleCrypt.version
             dist/android/SHA256SUMS-android.txt
