@@ -36,7 +36,8 @@ for key in CFBundleShortVersionString CFBundleVersion; do
 done
 xcrun clang -fobjc-arc -framework AppKit -arch arm64 -arch x86_64 \
   -mmacosx-version-min=12.0 "$ASSETS/TerminalLauncher.m" -o "$CONTENTS/MacOS/consolecrypt-terminal"
-lipo "$CONTENTS/MacOS/consolecrypt-terminal" -verify_arch arm64 x86_64
+archs=" $(lipo -archs "$CONTENTS/MacOS/consolecrypt-terminal") "
+[[ "$archs" == *' arm64 '* && "$archs" == *' x86_64 '* ]] || { echo 'Terminal launcher is not universal.' >&2; exit 1; }
 if [[ -n "$SIGN_IDENTITY" ]]; then
   python3 "$REPO/client/scripts/sign-macos.py" --identity "$SIGN_IDENTITY" --app "$TERMINAL"
 else
