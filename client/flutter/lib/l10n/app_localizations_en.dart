@@ -13954,6 +13954,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepassRecentDatabases => 'Recent databases';
 
   @override
+  String get keepassDavDatabases => 'WebDAV databases';
+
+  @override
   String get keepassHello => 'Biometrics / device PIN';
 
   @override
@@ -15813,7 +15816,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Files may contain passwords or private data. Choose connection and inventory/Runner settings separately for the new project. Import does not run files.';
 
   @override
-  String get automationPortableImportChooseFile => 'Choose package';
+  String get automationPortableImportChooseFile => 'Choose .ccproject';
 
   @override
   String get automationPortableImportNoFile => 'No package selected';

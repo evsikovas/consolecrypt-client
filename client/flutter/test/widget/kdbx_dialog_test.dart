@@ -1483,6 +1483,35 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
+  testWidgets('synced WebDAV databases can be opened from the Android welcome screen', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(390, 844));
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    container.read(routerProvider).go(AppRoutes.passwords);
+    await settle(tester);
+    const connection = PasswordVaultConnection(
+      id: 'synced-webdav',
+      name: 'WebDAV from desktop',
+      url: 'https://dav.example/Passwords.kdbx',
+      credentialId: 'synced-credential',
+    );
+    final row = find.byKey(ValueKey('keepass-shared-source-${KdbxSource.dav(connection).id}'));
+    expect(row, findsNothing);
+    await container
+        .read(settingsServiceProvider)
+        .updateVault(container.read(vaultSettingsProvider).value!.copyWith(passwordVaults: [connection]));
+    await settle(tester);
+    expect(find.text('WebDAV databases'), findsOneWidget);
+    expect(row, findsOneWidget);
+    await tester.ensureVisible(row);
+    await tester.tap(row);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('keepass-password')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
   testWidgets('welcome shows five recent databases and reopens them through the unlock dialog', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);

@@ -127,6 +127,7 @@ Future<f.Registration> ready(WidgetTester tester, f.Fixture x) async {
   await tester.pumpAndSettle();
   await tester.enterText(find.byKey(const ValueKey('portable-import-name')), 'Fresh import');
   await tester.enterText(find.byKey(const ValueKey('portable-import-password')), 'synthetic package password');
+  await tester.pump();
   await tester.tap(find.byKey(const ValueKey('portable-import-prepare')));
   await tester.pump();
   final op = x.gateway.calls.single;
@@ -138,6 +139,24 @@ Future<f.Registration> ready(WidgetTester tester, f.Fixture x) async {
 }
 
 void main() {
+  testWidgets('Android uses the selected package name and waits for its password', (tester) async {
+    final x = f.Fixture();
+    addTearDown(x.dispose);
+    await open(tester, x, width: 390, height: 844);
+    await tester.tap(find.byKey(const ValueKey('portable-import-choose')));
+    await tester.pumpAndSettle();
+    expect(x.controller.requestedName, 'selected');
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('portable-import-name'))).controller!.text, 'selected');
+    final prepare = find.byKey(const ValueKey('portable-import-prepare'));
+    expect(tester.widget<FilledButton>(prepare).onPressed, isNull);
+    await tester.enterText(find.byKey(const ValueKey('portable-import-password')), 'synthetic package password');
+    await tester.pump();
+    await tester.tap(prepare);
+    await tester.pump();
+    expect(x.gateway.calls.single.intent.requestedName, 'selected');
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
   testWidgets('opening import review never selects a file, registers, accepts or reports installed', (tester) async {
     final x = f.Fixture();
     addTearDown(x.dispose);

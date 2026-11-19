@@ -269,7 +269,8 @@ class MainActivity : FlutterActivity() {
                 "dataDirectory" -> if (initialized) {
                     // noBackupFilesDir prevents transfer of DBs without their Keystore keys.
                     val dir = File(noBackupFilesDir, "consolecrypt")
-                    if (dir.isDirectory || dir.mkdirs()) result.success(dir.absolutePath)
+                    val path = runCatching { dir.canonicalPath }.getOrNull()
+                    if (path != null && (dir.isDirectory || dir.mkdirs())) result.success(path)
                     else result.error("storage", "Cannot create private app storage", null)
                 } else result.error("native_init", "Android security initialization failed", null)
                 "exportFile" -> {

@@ -2,6 +2,7 @@
 
 mod common;
 
+use cc_models::credential::{Credential, CredentialKind};
 use cc_models::host::Host;
 use cc_models::secret::{Secret, SecretKind, SecretValue};
 use cc_models::settings::VaultSettings;
@@ -300,6 +301,17 @@ async fn settings_conflict_is_last_writer_wins() {
     let server = MockServer::start().await;
     let (a, b, vault) = two_devices(&server).await;
     let now = chrono::Utc::now();
+    let dav_secret = Secret::new(SecretKind::Password, SecretValue::new("synthetic-dav-password"));
+    let mut dav_credential = Credential::new("WebDAV", CredentialKind::Password);
+    dav_credential.secret_id = Some(dav_secret.id);
+    a.engine
+        .put(p(VaultObject::Secret(dav_secret.clone())))
+        .await
+        .unwrap();
+    a.engine
+        .put(p(VaultObject::Credential(dav_credential.clone())))
+        .await
+        .unwrap();
     let settings = VaultSettings {
         automation: None, monitoring: None,
         password_vaults: vec![cc_models::settings::PasswordVaultConnection {
@@ -307,7 +319,7 @@ async fn settings_conflict_is_last_writer_wins() {
             name: "Passwords".into(),
             url: "https://dav.example/passwords.kdbx".into(),
             username: "dav-user".into(),
-            credential_id: Some(cc_protocol::ObjectId::new().to_string()),
+            credential_id: Some(dav_credential.id.to_string()),
         }],
         id: cc_protocol::ObjectId::new(),
         vault_name: "Personal".into(),
@@ -344,6 +356,15 @@ async fn settings_conflict_is_last_writer_wins() {
         }
         _ => panic!("expected encrypted synced vault settings"),
     }
+    let received = b.store.get(dav_credential.id).await.unwrap().unwrap();
+    let VaultObject::Credential(received) = received.payload.object else {
+        panic!("expected synced WebDAV credentials");
+    };
+    let secret = b.store.get(received.secret_id.unwrap()).await.unwrap().unwrap();
+    let VaultObject::Secret(secret) = secret.payload.object else {
+        panic!("expected the synced WebDAV secret");
+    };
+    assert_eq!(secret.value, dav_secret.value);
     let mut sa = settings.clone();
     sa.vault_name = "A-name".into();
     sa.updated_at = now + chrono::Duration::seconds(10);
@@ -371,7 +392,7 @@ async fn settings_conflict_is_last_writer_wins() {
     );
     assert_eq!(
         server.live_objects(vault.vault_id).len(),
-        1,
+        3,
         "no conflict copy for settings"
     );
 

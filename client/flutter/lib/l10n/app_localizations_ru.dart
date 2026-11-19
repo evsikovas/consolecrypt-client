@@ -14284,6 +14284,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get keepassRecentDatabases => 'Недавние базы';
 
   @override
+  String get keepassDavDatabases => 'Базы WebDAV';
+
+  @override
   String get keepassHello => 'Биометрия / PIN устройства';
 
   @override
@@ -16150,7 +16153,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'Файлы могут содержать пароли и личные данные. Настройки подключений, inventory и Runner выберите отдельно для нового проекта. Импорт не запускает файлы.';
 
   @override
-  String get automationPortableImportChooseFile => 'Выбрать пакет';
+  String get automationPortableImportChooseFile => 'Выбрать .ccproject';
 
   @override
   String get automationPortableImportNoFile => 'Пакет не выбран';

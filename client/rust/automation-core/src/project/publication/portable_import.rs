@@ -168,7 +168,7 @@ impl PinnedPortableImport {
         )?;
         let target = ProjectRoot {
             root: namespace::open_child(&namespace.root, &intent.target())?,
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
             publication_boundary: true,
         };
         identity_check(&namespace, &intent, &marker, &target)?;
@@ -364,7 +364,7 @@ fn recovery_impl(
     }
     let target = ProjectRoot {
         root: namespace::open_child(&namespace.root, &intent.target())?,
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         publication_boundary: true,
     };
     require(
@@ -456,7 +456,7 @@ impl PreparedPortableImport {
         namespace.check()?;
         let staging = ProjectRoot {
             root: namespace::mkdir(&namespace.root, &intent.stage())?,
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
             publication_boundary: true,
         };
         namespace::verify_private_child(&staging.root)?;
@@ -502,7 +502,7 @@ impl PreparedPortableImport {
         )?;
         let stage = ProjectRoot {
             root: namespace::open_child(&self.namespace.root, &self.intent.stage())?,
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
             publication_boundary: true,
         };
         require(
@@ -535,7 +535,7 @@ impl PreparedPortableImport {
         require(!exists(&self.namespace.root, &self.intent.target())?)?;
         let stage = ProjectRoot {
             root: namespace::open_child(&self.namespace.root, &self.intent.stage())?,
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
             publication_boundary: true,
         };
         require(
@@ -556,7 +556,7 @@ impl PreparedPortableImport {
         sync_directory(&self.namespace.root)?;
         let target = ProjectRoot {
             root: namespace::open_child(&self.namespace.root, &self.intent.target())?,
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
             publication_boundary: true,
         };
         require(

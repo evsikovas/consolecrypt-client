@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/app/critical_notice_providers.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/automation/automation_portable_import_controller.dart';
 import 'package:consolecrypt/automation/automation_portable_import_session.dart';
+import 'package:consolecrypt/automation/automation_portable_package.dart';
 import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -135,6 +137,24 @@ class _ImportDialogState extends ConsumerState<AutomationPortableImportDialog> {
     unawaited(widget.controller.prepare(secret));
   }
 
+  Future<void> _chooseFile() async {
+    final controller = widget.controller;
+    await controller.chooseSource();
+    if (!mounted ||
+        !AppPlatform.isMobile ||
+        !identical(controller, widget.controller) ||
+        !controller.current ||
+        controller.issue != null ||
+        name.text.isNotEmpty) {
+      return;
+    }
+    final filename = controller.selectedSource.replaceAll('\\', '/').split('/').last;
+    if (!portablePackageFilename(filename)) return;
+    final suggestion = filename.substring(0, filename.length - portablePackageExtension.length - 1);
+    name.text = suggestion;
+    controller.setRequestedName(suggestion);
+  }
+
   void _closeOwn() {
     if (_closing) return;
     _closing = true;
@@ -198,7 +218,7 @@ class _ImportDialogState extends ConsumerState<AutomationPortableImportDialog> {
                     children: [
                       OutlinedButton(
                         key: const ValueKey('portable-import-choose'),
-                        onPressed: frozen || !c.available ? null : () => unawaited(c.chooseSource()),
+                        onPressed: frozen || !c.available ? null : () => unawaited(_chooseFile()),
                         child: Text(l.chooseFile),
                       ),
                       Text(source.isEmpty ? l.noFile : source, maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -289,7 +309,7 @@ class _ImportDialogState extends ConsumerState<AutomationPortableImportDialog> {
           if (ready == null)
             FilledButton(
               key: const ValueKey('portable-import-prepare'),
-              onPressed: c.canPrepare ? _prepare : null,
+              onPressed: c.canPrepare && password.text.isNotEmpty ? _prepare : null,
               child: Text(l.prepare),
             )
           else

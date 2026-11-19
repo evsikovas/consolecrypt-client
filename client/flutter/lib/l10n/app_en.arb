@@ -19006,6 +19006,10 @@
   },
   "keepassDatabases": "Databases",
   "keepassRecentDatabases": "Recent databases",
+  "keepassDavDatabases": "WebDAV databases",
+  "@keepassDavDatabases": {
+    "description": "Password manager heading for saved WebDAV connections"
+  },
   "@keepassRecentDatabases": {
     "description": "Password manager heading for the last opened databases"
   },
@@ -21387,7 +21391,7 @@
   },
   "automationPortableImportTitle": "Import a new project",
   "automationPortableImportWarning": "Files may contain passwords or private data. Choose connection and inventory/Runner settings separately for the new project. Import does not run files.",
-  "automationPortableImportChooseFile": "Choose package",
+  "automationPortableImportChooseFile": "Choose .ccproject",
   "automationPortableImportNoFile": "No package selected",
   "automationPortableImportName": "New project name",
   "automationPortableImportPrepare": "Review package",

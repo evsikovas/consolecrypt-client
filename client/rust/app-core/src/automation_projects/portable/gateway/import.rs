@@ -75,7 +75,9 @@ fn support(
     ) {
         Ok(()) => (true, None),
         Err(cc_automation_core::AutomationError::PublicationUnsupported(reason)) => {
-            if reason.contains("platform") || (cfg!(not(any(windows, target_os = "linux")))) {
+            if reason.contains("platform")
+                || cfg!(not(any(windows, target_os = "linux", target_os = "android")))
+            {
                 (false, Some("publication_platform_unsupported"))
             } else if reason.contains("names") || reason.contains("executable") {
                 (false, Some("package_tree_unsupported"))

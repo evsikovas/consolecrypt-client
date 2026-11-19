@@ -24524,6 +24524,12 @@ abstract class AppLocalizations {
   /// **'Recent databases'**
   String get keepassRecentDatabases;
 
+  /// Password manager heading for saved WebDAV connections
+  ///
+  /// In en, this message translates to:
+  /// **'WebDAV databases'**
+  String get keepassDavDatabases;
+
   /// Password manager: keepassHello
   ///
   /// In en, this message translates to:
@@ -27893,7 +27899,7 @@ abstract class AppLocalizations {
   /// Portable fresh-project import review session UI; fixed text, never raw diagnostics.
   ///
   /// In en, this message translates to:
-  /// **'Choose package'**
+  /// **'Choose .ccproject'**
   String get automationPortableImportChooseFile;
 
   /// Portable fresh-project import review session UI; fixed text, never raw diagnostics.

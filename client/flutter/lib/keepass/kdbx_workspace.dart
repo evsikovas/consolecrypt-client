@@ -203,7 +203,7 @@ class KdbxWorkspace extends StatelessWidget {
         ),
       );
 
-  Widget _sourceTile(BuildContext context, KdbxSource source, {ValueChanged<String>? onAction, bool recent = false}) =>
+  Widget _sourceTile(BuildContext context, KdbxSource source, {ValueChanged<String>? onAction, Key? tileKey}) =>
       GestureDetector(
         onSecondaryTapDown: busy
             ? null
@@ -212,7 +212,7 @@ class KdbxWorkspace extends StatelessWidget {
             ? null
             : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
         child: ListTile(
-          key: ValueKey('${recent ? 'keepass-recent-source' : 'keepass-source'}-${source.id}'),
+          key: tileKey ?? ValueKey('keepass-source-${source.id}'),
           dense: true,
           visualDensity: VisualDensity.standard,
           minTileHeight: source.remote ? 56 : 48,
@@ -325,9 +325,15 @@ class KdbxWorkspace extends StatelessWidget {
 
   Widget _sources(BuildContext context, {bool welcome = false}) {
     final sources = manager.sources;
-    final visible = welcome ? manager.recentSources : sources.where((s) => manager.sessions.containsKey(s.id));
-    final tiles = [for (final source in visible) _sourceTile(context, source, recent: welcome)];
+    final recent = welcome ? manager.recentSources : const <KdbxSource>[];
+    final recentIds = recent.map((source) => source.id).toSet();
+    final shared = welcome ? sources.where((s) => s.remote && !recentIds.contains(s.id)) : const <KdbxSource>[];
     final l = context.l10n;
+    final title = recent.isNotEmpty
+        ? l.keepassRecentDatabases
+        : shared.isNotEmpty
+        ? l.keepassDavDatabases
+        : l.keepassDatabases;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -337,22 +343,31 @@ class KdbxWorkspace extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
           child: Row(
             children: [
-              Expanded(
-                child: Text(
-                  welcome && tiles.isNotEmpty ? l.keepassRecentDatabases : l.keepassDatabases,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-              ),
+              Expanded(child: Text(title, style: Theme.of(context).textTheme.titleSmall)),
               if (sources.any((s) => !manager.sessions.containsKey(s.id))) _unlockOthers(context),
               if (!welcome) _addMenu(context),
             ],
           ),
         ),
-        if (welcome)
-          ...tiles
-        else
+        if (welcome) ...[
+          for (final source in recent)
+            _sourceTile(context, source, tileKey: ValueKey('keepass-recent-source-${source.id}')),
+          if (recent.isNotEmpty && shared.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
+              child: Text(l.keepassDavDatabases, style: Theme.of(context).textTheme.titleSmall),
+            ),
+          for (final source in shared)
+            _sourceTile(context, source, tileKey: ValueKey('keepass-shared-source-${source.id}')),
+        ] else
           Flexible(
-            child: ListView(padding: const EdgeInsets.symmetric(vertical: 4), children: tiles),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              children: [
+                for (final source in sources.where((s) => manager.sessions.containsKey(s.id)))
+                  _sourceTile(context, source),
+              ],
+            ),
           ),
       ],
     );

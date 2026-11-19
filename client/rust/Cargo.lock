@@ -943,6 +943,7 @@ dependencies = [
  "hex",
  "libc",
  "rustix",
+ "rustix-linux-procfs",
  "serde",
  "serde_json",
  "sha2 0.11.0",

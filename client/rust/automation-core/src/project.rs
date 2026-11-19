@@ -89,14 +89,14 @@ pub enum ProjectRevisionPolicy {
 #[derive(Debug)]
 pub struct ProjectRoot {
     root: Dir,
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     publication_boundary: bool,
 }
 
 impl ProjectRoot {
     /// Publication/selected-generation I/O policy only. This clones the
     /// SAME capability; it is not a new path selection or approval authority.
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     pub(crate) fn publication_root(&self) -> Result<Self> {
         publication::check_local_directory(&self.root)?;
         Ok(Self {
@@ -105,14 +105,14 @@ impl ProjectRoot {
         })
     }
     fn child_directory(&self, parent: &Dir, name: &str) -> Result<Dir> {
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         if self.publication_boundary {
             return publication::open_boundary_directory(parent, name);
         }
         Ok(parent.open_dir_nofollow(name)?)
     }
     fn child_metadata(&self, parent: &Dir, name: &str) -> Result<cap_std::fs::Metadata> {
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         if self.publication_boundary {
             return publication::boundary_metadata(parent, Path::new(name));
         }
@@ -125,7 +125,7 @@ impl ProjectRoot {
         options: &OpenOptions,
         mode: u32,
     ) -> Result<cap_std::fs::File> {
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         if self.publication_boundary {
             return publication::create_boundary_file(parent, Path::new(name), mode);
         }
@@ -173,7 +173,7 @@ impl ProjectRoot {
         if !self.same_directory(&current)? {
             return Err(AutomationError::FileChanged);
         }
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let current = if self.publication_boundary {
             current.publication_root()?
         } else {
@@ -276,7 +276,7 @@ impl ProjectRoot {
         }
         Ok(Self {
             root: Dir::open_ambient_dir(path, cap_std::ambient_authority())?,
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
             publication_boundary: false,
         })
     }
@@ -291,13 +291,13 @@ impl ProjectRoot {
             options.custom_flags(libc::O_NONBLOCK);
         }
         let (parent, name) = self.parent(relative, false)?;
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let file = if self.publication_boundary {
             publication::read_boundary_file(&self.root, Path::new(relative))?
         } else {
             parent.open_with(name, &options)?
         };
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
         let file = parent.open_with(name, &options)?;
         let metadata = file.metadata()?;
         if !metadata.is_file() || metadata.nlink() != 1 {
@@ -622,7 +622,7 @@ impl ProjectRoot {
         let result = (|| -> Result<()> {
             let stage = ProjectRoot {
                 root: self.child_directory(&parent, &temporary)?,
-                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
                 publication_boundary: self.publication_boundary,
             };
             for directory in [
@@ -680,11 +680,11 @@ impl ProjectRoot {
         self.revision_with_policy(ProjectRevisionPolicy::Snapshot)
     }
     pub fn revision_for_publication(&self) -> Result<ProjectRevision> {
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let strict = self.publication_root()?;
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let root = &strict;
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
         let root = self;
         root.revision_with_policy(ProjectRevisionPolicy::RejectExcludedEntries)
     }

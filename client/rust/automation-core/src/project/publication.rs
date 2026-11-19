@@ -3,7 +3,7 @@
 //! Run in a registered blocking worker; cancellation does not abort OS I/O.
 use super::{ProjectEntry, ProjectRevision, ProjectRoot};
 use crate::{AutomationError, DependencySourceSelection, Result, VerifiedDependencyPreview};
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+#[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
 use cap_fs_ext::DirExt;
 use cap_fs_ext::{FollowSymlinks, MetadataExt, OpenOptionsFollowExt};
 use cap_std::fs::{Dir, OpenOptions};
@@ -20,23 +20,23 @@ use uuid::Uuid;
 
 mod namespace;
 pub(crate) mod portable_import;
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 pub(super) fn check_local_directory(dir: &Dir) -> Result<()> {
     namespace::check_local_directory(dir)
 }
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 pub(super) fn open_boundary_directory(dir: &Dir, name: &str) -> Result<Dir> {
     namespace::open_child(dir, name)
 }
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 pub(super) fn read_boundary_file(dir: &Dir, path: &Path) -> Result<cap_std::fs::File> {
     namespace::read_boundary_file(dir, path)
 }
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 pub(super) fn create_boundary_file(dir: &Dir, path: &Path, mode: u32) -> Result<cap_std::fs::File> {
     namespace::create_boundary_file(dir, path, mode)
 }
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 pub(super) fn boundary_metadata(dir: &Dir, path: &Path) -> Result<cap_std::fs::Metadata> {
     namespace::boundary_metadata(dir, path)
 }
@@ -399,7 +399,7 @@ pub(crate) fn open_selected_generation(
         .join(format!("generation-{transaction}"));
     let original = ProjectRoot::open(&original_path)?;
     let target = ProjectRoot::open(&target_path)?;
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     let target = target.publication_root()?;
     let namespace = namespace::ManagedNamespace::existing(profile, project, &original, &target)?;
     let intent: Intent = parsed(&read_small(&namespace.root, INTENT)?)?;
@@ -453,7 +453,7 @@ pub(crate) fn reconcile_selected_catalog(
         .join(format!("generation-{}", context.transaction));
     let original = ProjectRoot::open(&original_path)?;
     let target = ProjectRoot::open(&target_path)?;
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     let target = target.publication_root()?;
     let namespace = namespace::ManagedNamespace::existing(
         context.profile,
@@ -546,9 +546,9 @@ fn parsed<T: serde::de::DeserializeOwned>(raw: &[u8]) -> Result<T> {
 }
 fn write_new(parent: &Dir, name: &str, value: &impl Serialize) -> Result<()> {
     let raw = encode(value)?;
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     let mut output = create_boundary_file(parent, Path::new(name), 0o600)?;
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
     let mut output = {
         let mut options = OpenOptions::new();
         options
@@ -580,9 +580,9 @@ fn write_new(parent: &Dir, name: &str, value: &impl Serialize) -> Result<()> {
     sync_directory(parent)
 }
 fn read_small(parent: &Dir, name: &str) -> Result<Vec<u8>> {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     let file = read_boundary_file(parent, Path::new(name))?;
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
     let file = {
         let metadata = parent.symlink_metadata(name)?;
         ordinary_file(&metadata)?;
@@ -611,9 +611,9 @@ fn ordinary_file(metadata: &cap_std::fs::Metadata) -> Result<()> {
     Ok(())
 }
 fn exists(parent: &Dir, name: &str) -> Result<bool> {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     let metadata = boundary_metadata(parent, Path::new(name));
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
     let metadata = parent.symlink_metadata(name).map_err(AutomationError::from);
     match metadata {
         Ok(_) => Ok(true),
@@ -676,13 +676,13 @@ impl Review<'_> {
         self.initial_check_after_walks(|| Ok(()))
     }
     fn initial_check_after_walks(&self, after_walks: impl FnOnce() -> Result<()>) -> Result<()> {
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let strict_original = self.original.publication_root()?;
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let strict_candidate = self.candidate.publication_root()?;
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let (original, candidate) = (&strict_original, &strict_candidate);
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
         let (original, candidate) = (self.original, self.candidate);
         // Use the SAME constrained roots for initial walks and the actual
         // preview's parser/walker reads. A transient preflight clone is not enough.
@@ -697,13 +697,13 @@ impl Review<'_> {
     }
     fn check(&self, namespace: &namespace::ManagedNamespace) -> Result<()> {
         namespace.check_named_source(self.original)?;
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let strict_original = self.original.publication_root()?;
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let strict_candidate = self.candidate.publication_root()?;
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let (original, candidate) = (&strict_original, &strict_candidate);
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
         let (original, candidate) = (self.original, self.candidate);
         if original.revision_for_publication()? != *self.before
             || candidate.revision_for_publication()? != *self.preview.candidate()
@@ -1057,7 +1057,7 @@ impl Prepared {
             check_cancel(cancel)?;
             let target_root = ProjectRoot {
                 root: namespace::open_child(&namespace.root, &intent.target())?,
-                #[cfg(any(target_os = "linux", target_os = "macos"))]
+                #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
                 publication_boundary: true,
             };
             require(identity(&target_root.root)? == marker.stage)?;
@@ -1111,16 +1111,16 @@ impl Prepared {
         sync_directory(&namespace.root)?;
         let staging = ProjectRoot {
             root: created_stage,
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
             publication_boundary: true,
         };
         let marker = intent.marker(identity(&staging.root)?)?;
         write_new(&namespace.root, CREATED, &marker)?;
         hook(Phase::Created)?;
         check(&namespace)?;
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let strict_candidate = candidate.publication_root()?;
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         let candidate = &strict_candidate;
         candidate.freeze_to(expected, &staging, cancel)?;
         hook(Phase::Frozen)?;
@@ -1154,7 +1154,7 @@ impl Prepared {
         // Existing walker is used again before rename; Ready bytes are not trust.
         let expected = ProjectRoot {
             root: namespace::open_child(&self.namespace.root, &self.intent.stage())?,
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
             publication_boundary: true,
         }
         .revision_for_publication()?;
@@ -1186,7 +1186,7 @@ impl Prepared {
         check_cancel(cancel)?;
         let target_root = ProjectRoot {
             root: namespace::open_child(&self.namespace.root, &self.intent.target())?,
-            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
             publication_boundary: true,
         };
         require(identity(&target_root.root)? == self.marker.stage)?;
@@ -1313,7 +1313,7 @@ fn checked_ready(
     }
     let root = ProjectRoot {
         root: namespace::open_child(&namespace.root, if has_target { &target } else { &stage })?,
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
         publication_boundary: true,
     };
     namespace::verify_private_child(&root.root)?;
@@ -1337,11 +1337,11 @@ pub(super) fn rename_project_directory(parent: &Dir, source: &str, target: &str,
 }
 
 fn rename_new(parent: &Dir, stage: &str, target: &str, expected: &DirectoryIdentity) -> Result<()> {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     {
         let opened = namespace::open_child(parent, stage)?;
         require(identity(&opened)? == *expected)?;
-        // Linux renameat2 / Darwin renameatx_np bind names, not a source inode. Exact
+        // Linux/Android renameat2 and Darwin renameatx_np bind names, not a source inode. Exact
         // post-rename identity detects a same-UID retarget; it never overwrites
         // a target and never deletes either tree on error. See threat limits.
         rustix::fs::renameat_with(
@@ -1361,7 +1361,7 @@ fn rename_new(parent: &Dir, stage: &str, target: &str, expected: &DirectoryIdent
         windows::rename_new(&source, parent.as_handle(), target)?;
         Ok(())
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+    #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos", windows)))]
     {
         let _ = (parent, stage, target, expected);
         Err(AutomationError::PublicationUnsupported(
@@ -1454,9 +1454,9 @@ pub(crate) fn check_publication_base(
     project: Uuid,
     original: &ProjectRoot,
 ) -> Result<()> {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     let strict = original.publication_root()?;
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     let original = &strict;
     let namespace = namespace::ManagedNamespace::admit_base(profile, project, original)?;
     // Same existing bounded walker and excluded-entry policy; no second parser.

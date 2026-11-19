@@ -7,39 +7,45 @@ use std::{ffi::OsString, path::{Component, PathBuf}};
 mod linux_locality;
 #[cfg(target_os = "linux")]
 use linux_locality as platform;
+#[cfg(target_os = "android")]
+#[path = "android.rs"]
+mod android;
+#[cfg(target_os = "android")]
+use android as platform;
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)] // Isolated public Darwin ACL ABI; no production setter.
 #[path = "macos.rs"]
 mod macos;
 #[cfg(target_os = "macos")]
 use macos as platform;
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 pub(super) fn check_local_directory(dir: &Dir) -> Result<()> {
     supported(dir)?;
     #[cfg(target_os = "macos")]
     macos::verify_empty_acl(dir)?;
     Ok(())
 }
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 fn boundary_error(error: std::io::Error) -> AutomationError {
     if error.kind() == std::io::ErrorKind::Unsupported {
         AutomationError::PublicationUnsupported(
             if cfg!(target_os = "linux") { "strong Linux publication path resolution unavailable" }
+            else if cfg!(target_os = "android") { "Android publication mount identity unavailable" }
             else { "strong Darwin publication path resolution unavailable" },
         )
     } else {
         AutomationError::Io(error)
     }
 }
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 pub(super) fn read_boundary_file(dir: &Dir, path: &Path) -> Result<cap_std::fs::File> {
     platform::read_file(dir, path).map_err(boundary_error)
 }
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 pub(super) fn create_boundary_file(dir: &Dir, path: &Path, mode: u32) -> Result<cap_std::fs::File> {
     platform::create_file(dir, path, mode).map_err(boundary_error)
 }
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
 pub(super) fn boundary_metadata(dir: &Dir, path: &Path) -> Result<cap_std::fs::Metadata> {
     platform::metadata(dir, path).map_err(boundary_error)
 }
@@ -66,7 +72,7 @@ pub(super) fn open_child(parent: &Dir, name: impl AsRef<Path>) -> Result<Dir> {
     let name = name.as_ref();
     let parts = name.components().collect::<Vec<_>>();
     require(parts.len() == 1 && matches!(parts[0], Component::Normal(_)))?;
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     {
         // Observe metadata only after the platform adapter validates its held
         // descriptor (Linux NO_XDEV; Darwin APFS/current mount comparison).
@@ -74,7 +80,7 @@ pub(super) fn open_child(parent: &Dir, name: impl AsRef<Path>) -> Result<Dir> {
         directory(&child.dir_metadata()?)?;
         Ok(child)
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
     {
         let before = parent.symlink_metadata(name)?;
         directory(&before)?;
@@ -87,13 +93,13 @@ pub(super) fn open_child(parent: &Dir, name: impl AsRef<Path>) -> Result<Dir> {
     }
 }
 fn open_ancestor(parent: &Dir, name: impl AsRef<Path>) -> Result<Dir> {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     {
         let child = platform::open_ancestor(parent, name.as_ref()).map_err(boundary_error)?;
         directory(&child.dir_metadata()?)?;
         Ok(child)
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "macos")))]
     {
         open_child(parent, name)
     }
@@ -154,10 +160,11 @@ fn outside_all(dir:&Dir,excluded:&[DirectoryIdentity])->Result<()> {
     require(excluded.iter().all(|other|*other!=id))
 }
 fn supported(dir: &Dir) -> Result<()> {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "macos"))]
     platform::supported(dir).map_err(|_| {
         AutomationError::PublicationUnsupported(
             if cfg!(target_os = "linux") { "publication requires supported local Linux filesystem" }
+            else if cfg!(target_os = "android") { "publication requires supported private Android storage" }
             else { "publication requires supported writable local APFS" },
         )
     })?;
@@ -170,7 +177,7 @@ fn supported(dir: &Dir) -> Result<()> {
             ));
         }
     }
-    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+    #[cfg(not(any(windows, target_os = "linux", target_os = "android", target_os = "macos")))]
     {
         let _ = dir;
         return Err(AutomationError::PublicationUnsupported(
