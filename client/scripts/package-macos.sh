@@ -36,7 +36,7 @@ for key in CFBundleShortVersionString CFBundleVersion; do
 done
 xcrun clang -fobjc-arc -framework AppKit -arch arm64 -arch x86_64 \
   -mmacosx-version-min=12.0 "$ASSETS/TerminalLauncher.m" -o "$CONTENTS/MacOS/consolecrypt-terminal"
-lipo -verify_arch arm64 x86_64 "$CONTENTS/MacOS/consolecrypt-terminal"
+lipo "$CONTENTS/MacOS/consolecrypt-terminal" -verify_arch arm64 x86_64
 if [[ -n "$SIGN_IDENTITY" ]]; then
   python3 "$REPO/client/scripts/sign-macos.py" --identity "$SIGN_IDENTITY" --app "$TERMINAL"
 else

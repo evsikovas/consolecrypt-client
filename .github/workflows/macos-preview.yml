@@ -7,6 +7,10 @@ on:
         description: Build the Android test APK
         type: boolean
         default: true
+      reuse_macos_bundle:
+        description: Retry packaging the existing 67036 Mac application after the DMG tool fix
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -161,11 +165,30 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          clean: ${{ !inputs.reuse_macos_bundle }}
+          fetch-depth: 2
           persist-credentials: false
       - name: Native toolchain
         run: source client/scripts/ci-macos-tools.sh --xcode
       - name: Build universal preview
-        run: bash client/scripts/build-macos.sh --no-cli
+        env:
+          CC_REUSE_MACOS_BUNDLE: ${{ inputs.reuse_macos_bundle }}
+        run: |
+          set -euo pipefail
+          app=dist/macos/ConsoleCrypt.app
+          info="$app/Contents/Info.plist"
+          if [[ "$CC_REUSE_MACOS_BUNDLE" != true || ! -f "$info" ]]; then
+            bash client/scripts/build-macos.sh --no-cli
+            exit
+          fi
+          # The prior run finished signing this bundle and passed its process smoke.
+          git diff --quiet e06a6ea45f64aa15ac1ed25b36f8eecc9c4f9193 HEAD -- client/flutter client/rust crates runner
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$info")" == '1.2.0' ]]
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$info")" == '67036' ]]
+          codesign --verify --deep --strict "$app"
+          bash client/scripts/package-macos.sh "$app" dist/macos/ConsoleCrypt.dmg
+          ditto -c -k --keepParent "$app" dist/macos/ConsoleCrypt-macos.zip
+          printf '%s\n' '1.2.0+67036' > dist/macos/ConsoleCrypt.version
       - name: Verify and name packages
         shell: bash
         run: |
