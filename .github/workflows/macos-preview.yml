@@ -54,6 +54,7 @@ jobs:
                       diagnostic = r"""
           import json
           from pathlib import Path
+          import subprocess
           import sys
           from unittest.mock import patch
           sys.path.insert(0, sys.argv[1])
@@ -75,6 +76,14 @@ jobs:
                   argv = args[0]
                   pos = argv.index('-p') + 1
                   params = list(argv[:pos + 1])
+                  # Positive control executes a fixed no-op without project input.
+                  for name, profile in (
+                          ('sandbox-exec positive control', '(version 1)(allow default)'),
+                          ('system executable control', '(version 1)(deny default)(allow process-exec)'
+                           '(allow file-read* file-map-executable (subpath "/usr") (subpath "/System"))')):
+                      control = subprocess.run(['/usr/bin/sandbox-exec', '-p', profile, '/usr/bin/true'],
+                                               env={'PATH': '/usr/bin:/bin'}, capture_output=True, timeout=5)
+                      print(name, control.returncode, flush=True)
                   options = {**kwargs, 'output_limit': 20000}
                   for label, command in (
                           ('system binary', ['/usr/bin/true']),
@@ -94,11 +103,17 @@ jobs:
                        ' (global-name "com.apple.system.logger") (global-name "com.apple.notifyd")'
                        ' (global-name "com.apple.securityd"))'),
                       ('loader descriptor queries', '(allow system-fcntl)'),
+                      ('system runtime controls', '(allow iokit-open (iokit-registry-entry-class "RootDomainUserClient"))'
+                       '(allow file-ioctl (literal "/dev/null"))'
+                       '(allow mach-lookup (global-name "com.apple.coreservices.launchservicesd"))'
+                       '(allow mach-lookup (global-name "com.apple.system.opendirectoryd.membership"))'),
                   )
                   for label, extra in checks + (('combined', '\n'.join(entry for _, entry in checks)),):
                       trial = bounded(params[:pos] + [params[pos] + '\n' + extra, sys.executable,
                                       '-IBS', '-c', 'print("Python started", flush=True)'], **options)
                       print(label, trial.exit_code, trial.output, flush=True)
+                  control = bounded([params[0], '-p', '(version 1)(allow default)', '/usr/bin/true'], **options)
+                  print('positive control through worker process launcher', control.exit_code, flush=True)
               return result
           with patch.object(macos_sandbox, 'run_macos_worker', trace_worker), patch.object(
                   macos_sandbox, 'run_bounded', trace_process):
