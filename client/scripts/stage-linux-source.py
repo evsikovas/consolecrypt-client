@@ -15,7 +15,8 @@ def stage(root: Path, output: Path) -> int:
     spec.loader.exec_module(module)
     names = subprocess.check_output(['git', '-C', str(root), 'ls-files', '-z']).decode().split('\0')
     selected = sorted({name for name in names if name and module.publishable(name)
-                       and (name.startswith(('client/', 'crates/')) or name in {'LICENSE', 'rust-toolchain.toml'})})
+                       and (name.startswith(('client/', 'crates/', 'runner/'))
+                            or name in {'LICENSE', 'rust-toolchain.toml'})})
     for name in selected:
         source = root / name
         if source.is_symlink() or not source.is_file():

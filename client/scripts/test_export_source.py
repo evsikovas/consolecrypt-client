@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -10,6 +11,37 @@ spec.loader.exec_module(module)
 
 
 class ExportTests(unittest.TestCase):
+    def test_linux_build_stages_runner_sources_without_private_state(self):
+        script = Path(__file__).with_name('stage-linux-source.py')
+        public = (
+            'runner/setup/environment.py',
+            'runner/src/consolecrypt_runner/probe.py',
+            'runner/requirements-linux-x86_64-py314.lock',
+            'runner/vendor/pyyaml-6.0.3-py3-none-any.whl',
+        )
+        private = ('runner/state/private.json', 'runner/deployment/.env', 'runner/src/user.sqlite')
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / 'source'
+            root.mkdir()
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            scripts = root / 'client/scripts'
+            scripts.mkdir(parents=True)
+            shutil.copyfile(Path(__file__).with_name('export-source.py'), scripts / 'export-source.py')
+            for name in (*public, *private):
+                fixture = root / name
+                fixture.parent.mkdir(parents=True, exist_ok=True)
+                fixture.write_bytes(b'synthetic build source')
+            subprocess.run(['git', '-C', str(root), 'add', '--', *public, *private], check=True)
+            output = Path(temporary) / 'staged'
+            spec = importlib.util.spec_from_file_location('stage_linux_source', script)
+            staging = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(staging)
+            self.assertEqual(staging.stage(root, output), len(public))
+            for name in public:
+                self.assertTrue((output / name).is_file(), name)
+            for name in private:
+                self.assertFalse((output / name).exists(), name)
+
     def test_runner_corresponding_source_is_explicit_and_private_state_stays_out(self):
         for name in ('runner/src/consolecrypt_runner/service/service_helper.py', 'runner/setup/environment.py',
                      'runner/deployment/bundle.py', 'runner/deployment/README.md', 'runner/pyproject.toml',
