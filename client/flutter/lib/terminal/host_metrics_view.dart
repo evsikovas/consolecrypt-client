@@ -245,13 +245,18 @@ class _HostMetricsViewState extends State<HostMetricsView> {
           const SizedBox(height: 12),
           if (_values)
             for (final sample in _samples.reversed)
-              ListTile(
-                dense: true,
-                title: Text(clock(sample.time)),
-                subtitle: SelectableText(
-                  'CPU ${percent(sample.cpu)}  ·  ${l.hostMetricsRam} ${amount(sample.memoryUsed, sample.memoryTotal)}  ·  '
-                  '${l.hostMetricsDisk} ${amount(sample.diskUsed, sample.diskTotal)}  ·  '
-                  '↓ ${speed(sample.received)}  ↑ ${speed(sample.sent)}',
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(clock(sample.time), style: theme.textTheme.titleSmall),
+                    SelectableText(
+                      'CPU ${percent(sample.cpu)}  ·  ${l.hostMetricsRam} ${amount(sample.memoryUsed, sample.memoryTotal)}  ·  '
+                      '${l.hostMetricsDisk} ${amount(sample.diskUsed, sample.diskTotal)}  ·  '
+                      '↓ ${speed(sample.received)}  ↑ ${speed(sample.sent)}',
+                    ),
+                  ],
                 ),
               )
           else ...[

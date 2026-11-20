@@ -141,9 +141,8 @@ void main() {
 
     await tester.tap(serverTool);
     await settle(tester);
-    final closing = tabs.closeTab(second);
+    await tester.runAsync(() => tabs.closeTab(second));
     await settle(tester);
-    await closing;
     expect(metrics.watches.last.tab, first.sessionId);
     router.go(AppRoutes.hosts);
     await settle(tester);
