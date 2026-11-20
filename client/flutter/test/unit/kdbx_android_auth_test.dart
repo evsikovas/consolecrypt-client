@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:consolecrypt/core/bridge/local_auth_channel.dart';
 import 'package:consolecrypt/keepass/kdbx_android_auth.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Uint8List handle(String alias) =>
@@ -11,6 +13,56 @@ Uint8List handle(String alias) =>
 const oldAlias = 'cc-device-unlock-kdbx-00000000-0000-4000-8000-000000000001';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('KDBX enrollment and unlock can wipe material from read-only Android replies', () async {
+    const channel = 'consolecrypt/local_auth';
+    const codec = StandardMethodCodec();
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final handleBytes = handle(oldAlias);
+    final composite = Uint8List.fromList(List.filled(32, 77));
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+      messenger.setMockMessageHandler(channel, null);
+    });
+    messenger.setMockMessageHandler(channel, (message) async {
+      final request = codec.decodeMethodCall(message!);
+      final material = Uint8List.fromList(List.filled(32, 23));
+      // The Android engine delivers an unmodifiable ByteData to the codec.
+      return codec
+          .encodeSuccessEnvelope(switch (request.method) {
+            'createKey' => {'material': material, 'handle': handleBytes},
+            'releaseKey' => material,
+            _ => throw StateError('Unexpected call: ${request.method}'),
+          })
+          .asUnmodifiableView();
+    });
+
+    final auth = KdbxAndroidAuth();
+    Uint8List? releasedMaterial;
+    Future<Uint8List> call(String action, Uint8List bytes) async {
+      switch (action) {
+        case 'enable_external':
+          expect(bytes.sublist(0, 32), composite);
+          expect(bytes.sublist(32, 64), List.filled(32, 23));
+          return Uint8List(0);
+        case 'external_handle':
+          return handleBytes;
+        case 'release_external':
+          expect(bytes, List.filled(32, 23));
+          releasedMaterial = bytes;
+          return composite;
+        default:
+          throw StateError('Unexpected action: $action');
+      }
+    }
+
+    await auth.protect(call, composite, 'Unlock', enabled: false);
+    expect(await auth.unlock(call, 'Unlock'), composite);
+    expect(releasedMaterial, List.filled(32, 0));
+  });
+
   test('an invalidated Android key retires only its handle and asks for the master password', () async {
     final androidHandle = handle(oldAlias);
     final deleted = <String>[];

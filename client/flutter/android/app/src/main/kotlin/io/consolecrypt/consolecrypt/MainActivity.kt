@@ -302,11 +302,19 @@ class MainActivity : FlutterActivity() {
         }
         // Device unlock (S5): Keystore key + BiometricPrompt CryptoObject.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/local_auth").setMethodCallHandler { call, result ->
+            fun replyWithMaterial(material: ByteArray, payload: Any) {
+                try {
+                    result.success(payload)
+                } finally {
+                    // StandardMethodCodec has already copied the bytes into the reply.
+                    material.fill(0)
+                }
+            }
             val reply = { outcome: DeviceUnlockKeys.Outcome ->
                 when (outcome) {
                     is DeviceUnlockKeys.Outcome.Created ->
-                        result.success(mapOf("material" to outcome.material, "handle" to outcome.handle))
-                    is DeviceUnlockKeys.Outcome.Released -> result.success(outcome.material)
+                        replyWithMaterial(outcome.material, mapOf("material" to outcome.material, "handle" to outcome.handle))
+                    is DeviceUnlockKeys.Outcome.Released -> replyWithMaterial(outcome.material, outcome.material)
                     DeviceUnlockKeys.Outcome.Cancelled -> result.error("cancelled", "Authentication cancelled", null)
                     DeviceUnlockKeys.Outcome.Invalidated -> result.error("invalidated", "Key invalidated", null)
                     is DeviceUnlockKeys.Outcome.Failed -> result.error("failed", outcome.reason, null)
