@@ -44,7 +44,7 @@
     "package_version": "0.1.4",
     "patch_manifest": "client/rust/Cargo.toml",
     "source": "client/rust/rdp-core/vendor/iso7816",
-    "source_sha256": "fb0003a069191a650a4e400edfa7d4cf9776e3cf39c50ff74f2c46c3948eb32f",
+    "source_sha256": "d45432f0c03cb0d1bda06147dbd3b3df510d93ff85eeb9374fd3751b0b687541",
     "public_crates_io_upstream": true
   },
   "ironrdp-connector": {

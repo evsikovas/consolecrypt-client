@@ -840,7 +840,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get shellSearchPlaceholder => 'Buscar hosts, francotiradores o preguntar AI...';
+  String get shellSearchPlaceholder => 'Buscar hosts o fragmentos, o preguntar a la IA…';
 
   @override
   String get shellOfflineTooltip =>
@@ -3064,7 +3064,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get snippetPickerTitle => '¡Corre!';
 
   @override
-  String get snippetPickerSearchHint => 'Buscar francotiradores';
+  String get snippetPickerSearchHint => 'Buscar fragmentos';
 
   @override
   String get snippetsTypeLabel => 'Tipo';
@@ -4926,7 +4926,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get snippetPackageHint => 'Elija un nombre existente o introduzca uno nuevo. Deje vacío para ningún paquete.';
 
   @override
-  String get snippetAllPackages => 'Todos los francotiradores';
+  String get snippetAllPackages => 'Todos los fragmentos';
 
   @override
   String get snippetNoPackage => 'Sin un paquete';
@@ -13530,7 +13530,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sharingPolicySensitive => 'Secretos, contextos de Kubernetes y conexiones a bases de datos';
 
   @override
-  String get sharingPolicyOther => 'Hosts, grupos y francotiradores';
+  String get sharingPolicyOther => 'Hosts, grupos y fragmentos';
 
   @override
   String get sharingPolicyHelp =>
