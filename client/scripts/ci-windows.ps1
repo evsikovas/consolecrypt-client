@@ -126,6 +126,9 @@ $CargoTargetRoot = if ($env:CC_CARGO_TARGET_ROOT) { $env:CC_CARGO_TARGET_ROOT } 
 # disk (LNK1201) and hit the PDB size limit (LNK1140).
 $OriginalDevDebug = $env:CARGO_PROFILE_DEV_DEBUG
 $env:CARGO_PROFILE_DEV_DEBUG = '0'
+# The debug sharing integration tests keep both account flows on one test thread.
+$OriginalNativeStack = $env:RUST_MIN_STACK
+$env:RUST_MIN_STACK = '16777216'
 Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -gt 0 } | ForEach-Object { Write-Host ('Free on {0}: {1:N1} GB' -f $_.Name, ($_.Free / 1GB)) }
 try {
     # Tests and `cargo check` use separate target folders, so metadata-only
@@ -145,7 +148,11 @@ try {
     # Compile the production Flutter boundary, including Windows-only cfg paths.
     $env:CARGO_TARGET_DIR = Join-Path $CargoTargetRoot 'windows-bridge-check'
     Invoke-Checked cargo @('check', '--manifest-path', (Join-Path $Repo 'client\rust\Cargo.toml'), '--locked', '-p', 'cc-bridge', '--all-targets')
-} finally { $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget; $env:CARGO_PROFILE_DEV_DEBUG = $OriginalDevDebug }
+} finally {
+    $env:CARGO_TARGET_DIR = $OriginalNativeTestTarget
+    $env:CARGO_PROFILE_DEV_DEBUG = $OriginalDevDebug
+    $env:RUST_MIN_STACK = $OriginalNativeStack
+}
 if ($NativeOnly) {
     Write-Host 'WINDOWS_NATIVE_CHECKS_PASS: no application packaging or publication'
     return
