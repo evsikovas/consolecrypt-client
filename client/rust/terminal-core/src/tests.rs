@@ -120,6 +120,13 @@ async fn read_until(rx: &mut broadcast::Receiver<Bytes>, needle: &str) -> String
 #[tokio::test]
 async fn prerequisite_terminal_accepts_hidden_input_without_ai_command_history() {
     use crate::local::{CursorPositionRequests, LocalCommand, open_command};
+    // Use console APIs directly. Windows PowerShell's Read-Host cmdlet depends
+    // on host and module initialization that can vary in a clean CI environment.
+    const SCRIPT: &str = "[Console]::WriteLine('CC_SYNTHETIC_SUDO'); \
+        $count = 0; \
+        while ([Console]::ReadKey($true).Key -ne [ConsoleKey]::Enter) { ++$count }; \
+        [Console]::WriteLine('CC_ACCEPTED_' + $count); exit 0";
+    const INPUT: &str = "fixture-only-input";
     let system = std::path::PathBuf::from(std::env::var_os("SystemRoot").unwrap());
     let (manager, _) = manager(false);
     let opened = open_command(
@@ -127,7 +134,7 @@ async fn prerequisite_terminal_accepts_hidden_input_without_ai_command_history()
             executable: system.join("System32/WindowsPowerShell/v1.0/powershell.exe"),
             arguments: vec![
                 "-NoLogo".into(), "-NoProfile".into(), "-Command".into(),
-                "$s=Read-Host 'CC_SYNTHETIC_SUDO' -AsSecureString; Write-Output ('CC_ACCEPTED_' + $s.Length); $s.Dispose(); exit 0".into(),
+                SCRIPT.into(),
             ],
             directory: system.clone(),
             environment: std::env::vars_os().filter(|(key, _)| {
@@ -159,6 +166,8 @@ async fn prerequisite_terminal_accepts_hidden_input_without_ai_command_history()
     let mut cursor_replies = 0;
     let mut sent = false;
     let mut output = Vec::new();
+    let input = format!("{INPUT}\r");
+    let accepted = format!("CC_ACCEPTED_{}", INPUT.len());
     let completion = tokio::time::timeout(Duration::from_secs(20), async {
         let mut bytes = Bytes::from(attachment.snapshot);
         loop {
@@ -170,27 +179,30 @@ async fn prerequisite_terminal_accepts_hidden_input_without_ai_command_history()
             output.extend_from_slice(&bytes);
             let text = String::from_utf8_lossy(&output);
             if text.contains("CC_SYNTHETIC_SUDO") && !sent {
-                manager.write(id, b"fixture-only-input\r").await.unwrap();
+                manager.write(id, input.as_bytes()).await.unwrap();
                 sent = true;
             }
-            if text.contains("CC_ACCEPTED_18") {
+            if text.contains(&accepted) {
                 break;
             }
             bytes = attachment.output.recv().await.unwrap();
         }
         assert!(
-            !String::from_utf8_lossy(&output).contains("fixture-only-input"),
+            !String::from_utf8_lossy(&output).contains(INPUT),
             "secure input must not echo"
         );
         assert_eq!(manager.last_command(id), None);
     })
     .await;
     manager.remove(id).await.unwrap();
-    assert!(
-        completion.is_ok(),
-        "interactive prerequisite input timed out: bytes={}, cursor_replies={cursor_replies}, input_sent={sent}",
-        output.len()
-    );
+    if completion.is_err() {
+        let diagnostic = String::from_utf8_lossy(&output).replace(INPUT, "[fixture input]");
+        let excerpt: String = diagnostic.chars().take(512).collect();
+        panic!(
+            "interactive prerequisite input timed out: bytes={}, cursor_replies={cursor_replies}, input_sent={sent}, output={excerpt:?}",
+            output.len()
+        );
+    }
 }
 
 #[tokio::test]
