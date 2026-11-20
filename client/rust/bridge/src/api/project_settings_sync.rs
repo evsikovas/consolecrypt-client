@@ -44,7 +44,7 @@ pub async fn project_settings_sync_prepare(
     let original = state::core()?;
     state::run(async move {
         let review = original
-            .monitoring_settings_prepare_consent_json(&request_json)
+            .settings_sync_prepare_consent_json(&request_json)
             .await?;
         Ok(ProjectSettingsSyncReview {
             original: Arc::new(review),

@@ -16,14 +16,13 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/notes/notes_panel.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/snippets/snippets_screen.dart';
-import 'package:consolecrypt/terminal/terminal_server_panel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 List<WorkspaceTool> get _generalTools => [
   for (final tool in WorkspaceTool.values)
-    if (tool != WorkspaceTool.server && (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled)) tool,
+    if (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled) tool,
 ];
 
 String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (tool) {
@@ -31,7 +30,6 @@ String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (too
   WorkspaceTool.notes => l.navNotes,
   WorkspaceTool.ai => l.navAiChat,
   WorkspaceTool.forwards => l.navPortForwards,
-  WorkspaceTool.server => l.hostMetricsTitle,
 };
 
 AppSymbol _symbol(WorkspaceTool tool) => switch (tool) {
@@ -39,13 +37,11 @@ AppSymbol _symbol(WorkspaceTool tool) => switch (tool) {
   WorkspaceTool.notes => AppSymbol.notes,
   WorkspaceTool.ai => AppSymbol.ai,
   WorkspaceTool.forwards => AppSymbol.tunnels,
-  WorkspaceTool.server => AppSymbol.hosts,
 };
 
 /// Small permanent rail on the right: helpers never replace the workspace.
 class WorkspaceToolRail extends ConsumerWidget {
-  const WorkspaceToolRail({super.key, required this.branch, this.integrated = false});
-  final ShellBranch branch;
+  const WorkspaceToolRail({super.key, this.integrated = false});
   final bool integrated;
 
   @override
@@ -64,7 +60,6 @@ class WorkspaceToolRail extends ConsumerWidget {
             ? (ref.watch(kubeForwardsProvider(scope)).value ?? const []).where((f) => f.state == 'running').length
             : 0);
     final notes = ref.watch(notesAttentionProvider);
-    final showServer = branch == ShellBranch.terminal && ref.watch(activeSshTerminalProvider) != null;
     return Padding(
       padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(8, 8, 0, 8),
       child: GlassSurface(
@@ -75,11 +70,11 @@ class WorkspaceToolRail extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
         child: Column(
           children: [
-            for (final tool in [..._generalTools, if (showServer) WorkspaceTool.server]) ...[
+            for (final tool in _generalTools) ...[
               GlassSidebarItem(
                 key: ValueKey('nav-${tool.name}'),
-                icon: tool == WorkspaceTool.server ? Icons.show_chart_rounded : Icons.code_rounded,
-                leading: tool == WorkspaceTool.server ? null : AppSymbolIcon(_symbol(tool)),
+                icon: Icons.code_rounded,
+                leading: AppSymbolIcon(_symbol(tool)),
                 label: workspaceToolLabel(l, tool),
                 badge: switch (tool) {
                   WorkspaceTool.forwards when forwards > 0 => '$forwards',
@@ -121,20 +116,6 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
     super.dispose();
   }
 
-  @override
-  void didUpdateWidget(WorkspaceToolPanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.branch == ShellBranch.terminal && widget.branch != ShellBranch.terminal) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted &&
-            widget.branch != ShellBranch.terminal &&
-            ref.read(workspaceToolsProvider).selected == WorkspaceTool.server) {
-          _close();
-        }
-      });
-    }
-  }
-
   void _close() {
     _focus.unfocus();
     ref.read(workspaceToolsProvider.notifier).close();
@@ -150,8 +131,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
         });
       }
     });
-    if (selected != null && selected != WorkspaceTool.server) _visited.add(selected);
-    final serverTab = widget.branch == ShellBranch.terminal ? ref.watch(activeSshTerminalProvider) : null;
+    if (selected != null) _visited.add(selected);
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     return Offstage(
@@ -205,16 +185,6 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                               ),
                             ),
                           ],
-                          if (widget.integrated && (serverTab != null || selected == WorkspaceTool.server))
-                            GlassIconButton(
-                              key: const ValueKey('nav-server'),
-                              icon: Icons.show_chart_rounded,
-                              tooltip: l.hostMetricsTitle,
-                              style: GlassIconButtonStyle.plain,
-                              onPressed: serverTab == null
-                                  ? null
-                                  : () => ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.server),
-                            ),
                           GlassIconButton(
                             key: const ValueKey('workspace-tools-close'),
                             icon: widget.integrated && !AppPlatform.isMobile
@@ -247,21 +217,10 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                             WorkspaceTool.snippets => const SnippetsScreen(embedded: true),
                                             WorkspaceTool.notes => NotesPanel(branch: widget.branch),
                                             WorkspaceTool.forwards => const WorkspaceForwardsPanel(),
-                                            WorkspaceTool.server => const SizedBox.shrink(),
                                           },
                                   ),
                                 ),
                               ),
-                            if (selected == WorkspaceTool.server && widget.branch == ShellBranch.terminal)
-                              if (serverTab != null)
-                                TerminalServerPanel(key: ValueKey(serverTab.sessionId), tab: serverTab)
-                              else
-                                Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Text(l.hostMetricsConnectSsh, textAlign: TextAlign.center),
-                                  ),
-                                ),
                           ],
                         ),
                       ),

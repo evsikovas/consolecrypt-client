@@ -138,7 +138,6 @@ folder hierarchy не требуется для project-only Ansible groups.
 
 Эта последовательность проверена actual AppCore→WSL и на отдельных Ubuntu24
 Runner/target, включая directory inventory и host vars payload 1,2 МБ. UI32,
-Windows core46, Linux core47 и AppCore15 проверки прошли; журнал в
-`Tasks/AUTOMATION_MONITORING_STATUS.md` хранит имена точных прогонов и ограничения.
+Windows core46, Linux core47 и AppCore15 проверки прошли.
 Standard JSON helper не означает уже поставленный CLI/collection plugin;
 INV-09 остаётся отдельной задачей.

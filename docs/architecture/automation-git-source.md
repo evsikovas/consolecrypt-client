@@ -87,9 +87,7 @@ manifest v1 не вводится. Review показывает замороже�
 непривилегированный WSL helper, Windows automation-core и AppCore. Проверены
 binary/CRLF/Unicode, modes, запрет filters и ссылок, неверный CA, отмена,
 недоступность частичного импорта, ручные правки и защита provenance.
-Widget-тесты отдельно проверяют отмену и поздние ответы, не заменяя native
-исполнение. Результаты и точные логи перечислены в журнале
-`Tasks/AUTOMATION_MONITORING_STATUS.md` основного рабочего каталога.
+Widget-тесты отдельно проверяют отмену и поздние ответы.
 
 Последний diff-прогон: Windows core50, Linux core51 + disk2, AppCore projects9,
 Flutter UI35 и чистый analyzer. Actual AppCore HTTPS import→edit→diff подтвердил

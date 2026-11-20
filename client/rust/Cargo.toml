@@ -21,8 +21,6 @@ members = [
     "db-core",
     "docker-core",
     "automation-core",
-    "monitoring-core",
-    "host-mapping",
     "app-core",
     "cc-cli",
     "bridge",
@@ -66,8 +64,6 @@ cc-rdp-core = { path = "rdp-core" }
 cc-tunnel-core = { path = "tunnel-core" }
 cc-sftp-core = { path = "sftp-core" }
 cc-automation-core = { path = "automation-core" }
-cc-monitoring-core = { path = "monitoring-core" }
-cc-host-mapping = { path = "host-mapping" }
 cc-search-core = { path = "search-core" }
 cc-ai-core = { path = "ai-core" }
 cc-k8s-core = { path = "k8s-core" }

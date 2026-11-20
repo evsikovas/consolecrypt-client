@@ -1,5 +1,5 @@
-import 'package:kdbx/kdbx.dart';
 import 'package:flutter/foundation.dart';
+import 'package:kdbx/kdbx.dart';
 import 'package:material_ui/material_ui.dart';
 
 // The index is the standard IconID stored by KeePass.

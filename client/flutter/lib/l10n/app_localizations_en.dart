@@ -16968,45 +16968,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationLibraryRoleHint => 'Opens the role tasks for editing. Run roles through a playbook.';
 
   @override
-  String get hostMetricsLinuxOnly => 'This view reads live metrics from Linux hosts.';
-
-  @override
-  String get hostMetricsNativeOnly =>
-      'Live metrics require the built-in SSH client. Select it in the host settings to use this view.';
-
-  @override
-  String get hostMetricsReadFailed => 'Could not read the server metrics. Check the SSH connection and try again.';
-
-  @override
-  String get hostMetricsConnecting => 'Reading the first sample over SSH…';
-
-  @override
-  String get hostMetricsLastSample => 'Updated at';
-
-  @override
-  String get hostMetricsUptime => 'Uptime';
-
-  @override
-  String hostMetricsUptimeValue(int days, int hours, int minutes) {
-    return '$days d $hours h $minutes min';
-  }
-
-  @override
-  String get hostMetricsCpu => 'CPU usage';
-
-  @override
-  String get hostMetricsRam => 'Memory used';
-
-  @override
-  String get hostMetricsDisk => 'System disk used';
-
-  @override
-  String get hostMetricsNetwork => 'Network';
-
-  @override
-  String get hostMetricsValues => 'Values';
-
-  @override
   String get automationPortableImportArchiveFormat => 'Choose an encrypted ConsoleCrypt project archive (.ccproject).';
 
   @override
@@ -17023,38 +16984,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get keepassDeviceAuthFailed =>
       'System authentication failed. Try again or open the database with its master password.';
-
-  @override
-  String get hostMetricsConnectSsh => 'Connect to a server over SSH to see its details.';
-
-  @override
-  String get hostMetricsOs => 'Operating system';
-
-  @override
-  String get hostMetricsKernel => 'Kernel';
-
-  @override
-  String get hostMetricsProcessor => 'Processor';
-
-  @override
-  String get hostMetricsLoadAverage => 'Load average';
-
-  @override
-  String hostMetricsLogicalCpus(int count) {
-    return '$count logical CPUs';
-  }
-
-  @override
-  String get hostMetricsTitle => 'Server info';
-
-  @override
-  String get hostMetricsGraphs => 'Graphs';
-
-  @override
-  String get hostMetricsUnavailable => 'Host metrics are unavailable.';
-
-  @override
-  String get hostMetricsChanged => 'The saved host changed. Reconnect to refresh its metrics.';
 
   @override
   String get automationLibraryExportVersion => 'Export version';

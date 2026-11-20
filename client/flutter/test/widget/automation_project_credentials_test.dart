@@ -160,7 +160,7 @@ void main() {
     await _Harness().pump(tester, locale: const Locale('ru'), textScale: 1.3);
     final name = find.byKey(const ValueKey('deployment-name'));
     final production = find.byKey(const ValueKey('deployment-production'));
-    final reference = find.byKey(ValueKey('deployment-reference-${f.hostId}'));
+    final reference = find.byKey(const ValueKey('deployment-reference-${f.hostId}'));
     expect(tester.getRect(name).bottom + 8, lessThanOrEqualTo(tester.getRect(production).top));
     expect(tester.getRect(production).bottom + 8, lessThanOrEqualTo(tester.getRect(reference).top));
     expect(tester.takeException(), isNull);

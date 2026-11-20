@@ -67,8 +67,9 @@ final class NavigationPreferencesController {
   }
 
   Future<void> reorder(String profileId, List<String> arranged) async {
-    if (ref.read(appStageProvider) != AppStage.unlocked || ref.read(activeProfileProvider)?.id.value != profileId)
+    if (ref.read(appStageProvider) != AppStage.unlocked || ref.read(activeProfileProvider)?.id.value != profileId) {
       return;
+    }
     final available = ref.read(availableNavigationSectionsProvider).map((item) => item.id).toSet();
     if (arranged.any((id) => !available.contains(id)) || arranged.toSet().length != arranged.length) return;
     final settings = ref.read(settingsServiceProvider);

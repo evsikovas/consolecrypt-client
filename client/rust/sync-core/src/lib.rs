@@ -96,5 +96,5 @@ pub const SAFE_LOG_DIRECTIVES: &[&str] = &[
     "rustls=warn",
 ];
 
-pub use api::{MonitoringAccountPolicy, MonitoringCompatibilityError, MonitoringPolicyState, MonitoringPullCheckpoint};
-pub use engine::MonitoringCheckpointApplied;
+pub use api::{SettingsAccountPolicy, SettingsCompatibilityError, SettingsPolicyState, SettingsPullCheckpoint};
+pub use engine::SettingsCheckpointApplied;

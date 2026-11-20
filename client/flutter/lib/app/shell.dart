@@ -255,7 +255,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                     offstage: minimal || integratedTools && panelOpen,
                     child: ExcludeFocus(
                       excluding: minimal,
-                      child: WorkspaceToolRail(integrated: integratedTools, branch: branch),
+                      child: WorkspaceToolRail(integrated: integratedTools),
                     ),
                   ),
                 ),

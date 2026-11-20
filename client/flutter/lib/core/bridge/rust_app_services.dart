@@ -11,7 +11,6 @@ import 'package:consolecrypt/core/bridge/rust_backup.dart';
 import 'package:consolecrypt/core/bridge/rust_databases.dart';
 import 'package:consolecrypt/core/bridge/rust_docker.dart';
 import 'package:consolecrypt/core/bridge/rust_enrollment.dart';
-import 'package:consolecrypt/core/bridge/rust_host_metrics.dart';
 import 'package:consolecrypt/core/bridge/rust_inventory.dart';
 import 'package:consolecrypt/core/bridge/rust_kubernetes.dart';
 import 'package:consolecrypt/core/bridge/rust_notes.dart';
@@ -206,7 +205,6 @@ final class RustAppServices {
       automation: RustAutomationService(),
       jobNotices: hub.jobNoticeEvents,
       runtimeNotices: hub.runtimeNoticeEvents,
-      hostMetrics: RustHostMetricsReader(terminal),
       notes: RustNoteService(hub),
       onDispose: dispose,
       approvedExitActions: approvedExitActions,

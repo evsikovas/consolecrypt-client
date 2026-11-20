@@ -289,23 +289,6 @@ impl AiSession {
         self.closed.is_cancelled()
     }
 
-    /// Recheck the exact cached provider without resolving secrets or awaiting.
-    pub(super) fn metrics_provider_current(
-        &self,
-        cfg: &AiProviderConfig,
-        provider: &Arc<dyn LlmProvider>,
-    ) -> bool {
-        if self.is_closed() || self.resolve_config(Some(&cfg.id.to_string())).ok().as_ref() != Some(cfg) {
-            return false;
-        }
-        if cfg.id.to_string() == DEVICE_LOCAL_PROVIDER_ID {
-            return lock(&self.device_local).as_ref().is_some_and(|p|
-                p.cached.config == *cfg && Arc::ptr_eq(&p.cached.provider, provider));
-        }
-        lock(&self.providers).get(&cfg.id).is_some_and(|p|
-            p.config == *cfg && Arc::ptr_eq(&p.provider, provider))
-    }
-
     fn check_open(&self) -> AppResult<()> {
         if self.is_closed() {
             Err(AppError::VaultLocked)
@@ -577,8 +560,6 @@ impl AiSession {
             cached: CachedProvider { config, provider },
         });
         drop(local);
-        // Reviewed Monitoring requests must not survive a local model/process
-        // replacement. Do not hold the provider mutex while taking its registry.
         Ok(())
     }
 

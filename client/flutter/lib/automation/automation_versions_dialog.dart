@@ -95,8 +95,9 @@ class _AutomationVersionsDialogState extends State<AutomationVersionsDialog> {
   }
 
   Future<void> save() async {
-    if (!current || busy || versionName.text.trim().isEmpty || !RegExp(r'^[0-9a-f]{64}$').hasMatch(widget.digest))
+    if (!current || busy || versionName.text.trim().isEmpty || !RegExp(r'^[0-9a-f]{64}$').hasMatch(widget.digest)) {
       return;
+    }
     final name = versionName.text.trim();
     setState(() {
       busy = true;
@@ -109,11 +110,12 @@ class _AutomationVersionsDialogState extends State<AutomationVersionsDialog> {
       setState(() => busy = false);
       await reload();
     } catch (_) {
-      if (current)
+      if (current) {
         setState(() {
           failed = true;
           busy = false;
         });
+      }
     }
   }
 
@@ -126,15 +128,16 @@ class _AutomationVersionsDialogState extends State<AutomationVersionsDialog> {
     });
     try {
       final copy = await widget.service.openProjectVersion(widget.project.id, id, name: name);
-      if (!current) return;
+      if (!mounted || !widget.originalCurrent()) return;
       if (copy.id.isEmpty || copy.id == widget.project.id || copy.readOnly) throw const FormatException('version_copy');
       Navigator.pop(context, copy);
     } catch (_) {
-      if (current)
+      if (current) {
         setState(() {
           failed = true;
           busy = false;
         });
+      }
     }
   }
 

@@ -655,7 +655,7 @@ impl AppCore {
     }
 
     pub async fn save_vault_settings(&self, s: VaultSettingsDto) -> AppResult<VaultSettingsDto> {
-        // Serialize source-catalog preservation with monitoring CRUD and fence
+        // Serialize settings updates and fence
         // this bounded writer transaction to the original profile/unlock.
         // save_dto cannot run under this guard: it obtains session() again.
         let (owner, u) = self.unlocked().await?;
@@ -663,10 +663,9 @@ impl AppCore {
         let _unlock = owner.hold_unlocked(&u).await?;
         let ws = u.working();
         let newest = ws.all_vault_settings().into_iter().max_by_key(|s| s.updated_at);
-        // A sync conflict can produce two settings IDs. Editing an older DTO
-        // must preserve the same newest singleton catalog used by source CRUD,
-        // rather than promote the older ID's stale/absent catalog.
-        let monitoring = newest.as_ref().and_then(|s| s.monitoring.clone());
+        // A sync conflict can produce two settings IDs. Preserve synced
+        // settings from the newest object even when the caller edits an older ID.
+        let legacy_payload = newest.as_ref().and_then(|s| s.legacy_payload.clone());
         let automation = newest.as_ref().and_then(|s| s.automation.clone());
         let (id, existing) = if s.id.trim().is_empty() {
             (newest.as_ref().map(|s| s.id).unwrap_or_else(ObjectId::new), newest)
@@ -676,7 +675,7 @@ impl AppCore {
             (id, Some(existing))
         };
         let mut model = s.to_model(id, existing.as_ref())?;
-        model.monitoring = monitoring;
+        model.legacy_payload = legacy_payload;
         model.automation = automation;
         let object = VaultObject::VaultSettings(model);
         validate_refs(ws, &object)?;

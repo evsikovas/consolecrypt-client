@@ -313,7 +313,7 @@ async fn settings_conflict_is_last_writer_wins() {
         .await
         .unwrap();
     let settings = VaultSettings {
-        automation: None, monitoring: None,
+        automation: None, legacy_payload: None,
         password_vaults: vec![cc_models::settings::PasswordVaultConnection {
             id: "dav-1".into(),
             name: "Passwords".into(),

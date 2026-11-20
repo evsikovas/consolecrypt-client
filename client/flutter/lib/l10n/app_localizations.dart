@@ -29770,7 +29770,7 @@ abstract class AppLocalizations {
   /// **'Sync project settings'**
   String get automationMetadataPublish;
 
-  /// Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation.
+  /// Choose a playbook, targets, and Runner for an Ansible job.
   ///
   /// In en, this message translates to:
   /// **'Choose a playbook and hosts or a group, review and run. Ansible runs in the selected Runner.'**
@@ -29956,78 +29956,6 @@ abstract class AppLocalizations {
   /// **'Opens the role tasks for editing. Run roles through a playbook.'**
   String get automationLibraryRoleHint;
 
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'This view reads live metrics from Linux hosts.'**
-  String get hostMetricsLinuxOnly;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Live metrics require the built-in SSH client. Select it in the host settings to use this view.'**
-  String get hostMetricsNativeOnly;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not read the server metrics. Check the SSH connection and try again.'**
-  String get hostMetricsReadFailed;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Reading the first sample over SSH…'**
-  String get hostMetricsConnecting;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Updated at'**
-  String get hostMetricsLastSample;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Uptime'**
-  String get hostMetricsUptime;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'{days} d {hours} h {minutes} min'**
-  String hostMetricsUptimeValue(int days, int hours, int minutes);
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'CPU usage'**
-  String get hostMetricsCpu;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Memory used'**
-  String get hostMetricsRam;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'System disk used'**
-  String get hostMetricsDisk;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Network'**
-  String get hostMetricsNetwork;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Values'**
-  String get hostMetricsValues;
-
   /// An actionable message when opening a project archive or unlocking a KDBX database.
   ///
   /// In en, this message translates to:
@@ -30057,66 +29985,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'System authentication failed. Try again or open the database with its master password.'**
   String get keepassDeviceAuthFailed;
-
-  /// Server information in the SSH terminal side panel.
-  ///
-  /// In en, this message translates to:
-  /// **'Connect to a server over SSH to see its details.'**
-  String get hostMetricsConnectSsh;
-
-  /// Server information in the SSH terminal side panel.
-  ///
-  /// In en, this message translates to:
-  /// **'Operating system'**
-  String get hostMetricsOs;
-
-  /// Server information in the SSH terminal side panel.
-  ///
-  /// In en, this message translates to:
-  /// **'Kernel'**
-  String get hostMetricsKernel;
-
-  /// Server information in the SSH terminal side panel.
-  ///
-  /// In en, this message translates to:
-  /// **'Processor'**
-  String get hostMetricsProcessor;
-
-  /// Server information in the SSH terminal side panel.
-  ///
-  /// In en, this message translates to:
-  /// **'Load average'**
-  String get hostMetricsLoadAverage;
-
-  /// Server information in the SSH terminal side panel.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} logical CPUs'**
-  String hostMetricsLogicalCpus(int count);
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Server info'**
-  String get hostMetricsTitle;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
-  /// **'Graphs'**
-  String get hostMetricsGraphs;
-
-  /// Host metrics screen status.
-  ///
-  /// In en, this message translates to:
-  /// **'Host metrics are unavailable.'**
-  String get hostMetricsUnavailable;
-
-  /// Host metrics screen status.
-  ///
-  /// In en, this message translates to:
-  /// **'The saved host changed. Reconnect to refresh its metrics.'**
-  String get hostMetricsChanged;
 
   /// Explicit portable project archive exchange: automationLibraryExportVersion.
   ///

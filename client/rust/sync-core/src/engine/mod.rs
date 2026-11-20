@@ -17,10 +17,10 @@
 //! to [`recovery`] (full listing → reconcile → re-push) before continuing.
 
 pub(crate) mod conflict;
-mod monitoring_checkpoint;
+mod settings_checkpoint;
 mod recovery;
 mod validate;
-pub use monitoring_checkpoint::MonitoringCheckpointApplied;
+pub use settings_checkpoint::SettingsCheckpointApplied;
 
 use crate::api::{ApiClient, ApiError, QuotaRefusal};
 use crate::backoff::BackoffConfig;

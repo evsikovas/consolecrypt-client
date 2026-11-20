@@ -1,7 +1,7 @@
 //! Portable metadata in SAME encrypted VaultSettings. Never files, local roots,
 //! Runner launch settings, grants, job state, credential contents or auto-import.
 use super::*;
-use crate::monitoring_sync::{PanelWritePolicy, SettingsWriteAdmission};
+use crate::settings_sync::{SettingsWritePolicy, SettingsWriteAdmission};
 use cc_models::{VaultObject, settings::VaultSettings};
 use std::collections::BTreeSet;
 const MAX_BYTES: usize = 256 * 1024;
@@ -349,13 +349,13 @@ impl AppCore {
         tokio::select! {biased;_=auth.cancelled()=>Err(invalid()),_=shutdown.changed()=>Err(AppError::VaultLocked),_=tokio::time::sleep_until(until.into())=>Err(invalid()),result=work=>result,}
     }
     pub async fn automation_project_metadata_publish(&self, input: String) -> AppResult<Value> {
-        self.automation_project_metadata_publish_with_policy(input, PanelWritePolicy::Released)
+        self.automation_project_metadata_publish_with_policy(input, SettingsWritePolicy::Released)
             .await
     }
     pub(crate) async fn automation_project_metadata_publish_with_policy(
         &self,
         input: String,
-        choice: PanelWritePolicy,
+        choice: SettingsWritePolicy,
     ) -> AppResult<Value> {
         if input.len() > 2048 {
             return Err(invalid());

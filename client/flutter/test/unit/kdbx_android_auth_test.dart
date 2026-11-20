@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/local_auth_channel.dart';
 import 'package:consolecrypt/keepass/kdbx_android_auth.dart';

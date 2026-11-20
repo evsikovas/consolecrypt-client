@@ -150,11 +150,11 @@ class _AutomationSchedulesViewState extends ConsumerState<AutomationSchedulesVie
     final runners = ref.watch(automationRunnersProvider).value?.runners ?? const <AutomationRunnerProfile>[];
     final projectNames = {
       for (final project in projects)
-        if (project.name case final name?) project.id: name,
+        project.id: ?project.name,
     };
     final runnerNames = {
       for (final runner in runners)
-        if (runner.name case final name?) runner.id: name,
+        runner.id: ?runner.name,
     };
     final editable = projects.where((project) => !project.readOnly).toList(growable: false);
     final selected = editable.where((project) => project.id == _projectId).firstOrNull ?? editable.firstOrNull;

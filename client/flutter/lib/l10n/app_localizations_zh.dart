@@ -16230,44 +16230,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationLibraryRoleHint => '为编辑打开角色任务。通过Playbook运行角色。';
 
   @override
-  String get hostMetricsLinuxOnly => '此视图显示 Linux 主机的实时指标。';
-
-  @override
-  String get hostMetricsNativeOnly => '实时指标需要内置 SSH 客户端。请在主机设置中选择该客户端。';
-
-  @override
-  String get hostMetricsReadFailed => '无法读取服务器指标。请检查 SSH 连接后重试。';
-
-  @override
-  String get hostMetricsConnecting => '正在通过 SSH 读取首批指标…';
-
-  @override
-  String get hostMetricsLastSample => '更新时间';
-
-  @override
-  String get hostMetricsUptime => '运行时间';
-
-  @override
-  String hostMetricsUptimeValue(int days, int hours, int minutes) {
-    return '$days 天 $hours 小时 $minutes 分钟';
-  }
-
-  @override
-  String get hostMetricsCpu => 'CPU 使用情况';
-
-  @override
-  String get hostMetricsRam => '使用的内存';
-
-  @override
-  String get hostMetricsDisk => '使用的系统磁盘';
-
-  @override
-  String get hostMetricsNetwork => '网络';
-
-  @override
-  String get hostMetricsValues => '数值';
-
-  @override
   String get automationPortableImportArchiveFormat => '选择加密的ConsoleCrypt项目档案.ccproject.';
 
   @override
@@ -16281,38 +16243,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get keepassDeviceAuthFailed => '系统身份验证失败。请重试，或使用主密码打开数据库。';
-
-  @override
-  String get hostMetricsConnectSsh => '连接到一个服务器上SSH查看其细节.';
-
-  @override
-  String get hostMetricsOs => '操作系统';
-
-  @override
-  String get hostMetricsKernel => '内核';
-
-  @override
-  String get hostMetricsProcessor => '处理器';
-
-  @override
-  String get hostMetricsLoadAverage => '平均负载';
-
-  @override
-  String hostMetricsLogicalCpus(int count) {
-    return '$count 个逻辑处理器';
-  }
-
-  @override
-  String get hostMetricsTitle => '服务器信息';
-
-  @override
-  String get hostMetricsGraphs => '图表';
-
-  @override
-  String get hostMetricsUnavailable => '主机指标暂不可用。';
-
-  @override
-  String get hostMetricsChanged => '保存的主机已更改。重新连接以获取最新指标。';
 
   @override
   String get automationLibraryExportVersion => '导出版本';

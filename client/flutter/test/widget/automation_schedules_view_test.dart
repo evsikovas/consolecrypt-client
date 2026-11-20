@@ -56,6 +56,7 @@ class _Events implements RuntimeNoticeEvents {
     }),
   );
   final changes = StreamController<RuntimeNoticeFrame>.broadcast();
+  Future<void> dispose() => changes.close();
   @override
   Stream<RuntimeNoticeFrame> watchRuntimeNotices() => changes.stream;
 }
@@ -64,7 +65,7 @@ void main() {
   testWidgets('lists acknowledged schedules and only opens the selected project on request', (tester) async {
     final service = _ScheduleFixture();
     final events = _Events();
-    addTearDown(events.changes.close);
+    addTearDown(events.dispose);
     const scope = AutomationScope(_profile, true);
     const project = AutomationProject(
       id: 'project',

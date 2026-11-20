@@ -24,7 +24,6 @@ import 'package:consolecrypt/core/services/vault_service.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
-import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/notes/note_service.dart';
 
 export 'package:consolecrypt/core/services/ai_service.dart';
@@ -89,7 +88,6 @@ final class AppServices {
     this.databases,
     this.docker,
     this.automation,
-    this.hostMetrics,
     this.jobNotices,
     this.runtimeNotices,
     this.notes,
@@ -112,7 +110,6 @@ final class AppServices {
   final SettingsService settings;
   final BackupService backups;
   final AutomationService? automation;
-  final HostMetricsReader? hostMetrics;
   final JobNoticeEvents? jobNotices;
   final RuntimeNoticeEvents? runtimeNotices;
   final FileDialogService files;

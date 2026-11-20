@@ -22,7 +22,6 @@ import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
-import 'package:consolecrypt/terminal/terminal_server_panel.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/services.dart';
@@ -511,16 +510,6 @@ class _SessionToolbar extends ConsumerWidget {
     return GlassToolbarGroup(
       children: [
         if (minimal) _MinimalTerminalMenu(tab: tab),
-        if ((minimal || AppPlatform.isMobile) && ref.watch(activeSshTerminalProvider) != null)
-          GlassIconButton(
-            key: const ValueKey('terminal-server-info'),
-            icon: Icons.show_chart_rounded,
-            tooltip: l10n.hostMetricsTitle,
-            style: GlassIconButtonStyle.plain,
-            size: GlassSizes.tab,
-            iconSize: GlassSizes.iconRow,
-            onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.server),
-          ),
         if (!minimal) ...[
           GlassIconButton(
             key: const ValueKey('terminal-snippets'),

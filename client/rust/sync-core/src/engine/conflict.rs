@@ -165,7 +165,7 @@ fn preserved_settings(
     else {
         return Ok(None);
     };
-    let monitoring = preserve_catalog(&a.monitoring, &b.monitoring)?;
+    let legacy_payload = preserve_catalog(&a.legacy_payload, &b.legacy_payload)?;
     let automation = preserve_catalog(&a.automation, &b.automation)?;
     let mut winner = if payload_updated_at(local) > payload_updated_at(remote) {
         local.clone()
@@ -175,7 +175,7 @@ fn preserved_settings(
     let VaultObject::VaultSettings(value) = &mut winner.object else {
         unreachable!()
     };
-    value.monitoring = monitoring;
+    value.legacy_payload = legacy_payload;
     value.automation = automation;
     Ok(Some(winner))
 }

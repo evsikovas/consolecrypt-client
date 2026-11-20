@@ -30,11 +30,9 @@ pub struct VaultSettings {
     /// opaque and preserved. Never local paths, playbooks or credential material.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub automation: Option<serde_json::Value>,
-    /// Versioned monitoring source configuration, inside the existing encrypted
-    /// settings payload. Raw JSON preserves unsupported future schemas. Metrics,
-    /// query caches and credential material never belong in this catalog.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub monitoring: Option<serde_json::Value>,
+    /// Opaque payload retained when saving a vault created by an older client.
+    #[serde(default, rename = "monitoring", skip_serializing_if = "Option::is_none")]
+    pub legacy_payload: Option<serde_json::Value>,
     #[serde(default)]
     pub password_vaults: Vec<PasswordVaultConnection>,
     pub id: ObjectId,

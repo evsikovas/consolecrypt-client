@@ -42,8 +42,9 @@ Map<String, Set<String>> _previewStaticIniInventory(List<String> documents) {
       if (mode == 'vars') continue;
       final token = host.firstMatch(line);
       final name = token?[1] ?? token?[2] ?? token?[3];
-      if (name == null || (!_inventoryName.hasMatch(name) && !_bracketedHost.hasMatch(name)))
+      if (name == null || (!_inventoryName.hasMatch(name) && !_bracketedHost.hasMatch(name))) {
         throw const FormatException();
+      }
       if (mode == 'children') {
         groups.putIfAbsent(name, () => <String>{});
       } else {

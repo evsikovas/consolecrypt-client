@@ -16,8 +16,8 @@
 
 pub mod enterprise;
 mod error;
-mod monitoring_compatibility;
-pub use monitoring_compatibility::{MonitoringAccountPolicy, MonitoringCompatibilityError, MonitoringPolicyState, MonitoringPullCheckpoint};
+mod settings_compatibility;
+pub use settings_compatibility::{SettingsAccountPolicy, SettingsCompatibilityError, SettingsPolicyState, SettingsPullCheckpoint};
 mod reader_auth;
 mod relay_trust;
 pub use relay_trust::ApiServerTrust;

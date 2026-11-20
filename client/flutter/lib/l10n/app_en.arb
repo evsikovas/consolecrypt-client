@@ -22732,7 +22732,7 @@
   },
   "automationWorkflowHint": "Choose a playbook and hosts or a group, review and run. Ansible runs in the selected Runner.",
   "@automationWorkflowHint": {
-    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+    "description": "Choose a playbook, targets, and Runner for an Ansible job."
   },
   "automationVaultFileTitle": "Ansible Vault",
   "automationVaultEncrypt": "Encrypt YAML",
@@ -22854,65 +22854,6 @@
   "@automationLibraryRoleHint": {
     "description": "Built-in Automation library navigation: automationLibraryRoleHint."
   },
-  "hostMetricsLinuxOnly": "This view reads live metrics from Linux hosts.",
-  "@hostMetricsLinuxOnly": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsNativeOnly": "Live metrics require the built-in SSH client. Select it in the host settings to use this view.",
-  "@hostMetricsNativeOnly": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsReadFailed": "Could not read the server metrics. Check the SSH connection and try again.",
-  "@hostMetricsReadFailed": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsConnecting": "Reading the first sample over SSH…",
-  "@hostMetricsConnecting": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsLastSample": "Updated at",
-  "@hostMetricsLastSample": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsUptime": "Uptime",
-  "@hostMetricsUptime": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsUptimeValue": "{days} d {hours} h {minutes} min",
-  "@hostMetricsUptimeValue": {
-    "description": "Live SSH host metrics label.",
-    "placeholders": {
-      "days": {
-        "type": "int"
-      },
-      "hours": {
-        "type": "int"
-      },
-      "minutes": {
-        "type": "int"
-      }
-    }
-  },
-  "hostMetricsCpu": "CPU usage",
-  "@hostMetricsCpu": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsRam": "Memory used",
-  "@hostMetricsRam": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsDisk": "System disk used",
-  "@hostMetricsDisk": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsNetwork": "Network",
-  "@hostMetricsNetwork": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsValues": "Values",
-  "@hostMetricsValues": {
-    "description": "Live SSH host metrics label."
-  },
   "automationPortableImportArchiveFormat": "Choose an encrypted ConsoleCrypt project archive (.ccproject).",
   "@automationPortableImportArchiveFormat": {
     "description": "An actionable message when opening a project archive or unlocking a KDBX database."
@@ -22932,51 +22873,6 @@
   "keepassDeviceAuthFailed": "System authentication failed. Try again or open the database with its master password.",
   "@keepassDeviceAuthFailed": {
     "description": "An actionable message when opening a project archive or unlocking a KDBX database."
-  },
-  "hostMetricsConnectSsh": "Connect to a server over SSH to see its details.",
-  "@hostMetricsConnectSsh": {
-    "description": "Server information in the SSH terminal side panel."
-  },
-  "hostMetricsOs": "Operating system",
-  "@hostMetricsOs": {
-    "description": "Server information in the SSH terminal side panel."
-  },
-  "hostMetricsKernel": "Kernel",
-  "@hostMetricsKernel": {
-    "description": "Server information in the SSH terminal side panel."
-  },
-  "hostMetricsProcessor": "Processor",
-  "@hostMetricsProcessor": {
-    "description": "Server information in the SSH terminal side panel."
-  },
-  "hostMetricsLoadAverage": "Load average",
-  "@hostMetricsLoadAverage": {
-    "description": "Server information in the SSH terminal side panel."
-  },
-  "hostMetricsLogicalCpus": "{count} logical CPUs",
-  "@hostMetricsLogicalCpus": {
-    "description": "Server information in the SSH terminal side panel.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "hostMetricsTitle": "Server info",
-  "@hostMetricsTitle": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsGraphs": "Graphs",
-  "@hostMetricsGraphs": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsUnavailable": "Host metrics are unavailable.",
-  "@hostMetricsUnavailable": {
-    "description": "Host metrics screen status."
-  },
-  "hostMetricsChanged": "The saved host changed. Reconnect to refresh its metrics.",
-  "@hostMetricsChanged": {
-    "description": "Host metrics screen status."
   },
   "automationLibraryExportVersion": "Export version",
   "@automationLibraryExportVersion": {

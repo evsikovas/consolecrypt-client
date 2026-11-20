@@ -1362,7 +1362,7 @@ async fn seed_vault_settings(u: &Unlocked, name: &str) -> AppResult<()> {
     u.writer
         .put(VaultObject::VaultSettings(VaultSettings {
             password_vaults: Default::default(),
-            automation: None, monitoring: None,
+            automation: None, legacy_payload: None,
             id: ObjectId::new(),
             vault_name: if name.trim().is_empty() {
                 "Vault".into()

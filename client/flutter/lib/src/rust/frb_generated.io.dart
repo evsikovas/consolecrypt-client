@@ -18,7 +18,6 @@ import 'api/database_designer.dart';
 import 'api/docker.dart';
 import 'api/enrollment.dart';
 import 'api/error.dart';
-import 'api/host_metrics.dart';
 import 'api/inventory.dart';
 import 'api/kubernetes.dart';
 import 'api/password_vault.dart';

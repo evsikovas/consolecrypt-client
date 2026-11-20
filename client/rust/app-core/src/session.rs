@@ -248,7 +248,6 @@ pub(crate) struct Unlocked {
     /// lock, before potentially slower SSH/edit shutdown finishes.
     pub sharing_shutdown: tokio::sync::watch::Sender<bool>,
     pub(crate) settings_reviews: crate::settings_review_runtime::SettingsReviewRuntime,
-    pub(crate) host_metrics:crate::host_metrics::HostMetricsRuntime,
     pub(crate) notices: Arc<critical_notices::RuntimeNoticeEmitter>,
     pub enrollment: crate::sharing_api::enrollment::EnrollmentRuntime,
     pub kube_imports: Arc<crate::kubernetes_import::ImportRuntime>,
@@ -402,7 +401,6 @@ impl Unlocked {
         self.notices.close();
         self.sharing_shutdown.send_replace(true);
         self.settings_reviews.close();
-        self.host_metrics.close();
         self.edit.begin_shutdown();
         self.enrollment.clear();
         self.kube_imports.close();
@@ -1127,7 +1125,6 @@ impl Session {
             ),
             sharing_shutdown: tokio::sync::watch::channel(false).0,
             settings_reviews: Default::default(),
-            host_metrics:Default::default(),
             notices,
             enrollment: crate::sharing_api::enrollment::EnrollmentRuntime::default(),
             kube_imports: Arc::new(crate::kubernetes_import::ImportRuntime::default()),

@@ -22,7 +22,7 @@ final class NavigationPreferences {
     return [
       if (supported)
         for (final key in order)
-          if (remaining.remove(key) case final item?) item,
+          ?remaining.remove(key),
       ...remaining.values,
     ];
   }

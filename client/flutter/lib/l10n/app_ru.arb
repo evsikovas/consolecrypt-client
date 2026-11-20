@@ -10256,7 +10256,7 @@
   },
   "automationWorkflowHint": "Выберите плейбук, хосты или группу, проверьте и запустите. Ansible работает в выбранном Runner.",
   "@automationWorkflowHint": {
-    "description": "Engineer-focused host metrics and Ansible automation; no mandatory Agent or infrastructure installation."
+    "description": "Choose a playbook, targets, and Runner for an Ansible job."
   },
   "automationVaultFileTitle": "Ansible Vault",
   "automationVaultEncrypt": "Зашифровать YAML",
@@ -10369,92 +10369,11 @@
   "@automationLibraryRoleHint": {
     "description": "Built-in Automation library navigation: automationLibraryRoleHint."
   },
-  "hostMetricsLinuxOnly": "Сейчас этот экран показывает текущие метрики Linux-серверов.",
-  "@hostMetricsLinuxOnly": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsNativeOnly": "Для текущих метрик нужен встроенный SSH. Его можно выбрать в настройках хоста.",
-  "@hostMetricsNativeOnly": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsReadFailed": "Не удалось прочитать метрики сервера. Проверьте подключение по SSH и повторите попытку.",
-  "@hostMetricsReadFailed": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsConnecting": "Читаем первые данные по SSH…",
-  "@hostMetricsConnecting": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsLastSample": "Обновлено в",
-  "@hostMetricsLastSample": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsUptime": "Время работы",
-  "@hostMetricsUptime": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsUptimeValue": "{days} д {hours} ч {minutes} мин",
-  "@hostMetricsUptimeValue": {
-    "description": "Live SSH host metrics label.",
-    "placeholders": {
-      "days": {
-        "type": "int"
-      },
-      "hours": {
-        "type": "int"
-      },
-      "minutes": {
-        "type": "int"
-      }
-    }
-  },
-  "hostMetricsCpu": "Загрузка процессора",
-  "@hostMetricsCpu": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsRam": "Занято памяти",
-  "@hostMetricsRam": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsDisk": "Занято на системном диске",
-  "@hostMetricsDisk": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsNetwork": "Сеть",
-  "@hostMetricsNetwork": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsValues": "Значения",
-  "@hostMetricsValues": {
-    "description": "Live SSH host metrics label."
-  },
   "automationPortableImportArchiveFormat": "Выберите зашифрованный архив проекта ConsoleCrypt (.ccproject).",
   "automationPortableImportArchiveSize": "Архив превышает допустимый размер для импорта.",
   "automationPortableImportArchiveRead": "Не удалось прочитать архив. Скачайте его на устройство и попробуйте ещё раз.",
   "keepassDeviceKeyInvalidated": "Ключ устройства больше не действует. Откройте базу мастер-паролем и заново включите биометрию.",
   "keepassDeviceAuthFailed": "Системная проверка не прошла. Повторите попытку или откройте базу мастер-паролем.",
-  "hostMetricsConnectSsh": "Подключитесь к серверу по SSH, чтобы увидеть сведения о нём.",
-  "hostMetricsOs": "Операционная система",
-  "hostMetricsKernel": "Ядро",
-  "hostMetricsProcessor": "Процессор",
-  "hostMetricsLoadAverage": "Средняя нагрузка",
-  "hostMetricsLogicalCpus": "Логических ЦП: {count}",
-  "hostMetricsTitle": "Сведения о сервере",
-  "@hostMetricsTitle": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsGraphs": "Графики",
-  "@hostMetricsGraphs": {
-    "description": "Live SSH host metrics label."
-  },
-  "hostMetricsUnavailable": "Метрики хоста недоступны.",
-  "@hostMetricsUnavailable": {
-    "description": "Host metrics screen status."
-  },
-  "hostMetricsChanged": "Настройки хоста изменились. Переподключитесь, чтобы обновить метрики.",
-  "@hostMetricsChanged": {
-    "description": "Host metrics screen status."
-  },
   "automationLibraryExportVersion": "Экспорт версии",
   "@automationLibraryExportVersion": {
     "description": "Explicit portable project archive exchange: automationLibraryExportVersion."

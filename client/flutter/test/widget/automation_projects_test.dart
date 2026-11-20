@@ -13,7 +13,6 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
-import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
@@ -519,7 +518,7 @@ class _Sources extends _Runners implements AutomationGitService {
   String? importUrl;
   String? importCa;
   int importRunnerConnections = 0;
-  Object? gitFailure;
+  AppException? gitFailure;
   @override
   Future<AutomationJson> connectRunner(String id) async {
     importRunnerConnections++;

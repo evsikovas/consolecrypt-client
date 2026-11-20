@@ -198,15 +198,12 @@ pub mod logging;
 
 mod loopback;
 
-// Legacy encrypted settings compatibility. Desktop exports no monitoring API.
-mod monitoring_sources;
 
 mod settings_preservation;
 
-mod monitoring_sync;
-pub use monitoring_sync::MonitoringSettingsConsent as ProjectSettingsSyncConsent;
+mod settings_sync;
+pub use settings_sync::SettingsSyncConsent as ProjectSettingsSyncConsent;
 
-mod host_metrics;
 mod settings_review_runtime;
 
 mod plan;

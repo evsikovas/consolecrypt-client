@@ -889,7 +889,7 @@ mod tests {
         }
     }
     #[test]
-    fn atomic_monitoring_mutation_fence_detects_equal_revision_aba_without_per_poll_reads() {
+    fn atomic_settings_mutation_fence_detects_equal_revision_aba_without_per_poll_reads() {
         let ws = WorkingSet::new();
         let mut host = Host::new("original", "192.0.2.1");
         ws.apply(host.id, Readback::Live(Box::new(dec(&host, 1))));

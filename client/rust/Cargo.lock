@@ -873,10 +873,8 @@ dependencies = [
  "cc-crypto-core",
  "cc-db-core",
  "cc-docker-core",
- "cc-host-mapping",
  "cc-k8s-core",
  "cc-models",
- "cc-monitoring-core",
  "cc-platform-core",
  "cc-protocol",
  "cc-rdp-core",
@@ -1093,15 +1091,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-host-mapping"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "uuid",
-]
-
-[[package]]
 name = "cc-k8s-core"
 version = "0.1.0"
 dependencies = [
@@ -1158,29 +1147,6 @@ dependencies = [
  "thiserror 2.0.21",
  "url",
  "uuid",
- "zeroize",
-]
-
-[[package]]
-name = "cc-monitoring-core"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "bytes",
- "cc-host-mapping",
- "chrono",
- "http-body-util",
- "hyper",
- "hyper-util",
- "rcgen",
- "reqwest",
- "rustls",
- "serde",
- "serde_json",
- "tokio",
- "tokio-rustls",
- "url",
- "webpki-roots",
  "zeroize",
 ]
 
@@ -5895,7 +5861,6 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
- "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",

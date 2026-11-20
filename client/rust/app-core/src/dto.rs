@@ -1115,9 +1115,9 @@ impl EditableDto for VaultSettingsDto {
             policies: self.policies.clone(),
             // Edited through `set_sharing_policy` only; kept as it is.
             sharing_policy: existing.map(|e| e.sharing_policy).unwrap_or_default(),
-            // Owned by versioned monitoring source CRUD, never overwritten by
+            // Opaque legacy payload, never overwritten by
             // an older generic settings DTO (including unsupported schemas).
-            monitoring: existing.and_then(|e| e.monitoring.clone()),
+            legacy_payload: existing.and_then(|e| e.legacy_payload.clone()),
             automation: existing.and_then(|e| e.automation.clone()),
             created_at,
             updated_at,

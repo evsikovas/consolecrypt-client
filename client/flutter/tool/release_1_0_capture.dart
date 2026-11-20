@@ -176,7 +176,8 @@ void main() {
       final closed = KdbxSource.local('${temp.path}/Archive.kdbx');
       await tester.runAsync(() async {
         await File(session.source.path).copy(closed.path);
-        await manager.remember(closed);
+        await manager.open(closed, password: SecretText('synthetic-guide-only'));
+        manager.lock(closed);
       });
       await settle(tester);
       await shot('passwords-open-only');

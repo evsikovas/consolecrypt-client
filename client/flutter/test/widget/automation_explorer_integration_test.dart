@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
-import 'package:consolecrypt/automation/automation_providers.dart';
 import 'package:consolecrypt/automation/automation_library_files.dart';
+import 'package:consolecrypt/automation/automation_providers.dart';
+import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
-import 'package:consolecrypt/automation/automation_service.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:crypto/crypto.dart' as crypto;
@@ -15,8 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../helpers/test_app.dart';
 import '../helpers/automation_projects_fixture.dart' show Projects;
+import '../helpers/test_app.dart';
 
 /// Synthetic file service: these assertions cover the real workspace dispatch,
 /// selected editor and CAS arguments, not filesystem moves or Vault encryption.

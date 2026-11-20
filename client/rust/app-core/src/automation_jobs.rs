@@ -25,7 +25,6 @@ use uuid::Uuid;
 
 const JOBS: &str = "automation.jobs.v1";
 mod admission_audit;
-pub(crate) mod metric_context;
 mod provenance;
 #[cfg(all(feature = "test-harness", not(test)))]
 pub(crate) use admission_audit::tests as __focused_admission_audit;

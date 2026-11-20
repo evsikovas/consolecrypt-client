@@ -13,8 +13,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../helpers/test_app.dart';
 import '../helpers/automation_job_fixture.dart' as f;
+import '../helpers/test_app.dart';
 
 // Native behavior is covered by its real tests; this synthetic service checks
 // the production UI's explicit choices, draft/CAS and fresh approval boundaries.

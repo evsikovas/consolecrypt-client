@@ -17311,45 +17311,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get automationLibraryRoleHint => 'Открывает задачи роли для редактирования. Роли запускаются через плейбук.';
 
   @override
-  String get hostMetricsLinuxOnly => 'Сейчас этот экран показывает текущие метрики Linux-серверов.';
-
-  @override
-  String get hostMetricsNativeOnly => 'Для текущих метрик нужен встроенный SSH. Его можно выбрать в настройках хоста.';
-
-  @override
-  String get hostMetricsReadFailed =>
-      'Не удалось прочитать метрики сервера. Проверьте подключение по SSH и повторите попытку.';
-
-  @override
-  String get hostMetricsConnecting => 'Читаем первые данные по SSH…';
-
-  @override
-  String get hostMetricsLastSample => 'Обновлено в';
-
-  @override
-  String get hostMetricsUptime => 'Время работы';
-
-  @override
-  String hostMetricsUptimeValue(int days, int hours, int minutes) {
-    return '$days д $hours ч $minutes мин';
-  }
-
-  @override
-  String get hostMetricsCpu => 'Загрузка процессора';
-
-  @override
-  String get hostMetricsRam => 'Занято памяти';
-
-  @override
-  String get hostMetricsDisk => 'Занято на системном диске';
-
-  @override
-  String get hostMetricsNetwork => 'Сеть';
-
-  @override
-  String get hostMetricsValues => 'Значения';
-
-  @override
   String get automationPortableImportArchiveFormat => 'Выберите зашифрованный архив проекта ConsoleCrypt (.ccproject).';
 
   @override
@@ -17366,38 +17327,6 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get keepassDeviceAuthFailed =>
       'Системная проверка не прошла. Повторите попытку или откройте базу мастер-паролем.';
-
-  @override
-  String get hostMetricsConnectSsh => 'Подключитесь к серверу по SSH, чтобы увидеть сведения о нём.';
-
-  @override
-  String get hostMetricsOs => 'Операционная система';
-
-  @override
-  String get hostMetricsKernel => 'Ядро';
-
-  @override
-  String get hostMetricsProcessor => 'Процессор';
-
-  @override
-  String get hostMetricsLoadAverage => 'Средняя нагрузка';
-
-  @override
-  String hostMetricsLogicalCpus(int count) {
-    return 'Логических ЦП: $count';
-  }
-
-  @override
-  String get hostMetricsTitle => 'Сведения о сервере';
-
-  @override
-  String get hostMetricsGraphs => 'Графики';
-
-  @override
-  String get hostMetricsUnavailable => 'Метрики хоста недоступны.';
-
-  @override
-  String get hostMetricsChanged => 'Настройки хоста изменились. Переподключитесь, чтобы обновить метрики.';
 
   @override
   String get automationLibraryExportVersion => 'Экспорт версии';

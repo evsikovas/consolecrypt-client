@@ -1107,7 +1107,7 @@ Future<void> _extraScreen(
       await tapKey(tester, 'host-editor-import-ssh-config');
     case 'group-editor':
       await tapKey(tester, 'add-group');
-      await tester.enterText(find.byKey(const ValueKey('group-name')), en ? 'Monitoring' : 'Мониторинг');
+      await tester.enterText(find.byKey(const ValueKey('group-name')), en ? 'Operations' : 'Эксплуатация');
       await settle(tester);
     case 'jump-profiles':
       await tapKey(tester, 'inventory-jump-profiles');
