@@ -3,6 +3,8 @@
 
 Reads the release (notes and installers) from GitHub, turns the notes of one
 language into Telegram HTML and posts them with download links per platform.
+If docs/public/release-covers/<version>.png exists in the release checkout, the
+announcement attaches that image and links to the full notes when needed.
 
 Secrets never live in the repository. They come from the environment
 (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, optional TELEGRAM_PROXY) or, for local
@@ -32,6 +34,7 @@ SITE = {"ru": "https://consolecrypt.dev/download", "en": "https://consolecrypt.d
 CONFIG = Path.home() / ".config" / "consolecrypt" / "telegram.env"
 STATE = Path.home() / ".config" / "consolecrypt" / "telegram-announced.json"
 LIMIT = 4096  # Telegram message text limit (after entity parsing).
+CAPTION_LIMIT = 1024
 
 # Installer suffix → (platform, kind) per language; anything else is skipped.
 ASSETS = [
@@ -209,7 +212,7 @@ def downloads(data: dict, lang: str) -> list[str]:
     return [f"<b>{platform}</b>: {' · '.join(found[platform])}" for platform in PLATFORMS if platform in found]
 
 
-def message(data: dict, lang: str) -> str:
+def message(data: dict, lang: str, limit: int = LIMIT) -> str:
     t = TEXT[lang]
     title = f"<b>{html.escape(data.get('name') or data['tag_name'])}</b>"
     links = downloads(data, lang)
@@ -218,7 +221,7 @@ def message(data: dict, lang: str) -> str:
     tail = "\n".join(footer)
     notes = blocks(section(data.get("body") or "", lang))
     more = f'<a href="{html.escape(data["html_url"])}">{t["notes"]} →</a>'
-    budget = LIMIT - visible_length(title) - visible_length(tail) - visible_length(more) - 8
+    budget = limit - visible_length(title) - visible_length(tail) - visible_length(more) - 8
     kept: list[str] = []
     used = 0
     for block in notes:
@@ -229,6 +232,15 @@ def message(data: dict, lang: str) -> str:
         kept.append(block)
         used += size
     return join([title, *kept, tail])
+
+
+def release_cover(tag: str) -> str | None:
+    if not re.fullmatch(r"v\d+\.\d+\.\d+", tag):
+        return None
+    relative = f"docs/public/release-covers/{tag[1:]}.png"
+    if not (Path(__file__).resolve().parents[2] / relative).is_file():
+        return None
+    return f"https://raw.githubusercontent.com/{REPO}/refs/tags/{tag}/{relative}"
 
 
 # --- Telegram -----------------------------------------------------------
@@ -299,10 +311,12 @@ def main() -> None:
         sys.exit(0 if can_post else 1)
 
     data = release(args.tag)
-    text = message(data, args.lang)
+    cover = release_cover(data["tag_name"])
+    limit = CAPTION_LIMIT if cover else LIMIT
+    text = message(data, args.lang, limit)
     if args.dry_run:
         print(text)
-        print(f"\n[{visible_length(text)} / {LIMIT} characters]", file=sys.stderr)
+        print(f"\n[{visible_length(text)} / {limit} characters]", file=sys.stderr)
         return
     chat_id = config.get("TELEGRAM_CHAT_ID")
     if not chat_id:
@@ -312,11 +326,13 @@ def main() -> None:
     earlier = previous_message(state, chat_id, data["tag_name"], args.lang, file_config().get("TELEGRAM_CHAT_ID"))
     if earlier is not None and not args.force:
         sys.exit(f"{data['tag_name']} ({args.lang}) was already announced in {chat_id} (message {earlier}); use --force to post again")
-    sent = telegram(
-        config,
-        "sendMessage",
-        {"chat_id": chat_id, "text": text, "parse_mode": "HTML", "link_preview_options": {"is_disabled": True}},
-    )
+    payload = {"chat_id": chat_id, "parse_mode": "HTML"}
+    if cover:
+        sent = telegram(config, "sendPhoto", {**payload, "photo": cover, "caption": text})
+    else:
+        sent = telegram(config, "sendMessage", {
+            **payload, "text": text, "link_preview_options": {"is_disabled": True},
+        })
     state[key] = sent["message_id"]
     try:
         STATE.parent.mkdir(parents=True, exist_ok=True)

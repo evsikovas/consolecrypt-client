@@ -68,6 +68,13 @@ class AnnounceTests(unittest.TestCase):
         self.assertIn('Полный список изменений →', text)
         self.assertIn('<b>macOS</b>', text)
 
+    def test_photo_caption_keeps_downloads_and_links_to_the_full_notes(self):
+        long = dict(RELEASE, body='## Русский\n\n' + '\n\n'.join('Абзац ' + 'х' * 250 for _ in range(15)))
+        text = announce.message(long, 'ru', announce.CAPTION_LIMIT)
+        self.assertLessEqual(announce.visible_length(text), announce.CAPTION_LIMIT)
+        self.assertIn('Полный список изменений →', text)
+        self.assertIn('<b>Android</b>', text)
+
     def test_the_journal_is_kept_per_channel(self):
         state = {announce.journal_key('@ConsoleCrypt', 'v9.9.9', 'ru'): 10, 'v9.9.8:ru': 7}
         self.assertEqual(announce.previous_message(state, '@ConsoleCrypt', 'v9.9.9', 'ru', None), 10)
