@@ -1,0 +1,60 @@
+name: Announce ConsoleCrypt on RuStore
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consolecrypt-rustore-launch-announcement
+  cancel-in-progress: false
+
+jobs:
+  announce:
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref == 'refs/heads/main' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify the live download page and post to the official channel
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_PROXY: ${{ secrets.TELEGRAM_PROXY }}
+        run: |
+          python3 - <<'PY'
+          import runpy
+          import urllib.request
+
+          website = "https://consolecrypt.dev/download"
+          store = "https://www.rustore.ru/catalog/app/io.consolecrypt.consolecrypt"
+          with urllib.request.urlopen(website, timeout=20) as response:
+              page = response.read().decode()
+          if store not in page or "/assets/rustore-badge.svg" not in page:
+              raise SystemExit("The RuStore badge is missing from the live download page.")
+
+          announcement = runpy.run_path("client/scripts/announce-telegram.py")
+          config = announcement["load_config"]()
+          telegram = announcement["telegram"]
+          channel = telegram(config, "getChat", {"chat_id": config.get("TELEGRAM_CHAT_ID")})
+          if channel.get("type") != "channel" or channel.get("username", "").lower() != "consolecrypt":
+              raise SystemExit("The Telegram destination is not the official ConsoleCrypt channel.")
+
+          text = (
+              "<b>ConsoleCrypt для Android теперь в RuStore</b>\n\n"
+              "Установить приложение и получать обновления можно прямо через магазин. "
+              "В ConsoleCrypt доступны SSH-терминал, SFTP и зашифрованная синхронизация между устройствами.\n\n"
+              f'<a href="{store}">Скачать из RuStore</a>\n'
+              f'<a href="{website}">Загрузки для других платформ</a>'
+          )
+          sent = telegram(config, "sendMessage", {
+              "chat_id": channel["id"],
+              "text": text,
+              "parse_mode": "HTML",
+              "link_preview_options": {"is_disabled": True},
+          })
+          print(f'Published https://t.me/ConsoleCrypt/{sent["message_id"]}')
+          PY
