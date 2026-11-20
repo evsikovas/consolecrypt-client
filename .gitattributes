@@ -7,5 +7,6 @@
 *.ico binary
 *.icns binary
 *.jar binary
-/agent/delivery/collector_namespace_probe.py text eol=lf
-/agent/delivery/collector_disk_namespace_probe.py text eol=lf
+# The tests verify the SHA-256 digests of these original native captures.
+/client/flutter/test/fixtures/retention_native_page.json -text
+/client/flutter/test/fixtures/windows_prerequisites_native.json -text
