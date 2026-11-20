@@ -37,6 +37,11 @@ final class LocalAuthCancelled implements Exception {
   const LocalAuthCancelled();
 }
 
+/// Android could not start or complete a system authentication operation.
+final class LocalAuthFailed implements Exception {
+  const LocalAuthFailed();
+}
+
 /// The Keystore key was permanently invalidated (biometrics changed).
 final class LocalAuthInvalidated implements Exception {
   const LocalAuthInvalidated();
@@ -139,8 +144,11 @@ final class LocalAuthChannel {
       if (r == null) throw const LocalAuthCancelled();
       return r;
     } on PlatformException catch (e) {
-      if (e.code == 'invalidated') throw const LocalAuthInvalidated();
-      throw const LocalAuthCancelled();
+      throw switch (e.code) {
+        'invalidated' => const LocalAuthInvalidated(),
+        'cancelled' => const LocalAuthCancelled(),
+        _ => const LocalAuthFailed(),
+      };
     } on MissingPluginException {
       throw const LocalAuthCancelled();
     }

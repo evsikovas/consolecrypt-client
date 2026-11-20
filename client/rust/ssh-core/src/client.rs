@@ -1377,41 +1377,68 @@ impl SshSession {
         let mut ch = self.open_exec(command).await?;
         let result = async {
             ch.data(input).await?;
-            let mut out = ExecOutput::default();
-            while let Some(message) = ch.wait().await {
-                match message {
-                    ChannelMsg::Data { data } => {
-                        if data.len() > output_limit.saturating_sub(out.stdout.len()) {
-                            return Err(SshError::Channel(
-                                "bootstrap output limit exceeded".into(),
-                            ));
-                        }
-                        out.stdout.extend_from_slice(&data);
-                    }
-                    ChannelMsg::ExtendedData { data, .. } => {
-                        if data.len() > output_limit.saturating_sub(out.stderr.len()) {
-                            return Err(SshError::Channel(
-                                "bootstrap output limit exceeded".into(),
-                            ));
-                        }
-                        out.stderr.extend_from_slice(&data);
-                    }
-                    ChannelMsg::ExitStatus { exit_status } => out.exit_status = Some(exit_status),
-                    ChannelMsg::ExitSignal { signal_name, .. } => {
-                        out.exit_signal = Some(format!("{signal_name:?}"));
-                    }
-                    ChannelMsg::Failure => {
-                        return Err(SshError::Channel("bootstrap exec refused".into()));
-                    }
-                    ChannelMsg::Close => break,
-                    _ => {}
-                }
-            }
-            Ok(out)
+            Self::collect_exec(&mut ch, output_limit).await
         }
         .await;
         let _ = ch.close().await;
         result
+    }
+
+    /// A bounded command with no input on a shared connection. Cancellation
+    /// closes just the exec channel, so the interactive PTY stays connected.
+    pub async fn exec_bounded(
+        &self,
+        command: &str,
+        output_limit: usize,
+        stopped: impl Future<Output = ()>,
+    ) -> Result<Option<ExecOutput>, SshError> {
+        self.ensure_open()?;
+        tokio::pin!(stopped);
+        let mut ch = tokio::select! { biased;
+            _ = &mut stopped => return Ok(None),
+            ch = self.target.channel_open_session() => ch?,
+        };
+        let result = tokio::select! { biased;
+            _ = &mut stopped => Ok(None),
+            out = async {
+                ch.exec(true, command).await?;
+                ch.eof().await?;
+                Self::collect_exec(&mut ch, output_limit).await
+            } => out.map(Some),
+        };
+        let _ = tokio::time::timeout(Duration::from_millis(500), ch.close()).await;
+        result
+    }
+
+    async fn collect_exec(
+        ch: &mut Channel<Msg>,
+        output_limit: usize,
+    ) -> Result<ExecOutput, SshError> {
+        let mut out = ExecOutput::default();
+        while let Some(message) = ch.wait().await {
+            match message {
+                ChannelMsg::Data { data } => {
+                    if data.len() > output_limit.saturating_sub(out.stdout.len()) {
+                        return Err(SshError::Channel("exec output limit exceeded".into()));
+                    }
+                    out.stdout.extend_from_slice(&data);
+                }
+                ChannelMsg::ExtendedData { data, .. } => {
+                    if data.len() > output_limit.saturating_sub(out.stderr.len()) {
+                        return Err(SshError::Channel("exec output limit exceeded".into()));
+                    }
+                    out.stderr.extend_from_slice(&data);
+                }
+                ChannelMsg::ExitStatus { exit_status } => out.exit_status = Some(exit_status),
+                ChannelMsg::ExitSignal { signal_name, .. } => {
+                    out.exit_signal = Some(format!("{signal_name:?}"));
+                }
+                ChannelMsg::Failure => return Err(SshError::Channel("exec refused".into())),
+                ChannelMsg::Close => break,
+                _ => {}
+            }
+        }
+        Ok(out)
     }
 
     /// Open a raw session channel running `command` (streaming use).

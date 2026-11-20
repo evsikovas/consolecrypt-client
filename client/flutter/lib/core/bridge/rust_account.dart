@@ -555,7 +555,8 @@ final class RustVaultService implements VaultService {
       await guard(rs_prof.vaultDeviceUnlockInvalidated);
       await _hub.refreshState();
       throw const AppException(AppErrorCode.osAuthInvalidated, 'Biometrics changed'); // l10n-ignore: diagnostic
-    } on LocalAuthCancelled {
+    } on Exception catch (error) {
+      if (error is! LocalAuthCancelled && error is! LocalAuthFailed) rethrow;
       throw const AppException(
         AppErrorCode.osAuthFailed,
         'OS authentication failed or was cancelled', // l10n-ignore: diagnostic

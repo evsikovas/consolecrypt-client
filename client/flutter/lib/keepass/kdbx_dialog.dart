@@ -364,24 +364,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
     if (mounted) closeDialog<void>(context);
   }
 
-  String _errorText(AppLocalizations l) => switch (_error) {
-    'dav_url' => l.keepassDavUrlError,
-    'dav_auth' => l.keepassDavAuthError,
-    'dav_etag' => l.keepassDavEtagError,
-    'dav_timeout' => l.keepassDavTimeout,
-    'dav_locked' => l.keepassDavLocked,
-    'dav_redirect' => l.keepassDavRedirectError,
-    'dav_http' || 'dav_io' => l.keepassDavIoError,
-    'key' => l.keepassKeyError,
-    'unsupported' => l.keepassUnsupported,
-    'changed' => l.keepassChanged,
-    'io' => l.keepassIoError,
-    'closed' => l.keepassClosed,
-    'limits' => l.keepassLimits,
-    'exists' => l.keepassExists,
-    'group' => l.keepassGroupUnavailable,
-    _ => l.keepassFormatError,
-  };
+  String _errorText(AppLocalizations l) => passwordManagerError(l, KdbxFailure(_error!));
 
   void _chooseSession() {
     setState(() {
@@ -1102,6 +1085,8 @@ String passwordManagerError(AppLocalizations l, Object error) => error is KdbxFa
     ? switch (error.code) {
         'group' => l.keepassGroupUnavailable,
         'key' => l.keepassKeyError,
+        'device_key_invalidated' => l.keepassDeviceKeyInvalidated,
+        'device_auth_failed' => l.keepassDeviceAuthFailed,
         'changed' => l.keepassChanged,
         'closed' => l.keepassClosed,
         'limits' => l.keepassLimits,

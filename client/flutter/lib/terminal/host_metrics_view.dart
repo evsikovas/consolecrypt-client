@@ -5,10 +5,10 @@ import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/errors.dart';
+import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/core/services/runtime_notice_events.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
-import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// The view owns the watch and keeps only recent, in-memory samples.
@@ -18,14 +18,16 @@ class HostMetricsView extends StatefulWidget {
     required this.host,
     required this.reader,
     required this.scope,
-    required this.active,
+    required this.sessionId,
+    required this.scopePending,
     required this.isCurrent,
   });
 
   final Host host;
   final HostMetricsReader? reader;
   final RuntimeNoticeScope? scope;
-  final bool active;
+  final TerminalSessionId sessionId;
+  final bool scopePending;
   final bool Function() isCurrent;
 
   @override
@@ -34,6 +36,8 @@ class HostMetricsView extends StatefulWidget {
 
 class _HostMetricsViewState extends State<HostMetricsView> {
   final _samples = <HostMetricsSample>[];
+  // _stop cancels this when switching tabs, retrying, or disposing the panel.
+  // ignore: cancel_subscriptions
   StreamSubscription<HostMetricsSample>? _subscription;
   String? _operationId;
   Object? _failure;
@@ -50,7 +54,7 @@ class _HostMetricsViewState extends State<HostMetricsView> {
   @override
   void didUpdateWidget(HostMetricsView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.active != widget.active ||
+    if (oldWidget.sessionId != widget.sessionId ||
         oldWidget.host.id != widget.host.id ||
         oldWidget.host.updatedAt != widget.host.updatedAt ||
         oldWidget.reader != widget.reader ||
@@ -63,12 +67,12 @@ class _HostMetricsViewState extends State<HostMetricsView> {
   }
 
   void _start() {
-    if (!_supported || !widget.active || !widget.isCurrent() || _operationId != null) return;
+    if (!_supported || !widget.isCurrent() || _operationId != null) return;
     final id = _operationId = generateUuidV4();
     final generation = ++_generation;
-    bool current() => mounted && generation == _generation && widget.active && widget.isCurrent();
+    bool current() => mounted && generation == _generation && widget.isCurrent();
     _subscription = widget.reader!
-        .watchHost(widget.host, widget.scope!, id)
+        .watchHost(widget.host, widget.sessionId, widget.scope!, id)
         .listen(
           (sample) {
             if (!current()) return;
@@ -114,6 +118,7 @@ class _HostMetricsViewState extends State<HostMetricsView> {
         'host_metrics_linux_only' => l.hostMetricsLinuxOnly,
         'host_metrics_ssh_backend' => l.hostMetricsNativeOnly,
         'host_metrics_host_changed' => l.hostMetricsChanged,
+        'host_metrics_session_closed' => l.hostMetricsConnectSsh,
         _ => l.hostMetricsReadFailed,
       };
     }
@@ -131,12 +136,60 @@ class _HostMetricsViewState extends State<HostMetricsView> {
         used == null || total == null ? '—' : '${formatBytes(l, used)} / ${formatBytes(l, total)}';
     String speed(double? value) => value == null ? '—' : '${formatBytes(l, value.round())}/s';
     final supported = widget.host.backend == SshBackend.native;
+    final latestUptime = latest?.uptime;
+    final cpuDetails = [
+      ?latest?.cpuModel,
+      ?latest?.architecture,
+      if (latest?.logicalCpus case final count?) l.hostMetricsLogicalCpus(count),
+    ];
+    final theme = Theme.of(context);
     return ListView(
       key: const ValueKey('host-metrics-live'),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       children: [
-        Text(l.hostMetricsHint),
-        if (!_supported)
+        ContentSurface(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.host.name,
+                  style: theme.textTheme.titleMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  widget.host.address,
+                  style: theme.textTheme.bodySmall,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (widget.host.notes.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(widget.host.notes, style: theme.textTheme.bodyMedium),
+                ],
+                if (latest != null) ...[
+                  const SizedBox(height: 8),
+                  _detail(l.hostMetricsOs, latest.os),
+                  _detail(l.hostMetricsKernel, latest.kernel),
+                  _detail(l.hostMetricsProcessor, cpuDetails.isEmpty ? null : cpuDetails.join(' · ')),
+                  if (latestUptime != null)
+                    _detail(
+                      l.hostMetricsUptime,
+                      l.hostMetricsUptimeValue(
+                        latestUptime.inDays,
+                        latestUptime.inHours % 24,
+                        latestUptime.inMinutes % 60,
+                      ),
+                    ),
+                  _detail(l.hostMetricsLoadAverage, latest.loadAverage),
+                ],
+              ],
+            ),
+          ),
+        ),
+        if (!_supported && !(supported && widget.reader != null && widget.scopePending))
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Text(supported ? l.hostMetricsUnavailable : l.hostMetricsNativeOnly),
@@ -177,9 +230,6 @@ class _HostMetricsViewState extends State<HostMetricsView> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text('${l.hostMetricsLastSample} ${clock(latest.time)}'),
-              Text(
-                '${l.hostMetricsUptime} ${l.hostMetricsUptimeValue(latest.uptime.inDays, latest.uptime.inHours % 24, latest.uptime.inMinutes % 60)}',
-              ),
               ChoiceChip(
                 label: Text(l.hostMetricsGraphs),
                 selected: !_values,
@@ -204,47 +254,48 @@ class _HostMetricsViewState extends State<HostMetricsView> {
                   '↓ ${speed(sample.received)}  ↑ ${speed(sample.sent)}',
                 ),
               )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth >= 620 ? (constraints.maxWidth - 12) / 2 : constraints.maxWidth;
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _card(width, l.hostMetricsCpu, percent(latest.cpu), (sample) => sample.cpu, scale: 100),
-                    _card(
-                      width,
-                      l.hostMetricsRam,
-                      amount(latest.memoryUsed, latest.memoryTotal),
-                      (sample) => sample.memoryPercent,
-                      scale: 100,
-                    ),
-                    _card(
-                      width,
-                      l.hostMetricsDisk,
-                      amount(latest.diskUsed, latest.diskTotal),
-                      (sample) => sample.diskPercent,
-                      scale: 100,
-                    ),
-                    _card(
-                      width,
-                      l.hostMetricsNetwork,
-                      '↓ ${speed(latest.received)}  ↑ ${speed(latest.sent)}',
-                      (sample) => sample.received,
-                      second: (sample) => sample.sent,
-                    ),
-                  ],
-                );
-              },
+          else ...[
+            _card(l.hostMetricsCpu, percent(latest.cpu), (sample) => sample.cpu, scale: 100),
+            _card(
+              l.hostMetricsRam,
+              amount(latest.memoryUsed, latest.memoryTotal),
+              (sample) => sample.memoryPercent,
+              scale: 100,
             ),
+            _card(
+              l.hostMetricsNetwork,
+              '↓ ${speed(latest.received)}  ↑ ${speed(latest.sent)}',
+              (sample) => sample.received,
+              second: (sample) => sample.sent,
+            ),
+            _card(
+              l.hostMetricsDisk,
+              amount(latest.diskUsed, latest.diskTotal),
+              (sample) => sample.diskPercent,
+              scale: 100,
+            ),
+          ],
         ],
       ],
     );
   }
 
+  Widget _detail(String label, String? value) {
+    if (value == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 2, child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+          const SizedBox(width: 8),
+          Expanded(flex: 3, child: Text(value, style: Theme.of(context).textTheme.bodySmall)),
+        ],
+      ),
+    );
+  }
+
   Widget _card(
-    double width,
     String title,
     String value,
     double? Function(HostMetricsSample) select, {
@@ -253,18 +304,25 @@ class _HostMetricsViewState extends State<HostMetricsView> {
   }) {
     final scheme = Theme.of(context).colorScheme;
     final data = _samples.map(select).toList(), other = second == null ? null : _samples.map(second).toList();
-    return SizedBox(
-      width: width,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: ContentSurface(
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-              Text(value, style: Theme.of(context).textTheme.titleLarge),
+              Wrap(
+                spacing: 8,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleSmall),
+                  Text(value, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
               const SizedBox(height: 8),
-              SizedBox(height: 56, child: CustomPaint(painter: _HostTrend(data, other, scale, scheme))),
+              SizedBox(height: 44, child: CustomPaint(painter: _HostTrend(data, other, scale, scheme))),
             ],
           ),
         ),

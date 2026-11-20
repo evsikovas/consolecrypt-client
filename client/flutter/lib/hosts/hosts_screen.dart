@@ -4,7 +4,6 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
-import 'package:consolecrypt/hosts/host_metrics_screen.dart' show hostMetricsReaderProvider;
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/view_mode_toggle.dart';
@@ -679,7 +678,6 @@ class _HostTile extends ConsumerWidget {
     final t = tokens.typography;
     final l10n = context.l10n;
     final hasGroups = ref.watch(groupByIdProvider).isNotEmpty;
-    final metricsAvailable = !host.isRdp && ref.watch(hostMetricsReaderProvider.select((reader) => reader != null));
     final userPart = host.username == null ? '' : '${host.username}@';
     final portPart = host.port == null || host.port == (host.isRdp ? defaultRdpPort : defaultSshPort)
         ? ''
@@ -731,15 +729,6 @@ class _HostTile extends ConsumerWidget {
             size: GlassControlSize.sm,
             tooltip: l10n.hostsNotesCount(noteCount),
             onPressed: () => showHostNotes(ref, host),
-          ),
-          const SizedBox(width: GlassSpacing.s4),
-        ],
-        if (metricsAvailable) ...[
-          GlassIconButton(
-            key: ValueKey('host-metrics-${host.id.value}'),
-            icon: Icons.show_chart_rounded,
-            tooltip: l10n.hostMetricsTitle,
-            onPressed: () => context.go(AppRoutes.hostMetrics(host.id)),
           ),
           const SizedBox(width: GlassSpacing.s4),
         ],

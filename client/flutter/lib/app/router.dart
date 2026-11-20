@@ -14,7 +14,6 @@ import 'package:consolecrypt/devices/devices_screen.dart';
 import 'package:consolecrypt/docker/docker_screen.dart';
 import 'package:consolecrypt/groups/groups_screen.dart';
 import 'package:consolecrypt/hosts/host_editor_screen.dart';
-import 'package:consolecrypt/hosts/host_metrics_screen.dart';
 import 'package:consolecrypt/hosts/hosts_screen.dart';
 import 'package:consolecrypt/hosts/known_hosts_screen.dart';
 import 'package:consolecrypt/keepass/kdbx_dialog.dart';
@@ -122,11 +121,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                         : ObjectId(state.uri.queryParameters['group']!),
                   ),
                 ),
-              ),
-              GoRoute(
-                path: ':id/metrics',
-                pageBuilder: (context, state) =>
-                    _page(HostMetricsScreen(key: state.pageKey, hostId: ObjectId(state.pathParameters['id']!))),
               ),
               GoRoute(
                 path: ':id',

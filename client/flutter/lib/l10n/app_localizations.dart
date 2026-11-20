@@ -29957,12 +29957,6 @@ abstract class AppLocalizations {
   /// Live SSH host metrics label.
   ///
   /// In en, this message translates to:
-  /// **'Read directly over SSH. Graphs fill in while this screen is open.'**
-  String get hostMetricsHint;
-
-  /// Live SSH host metrics label.
-  ///
-  /// In en, this message translates to:
   /// **'This view reads live metrics from Linux hosts.'**
   String get hostMetricsLinuxOnly;
 
@@ -29981,7 +29975,7 @@ abstract class AppLocalizations {
   /// Live SSH host metrics label.
   ///
   /// In en, this message translates to:
-  /// **'Connecting over SSH and reading the first sample…'**
+  /// **'Reading the first sample over SSH…'**
   String get hostMetricsConnecting;
 
   /// Live SSH host metrics label.
@@ -30032,10 +30026,76 @@ abstract class AppLocalizations {
   /// **'Values'**
   String get hostMetricsValues;
 
+  /// An actionable message when opening a project archive or unlocking a KDBX database.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an encrypted ConsoleCrypt project archive (.ccproject).'**
+  String get automationPortableImportArchiveFormat;
+
+  /// An actionable message when opening a project archive or unlocking a KDBX database.
+  ///
+  /// In en, this message translates to:
+  /// **'The archive exceeds the size limit for project imports.'**
+  String get automationPortableImportArchiveSize;
+
+  /// An actionable message when opening a project archive or unlocking a KDBX database.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the selected archive. Download it to this device and try again.'**
+  String get automationPortableImportArchiveRead;
+
+  /// An actionable message when opening a project archive or unlocking a KDBX database.
+  ///
+  /// In en, this message translates to:
+  /// **'This device key expired. Open the database with its master password and enable biometric unlock again.'**
+  String get keepassDeviceKeyInvalidated;
+
+  /// An actionable message when opening a project archive or unlocking a KDBX database.
+  ///
+  /// In en, this message translates to:
+  /// **'System authentication failed. Try again or open the database with its master password.'**
+  String get keepassDeviceAuthFailed;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a server over SSH to see its details.'**
+  String get hostMetricsConnectSsh;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Operating system'**
+  String get hostMetricsOs;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Kernel'**
+  String get hostMetricsKernel;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Processor'**
+  String get hostMetricsProcessor;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Load average'**
+  String get hostMetricsLoadAverage;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} logical CPUs'**
+  String hostMetricsLogicalCpus(int count);
+
   /// Live SSH host metrics label.
   ///
   /// In en, this message translates to:
-  /// **'Host metrics'**
+  /// **'Server info'**
   String get hostMetricsTitle;
 
   /// Live SSH host metrics label.
@@ -30053,7 +30113,7 @@ abstract class AppLocalizations {
   /// Host metrics screen status.
   ///
   /// In en, this message translates to:
-  /// **'The saved host changed. Reopen its metrics from Hosts.'**
+  /// **'The saved host changed. Reconnect to refresh its metrics.'**
   String get hostMetricsChanged;
 
   /// Explicit portable project archive exchange: automationLibraryExportVersion.

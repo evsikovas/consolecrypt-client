@@ -734,6 +734,20 @@ impl TerminalManager {
         })
     }
 
+    /// Borrow the authenticated connection of this exact interactive SSH tab.
+    pub fn connected_ssh(&self, id: TerminalId, host_id: ObjectId) -> Option<Arc<SshSession>> {
+        let session = self.get(id).ok()?;
+        let inner = session.lock();
+        if session.target.host_id() != Some(host_id) || inner.closing {
+            return None;
+        }
+        inner
+            .session
+            .as_ref()
+            .filter(|ssh| !ssh.is_closed())
+            .cloned()
+    }
+
     /// Current status.
     pub fn status(&self, id: TerminalId) -> Result<TerminalStatus, TerminalError> {
         Ok(self.get(id)?.status.borrow().clone())

@@ -10369,10 +10369,6 @@
   "@automationLibraryRoleHint": {
     "description": "Built-in Automation library navigation: automationLibraryRoleHint."
   },
-  "hostMetricsHint": "Данные читаются по SSH. Графики заполняются, пока открыт этот экран.",
-  "@hostMetricsHint": {
-    "description": "Live SSH host metrics label."
-  },
   "hostMetricsLinuxOnly": "Сейчас этот экран показывает текущие метрики Linux-серверов.",
   "@hostMetricsLinuxOnly": {
     "description": "Live SSH host metrics label."
@@ -10385,7 +10381,7 @@
   "@hostMetricsReadFailed": {
     "description": "Live SSH host metrics label."
   },
-  "hostMetricsConnecting": "Подключаемся по SSH и читаем первые значения…",
+  "hostMetricsConnecting": "Читаем первые данные по SSH…",
   "@hostMetricsConnecting": {
     "description": "Live SSH host metrics label."
   },
@@ -10432,7 +10428,18 @@
   "@hostMetricsValues": {
     "description": "Live SSH host metrics label."
   },
-  "hostMetricsTitle": "Метрики хоста",
+  "automationPortableImportArchiveFormat": "Выберите зашифрованный архив проекта ConsoleCrypt (.ccproject).",
+  "automationPortableImportArchiveSize": "Архив превышает допустимый размер для импорта.",
+  "automationPortableImportArchiveRead": "Не удалось прочитать архив. Скачайте его на устройство и попробуйте ещё раз.",
+  "keepassDeviceKeyInvalidated": "Ключ устройства больше не действует. Откройте базу мастер-паролем и заново включите биометрию.",
+  "keepassDeviceAuthFailed": "Системная проверка не прошла. Повторите попытку или откройте базу мастер-паролем.",
+  "hostMetricsConnectSsh": "Подключитесь к серверу по SSH, чтобы увидеть сведения о нём.",
+  "hostMetricsOs": "Операционная система",
+  "hostMetricsKernel": "Ядро",
+  "hostMetricsProcessor": "Процессор",
+  "hostMetricsLoadAverage": "Средняя нагрузка",
+  "hostMetricsLogicalCpus": "Логических ЦП: {count}",
+  "hostMetricsTitle": "Сведения о сервере",
   "@hostMetricsTitle": {
     "description": "Live SSH host metrics label."
   },
@@ -10444,7 +10451,7 @@
   "@hostMetricsUnavailable": {
     "description": "Host metrics screen status."
   },
-  "hostMetricsChanged": "Хост изменился. Откройте его метрики заново из списка хостов.",
+  "hostMetricsChanged": "Настройки хоста изменились. Переподключитесь, чтобы обновить метрики.",
   "@hostMetricsChanged": {
     "description": "Host metrics screen status."
   },

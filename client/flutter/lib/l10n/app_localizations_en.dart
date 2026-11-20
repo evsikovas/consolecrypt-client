@@ -16968,9 +16968,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationLibraryRoleHint => 'Opens the role tasks for editing. Run roles through a playbook.';
 
   @override
-  String get hostMetricsHint => 'Read directly over SSH. Graphs fill in while this screen is open.';
-
-  @override
   String get hostMetricsLinuxOnly => 'This view reads live metrics from Linux hosts.';
 
   @override
@@ -16981,7 +16978,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostMetricsReadFailed => 'Could not read the server metrics. Check the SSH connection and try again.';
 
   @override
-  String get hostMetricsConnecting => 'Connecting over SSH and reading the first sample…';
+  String get hostMetricsConnecting => 'Reading the first sample over SSH…';
 
   @override
   String get hostMetricsLastSample => 'Updated at';
@@ -17010,7 +17007,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostMetricsValues => 'Values';
 
   @override
-  String get hostMetricsTitle => 'Host metrics';
+  String get automationPortableImportArchiveFormat => 'Choose an encrypted ConsoleCrypt project archive (.ccproject).';
+
+  @override
+  String get automationPortableImportArchiveSize => 'The archive exceeds the size limit for project imports.';
+
+  @override
+  String get automationPortableImportArchiveRead =>
+      'Could not read the selected archive. Download it to this device and try again.';
+
+  @override
+  String get keepassDeviceKeyInvalidated =>
+      'This device key expired. Open the database with its master password and enable biometric unlock again.';
+
+  @override
+  String get keepassDeviceAuthFailed =>
+      'System authentication failed. Try again or open the database with its master password.';
+
+  @override
+  String get hostMetricsConnectSsh => 'Connect to a server over SSH to see its details.';
+
+  @override
+  String get hostMetricsOs => 'Operating system';
+
+  @override
+  String get hostMetricsKernel => 'Kernel';
+
+  @override
+  String get hostMetricsProcessor => 'Processor';
+
+  @override
+  String get hostMetricsLoadAverage => 'Load average';
+
+  @override
+  String hostMetricsLogicalCpus(int count) {
+    return '$count logical CPUs';
+  }
+
+  @override
+  String get hostMetricsTitle => 'Server info';
 
   @override
   String get hostMetricsGraphs => 'Graphs';
@@ -17019,7 +17054,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hostMetricsUnavailable => 'Host metrics are unavailable.';
 
   @override
-  String get hostMetricsChanged => 'The saved host changed. Reopen its metrics from Hosts.';
+  String get hostMetricsChanged => 'The saved host changed. Reconnect to refresh its metrics.';
 
   @override
   String get automationLibraryExportVersion => 'Export version';

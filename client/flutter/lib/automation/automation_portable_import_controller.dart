@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:consolecrypt/automation/automation_android_archive_picker.dart';
 import 'package:consolecrypt/automation/automation_portable_import_session.dart';
 import 'package:consolecrypt/automation/automation_portable_lifetime.dart';
 import 'package:consolecrypt/automation/automation_portable_package.dart';
@@ -65,6 +66,7 @@ final class AutomationPortableImportController extends ChangeNotifier {
     required this.scope,
     required this.gateway,
     required this.files,
+    this.pickArchive,
     required this.lifetime,
     required this.isOriginalCurrent,
   }) {
@@ -73,6 +75,7 @@ final class AutomationPortableImportController extends ChangeNotifier {
   final PortableScope scope;
   final PortableImportReviewGateway? gateway;
   final FileDialogService files;
+  final Future<AutomationArchiveSelection?> Function()? pickArchive;
   final PortableUiLifetime lifetime;
   final bool Function() isOriginalCurrent;
   PortableImportPhase phase = PortableImportPhase.idle;
@@ -84,6 +87,8 @@ final class AutomationPortableImportController extends ChangeNotifier {
   String _name = '', _source = '';
   String get requestedName => _name;
   String get selectedSource => _source;
+  String get selectedName => _staged?.name ?? _source.replaceAll('\\', '/').split('/').last;
+  AutomationArchiveSelection? _staged;
   SecretText? _password;
   _OriginalRegistration? _operation;
   Future<bool>? _retiring;
@@ -144,6 +149,23 @@ final class AutomationPortableImportController extends ChangeNotifier {
     if (_source.isEmpty) return;
     _source = '';
     _inputChanged();
+    _discardStaged();
+  }
+
+  void _discardStaged() {
+    final previous = _staged;
+    _staged = null;
+    if (previous == null) return;
+    final retirement = _operation?.joined ?? _retiring;
+    if (retirement == null) {
+      unawaited(previous.discard());
+    } else {
+      unawaited(
+        retirement.then((joined) async {
+          if (joined) await previous.discard();
+        }),
+      );
+    }
   }
 
   void editInputs() {
@@ -232,14 +254,26 @@ final class AutomationPortableImportController extends ChangeNotifier {
     phase = PortableImportPhase.picking;
     _emit();
     try {
-      final path = await files.chooseOpenFile(extensions: const [portablePackageExtension]);
-      if (!_valid(token)) return;
+      final picker = pickArchive;
+      final staged = picker == null ? null : await picker();
+      final path = picker == null
+          ? await files.chooseOpenFile(extensions: const [portablePackageExtension])
+          : staged?.path;
+      if (!_valid(token)) {
+        await staged?.discard();
+        return;
+      }
       if (path == null) {
         phase = PortableImportPhase.idle;
         _emit();
         return;
       }
-      if (!portablePackageFilename(path)) throw const PortableImportFailure(PortableImportIssue.invalidInput);
+      if (!portablePackageFilename(path)) {
+        await staged?.discard();
+        throw const PortableImportFailure(PortableImportIssue.archiveFormat);
+      }
+      _discardStaged();
+      _staged = staged;
       _source = path;
       phase = PortableImportPhase.idle;
       _emit();
@@ -455,6 +489,7 @@ final class AutomationPortableImportController extends ChangeNotifier {
     cancel(notify: false);
     _disposed = true;
     _acceptedSnapshot = null;
+    _discardStaged();
     _source = '';
     _name = '';
     lifetime.removeListener(_ownerChanged);

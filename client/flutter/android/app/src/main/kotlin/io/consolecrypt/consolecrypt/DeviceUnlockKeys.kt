@@ -8,9 +8,11 @@ import android.os.CancellationSignal
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
-import android.security.keystore.StrongBoxUnavailableException
 import java.security.KeyStore
+import java.security.ProviderException
+import java.security.UnrecoverableKeyException
 import java.security.SecureRandom
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -59,10 +61,11 @@ internal class DeviceUnlockKeys(private val activity: Activity) {
 
     /** New key [alias]; inside the prompt, encrypt fresh material with it. */
     fun create(alias: String, reason: String, done: (Outcome) -> Unit) {
+        if (pending != null) return done(Outcome.Failed("busy"))
         if (!validAlias(alias)) return done(Outcome.Failed("invalid alias"))
         val cipher = try {
             delete(alias)
-            Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, generate(alias)) }
+            enrollmentCipher(alias)
         } catch (e: Exception) {
             delete(alias)
             return done(Outcome.Failed(e.javaClass.simpleName))
@@ -74,13 +77,19 @@ internal class DeviceUnlockKeys(private val activity: Activity) {
         }
         prompt(cipher, reason, finish) { unlocked ->
             val material = ByteArray(MATERIAL_LEN).also { SecureRandom().nextBytes(it) }
-            val sealed = unlocked.doFinal(material)
-            Outcome.Created(material, encode(alias, unlocked.iv, sealed))
+            try {
+                val sealed = unlocked.doFinal(material)
+                Outcome.Created(material, encode(alias, unlocked.iv, sealed))
+            } catch (error: Exception) {
+                material.fill(0)
+                throw error
+            }
         }
     }
 
     /** Inside the prompt, decrypt the material in [handle]. */
     fun release(handle: ByteArray, reason: String, done: (Outcome) -> Unit) {
+        if (pending != null) return done(Outcome.Failed("busy"))
         val parsed = decode(handle) ?: return done(Outcome.Invalidated)
         val (alias, iv, sealed) = parsed
         val cipher = try {
@@ -91,10 +100,18 @@ internal class DeviceUnlockKeys(private val activity: Activity) {
         } catch (_: KeyPermanentlyInvalidatedException) {
             delete(alias)
             return done(Outcome.Invalidated)
+        } catch (_: UnrecoverableKeyException) {
+            return done(Outcome.Invalidated)
         } catch (e: Exception) {
             return done(Outcome.Failed(e.javaClass.simpleName))
         }
-        prompt(cipher, reason, done) { unlocked -> Outcome.Released(unlocked.doFinal(sealed)) }
+        prompt(cipher, reason, done) { unlocked ->
+            try {
+                Outcome.Released(unlocked.doFinal(sealed))
+            } catch (_: AEADBadTagException) {
+                Outcome.Invalidated
+            }
+        }
     }
 
     fun delete(alias: String) {
@@ -150,7 +167,11 @@ internal class DeviceUnlockKeys(private val activity: Activity) {
                         }
 
                         override fun onAuthenticationError(code: Int, message: CharSequence) {
-                            finish(Outcome.Cancelled)
+                            finish(when (code) {
+                                BiometricPrompt.BIOMETRIC_ERROR_CANCELED,
+                                BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED -> Outcome.Cancelled
+                                else -> Outcome.Failed("system authentication unavailable")
+                            })
                         }
                     },
                 )
@@ -160,7 +181,7 @@ internal class DeviceUnlockKeys(private val activity: Activity) {
         }
     }
 
-    private fun generate(alias: String): SecretKey {
+    private fun enrollmentCipher(alias: String): Cipher {
         fun spec(strongBox: Boolean) = KeyGenParameterSpec.Builder(
             alias,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
@@ -177,14 +198,20 @@ internal class DeviceUnlockKeys(private val activity: Activity) {
             .setInvalidatedByBiometricEnrollment(true)
             .setIsStrongBoxBacked(strongBox)
             .build()
-        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
-        return try {
-            generator.init(spec(strongBox = true))
-            generator.generateKey()
-        } catch (_: StrongBoxUnavailableException) {
-            generator.init(spec(strongBox = false))
-            generator.generateKey()
+        fun initialize(strongBox: Boolean): Cipher {
+            val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
+            generator.init(spec(strongBox))
+            return Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, generator.generateKey()) }
         }
+        try {
+            return initialize(strongBox = true)
+        } catch (_: ProviderException) {
+            // Some devices can create the StrongBox key but cannot initialize its per-use AES cipher.
+            delete(alias)
+        } catch (_: java.security.InvalidKeyException) {
+            delete(alias)
+        }
+        return initialize(strongBox = false)
     }
 
     private fun keyStore(): KeyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }

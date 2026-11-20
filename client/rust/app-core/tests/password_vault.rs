@@ -27,8 +27,8 @@ async fn android_kdbx_material_is_cryptographically_checked_and_scoped() {
     payload.extend_from_slice(&[23; 32]);
     payload.extend_from_slice(handle);
     for size in [0, 32, 64, 4161] {
-        assert!(app
-            .password_vault_key(
+        assert!(
+            app.password_vault_key(
                 "enable_external".into(),
                 id.clone(),
                 method.clone(),
@@ -36,7 +36,8 @@ async fn android_kdbx_material_is_cryptographically_checked_and_scoped() {
                 None
             )
             .await
-            .is_err());
+            .is_err()
+        );
     }
     app.password_vault_key(
         "enable_external".into(),
@@ -59,8 +60,8 @@ async fn android_kdbx_material_is_cryptographically_checked_and_scoped() {
         .unwrap(),
         handle
     );
-    assert!(app
-        .password_vault_key(
+    assert!(
+        app.password_vault_key(
             "release_external".into(),
             id.clone(),
             method.clone(),
@@ -68,9 +69,10 @@ async fn android_kdbx_material_is_cryptographically_checked_and_scoped() {
             None
         )
         .await
-        .is_err());
-    assert!(app
-        .password_vault_key(
+        .is_err()
+    );
+    assert!(
+        app.password_vault_key(
             "release_external".into(),
             "e".repeat(64),
             method.clone(),
@@ -78,14 +80,16 @@ async fn android_kdbx_material_is_cryptographically_checked_and_scoped() {
             None
         )
         .await
-        .is_err());
-    assert!(app
-        .password_vault_key("release".into(), id.clone(), method.clone(), vec![], None)
-        .await
-        .is_err());
+        .is_err()
+    );
+    assert!(
+        app.password_vault_key("release".into(), id.clone(), method.clone(), vec![], None)
+            .await
+            .is_err()
+    );
     app.lock().await.unwrap();
-    assert!(app
-        .password_vault_key(
+    assert!(
+        app.password_vault_key(
             "release_external".into(),
             id.clone(),
             method.clone(),
@@ -93,7 +97,8 @@ async fn android_kdbx_material_is_cryptographically_checked_and_scoped() {
             None
         )
         .await
-        .is_err());
+        .is_err()
+    );
     app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
     assert_eq!(
         app.password_vault_key(
@@ -107,13 +112,41 @@ async fn android_kdbx_material_is_cryptographically_checked_and_scoped() {
         .unwrap(),
         vec![77; 32]
     );
-    app.password_vault_key("forget".into(), id.clone(), method.clone(), vec![], None)
+    app.password_vault_key(
+        "forget_external_handle".into(),
+        id.clone(),
+        method.clone(),
+        b"old-handle".to_vec(),
+        None,
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        app.password_vault_key(
+            "external_handle".into(),
+            id.clone(),
+            method.clone(),
+            vec![],
+            None
+        )
         .await
-        .unwrap();
-    assert!(app
-        .password_vault_key("release_external".into(), id, method, vec![23; 32], None)
-        .await
-        .is_err());
+        .unwrap(),
+        handle
+    );
+    app.password_vault_key(
+        "forget_external_handle".into(),
+        id.clone(),
+        method.clone(),
+        handle.to_vec(),
+        None,
+    )
+    .await
+    .unwrap();
+    assert!(
+        app.password_vault_key("release_external".into(), id, method, vec![23; 32], None)
+            .await
+            .is_err()
+    );
     app.shutdown().await.unwrap();
 }
 
@@ -191,14 +224,16 @@ async fn kdbx_keys_require_independent_auth_and_survive_profile_lock() {
     .unwrap();
     assert_eq!(os.key_count(), 1);
     os.set_next(FakePrompt::Cancel);
-    assert!(app
-        .password_vault_key("release".into(), id.clone(), "hello".into(), vec![], None)
-        .await
-        .is_err());
-    assert!(app
-        .password_vault_key("release".into(), other, "hello".into(), vec![], None)
-        .await
-        .is_err());
+    assert!(
+        app.password_vault_key("release".into(), id.clone(), "hello".into(), vec![], None)
+            .await
+            .is_err()
+    );
+    assert!(
+        app.password_vault_key("release".into(), other, "hello".into(), vec![], None)
+            .await
+            .is_err()
+    );
     os.set_next(FakePrompt::Succeed);
     // Force a local key-file commit failure, inside this test's own directory.
     // The existing authenticator remains usable and the new OS key is removed.
@@ -273,10 +308,12 @@ async fn kdbx_keys_require_independent_auth_and_survive_profile_lock() {
         .await
         .unwrap();
     assert_eq!(os.key_count(), 0);
-    assert!(again
-        .password_vault_key("release".into(), id, "hello".into(), vec![], None)
-        .await
-        .is_err());
+    assert!(
+        again
+            .password_vault_key("release".into(), id, "hello".into(), vec![], None)
+            .await
+            .is_err()
+    );
     again.shutdown().await.unwrap();
 }
 
@@ -300,8 +337,8 @@ async fn kdbx_fido_prf_requires_the_enrolled_key_and_pin() {
     )
     .await
     .unwrap();
-    assert!(app
-        .password_vault_key(
+    assert!(
+        app.password_vault_key(
             "release".into(),
             id.clone(),
             "security_key".into(),
@@ -309,7 +346,8 @@ async fn kdbx_fido_prf_requires_the_enrolled_key_and_pin() {
             Some("0000".into())
         )
         .await
-        .is_err());
+        .is_err()
+    );
     assert_eq!(
         app.password_vault_key(
             "release".into(),
@@ -323,9 +361,10 @@ async fn kdbx_fido_prf_requires_the_enrolled_key_and_pin() {
         vec![45; 32]
     );
     key.replace();
-    assert!(app
-        .password_vault_key("release".into(), id, "security_key".into(), vec![], pin)
-        .await
-        .is_err());
+    assert!(
+        app.password_vault_key("release".into(), id, "security_key".into(), vec![], pin)
+            .await
+            .is_err()
+    );
     app.shutdown().await.unwrap();
 }

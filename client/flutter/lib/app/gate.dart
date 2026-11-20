@@ -72,7 +72,6 @@ abstract final class AppRoutes {
   static const hosts = '/hosts';
   static const newHost = '/hosts/new';
   static String editHost(ObjectId id) => '/hosts/${id.value}';
-  static String hostMetrics(ObjectId id) => '/hosts/${id.value}/metrics';
   static const groups = '/groups';
   static const credentials = '/credentials';
   static const knownHosts = '/known-hosts';

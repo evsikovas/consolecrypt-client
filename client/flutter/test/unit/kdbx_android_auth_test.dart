@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/local_auth_channel.dart';
 import 'package:consolecrypt/keepass/kdbx_android_auth.dart';
+import 'package:consolecrypt/keepass/kdbx_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Uint8List handle(String alias) =>
@@ -10,6 +11,27 @@ Uint8List handle(String alias) =>
 const oldAlias = 'cc-device-unlock-kdbx-00000000-0000-4000-8000-000000000001';
 
 void main() {
+  test('an invalidated Android key retires only its handle and asks for the master password', () async {
+    final androidHandle = handle(oldAlias);
+    final deleted = <String>[];
+    final auth = KdbxAndroidAuth(
+      release: (_, _) async => throw const LocalAuthInvalidated(),
+      delete: (alias) async => deleted.add(alias),
+    );
+    final calls = <String>[];
+    await expectLater(
+      auth.unlock((action, bytes) async {
+        calls.add(action);
+        if (action == 'external_handle') return androidHandle;
+        expect(bytes, androidHandle);
+        return Uint8List(0);
+      }, 'Unlock'),
+      throwsA(isA<KdbxFailure>().having((error) => error.code, 'code', 'device_key_invalidated')),
+    );
+    expect(calls, ['external_handle', 'forget_external_handle']);
+    expect(deleted, [oldAlias]);
+  });
+
   test('Android enrollment replaces the old alias only after core commit and wipes payload', () async {
     final material = Uint8List.fromList(List.filled(32, 23));
     final composite = Uint8List.fromList(List.filled(32, 77));

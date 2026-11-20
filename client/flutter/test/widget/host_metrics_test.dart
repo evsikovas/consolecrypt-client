@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show PointerDeviceKind;
 
 import 'package:consolecrypt/app/critical_notice_providers.dart';
 import 'package:consolecrypt/app/gate.dart';
@@ -8,7 +7,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/core/services/runtime_notice_adapter.dart';
 import 'package:consolecrypt/core/services/runtime_notice_events.dart';
-import 'package:consolecrypt/hosts/host_metrics_screen.dart';
+import 'package:consolecrypt/terminal/terminal_server_panel.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,14 +16,21 @@ import 'package:material_ui/material_ui.dart';
 import '../helpers/test_app.dart';
 
 class _HostMetrics implements HostMetricsReader {
-  final samples = StreamController<HostMetricsSample>();
-  final watches = <({Host host, RuntimeNoticeScope scope, String id})>[];
+  final samples = <StreamController<HostMetricsSample>>[];
+  final watches = <({Host host, TerminalSessionId tab, RuntimeNoticeScope scope, String id})>[];
   final cancelled = <String>[];
 
   @override
-  Stream<HostMetricsSample> watchHost(Host host, RuntimeNoticeScope scope, String operationId) {
-    watches.add((host: host, scope: scope, id: operationId));
-    return samples.stream;
+  Stream<HostMetricsSample> watchHost(
+    Host host,
+    TerminalSessionId sessionId,
+    RuntimeNoticeScope scope,
+    String operationId,
+  ) {
+    watches.add((host: host, tab: sessionId, scope: scope, id: operationId));
+    final controller = StreamController<HostMetricsSample>();
+    samples.add(controller);
+    return controller.stream;
   }
 
   @override
@@ -36,6 +42,8 @@ class _NoticeScope implements RuntimeNoticeEvents {
 
   @override
   RuntimeNoticeFrame currentScope;
+  // Closed by the widget test teardown.
+  // ignore: close_sinks
   final changes = StreamController<RuntimeNoticeFrame>.broadcast();
 
   @override
@@ -43,11 +51,12 @@ class _NoticeScope implements RuntimeNoticeEvents {
 }
 
 void main() {
-  testWidgets('a host card opens graphs and values in Hosts and cancels when leaving', (tester) async {
+  testWidgets('server details follow the active SSH tab and stop when the dock closes', (tester) async {
     final backend = testBackend(seed: false);
     addTearDown(backend.dispose);
     await backend.debugCreateUnlockedLocalProfile();
     final host = await backend.inventory.saveHost(Host.create(name: 'Linux fixture', address: '192.0.2.8'));
+    final other = await backend.inventory.saveHost(Host.create(name: 'Second fixture', address: '192.0.2.9'));
     final scope = RuntimeNoticeScope.fromProfile({
       'active': true,
       'vault_state': 'unlocked',
@@ -57,7 +66,9 @@ void main() {
     final events = _NoticeScope(RuntimeNoticeFrame(epoch: 1, scope: scope)), metrics = _HostMetrics();
     addTearDown(() {
       unawaited(events.changes.close());
-      unawaited(metrics.samples.close());
+      for (final sample in metrics.samples) {
+        unawaited(sample.close());
+      }
     });
     await pumpApp(
       tester,
@@ -70,25 +81,24 @@ void main() {
 
     final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
     final router = container.read(routerProvider);
-    final button = find.byKey(ValueKey('host-metrics-${host.id.value}'));
-    expect(find.descendant(of: button, matching: find.byIcon(Icons.show_chart_rounded)), findsOneWidget);
-    expect(find.text('Host metrics'), findsNothing);
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    await mouse.addPointer(location: tester.getCenter(button));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
-    expect(find.text('Host metrics'), findsOneWidget);
-    await mouse.removePointer();
-    await tester.pumpAndSettle();
+    final serverTool = find.byKey(const ValueKey('nav-server'));
+    expect(serverTool, findsNothing);
+    expect(find.byKey(ValueKey('host-metrics-${host.id.value}')), findsNothing);
+    await tapKey(tester, 'connect-Linux fixture');
+    await tapKey(tester, 'accept-host-key');
+    await enterKey(tester, 'terminal-password', 'fixture password');
+    await tapKey(tester, 'terminal-password-submit');
+    expect(router.state.uri.path, AppRoutes.terminal);
+    expect(serverTool, findsOneWidget);
     expect(metrics.watches, isEmpty);
-    await tapKey(tester, 'host-metrics-${host.id.value}');
-    expect(router.state.uri.path, AppRoutes.hostMetrics(host.id));
-    expect(find.text('Host metrics · Linux fixture'), findsOneWidget);
+    await tester.tap(serverTool);
+    await settle(tester);
+    final tabs = container.read(terminalTabsProvider.notifier);
+    final first = container.read(terminalTabsProvider).active!;
     expect(metrics.watches.single.host.id, host.id);
     expect(metrics.watches.single.scope.same(scope), isTrue);
-    expect(container.read(terminalTabsProvider).tabs, isEmpty);
-    metrics.samples.add(
+    expect(metrics.watches.single.tab, first.sessionId);
+    metrics.samples.single.add(
       HostMetricsSample.fromJson({
         'timestampMs': DateTime.utc(2026, 11, 18).millisecondsSinceEpoch,
         'cpuPercent': 21.5,
@@ -99,16 +109,46 @@ void main() {
         'diskTotal': 4096,
         'receivedPerSecond': 55,
         'sentPerSecond': 12,
+        'os': 'Test OS',
+        'kernel': '6.12.0',
+        'cpuModel': 'Example CPU',
+        'architecture': 'aarch64',
+        'logicalCpus': 4,
+        'loadAverage': '0.10 / 0.08 / 0.04',
       }),
     );
     await settle(tester);
     expect(find.text('21.5 %'), findsOneWidget);
+    expect(find.text('Test OS'), findsOneWidget);
+    expect(find.text('Example CPU · aarch64 · 4 logical CPUs'), findsOneWidget);
     await tester.tap(find.text('Values'));
     await settle(tester);
     expect(find.textContaining('21.5 %', findRichText: true), findsOneWidget);
-    await tapKey(tester, 'host-metrics-back');
-    expect(router.state.uri.path, AppRoutes.hosts);
-    expect(metrics.cancelled, [metrics.watches.single.id]);
+    final opening = tabs.open(other);
+    await settle(tester);
+    final second = await opening;
+    await tapKey(tester, 'accept-host-key');
+    await enterKey(tester, 'terminal-password', 'fixture password');
+    await tapKey(tester, 'terminal-password-submit');
+    expect(metrics.cancelled, contains(metrics.watches.first.id));
+    expect(metrics.watches.last.tab, second.sessionId);
+    expect(find.text('Test OS'), findsNothing);
+
+    await tapKey(tester, 'workspace-tools-close');
+    expect(metrics.cancelled, metrics.watches.map((watch) => watch.id));
+    expect(router.state.uri.path, AppRoutes.terminal);
+    expect(container.read(terminalTabsProvider).tabs, hasLength(2));
+
+    await tester.tap(serverTool);
+    await settle(tester);
+    final closing = tabs.closeTab(second);
+    await settle(tester);
+    await closing;
+    expect(metrics.watches.last.tab, first.sessionId);
+    router.go(AppRoutes.hosts);
+    await settle(tester);
+    expect(metrics.cancelled, metrics.watches.map((watch) => watch.id));
+    expect(find.byKey(const ValueKey('workspace-tools-panel')), findsNothing);
     expect(tester.takeException(), isNull);
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 }

@@ -10,6 +10,9 @@ const portableImportMaxReplyBytes = 16384;
 enum PortableImportIssue {
   unavailable,
   invalidInput,
+  archiveFormat,
+  archiveSize,
+  archiveRead,
   changed,
   sourceChanged,
   unsupported,

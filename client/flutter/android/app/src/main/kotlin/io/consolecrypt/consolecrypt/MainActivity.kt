@@ -20,6 +20,7 @@ class MainActivity : FlutterActivity() {
     private val kubeAuthBrowser by lazy { AuthSessionBrowser(this, AuthSessionBrowser.KUBERNETES_REDIRECT) }
     private val syncAuthBrowser by lazy { AuthSessionBrowser(this, AuthSessionBrowser.SYNC_SERVER_REDIRECT) }
     private external fun nativeInitialize(context: android.content.Context)
+    private val automationArchive by lazy { AutomationArchivePicker(this) }
     private var exportResult: MethodChannel.Result? = null
     private var exportSource: File? = null
     private var forwardPermissionResult: MethodChannel.Result? = null
@@ -273,6 +274,7 @@ class MainActivity : FlutterActivity() {
                     if (path != null && (dir.isDirectory || dir.mkdirs())) result.success(path)
                     else result.error("storage", "Cannot create private app storage", null)
                 } else result.error("native_init", "Android security initialization failed", null)
+                "pickAutomationArchive" -> automationArchive.open(result)
                 "exportFile" -> {
                     val path = call.argument<String>("path")
                     val source = path?.let { File(it).canonicalFile }
@@ -326,6 +328,7 @@ class MainActivity : FlutterActivity() {
 
     @Deprecated("Activity result API used by FlutterActivity")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (automationArchive.onActivityResult(requestCode, resultCode, data)) return
         if (requestCode != 7401) { super.onActivityResult(requestCode, resultCode, data); return }
         val result = exportResult ?: return
         val source = exportSource
@@ -352,6 +355,7 @@ class MainActivity : FlutterActivity() {
         forwardPermissionResult = null
         exportResult?.success(false)
         exportResult = null; exportSource = null
+        automationArchive.dispose()
         deviceUnlockKeys.cancel()
         super.onDestroy()
     }

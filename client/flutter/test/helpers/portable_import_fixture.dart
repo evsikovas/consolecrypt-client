@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:consolecrypt/automation/automation_android_archive_picker.dart';
 import 'package:consolecrypt/automation/automation_portable_import_controller.dart';
 import 'package:consolecrypt/automation/automation_portable_import_session.dart';
 import 'package:consolecrypt/automation/automation_portable_lifetime.dart';
@@ -146,12 +147,13 @@ class Gateway implements PortableImportReviewGateway {
 }
 
 class Fixture {
-  Fixture({bool available = true}) {
+  Fixture({bool available = true, Future<AutomationArchiveSelection?> Function()? pickArchive}) {
     lifetime = PortableUiLifetime(profileId: profile, events: events, isOriginalUiCurrent: () => original);
     controller = AutomationPortableImportController(
       scope: scope(),
       gateway: available ? gateway : null,
       files: files,
+      pickArchive: pickArchive,
       lifetime: lifetime,
       isOriginalCurrent: () => original,
     );

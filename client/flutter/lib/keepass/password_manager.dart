@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:consolecrypt/core/bridge/local_auth_channel.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart' show guard;
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -422,6 +423,10 @@ class PasswordManager {
 
   Future<Map<String, Object?>> protection(KdbxSource source, String method) async {
     check();
+    if (Platform.isAndroid && method == 'hello') {
+      await LocalAuthChannel.instance.reportToCore();
+      check();
+    }
     final bytes = await guard(
       () => native.passwordVaultKey(action: 'info', id: source.id, method: method, secret: Uint8List(0), pin: null),
     );

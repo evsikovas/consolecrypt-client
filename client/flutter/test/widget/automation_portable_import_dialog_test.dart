@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:consolecrypt/app/theme.dart';
+import 'package:consolecrypt/automation/automation_android_archive_picker.dart';
 import 'package:consolecrypt/automation/automation_portable_import_controller.dart';
 import 'package:consolecrypt/automation/automation_portable_import_dialog.dart';
 import 'package:consolecrypt/automation/automation_portable_import_session.dart';
@@ -44,19 +45,25 @@ PortableImportLabels labels(BuildContext context) {
     limitedReview: text('LimitedReview'),
     installed: text('Installed'),
     summary: l.automationPortableSummary,
-    issue: (issue) => text(switch (issue) {
-      PortableImportIssue.unavailable => 'Unavailable',
-      PortableImportIssue.invalidInput => 'InvalidInput',
-      PortableImportIssue.changed => 'Changed',
-      PortableImportIssue.sourceChanged => 'SourceChanged',
-      PortableImportIssue.unsupported => 'Unsupported',
-      PortableImportIssue.busy => 'Busy',
-      PortableImportIssue.expired => 'Expired',
-      PortableImportIssue.cancelled => 'Changed',
-      PortableImportIssue.response => 'Response',
-      PortableImportIssue.failed => 'Failed',
-      PortableImportIssue.recoveryRequired => 'RecoveryRequired',
-    }),
+    issue: (issue) => switch (issue) {
+      PortableImportIssue.archiveFormat => l.automationPortableImportArchiveFormat,
+      PortableImportIssue.archiveSize => l.automationPortableImportArchiveSize,
+      PortableImportIssue.archiveRead => l.automationPortableImportArchiveRead,
+      _ => text(switch (issue) {
+        PortableImportIssue.unavailable => 'Unavailable',
+        PortableImportIssue.invalidInput => 'InvalidInput',
+        PortableImportIssue.changed => 'Changed',
+        PortableImportIssue.sourceChanged => 'SourceChanged',
+        PortableImportIssue.unsupported => 'Unsupported',
+        PortableImportIssue.busy => 'Busy',
+        PortableImportIssue.expired => 'Expired',
+        PortableImportIssue.cancelled => 'Changed',
+        PortableImportIssue.response => 'Response',
+        PortableImportIssue.failed => 'Failed',
+        PortableImportIssue.recoveryRequired => 'RecoveryRequired',
+        _ => throw StateError('Handled by app localization'),
+      }),
+    },
     publicationReason: (reason) => text(switch (reason) {
       'publication_platform_unsupported' => 'PlatformUnsupported',
       'publication_location_unavailable' => 'LocationUnavailable',
@@ -140,20 +147,31 @@ Future<f.Registration> ready(WidgetTester tester, f.Fixture x) async {
 
 void main() {
   testWidgets('Android uses the selected package name and waits for its password', (tester) async {
-    final x = f.Fixture();
+    final x = f.Fixture(
+      pickArchive: () async => AutomationArchiveSelection(
+        path: '/app-cache/ccproject-fixture/archive.ccproject',
+        name: 'Test project.ccproject.bin',
+        discard: () async {},
+      ),
+    );
     addTearDown(x.dispose);
     await open(tester, x, width: 390, height: 844);
     await tester.tap(find.byKey(const ValueKey('portable-import-choose')));
     await tester.pumpAndSettle();
-    expect(x.controller.requestedName, 'selected');
-    expect(tester.widget<TextField>(find.byKey(const ValueKey('portable-import-name'))).controller!.text, 'selected');
+    expect(x.controller.requestedName, 'Test project');
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('portable-import-name'))).controller!.text,
+      'Test project',
+    );
     final prepare = find.byKey(const ValueKey('portable-import-prepare'));
     expect(tester.widget<FilledButton>(prepare).onPressed, isNull);
     await tester.enterText(find.byKey(const ValueKey('portable-import-password')), 'synthetic package password');
     await tester.pump();
     await tester.tap(prepare);
     await tester.pump();
-    expect(x.gateway.calls.single.intent.requestedName, 'selected');
+    expect(x.gateway.calls.single.intent.requestedName, 'Test project');
+    expect(x.gateway.calls.single.intent.source, '/app-cache/ccproject-fixture/archive.ccproject');
+    expect(x.files.opens, 0);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 

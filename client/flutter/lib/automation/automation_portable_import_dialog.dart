@@ -148,9 +148,11 @@ class _ImportDialogState extends ConsumerState<AutomationPortableImportDialog> {
         name.text.isNotEmpty) {
       return;
     }
-    final filename = controller.selectedSource.replaceAll('\\', '/').split('/').last;
-    if (!portablePackageFilename(filename)) return;
-    final suggestion = filename.substring(0, filename.length - portablePackageExtension.length - 1);
+    final filename = controller.selectedName;
+    const suffix = '.$portablePackageExtension';
+    final extension = filename.toLowerCase().lastIndexOf(suffix);
+    final suggestion = extension > 0 ? filename.substring(0, extension).trim() : filename;
+    if (suggestion.isEmpty || suggestion.runes.length > 120) return;
     name.text = suggestion;
     controller.setRequestedName(suggestion);
   }
@@ -190,7 +192,7 @@ class _ImportDialogState extends ConsumerState<AutomationPortableImportDialog> {
     final frozen = c.busy || recovery || result != null;
     final media = MediaQuery.of(context);
     final contentHeight = (media.size.height - media.viewInsets.bottom - 300).clamp(80.0, 520.0);
-    final source = c.selectedSource.replaceAll('\\', '/').split('/').last;
+    final source = c.selectedName;
     return AlertDialog(
       title: Text(l.title),
       content: SizedBox(

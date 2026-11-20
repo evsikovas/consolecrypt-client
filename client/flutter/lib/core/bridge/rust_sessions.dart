@@ -90,6 +90,11 @@ final class RustTerminalService
     return _open(SshTerminalTarget(host), size);
   }
 
+  String? connectedSshRuntimeId(TerminalSessionId id, ObjectId hostId) {
+    final session = _sessions[id];
+    return session != null && session.connected && !session.closed && session.hostId == hostId ? session.rustId : null;
+  }
+
   @override
   Future<LocalShellProfiles> listLocalProfiles() async {
     final j = decodeObject(await guard(rs_ssh.terminalLocalProfiles));

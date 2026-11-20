@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:consolecrypt/app/critical_notice_providers.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/automation/automation_android_archive_picker.dart';
 import 'package:consolecrypt/automation/automation_portable_import_controller.dart';
 import 'package:consolecrypt/automation/automation_portable_import_dialog.dart';
 import 'package:consolecrypt/automation/automation_portable_import_session.dart';
@@ -134,6 +136,7 @@ class _ImportCaptureState extends ConsumerState<_ImportCaptureRoute> {
         scope: scope.scope,
         gateway: widget.reviewGateway,
         files: widget.files,
+        pickArchive: Platform.isAndroid ? pickAndroidAutomationArchive : null,
         lifetime: widget.lifetime,
         isOriginalCurrent: () => widget.lifetime.current,
       );
