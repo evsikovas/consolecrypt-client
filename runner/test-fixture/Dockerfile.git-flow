@@ -1,0 +1,9 @@
+# A distinct test-only image. The existing E0 image/tag is never overwritten.
+FROM consolecrypt-runner-fixture:e0
+RUN apt-get update && apt-get install -y --no-install-recommends git=1:2.43.0-1ubuntu7.4 \
+    && git --version && dpkg-query -W git \
+    && rm -rf /var/lib/apt/lists/*
+# The home tmpfs intentionally stays noexec. Keep the test-only interpreter
+# shim in the read-only image instead of relaxing that isolation boundary.
+COPY --chmod=0755 tests/fixtures/python_without_input_contract.py /opt/cc-fixtures/python-old-inputs
+COPY --chmod=0755 tests/fixtures/python_without_input_contract.py /opt/cc-fixtures/python-old-dependencies

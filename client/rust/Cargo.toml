@@ -20,6 +20,9 @@ members = [
     "k8s-core",
     "db-core",
     "docker-core",
+    "automation-core",
+    "monitoring-core",
+    "host-mapping",
     "app-core",
     "cc-cli",
     "bridge",
@@ -62,6 +65,9 @@ cc-terminal-core = { path = "terminal-core" }
 cc-rdp-core = { path = "rdp-core" }
 cc-tunnel-core = { path = "tunnel-core" }
 cc-sftp-core = { path = "sftp-core" }
+cc-automation-core = { path = "automation-core" }
+cc-monitoring-core = { path = "monitoring-core" }
+cc-host-mapping = { path = "host-mapping" }
 cc-search-core = { path = "search-core" }
 cc-ai-core = { path = "ai-core" }
 cc-k8s-core = { path = "k8s-core" }
@@ -109,3 +115,9 @@ opt-level = 1
 
 [profile.dev.package.argon2]
 opt-level = 3
+
+# Full FRB type/variable debug info pushes this test rlib beyond 4 GiB;
+# LLVM emits /SYM64/ archives that MSVC link.exe cannot consume. Keep useful
+# backtraces without the oversized type metadata; test assertions stay enabled.
+[profile.test.package.cc-bridge]
+debug = 1

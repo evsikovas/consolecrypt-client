@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "producerBytesUnchanged": true,
+  "bytes": 820,
+  "sha256": "6f8f181196ad77b501b4aa201ec749f5d4b927244d2a9556fce917f22514bffa",
+  "receipt": "automation-e1-next/persistent-runner/service-v1/service-results-v1/fixture/accepted-public-results-d93ac184-6b3c-4a9d-846b-5f884ef9936f/result.json",
+  "receiptSha256": "62c7dbfacf85637fe4a484ada118cddf5902b5f5d9a4adb4c5051101d765845d",
+  "actualNativePublicQueryAfterNodeExitAndHelperDisconnect": true,
+  "recordedOwnedFixtureOnly": true,
+  "flutterTestLiveNativeExecution": false,
+  "limitations": [
+    "Historical exact5a9 pair; does not claim whole current Native suite GREEN.",
+    "Synthetic installed bundle; not production release certification.",
+    "UNKNOWN/partial does not claim rollback or successful task completion."
+  ]
+}

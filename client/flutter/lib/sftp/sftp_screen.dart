@@ -152,22 +152,31 @@ class _SftpScreenState extends ConsumerState<SftpScreen> with NoteContextPublish
             label: Text(l10n.commonConnect),
           ),
         ],
-        body: state.connecting
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 12),
-                    Text(l10n.sftpConnecting(state.host?.name ?? '')),
-                  ],
-                ),
-              )
-            : EmptyState(
-                icon: Icons.folder_copy_outlined,
-                title: l10n.sftpNotConnectedTitle,
-                message: state.error == null ? l10n.sftpNotConnectedMessage : errorMessage(l10n, state.error!),
-              ),
+        // The existing activity list remains a read surface after disconnect.
+        // A notice may explicitly show its tab; this never reconnects/retries.
+        body: Column(
+          children: [
+            Expanded(
+              child: state.connecting
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 12),
+                          Text(l10n.sftpConnecting(state.host?.name ?? '')),
+                        ],
+                      ),
+                    )
+                  : EmptyState(
+                      icon: Icons.folder_copy_outlined,
+                      title: l10n.sftpNotConnectedTitle,
+                      message: state.error == null ? l10n.sftpNotConnectedMessage : errorMessage(l10n, state.error!),
+                    ),
+            ),
+            const SftpActivityDrawer(),
+          ],
+        ),
       );
     }
 

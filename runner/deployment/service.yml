@@ -1,0 +1,435 @@
+---
+- name: Explicit versioned ConsoleCrypt Linux service maintenance
+  hosts: all
+  gather_facts: false
+  become: false
+  vars:
+    service_unit: "consolecrypt-service@{{ service_identity_id }}.service"
+    retention_timer: "consolecrypt-service-retention@{{ service_identity_id }}.timer"
+    retention_unit: "consolecrypt-service-retention@{{ service_identity_id }}.service"
+    service_state: "/var/lib/consolecrypt-service/{{ service_identity_id }}"
+    service_pointer: "/etc/consolecrypt-service/{{ service_identity_id }}.json"
+    bundle_root: "{{ playbook_dir }}/bundle"
+    bundle_destination: "/opt/consolecrypt/service-bundles/{{ service_bundle_sha256 | default('unused') }}"
+  pre_tasks:
+    - name: Require explicit closed maintenance choices
+      ansible.builtin.assert:
+        that:
+          - service_operation in ['install', 'update', 'start', 'status', 'remove']
+          - service_identity_id is match('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+          - service_identity_id != '00000000-0000-0000-0000-000000000000'
+          - service_operation not in ['install', 'update', 'start'] or (service_bundle_sha256 is defined and service_bundle_sha256 is match('^[0-9a-f]{64}$'))
+    - name: Verify the reviewed package without granting service authority
+      ansible.builtin.command:
+        argv: ['{{ ansible_playbook_python }}', '{{ playbook_dir }}/bundle.py', verify, --expected-manifest-sha256, '{{ service_bundle_sha256 }}']
+      delegate_to: localhost
+      changed_when: false
+      when: service_operation in ['install', 'update', 'start']
+    - name: Observe this instance software pointer only
+      ansible.builtin.stat:
+        path: '{{ service_pointer }}'
+        follow: false
+        checksum_algorithm: sha256
+      register: pointer
+    - name: Require the original observed instance pointer CAS
+      ansible.builtin.assert:
+        that:
+          - pointer.stat.isreg and not pointer.stat.islnk
+          - pointer.stat.uid == 0 and pointer.stat.nlink == 1
+          - pointer.stat.mode == '0444' and pointer.stat.size <= 4096
+          - pointer.stat.checksum == expected_instance_pointer_sha256
+      when: service_operation in ['update', 'start', 'remove']
+    - name: Read bounded root-owned software routing metadata
+      ansible.builtin.slurp:
+        src: '{{ service_pointer }}'
+      register: pointer_record
+      when: pointer.stat.exists and pointer.stat.isreg and pointer.stat.size <= 4096
+    - name: Preserve unknown or future pointer formats without writes
+      ansible.builtin.command:
+        argv: ['{{ ansible_playbook_python }}', '{{ playbook_dir }}/bundle.py', inspect-pointer]
+        stdin: '{{ pointer_record.content | b64decode }}'
+      delegate_to: localhost
+      changed_when: false
+      register: selected
+      failed_when: selected.rc != 0 and service_operation != 'status'
+      when: pointer_record is not skipped
+  tasks:
+    - name: Show actual manager state without implying an execution grant
+      ansible.builtin.command:
+        argv: [systemctl, show, '{{ service_unit }}', --property=ActiveState,SubState,MainPID,Result, --no-pager]
+      changed_when: false
+      register: manager_status
+      when: service_operation == 'status'
+    - name: Show desired immutable version reference and pointer checksum
+      ansible.builtin.debug:
+        msg:
+          pointerSha256: '{{ pointer.stat.checksum | default("absent") }}'
+          desiredBundle: '{{ selected.stdout | default("unsupported or absent") }}'
+          manager: '{{ manager_status.stdout_lines | default([]) }}'
+          authority: Software routing only; actual service probe and consent remain separate
+          rawRetention: Disabled Node preserves state/software and its inactive-only raw-retention timer; this is not full uninstall
+      when: service_operation == 'status'
+    - name: Observe actual per-instance raw-retention timer without cleanup
+      ansible.builtin.command:
+        argv: [systemctl, show, '{{ retention_timer }}', --property=LoadState,ActiveState,SubState,LastTriggerUSec,NextElapseUSecRealtime, --no-pager]
+      changed_when: false
+      register: raw_timer_status
+      when: service_operation == 'status'
+    - name: Show observed timer metadata without claiming raw retirement
+      ansible.builtin.debug:
+        msg:
+          rawRetentionTimer: '{{ raw_timer_status.stdout_lines | default([]) }}'
+          rawRetirementProven: false
+      when: service_operation == 'status'
+    - name: Explicit operator maintenance
+      become: true
+      when: service_operation != 'status'
+      block:
+        - name: Observe existing account and private state in one readonly process
+          ansible.builtin.command:
+            argv: [/opt/cc-runtime/bin/python, -I, -B, -c, "{{ lookup('ansible.builtin.file', playbook_dir + '/preflight.py') }}", --maintenance-observe]
+            stdin: "{{ {'version': 1, 'phase': 'accountState', 'operation': service_operation, 'identity': service_identity_id, 'bootstrap': {}} | to_json }}"
+          changed_when: false
+          timeout: 45
+          register: account_observation
+        - name: Retain only actual bounded account and private-state observations
+          ansible.builtin.set_fact:
+            maintenance_metadata: '{{ account_observation.stdout | from_json }}'
+            private_directories: '{{ (account_observation.stdout | from_json).privateDirectories }}'
+        - name: Refuse root, foreign primary group or supplementary privileges
+          ansible.builtin.assert:
+            that:
+              - maintenance_metadata.version == 1 and maintenance_metadata.phase == 'accountState'
+              - maintenance_metadata.identity == service_identity_id and maintenance_metadata.operation == service_operation
+              - maintenance_metadata.account.uid > 0
+              - maintenance_metadata.account.gid > 0
+              - maintenance_metadata.account.namedGroupGid == maintenance_metadata.account.gid
+              - maintenance_metadata.account.groups == [maintenance_metadata.account.gid]
+        - name: Refuse unsafe existing private state
+          ansible.builtin.assert:
+            that:
+              - private_directories.results[0].stat.isdir and not private_directories.results[0].stat.islnk
+              - private_directories.results[0].stat.uid == maintenance_metadata.account.uid
+              - private_directories.results[0].stat.mode == '0700'
+              - service_operation != 'install' or (not pointer.stat.exists and not private_directories.results[1].stat.exists)
+              - service_operation == 'install' or (private_directories.results[1].stat.isdir and not private_directories.results[1].stat.islnk and private_directories.results[1].stat.uid == maintenance_metadata.account.uid and private_directories.results[1].stat.mode == '0700')
+        - name: Check actual host and pinned private runtime before software changes
+          when: service_operation in ['install', 'update', 'start']
+          become_user: consolecrypt-service
+          block:
+            - name: Allocate this operation's public-source-only private preflight directory
+              ansible.builtin.tempfile:
+                state: directory
+                path: /tmp
+                prefix: cc-service-preflight-
+              register: preflight_directory
+            - name: Capture the original directory identity
+              ansible.builtin.stat:
+                path: '{{ preflight_directory.path }}'
+                follow: false
+              register: preflight_identity
+            - name: Package the same verified public sources into one bounded transfer
+              ansible.builtin.command:
+                argv: ['{{ ansible_playbook_python }}', '{{ playbook_dir }}/bundle.py', preflight-sources, --expected-manifest-sha256, '{{ service_bundle_sha256 }}']
+              delegate_to: localhost
+              become: false
+              changed_when: false
+              register: preflight_sources
+              no_log: true
+            - name: Copy one verified public-source envelope only
+              ansible.builtin.copy:
+                content: '{{ preflight_sources.stdout }}'
+                dest: '{{ preflight_directory.path }}/preflight-sources.json'
+                mode: '0444'
+              no_log: true
+            - name: Copy the fixed readonly observation program
+              ansible.builtin.copy:
+                src: '{{ playbook_dir }}/preflight.py'
+                dest: '{{ preflight_directory.path }}/preflight.py'
+                mode: '0444'
+            - name: Run actual nonroot no-new-privileges compatibility observation
+              ansible.builtin.command:
+                argv: [/usr/bin/setpriv, --no-new-privs, /opt/cc-runtime/bin/python, -I, -B, '{{ preflight_directory.path }}/preflight.py']
+                stdin: "{{ {'target': (lookup('ansible.builtin.file', bundle_root + '/bundle.json') | from_json).target, 'runtime': (lookup('ansible.builtin.file', bundle_root + '/bundle.json') | from_json).runtime, 'sourceSha256': (preflight_sources.stdout | hash('sha256')), 'sourceManifestSha256': service_bundle_sha256} | to_json }}"
+              changed_when: false
+              timeout: 45
+          always:
+            - name: Recheck this operation's temporary directory before cleanup
+              ansible.builtin.stat:
+                path: '{{ preflight_directory.path }}'
+                follow: false
+              register: preflight_final
+              when: preflight_directory.path is defined
+            - name: Deny a changed temporary namespace before any persistent writes
+              ansible.builtin.assert:
+                that:
+                  - preflight_directory.path is match('^/tmp/cc-service-preflight-[A-Za-z0-9_-]+$')
+                  - preflight_final.stat.isdir and not preflight_final.stat.islnk
+                  - preflight_final.stat.uid == maintenance_metadata.account.uid
+                  - preflight_final.stat.mode == '0700'
+                  - preflight_final.stat.inode == preflight_identity.stat.inode
+              when: preflight_directory.path is defined
+            - name: Remove only the unchanged operation-owned public-source directory
+              ansible.builtin.file:
+                path: '{{ preflight_directory.path }}'
+                state: absent
+              when:
+                - preflight_directory.path is defined
+                - preflight_directory.path is match('^/tmp/cc-service-preflight-[A-Za-z0-9_-]+$')
+                - preflight_final.stat.isdir and not preflight_final.stat.islnk
+                - preflight_final.stat.uid == maintenance_metadata.account.uid
+                - preflight_final.stat.mode == '0700'
+                - preflight_final.stat.inode == preflight_identity.stat.inode
+        - name: Observe fixed software parents and bootstrap in one readonly process
+          vars:
+            m: "{{ lookup('ansible.builtin.file', bundle_root + '/bundle.json') | from_json }}"
+          ansible.builtin.command:
+            argv: [/opt/cc-runtime/bin/python, -I, -B, -c, "{{ lookup('ansible.builtin.file', playbook_dir + '/preflight.py') }}", --maintenance-observe]
+            stdin: "{{ {'version': 1, 'phase': 'software', 'operation': service_operation, 'identity': service_identity_id, 'bootstrap': {'service_daemon.py': m.files['service_daemon.py'], 'service_control.py': m.files['service_control.py'], 'bundle.py': m.files['bundle.py'], 'pointer.py': m.files['pointer.py'], 'consolecrypt-service@.service': m.files['consolecrypt-service@.service'], 'consolecrypt-service-retention@.service': m.files['consolecrypt-service-retention@.service'], 'consolecrypt-service-retention@.timer': m.files['consolecrypt-service-retention@.timer']}} | to_json }}"
+          changed_when: false
+          timeout: 45
+          register: software_observation
+          when: service_operation in ['install', 'update', 'start']
+        - name: Preserve account continuity and actual readonly software observations
+          ansible.builtin.assert:
+            that:
+              - (software_observation.stdout | from_json).version == 1
+              - (software_observation.stdout | from_json).phase == 'software'
+              - (software_observation.stdout | from_json).identity == service_identity_id
+              - (software_observation.stdout | from_json).operation == service_operation
+              - (software_observation.stdout | from_json).account == maintenance_metadata.account
+          when: service_operation in ['install', 'update', 'start']
+        - name: Retain only actual fixed parent and bootstrap observations
+          ansible.builtin.set_fact:
+            software_parents: '{{ (software_observation.stdout | from_json).softwareParents }}'
+            bootstrap: '{{ (software_observation.stdout | from_json).bootstrap }}'
+          when: service_operation in ['install', 'update', 'start']
+        - name: Refuse unsafe existing software parents
+          ansible.builtin.assert:
+            that:
+              - not item.stat.exists or (item.stat.isdir and not item.stat.islnk and item.stat.uid == 0 and item.stat.mode in ['0755', '0555'])
+          loop: '{{ software_parents.results }}'
+          when: service_operation in ['install', 'update']
+        - name: Create absent fixed software parents only
+          ansible.builtin.file:
+            path: '{{ item.item }}'
+            state: directory
+            owner: root
+            group: root
+            mode: '0755'
+          loop: '{{ software_parents.results }}'
+          when: service_operation in ['install', 'update'] and not item.stat.exists
+        - name: Refuse bootstrap replacement or adoption during ordinary maintenance
+          ansible.builtin.assert:
+            that:
+              - not item.stat.exists or (item.stat.isreg and not item.stat.islnk and item.stat.uid == 0 and item.stat.nlink == 1 and item.stat.mode == '0444' and item.stat.checksum == (lookup('ansible.builtin.file', bundle_root + '/bundle.json') | from_json).files[item.item.source].sha256)
+              - service_operation == 'install' or item.stat.exists
+          loop: '{{ bootstrap.results }}'
+          when: service_operation in ['install', 'update', 'start']
+        - name: Install absent immutable bootstrap assets once
+          ansible.builtin.copy:
+            src: '{{ bundle_root }}/{{ item.item.source }}'
+            dest: '{{ item.item.destination }}'
+            owner: root
+            group: root
+            mode: '0444'
+          loop: '{{ bootstrap.results }}'
+          when: service_operation == 'install' and not item.stat.exists
+        - name: Observe candidate versioned software without adopting a partial tree
+          ansible.builtin.stat:
+            path: '{{ bundle_destination }}'
+            follow: false
+          register: candidate
+          when: service_operation in ['install', 'update']
+        - name: Transfer one complete original verified immutable bundle
+          when: service_operation in ['install', 'update'] and not candidate.stat.exists
+          block:
+            - name: Allocate an original controller courier namespace
+              ansible.builtin.tempfile:
+                state: directory
+                path: /tmp
+                prefix: cc-service-bundle-
+              delegate_to: localhost
+              become: false
+              register: controller_courier
+            - name: Capture that controller namespace identity
+              ansible.builtin.stat:
+                path: '{{ controller_courier.path }}'
+                follow: false
+              delegate_to: localhost
+              become: false
+              register: controller_courier_identity
+            - name: Stream only the same verified original complete bundle
+              ansible.builtin.command:
+                argv: ['{{ ansible_playbook_python }}', '{{ playbook_dir }}/bundle.py', build-courier,
+                       --directory, '{{ controller_courier.path }}',
+                       --directory-device, '{{ controller_courier_identity.stat.dev | string }}',
+                       --directory-inode, '{{ controller_courier_identity.stat.inode | string }}',
+                       --expected-manifest-sha256, '{{ service_bundle_sha256 }}']
+              delegate_to: localhost
+              become: false
+              changed_when: false
+              register: bundle_courier
+            - name: Allocate an original root controlled receiver namespace
+              ansible.builtin.tempfile:
+                state: directory
+                path: /var/tmp
+                prefix: cc-service-bundle-
+              register: target_courier
+            - name: Capture that root receiver namespace identity
+              ansible.builtin.stat:
+                path: '{{ target_courier.path }}'
+                follow: false
+              register: target_courier_identity
+            - name: Transfer exactly one inert complete bundle file
+              ansible.builtin.copy:
+                src: '{{ controller_courier.path }}/bundle.zip'
+                dest: '{{ target_courier.path }}/bundle.zip'
+                owner: root
+                group: root
+                mode: '0400'
+                follow: false
+            - name: Validate original complete bytes then create only absent immutable version
+              ansible.builtin.command:
+                argv: [/opt/cc-runtime/bin/python, -I, -B, /opt/consolecrypt/deployment/bundle.py,
+                       stage-courier, --directory, '{{ target_courier.path }}',
+                       --directory-device, '{{ target_courier_identity.stat.dev | string }}',
+                       --directory-inode, '{{ target_courier_identity.stat.inode | string }}',
+                       --expected-manifest-sha256, '{{ service_bundle_sha256 }}',
+                       --archive-sha256, '{{ (bundle_courier.stdout | from_json).archiveSha256 }}']
+          always:
+            - name: Recheck only this original root courier before cleanup
+              ansible.builtin.stat:
+                path: '{{ target_courier.path }}'
+                follow: false
+              register: target_courier_final
+              when: target_courier.path is defined and target_courier_identity.stat.inode is defined
+            - name: Refuse changed root courier namespace cleanup
+              ansible.builtin.assert:
+                that:
+                  - not target_courier_final.stat.exists or (target_courier_final.stat.isdir and not target_courier_final.stat.islnk and target_courier_final.stat.uid == 0 and target_courier_final.stat.mode == '0700' and target_courier_final.stat.dev == target_courier_identity.stat.dev and target_courier_final.stat.inode == target_courier_identity.stat.inode)
+              when: target_courier_final.stat is defined
+            - name: Remove only this original root courier namespace
+              ansible.builtin.file:
+                path: '{{ target_courier.path }}'
+                state: absent
+              when: target_courier_final.stat.exists | default(false)
+            - name: Recheck only this original controller courier before cleanup
+              ansible.builtin.stat:
+                path: '{{ controller_courier.path }}'
+                follow: false
+              delegate_to: localhost
+              become: false
+              register: controller_courier_final
+              when: controller_courier.path is defined and controller_courier_identity.stat.inode is defined
+            - name: Refuse changed controller courier namespace cleanup
+              ansible.builtin.assert:
+                that:
+                  - not controller_courier_final.stat.exists or (controller_courier_final.stat.isdir and not controller_courier_final.stat.islnk and controller_courier_final.stat.uid == controller_courier_identity.stat.uid and controller_courier_final.stat.mode == '0700' and controller_courier_final.stat.dev == controller_courier_identity.stat.dev and controller_courier_final.stat.inode == controller_courier_identity.stat.inode)
+              when: controller_courier_final.stat is defined
+            - name: Remove only this original controller courier namespace
+              ansible.builtin.file:
+                path: '{{ controller_courier.path }}'
+                state: absent
+              delegate_to: localhost
+              become: false
+              when: controller_courier_final.stat.exists | default(false)
+        - name: Verify complete root-owned immutable tree before selecting it
+          ansible.builtin.command:
+            argv: [/opt/cc-runtime/bin/python, -I, -B, /opt/consolecrypt/deployment/bundle.py, verify-installed, --bundle-sha256, '{{ service_bundle_sha256 }}']
+          changed_when: false
+          when: service_operation in ['install', 'update', 'start']
+        - name: Pause only this instance raw maintenance before explicit update
+          ansible.builtin.systemd_service:
+            name: '{{ retention_timer }}'
+            state: stopped
+          when: service_operation == 'update'
+        - name: Join only this instance maintenance worker before explicit update
+          ansible.builtin.systemd_service:
+            name: '{{ retention_unit }}'
+            state: stopped
+          when: service_operation == 'update'
+        - name: Stop and join only this selected original instance
+          ansible.builtin.systemd_service:
+            name: '{{ service_unit }}'
+            state: stopped
+          when: service_operation in ['update', 'remove']
+        - name: Require manager known join before pointer change or removal
+          ansible.builtin.command:
+            argv: [systemctl, show, '{{ service_unit }}', --property=Result,MainPID, --no-pager]
+          changed_when: false
+          register: stopped
+          failed_when: stopped.rc != 0 or 'MainPID=0' not in stopped.stdout_lines or 'Result=success' not in stopped.stdout_lines
+          when: service_operation in ['update', 'remove']
+        - name: Recheck the original instance pointer after join
+          ansible.builtin.stat:
+            path: '{{ service_pointer }}'
+            follow: false
+            checksum_algorithm: sha256
+          register: joined_pointer
+          when: service_operation in ['update', 'remove']
+        - name: Preserve a pointer changed during the asynchronous join
+          ansible.builtin.assert:
+            that:
+              - joined_pointer.stat.isreg and not joined_pointer.stat.islnk
+              - joined_pointer.stat.uid == 0 and joined_pointer.stat.mode == '0444'
+              - joined_pointer.stat.checksum == expected_instance_pointer_sha256
+          when: service_operation in ['update', 'remove']
+        - name: Provision only a fresh explicit-install private child
+          ansible.builtin.file:
+            path: '{{ item }}'
+            state: directory
+            owner: consolecrypt-service
+            group: consolecrypt-service
+            mode: '0700'
+          loop: ['{{ service_state }}', '{{ service_state }}/identities', '{{ service_state }}/runtime']
+          when: service_operation == 'install'
+        - name: Create only this fresh separate identity, not an enrollment
+          ansible.builtin.command:
+            argv: ['{{ bundle_destination }}/cc-service-node', /opt/cc-runtime/bin/python, '{{ bundle_destination }}/runner', '{{ service_state }}/runtime', --identity-create, '{{ service_state }}/identities', '{{ service_identity_id }}']
+            # Empty stdin inherits Ansible's still-open input. Send the
+            # existing inert close frame so creation exits without enrollment.
+            stdin: "{{ {'version': 1, 'request_id': service_identity_id, 'operation': 'service_close', 'body': {}} | to_json }}"
+          become_user: consolecrypt-service
+          timeout: 45
+          register: fresh_identity_close
+          when: service_operation == 'install'
+        - name: Require this identity process's exact successful close response
+          ansible.builtin.assert:
+            that:
+              - (fresh_identity_close.stdout | from_json).version == 1
+              - (fresh_identity_close.stdout | from_json).type == 'response'
+              - (fresh_identity_close.stdout | from_json).request_id == service_identity_id
+              - (fresh_identity_close.stdout | from_json).error == none
+              - "(fresh_identity_close.stdout | from_json).result == {'cancellation_requested': true}"
+          when: service_operation == 'install'
+        - name: Select only this instance under held metadata lock and expected-hash CAS
+          ansible.builtin.command:
+            argv: [/opt/cc-runtime/bin/python, -I, -B, /opt/consolecrypt/deployment/pointer.py, --identity, '{{ service_identity_id }}', --expected-pointer-sha256, '{{ "absent" if service_operation == "install" else expected_instance_pointer_sha256 }}', --bundle-sha256, '{{ service_bundle_sha256 }}']
+          when: service_operation in ['install', 'update']
+        - name: Refuse start retargeting to a caller-chosen different bundle
+          ansible.builtin.assert:
+            that:
+              - (selected.stdout | from_json).bundle == service_bundle_sha256
+          when: service_operation == 'start'
+        - name: Refresh installed manager definitions
+          ansible.builtin.systemd_service:
+            daemon_reload: true
+          when: service_operation == 'install'
+        - name: Enable bounded inactive-only raw retention for this installed instance
+          ansible.builtin.systemd_service:
+            name: '{{ retention_timer }}'
+            state: started
+            enabled: true
+          when: service_operation in ['install', 'update', 'start', 'remove']
+        - name: Start existing identity only on explicit start
+          ansible.builtin.systemd_service:
+            name: '{{ service_unit }}'
+            state: started
+            enabled: true
+          when: service_operation == 'start'
+        - name: Remove only this manager instance, preserving state and versioned software
+          ansible.builtin.systemd_service:
+            name: '{{ service_unit }}'
+            enabled: false
+          when: service_operation == 'remove'

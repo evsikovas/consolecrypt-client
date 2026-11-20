@@ -116,14 +116,54 @@ final class LocalShellProfile {
     required this.shell,
     this.distribution,
   });
+  factory LocalShellProfile.fromJson(Map<String, dynamic> json) => LocalShellProfile(
+    id: json['id'] as String,
+    kind: json['kind'] as String,
+    label: json['label'] as String,
+    shell: json['shell'] as String,
+    distribution: json['distribution'] as String?,
+  );
   final String id, kind, label, shell;
   final String? distribution;
 }
 
+/// Observation from the existing fixed WSL discovery, not feature/install state.
+enum WslDiscoveryStatus {
+  executableMissing,
+  spawnFailed,
+  timedOut,
+  ioFailed,
+  outputTooLarge,
+  nonzeroExit,
+  empty,
+  available;
+
+  static WslDiscoveryStatus? fromJson(Object? value) => switch (value) {
+    'executable_missing' => executableMissing,
+    'spawn_failed' => spawnFailed,
+    'timed_out' => timedOut,
+    'io_failed' => ioFailed,
+    'output_too_large' => outputTooLarge,
+    'nonzero_exit' => nonzeroExit,
+    'empty' => empty,
+    'available' => available,
+    _ => null,
+  };
+}
+
 final class LocalShellProfiles {
-  const LocalShellProfiles({this.profiles = const [], this.unavailableReason});
+  const LocalShellProfiles({this.profiles = const [], this.unavailableReason, this.wslDiscovery});
+  factory LocalShellProfiles.fromJson(Map<String, dynamic> json) => LocalShellProfiles(
+    profiles: [
+      for (final p in (json['profiles'] as List? ?? const []).cast<Map<String, dynamic>>())
+        LocalShellProfile.fromJson(p),
+    ],
+    unavailableReason: json['unavailable_reason'] as String?,
+    wslDiscovery: WslDiscoveryStatus.fromJson(json['wsl_discovery']),
+  );
   final List<LocalShellProfile> profiles;
   final String? unavailableReason;
+  final WslDiscoveryStatus? wslDiscovery;
 }
 
 /// A reset and its snapshot share the output queue with ordinary data. This

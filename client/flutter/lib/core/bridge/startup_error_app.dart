@@ -5,7 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 /// Shown instead of the app when the native core cannot be loaded or
 /// initialized (never a silent fallback to the mock backend). Settings are not
-/// readable yet, so the texts follow the system language (Russian or English).
+/// readable yet, so the texts follow the system language.
 class StartupErrorApp extends StatelessWidget {
   const StartupErrorApp({required this.error, super.key});
 

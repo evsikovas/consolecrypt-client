@@ -39,11 +39,13 @@
 //! * [`shell`] — shell tokenizer shared by the above.
 
 pub mod assistant;
+pub mod automation;
 pub mod cancel;
 pub mod context;
 pub mod embed;
 pub mod error;
 pub mod features;
+pub mod monitoring;
 pub mod parameterize;
 pub mod pipeline;
 pub mod policy;
@@ -69,7 +71,7 @@ pub use pipeline::{LlmMode, SearchOptions, SearchOutcome};
 pub use policy::{
     ApprovedCommand, ExecutionGate, HostRef, PolicyError, ProposalOrigin, RunProposal,
 };
-pub use provider::{build_provider, Capabilities, LlmProvider, ProviderSettings};
+pub use provider::{build_device_local_provider, build_provider, Capabilities, LlmProvider, ProviderSettings};
 pub use risk::{classify, combine_with_ai, CommandDialect, RiskAssessment, RiskLevel};
 pub use sanitizer::{PrivacyProfile, SanitizedText, SanitizerSession};
 pub use snippet::{render_snippet, RenderDialect, Template, VariableForm};

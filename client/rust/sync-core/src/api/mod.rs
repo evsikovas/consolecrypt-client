@@ -16,6 +16,18 @@
 
 pub mod enterprise;
 mod error;
+mod monitoring_compatibility;
+pub use monitoring_compatibility::{MonitoringAccountPolicy, MonitoringCompatibilityError, MonitoringPolicyState, MonitoringPullCheckpoint};
+mod reader_auth;
+mod relay_trust;
+pub use relay_trust::ApiServerTrust;
+mod relay_slots;
+pub use relay_slots::{RelaySlotLimits,RelaySlotError,RelaySlot,RelayAgentCapability,RelayBinaryStream};
+mod relay_control;
+pub use relay_control::{OriginalRelayApi,RelayControlBootstrap,RelayControlReference,RelayControlRegistration,
+    RelayControlRegistrationAttempt,RelayControlDispatch,RelayControlStream};
+pub use reader_auth::ReaderAuthenticatedSubject;
+use reader_auth::{AuthTicket, ReaderAuthState};
 mod sharing;
 mod sharing_enrollment;
 pub(crate) mod signer;
@@ -120,6 +132,7 @@ pub struct ApiConfig {
     pub request_timeout: Duration,
     /// TCP/TLS connect timeout.
     pub connect_timeout: Duration,
+    extra_server_trust: Option<ApiServerTrust>,
 }
 
 impl ApiConfig {
@@ -180,6 +193,7 @@ impl ApiConfig {
             platform,
             request_timeout: Duration::from_secs(60),
             connect_timeout: Duration::from_secs(10),
+            extra_server_trust: None,
         })
     }
 }
@@ -196,11 +210,19 @@ struct Inner {
     store: Arc<dyn TokenStore>,
     cache: std::sync::Mutex<TokenCache>,
     refresh_lock: tokio::sync::Mutex<()>,
+    token_write_lock: tokio::sync::Mutex<()>,
+    reader_auth: Arc<ReaderAuthState>,
     /// Why the server ended the session at the last refresh (disabled
     /// account, revoked device…), so callers that waited on the refresh
     /// lock report the same reason instead of a bare "not authenticated".
     ended: std::sync::Mutex<Option<ApiError>>,
     signer: std::sync::RwLock<Option<Arc<dyn RequestSigner>>>,
+}
+
+impl Drop for Inner {
+    fn drop(&mut self) {
+        let _ = self.reader_auth.begin();
+    }
 }
 
 /// Cloneable handle to the ConsoleCrypt server API.
@@ -234,14 +256,14 @@ impl ApiClient {
         headers.insert(HEADER_PROTOCOL_VERSION, hv(&PROTOCOL_VERSION.to_string())?);
         headers.insert(HEADER_CLIENT_VERSION, hv(&config.client_version)?);
         headers.insert(HEADER_PLATFORM, hv(config.platform.as_str())?);
-        let http = reqwest::Client::builder()
+        let mut http = reqwest::Client::builder()
             .default_headers(headers)
             .user_agent(format!("ConsoleCrypt/{}", config.client_version))
             .timeout(config.request_timeout)
             .connect_timeout(config.connect_timeout)
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .map_err(|e| ApiError::InvalidConfig(format!("http client: {e}")))?;
+            .redirect(reqwest::redirect::Policy::none());
+        if let Some(tls)=config.extra_server_tls(false)?{http=http.tls_backend_preconfigured((*tls).clone());}
+        let http=http.build().map_err(|e|ApiError::InvalidConfig(format!("http client: {e}")))?;
         Ok(Self {
             inner: Arc::new(Inner {
                 http,
@@ -249,6 +271,8 @@ impl ApiClient {
                 store: tokens,
                 cache: std::sync::Mutex::new(TokenCache::default()),
                 refresh_lock: tokio::sync::Mutex::new(()),
+                token_write_lock: tokio::sync::Mutex::new(()),
+                reader_auth: ReaderAuthState::new(),
                 ended: std::sync::Mutex::new(None),
                 signer: std::sync::RwLock::new(None),
             }),
@@ -265,7 +289,22 @@ impl ApiClient {
     /// Install (or remove) the request signer; affects every clone of this
     /// client, including a running [`crate::EventStream`] on reconnect.
     pub fn set_request_signer(&self, signer: Option<Arc<dyn RequestSigner>>) {
-        *self.inner.signer.write().unwrap_or_else(|p| p.into_inner()) = signer;
+        let Ok(ticket) = self.inner.reader_auth.begin() else {
+            return;
+        };
+        let _ = self.inner.reader_auth.finish(&ticket, Some(false), || {
+            *self.inner.signer.write().unwrap_or_else(|p| p.into_inner()) = signer;
+        });
+        // A fresh real /me capture may certify this new signer generation.
+        // Existing subjects stay invalid; no subject/device is inferred here.
+        let has_tokens = {
+            let c = self.lock_cache();
+            c.loaded && c.tokens.is_some()
+        };
+        let _ = self
+            .inner
+            .reader_auth
+            .finish(&ticket, Some(has_tokens), || ());
     }
 
     /// Whether a request signer is installed.
@@ -325,18 +364,28 @@ impl ApiClient {
                 return Ok(c.tokens.clone());
             }
         }
+        let _write = self.inner.token_write_lock.lock().await;
+        {
+            let c = self.lock_cache();
+            if c.loaded {
+                return Ok(c.tokens.clone());
+            }
+        }
+        let ticket = self.inner.reader_auth.ticket()?;
         let loaded = self
             .inner
             .store
             .load()
             .await
             .map_err(|e| ApiError::TokenStore(e.to_string()))?;
-        let mut c = self.lock_cache();
-        if !c.loaded {
-            c.loaded = true;
-            c.tokens = loaded;
-        }
-        Ok(c.tokens.clone())
+        self.inner
+            .reader_auth
+            .finish_load(&ticket, loaded.is_some(), || {
+                let mut c = self.lock_cache();
+                c.loaded = true;
+                c.tokens = loaded;
+                c.tokens.clone()
+            })
     }
 
     fn lock_cache(&self) -> std::sync::MutexGuard<'_, TokenCache> {
@@ -344,17 +393,76 @@ impl ApiClient {
         self.inner.cache.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    async fn store_tokens(&self, tokens: &TokenPair) -> Result<(), ApiError> {
-        *self.inner.ended.lock().unwrap_or_else(|e| e.into_inner()) = None;
-        self.inner
-            .store
-            .save(tokens)
-            .await
-            .map_err(|e| ApiError::TokenStore(e.to_string()))?;
-        let mut c = self.lock_cache();
-        c.loaded = true;
-        c.tokens = Some(tokens.clone());
-        Ok(())
+    async fn store_tokens(&self, tokens: &TokenPair, ticket: &AuthTicket) -> Result<(), ApiError> {
+        // Detached completion owns the serialized OS operation even if its
+        // caller is cancelled. A late save must be erased before releasing the
+        // write lock, so a queued clear/newer login cannot be overwritten.
+        let api = self.clone();
+        let tokens = tokens.clone();
+        let ticket = ticket.clone();
+        tokio::spawn(async move {
+            let _write = api.inner.token_write_lock.lock().await;
+            api.inner.reader_auth.check(&ticket)?;
+            api.inner
+                .store
+                .save(&tokens)
+                .await
+                .map_err(|e| ApiError::TokenStore(e.to_string()))?;
+            let availability = if ticket.publishes_reader() {
+                Some(true)
+            } else {
+                None
+            };
+            let committed = api.inner.reader_auth.finish(&ticket, availability, || {
+                let mut c = api.lock_cache();
+                c.loaded = true;
+                c.tokens = Some(tokens);
+                *api.inner.ended.lock().unwrap_or_else(|e| e.into_inner()) = None;
+            });
+            if committed.is_err() {
+                // The old save ran while a newer entry invalidated it. Finish
+                // its compensating clear under the SAME writer lock. There is
+                // no claim of crash-atomic CAS across an OS keychain backend.
+                let _clear_barrier = api.inner.reader_auth.barrier()?;
+                let cleared = api.inner.store.clear().await;
+                {
+                    let mut c = api.lock_cache();
+                    c.loaded = true;
+                    c.tokens = None;
+                }
+                if let Err(e) = cleared {
+                    api.invalidate_reader_auth();
+                    return Err(ApiError::TokenStore(e.to_string()));
+                }
+            }
+            committed
+        })
+        .await
+        .map_err(|_| ApiError::TokenStore("auth mutation completion unavailable".into()))?
+    }
+
+    async fn clear_tokens_with_ticket(&self, ticket: &AuthTicket) -> Result<(), ApiError> {
+        // Cache invalidation happens before the first await; disk mutation is
+        // ordered with every save and continues if the waiter is dropped.
+        self.inner.reader_auth.finish(ticket, None, || {
+            let mut c = self.lock_cache();
+            c.loaded = true;
+            c.tokens = None;
+        })?;
+        let api = self.clone();
+        let ticket = ticket.clone();
+        tokio::spawn(async move {
+            let _write = api.inner.token_write_lock.lock().await;
+            api.inner.reader_auth.check(&ticket)?;
+            api.inner
+                .store
+                .clear()
+                .await
+                .map_err(|e| ApiError::TokenStore(e.to_string()))?;
+            api.inner.reader_auth.finish(&ticket, Some(false), || ())
+        })
+        .await
+        .map_err(|_| ApiError::TokenStore("auth mutation completion unavailable".into()))?
     }
 
     /// Forget tokens locally (store + cache) without calling the server.
@@ -369,22 +477,15 @@ impl ApiClient {
     }
 
     pub async fn clear_tokens(&self) -> Result<(), ApiError> {
+        let ticket = self.inner.reader_auth.begin()?;
         *self.inner.ended.lock().unwrap_or_else(|e| e.into_inner()) = None;
-        {
-            let mut c = self.lock_cache();
-            c.loaded = true;
-            c.tokens = None;
-        }
-        self.inner
-            .store
-            .clear()
-            .await
-            .map_err(|e| ApiError::TokenStore(e.to_string()))
+        self.clear_tokens_with_ticket(&ticket).await
     }
 
     /// Install tokens obtained elsewhere (e.g. restored session).
     pub async fn set_tokens(&self, tokens: &TokenPair) -> Result<(), ApiError> {
-        self.store_tokens(tokens).await
+        let ticket = self.inner.reader_auth.begin()?;
+        self.store_tokens(tokens, &ticket).await
     }
 
     /// Whether tokens are available (not whether they are still valid).
@@ -395,12 +496,22 @@ impl ApiClient {
     /// A currently valid access token (refreshing first if it is about to
     /// expire). Used by the WebSocket client.
     pub(crate) async fn access_token(&self) -> Result<SecretString, ApiError> {
+        self.access_token_with_ticket(None).await
+    }
+
+    async fn access_token_with_ticket(
+        &self,
+        ticket: Option<&AuthTicket>,
+    ) -> Result<SecretString, ApiError> {
+        if let Some(t) = ticket {
+            self.inner.reader_auth.check(t)?;
+        }
         let tokens = self
             .cached_tokens()
             .await?
             .ok_or_else(|| self.signed_out())?;
         if expiring(&tokens) {
-            self.refresh_after_rejection(tokens.access_token.expose_secret())
+            self.refresh_after_rejection_with_ticket(tokens.access_token.expose_secret(), ticket)
                 .await?;
             return Ok(self
                 .cached_tokens()
@@ -414,7 +525,20 @@ impl ApiClient {
     /// Single-flight refresh after `rejected` was refused (or is expiring).
     /// If another task already rotated the tokens, this is a no-op.
     pub(crate) async fn refresh_after_rejection(&self, rejected: &str) -> Result<(), ApiError> {
+        self.refresh_after_rejection_with_ticket(rejected, None)
+            .await
+    }
+
+    async fn refresh_after_rejection_with_ticket(
+        &self,
+        rejected: &str,
+        parent: Option<&AuthTicket>,
+    ) -> Result<(), ApiError> {
+        let _refresh_barrier = self.inner.reader_auth.barrier()?;
         let _guard = self.inner.refresh_lock.lock().await;
+        if let Some(t) = parent {
+            self.inner.reader_auth.check(t)?;
+        }
         let current = self
             .cached_tokens()
             .await?
@@ -422,20 +546,34 @@ impl ApiClient {
         if current.access_token.expose_secret() != rejected && !expiring(&current) {
             return Ok(());
         }
-        self.refresh_with(current.refresh_token).await.map(|_| ())
+        let ticket = match parent {
+            Some(t) => t.clone(),
+            None => self.inner.reader_auth.begin()?,
+        };
+        self.inner.reader_auth.check(&ticket)?;
+        self.refresh_with(current.refresh_token, &ticket)
+            .await
+            .map(|_| ())
     }
 
     /// Force a token refresh now (rotates the refresh token).
     pub async fn refresh(&self) -> Result<TokenPair, ApiError> {
+        let _refresh_barrier = self.inner.reader_auth.barrier()?;
         let _guard = self.inner.refresh_lock.lock().await;
+        let ticket = self.inner.reader_auth.begin()?;
         let current = self
             .cached_tokens()
             .await?
             .ok_or_else(|| self.signed_out())?;
-        self.refresh_with(current.refresh_token).await
+        self.inner.reader_auth.check(&ticket)?;
+        self.refresh_with(current.refresh_token, &ticket).await
     }
 
-    async fn refresh_with(&self, refresh_token: SecretString) -> Result<TokenPair, ApiError> {
+    async fn refresh_with(
+        &self,
+        refresh_token: SecretString,
+        ticket: &AuthTicket,
+    ) -> Result<TokenPair, ApiError> {
         let body = to_json(&RefreshRequest { refresh_token })?;
         // Bound to the device key too: the server checks the proof against
         // the refresh token's session before rotating it.
@@ -453,7 +591,7 @@ impl ApiClient {
         };
         match result {
             Ok(pair) => {
-                self.store_tokens(&pair).await?;
+                self.store_tokens(&pair, ticket).await?;
                 tracing::debug!("access token refreshed");
                 Ok(pair)
             }
@@ -469,9 +607,11 @@ impl ApiClient {
                 match terminal {
                     Some(t) => {
                         tracing::warn!(error = %t, "token refresh rejected; clearing session");
-                        let _ = self.clear_tokens().await;
-                        *self.inner.ended.lock().unwrap_or_else(|e| e.into_inner()) =
-                            Some(t.clone());
+                        self.clear_tokens_with_ticket(ticket).await?;
+                        self.inner.reader_auth.finish(ticket, None, || {
+                            *self.inner.ended.lock().unwrap_or_else(|e| e.into_inner()) =
+                                Some(t.clone());
+                        })?;
                         Err(t)
                     }
                     None => Err(e),
@@ -566,7 +706,20 @@ impl ApiClient {
         url: Url,
         body: Option<Vec<u8>>,
     ) -> Result<Raw, ApiError> {
-        let token = self.access_token().await?;
+        self.send_authed_with_ticket(method, url, body, None).await
+    }
+
+    async fn send_authed_with_ticket(
+        &self,
+        method: Method,
+        url: Url,
+        body: Option<Vec<u8>>,
+        ticket: Option<&AuthTicket>,
+    ) -> Result<Raw, ApiError> {
+        if let Some(t) = ticket {
+            self.inner.reader_auth.check(t)?;
+        }
+        let token = self.access_token_with_ticket(ticket).await?;
         let raw = self
             .send_signed(
                 method.clone(),
@@ -578,7 +731,8 @@ impl ApiClient {
         if raw.status == StatusCode::UNAUTHORIZED
             && error_body(&raw).is_none_or(|e| e.code == ErrorCode::Unauthorized)
         {
-            self.refresh_after_rejection(token.expose_secret()).await?;
+            self.refresh_after_rejection_with_ticket(token.expose_secret(), ticket)
+                .await?;
             let token = self
                 .cached_tokens()
                 .await?
@@ -663,6 +817,7 @@ impl ApiClient {
     /// `field = "email"` stays a server error (account exists → log in).
     /// Always send `device_proof` (protocol 1.4, ADR-0006).
     pub async fn register(&self, req: &RegisterRequest) -> Result<AuthResponse, ApiError> {
+        let ticket = self.inner.reader_auth.begin()?;
         let resp: AuthResponse = self
             .public(Method::POST, paths::AUTH_REGISTER, Some(to_json(req)?))
             .await
@@ -680,7 +835,7 @@ impl ApiClient {
                 }
                 e => e,
             })?;
-        self.store_tokens(&resp.tokens).await?;
+        self.store_tokens(&resp.tokens, &ticket).await?;
         Ok(resp)
     }
 
@@ -693,6 +848,7 @@ impl ApiClient {
     /// `device_proof`: the server requires it for known device ids
     /// (`422 invalid_proof`, `details.reason = device_proof_required`).
     pub async fn login(&self, req: &LoginRequest) -> Result<AuthResponse, ApiError> {
+        let ticket = self.inner.reader_auth.begin()?;
         let resp: AuthResponse = self
             .public(Method::POST, paths::AUTH_LOGIN, Some(to_json(req)?))
             .await
@@ -701,7 +857,7 @@ impl ApiClient {
                 e if e.is_code(ErrorCode::AlreadyExists) => ApiError::DeviceIdentityConflict,
                 e => e,
             })?;
-        self.store_tokens(&resp.tokens).await?;
+        self.store_tokens(&resp.tokens, &ticket).await?;
         Ok(resp)
     }
 
@@ -712,11 +868,14 @@ impl ApiClient {
     /// answers `200` [`LogoutResponse`] (trusted devices stayed signed in);
     /// otherwise `204` → `None`.
     pub async fn logout(&self, req: &LogoutRequest) -> Result<Option<LogoutResponse>, ApiError> {
+        let _logout_barrier = self.inner.reader_auth.barrier()?;
+        let ticket = self.inner.reader_auth.begin()?.without_reader();
         let r = match self
-            .send_authed(
+            .send_authed_with_ticket(
                 Method::POST,
                 self.endpoint(paths::AUTH_LOGOUT),
                 Some(to_json(req)?),
+                Some(&ticket),
             )
             .await
         {
@@ -731,7 +890,7 @@ impl ApiClient {
         };
         match &r {
             Err(e) if e.is_offline() => {}
-            _ => self.clear_tokens().await?,
+            _ => self.clear_tokens_with_ticket(&ticket).await?,
         }
         r
     }
@@ -778,6 +937,7 @@ impl ApiClient {
         &self,
         req: &VerifyEmailRequest,
     ) -> Result<Option<AuthResponse>, ApiError> {
+        let ticket = self.inner.reader_auth.begin()?;
         let raw = check(
             self.send(
                 Method::POST,
@@ -789,10 +949,14 @@ impl ApiClient {
             .await?,
         )?;
         if raw.body.is_empty() {
+            let has_tokens = self.lock_cache().tokens.is_some();
+            self.inner
+                .reader_auth
+                .finish(&ticket, Some(has_tokens), || ())?;
             return Ok(None);
         }
         let resp: AuthResponse = decode(&raw)?;
-        self.store_tokens(&resp.tokens).await?;
+        self.store_tokens(&resp.tokens, &ticket).await?;
         Ok(Some(resp))
     }
 

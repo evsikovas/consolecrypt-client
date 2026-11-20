@@ -13,7 +13,7 @@ class _MobileShell extends ConsumerStatefulWidget {
 
 class _MobileShellState extends ConsumerState<_MobileShell> {
   bool _more = false;
-  static const _primary = [ShellBranch.hosts, ShellBranch.terminal, ShellBranch.sftp];
+  static const _defaultPrimary = [ShellBranch.hosts, ShellBranch.terminal, ShellBranch.sftp];
 
   @override
   void initState() {
@@ -38,7 +38,11 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
     final kubeAlerts = kubernetesEnabled
         ? ref.watch(kubeGitOpsAlertsProvider.select((alerts) => alerts.values.fold(0, (sum, count) => sum + count)))
         : 0;
-    final selected = _more ? 3 : _primary.indexOf(_navigationBranch(branch));
+    final preferences = ref.watch(navigationPreferencesProvider);
+    final primary = (preferences?.ordered(_defaultPrimary, (branch) => branch.name) ?? _defaultPrimary)
+        .where((branch) => preferences?.visible(branch.name) ?? true)
+        .toList();
+    final selected = _more ? primary.length : primary.indexOf(_navigationBranch(branch));
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     final rdpVisible = branch == ShellBranch.rdp && !_more && !toolsOpen;
     // The remote desktop and its input controls need the short landscape
@@ -91,83 +95,109 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                     style: GlassIconButtonStyle.plain,
                     onPressed: () => ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.ai),
                   ),
+                  const CriticalNoticeButton(),
                   const SizedBox(width: 8),
                 ],
               ),
         body: SafeArea(
           top: hideAppBar,
           bottom: keyboardOpen || toolsOpen,
-          child: Stack(
-            fit: StackFit.expand,
+          child: Column(
             children: [
-              Offstage(
-                offstage: _more || toolsOpen,
-                child: Column(
+              if (hideAppBar) const CriticalNoticeAttentionBar(),
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Offstage(offstage: rdpVisible && keyboardOpen, child: const _ShellBanners()),
-                    Expanded(child: SftpEditRecoveryListener(child: widget.navigationShell)),
-                  ],
-                ),
-              ),
-              if (_more && !toolsOpen)
-                ListView(
-                  key: const ValueKey('mobile-more-page'),
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                  children: [
-                    const ProfileSwitcher(),
-                    const SizedBox(height: 20),
-                    for (final item in _navItems)
-                      if (!_primary.contains(item.branch) && (!item.syncedOnly || profile?.isLocal == false))
-                        ListTile(
-                          key: ValueKey('mobile-nav-${item.branch.name}'),
-                          minVerticalPadding: 14,
-                          leading: Icon(item.icon),
-                          title: Text(shellBranchLabel(item.branch, l)),
-                          trailing: item.branch == ShellBranch.kubernetes && kubeAlerts > 0
-                              ? GlassBadge(label: '$kubeAlerts', tone: GlassTone.warning, dense: true)
-                              : const Icon(Icons.chevron_right_rounded),
-                          onTap: () => _go(item.branch),
-                        ),
-                    const SizedBox(height: 16),
-                    GlassButton(
-                      icon: Icons.lock_outline_rounded,
-                      label: l.settingsLockNow,
-                      expand: true,
-                      onPressed: () => runWithFeedback(context, () => ref.read(vaultServiceProvider).lock()),
+                    Offstage(
+                      offstage: _more || toolsOpen,
+                      child: Column(
+                        children: [
+                          Offstage(offstage: rdpVisible && keyboardOpen, child: const _ShellBanners()),
+                          Expanded(child: SftpEditRecoveryListener(child: widget.navigationShell)),
+                        ],
+                      ),
+                    ),
+                    if (_more && !toolsOpen)
+                      ListView(
+                        key: const ValueKey('mobile-more-page'),
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        children: [
+                          const ProfileSwitcher(),
+                          const SizedBox(height: 20),
+                          GlassButton(
+                            key: const ValueKey('mobile-customize-navigation'),
+                            icon: Icons.tune_rounded,
+                            label: l.navigationCustomize,
+                            onPressed: () => showNavigationCustomization(context),
+                          ),
+                          for (final item in ref.watch(availableNavigationSectionsProvider))
+                            if (!item.syncedOnly || profile?.isLocal == false)
+                              ListTile(
+                                key: ValueKey('mobile-nav-${item.branch.name}'),
+                                minVerticalPadding: 14,
+                                leading: Icon(item.icon),
+                                title: Text(shellBranchLabel(item.branch, l)),
+                                trailing: item.branch == ShellBranch.kubernetes && kubeAlerts > 0
+                                    ? GlassBadge(label: '$kubeAlerts', tone: GlassTone.warning, dense: true)
+                                    : const Icon(Icons.chevron_right_rounded),
+                                onTap: () => _go(item.branch),
+                              ),
+                          const SizedBox(height: 16),
+                          GlassButton(
+                            icon: Icons.lock_outline_rounded,
+                            label: l.settingsLockNow,
+                            expand: true,
+                            onPressed: () => runWithFeedback(context, () => ref.read(vaultServiceProvider).lock()),
+                          ),
+                        ],
+                      ),
+                    WorkspaceToolPanel(
+                      key: ValueKey('mobile-tools-${profile?.id.value}'),
+                      integrated: true,
+                      branch: branch,
                     ),
                   ],
                 ),
-              WorkspaceToolPanel(key: ValueKey('mobile-tools-${profile?.id.value}'), integrated: true, branch: branch),
+              ),
             ],
           ),
         ),
         bottomNavigationBar: keyboardOpen || toolsOpen
             ? null
+            : primary.isEmpty
+            ? SafeArea(
+                child: SizedBox(
+                  height: 72,
+                  child: Center(
+                    child: GlassButton(
+                      key: const ValueKey('mobile-all-sections-only'),
+                      label: l.navigationAllSections,
+                      icon: Icons.apps_rounded,
+                      onPressed: () => setState(() => _more = true),
+                    ),
+                  ),
+                ),
+              )
             : NavigationBar(
                 key: const ValueKey('mobile-navigation'),
-                selectedIndex: selected < 0 ? 3 : selected,
+                selectedIndex: selected < 0 ? primary.length : selected,
                 height: 72,
                 backgroundColor: tokens.surfaces.contentSolid,
                 indicatorColor: tokens.sidebarSelection,
                 onDestinationSelected: (index) {
-                  if (index == 3) {
+                  if (index == primary.length) {
                     setState(() => _more = true);
                   } else {
-                    _go(_primary[index]);
+                    _go(primary[index]);
                   }
                 },
                 destinations: [
-                  NavigationDestination(
-                    icon: const Icon(Icons.dns_outlined),
-                    selectedIcon: const Icon(Icons.dns_rounded),
-                    label: l.navHosts,
-                  ),
-                  NavigationDestination(icon: const Icon(Icons.terminal_rounded), label: l.navTerminal),
-                  NavigationDestination(
-                    icon: const Icon(Icons.folder_outlined),
-                    selectedIcon: const Icon(Icons.folder_rounded),
-                    label: l.navSftp,
-                  ),
+                  for (final branch in primary)
+                    NavigationDestination(
+                      icon: Icon(navigationSections.firstWhere((section) => section.branch == branch).icon),
+                      label: shellBranchLabel(branch, l),
+                    ),
                   NavigationDestination(
                     icon: Badge(isLabelVisible: kubeAlerts > 0, child: const Icon(Icons.grid_view_rounded)),
                     label: l.mobileMore,

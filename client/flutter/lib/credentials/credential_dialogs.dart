@@ -70,7 +70,7 @@ class _CredentialDialogFrame extends StatelessWidget {
 }
 
 /// Dialog-local failures that are not [AppException]s.
-enum _DialogError { passphraseMismatch }
+enum _DialogError { passphraseMismatch, usernameRequired }
 
 mixin _Busy<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   bool busy = false;
@@ -82,6 +82,7 @@ mixin _Busy<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   String? errorText(AppLocalizations l10n) => switch (error) {
     null => null,
     _DialogError.passphraseMismatch => l10n.credentialGeneratePassphraseMismatch,
+    _DialogError.usernameRequired => l10n.validationRequired(l10n.credentialsDetailsUsername),
     final Object e => errorMessage(l10n, e),
   };
 
@@ -101,9 +102,10 @@ mixin _Busy<T extends ConsumerStatefulWidget> on ConsumerState<T> {
 }
 
 class PasswordCredentialDialog extends ConsumerStatefulWidget {
-  const PasswordCredentialDialog({super.key, this.rdp = false});
+  const PasswordCredentialDialog({super.key, this.rdp = false, this.requireUsername = false});
 
   final bool rdp;
+  final bool requireUsername;
 
   @override
   ConsumerState<PasswordCredentialDialog> createState() => _PasswordCredentialDialogState();
@@ -124,24 +126,30 @@ class _PasswordCredentialDialogState extends ConsumerState<PasswordCredentialDia
     super.dispose();
   }
 
-  Future<void> _save() => guard(() async {
-    final secret = SecretText(_password.text);
-    try {
-      final created = await ref
-          .read(inventoryServiceProvider)
-          .createPasswordCredential(
-            name: _name.text,
-            username: widget.rdp && _domain.text.trim().isNotEmpty
-                ? '${_domain.text.trim()}\\${_username.text.trim()}'
-                : _username.text,
-            password: secret,
-          );
-      _password.clear();
-      if (mounted) closeDialog(context, created);
-    } finally {
-      secret.wipe();
+  Future<void> _save() async {
+    if (widget.requireUsername && _username.text.trim().isEmpty) {
+      setState(() => error = _DialogError.usernameRequired);
+      return;
     }
-  });
+    await guard(() async {
+      final secret = SecretText(_password.text);
+      try {
+        final created = await ref
+            .read(inventoryServiceProvider)
+            .createPasswordCredential(
+              name: _name.text,
+              username: widget.rdp && _domain.text.trim().isNotEmpty
+                  ? '${_domain.text.trim()}\\${_username.text.trim()}'
+                  : _username.text,
+              password: secret,
+            );
+        _password.clear();
+        if (mounted) closeDialog(context, created);
+      } finally {
+        secret.wipe();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +170,9 @@ class _PasswordCredentialDialogState extends ConsumerState<PasswordCredentialDia
         TextField(
           key: const ValueKey('password-credential-username'),
           controller: _username,
-          decoration: InputDecoration(labelText: l10n.credentialDialogUsernameOptional),
+          decoration: InputDecoration(
+            labelText: widget.requireUsername ? l10n.credentialsDetailsUsername : l10n.credentialDialogUsernameOptional,
+          ),
         ),
         const SizedBox(height: GlassSpacing.s12),
         SecretField(controller: _password, label: l10n.credentialDialogPasswordLabel),

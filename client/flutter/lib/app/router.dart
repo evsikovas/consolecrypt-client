@@ -4,6 +4,7 @@ import 'package:consolecrypt/account/welcome_screen.dart';
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/shell.dart';
+import 'package:consolecrypt/automation/automation_screen.dart';
 import 'package:consolecrypt/backups/backups_screen.dart';
 import 'package:consolecrypt/backups/restore_screen.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -55,6 +56,7 @@ enum ShellBranch {
   databases,
   docker,
   passwords,
+  automation,
 }
 
 Page<void> _page(Widget child) => NoTransitionPage<void>(child: child);
@@ -142,6 +144,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.databases, const DatabasesScreen()),
           _branch(AppRoutes.docker, const DockerScreen()),
           _branch(AppRoutes.passwords, const KdbxManagerScreen()),
+          _branch(AppRoutes.automation, const AutomationScreen()),
         ],
       ),
     ],

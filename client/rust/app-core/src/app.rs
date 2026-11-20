@@ -1,6 +1,7 @@
 //! [`AppCore`]: construction, profiles (ADR-0106), vault create / join /
 //! unlock / lock and the Recovery Kit onboarding check.
 
+use crate::automation_transition::TransitionAction;
 use crate::dto::*;
 use crate::error::{AppError, AppResult};
 use crate::key_trust::{adopt_own, KeySource};
@@ -35,11 +36,15 @@ pub(crate) struct Inner {
     pub ctx: Arc<AppCtx>,
     pub dirs: AppDirs,
     pub profiles: ProfileDirectory,
-    active: tokio::sync::Mutex<Option<Arc<Session>>>,
+    pub(crate) active: tokio::sync::Mutex<Option<Arc<Session>>>,
+    pub(crate) profile_transition: Arc<tokio::sync::Mutex<()>>,
+    pub(crate) prepared_exit:
+        std::sync::Mutex<Option<(String, crate::automation_transition::ProfileTransitionLease)>>,
     /// Held while a scheduled backup runs.
     pub backup_busy: tokio::sync::Mutex<()>,
     /// Browser sign-ins (enterprise OIDC) waiting for their redirect.
     pub enterprise: crate::enterprise_auth::PendingFlows,
+    pub(crate) original_auth: crate::session_provenance::OriginalAuthTransitions,
 }
 
 /// The application facade used by the Flutter UI (via flutter_rust_bridge)
@@ -171,8 +176,11 @@ impl AppCore {
                 dirs,
                 profiles,
                 active: tokio::sync::Mutex::new(None),
+                profile_transition: Arc::default(),
+                prepared_exit: std::sync::Mutex::new(None),
                 backup_busy: tokio::sync::Mutex::new(()),
                 enterprise: Default::default(),
+                original_auth: Default::default(),
             }),
         };
         if app.inner.ctx.config.backup_scheduler {
@@ -285,7 +293,11 @@ impl AppCore {
     }
 
     /// Make `session` the active profile (closing the previous one).
-    pub(crate) async fn activate(&self, session: Arc<Session>) -> AppResult<()> {
+    pub(crate) async fn activate(
+        &self,
+        session: Arc<Session>,
+        _transition: &crate::automation_transition::ProfileTransitionLease,
+    ) -> AppResult<()> {
         let pid = session.profile_id;
         let old = {
             let mut active = self.inner.active.lock().await;
@@ -328,6 +340,8 @@ impl AppCore {
             vault_id: None,
             vault_state: VaultStateDto::Closed,
             recovery_kit_pending: false,
+            notification_scope_id: None,
+            critical_notice_snapshot: None,
         };
         if let Some(s) = session.filter(|s| s.profile_id == entry.profile_id) {
             let p = s.profile().await?;
@@ -339,7 +353,17 @@ impl AppCore {
             crate::profile_hints::sync(&self.inner.dirs, entry.profile_id, &p).await;
             info.device_id = Some(s.device_id().to_string());
             info.vault_id = s.vault_id().map(|v| v.to_string());
-            info.vault_state = if s.unlocked_opt().await.is_some() {
+            // Derive both fields from one original handle. A concurrent lock
+            // may close its emitter, but never substitutes a different owner.
+            let unlocked = s.unlocked_opt().await;
+            info.critical_notice_snapshot = unlocked.as_ref().and_then(|u| u.notices.profile_snapshot());
+            info.notification_scope_id = info
+                .critical_notice_snapshot
+                .as_ref()
+                .and_then(|snapshot| snapshot.get("scope_id"))
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_owned);
+            info.vault_state = if unlocked.is_some() {
                 VaultStateDto::Unlocked
             } else if s.vault_id().is_some() {
                 VaultStateDto::Locked
@@ -418,6 +442,9 @@ impl AppCore {
     pub async fn open_profile(&self, profile_id: String) -> AppResult<ProfileInfo> {
         let pid = parse_profile_id(&profile_id)?;
         let entry = self.entry(pid).await?;
+        let _transition = self
+            .begin_profile_transition(TransitionAction::Open(pid))
+            .await?;
         let current = self.inner.active.lock().await.clone();
         let session = match current {
             Some(s) if s.profile_id == pid => s,
@@ -430,17 +457,28 @@ impl AppCore {
                 .await?
             }
         };
-        self.activate(session.clone()).await?;
+        self.activate(session.clone(), &_transition).await?;
         self.profile_info_for(&entry, Some(&session)).await
     }
 
     /// Close the open profile (locks the vault).
     pub async fn close_profile(&self) -> AppResult<()> {
+        let transition = self
+            .begin_profile_transition(TransitionAction::Close)
+            .await?;
+        self.close_profile_with_transition(transition).await
+    }
+
+    pub(crate) async fn close_profile_with_transition(
+        &self,
+        transition: crate::automation_transition::ProfileTransitionLease,
+    ) -> AppResult<()> {
         let s = self.inner.active.lock().await.take();
         if let Some(s) = s {
             s.close().await;
             self.inner.ctx.emit(AppEvent::ProfilesChanged);
         }
+        drop(transition);
         Ok(())
     }
 
@@ -478,6 +516,9 @@ impl AppCore {
     pub async fn remove_profile(&self, profile_id: String) -> AppResult<()> {
         let pid = parse_profile_id(&profile_id)?;
         self.entry(pid).await?;
+        let _transition = self
+            .begin_profile_transition(TransitionAction::Remove(pid))
+            .await?;
         let active = {
             let mut a = self.inner.active.lock().await;
             if a.as_ref().is_some_and(|s| s.profile_id == pid) {
@@ -568,6 +609,9 @@ impl AppCore {
         crate::validate::display_name("display_name", &display_name)?;
         crate::validate::secret_text("passphrase", &passphrase)?;
         let pass = secret(passphrase);
+        let _transition = self
+            .begin_profile_transition(TransitionAction::Switch)
+            .await?;
         let (pid, storage, identity) = self
             .new_profile_storage(&display_name, ProfileKind::Local)
             .await?;
@@ -625,7 +669,7 @@ impl AppCore {
                 return Err(e);
             }
         };
-        self.activate(session.clone()).await?;
+        self.activate(session.clone(), &_transition).await?;
         tracing::info!(profile_id = %pid, "local profile created");
         let entry = self.entry(pid).await?;
         Ok(CreatedProfile {
@@ -673,6 +717,18 @@ impl AppCore {
         prepared: Option<(ProfileId, Storage, Arc<DeviceIdentity>)>,
     ) -> AppResult<SyncedAccountDto> {
         let server_url = crate::validate::server_url(&server_url)?;
+        let _transition = match self
+            .begin_profile_transition(TransitionAction::Switch)
+            .await
+        {
+            Ok(lease) => lease,
+            Err(error) => {
+                if let Some((pid, storage, _)) = prepared {
+                    self.discard_profile(pid, Some(storage)).await;
+                }
+                return Err(error);
+            }
+        };
         let (pid, storage, identity) = match prepared {
             Some(p) => p,
             None => {
@@ -719,7 +775,7 @@ impl AppCore {
                 return Err(e);
             }
         };
-        self.activate(session.clone()).await?;
+        self.activate(session.clone(), &_transition).await?;
         if display_name.is_none() {
             // The directory entry was created before the e-mail was known.
             let _ = self.rename_profile(pid.to_string(), name).await;
@@ -1306,6 +1362,7 @@ async fn seed_vault_settings(u: &Unlocked, name: &str) -> AppResult<()> {
     u.writer
         .put(VaultObject::VaultSettings(VaultSettings {
             password_vaults: Default::default(),
+            automation: None, monitoring: None,
             id: ObjectId::new(),
             vault_name: if name.trim().is_empty() {
                 "Vault".into()

@@ -2,6 +2,15 @@
 //! ([`Unlocked`]): storage, device identity, API client (synced profiles),
 //! codec, working set, sync engine, WebSocket events and the SSH runtime.
 
+#[path = "session/critical_notices.rs"]
+pub(crate) mod critical_notices;
+#[cfg(test)]
+#[path = "session/drop_tasks_tests.rs"]
+mod drop_tasks_tests;
+#[cfg(test)]
+#[path = "session/legacy_notices_tests.rs"]
+mod legacy_notices_tests;
+
 use crate::codec::VaultCodec;
 use crate::dto::{AppEvent, ChangeOriginDto, SyncStatusDto};
 use crate::error::{AppError, AppResult};
@@ -99,12 +108,11 @@ impl AppCtx {
     }
 
     fn api_config(&self, server_url: &str) -> AppResult<ApiConfig> {
-        Ok(ApiConfig::with_http_policy(
-            server_url,
-            self.config.client_version.clone(),
-            self.config.platform,
-            self.config.allow_insecure_http,
-        )?)
+        let config=ApiConfig::with_http_policy(server_url,self.config.client_version.clone(),self.config.platform,self.config.allow_insecure_http)?;
+        match &self.config.extra_server_trust {
+            Some(trust) if trust.applies_to(&config.server_url)=>Ok(config.with_server_trust(trust.clone())?),
+            _=>Ok(config),
+        }
     }
 
     /// Validate a server URL against the HTTP policy (no client created).
@@ -208,6 +216,7 @@ pub(crate) struct Session {
     tunnels: Arc<cc_tunnel_core::TunnelManager>,
     rdp: Arc<cc_rdp_core::RdpManager>,
     kube: Arc<crate::kubernetes_runtime::KubeSessions>,
+    pub(crate) automation: Arc<crate::automation_runners::AutomationRuntime>,
     /// Revision fences of those sessions while the vault is locked.
     parked_guards: Mutex<ParkedGuards>,
 }
@@ -238,6 +247,9 @@ pub(crate) struct Unlocked {
     /// In-flight sharing operations drop transient plaintext immediately on
     /// lock, before potentially slower SSH/edit shutdown finishes.
     pub sharing_shutdown: tokio::sync::watch::Sender<bool>,
+    pub(crate) settings_reviews: crate::settings_review_runtime::SettingsReviewRuntime,
+    pub(crate) host_metrics:crate::host_metrics::HostMetricsRuntime,
+    pub(crate) notices: Arc<critical_notices::RuntimeNoticeEmitter>,
     pub enrollment: crate::sharing_api::enrollment::EnrollmentRuntime,
     pub kube_imports: Arc<crate::kubernetes_import::ImportRuntime>,
     pub kube: crate::kubernetes_runtime::KubeRuntime,
@@ -263,6 +275,36 @@ pub(crate) struct Unlocked {
     /// (protocol 1.11 key-commitment records), refreshed after unlock.
     key_conflicts: Mutex<Vec<crate::dto::VaultKeyConflictDto>>,
 }
+
+/// Tokio JoinHandle drop detaches the task. A bare last-owner drop must retire
+/// this unlock's tracked observers rather than leave their Writer/Storage/key
+/// owners alive. Normal lock/shutdown still performs its existing async joins.
+impl Drop for Unlocked {
+    fn drop(&mut self) {
+        self.notices.close();
+        self.sharing_shutdown.send_replace(true);
+        self.ai.retire();
+        for task in self
+            .tasks
+            .get_mut()
+            .unwrap_or_else(|e| e.into_inner())
+            .drain(..)
+        {
+            task.abort();
+        }
+        for task in self
+            .engine_tasks
+            .get_mut()
+            .unwrap_or_else(|e| e.into_inner())
+            .drain(..)
+        {
+            task.abort();
+        }
+        // AutomationRuntime/delegated service jobs are not unlock-owned tasks.
+        // No current-session lookup, remote stop, SQL close or new task here.
+    }
+}
+
 
 impl Unlocked {
     pub(crate) fn key_conflicts(&self) -> Vec<crate::dto::VaultKeyConflictDto> {
@@ -330,12 +372,9 @@ impl Unlocked {
 
     /// Stop the sync engine and the WebSocket (keeps the vault unlocked).
     pub(crate) async fn stop_engine(&self) {
-        let engine = self
-            .writer
-            .engine
-            .write()
-            .unwrap_or_else(|p| p.into_inner())
-            .take();
+        // Invalidate the exact source atomically with taking its engine.
+        // Await shutdown only after the engine -> notices guards are released.
+        let engine = self.notices.take_engine(&self.writer.engine);
         if let Some(e) = engine {
             e.stop().await;
         }
@@ -360,7 +399,10 @@ impl Unlocked {
     /// Lock: stop everything, zeroize keys, drop caches. Edit sessions go
     /// first (their final uploads need SFTP), then transfers.
     async fn shutdown(&self) {
+        self.notices.close();
         self.sharing_shutdown.send_replace(true);
+        self.settings_reviews.close();
+        self.host_metrics.close();
         self.edit.begin_shutdown();
         self.enrollment.clear();
         self.kube_imports.close();
@@ -445,6 +487,7 @@ impl Session {
             tunnels: Arc::new(cc_tunnel_core::TunnelManager::new()),
             rdp: Arc::new(cc_rdp_core::RdpManager::new()),
             kube: Default::default(),
+            automation: Default::default(),
             parked_guards: Default::default(),
         }))
     }
@@ -499,6 +542,7 @@ impl Session {
             tunnels: Arc::new(cc_tunnel_core::TunnelManager::new()),
             rdp: Arc::new(cc_rdp_core::RdpManager::new()),
             kube: Default::default(),
+            automation: Default::default(),
             parked_guards: Default::default(),
         }))
     }
@@ -865,6 +909,11 @@ impl Session {
     }
 
     pub(crate) fn set_identity(&self, identity: Arc<DeviceIdentity>) {
+        // Drop the cloned API read guard BEFORE entering its auth fence. The
+        // synchronous Reader callback may itself read identity/api again.
+        if let Some(api) = self.api_opt() {
+            api.invalidate_reader_auth();
+        }
         *self.identity.write().unwrap_or_else(|p| p.into_inner()) = identity;
     }
 
@@ -887,6 +936,14 @@ impl Session {
     }
 
     pub(crate) fn set_api(&self, api: Option<ApiClient>) {
+        // Invalidate both sides before the actual write; old->new->old cannot
+        // revive a Reader subject. No API/identity RW guard spans invalidation.
+        if let Some(old) = self.api_opt() {
+            old.invalidate_reader_auth();
+        }
+        if let Some(new) = api.as_ref() {
+            new.invalidate_reader_auth();
+        }
         *self.api.write().unwrap_or_else(|p| p.into_inner()) = api;
     }
 
@@ -946,6 +1003,23 @@ impl Session {
             return Err(AppError::VaultLocked);
         }
         Ok(current)
+    }
+
+    /// Short nonblocking original-slot fence for a queued local transaction.
+    /// The callback must not await, reenter storage or acquire this slot again.
+    pub(crate) fn try_with_unlocked<T>(
+        &self,
+        expected: &Arc<Unlocked>,
+        f: impl FnOnce() -> AppResult<T>,
+    ) -> AppResult<T> {
+        let current = self
+            .unlocked
+            .try_read()
+            .map_err(|_| AppError::VaultLocked)?;
+        if !current.as_ref().is_some_and(|u| Arc::ptr_eq(u, expected)) {
+            return Err(AppError::VaultLocked);
+        }
+        f()
     }
 
     /// Cache envelopes (as the server/local `KeyEnvelope` shape): in the
@@ -1037,6 +1111,8 @@ impl Session {
             .ok()
             .map(|p| cc_sftp_core::edit::edit_root(&p));
         let edit = crate::edit::EditRuntime::new(&self.ctx, edit_root);
+        let notices =
+            critical_notices::RuntimeNoticeEmitter::new(self.profile_id, self.ctx.events.clone());
         let unlocked = Arc::new(Unlocked {
             vault_id,
             codec,
@@ -1045,8 +1121,14 @@ impl Session {
             rdp: self.rdp.clone(),
             ai: ai.clone(),
             edit: edit.clone(),
-            transfers: crate::transfers::TransferManager::new(self.ctx.clone()),
+            transfers: crate::transfers::TransferManager::new_scoped(
+                self.ctx.clone(),
+                notices.clone(),
+            ),
             sharing_shutdown: tokio::sync::watch::channel(false).0,
+            settings_reviews: Default::default(),
+            host_metrics:Default::default(),
+            notices,
             enrollment: crate::sharing_api::enrollment::EnrollmentRuntime::default(),
             kube_imports: Arc::new(crate::kubernetes_import::ImportRuntime::default()),
             kube: crate::kubernetes_runtime::KubeRuntime::new(self.kube.clone()),
@@ -1069,16 +1151,22 @@ impl Session {
             rx,
             self.ctx.clone(),
             self.device_id(),
+            unlocked.notices.clone(),
         )));
         unlocked.push_task(tokio::spawn(terminal_event_task(
             ssh.clone(),
             self.ctx.clone(),
+            unlocked.notices.clone(),
         )));
-        unlocked.push_task(tokio::spawn(tunnel_event_task(ssh, self.ctx.clone())));
+        unlocked.push_task(tokio::spawn(tunnel_event_task(
+            ssh,
+            self.ctx.clone(),
+            unlocked.notices.clone(),
+        )));
         unlocked.push_task(tokio::spawn(crate::kubernetes_history::retention_task(
             self.storage()?,
         )));
-        if let Some(t) = edit.spawn_forwarder(self.ctx.clone()) {
+        if let Some(t) = edit.spawn_forwarder(self.ctx.clone(), unlocked.notices.clone()) {
             unlocked.push_task(t);
         }
         ai.start();
@@ -1092,6 +1180,7 @@ impl Session {
                 return Ok(existing);
             }
             *slot = Some(unlocked.clone());
+            self.automation.vault_state(false);
         }
         if let Some(st) = self.storage_opt() {
             let _ = st.write(move |tx| tx.mark_vault_unlocked(vault_id)).await;
@@ -1127,6 +1216,7 @@ impl Session {
         });
         let leftovers = unlocked.edit.leftover_count();
         if leftovers > 0 {
+            unlocked.notices.edit_leftovers();
             self.ctx.emit(AppEvent::EditLeftovers {
                 count: u32::try_from(leftovers).unwrap_or(u32::MAX),
             });
@@ -1182,12 +1272,16 @@ impl Session {
         background: bool,
     ) -> AppResult<()> {
         let api = self.api()?;
-        *unlocked
-            .writer
-            .engine
-            .write()
-            .unwrap_or_else(|p| p.into_inner()) = Some(engine.clone());
-        let mut tasks = vec![tokio::spawn(status_task(engine.clone(), self.ctx.clone()))];
+        // A concurrent install/stop must never pair one engine pointer with
+        // another forwarder's generation. No async work under either guard.
+        let notice_source = unlocked
+            .notices
+            .replace_engine(&unlocked.writer.engine, engine.clone());
+        let mut tasks = vec![tokio::spawn(status_task(
+            engine.clone(),
+            self.ctx.clone(),
+            notice_source.clone(),
+        ))];
         if background {
             let es = EventStream::spawn(api, EventStreamConfig::default());
             tasks.push(engine.attach_events(es.subscribe()));
@@ -1195,6 +1289,7 @@ impl Session {
                 es.subscribe(),
                 self.ctx.clone(),
                 self.device_id(),
+                notice_source,
             )));
             tasks.push(tokio::spawn(team_ws_task(
                 es.subscribe(),
@@ -1271,7 +1366,11 @@ impl Session {
     /// Lock the vault (no-op if locked). A sealed profile closes its
     /// database too: nothing of it is readable until the next unlock.
     pub(crate) async fn lock(&self) {
-        let taken = self.unlocked.write().await.take();
+        let taken = {
+            let mut slot = self.unlocked.write().await;
+            self.automation.vault_state(true);
+            slot.take()
+        };
         if let Some(u) = taken {
             let parked = u.writer.working.park_guards();
             u.shutdown().await;
@@ -1288,6 +1387,7 @@ impl Session {
     /// (the session is unusable afterwards).
     pub(crate) async fn close(&self) {
         self.lock().await;
+        self.automation.close().await;
         self.rdp.shutdown();
         self.kube.close();
         self.tunnels.stop_all().await;
@@ -1368,6 +1468,7 @@ async fn object_event_task(
     mut rx: broadcast::Receiver<SyncEvent>,
     ctx: Arc<AppCtx>,
     own_device: DeviceId,
+    notices: Arc<critical_notices::RuntimeNoticeEmitter>,
 ) {
     loop {
         match rx.recv().await {
@@ -1427,14 +1528,30 @@ async fn object_event_task(
                     conflict_copy_id: conflict_copy.map(|c| c.to_string()),
                     is_secret: kek_class == Some(KekClass::Secrets),
                 });
+                if kek_class == Some(KekClass::Secrets) {
+                    notices.security(
+                        object_id,
+                        crate::dto::CriticalSecurityStateDto::SecretConflict,
+                    );
+                } else if let Some(copy) = conflict_copy {
+                    notices.security(copy, crate::dto::CriticalSecurityStateDto::ConflictCopy);
+                }
             }
             Ok(SyncEvent::IntegrityWarning { object_id, .. }) => {
+                notices.security(
+                    object_id,
+                    crate::dto::CriticalSecurityStateDto::IntegrityWarning,
+                );
                 tracing::warn!(object_id = %object_id, "server object failed verification");
                 ctx.emit(AppEvent::IntegrityWarning {
                     object_id: object_id.to_string(),
                 });
             }
             Ok(SyncEvent::ServerRollbackDetected { vault_id, reason }) => {
+                notices.security(
+                    vault_id,
+                    crate::dto::CriticalSecurityStateDto::ServerRollback,
+                );
                 tracing::warn!(reason = ?reason, "server state rolled back; re-uploading local data");
                 ctx.emit(AppEvent::ServerRollbackDetected {
                     vault_id: vault_id.to_string(),
@@ -1456,16 +1573,24 @@ async fn object_event_task(
                     _ => {}
                 }
             }
-            Err(broadcast::error::RecvError::Lagged(_)) => emit_reload(&writer, &ctx).await,
+            Err(broadcast::error::RecvError::Lagged(_)) => {
+                notices.source_gap();
+                emit_reload(&writer, &ctx).await;
+            }
             Err(broadcast::error::RecvError::Closed) => break,
         }
     }
 }
 
-async fn status_task(engine: SyncEngine, ctx: Arc<AppCtx>) {
+async fn status_task(
+    engine: SyncEngine,
+    ctx: Arc<AppCtx>,
+    notices: critical_notices::SyncNoticeSource,
+) {
     let mut rx = engine.subscribe_status();
     loop {
         let s = SyncStatusDto::from_status(&rx.borrow_and_update().clone());
+        notices.status(&s);
         ctx.emit(AppEvent::SyncStatus(s));
         if rx.changed().await.is_err() {
             break;
@@ -1473,39 +1598,59 @@ async fn status_task(engine: SyncEngine, ctx: Arc<AppCtx>) {
     }
 }
 
-async fn ws_event_task(mut rx: broadcast::Receiver<WsEvent>, ctx: Arc<AppCtx>, own: DeviceId) {
+async fn ws_event_task(
+    mut rx: broadcast::Receiver<WsEvent>,
+    ctx: Arc<AppCtx>,
+    own: DeviceId,
+    notices: critical_notices::SyncNoticeSource,
+) {
     loop {
         match rx.recv().await {
             Ok(WsEvent::Event(ev)) => match ev {
                 ServerEvent::DeviceApprovalRequested {
                     request_id,
                     device_id,
-                } => ctx.emit(AppEvent::DeviceApprovalRequested {
-                    request_id: request_id.to_string(),
-                    device_id: device_id.to_string(),
-                }),
+                } => {
+                    notices.device(
+                        request_id,
+                        crate::dto::CriticalDeviceStateDto::ApprovalRequested,
+                    );
+                    ctx.emit(AppEvent::DeviceApprovalRequested {
+                        request_id: request_id.to_string(),
+                        device_id: device_id.to_string(),
+                    })
+                }
                 ServerEvent::DeviceApproved { device_id, .. } => {
                     ctx.emit(AppEvent::DeviceApproved {
                         device_id: device_id.to_string(),
                         is_self: device_id == own,
                     })
                 }
-                ServerEvent::DeviceRevoked { device_id } => ctx.emit(AppEvent::DeviceRevoked {
-                    device_id: device_id.to_string(),
-                    is_self: device_id == own,
-                }),
-                ServerEvent::RecoveryChanged { .. } => ctx.emit(AppEvent::RecoveryChanged),
+                ServerEvent::DeviceRevoked { device_id } => {
+                    notices.device(device_id, crate::dto::CriticalDeviceStateDto::Revoked);
+                    ctx.emit(AppEvent::DeviceRevoked {
+                        device_id: device_id.to_string(),
+                        is_self: device_id == own,
+                    })
+                }
+                ServerEvent::RecoveryChanged { .. } => {
+                    notices.recovery_changed();
+                    ctx.emit(AppEvent::RecoveryChanged)
+                }
                 ServerEvent::DeviceRegistered {
                     device_id,
                     name,
                     platform,
                     created_at,
-                } if device_id != own => ctx.emit(AppEvent::DeviceRegistered {
-                    device_id: device_id.to_string(),
-                    name,
-                    platform: platform.as_str().to_owned(),
-                    created_at_ms: crate::dto::ms(&created_at),
-                }),
+                } if device_id != own => {
+                    notices.device(device_id, crate::dto::CriticalDeviceStateDto::Registered);
+                    ctx.emit(AppEvent::DeviceRegistered {
+                        device_id: device_id.to_string(),
+                        name,
+                        platform: platform.as_str().to_owned(),
+                        created_at_ms: crate::dto::ms(&created_at),
+                    })
+                }
                 _ => {}
             },
             Ok(WsEvent::Terminated { reason }) => {
@@ -1517,7 +1662,7 @@ async fn ws_event_task(mut rx: broadcast::Receiver<WsEvent>, ctx: Arc<AppCtx>, o
                 break;
             }
             Ok(_) => {}
-            Err(broadcast::error::RecvError::Lagged(_)) => {}
+            Err(broadcast::error::RecvError::Lagged(_)) => notices.source_gap(),
             Err(broadcast::error::RecvError::Closed) => break,
         }
     }
@@ -1533,7 +1678,13 @@ async fn team_ws_task(
         let ev = match rx.recv().await {
             Ok(WsEvent::Event(ev)) => ev,
             Ok(WsEvent::Terminated { .. }) | Err(broadcast::error::RecvError::Closed) => break,
-            Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => continue,
+            Ok(_) => continue,
+            Err(broadcast::error::RecvError::Lagged(_)) => {
+                if let Some(original) = unlocked.upgrade() {
+                    original.notices.source_gap();
+                }
+                continue;
+            }
         };
         let (Some(s), Some(u)) = (session.upgrade(), unlocked.upgrade()) else {
             break;
@@ -1564,39 +1715,102 @@ async fn team_ws_task(
     }
 }
 
-async fn terminal_event_task(ssh: Arc<SshRuntime>, ctx: Arc<AppCtx>) {
+async fn terminal_event_task(
+    ssh: Arc<SshRuntime>,
+    ctx: Arc<AppCtx>,
+    notices: Arc<critical_notices::RuntimeNoticeEmitter>,
+) {
     let mut rx = ssh.terminals.events();
     loop {
         match rx.recv().await {
-            Ok(ev) => ctx.emit(AppEvent::TerminalStatus {
-                terminal_id: ev.id.to_string(),
-                status: (&ev.status).into(),
-            }),
-            Err(broadcast::error::RecvError::Lagged(_)) => {}
+            Ok(ev) => {
+                let status = (&ev.status).into();
+                notices.terminal(ev.id, &status);
+                ctx.emit(AppEvent::TerminalStatus {
+                    terminal_id: ev.id.to_string(),
+                    status,
+                });
+            }
+            Err(broadcast::error::RecvError::Lagged(_)) => notices.source_gap(),
             Err(broadcast::error::RecvError::Closed) => break,
         }
     }
 }
 
-async fn tunnel_event_task(ssh: Arc<SshRuntime>, ctx: Arc<AppCtx>) {
+async fn tunnel_event_task(
+    ssh: Arc<SshRuntime>,
+    ctx: Arc<AppCtx>,
+    notices: Arc<critical_notices::RuntimeNoticeEmitter>,
+) {
     use cc_tunnel_core::TunnelEvent;
     let mut rx = ssh.tunnels.events();
     loop {
         match rx.recv().await {
-            Ok(TunnelEvent::Started(id)) => ctx.emit(AppEvent::TunnelStarted {
-                tunnel_id: id.to_string(),
-            }),
-            Ok(TunnelEvent::Stopped(id)) => ctx.emit(AppEvent::TunnelStopped {
-                tunnel_id: id.to_string(),
-            }),
-            Ok(TunnelEvent::Failed { id, reason }) => ctx.emit(AppEvent::TunnelFailed {
-                tunnel_id: id.to_string(),
-                reason,
-            }),
-            Err(broadcast::error::RecvError::Lagged(_)) => {}
+            Ok(TunnelEvent::Started(id)) => {
+                notices.tunnel(id, crate::dto::CriticalTunnelStateDto::Running);
+                ctx.emit(AppEvent::TunnelStarted {
+                    tunnel_id: id.to_string(),
+                });
+            }
+            Ok(TunnelEvent::Stopped(id)) => {
+                notices.tunnel(id, crate::dto::CriticalTunnelStateDto::Stopped);
+                ctx.emit(AppEvent::TunnelStopped {
+                    tunnel_id: id.to_string(),
+                });
+            }
+            Ok(TunnelEvent::Failed { id, reason }) => {
+                notices.tunnel(id, crate::dto::CriticalTunnelStateDto::Failed);
+                ctx.emit(AppEvent::TunnelFailed {
+                    tunnel_id: id.to_string(),
+                    reason,
+                });
+            }
+            Err(broadcast::error::RecvError::Lagged(_)) => notices.source_gap(),
             Err(broadcast::error::RecvError::Closed) => break,
         }
     }
 }
 
 use cc_models::ObjectId;
+
+
+#[cfg(test)]
+mod checked_panel_slot_tests {
+    use super::*;
+    use crate::{AppCore, AppError};
+    use cc_models::{ObjectPayload, VaultObject};
+    use cc_sync_core::SyncError;
+    #[tokio::test(flavor="multi_thread",worker_threads=2)]
+    async fn held_original_slot_never_blocks_sql_and_guard_stays_through_commit() {
+        let dir=tempfile::tempdir().unwrap();
+        let app=AppCore::new(crate::AppConfig::for_tests(dir.path().to_string_lossy().into_owned())).unwrap();
+        app.create_local_profile("Owned slot worker".into(),"owned slot worker vault passphrase42".into()).await.unwrap();
+        let (owner,u)=app.unlocked().await.unwrap();
+        let store=u.store().clone();
+        let settings=u.working().all_vault_settings().into_iter().next().unwrap();let id=settings.id;
+        let before=store.get(id).await.unwrap().unwrap();
+        let exclusive=owner.unlocked.write().await;
+        let original=owner.clone();let unlock=u.clone();
+        let denied=tokio::time::timeout(Duration::from_secs(1),store.put_checked(
+            ObjectPayload::new(VaultObject::VaultSettings(settings.clone())),
+            move|write|original.try_with_unlocked(&unlock,||write().map_err(AppError::from))
+                .map_err(|_|SyncError::Invalid("original slot busy".into())),
+            |_|panic!("busy slot must not enter actual transaction"),
+        )).await.expect("SQL cannot wait on exclusive slot");
+        assert!(denied.is_err());
+        assert_eq!(store.get(id).await.unwrap().unwrap(),before);
+        drop(exclusive);
+        let original=owner.clone();let unlock=u.clone();let tx_owner=owner.clone();
+        store.put_checked(ObjectPayload::new(VaultObject::VaultSettings(settings)),
+            move|write|original.try_with_unlocked(&unlock,|| {
+                write().map_err(AppError::from)?;
+                // Commit already returned, but SAME outer slot guard is held.
+                assert!(original.unlocked.try_write().is_err());Ok(())
+            }).map_err(|_|SyncError::Invalid("original slot changed".into())),
+            move|_|{assert!(tx_owner.unlocked.try_write().is_err());Ok(())},
+        ).await.unwrap();
+        assert_eq!(store.get(id).await.unwrap().unwrap().revision,before.revision+1);
+        assert!(owner.unlocked.try_write().is_ok());
+        drop(u);app.shutdown().await.unwrap();
+    }
+}

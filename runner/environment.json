@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "protocol_version": 1,
+  "python": {"minimum": "3.12", "tested": ["3.14.4"]},
+  "packages": {
+    "ansible-core": "2.20.11",
+    "ansible-runner": "2.4.3",
+    "ansible-lint": "26.11.0",
+    "cryptography": "50.0.2",
+    "PyYAML": "6.0.3"
+  },
+  "collections": [],
+  "status": "development prototype; Ubuntu 24.04/macOS certification pending"
+}

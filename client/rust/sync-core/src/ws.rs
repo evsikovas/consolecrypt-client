@@ -282,7 +282,8 @@ fn classify_api(e: ApiError) -> ConnectError {
     }
 }
 
-fn tls_connector() -> Result<Connector, String> {
+fn tls_connector(api:&ApiClient) -> Result<Connector, String> {
+    if let Some(tls)=api.config().extra_server_tls(false).map_err(|_|"server TLS trust unavailable".to_owned())?{return Ok(Connector::Rustls(tls));}
     static CONFIG: OnceLock<Result<Arc<rustls::ClientConfig>, String>> = OnceLock::new();
     let cfg = CONFIG.get_or_init(|| {
         use rustls_platform_verifier::BuilderVerifierExt;
@@ -299,7 +300,7 @@ fn tls_connector() -> Result<Connector, String> {
 async fn connect(api: &ApiClient) -> Result<Ws, ConnectError> {
     let url = api.events_url();
     let connector = if url.scheme() == "wss" {
-        Some(tls_connector().map_err(ConnectError::Retry)?)
+        Some(tls_connector(api).map_err(ConnectError::Retry)?)
     } else {
         Some(Connector::Plain)
     };

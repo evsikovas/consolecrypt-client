@@ -1,6 +1,7 @@
 import 'package:consolecrypt/core/models/ai.dart';
 import 'package:consolecrypt/core/models/glass_settings.dart';
 import 'package:consolecrypt/core/models/ids.dart';
+import 'package:consolecrypt/core/models/navigation.dart';
 import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
@@ -126,14 +127,16 @@ enum ScreenCaptureProtection {
 enum AppLocale {
   system('system'),
   en('en'),
-  ru('ru');
+  ru('ru'),
+  es('es'),
+  zh('zh');
 
   const AppLocale(this.wireName);
 
   /// Persisted value in `local_settings`.
   final String wireName;
 
-  /// Language code for [en]/[ru]; `null` for [system].
+  /// Language code for an explicit preference, or `null` for [system].
   String? get languageCode => this == system ? null : wireName;
 
   static AppLocale fromWire(String? name) => values.where((l) => l.wireName == name).firstOrNull ?? system;
@@ -144,6 +147,7 @@ final class LocalSettings {
   const LocalSettings({
     this.savedForwards = const [],
     this.passwordVaultFiles = const [],
+    this.passwordVaultRecentByProfile = const {},
     this.themeMode = AppThemeMode.system,
     this.uiFontScale = 1,
     this.uiAccentColor,
@@ -157,6 +161,7 @@ final class LocalSettings {
     this.terminalTabPlacement = TerminalTabPlacement.top,
     this.terminalTabColumnWidth = terminalTabColumnDefault,
     this.terminalTabColumnCollapsed = false,
+    this.navigationByProfile = const {},
     this.sidebarCollapsed = false,
     this.sidebarCollapsedBesideTabs,
     this.shortcutOverrides = const {},
@@ -200,6 +205,10 @@ final class LocalSettings {
 
   /// Local paths scoped by profile id. Never sent to sync.
   final List<Map<String, String>> passwordVaultFiles;
+
+  /// Recently opened source IDs in newest-first order. No unlock material.
+  static const passwordVaultRecentLimit = 5;
+  final Map<String, List<String>> passwordVaultRecentByProfile;
   final List<SavedForward> savedForwards;
   final double terminalFontSize;
 
@@ -222,6 +231,8 @@ final class LocalSettings {
   final bool terminalTabColumnCollapsed;
 
   /// The user folded the app sidebar to icons (desktop).
+  final Map<String, NavigationPreferences> navigationByProfile;
+
   final bool sidebarCollapsed;
 
   /// The user's sidebar choice next to the terminal tab column; `null`
@@ -286,6 +297,7 @@ final class LocalSettings {
   LocalSettings copyWith({
     List<SavedForward>? savedForwards,
     List<Map<String, String>>? passwordVaultFiles,
+    Map<String, List<String>>? passwordVaultRecentByProfile,
     AppThemeMode? themeMode,
     double? uiFontScale,
     int? uiAccentColor,
@@ -301,6 +313,7 @@ final class LocalSettings {
     TerminalTabPlacement? terminalTabPlacement,
     double? terminalTabColumnWidth,
     bool? terminalTabColumnCollapsed,
+    Map<String, NavigationPreferences>? navigationByProfile,
     bool? sidebarCollapsed,
     bool? sidebarCollapsedBesideTabs,
     Map<String, String>? shortcutOverrides,
@@ -325,6 +338,7 @@ final class LocalSettings {
   }) => LocalSettings(
     savedForwards: savedForwards ?? this.savedForwards,
     passwordVaultFiles: passwordVaultFiles ?? this.passwordVaultFiles,
+    passwordVaultRecentByProfile: passwordVaultRecentByProfile ?? this.passwordVaultRecentByProfile,
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
     uiAccentColor: resetUiColors ? null : (uiAccentColor ?? this.uiAccentColor),
@@ -338,6 +352,7 @@ final class LocalSettings {
     terminalTabPlacement: terminalTabPlacement ?? this.terminalTabPlacement,
     terminalTabColumnWidth: terminalTabColumnWidth ?? this.terminalTabColumnWidth,
     terminalTabColumnCollapsed: terminalTabColumnCollapsed ?? this.terminalTabColumnCollapsed,
+    navigationByProfile: navigationByProfile ?? this.navigationByProfile,
     sidebarCollapsed: sidebarCollapsed ?? this.sidebarCollapsed,
     sidebarCollapsedBesideTabs: sidebarCollapsedBesideTabs ?? this.sidebarCollapsedBesideTabs,
     shortcutOverrides: shortcutOverrides ?? this.shortcutOverrides,

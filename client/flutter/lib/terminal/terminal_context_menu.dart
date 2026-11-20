@@ -6,6 +6,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/snippets/snippet_editor.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,8 +18,8 @@ final _pastePending = Expando<bool>('terminal paste'); // l10n-ignore: debug nam
 final _menuOpen = Expando<bool>('terminal menu'); // l10n-ignore: debug name
 
 bool _validOrigin(WidgetRef ref, TerminalTab tab, Object? profile) =>
-    ref.read(activeProfileProvider)?.id == profile &&
-    ref.read(vaultStatusProvider).value?.isUnlocked == true &&
+    (ref.read(terminalOnlyModeProvider) ||
+        (ref.read(activeProfileProvider)?.id == profile && ref.read(vaultStatusProvider).value?.isUnlocked == true)) &&
     identical(ref.read(terminalTabsProvider).active, tab);
 
 void selectTerminalBuffer(TerminalTab tab) {
@@ -35,7 +36,7 @@ void selectTerminalBuffer(TerminalTab tab) {
 /// clears itself.
 Future<void> copyTerminalSelection(BuildContext context, WidgetRef ref, String text) async {
   if (text.isEmpty) return;
-  final detector = ref.read(appServicesProvider).docker;
+  final detector = ref.read(terminalOnlyModeProvider) ? null : ref.read(appServicesProvider).docker;
   if (detector != null && detector.containsSecret(text)) {
     await copySecretWithNotice(context, ref, text, what: context.l10n.copyWhatText);
   } else {
@@ -54,7 +55,7 @@ Future<void> pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab 
 }
 
 Future<void> _pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab tab) async {
-  final profile = ref.read(activeProfileProvider)?.id;
+  final profile = ref.read(terminalOnlyModeProvider) ? null : ref.read(activeProfileProvider)?.id;
   if (!tab.isConnected || !_validOrigin(ref, tab, profile)) return;
   final text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
   if (text == null || text.isEmpty || !context.mounted || !_validOrigin(ref, tab, profile) || !tab.isConnected) return;
@@ -87,7 +88,8 @@ Future<void> _pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab
 Future<void> showTerminalContextMenu(BuildContext context, WidgetRef ref, TerminalTab tab, Rect anchor) async {
   final navigator = Navigator.of(context, rootNavigator: true);
   if (_menuOpen[navigator] ?? false) return;
-  final profile = ref.read(activeProfileProvider)?.id;
+  final standalone = ref.read(terminalOnlyModeProvider);
+  final profile = standalone ? null : ref.read(activeProfileProvider)?.id;
   if (!_validOrigin(ref, tab, profile)) return;
   final selection = tab.rawSelectedText;
   final hasText = selection != null && selection.trim().isNotEmpty;
@@ -123,21 +125,23 @@ Future<void> showTerminalContextMenu(BuildContext context, WidgetRef ref, Termin
               ? '⌘V'
               : 'Ctrl+V',
         ),
-        const GlassMenuDivider(),
-        GlassMenuItem(
-          key: const ValueKey('terminal-menu-ask-ai'),
-          value: _TerminalAction.askAi,
-          label: l.terminalAskAi,
-          icon: Icons.auto_awesome_rounded,
-          enabled: hasText,
-        ),
-        GlassMenuItem(
-          key: const ValueKey('terminal-menu-snippet'),
-          value: _TerminalAction.snippet,
-          label: l.terminalSaveSnippet,
-          icon: Icons.code_rounded,
-          enabled: hasText,
-        ),
+        if (!standalone) ...[
+          const GlassMenuDivider(),
+          GlassMenuItem(
+            key: const ValueKey('terminal-menu-ask-ai'),
+            value: _TerminalAction.askAi,
+            label: l.terminalAskAi,
+            icon: Icons.auto_awesome_rounded,
+            enabled: hasText,
+          ),
+          GlassMenuItem(
+            key: const ValueKey('terminal-menu-snippet'),
+            value: _TerminalAction.snippet,
+            label: l.terminalSaveSnippet,
+            icon: Icons.code_rounded,
+            enabled: hasText,
+          ),
+        ],
         const GlassMenuDivider(),
         GlassMenuItem(
           key: const ValueKey('terminal-menu-select-all'),

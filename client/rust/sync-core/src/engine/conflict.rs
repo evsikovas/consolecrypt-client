@@ -141,6 +141,45 @@ pub fn payload_updated_at(payload: &ObjectPayload) -> Timestamp {
     }
 }
 
+/// None is legacy absence only. Clear/opt-out must be a NON-NULL catalog
+/// or tombstone. Never guess a merge of two different opaque catalog values.
+fn preserve_catalog(
+    a: &Option<serde_json::Value>,
+    b: &Option<serde_json::Value>,
+) -> Result<Option<serde_json::Value>, SyncError> {
+    match (a, b) {
+        (None, None) => Ok(None),
+        (Some(value), None) | (None, Some(value)) => Ok(Some(value.clone())),
+        (Some(a), Some(b)) if a == b => Ok(Some(a.clone())),
+        _ => Err(SyncError::Invalid(
+            "settings_catalog_conflict_requires_reconciliation".into(),
+        )),
+    }
+}
+fn preserved_settings(
+    local: &ObjectPayload,
+    remote: &ObjectPayload,
+) -> Result<Option<ObjectPayload>, SyncError> {
+    let (VaultObject::VaultSettings(a), VaultObject::VaultSettings(b)) =
+        (&local.object, &remote.object)
+    else {
+        return Ok(None);
+    };
+    let monitoring = preserve_catalog(&a.monitoring, &b.monitoring)?;
+    let automation = preserve_catalog(&a.automation, &b.automation)?;
+    let mut winner = if payload_updated_at(local) > payload_updated_at(remote) {
+        local.clone()
+    } else {
+        remote.clone()
+    };
+    let VaultObject::VaultSettings(value) = &mut winner.object else {
+        unreachable!()
+    };
+    value.monitoring = monitoring;
+    value.automation = automation;
+    Ok(Some(winner))
+}
+
 /// A decided resolution plus what to report.
 pub(crate) struct Decision {
     pub(crate) resolution: Resolution,
@@ -253,6 +292,19 @@ pub(crate) fn decide(
             }
             match (strategy_for(p.object.kind()), &remote_payload) {
                 (ConflictStrategy::LastWriterWins, Some(rp)) => {
+                    if let Some(merged) = preserved_settings(p, rp)? {
+                        return if merged == *rp {
+                            decision(
+                                Resolution::AcceptRemote { copy: None },
+                                ConflictResolution::RemoteKept,
+                            )
+                        } else {
+                            decision(
+                                rebase(&merged, remote.revision)?,
+                                ConflictResolution::LocalKept,
+                            )
+                        };
+                    }
                     if payload_updated_at(p) > payload_updated_at(rp) {
                         decision(rebase(p, remote.revision)?, ConflictResolution::LocalKept)
                     } else {
@@ -309,5 +361,21 @@ mod tests {
             strategy_for(ObjectKind::VaultSettings),
             ConflictStrategy::LastWriterWins
         );
+    }
+    #[test]
+    fn settings_catalog_absence_never_erases_nonnull_or_explicit_empty_catalog() {
+        let raw = Some(serde_json::json!({"version":99,"future":"preserve"}));
+        assert_eq!(preserve_catalog(&None, &raw).unwrap(), raw);
+        assert_eq!(preserve_catalog(&raw, &None).unwrap(), raw);
+        let clear = Some(serde_json::json!({"version":1,"revision":3,"records":{}}));
+        assert_eq!(preserve_catalog(&None, &clear).unwrap(), clear);
+    }
+    #[test]
+    fn equal_raw_is_idempotent_and_divergent_raw_remains_unresolved() {
+        let a = Some(serde_json::json!({"version":1,"revision":1,"records":{}}));
+        let b = Some(serde_json::json!({"version":1,"revision":2,"records":{}}));
+        assert_eq!(preserve_catalog(&a, &a).unwrap(), a);
+        assert!(preserve_catalog(&a, &b).is_err());
+        assert!(preserve_catalog(&b, &a).is_err());
     }
 }

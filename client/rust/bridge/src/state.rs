@@ -6,11 +6,15 @@ use cc_app_core::AppCore;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::future::Future;
-use std::sync::{OnceLock, RwLock};
+use std::sync::{Arc, OnceLock, RwLock};
 use zeroize::Zeroize;
 
 static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
-static CORE: RwLock<Option<AppCore>> = RwLock::new(None);
+struct CoreSlot {
+    core: AppCore,
+    identity: Arc<()>,
+}
+static CORE: RwLock<Option<CoreSlot>> = RwLock::new(None);
 
 /// The runtime every app-core future (and its spawned tasks) runs on.
 pub(crate) fn runtime() -> &'static tokio::runtime::Runtime {
@@ -27,16 +31,38 @@ pub(crate) fn runtime() -> &'static tokio::runtime::Runtime {
 pub(crate) fn core() -> Result<AppCore, BridgeError> {
     CORE.read()
         .unwrap_or_else(|p| p.into_inner())
-        .clone()
+        .as_ref()
+        .map(|slot| slot.core.clone())
         .ok_or_else(BridgeError::not_initialized)
 }
 
 pub(crate) fn core_opt() -> Option<AppCore> {
-    CORE.read().unwrap_or_else(|p| p.into_inner()).clone()
+    CORE.read().unwrap_or_else(|p| p.into_inner()).as_ref().map(|slot| slot.core.clone())
 }
 
 pub(crate) fn set_core(core: Option<AppCore>) {
-    *CORE.write().unwrap_or_else(|p| p.into_inner()) = core;
+    *CORE.write().unwrap_or_else(|p| p.into_inner()) = core.map(|core| CoreSlot {
+        core,
+        identity: Arc::new(()),
+    });
+}
+
+/// Identity is only the original bridge slot, never an application grant.
+pub(crate) fn core_for_shutdown() -> Option<(AppCore, Arc<()>)> {
+    CORE.read().unwrap_or_else(|p| p.into_inner()).as_ref()
+        .map(|slot| (slot.core.clone(), slot.identity.clone()))
+}
+
+pub(crate) fn complete_shutdown(original: &Arc<()>, result: &Result<(), BridgeError>) {
+    let mut current = CORE.write().unwrap_or_else(|p| p.into_inner());
+    complete_shutdown_slot(&mut current, original, result);
+}
+
+fn complete_shutdown_slot(current: &mut Option<CoreSlot>, original: &Arc<()>, result: &Result<(), BridgeError>) {
+    if result.is_err() { return; }
+    if current.as_ref().is_some_and(|slot| Arc::ptr_eq(&slot.identity, original)) {
+        current.take();
+    }
 }
 
 /// Run `f` on the core runtime and await its result from any executor.
@@ -162,5 +188,28 @@ pub(crate) mod tests {
             .build()
             .unwrap()
             .block_on(f)
+    }
+}
+
+#[cfg(test)]
+mod shutdown_slot_tests {
+    use super::*;
+    #[test]
+    fn failure_retains_original_and_late_success_cannot_clear_replacement() {
+        let first = tempfile::tempdir().unwrap();
+        let second = tempfile::tempdir().unwrap();
+        let make = |p: &std::path::Path| AppCore::new(cc_app_core::AppConfig::for_tests(p.to_string_lossy().into_owned())).unwrap();
+        // Local slots exercise the SAME production transition without racing
+        // unrelated bridge fixtures that also use the global application.
+        let original = Arc::new(());
+        let mut slot = Some(CoreSlot { core: make(first.path()), identity: original.clone() });
+        complete_shutdown_slot(&mut slot, &original, &Err(BridgeError::internal("synthetic shutdown denial")));
+        assert!(slot.as_ref().is_some_and(|now| Arc::ptr_eq(&now.identity, &original)));
+        let replacement = Arc::new(());
+        slot = Some(CoreSlot { core: make(second.path()), identity: replacement.clone() });
+        complete_shutdown_slot(&mut slot, &original, &Ok(()));
+        assert!(slot.as_ref().is_some_and(|now| Arc::ptr_eq(&now.identity, &replacement)));
+        complete_shutdown_slot(&mut slot, &replacement, &Ok(()));
+        assert!(slot.is_none());
     }
 }

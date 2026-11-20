@@ -8,8 +8,13 @@ import 'error.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `data`, `end`, `failed`, `forward_transfer`, `from_chunk`, `from_job`, `start_streamed`
+// These functions are ignored because they are not marked as `pub`: `data`, `end`, `failed`, `forward_transfer`, `from_chunk`, `from_job`, `start_streamed`, `terminal_only_requested`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+
+/// Initialize the local PTYs in the dedicated process and return the default shell.
+Future<String> terminalOnlyStart() => RustLib.instance.api.crateApiSshTerminalOnlyStart();
+
+Future<void> terminalOnlyShutdown() => RustLib.instance.api.crateApiSshTerminalOnlyShutdown();
 
 /// Open a PTY shell to a host; returns once connected (host-key and
 /// password prompts arrive on `core_prompts` meanwhile) → `TerminalInfoDto`.

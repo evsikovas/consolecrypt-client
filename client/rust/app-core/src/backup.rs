@@ -7,7 +7,7 @@ use crate::app::AppCore;
 use crate::dto::{ms, AppEvent, BackupSummaryDto, BackupUnlock, CreatedProfile};
 use crate::error::{AppError, AppResult};
 use crate::secrets::blocking;
-use crate::session::{Session, VAULT_ID_SETTING};
+use crate::session::{Session, Unlocked, VAULT_ID_SETTING};
 use cc_storage_core::{local_key_envelope, ExportedObject, Profile, ProfileKind, VaultExport};
 use cc_vault_core::{
     decode_backup_from, encode_backup, restore_backup_with_passphrase,
@@ -152,18 +152,21 @@ impl AppCore {
     /// Export the open vault to an encrypted `.ccbackup` file (remembered
     /// in the recent-backups list).
     pub async fn export_backup(&self, path: String) -> AppResult<BackupSummaryDto> {
-        let (summary, info) = self.write_backup(path, false).await?;
-        self.remember_backup(info).await?;
+        let (s, u) = self.unlocked().await?;
+        let (summary, info) = self.write_backup_for(&s, &u, path, false).await?;
+        drop(u);
+        self.remember_backup_for(&s, info).await?;
         Ok(summary)
     }
 
-    async fn write_backup(
+    async fn write_backup_for(
         &self,
+        s: &Session,
+        u: &Unlocked,
         path: String,
         automatic: bool,
     ) -> AppResult<(BackupSummaryDto, BackupInfoDto)> {
         let path = crate::validate::file_path("path", &path)?;
-        let (s, u) = self.unlocked().await?;
         let vault_id = u.vault_id;
         let export = s
             .storage()?
@@ -226,6 +229,9 @@ impl AppCore {
     /// The open profile's backup schedule.
     pub async fn backup_schedule(&self) -> AppResult<BackupScheduleDto> {
         let s = self.session().await?;
+        self.backup_schedule_for(&s).await
+    }
+    async fn backup_schedule_for(&self, s: &Session) -> AppResult<BackupScheduleDto> {
         Ok(s.storage()?
             .setting_get::<BackupScheduleDto>(SCHEDULE_SETTING)
             .await?
@@ -282,6 +288,9 @@ impl AppCore {
     /// Backups of the open profile written on this device, newest first.
     pub async fn recent_backups(&self) -> AppResult<Vec<BackupInfoDto>> {
         let s = self.session().await?;
+        self.recent_backups_for(&s).await
+    }
+    async fn recent_backups_for(&self, s: &Session) -> AppResult<Vec<BackupInfoDto>> {
         Ok(s.storage()?
             .setting_get::<Vec<BackupInfoDto>>(RECENT_SETTING)
             .await?
@@ -292,7 +301,14 @@ impl AppCore {
     /// also used to import the list the UI kept before the core did.
     pub async fn remember_backups(&self, backups: Vec<BackupInfoDto>) -> AppResult<()> {
         let s = self.session().await?;
-        let mut list = self.recent_backups().await?;
+        self.remember_backups_for(&s, backups).await
+    }
+    async fn remember_backups_for(
+        &self,
+        s: &Session,
+        backups: Vec<BackupInfoDto>,
+    ) -> AppResult<()> {
+        let mut list = self.recent_backups_for(s).await?;
         for b in backups {
             crate::validate::file_path("path", &b.path)?;
             list.retain(|x| x.path != b.path);
@@ -305,14 +321,13 @@ impl AppCore {
         Ok(())
     }
 
-    async fn remember_backup(&self, info: BackupInfoDto) -> AppResult<()> {
-        self.remember_backups(vec![info]).await
+    async fn remember_backup_for(&self, s: &Session, info: BackupInfoDto) -> AppResult<()> {
+        self.remember_backups_for(s, vec![info]).await
     }
 
     /// Keep the newest `keep` automatic backups; delete the older files.
-    async fn apply_retention(&self, keep: u32) -> AppResult<()> {
-        let s = self.session().await?;
-        let list = self.recent_backups().await?;
+    async fn apply_retention_for(&self, s: &Session, keep: u32) -> AppResult<()> {
+        let list = self.recent_backups_for(s).await?;
         let mut automatic: Vec<&BackupInfoDto> = list.iter().filter(|b| b.automatic).collect();
         automatic.sort_by_key(|b| std::cmp::Reverse(b.created_at_ms));
         let drop: Vec<String> = automatic
@@ -347,8 +362,18 @@ impl AppCore {
     /// retention and move the schedule on. Failures are recorded in
     /// `last_error` and reported with [`AppEvent::BackupFailed`].
     pub async fn backup_now(&self) -> AppResult<BackupInfoDto> {
-        let s = self.session().await?;
-        let sch = self.backup_schedule().await?;
+        let (s, u) = self.unlocked().await?;
+        self.backup_now_for(&s, u).await
+    }
+    async fn backup_now_for(
+        &self,
+        s: &Session,
+        u: std::sync::Arc<Unlocked>,
+    ) -> AppResult<BackupInfoDto> {
+        // Capture ONLY an already-existing original unlock before any work.
+        // A locked/no-unlock backup never invents a notification nonce.
+        let notices = u.notices.clone();
+        let sch = self.backup_schedule_for(s).await?;
         let Some(folder) = sch.folder.clone().filter(|f| !f.trim().is_empty()) else {
             return Err(AppError::invalid("backup_folder", "required"));
         };
@@ -360,30 +385,34 @@ impl AppCore {
             .unwrap_or_else(|| "vault".into());
         let now = chrono::Utc::now();
         let path = PathBuf::from(&folder).join(backup_file_name(&name, now));
+        let written = self
+            .write_backup_for(s, &u, path.to_string_lossy().into_owned(), true)
+            .await;
+        drop(u); // no StrongUnlocked retained across recent-list/retention writes
         let r = async {
-            let (_, info) = self
-                .write_backup(path.to_string_lossy().into_owned(), true)
-                .await?;
-            self.remember_backup(info.clone()).await?;
-            self.apply_retention(sch.keep_last).await?;
+            let (_, info) = written?;
+            self.remember_backup_for(s, info.clone()).await?;
+            self.apply_retention_for(s, sch.keep_last).await?;
             Ok::<_, AppError>(info)
         }
         .await;
-        let mut next = self.backup_schedule().await?;
+        let mut next = self.backup_schedule_for(s).await?;
         match &r {
             Ok(info) => {
+                notices.backup(crate::dto::CriticalBackupStateDto::Completed);
                 next.last_run_at_ms = Some(ms(&now));
                 next.last_error = None;
                 next.next_run_at_ms = next.enabled.then(|| ms(&(now + next.frequency.interval())));
-                self.store_schedule(&s, &next).await?;
+                self.store_schedule(s, &next).await?;
                 self.inner.ctx.emit(AppEvent::BackupCompleted {
                     backup: info.clone(),
                 });
             }
             Err(e) => {
+                notices.backup(crate::dto::CriticalBackupStateDto::Failed);
                 tracing::warn!(code = e.code(), "backup failed");
                 next.last_error = Some(e.message());
-                self.store_schedule(&s, &next).await?;
+                self.store_schedule(s, &next).await?;
                 self.inner.ctx.emit(AppEvent::BackupFailed {
                     error: crate::transfers::ErrorInfoDto::from(e),
                 });
@@ -396,13 +425,10 @@ impl AppCore {
     /// (called by the core's scheduler every 30 s; public for embedders
     /// and tests). `Some` when a backup was written.
     pub async fn run_due_backup(&self) -> AppResult<Option<BackupInfoDto>> {
-        let Ok(s) = self.session().await else {
+        let Ok((s, u)) = self.unlocked().await else {
             return Ok(None);
         };
-        if s.unlocked_opt().await.is_none() {
-            return Ok(None);
-        }
-        let sch = self.backup_schedule().await?;
+        let sch = self.backup_schedule_for(&s).await?;
         let due = sch.enabled
             && sch
                 .next_run_at_ms
@@ -414,7 +440,7 @@ impl AppCore {
             Ok(g) => g,
             Err(_) => return Ok(None),
         };
-        self.backup_now().await.map(Some)
+        self.backup_now_for(&s, u).await.map(Some)
     }
 
     /// Restore a `.ccbackup` into a **new Local profile** (becomes active
@@ -432,6 +458,9 @@ impl AppCore {
         if let Some(p) = &new_passphrase {
             crate::validate::secret_text("new_passphrase", p)?;
         }
+        let _transition = self
+            .begin_profile_transition(crate::automation_transition::TransitionAction::Switch)
+            .await?;
         let restored = blocking(move || {
             let meta = std::fs::metadata(&path)?;
             if meta.len() as usize > MAX_BACKUP_BYTES {
@@ -515,7 +544,7 @@ impl AppCore {
                 return Err(e);
             }
         };
-        self.activate(session.clone()).await?;
+        self.activate(session.clone(), &_transition).await?;
         if let Some(p) = new_passphrase {
             self.set_new_passphrase(p).await?;
         }

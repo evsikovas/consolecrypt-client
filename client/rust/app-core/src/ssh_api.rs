@@ -8,9 +8,9 @@ use crate::dto::*;
 use crate::error::{AppError, AppResult};
 use crate::inventory::host_of;
 use crate::session::{AppCtx, Unlocked};
-use cc_terminal_core::{TerminalError, TerminalId, TerminalSize, TerminalStatus};
-use std::{future::Future, path::Path};
-use tokio::sync::{broadcast, mpsc};
+use cc_terminal_core::{OpenedShell, ShellOpener, TerminalError, TerminalId, TerminalManager, TerminalSize, TerminalStatus, local};
+use std::{future::Future, path::Path, sync::Arc};
+use tokio::sync::{Mutex, broadcast, mpsc};
 
 fn parse_terminal_id(s: &str) -> AppResult<TerminalId> {
     uuid::Uuid::parse_str(s.trim()).map_err(|_| AppError::invalid("terminal_id", "not a valid id"))
@@ -68,6 +68,138 @@ async fn forward_terminal_output(
             reason: None,
         });
     let _ = tx.send(TerminalChunk::Closed(status)).await;
+}
+
+struct LocalShellsOnly;
+
+#[async_trait::async_trait]
+impl ShellOpener for LocalShellsOnly {
+    async fn open_shell(
+        &self,
+        _: &cc_ssh_core::ConnectionPlan,
+        _: cc_ssh_core::PtyRequest,
+    ) -> Result<OpenedShell, TerminalError> {
+        Err(TerminalError::Open("only local shells are available".into()))
+    }
+}
+
+/// Independent PTYs for a desktop process started without a vault.
+#[derive(Debug)]
+pub struct StandaloneLocalTerminals {
+    terminals: Arc<TerminalManager>,
+    opening: Mutex<()>,
+}
+
+impl Default for StandaloneLocalTerminals {
+    fn default() -> Self {
+        Self {
+            terminals: Arc::new(TerminalManager::new(Arc::new(LocalShellsOnly))),
+            opening: Mutex::new(()),
+        }
+    }
+}
+
+impl StandaloneLocalTerminals {
+    pub async fn default_profile(&self) -> AppResult<Option<local::LocalShellProfile>> {
+        Ok(local::default_profile().await?)
+    }
+
+    pub async fn profiles(&self) -> AppResult<local::LocalShellProfiles> {
+        Ok(local::profiles().await?)
+    }
+
+    pub async fn open(&self, profile_id: &str, cols: u32, rows: u32) -> AppResult<TerminalInfoDto> {
+        let _opening = self.opening.lock().await;
+        if self.terminals.list().len() >= 16 {
+            return Err(AppError::invalid("terminal", "local terminal limit reached"));
+        }
+        let id = self.terminals.open_local(profile_id, TerminalSize { cols, rows }).await?;
+        if let Err(error) = self.terminals.suppress_command_tracking(id) {
+            let _ = self.terminals.remove(id).await;
+            return Err(error.into());
+        }
+        Ok(self.terminals.info(id)?.into())
+    }
+
+    pub async fn attach(&self, id: &str) -> AppResult<TerminalAttachment> {
+        let id = parse_terminal_id(id)?;
+        let attachment = self.terminals.attach(id)?;
+        let (tx, output) = mpsc::channel(256);
+        let terminals = self.terminals.clone();
+        tokio::spawn(async move {
+            forward_terminal_output(attachment.output, terminals.wait_closed(id), tx).await;
+        });
+        Ok(TerminalAttachment { snapshot: attachment.snapshot, output })
+    }
+
+    pub async fn write(&self, id: &str, data: &[u8]) -> AppResult<()> {
+        Ok(self.terminals.write(parse_terminal_id(id)?, data).await?)
+    }
+
+    pub async fn resize(&self, id: &str, cols: u32, rows: u32) -> AppResult<()> {
+        Ok(self.terminals.resize(parse_terminal_id(id)?, TerminalSize { cols, rows }).await?)
+    }
+
+    pub async fn close(&self, id: &str) -> AppResult<()> {
+        Ok(self.terminals.remove(parse_terminal_id(id)?).await?)
+    }
+
+    pub async fn shutdown(&self) {
+        self.terminals.shutdown().await;
+    }
+}
+
+#[cfg(all(test, any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+#[tokio::test]
+async fn standalone_local_roundtrip() {
+    let terminals = StandaloneLocalTerminals::default();
+    let profile = terminals.default_profile().await.unwrap().unwrap();
+    let info = terminals.open(&profile.id, 80, 24).await.unwrap();
+    assert!(info.host_id.is_none());
+    let mut attachment = terminals.attach(&info.id).await.unwrap();
+    terminals.resize(&info.id, 100, 30).await.unwrap();
+    // Keep the marker out of the input so an echo cannot satisfy the test.
+    let command: &[u8] = match profile.shell.as_str() {
+        "powershell" => b"Write-Output ('CC_LOCAL_' + 'TERMINAL_READY')\r",
+        "cmd" => b"set CC_FIXTURE=TERMINAL_READY\recho CC_LOCAL_%CC_FIXTURE%\r",
+        _ => b"printf 'CC_LOCAL_%s\\n' TERMINAL_READY\r",
+    };
+
+    let mut bytes = attachment.snapshot;
+    tokio::time::timeout(std::time::Duration::from_secs(15), async {
+        let send = async {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            terminals.write(&info.id, command).await.unwrap();
+        };
+        tokio::pin!(send);
+        let mut sent = false;
+        let mut reply_from = 0;
+        loop {
+            tokio::select! {
+                () = &mut send, if !sent => sent = true,
+                chunk = attachment.output.recv() => match chunk {
+                    Some(TerminalChunk::Data(chunk)) => {
+                        bytes.extend(chunk);
+                        if let Some(query) = bytes[reply_from..].windows(4).position(|w| w == b"\x1b[6n") {
+                            reply_from += query + 4;
+                            terminals.write(&info.id, b"\x1b[1;1R").await.unwrap();
+                        }
+                        if String::from_utf8_lossy(&bytes).contains("CC_LOCAL_TERMINAL_READY") {
+                            break;
+                        }
+                    }
+                    Some(TerminalChunk::Lagged) => {}
+                    _ => panic!("local shell exited before returning the test line"),
+                },
+            }
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("local shell produced {} bytes before timeout", bytes.len()));
+
+    terminals.close(&info.id).await.unwrap();
+    assert!(terminals.attach(&info.id).await.is_err());
+    terminals.shutdown().await;
 }
 
 /// A running OpenSSH invocation prepared for the caller to spawn with
@@ -500,6 +632,7 @@ pub(crate) async fn auto_start_tunnels(
         .await;
         if let Err(e) = result {
             tracing::warn!(tunnel_id = %t.id, error = %e, "auto-start tunnel failed");
+            u.notices.tunnel(t.id, CriticalTunnelStateDto::Failed);
             ctx.emit(AppEvent::TunnelFailed {
                 tunnel_id: t.id.to_string(),
                 reason: e.to_string(),

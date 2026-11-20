@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/updates/update_controller.dart';
 import 'package:consolecrypt/updates/update_service.dart';
+import 'package:crypto/crypto.dart' as digest;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -67,6 +68,7 @@ void main() {
       service.completeDownload();
       await settle(tester);
       expect(service.installs, 1);
+      expect(service.verifications, 1);
       expect(container.read(updateControllerProvider).phase, UpdatePhase.opened);
       expect(download, findsNothing);
       expect(tester.takeException(), isNull);
@@ -243,6 +245,8 @@ class _Service extends UpdateService {
   Directory? _folder;
   int downloads = 0;
   int installs = 0;
+  int verifications = 0;
+  static const payload = <int>[0, 1, 2, 3];
   String version = '9.0.0';
   bool inPlace = true;
 
@@ -258,7 +262,7 @@ class _Service extends UpdateService {
     platform: 'windows-x64',
     url: Uri.parse('https://updates.consolecrypt.dev/test-installer.exe'),
     bytes: 4,
-    sha256: '0' * 64,
+    sha256: digest.sha256.convert(payload).toString(),
     notes: const {},
   );
 
@@ -271,8 +275,20 @@ class _Service extends UpdateService {
 
   void completeDownload() {
     _folder = Directory.systemTemp.createTempSync('consolecrypt-notice-test-');
-    final file = File('${_folder!.path}/installer')..writeAsBytesSync([0, 1, 2, 3]);
+    final file = File('${_folder!.path}/installer')..writeAsBytesSync(payload);
     _download.complete(file);
+  }
+
+  // This widget fixture uses synchronous access to its four owned bytes:
+  // no real disk-stream future is left pending inside Flutter's fake clock.
+  // The real asynchronous verifier is covered by update_service_test.dart.
+  @override
+  Future<void> verifyInstaller(File file, UpdateRelease release) async {
+    if (file.lengthSync() != release.bytes ||
+        digest.sha256.convert(file.readAsBytesSync()).toString() != release.sha256) {
+      throw const UpdateException('checksum');
+    }
+    verifications++;
   }
 
   @override
@@ -282,6 +298,7 @@ class _Service extends UpdateService {
     String? macosSaveTitle,
     String? macosSavePrompt,
   }) async {
+    if (verifications != installs + 1) throw StateError('Fixture installation requires prior verification');
     installs++;
     return UpdateInstallResult.opened;
   }

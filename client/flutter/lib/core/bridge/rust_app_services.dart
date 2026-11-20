@@ -5,11 +5,13 @@ import 'dart:ui' show AppExitResponse;
 import 'package:consolecrypt/app/app_info.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart';
+import 'package:consolecrypt/core/bridge/rust_automation.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
 import 'package:consolecrypt/core/bridge/rust_backup.dart';
 import 'package:consolecrypt/core/bridge/rust_databases.dart';
 import 'package:consolecrypt/core/bridge/rust_docker.dart';
 import 'package:consolecrypt/core/bridge/rust_enrollment.dart';
+import 'package:consolecrypt/core/bridge/rust_host_metrics.dart';
 import 'package:consolecrypt/core/bridge/rust_inventory.dart';
 import 'package:consolecrypt/core/bridge/rust_kubernetes.dart';
 import 'package:consolecrypt/core/bridge/rust_notes.dart';
@@ -22,6 +24,7 @@ import 'package:consolecrypt/core/security/secure_clipboard.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/storage/app_storage_paths.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
+import 'package:consolecrypt/src/rust/api/automation.dart' as rs_automation;
 import 'package:consolecrypt/src/rust/frb_generated.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -72,6 +75,32 @@ final class RustAppServices {
   final AppServices services;
   final AppLifecycleListener? _exitListener;
   final AppStoragePaths storagePaths;
+  Future<String>? _exitPreparing;
+  String? _preparedExit;
+  bool _nativeClosed = false;
+
+  /// Obtain the user's decision and fence new jobs BEFORE Setup is launched.
+  Future<Future<void> Function()> prepareUpdateExit() async {
+    if (_nativeClosed) throw const AppException(AppErrorCode.cancelled, 'Application is closing');
+    if (_exitPreparing != null || _preparedExit != null) {
+      throw const AppException(AppErrorCode.conflict, 'An exit preparation is already active');
+    }
+    final preparing = _exitPreparing = guard(rs_automation.automationPrepareExit);
+    try {
+      final token = await preparing;
+      if (_nativeClosed) {
+        await guard(() => rs_automation.automationAbortExit(token: token));
+        throw const AppException(AppErrorCode.cancelled, 'Application is closing');
+      }
+      _preparedExit = token;
+      return () async {
+        if (_preparedExit == token) _preparedExit = null;
+        await guard(() => rs_automation.automationAbortExit(token: token));
+      };
+    } finally {
+      if (identical(_exitPreparing, preparing)) _exitPreparing = null;
+    }
+  }
 
   static RustAppServices? _current;
 
@@ -124,19 +153,32 @@ final class RustAppServices {
     final prompts = RustPromptService(hub);
     final backups = RustBackupService(hub);
     final settings = RustSettingsService(hub);
+    final approvedExitActions = ApprovedExitActions();
     late final RustAppServices self;
-    Future<void> dispose() async {
-      self._exitListener?.dispose();
+    Future<void>? closing;
+    Future<void> closeApproved() async {
+      // PromptService and the presenter must still exist during native choice.
+      await settings.flushLocalWrites();
+      final preparing = self._exitPreparing;
+      final token = preparing == null ? self._preparedExit : await preparing;
+      await hub.shutdown(preparedExit: token);
+      self._preparedExit = null;
+      self._nativeClosed = true;
+      await approvedExitActions.run();
       await terminal.dispose();
       await sftpBrowser.dispose();
       await prompts.dispose();
       await sftp.dispose();
       await backups.dispose();
-      await settings.flushLocalWrites();
-      await hub.shutdown();
       await hub.dispose();
+      self._exitListener?.dispose();
       if (identical(_current, self)) _current = null;
     }
+
+    Future<void> dispose() => closing ??= closeApproved().onError<Object>((error, stack) {
+      closing = null; // Stay in app / retry after a failed cleanup.
+      Error.throwWithStackTrace(error, stack);
+    });
 
     final services = AppServices(
       profiles: RustProfileService(hub),
@@ -161,15 +203,23 @@ final class RustAppServices {
       kubernetes: RustKubeService(hub),
       databases: RustDbService(hub),
       docker: RustDockerService(),
+      automation: RustAutomationService(),
+      jobNotices: hub.jobNoticeEvents,
+      runtimeNotices: hub.runtimeNoticeEvents,
+      hostMetrics: RustHostMetricsReader(terminal),
       notes: RustNoteService(hub),
       onDispose: dispose,
+      approvedExitActions: approvedExitActions,
     );
     final exitListener = options.hookAppExit
         ? AppLifecycleListener(
             onExitRequested: () async {
-              await settings.flushLocalWrites();
-              await hub.shutdown();
-              return AppExitResponse.exit;
+              try {
+                await dispose();
+                return AppExitResponse.exit;
+              } on Object {
+                return AppExitResponse.cancel;
+              }
             },
           )
         : null;

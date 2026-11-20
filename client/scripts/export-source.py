@@ -18,6 +18,8 @@ ROOT_FILES = {
 }
 PUBLIC_DOCUMENTS = {
     'server/deploy/native/README.md',
+    'runner/deployment/README.md',
+    'runner/vendor/README.md',
     'client/rust/rdp-core/vendor/PROVENANCE.md',
     'client/rust/terminal-core/vendor/PROVENANCE.md',
     # These public upstream files are compile-time include_str! inputs.
@@ -42,7 +44,6 @@ PRIVATE_SUFFIXES = {
     '.zip', '.deb', '.rpm', '.dylib', '.dll', '.so', '.a', '.o', '.env',
 }
 
-
 def publishable(name: str) -> bool:
     path = PurePosixPath(name)
     if path.is_absolute() or '..' in path.parts:
@@ -51,7 +52,19 @@ def publishable(name: str) -> bool:
         return True
     if name.startswith('server/web/') or name.startswith('server/deploy/evsikov.'):
         return False
-    if not path.parts or path.parts[0] not in {'client', 'crates', 'server', 'docs'}:
+    if not path.parts or path.parts[0] not in {'client', 'crates', 'server', 'docs', 'runner'}:
+        return False
+    if path.parts[0] == 'runner' and not (
+        name.startswith(('runner/src/', 'runner/setup/', 'runner/deployment/', 'runner/tests/', 'runner/test-fixture/'))
+        or name in {
+            'runner/pyproject.toml', 'runner/environment.json',
+            'runner/requirements-linux-x86_64-py312.lock', 'runner/requirements-linux-x86_64-py314.lock',
+            'runner/requirements-linux-aarch64-py312.lock', 'runner/requirements-linux-aarch64-py313.lock',
+            'runner/requirements-darwin-arm64-py312.lock', 'runner/requirements-darwin-arm64-py315.lock',
+            'runner/vendor/package_pyyaml.py', 'runner/vendor/pyyaml-6.0.3-py3-none-any.whl',
+            'runner/vendor/README.md',
+        }
+    ):
         return False
     if any(part in PRIVATE_DIRS for part in path.parts):
         return False

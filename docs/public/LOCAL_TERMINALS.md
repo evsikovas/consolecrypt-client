@@ -2,6 +2,16 @@
 
 ## Русский
 
+### Режим «Только терминал»
+
+- **Windows.** Откройте «Пуск» → **ConsoleCrypt Terminal**. Установщик также предлагает ярлык на рабочем столе. В переносимой версии запустите `ConsoleCrypt Terminal.cmd`.
+- **macOS.** Перетащите **ConsoleCrypt** и **ConsoleCrypt Terminal** из DMG в «Программы». Запускайте **ConsoleCrypt Terminal** через Finder или Spotlight. Из основного приложения эту же команду можно вызвать через меню «Файл».
+- **Linux.** Откройте **ConsoleCrypt Terminal** из списка приложений. Команда для запуска из скрипта — `consolecrypt --terminal-only`.
+
+Режим сразу открывает системную оболочку и работает без входа в хранилище. `Ctrl+T` и `Ctrl+N` (`⌘T` и `⌘N` на Mac) открывают выбор оболочки для новой вкладки. `Ctrl+K` (`⌘K`) открывает палитру. Кнопка рядом с палитрой позволяет перенести вкладки наверх или влево.
+
+### Локальная оболочка в основном приложении
+
 В серии 0.5 локальная оболочка открывается рядом с SSH-сессиями в разделе
 «Терминал». Это процесс на вашем компьютере с правами вашего пользователя.
 Сервер синхронизации и SSH-подключение для него не нужны.
@@ -66,6 +76,16 @@ Windows или WSL. Проверки установленного пакета �
 [заметках выпуска](RELEASE_0_5_2.md).
 
 ## English
+
+### Terminal Only mode
+
+- **Windows.** Select **ConsoleCrypt Terminal** from Start. The installer also offers a desktop shortcut. In the portable ZIP, open `ConsoleCrypt Terminal.cmd`.
+- **macOS.** Drag **ConsoleCrypt** and **ConsoleCrypt Terminal** from the DMG to Applications. Open **ConsoleCrypt Terminal** from Finder or Spotlight. You can also open it from the main app’s File menu.
+- **Linux.** Open **ConsoleCrypt Terminal** from the application menu, or run `consolecrypt --terminal-only`.
+
+Terminal Only starts the system shell without opening your vault. Press `Ctrl+T` or `Ctrl+N` (`⌘T` or `⌘N` on Mac) to choose a shell for a new tab. Use `Ctrl+K` (`⌘K`) for the command palette. The button next to the palette moves the tabs to the top or the left.
+
+### Local shells in the main app
 
 The 0.5 series adds local shells alongside SSH tabs. Open **Terminal** and
 use its new-tab button, `Cmd+T` on macOS or `Ctrl+T` on Windows. Choose **zsh** on

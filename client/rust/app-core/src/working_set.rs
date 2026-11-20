@@ -1,5 +1,5 @@
 //! Decrypted in-memory working set of the unlocked vault
-//! (CLIENT_ARCHITECTURE §4). Kept consistent with the store by the facade
+//! (CLIENT_ARCHITECTURE В§4). Kept consistent with the store by the facade
 //! (read-back after every local mutation) and by an event task following
 //! sync-core's [`cc_sync_core::SyncEvent`]s (remote changes, conflict
 //! resolution, snapshots).
@@ -84,6 +84,7 @@ struct RevisionGuard {
     expected: BTreeMap<ObjectId, i64>,
     kube_connections: BTreeMap<ObjectId, VaultObject>,
     cancel: CancellationToken,
+    folder_watch: Option<std::sync::Weak<folder_membership::FolderWatchState>>,
 }
 
 // Only decorative fields are excluded. Authentication, TLS, routes, namespace,
@@ -109,9 +110,31 @@ fn kube_connection_identity(object: &VaultObject) -> Option<VaultObject> {
 }
 
 impl Inner {
+    fn revoke_folder_changes(&mut self, touched: &std::collections::BTreeSet<ObjectId>) {
+        for guard in &self.guards {
+            if let Some(state) = guard
+                .folder_watch
+                .as_ref()
+                .and_then(std::sync::Weak::upgrade)
+            {
+                if state.active.load(std::sync::atomic::Ordering::Acquire)
+                    && !state.folders.is_disjoint(touched)
+                {
+                    guard.cancel.cancel();
+                }
+            }
+        }
+    }
     fn revoke_stale(&mut self) {
         let entries = &self.entries;
         self.guards.retain(|guard| {
+            if guard.folder_watch.as_ref().is_some_and(|watch| {
+                watch
+                    .upgrade()
+                    .is_none_or(|state| !state.active.load(std::sync::atomic::Ordering::Acquire))
+            }) {
+                return false;
+            }
             if guard.expected.iter().any(|(id, revision)| {
                 let Some(entry) = entries.get(id) else {
                     return true;
@@ -143,6 +166,8 @@ pub(crate) struct ParkedGuards(Vec<RevisionGuard>);
 #[derive(Debug, Default)]
 pub(crate) struct WorkingSet {
     inner: RwLock<Inner>,
+    // Cheap conservative per-request ABA fence; original watchers unchanged.
+    mutation: std::sync::atomic::AtomicU64,
 }
 
 /// Result of reading one object back from the store.
@@ -199,12 +224,51 @@ impl WorkingSet {
     fn write(&self) -> std::sync::RwLockWriteGuard<'_, Inner> {
         let mut g = self.inner.write().unwrap_or_else(|p| p.into_inner());
         g.version = g.version.wrapping_add(1);
+        self.mutation
+            .store(g.version, std::sync::atomic::Ordering::Release);
         g
     }
 
     /// Mutation counter (changes whenever the content may have changed).
     pub(crate) fn version(&self) -> u64 {
         self.read().version
+    }
+
+    /// Coherent version() capture plus cheap load fences a bounded read
+    /// against every mutation, including equal-revision ABA. Unrelated
+    /// mutations conservatively retire that read too.
+    pub(crate) fn mutation_stamp(&self) -> u64 {
+        self.mutation.load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    /// A single Native tunnel I/O poll at the captured working version. Never
+    /// waits for a writer or retains this guard across Poll::Pending.
+    pub(crate) fn tunnel_io_at_version<T>(
+        &self,
+        expected: u64,
+        poll: impl FnOnce() -> T,
+    ) -> Option<T> {
+        let guard = self.inner.try_read().ok()?;
+        if guard.version != expected {
+            return None;
+        }
+        Some(poll())
+    }
+
+    /// Exact host metadata under one read lock; never clones the host, routes
+    /// or credential references. This is presentation data, not a grant.
+    pub(crate) fn correlation_host_metadata(&self, id: ObjectId) -> Option<(i64, &'static str)> {
+        let inner = self.read();
+        let entry = inner.entries.get(&id)?;
+        let Item::Object(object) = &entry.item else {
+            return None;
+        };
+        let protocol = match object.as_ref() {
+            VaultObject::Host(_) => "ssh",
+            VaultObject::RdpHost(_) => "rdp",
+            _ => return None,
+        };
+        Some((entry.revision, protocol))
     }
 
     /// One coherent view used to resolve a connection and its dependencies.
@@ -215,6 +279,67 @@ impl WorkingSet {
             .iter()
             .map(|(id, entry)| (*id, entry.clone()))
             .collect()
+    }
+
+    /// Bounded original key records for explicit service-local route consent.
+    pub(crate) fn service_key_trust_records(
+        &self,
+    ) -> Option<Vec<cc_models::known_host::KnownHost>> {
+        let inner = self.read();
+        if inner.entries.len() > 16_384 {
+            return None;
+        }
+        struct Budget(usize);
+        impl std::io::Write for Budget {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                self.0 = self
+                    .0
+                    .checked_sub(bytes.len())
+                    .ok_or(std::io::ErrorKind::InvalidData)?;
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let mut budget = Budget(256 * 1024);
+        let mut result = Vec::new();
+        for (id, entry) in &inner.entries {
+            if entry.kind() != ObjectKind::KnownHost {
+                continue;
+            }
+            if result.len() >= 512 || inner.origin.contains_key(id) {
+                return None;
+            }
+            let Item::Object(object) = &entry.item else {
+                return None;
+            };
+            let VaultObject::KnownHost(key) = object.as_ref() else {
+                return None;
+            };
+            serde_json::to_writer(&mut budget, key).ok()?;
+            result.push(key.clone());
+        }
+        Some(result)
+    }
+
+    /// Bounded service key-trust metadata only, under one read lock. No values
+    /// or general resolver. Ordinary job and connection behavior is unchanged.
+    pub(crate) fn service_key_trust_revisions(&self) -> Option<BTreeMap<ObjectId, i64>> {
+        let inner = self.read();
+        if inner.entries.len() > 16_384 {
+            return None;
+        }
+        let mut result = BTreeMap::new();
+        for (id, entry) in &inner.entries {
+            if entry.kind() == ObjectKind::KnownHost {
+                if result.len() >= 512 || inner.origin.contains_key(id) {
+                    return None;
+                }
+                result.insert(*id, entry.revision);
+            }
+        }
+        Some(result)
     }
 
     /// Install the fence atomically with checking the captured revisions.
@@ -268,6 +393,7 @@ impl WorkingSet {
             expected,
             kube_connections,
             cancel,
+            folder_watch: None,
         });
         true
     }
@@ -281,6 +407,13 @@ impl WorkingSet {
     /// Replace every entry of one vault (`None` = personal).
     pub(crate) fn replace_vault(&self, vault: Option<VaultId>, objects: Vec<DecryptedObject>) {
         let mut g = self.write();
+        // A bulk reload is a new inventory observation. Existing ordinary and
+        // Kubernetes guards retain their old exact-revision semantics.
+        for guard in &g.guards {
+            if guard.folder_watch.is_some() {
+                guard.cancel.cancel();
+            }
+        }
         let Inner {
             entries,
             tombstones,
@@ -308,7 +441,7 @@ impl WorkingSet {
         self.replace_vault(Some(vault), Vec::new());
     }
 
-    /// Apply a team's "no AI context" policy (ТР-25).
+    /// Apply a team's "no AI context" policy (РўР -25).
     pub(crate) fn set_ai_blocked(&self, vault: VaultId, blocked: bool) {
         let changed = {
             let g = self.read();
@@ -382,6 +515,39 @@ impl WorkingSet {
             }
         }
         let mut g = self.write();
+        let current_rev = g
+            .entries
+            .get(&id)
+            .map(|e| e.revision)
+            .or_else(|| g.tombstones.get(&id).copied());
+        let incoming_rev = match &r {
+            Readback::Live(d) => Some(d.revision),
+            Readback::Deleted { revision } => Some(*revision),
+            Readback::Missing => None,
+        };
+        // A stale readback must not mutate origin or revoke a folder watch.
+        // Preserve equal-revision replacement and all ordinary guard behavior.
+        if current_rev
+            .zip(incoming_rev)
+            .is_some_and(|(current, incoming)| current > incoming)
+        {
+            return None;
+        }
+        let folder_changed =
+            folder_membership::entry_projection(g.entries.get(&id), g.origin.get(&id).copied())
+                != folder_membership::readback_projection(&r, vault);
+        // Only changed object old/new folder IDs are inspected; never a global
+        // membership scan on this mutation hot path. Revocation precedes unlock.
+        let mut touched = std::collections::BTreeSet::new();
+        if folder_changed {
+            if let Some(Item::Object(object)) = g.entries.get(&id).map(|e| &e.item) {
+                folder_membership::touch(object, &mut touched);
+            }
+            if let Readback::Live(d) = &r {
+                folder_membership::touch(&d.payload.object, &mut touched);
+            }
+        }
+        g.revoke_folder_changes(&touched);
         match vault {
             Some(v) => {
                 g.origin.insert(id, v);
@@ -390,27 +556,16 @@ impl WorkingSet {
                 g.origin.remove(&id);
             }
         }
-        let current_rev = g
-            .entries
-            .get(&id)
-            .map(|e| e.revision)
-            .or_else(|| g.tombstones.get(&id).copied());
         let affected = match r {
             Readback::Missing => {
                 g.tombstones.remove(&id);
                 g.entries.remove(&id).map(|e| e.kind())
             }
             Readback::Deleted { revision } => {
-                if current_rev.is_some_and(|c| c > revision) {
-                    return None;
-                }
                 g.tombstones.insert(id, revision);
                 g.entries.remove(&id).map(|e| e.kind())
             }
             Readback::Live(d) => {
-                if current_rev.is_some_and(|c| c > d.revision) {
-                    return None;
-                }
                 g.tombstones.remove(&id);
                 let e = Entry::from_decrypted(*d);
                 let kind = e.kind();
@@ -572,15 +727,17 @@ mod tests {
         ws.apply(h.id, Readback::Live(Box::new(dec(&h, 2))));
         let mut old = h.clone();
         old.name = "a".into();
-        assert!(ws
-            .apply(h.id, Readback::Live(Box::new(dec(&old, 1))))
-            .is_none());
+        assert!(
+            ws.apply(h.id, Readback::Live(Box::new(dec(&old, 1))))
+                .is_none()
+        );
         assert_eq!(ws.host(h.id).unwrap().name, "b");
         ws.apply(h.id, Readback::Deleted { revision: 3 });
         assert!(ws.host(h.id).is_none());
-        assert!(ws
-            .apply(h.id, Readback::Live(Box::new(dec(&h, 2))))
-            .is_none());
+        assert!(
+            ws.apply(h.id, Readback::Live(Box::new(dec(&h, 2))))
+                .is_none()
+        );
         assert!(ws.host(h.id).is_none());
         assert_eq!(ws.hosts().len(), 0);
     }
@@ -658,13 +815,15 @@ mod tests {
         let snapshot = ws.snapshot();
         ws.apply(host.id, Readback::Live(Box::new(dec(&host, 2))));
         let cancelled = CancellationToken::new();
-        assert!(!ws.watch_revisions(
-            snapshot
-                .into_iter()
-                .map(|(id, entry)| (id, entry.revision))
-                .collect(),
-            cancelled.clone(),
-        ));
+        assert!(
+            !ws.watch_revisions(
+                snapshot
+                    .into_iter()
+                    .map(|(id, entry)| (id, entry.revision))
+                    .collect(),
+                cancelled.clone(),
+            )
+        );
         assert!(cancelled.is_cancelled());
         assert!(ws.read().guards.is_empty());
     }
@@ -729,4 +888,39 @@ mod tests {
             assert!(token.is_cancelled(), "connection change {change}");
         }
     }
+    #[test]
+    fn atomic_monitoring_mutation_fence_detects_equal_revision_aba_without_per_poll_reads() {
+        let ws = WorkingSet::new();
+        let mut host = Host::new("original", "192.0.2.1");
+        ws.apply(host.id, Readback::Live(Box::new(dec(&host, 1))));
+        let captured = ws.version();
+        assert_eq!(ws.mutation_stamp(), captured);
+        let cancel = CancellationToken::new();
+        assert!(ws.watch_revisions(BTreeMap::from([(host.id, 1)]), cancel.clone()));
+        assert_eq!(
+            ws.mutation_stamp(),
+            captured,
+            "registering a reader is not a mutation"
+        );
+        host.address = "192.0.2.2".into();
+        ws.apply(host.id, Readback::Live(Box::new(dec(&host, 1))));
+        host.address = "192.0.2.1".into();
+        ws.apply(host.id, Readback::Live(Box::new(dec(&host, 1))));
+        assert_eq!(ws.host(host.id).unwrap().address, "192.0.2.1");
+        assert!(
+            !cancel.is_cancelled(),
+            "the legacy revision-only watcher misses this exact ABA"
+        );
+        assert_ne!(ws.mutation_stamp(), captured);
+        assert_eq!(ws.mutation_stamp(), ws.version());
+    }
 }
+
+mod folder_membership;
+pub(crate) use folder_membership::{FolderSnapshot, FolderWatch};
+
+mod vault_metadata;
+pub(crate) use vault_metadata::VaultCredentialMetadata;
+
+mod ai_metadata;
+pub(crate) use ai_metadata::AiContextProjection;

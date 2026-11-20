@@ -23,6 +23,73 @@ pub struct DeviceIdentity {
 }
 
 impl DeviceIdentity {
+    /// Purpose-specific signature. AppCore must first consume an explicit,
+    /// profile-bound review of these exact inputs. This method grants no
+    /// authority by itself and is never exposed as a generic bridge endpoint.
+    pub fn sign_automation_manifest(
+        &self,
+        manifest: &cc_models::automation::JobManifest,
+    ) -> std::result::Result<[u8; 64], cc_crypto_core::CryptoError> {
+        self.secret_keys().sign_automation_manifest(manifest)
+    }
+
+    /// Fixed production OWNER purpose; caller must first verify the ORIGINAL
+    /// vault passphrase for this exact frozen manifest. Never a raw signer.
+    pub fn sign_production_owner_confirmation(
+        &self, manifest: &cc_models::automation::JobManifest,
+    ) -> std::result::Result<cc_crypto_core::OwnerConfirmation, cc_crypto_core::CryptoError> {
+        self.secret_keys().sign_production_owner_confirmation(manifest, self.device_id.to_string().parse().map_err(|_| cc_crypto_core::CryptoError::MalformedPlaintext("invalid original owner signer"))?)
+    }
+
+    /// Purpose-specific selected service capsule; no raw signer or key export.
+    /// AppCore must first consume the exact original-profile owner review.
+    pub fn seal_service_credential(
+        &self,
+        binding: cc_crypto_core::ServiceCredentialBinding,
+        value: Zeroizing<Vec<u8>>,
+        recipient: &[u8; 32],
+        now: u64,
+        expires: u64,
+    ) -> std::result::Result<
+        cc_crypto_core::ServiceCredentialCapsule,
+        cc_crypto_core::ServiceCredentialError,
+    > {
+        if binding.owner_device_id != self.device_id.to_string() {
+            return Err(cc_crypto_core::ServiceCredentialError::Context);
+        }
+        let selected = cc_crypto_core::SelectedServiceCredential::new(binding, value)?;
+        cc_crypto_core::seal_service_credential(
+            selected,
+            recipient,
+            self.secret_keys(),
+            now,
+            expires,
+        )
+    }
+
+    /// Fixed owner ServiceDelegation v3 purpose. AppCore consumes the original
+    /// reviewed source/recipient/quotas; no generic signing endpoint is exposed.
+    pub fn sign_service_delegation(
+        &self, policy: cc_crypto_core::ServiceDelegationPolicy, now: u64,
+    ) -> std::result::Result<cc_crypto_core::SignedServiceDelegation, cc_crypto_core::ServiceDelegationError> {
+        let tenant = policy.tenant.clone();
+        self.secret_keys().sign_service_delegation(policy, &self.device_id.to_string(), &tenant, now)
+    }
+
+    /// Initial original-policy observation only; expiry is never renewed.
+    pub fn sign_initial_service_status(
+        &self, signed: &cc_crypto_core::SignedServiceDelegation, now: u64,
+    ) -> std::result::Result<cc_crypto_core::SignedInitialServiceStatus, cc_crypto_core::ServiceDelegationError> {
+        self.secret_keys().sign_initial_service_status(signed, &self.device_id.to_string(), &signed.body().tenant, now)
+    }
+
+    /// Explicit local revocation purpose only; AppCore commits original floors first.
+    pub fn sign_service_revocation(&self,signed:&cc_crypto_core::SignedServiceDelegation,
+        policy_revision:u64,revocation_epoch:u64,clock_floor:u64,now:u64)
+        ->std::result::Result<cc_crypto_core::SignedServiceRevocation,cc_crypto_core::ServiceDelegationError> {
+        self.secret_keys().sign_service_revocation(signed,&self.device_id.to_string(),policy_revision,revocation_epoch,clock_floor,now)
+    }
+
     /// Fresh identity: new UUIDv7 device id and fresh keys.
     pub fn generate() -> Result<Self> {
         Ok(Self {

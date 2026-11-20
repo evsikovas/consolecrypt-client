@@ -180,6 +180,61 @@ class _Document {
   }
 
   String _value(KdbxEntry entry, String key) => entry.getString(KdbxKey(key))?.getText() ?? '';
+
+  bool _validIcon(Uint8List data) {
+    if (data.length < 24 || data.length > 48 * 1024) return false;
+    final png = ByteData.sublistView(data);
+    return png.getUint32(0) == 0x89504e47 &&
+        png.getUint32(4) == 0x0d0a1a0a &&
+        png.getUint32(12) == 0x49484452 &&
+        png.getUint32(16) >= 1 &&
+        png.getUint32(16) <= 256 &&
+        png.getUint32(20) >= 1 &&
+        png.getUint32(20) <= 256;
+  }
+
+  KdbxCustomIcon? _preparedIcon(KdbxData args) {
+    final id = args['icon'];
+    final png = args['customIcon'];
+    if (id != null && (id is! int || id < 0 || id >= KdbxIcon.values.length) ||
+        png != null && (png is! Uint8List || !_validIcon(png)) ||
+        id != null && png != null) {
+      throw const KdbxFailure('format');
+    }
+    if (png is! Uint8List) return null;
+    final hash = sha256.convert(png);
+    for (final icon in db.body.meta.customIcons.values) {
+      if (icon.data.length == png.length && sha256.convert(icon.data) == hash) return icon;
+    }
+    return KdbxCustomIcon(uuid: KdbxUuid.random(), data: png);
+  }
+
+  void _applyIcon(KdbxObject object, KdbxData args, KdbxCustomIcon? custom) {
+    if (custom != null) {
+      object.customIcon = custom;
+    } else if (args['icon'] case final int id) {
+      object.icon.set(KdbxIcon.values[id], force: true);
+      if (object.customIconUuid.get() != null) object.customIconUuid.set(KdbxUuid.NIL);
+    }
+  }
+
+  String? _customIconId(KdbxObject object) {
+    final id = object.customIconUuid.get();
+    return id == null || id.isNil || id.uuid.isEmpty ? null : id.uuid;
+  }
+
+  Map<String, Uint8List> _icons() {
+    final result = <String, Uint8List>{};
+    var size = 0;
+    for (final icon in db.body.meta.customIcons.values) {
+      if (!_validIcon(icon.data)) continue;
+      size += icon.data.length;
+      if (size > 4 * 1024 * 1024 || result.length >= 1024) break;
+      result[icon.uuid.uuid] = icon.data;
+    }
+    return result;
+  }
+
   Iterable<KdbxGroup> _tree(KdbxGroup group) sync* {
     yield group;
     for (final child in group.groups) {
@@ -193,6 +248,7 @@ class _Document {
     'recycleBin': db.recycleBin?.uuid.toString(),
     'dirty': _dirty,
     'version': db.header.version.toString(),
+    'icons': _icons(),
     'groups': [
       for (final group in _tree(db.body.rootGroup))
         {
@@ -201,6 +257,8 @@ class _Document {
           'recycled': _recycledGroup(group),
           'containsRecycleBin': db.recycleBin?.isInGroup(group) ?? false,
           'label': group.name.get() ?? '',
+          'icon': group.icon.get()?.index,
+          'iconId': _customIconId(group),
           'name': group.breadcrumbs.map((g) => g.name.get() ?? '').join(' / '),
         },
     ],
@@ -213,6 +271,8 @@ class _Document {
           'username': _value(entry, 'UserName'),
           'url': _value(entry, 'URL'),
           'notes': _value(entry, 'Notes'),
+          'icon': entry.icon.get()?.index,
+          'iconId': _customIconId(entry),
           'recycled': entry.parent?.breadcrumbs.any((g) => g.uuid == db.recycleBin?.uuid) ?? false,
           'fields': [for (final field in entry.stringEntries) field.key.key],
         },
@@ -280,6 +340,7 @@ class _Document {
         final entry = _entry(args['id']! as String);
         return {
           for (final key in ['Title', 'UserName', 'Password', 'URL', 'Notes']) key: _value(entry, key),
+          'icon': entry.icon.get()?.index,
           'custom': {
             for (final field in entry.stringEntries)
               if (![
@@ -295,6 +356,7 @@ class _Document {
       case 'password':
         return _value(_entry(args['id']! as String), 'Password');
       case 'put':
+        final icon = _preparedIcon(args);
         if (args['custom'] case final Map<Object?, Object?> fields) {
           final names = <String>{};
           for (final field in fields.entries) {
@@ -311,6 +373,7 @@ class _Document {
         final group = _group(args['group'] as String?);
         final entry = id == null ? KdbxEntry.create(db, group) : _entry(id);
         if (id == null) group.addEntry(entry);
+        _applyIcon(entry, args, icon);
         for (final key in ['Title', 'UserName', 'Password', 'URL', 'Notes']) {
           final value = args[key]! as String;
           final old = entry.getString(KdbxKey(key));
@@ -345,7 +408,9 @@ class _Document {
       case 'group':
         final name = args['name']! as String;
         if (name.trim().isEmpty) throw const KdbxFailure('name');
-        db.createGroup(parent: _group(args['parent'] as String?), name: name.trim());
+        final icon = _preparedIcon(args);
+        final group = db.createGroup(parent: _group(args['parent'] as String?), name: name.trim());
+        _applyIcon(group, args, icon);
         _dirty = true;
         return snapshot();
       case 'delete':
@@ -356,8 +421,13 @@ class _Document {
         final group = _editableGroup(args['id']! as String);
         final name = (args['name']! as String).trim();
         if (name.isEmpty) throw const KdbxFailure('name');
+        final icon = _preparedIcon(args);
         if (group.name.get() != name) {
           group.name.set(name);
+          _dirty = true;
+        }
+        if (icon != null || args['icon'] != null) {
+          _applyIcon(group, args, icon);
           _dirty = true;
         }
         return snapshot();

@@ -231,6 +231,7 @@ struct Inner {
     size: TerminalSize,
     scrollback: Scrollback,
     tracker: CommandTracker,
+    tracking_suppressed: bool,
 }
 
 struct Session {
@@ -347,6 +348,7 @@ impl TerminalManager {
                 size,
                 scrollback: Scrollback::new(self.config.scrollback_bytes),
                 tracker: CommandTracker::new(),
+                tracking_suppressed: false,
             }),
         });
         self.register(session.clone());
@@ -448,6 +450,7 @@ impl TerminalManager {
                 size,
                 scrollback: Scrollback::new(self.config.scrollback_bytes),
                 tracker: CommandTracker::new(),
+                tracking_suppressed: false,
             }),
         });
         self.register(session.clone());
@@ -501,6 +504,7 @@ impl TerminalManager {
                 size,
                 scrollback: Scrollback::new(self.config.scrollback_bytes),
                 tracker: CommandTracker::new(),
+                tracking_suppressed: false,
             }),
         });
         self.register(session.clone());
@@ -542,6 +546,7 @@ impl TerminalManager {
                 size,
                 scrollback: Scrollback::new(self.config.scrollback_bytes),
                 tracker: CommandTracker::new(),
+                tracking_suppressed: false,
             }),
         });
         self.register(session.clone());
@@ -638,7 +643,9 @@ impl TerminalManager {
                         continue;
                     }
                     inner.scrollback.push(&d);
-                    inner.tracker.on_output(&d);
+                    if !inner.tracking_suppressed {
+                        inner.tracker.on_output(&d);
+                    }
                     let _ = session.output.send(d);
                 }
                 Some(ShellEvent::ExitStatus(c)) => exit_status = Some(c),
@@ -686,7 +693,13 @@ impl TerminalManager {
                 .writer
                 .clone()
                 .ok_or(TerminalError::NotConnected(id))?;
-            inner.tracker.on_input(data);
+            // Package preparation uses interactive sudo. Its keystrokes must
+            // never become AI command context, regardless of prompt language.
+            if !inner.tracking_suppressed
+                && !matches!(&s.target, TerminalTarget::Local { profile_id, .. } if profile_id == "runner-prerequisites")
+            {
+                inner.tracker.on_input(data);
+            }
             w
         };
         writer
@@ -719,6 +732,20 @@ impl TerminalManager {
             snapshot: inner.scrollback.snapshot(),
             output: s.output.subscribe(),
         })
+    }
+
+    /// Borrow the authenticated connection of this exact interactive SSH tab.
+    pub fn connected_ssh(&self, id: TerminalId, host_id: ObjectId) -> Option<Arc<SshSession>> {
+        let session = self.get(id).ok()?;
+        let inner = session.lock();
+        if session.target.host_id() != Some(host_id) || inner.closing {
+            return None;
+        }
+        inner
+            .session
+            .as_ref()
+            .filter(|ssh| !ssh.is_closed())
+            .cloned()
     }
 
     /// Current status.
@@ -828,10 +855,23 @@ impl TerminalManager {
         Ok(())
     }
 
+    /// One-way suppression for private bootstrap/authentication terminals. This
+    /// clears previously tracked context and cannot be undone by guest output.
+    pub fn suppress_command_tracking(&self, id: TerminalId) -> Result<(), TerminalError> {
+        let session = self.get(id)?;
+        let mut inner = session.lock();
+        inner.tracking_suppressed = true;
+        inner.tracker.clear();
+        Ok(())
+    }
+
     /// Last command typed in this session (best effort; AI hook).
     pub fn last_command(&self, id: TerminalId) -> Option<String> {
         let s = self.get(id).ok()?;
         let inner = s.lock();
+        if inner.tracking_suppressed {
+            return None;
+        }
         inner.tracker.last_command().map(str::to_string)
     }
 
@@ -839,6 +879,9 @@ impl TerminalManager {
     pub fn last_error(&self, id: TerminalId) -> Option<String> {
         let s = self.get(id).ok()?;
         let inner = s.lock();
+        if inner.tracking_suppressed {
+            return None;
+        }
         inner.tracker.last_error().map(str::to_string)
     }
 

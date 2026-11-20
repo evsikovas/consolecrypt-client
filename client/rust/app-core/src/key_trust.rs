@@ -417,6 +417,10 @@ pub(crate) async fn reconcile_key_commitments(
                 device_id: c.device_id.clone(),
                 device_name: c.device_name.clone(),
             });
+            u.notices.device(
+                &c.device_id,
+                crate::dto::CriticalDeviceStateDto::KeyConflict,
+            );
         }
     }
     u.set_key_conflicts(conflicts);

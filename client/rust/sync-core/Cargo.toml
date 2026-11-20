@@ -22,10 +22,12 @@ cc-models.workspace = true
 cc-storage-core.workspace = true
 tokio = { workspace = true }
 futures.workspace = true
+zeroize.workspace = true
 bytes.workspace = true
 async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+semver = "=1.0.28"
 thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true
@@ -35,6 +37,7 @@ reqwest.workspace = true
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "aws_lc_rs"] }
 rustls-platform-verifier = "0.7"
+x509-parser = "=0.18.1"
 # SECURITY: tungstenite logs the full WebSocket handshake request — including
 # `Authorization: Bearer …` — via `log::trace!` (handshake/client.rs). Cargo
 # unifies features, so capping `log` here compiles TRACE records out of every
@@ -51,7 +54,6 @@ base64 = { workspace = true, optional = true }
 [dev-dependencies]
 cc-crypto-core.workspace = true
 base64.workspace = true
-zeroize.workspace = true
 tracing-log = "0.2"
 # Enables the mock server for this crate's own integration tests.
 cc-sync-core = { path = ".", features = ["mock-server"] }

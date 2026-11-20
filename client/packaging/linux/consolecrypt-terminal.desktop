@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=ConsoleCrypt Terminal
+Comment=Open a local shell
+Comment[ru]=Открыть локальный терминал
+Exec=consolecrypt --terminal-only
+Icon=io.consolecrypt.consolecrypt
+Terminal=false
+Categories=System;TerminalEmulator;
+Keywords=terminal;shell;

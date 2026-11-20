@@ -39,4 +39,6 @@ String appLocaleNativeName(AppLocale locale, AppLocalizations l10n) => switch (l
   AppLocale.system => l10n.languageSystem,
   AppLocale.en => 'English',
   AppLocale.ru => 'Русский',
+  AppLocale.es => 'Español',
+  AppLocale.zh => '简体中文',
 };

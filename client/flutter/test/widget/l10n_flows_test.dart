@@ -27,6 +27,19 @@ void main() {
     expect(find.text('Русский'), findsWidgets);
     expect(tester.takeException(), isNull);
 
+    for (final (locale, languageLabel, passwordsLabel) in [
+      (AppLocale.es, 'Idioma', 'Contraseñas'),
+      (AppLocale.zh, '语言', '密码'),
+    ]) {
+      await tapKey(tester, 'app-locale');
+      await tester.tap(find.byKey(ValueKey('app-locale-${locale.wireName}')).last);
+      await settle(tester);
+      expect(backend.services.settings.currentLocal.appLocale, locale);
+      expect(find.text(languageLabel), findsOneWidget);
+      expect(find.text(passwordsLabel), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+
     // …and back to English.
     await tapKey(tester, 'app-locale');
     await tester.tap(find.byKey(const ValueKey('app-locale-en')).last);
@@ -72,6 +85,14 @@ void main() {
     addTearDown(backend.dispose);
     await pumpApp(tester, backend, locale: AppLocale.system);
     expect(find.text('Добро пожаловать в ConsoleCrypt'), findsOneWidget);
+
+    tester.platformDispatcher.localesTestValue = const [Locale('es', 'MX')];
+    await settle(tester);
+    expect(find.text('Te damos la bienvenida a ConsoleCrypt'), findsOneWidget);
+
+    tester.platformDispatcher.localesTestValue = const [Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans')];
+    await settle(tester);
+    expect(find.text('欢迎使用 ConsoleCrypt'), findsOneWidget);
 
     tester.platformDispatcher.localesTestValue = const [Locale('de', 'DE')];
     await settle(tester);

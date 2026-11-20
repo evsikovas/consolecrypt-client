@@ -171,6 +171,8 @@ pub enum PlanError {
     MissingGroup(ObjectId),
     #[error("credential {0} not found")]
     MissingCredential(ObjectId),
+    #[error("project environment has no explicit SSH credential for host {0}")]
+    MissingProjectCredential(ObjectId),
     #[error("jump profile {0} not found")]
     MissingJumpProfile(ObjectId),
     #[error("proxy {0} not found")]
@@ -236,8 +238,22 @@ impl ConnectionPlanner {
 
     /// Plan a connection to `host_id`.
     pub async fn plan(&self, host_id: ObjectId) -> Result<ConnectionPlan, PlanError> {
+        self.plan_selected(host_id, None).await
+    }
+
+    /// Metadata-only original project selection. This changes neither inventory
+    /// objects, Runner credentials, proxy authentication nor the secret resolver.
+    /// Every target/jump Host must be explicitly covered; username/group rules
+    /// are recomputed through the SAME planner instead of mutating a ready plan.
+    pub async fn plan_with_credentials(
+        &self, host_id: ObjectId, credentials: &HashMap<ObjectId,ObjectId>,
+    ) -> Result<ConnectionPlan,PlanError> {
+        self.plan_selected(host_id, Some(credentials)).await
+    }
+
+    async fn plan_selected(&self, host_id:ObjectId, credentials:Option<&HashMap<ObjectId,ObjectId>>) -> Result<ConnectionPlan,PlanError> {
         let mut cache: HashMap<ObjectId, ResolvedHost> = HashMap::new();
-        let target = self.resolve_cached(host_id, &mut cache).await?;
+        let target = self.resolve_cached(host_id, &mut cache, credentials).await?;
         let mut warnings = Vec::new();
 
         // Route of the target, then recursively prepend the first hop's route.
@@ -251,7 +267,7 @@ impl ConnectionPlanner {
             }
         }
         while let Some(&first) = route.first() {
-            let first_resolved = self.resolve_cached(first, &mut cache).await?;
+            let first_resolved = self.resolve_cached(first, &mut cache, credentials).await?;
             let prefix = self.route_ids(&first_resolved).await?;
             if prefix.is_empty() {
                 break;
@@ -277,7 +293,7 @@ impl ConnectionPlanner {
 
         let mut hops = Vec::with_capacity(route.len());
         for id in &route {
-            let r = self.resolve_cached(*id, &mut cache).await?;
+            let r = self.resolve_cached(*id, &mut cache, credentials).await?;
             hops.push(Hop {
                 host_id: r.host.id,
                 name: r.host.name.clone(),
@@ -344,15 +360,19 @@ impl ConnectionPlanner {
         &self,
         id: ObjectId,
         cache: &mut HashMap<ObjectId, ResolvedHost>,
+        credentials: Option<&HashMap<ObjectId,ObjectId>>,
     ) -> Result<ResolvedHost, PlanError> {
         if let Some(r) = cache.get(&id) {
             return Ok(r.clone());
         }
-        let host = self
+        let mut host = self
             .inventory
             .host(id)
             .await
             .ok_or(PlanError::MissingHost(id))?;
+        if let Some(selected) = credentials {
+            host.credential_id = Some(*selected.get(&id).ok_or(PlanError::MissingProjectCredential(id))?);
+        }
         let r = self.resolve_host(host).await?;
         cache.insert(id, r.clone());
         Ok(r)
@@ -917,4 +937,32 @@ mod tests {
         assert_eq!(Endpoint::new("H", 22).known_hosts_pattern(), "h");
         assert_eq!(Endpoint::new("h", 2222).known_hosts_pattern(), "[h]:2222");
     }
+    #[tokio::test]
+    async fn explicit_project_credentials_recompute_username_without_mutating_hosts_or_proxy() {
+        let inv=Arc::new(MemoryInventory::new());
+        let mut global=Credential::new("global",CredentialKind::Password);global.username=Some("globaluser".into());
+        let global=inv.add_credential(global);
+        let mut project=Credential::new("project",CredentialKind::Password);project.username=Some("projectuser".into());let project=inv.add_credential(project);
+        let proxy=inv.add_proxy(proxy("unchanged"));
+        let mut target=host("target","127.0.0.1");target.credential_id=Some(global);target.proxy_id=Some(proxy);let target=inv.add_host(target);
+        let planner=planner(&inv);let before=planner.plan(target).await.unwrap();
+        let scoped=planner.plan_with_credentials(target,&HashMap::from([(target,project)])).await.unwrap();
+        assert_eq!(scoped.username,"projectuser");assert_eq!(scoped.credential.unwrap().id,project);assert_eq!(scoped.proxy,before.proxy);
+        assert_eq!(planner.plan(target).await.unwrap(),before);
+    }
+    #[tokio::test]
+    async fn project_route_requires_explicit_jump_ref_and_preserves_separate_hop_credentials() {
+        let inv=Arc::new(MemoryInventory::new());let a=inv.add_credential(Credential::new("jump",CredentialKind::Password));let b=inv.add_credential(Credential::new("target",CredentialKind::Password));
+        let jump=inv.add_host(host("jump","127.0.0.1"));let mut target=host("target","127.0.0.2");target.jump_chain=vec![jump];let target=inv.add_host(target);let p=planner(&inv);
+        assert!(matches!(p.plan_with_credentials(target,&HashMap::from([(target,b)])).await,Err(PlanError::MissingProjectCredential(id))if id==jump));
+        let plan=p.plan_with_credentials(target,&HashMap::from([(target,b),(jump,a)])).await.unwrap();
+        assert_eq!(plan.route[0].credential.as_ref().unwrap().id,a);assert_eq!(plan.credential.as_ref().unwrap().id,b);
+    }
+    #[tokio::test]
+    async fn conscious_same_ref_is_accepted_and_empty_selection_never_falls_back_to_global() {
+        let inv=Arc::new(MemoryInventory::new());let key=inv.add_credential(Credential::new("same",CredentialKind::Password));let mut target=host("owned","127.0.0.1");target.credential_id=Some(key);let target=inv.add_host(target);let p=planner(&inv);
+        assert_eq!(p.plan_with_credentials(target,&HashMap::from([(target,key)])).await.unwrap(),p.plan(target).await.unwrap());
+        assert!(matches!(p.plan_with_credentials(target,&HashMap::new()).await,Err(PlanError::MissingProjectCredential(id))if id==target));
+    }
+
 }

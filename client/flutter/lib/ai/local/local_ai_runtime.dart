@@ -7,6 +7,7 @@ import 'package:consolecrypt/ai/local/local_ai_archive.dart';
 import 'package:consolecrypt/ai/local/local_ai_catalog.dart';
 import 'package:consolecrypt/ai/local/local_ai_download.dart';
 import 'package:consolecrypt/ai/local/local_ai_installation.dart';
+import 'package:consolecrypt/ai/local/src/local_ai_process.dart';
 
 export 'local_ai_catalog.dart';
 export 'local_ai_download.dart' show LocalAiException, LocalAiDownloadCancelled;
@@ -89,15 +90,19 @@ class LocalAiRuntime {
 
   /// The catalog and the user's own GGUF models.
   List<LocalAiModel> get models => _installation.models;
-  Future<void>? _initializing, _installing, _stopping, _selecting, _removing;
+  Future<void>? _initializing, _installing, _stopping, _selecting, _removing, _disposing;
   Future<LocalAiEndpoint>? _starting;
   LocalAiCancellation? _downloadCancellation;
   LocalAiCancellation? _startCancellation;
   LocalAiEndpoint? _endpoint;
-  Process? _process;
+  final _processes = LocalAiProcessCustody();
   Timer? _idle;
   int _leases = 0, _generation = 0, _selectionRevision = 0;
-  bool _disposed = false, _modelVerified = false, _initialized = false, _runtimeInstalled = false;
+  bool _disposed = false,
+      _disposeComplete = false,
+      _modelVerified = false,
+      _initialized = false,
+      _runtimeInstalled = false;
 
   Directory get _downloads => Directory('${supportDirectory.path}/downloads');
   Directory get _downloadedRuntime =>
@@ -260,6 +265,8 @@ class LocalAiRuntime {
     await initialize();
     cancellation.check();
     if (!_initialized) throw const LocalAiException('local_storage_unavailable');
+    await stop();
+    cancellation.check();
     final selected = selectedModel;
     final artifact = LocalAiCatalog.runtimes[platform]!;
     _set(LocalAiPhase.installing);
@@ -342,6 +349,8 @@ class LocalAiRuntime {
     await initialize();
     _checkUsable();
     if (!_initialized) throw const LocalAiException('local_storage_unavailable');
+    await stop();
+    cancellation.check();
     final total = source.existsSync() ? await source.length() : 0;
     _set(LocalAiPhase.installing, total: total);
     try {
@@ -380,13 +389,16 @@ class LocalAiRuntime {
   Future<LocalAiEndpoint> ensureReady() {
     _checkUsable();
     if (_selecting != null || _removing != null) throw const LocalAiException('operation_in_progress');
+    if (_installing != null) return Future.error(const LocalAiException('install_in_progress'));
     final stopping = _stopping;
     if (stopping != null) return stopping.then((_) => ensureReady());
-    if (_endpoint != null && _process != null && _stopping == null) {
+    if (_starting != null) return _starting!;
+    final current = _processes.current;
+    if (current != null && _endpoint != null && _processes.isCurrentUsable(current)) {
       touch();
       return Future.value(_endpoint);
     }
-    if (_starting != null) return _starting!;
+    if (_processes.hasUnjoinedProcess) return Future.error(const LocalAiException('runtime_stop_failed'));
     final cancellation = LocalAiCancellation();
     _startCancellation = cancellation;
     return _starting = _start(cancellation).whenComplete(() {
@@ -412,7 +424,9 @@ class LocalAiRuntime {
   void touch() {
     _idle?.cancel();
     if (!_disposed && _leases == 0 && _endpoint != null) {
-      _idle = Timer(idleTimeout, () => unawaited(stop()));
+      // stop() retains the child and emits error on failure; a timer has no
+      // awaiting caller, so consume only the already-observed exception.
+      _idle = Timer(idleTimeout, () => unawaited(stop().catchError((Object _) {})));
     }
   }
 
@@ -430,6 +444,7 @@ class LocalAiRuntime {
     if (!_status.isInstalled) throw const LocalAiException('model_not_installed');
     _set(LocalAiPhase.starting);
     Process? child;
+    LocalAiOwnedProcess? owned;
     try {
       final executable = await _runtimeExecutable(verifyFiles: true, cancellation: cancellation);
       if (executable == null) {
@@ -457,6 +472,7 @@ class LocalAiRuntime {
             : '/usr/bin:/bin',
         'LLAMA_API_KEY': token,
       };
+      _processes.requireStartable();
       child = await Process.start(
         '${_runtime.path}/$executable',
         [
@@ -485,7 +501,26 @@ class LocalAiRuntime {
         includeParentEnvironment: false,
         runInShell: false,
       );
-      _process = child;
+      final ownedChild = _processes.attach(
+        child,
+        onExit: () {
+          _endpoint = null;
+          _idle?.cancel();
+          if (generation == _generation && !_disposed) _set(LocalAiPhase.error, message: 'runtime_exited');
+        },
+        onUnknownExit: () {
+          _endpoint = null;
+          _idle?.cancel();
+          _set(LocalAiPhase.error, message: 'runtime_stop_failed');
+        },
+      );
+      owned = ownedChild;
+      void checkChild() {
+        check();
+        if (ownedChild.hasExited) throw const LocalAiException('runtime_exited');
+        if (!_processes.isCurrentUsable(ownedChild)) throw const LocalAiException('runtime_stop_failed');
+      }
+
       // Never persist model prompts or responses in subprocess logs.
       unawaited(child.stdout.drain<void>());
       unawaited(child.stderr.drain<void>());
@@ -494,24 +529,11 @@ class LocalAiRuntime {
         apiKey: token,
         modelId: selectedModel.id,
       );
-      var exited = false;
-      unawaited(
-        child.exitCode.then((_) {
-          exited = true;
-          if (identical(_process, child)) {
-            _process = null;
-            _endpoint = null;
-            _idle?.cancel();
-            if (generation == _generation && !_disposed) _set(LocalAiPhase.error, message: 'runtime_exited');
-          }
-        }),
-      );
       final deadline = DateTime.now().add(startTimeout);
       while (DateTime.now().isBefore(deadline)) {
-        check();
-        if (exited) throw const LocalAiException('runtime_exited');
+        checkChild();
         if (await _healthy(endpoint)) {
-          check();
+          checkChild();
           _endpoint = endpoint;
           _set(LocalAiPhase.ready);
           touch();
@@ -521,9 +543,15 @@ class LocalAiRuntime {
       }
       throw const LocalAiException('runtime_start_timeout');
     } catch (error) {
-      if (child != null) await _terminate(child);
-      if (identical(_process, child)) _process = null;
       _endpoint = null;
+      if (owned != null) {
+        try {
+          await _processes.retire(owned);
+        } catch (_) {
+          _set(LocalAiPhase.error, message: 'runtime_stop_failed');
+          throw const LocalAiException('runtime_stop_failed');
+        }
+      }
       if (generation == _generation && !_disposed) {
         _set(LocalAiPhase.error, message: error is LocalAiException ? error.code : 'runtime_start_failed');
       }
@@ -566,14 +594,12 @@ class LocalAiRuntime {
     _startCancellation?.cancel();
     _idle?.cancel();
     _endpoint = null;
-    final child = _process;
-    _process = null;
-    if (child != null || _starting != null) _set(LocalAiPhase.stopping);
-    if (child != null) await _terminate(child);
+    if (_processes.hasUnjoinedProcess || _starting != null) _set(LocalAiPhase.stopping);
     try {
-      await _starting;
+      await _processes.stopAfter(_starting);
     } catch (_) {
-      /* explicit cancellation */
+      _set(LocalAiPhase.error, message: 'runtime_stop_failed');
+      throw const LocalAiException('runtime_stop_failed');
     }
     if (!_disposed && _status.phase != LocalAiPhase.installing) {
       _set(
@@ -583,16 +609,6 @@ class LocalAiRuntime {
             ? LocalAiPhase.unsupported
             : LocalAiPhase.notInstalled,
       );
-    }
-  }
-
-  Future<void> _terminate(Process child) async {
-    child.kill();
-    try {
-      await child.exitCode.timeout(const Duration(seconds: 3));
-    } on TimeoutException {
-      child.kill(ProcessSignal.sigkill);
-      await child.exitCode.timeout(const Duration(seconds: 3));
     }
   }
 
@@ -628,8 +644,14 @@ class LocalAiRuntime {
     _set(LocalAiPhase.notInstalled, installed: false);
   }
 
-  Future<void> dispose() async {
-    if (_disposed) return;
+  Future<void> dispose() {
+    if (_disposeComplete) return Future.value();
+    return _disposing ??= _dispose().whenComplete(() => _disposing = null);
+  }
+
+  Future<void> _dispose() async {
+    // Admission closes at first entry; only a completed joined cleanup is
+    // idempotent success. A failed dispose retains custody and can retry.
     _disposed = true;
     cancelInstall();
     await stop();
@@ -646,5 +668,6 @@ class LocalAiRuntime {
       }
     }
     await _changes.close();
+    _disposeComplete = true;
   }
 }

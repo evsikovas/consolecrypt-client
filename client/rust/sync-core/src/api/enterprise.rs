@@ -45,6 +45,7 @@ impl ApiClient {
     }
 
     async fn enterprise_login(&self, path: &str, body: Vec<u8>) -> Result<AuthResponse, ApiError> {
+        let ticket = self.inner.reader_auth.begin()?;
         let resp: AuthResponse =
             self.public(Method::POST, path, Some(body))
                 .await
@@ -56,7 +57,7 @@ impl ApiClient {
                     }
                     e => e,
                 })?;
-        self.store_tokens(&resp.tokens).await?;
+        self.store_tokens(&resp.tokens, &ticket).await?;
         Ok(resp)
     }
 }

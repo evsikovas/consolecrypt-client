@@ -74,6 +74,11 @@ async fn ssh_terminal_tunnel_sftp_through_two_jump_hosts() {
                         .unwrap();
                 }
                 PromptRequest::Passphrase(_) => {}
+                PromptRequest::AutomationTransition(p) => {
+                    let _ = responder
+                        .automation_answer_transition(p.request_id, "abort".into())
+                        .await;
+                }
             }
         }
     });

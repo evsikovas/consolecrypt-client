@@ -135,7 +135,10 @@ class _TerminalTargetPickerState extends ConsumerState<TerminalTargetPicker> {
                       leading: HostAvatar(host: host, size: 28),
                       title: Text(host.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                       subtitle: Text(host.address, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      onTap: () => closeDialog(context, SshTerminalTarget(host)),
+                      onTap: () {
+                        if (!current()) return;
+                        closeDialog(context, SshTerminalTarget(host));
+                      },
                     ),
                   if (hosts.isEmpty && local.isEmpty && !profiles.isLoading) ListTile(title: Text(l.hostPickerEmpty)),
                 ],

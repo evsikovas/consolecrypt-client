@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
@@ -16,6 +17,11 @@ Map<String, dynamic> _arb(String locale) =>
     jsonDecode(File('lib/l10n/app_$locale.arb').readAsStringSync()) as Map<String, dynamic>;
 
 Iterable<String> _messageKeys(Map<String, dynamic> arb) => arb.keys.where((k) => !k.startsWith('@'));
+
+/// Argument identifiers are locale-neutral; literal English still needs review.
+/// A plural case such as `one{item}` is text, not a simple argument.
+bool _hasEnglishLiteral(String message) =>
+    RegExp('[a-z]{4,}').hasMatch(message.replaceAll(RegExp(r'(?<!\w)\{\s*[A-Za-z_]\w*\s*\}'), ''));
 
 /// `{name}` / `{name, plural|select, …}` arguments of an ICU message. In a
 /// plural or select, a brace right after a word opens a case (`other{…}`),
@@ -60,25 +66,30 @@ List<Set<String>> _pluralSelectors(String message) {
 void main() {
   final en = _arb('en');
   final ru = _arb('ru');
+  final catalogs = {'en': en, 'ru': ru, 'es': _arb('es'), 'zh': _arb('zh')};
   final l10nEn = lookupAppLocalizations(const Locale('en'));
   final l10nRu = lookupAppLocalizations(const Locale('ru'));
 
   group('ARB files', () {
-    test('every key exists in both languages', () {
+    test('every key exists in all supported languages', () {
       final enKeys = _messageKeys(en).toSet();
-      final ruKeys = _messageKeys(ru).toSet();
-      expect(enKeys.difference(ruKeys), isEmpty, reason: 'missing in app_ru.arb');
-      expect(ruKeys.difference(enKeys), isEmpty, reason: 'only in app_ru.arb');
+      expect(catalogs.keys.toSet(), AppLocalizations.supportedLocales.map((locale) => locale.languageCode).toSet());
+      for (final entry in catalogs.entries) {
+        expect(_messageKeys(entry.value).toSet(), enKeys, reason: 'app_${entry.key}.arb');
+      }
       expect(enKeys.length, greaterThan(500));
     });
 
-    test('every key has a description; placeholders match the message in both languages', () {
+    test('every key has a description and every translation preserves the placeholders', () {
       for (final key in _messageKeys(en)) {
         final meta = en['@$key'] as Map<String, dynamic>?;
         expect(meta?['description'], isA<String>().having((d) => d.isNotEmpty, 'non-empty', isTrue), reason: key);
         final declared = ((meta?['placeholders'] as Map<String, dynamic>?) ?? const {}).keys.toSet();
-        expect(_arguments(en[key] as String), declared, reason: 'en $key');
-        expect(_arguments(ru[key] as String), declared, reason: 'ru $key');
+        for (final entry in catalogs.entries) {
+          final message = entry.value[key] as String;
+          expect(message.trim(), isNotEmpty, reason: '${entry.key} $key');
+          expect(_arguments(message), declared, reason: '${entry.key} $key');
+        }
       }
     });
 
@@ -98,18 +109,28 @@ void main() {
     });
 
     test('user-facing strings never mention internal milestones, ADRs or TODOs', () {
-      final internal = RegExp(r'\bM\d{1,2}\b|milestone|\bADR-\d|\bTODO\b', caseSensitive: false);
-      for (final arb in {'en': en, 'ru': ru}.entries) {
+      final internal = RegExp(r'\bM\d{1,2}\b|milestone|\bADR-\d', caseSensitive: false);
+      // Spanish "todo" is a common UI word. Only flag the uppercase marker.
+      final todo = RegExp(r'\bTODO\b');
+      for (final arb in catalogs.entries) {
         for (final key in _messageKeys(arb.value)) {
-          expect(internal.hasMatch(arb.value[key] as String), isFalse, reason: '${arb.key} $key');
+          final message = arb.value[key] as String;
+          expect(internal.hasMatch(message) || todo.hasMatch(message), isFalse, reason: '${arb.key} $key');
         }
       }
     });
 
     test('Russian is actually translated (not a copy of the English template)', () {
-      final same = _messageKeys(en).where((k) => en[k] == ru[k] && RegExp('[a-z]{4,}').hasMatch(en[k] as String));
+      final same = _messageKeys(en).where((k) => en[k] == ru[k] && _hasEnglishLiteral(en[k] as String));
       // Technical/brand-only strings may legitimately be identical.
       expect(same.length, lessThan(40), reason: same.join(', '));
+    });
+
+    test('translation heuristic ignores arguments but retains English literals and plural text', () {
+      expect(_hasEnglishLiteral('{domain}: {state}'), isFalse);
+      expect(_hasEnglishLiteral('{domain}: status {state}'), isTrue);
+      expect(_hasEnglishLiteral('{count, plural, one{item} other{items}}'), isTrue);
+      expect(_hasEnglishLiteral('Ready: {count}'), isTrue);
     });
   });
 
@@ -119,6 +140,11 @@ void main() {
       expect(l10nRu.timeDaysAgo(2), '2 дня назад');
       expect(l10nRu.timeDaysAgo(5), '5 дней назад');
       expect(l10nRu.timeDaysAgo(21), '21 день назад');
+      expect(l10nRu.automationFolderMemberCount(1), '1 SSH-хост в папке');
+      expect(l10nRu.automationFolderMemberCount(2), '2 SSH-хоста в папке');
+      expect(l10nRu.automationFolderMemberCount(5), '5 SSH-хостов в папке');
+      expect(l10nEn.automationFolderMemberCount(1), '1 SSH host in this folder');
+      expect(l10nEn.automationFolderMemberCount(2), '2 SSH hosts in this folder');
       expect(l10nRu.timeInDays(3), 'через 3 дня');
       expect(l10nRu.timeInDays(11), 'через 11 дней');
       expect(l10nRu.shellApprovalBannerTitle(1), '1 запрос на подтверждение устройства');
@@ -238,8 +264,12 @@ void main() {
 
     test('stored preference maps to a locale (system → null)', () {
       expect(localeFor(AppLocale.system), isNull);
-      expect(localeFor(AppLocale.ru), const Locale('ru'));
-      expect(AppLocale.fromWire('ru'), AppLocale.ru);
+      for (final locale in [AppLocale.ru, AppLocale.es, AppLocale.zh]) {
+        expect(localeFor(locale), Locale(locale.wireName));
+        final settings = localSettingsToJson(LocalSettings(appLocale: locale));
+        expect(settings['app_locale'], locale.wireName);
+        expect(localSettingsFromJson(settings).appLocale, locale);
+      }
       expect(AppLocale.fromWire('xx'), AppLocale.system);
       expect(const LocalSettings().appLocale, AppLocale.system);
     });

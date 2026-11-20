@@ -39,11 +39,17 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "terminaldesktopicon"; Description: "{cm:TerminalDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+[CustomMessages]
+english.TerminalDesktopIcon=Create a desktop shortcut for ConsoleCrypt Terminal
+russian.TerminalDesktopIcon=Создать ярлык ConsoleCrypt Terminal на рабочем столе
 [Files]
 Source: "{#AppSource}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Icons]
 Name: "{autoprograms}\ConsoleCrypt"; Filename: "{app}\ConsoleCrypt.exe"
+Name: "{autoprograms}\ConsoleCrypt Terminal"; Filename: "{app}\ConsoleCrypt.exe"; Parameters: "--terminal-only"
 Name: "{autodesktop}\ConsoleCrypt"; Filename: "{app}\ConsoleCrypt.exe"; Tasks: desktopicon
+Name: "{autodesktop}\ConsoleCrypt Terminal"; Filename: "{app}\ConsoleCrypt.exe"; Parameters: "--terminal-only"; Tasks: terminaldesktopicon
 [Run]
 Filename: "{app}\ConsoleCrypt.exe"; Description: "{cm:LaunchProgram,ConsoleCrypt}"; Flags: nowait postinstall skipifsilent
 ; In-app update (/SILENT /RELAUNCH=1): start the updated app again.
@@ -56,6 +62,8 @@ Filename: "{app}\ConsoleCrypt.exe"; Flags: nowait; Check: RelaunchAfterUpdate
   so no file is in use and no Restart Manager prompt appears. }
 const
   SYNCHRONIZE = $00100000;
+  WAIT_OBJECT_0 = 0;
+  ERROR_INVALID_PARAMETER = 87;
 
 function OpenProcess(DesiredAccess: Cardinal; InheritHandle: Cardinal; ProcessId: Cardinal): Cardinal;
   external 'OpenProcess@kernel32.dll stdcall';
@@ -67,19 +75,40 @@ function CloseHandle(Target: Cardinal): Cardinal;
 function InitializeSetup(): Boolean;
 var
   ProcessId: Integer;
+  ProcessIdText: String;
   ProcessHandle: Cardinal;
+  WaitResult: Cardinal;
 begin
-  ProcessId := StrToIntDef(ExpandConstant('{param:waitpid|0}'), 0);
-  if ProcessId > 0 then
+  Result := True;
+  ProcessIdText := ExpandConstant('{param:waitpid|}');
+  if ProcessIdText <> '' then
   begin
+    ProcessId := StrToIntDef(ProcessIdText, 0);
+    if ProcessId <= 0 then
+    begin
+      Log('Invalid ConsoleCrypt process id; update aborted.');
+      Result := False;
+      Exit;
+    end;
     ProcessHandle := OpenProcess(SYNCHRONIZE, 0, ProcessId);
     if ProcessHandle <> 0 then
     begin
-      WaitForSingleObject(ProcessHandle, 60000);
+      WaitResult := WaitForSingleObject(ProcessHandle, 60000);
       CloseHandle(ProcessHandle);
+      if WaitResult <> WAIT_OBJECT_0 then
+      begin
+        Log('ConsoleCrypt is still running or its exit could not be verified; update aborted.');
+        Result := False;
+      end;
+    end
+    else if DLLGetLastError() <> ERROR_INVALID_PARAMETER then
+    begin
+      { A valid positive PID can already have exited. Any other open failure,
+        including access denied, must not proceed to close/replace files. }
+      Log('Cannot verify the ConsoleCrypt process exit; update aborted.');
+      Result := False;
     end;
   end;
-  Result := True;
 end;
 
 function RelaunchAfterUpdate(): Boolean;

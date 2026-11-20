@@ -298,8 +298,8 @@ fn object(snapshot: &BTreeMap<ObjectId, Entry>, id: ObjectId) -> AppResult<&Vaul
 
 /// Include inherited SSH/jump/proxy credentials as well as direct Kubernetes
 /// credentials. A remote edit cannot silently redirect an existing connection.
-pub(crate) fn dependencies(
-    snapshot: &BTreeMap<ObjectId, Entry>,
+pub(crate) fn dependencies<E: std::borrow::Borrow<Entry>>(
+    snapshot: &BTreeMap<ObjectId, E>,
     root: ObjectId,
 ) -> AppResult<BTreeMap<ObjectId, i64>> {
     let mut pending = vec![root];
@@ -314,6 +314,7 @@ pub(crate) fn dependencies(
         let entry = snapshot
             .get(&id)
             .ok_or_else(|| AppError::invalid("kubernetes", "connection_dependency_unavailable"))?;
+        let entry: &Entry = std::borrow::Borrow::borrow(entry);
         result.insert(id, entry.revision);
         if let Item::Object(value) = &entry.item {
             match value.as_ref() {

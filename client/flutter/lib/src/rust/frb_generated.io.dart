@@ -6,6 +6,11 @@
 import 'api/account.dart';
 import 'api/ai.dart';
 import 'api/app.dart';
+import 'api/automation.dart';
+import 'api/automation_portable.dart';
+import 'api/automation_portable_import.dart';
+import 'api/automation_service.dart';
+import 'api/automation_vault.dart';
 import 'api/backup.dart';
 import 'api/credentials.dart';
 import 'api/database.dart';
@@ -13,10 +18,12 @@ import 'api/database_designer.dart';
 import 'api/docker.dart';
 import 'api/enrollment.dart';
 import 'api/error.dart';
+import 'api/host_metrics.dart';
 import 'api/inventory.dart';
 import 'api/kubernetes.dart';
 import 'api/password_vault.dart';
 import 'api/profiles.dart';
+import 'api/project_settings_sync.dart';
 import 'api/rdp.dart';
 import 'api/rdp_hosts.dart';
 import 'api/sftp.dart';
@@ -41,8 +48,62 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.portManager,
   });
 
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PortableImportHandlePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandlePtr;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PortablePasswordTransferPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransferPtr;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PortableRequestHandlePtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandlePtr;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ProjectSettingsSyncReviewPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReviewPtr;
+
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
+  PortableImportHandle
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(dynamic raw);
+
+  @protected
+  PortablePasswordTransfer
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    dynamic raw,
+  );
+
+  @protected
+  PortableRequestHandle
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    dynamic raw,
+  );
+
+  @protected
+  ProjectSettingsSyncReview
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    dynamic raw,
+  );
+
+  @protected
+  PortableImportHandle
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(dynamic raw);
+
+  @protected
+  PortablePasswordTransfer
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    dynamic raw,
+  );
+
+  @protected
+  PortableRequestHandle
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(dynamic raw);
+
+  @protected
+  ProjectSettingsSyncReview
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    dynamic raw,
+  );
 
   @protected
   int dco_decode_CastedPrimitive_i_64(dynamic raw);
@@ -52,6 +113,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Map<String, String> dco_decode_Map_String_String_None(dynamic raw);
+
+  @protected
+  PortableImportHandle dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+    dynamic raw,
+  );
+
+  @protected
+  PortablePasswordTransfer
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(dynamic raw);
+
+  @protected
+  PortableRequestHandle dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    dynamic raw,
+  );
+
+  @protected
+  ProjectSettingsSyncReview
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(dynamic raw);
 
   @protected
   RustStreamSink<String> dco_decode_StreamSink_String_Sse(dynamic raw);
@@ -267,7 +346,58 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  BigInt dco_decode_usize(dynamic raw);
+
+  @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
+
+  @protected
+  PortableImportHandle
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PortablePasswordTransfer
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PortableRequestHandle
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProjectSettingsSyncReview
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PortableImportHandle
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PortablePasswordTransfer
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PortableRequestHandle
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProjectSettingsSyncReview
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    SseDeserializer deserializer,
+  );
 
   @protected
   int sse_decode_CastedPrimitive_i_64(SseDeserializer deserializer);
@@ -277,6 +407,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Map<String, String> sse_decode_Map_String_String_None(SseDeserializer deserializer);
+
+  @protected
+  PortableImportHandle sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PortablePasswordTransfer
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PortableRequestHandle sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProjectSettingsSyncReview
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    SseDeserializer deserializer,
+  );
 
   @protected
   RustStreamSink<String> sse_decode_StreamSink_String_Sse(SseDeserializer deserializer);
@@ -492,7 +644,58 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
   void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+    PortableImportHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    PortablePasswordTransfer self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    PortableRequestHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    ProjectSettingsSyncReview self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+    PortableImportHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    PortablePasswordTransfer self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    PortableRequestHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    ProjectSettingsSyncReview self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_CastedPrimitive_i_64(int self, SseSerializer serializer);
@@ -502,6 +705,30 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_Map_String_String_None(Map<String, String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+    PortableImportHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    PortablePasswordTransfer self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    PortableRequestHandle self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    ProjectSettingsSyncReview self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_StreamSink_String_Sse(RustStreamSink<String> self, SseSerializer serializer);
@@ -715,6 +942,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
 }
 
 // Section: wire_class
@@ -727,4 +957,140 @@ class RustLibWire implements BaseWire {
 
   /// The symbols are looked up in [dynamicLibrary].
   RustLibWire(ffi.DynamicLibrary dynamicLibrary) : _lookup = dynamicLibrary.lookup;
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_consolecrypt_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_consolecrypt_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandle =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableImportHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransferPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_consolecrypt_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransferPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransferPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_consolecrypt_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransfer =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortablePasswordTransferPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_consolecrypt_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandlePtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_consolecrypt_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandle =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPortableRequestHandlePtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReviewPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_consolecrypt_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReviewPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReviewPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_consolecrypt_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReview =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerProjectSettingsSyncReviewPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 }

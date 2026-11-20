@@ -113,6 +113,7 @@ const MAX_FINISHED: usize = 200;
 
 struct Job {
     seq: u64,
+    notice_id: uuid::Uuid,
     request: TransferRequestDto,
     dto: TransferJobDto,
     cancel: CancelToken,
@@ -122,6 +123,7 @@ struct Job {
 /// Transfer jobs of one unlocked vault.
 pub(crate) struct TransferManager {
     ctx: Arc<AppCtx>,
+    notices: Arc<crate::session::critical_notices::RuntimeNoticeEmitter>,
     jobs: Mutex<HashMap<String, Job>>,
     seq: std::sync::atomic::AtomicU64,
     permits: Arc<Semaphore>,
@@ -277,10 +279,14 @@ async fn plan_download(c: &SftpClient, remote: &str, local: &Path) -> AppResult<
 }
 
 impl TransferManager {
-    pub(crate) fn new(ctx: Arc<AppCtx>) -> Arc<Self> {
+    pub(crate) fn new_scoped(
+        ctx: Arc<AppCtx>,
+        notices: Arc<crate::session::critical_notices::RuntimeNoticeEmitter>,
+    ) -> Arc<Self> {
         let n = ctx.config.max_parallel_transfers.max(1);
         Arc::new(Self {
             ctx,
+            notices,
             jobs: Mutex::new(HashMap::new()),
             seq: std::sync::atomic::AtomicU64::new(0),
             permits: Arc::new(Semaphore::new(n)),
@@ -291,22 +297,38 @@ impl TransferManager {
         self.jobs.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    fn emit(&self, dto: &TransferJobDto) {
+    fn emit(&self, dto: &TransferJobDto, notice_id: uuid::Uuid) {
+        match dto.state {
+            TransferStateDto::Failed => self
+                .notices
+                .transfer(notice_id, crate::dto::CriticalTransferStateDto::Failed),
+            TransferStateDto::Completed => self
+                .notices
+                .transfer(notice_id, crate::dto::CriticalTransferStateDto::Completed),
+            _ => {}
+        }
         self.ctx.emit(AppEvent::TransferUpdate(dto.clone()));
     }
 
     /// Update a job's snapshot (ignored once it is final) and emit it.
-    fn update(&self, id: &str, f: impl FnOnce(&mut TransferJobDto)) {
-        let dto = {
+    fn update(&self, id: &str, original_notice: uuid::Uuid, f: impl FnOnce(&mut TransferJobDto)) {
+        let (dto, notice_id) = {
             let mut jobs = self.lock();
             let Some(j) = jobs.get_mut(id) else { return };
-            if !j.dto.state.is_active() {
+            if j.notice_id != original_notice || !j.dto.state.is_active() {
                 return;
             }
             f(&mut j.dto);
-            j.dto.clone()
+            (j.dto.clone(), j.notice_id)
         };
-        self.emit(&dto);
+        self.emit(&dto, notice_id);
+    }
+    fn finish_task(&self, id: &str, original_notice: uuid::Uuid) {
+        if let Some(job) = self.lock().get_mut(id) {
+            if job.notice_id == original_notice {
+                job.task = None;
+            }
+        }
     }
 
     /// All jobs, most recent first.
@@ -359,6 +381,7 @@ impl TransferManager {
             error: None,
         };
         let cancel = CancelToken::new();
+        let notice_id = uuid::Uuid::new_v4();
         {
             let mut jobs = self.lock();
             if jobs.get(&id).is_some_and(|j| j.dto.state.is_active()) {
@@ -372,6 +395,7 @@ impl TransferManager {
                 id.clone(),
                 Job {
                     seq,
+                    notice_id,
                     request: TransferRequestDto {
                         transfer_id: id.clone(),
                         ..request.clone()
@@ -383,7 +407,7 @@ impl TransferManager {
             );
             Self::prune(&mut jobs);
         }
-        self.emit(&dto);
+        self.emit(&dto, notice_id);
         let me = self.clone();
         let task_id = id.clone();
         let handle = tokio::spawn(async move {
@@ -394,13 +418,15 @@ impl TransferManager {
                 return;
             }
             let started = Instant::now();
-            me.update(&task_id, |d| {
+            me.update(&task_id, notice_id, |d| {
                 d.state = TransferStateDto::Running;
                 d.started_at_ms = Some(now_ms());
             });
-            let r = me.run(&task_id, &request, &client, &cancel, started).await;
+            let r = me
+                .run(&task_id, notice_id, &request, &client, &cancel, started)
+                .await;
             let elapsed = started.elapsed().as_millis() as u64;
-            me.update(&task_id, |d| {
+            me.update(&task_id, notice_id, |d| {
                 d.elapsed_ms = elapsed;
                 d.finished_at_ms = Some(now_ms());
                 d.current_path = None;
@@ -417,12 +443,10 @@ impl TransferManager {
                     }
                 }
             });
-            if let Some(j) = me.lock().get_mut(&task_id) {
-                j.task = None;
-            }
+            me.finish_task(&task_id, notice_id);
         });
         if let Some(j) = self.lock().get_mut(&id) {
-            if j.dto.state.is_active() {
+            if j.notice_id == notice_id && j.dto.state.is_active() {
                 j.task = Some(handle.abort_handle());
             }
         }
@@ -449,6 +473,7 @@ impl TransferManager {
     async fn run(
         &self,
         id: &str,
+        notice_id: uuid::Uuid,
         request: &TransferRequestDto,
         c: &SftpClient,
         cancel: &CancelToken,
@@ -481,7 +506,7 @@ impl TransferManager {
         };
         let total: u64 = plan.files.iter().map(|f| f.size).sum();
         let files_total = u32::try_from(plan.files.len()).unwrap_or(u32::MAX);
-        self.update(id, |d| {
+        self.update(id, notice_id, |d| {
             d.total = Some(total);
             d.files_total = files_total;
             d.is_directory = plan.is_directory;
@@ -510,7 +535,7 @@ impl TransferManager {
                 TransferDirectionDto::Upload => item.local.display().to_string(),
                 TransferDirectionDto::Download => item.remote.clone(),
             };
-            self.update(id, |d| d.current_path = Some(shown));
+            self.update(id, notice_id, |d| d.current_path = Some(shown));
             let mut last_emit = Instant::now() - PROGRESS_INTERVAL;
             let ctx = self.ctx.clone();
             let base = done_bytes;
@@ -526,7 +551,7 @@ impl TransferManager {
                     transferred,
                     total: Some(total),
                 });
-                self.update(&tid, |d| {
+                self.update(&tid, notice_id, |d| {
                     d.transferred = transferred;
                     d.elapsed_ms = started.elapsed().as_millis() as u64;
                 });
@@ -550,7 +575,7 @@ impl TransferManager {
             }
             let files_done = u32::try_from(index + 1).unwrap_or(u32::MAX);
             let transferred = done_bytes;
-            self.update(id, |d| {
+            self.update(id, notice_id, |d| {
                 d.files_done = files_done;
                 d.transferred = transferred;
                 d.elapsed_ms = started.elapsed().as_millis() as u64;
@@ -561,7 +586,7 @@ impl TransferManager {
 
     /// Cancel a queued or running job; `false` if it is unknown / finished.
     pub(crate) fn cancel(&self, id: &str) -> bool {
-        let dto = {
+        let (dto, notice_id) = {
             let mut jobs = self.lock();
             let Some(j) = jobs.get_mut(id) else {
                 return false;
@@ -578,9 +603,9 @@ impl TransferManager {
             j.dto.state = TransferStateDto::Cancelled;
             j.dto.finished_at_ms = Some(now_ms());
             j.dto.current_path = None;
-            j.dto.clone()
+            (j.dto.clone(), j.notice_id)
         };
-        self.emit(&dto);
+        self.emit(&dto, notice_id);
         true
     }
 
@@ -628,6 +653,10 @@ impl TransferManager {
         self.lock().retain(|_, j| j.dto.state.is_active());
     }
 }
+
+#[cfg(test)]
+#[path = "transfers/scoped_notice_tests.rs"]
+mod scoped_notice_tests;
 
 #[cfg(test)]
 mod tests {

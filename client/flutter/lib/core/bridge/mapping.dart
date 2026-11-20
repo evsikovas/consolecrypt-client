@@ -10,6 +10,7 @@ library;
 import 'dart:convert';
 
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/models/navigation.dart';
 import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/models/sftp_browser.dart';
@@ -842,6 +843,7 @@ List<FileEntry> sortEntries(Iterable<FileEntry> entries) => entries.toList()
 Json localSettingsToJson(LocalSettings s) => {
   'saved_forwards': [for (final p in s.savedForwards) p.toJson()],
   'password_vault_files': s.passwordVaultFiles,
+  'password_vault_recent_by_profile': s.passwordVaultRecentByProfile,
   'theme_mode': s.themeMode.name,
   'ui_font_scale': s.uiFontScale,
   'ui_font_scale_version': 2,
@@ -860,6 +862,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'terminal_tab_placement': s.terminalTabPlacement.name,
   'terminal_tab_column_width': s.terminalTabColumnWidth,
   'terminal_tab_column_collapsed': s.terminalTabColumnCollapsed,
+  'navigation_by_profile': {for (final entry in s.navigationByProfile.entries) entry.key: entry.value.toJson()},
   'sidebar_collapsed': s.sidebarCollapsed,
   'sidebar_collapsed_beside_tabs': s.sidebarCollapsedBesideTabs,
   'shortcut_overrides': s.shortcutOverrides,
@@ -884,6 +887,7 @@ LocalSettings localSettingsFromJson(Json j) {
   const d = LocalSettings();
   int? rgb(Object? value) => value is int && value >= 0 && value <= 0xFFFFFF ? value : null;
   final scale = j['ui_font_scale'];
+  final recentVaults = j['password_vault_recent_by_profile'];
   // Old 90% becomes 100% exactly; migrate once without shrinking twice.
   final normalizedScale = scale is num && scale.isFinite
       ? scale.toDouble() / (j['ui_font_scale_version'] == 2 ? 1 : LocalSettings.uiFontBase)
@@ -898,6 +902,16 @@ LocalSettings localSettingsFromJson(Json j) {
         if (p is Map && p['profile'] is String && p['path'] is String)
           {'profile': p['profile'] as String, 'path': p['path'] as String},
     ],
+    passwordVaultRecentByProfile: {
+      if (recentVaults is Map)
+        for (final entry in recentVaults.entries)
+          if (entry.key is String && entry.value is List)
+            entry.key as String: (entry.value as List)
+                .whereType<String>()
+                .toSet()
+                .take(LocalSettings.passwordVaultRecentLimit)
+                .toList(),
+    },
     themeMode: _byWire(AppThemeMode.values, (e) => e.name, j['theme_mode'], d.themeMode),
     uiFontScale: normalizedScale.clamp(LocalSettings.uiFontScaleMin, LocalSettings.uiFontScaleMax),
     uiAccentColor: rgb(j['ui_accent_color']),
@@ -944,6 +958,7 @@ LocalSettings localSettingsFromJson(Json j) {
       _ => d.terminalTabColumnWidth,
     },
     terminalTabColumnCollapsed: j['terminal_tab_column_collapsed'] == true,
+    navigationByProfile: NavigationPreferences.profilesFromJson(j['navigation_by_profile']),
     sidebarCollapsed: j['sidebar_collapsed'] == true,
     sidebarCollapsedBesideTabs: switch (j['sidebar_collapsed_beside_tabs']) {
       final bool value => value,
@@ -1128,6 +1143,28 @@ EditLeftover editLeftoverFromJson(Json j) => EditLeftover(
 /// `PromptRequest` JSON (`{"HostKey":{…}}` / `{"Password":{…}}` /
 /// `{"Passphrase":{…}}`) → [CorePrompt]; `null` for unknown shapes.
 CorePrompt? corePromptFromJson(Json j) {
+  if (j['AutomationTransition'] case final Map<Object?, Object?> b) {
+    final id = b['request_id'], count = b['job_count'], operation = b['operation'];
+    final unknown = b['unknown_count'];
+    if (id is! String ||
+        id.isEmpty ||
+        id.length > 64 ||
+        count is! int ||
+        count < 1 ||
+        count > 2048 ||
+        unknown is! int ||
+        unknown < 0 ||
+        unknown > count ||
+        !const {'close', 'switch_profile', 'remove_profile'}.contains(operation)) {
+      return null;
+    }
+    return AutomationTransitionCorePrompt(
+      requestId: id,
+      jobCount: count,
+      unknownCount: unknown,
+      operation: operation as String,
+    );
+  }
   if (j['HostKey'] case final Map<Object?, Object?> b) {
     return HostKeyCorePrompt(
       requestId: b['request_id']! as String,

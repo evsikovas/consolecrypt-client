@@ -21,6 +21,51 @@ void main() {
   });
   List<KdbxData> rows(KdbxData data, String key) => [for (final row in data[key]! as List<Object?>) row! as KdbxData];
 
+  test('standard entry icon persists across reopen and can be reset', () async {
+    final path = await File('$fixtures/argon2id.kdbx').copy('${temp.path}/icons.kdbx');
+    final before = await client.open(path.path, SecretText('fixture-password'));
+    final entry = rows(before, 'entries').first;
+    final id = entry['id'], group = entry['group'];
+    final edit = (await client.request('get', {'id': id}))! as KdbxData;
+    await client.request('put', {...edit, 'id': id, 'group': group, 'icon': KdbxIcon.NetworkServer.index});
+    await client.request('save');
+    final reopened = await client.open(path.path, SecretText('fixture-password'));
+    expect(rows(reopened, 'entries').singleWhere((row) => row['id'] == id)['icon'], KdbxIcon.NetworkServer.index);
+    final reset =
+        (await client.request('put', {...edit, 'id': id, 'group': group, 'icon': KdbxIcon.Key.index}))! as KdbxData;
+    expect(rows(reset, 'entries').singleWhere((row) => row['id'] == id)['icon'], KdbxIcon.Key.index);
+  });
+
+  test('shared custom icon persists on a record and a group', () async {
+    final path = await File('$fixtures/argon2id.kdbx').copy('${temp.path}/custom-icon.kdbx');
+    final png = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jc5sAAAAASUVORK5CYII=',
+    );
+    final before = await client.open(path.path, SecretText('fixture-password'));
+    final entry = rows(before, 'entries').first;
+    final id = entry['id'];
+    final fields = (await client.request('get', {'id': id}))! as KdbxData;
+    await client.request('put', {...fields, 'id': id, 'group': entry['group'], 'customIcon': png});
+    await client.request('group', {'name': 'Icon fixture', 'customIcon': png});
+    await client.request('save');
+
+    final reopened = await client.open(path.path, SecretText('fixture-password'));
+    final entryIcon = rows(reopened, 'entries').singleWhere((row) => row['id'] == id)['iconId'];
+    final group = rows(reopened, 'groups').singleWhere((row) => row['label'] == 'Icon fixture');
+    expect(entryIcon, isNotNull);
+    expect(group['iconId'], entryIcon);
+    expect((reopened['icons']! as Map)[entryIcon], png);
+    final changed =
+        (await client.request('renameGroup', {
+              'id': group['id'],
+              'name': 'Icon fixture',
+              'icon': KdbxIcon.Folder.index,
+            }))!
+            as KdbxData;
+    expect(rows(changed, 'groups').singleWhere((row) => row['id'] == group['id'])['iconId'], isNull);
+    expect(rows(changed, 'entries').singleWhere((row) => row['id'] == id)['iconId'], entryIcon);
+  });
+
   test('remote bytes, custom API fields and composite-key reopening preserve KDBX encryption', () async {
     final encrypted = await File('$fixtures/argon2id.kdbx').readAsBytes();
     var data = await client.openSource(

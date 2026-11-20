@@ -16,6 +16,152 @@ use std::sync::Mutex;
 
 const PASSPHRASE: &str = "correct horse vault passphrase 42";
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn automation_ai_sends_only_the_reviewed_context_once_without_execution() {
+    let f = fixture(PrivacyProfile::Strict).await;
+    let provider = f.app.list_ai_providers().await.unwrap()[0].id.clone();
+    assert!(f
+        .app
+        .automation_ai_prepare("".into(), "task".into(), "playbook.yml".into(), None)
+        .await
+        .is_err());
+    let preview = f
+        .app
+        .automation_ai_prepare(
+            provider.clone(),
+            "Create file; password=do-not-transmit-this".into(),
+            "playbook.yml".into(),
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(f.mock.count("/v1/chat/completions"), 0);
+    let sent = preview["preview"].as_str().unwrap();
+    assert!(!sent.contains("do-not-transmit-this"));
+    assert!(!sent.contains("pg-main"));
+    f.mock.push_chat(r#"{"version":1,"description":"Create a file","files":[{"path":"playbook.yml","content":"---\n- hosts: all\n  tasks: []\n"}],"variables":[],"dependencies":[{"source":"ansible.builtin","version":"2.12"}],"expected_changes":["Create file"],"checks":["Assert file"],"warnings":[]}"#);
+    let id = preview["review_id"].as_str().unwrap().to_owned();
+    let draft = f.app.automation_ai_generate(id.clone()).await.unwrap();
+    assert_eq!(draft["files"][0]["path"], "playbook.yml");
+    assert_eq!(draft["dependencies"], serde_json::json!([]));
+    assert!(draft["warnings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|warning| warning
+            .as_str()
+            .unwrap()
+            .contains("Runner's pinned ansible-core")));
+    let captured: serde_json::Value =
+        serde_json::from_str(&f.mock.requests().last().unwrap().body).unwrap();
+    let actual = captured["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|message| message["content"].as_str().unwrap())
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    assert_eq!(actual, sent);
+    assert_eq!(captured["response_format"]["type"], "json_object");
+    assert!(f.app.automation_ai_generate(id).await.is_err());
+    assert_eq!(f.mock.count("/v1/chat/completions"), 1);
+    let preview = f
+        .app
+        .automation_ai_prepare(provider, "New task".into(), "playbook.yml".into(), None)
+        .await
+        .unwrap();
+    let id = preview["review_id"].as_str().unwrap().to_owned();
+    f.app.automation_ai_discard(id.clone()).await.unwrap();
+    assert!(f.app.automation_ai_generate(id).await.is_err());
+    assert_eq!(f.mock.count("/v1/chat/completions"), 1);
+    assert!(f.fake.execs.lock().unwrap().is_empty());
+    assert!(f.fake.writes.lock().unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn automation_ai_uses_schema_where_supported_and_keeps_malformed_output_out_of_execution() {
+    let f = fixture(PrivacyProfile::Strict).await;
+    let mut configuration = f.app.list_ai_providers().await.unwrap().remove(0);
+    configuration.provider = AiProviderKind::LmStudio;
+    let provider = f.app.save_ai_provider(configuration).await.unwrap();
+    let preview = f
+        .app
+        .automation_ai_prepare(
+            provider.id,
+            "Write a debug task".into(),
+            "install-docker.yml".into(),
+            Some("---\n- hosts: all\n  tasks: []\n".into()),
+        )
+        .await
+        .unwrap();
+    f.mock.push_chat("```yaml\n- hosts: all\n  tasks: []\n```");
+    let failure = f
+        .app
+        .automation_ai_generate(preview["review_id"].as_str().unwrap().into())
+        .await
+        .unwrap_err();
+    assert_eq!(
+        failure.args().get("field").map(String::as_str),
+        Some("automation_ai_response")
+    );
+    assert_eq!(
+        failure.args().get("rule").map(String::as_str),
+        Some("invalid_response")
+    );
+    let captured: serde_json::Value =
+        serde_json::from_str(&f.mock.requests().last().unwrap().body).unwrap();
+    assert_eq!(captured["response_format"]["type"], "json_schema");
+    assert_eq!(
+        captured["response_format"]["json_schema"]["schema"]["properties"]["files"]["items"]
+            ["properties"]["path"]["const"],
+        "install-docker.yml"
+    );
+    assert!(f.fake.execs.lock().unwrap().is_empty());
+    assert!(f.fake.writes.lock().unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn automation_ai_cancel_and_lock_abort_a_real_pending_provider_request() {
+    for action in ["cancel", "lock", "provider_changed"] {
+        let f = fixture(PrivacyProfile::Strict).await;
+        let provider = f.app.list_ai_providers().await.unwrap()[0].id.clone();
+        let preview = f
+            .app
+            .automation_ai_prepare(provider, "Create file".into(), "playbook.yml".into(), None)
+            .await
+            .unwrap();
+        let id = preview["review_id"].as_str().unwrap().to_owned();
+        let gate = f.mock.block_chat();
+        let generation = f.app.automation_ai_generate(id.clone());
+        tokio::pin!(generation);
+        tokio::select! {
+            result=&mut generation=>panic!("provider returned before cancellation: {result:?}"),
+            _=tokio::time::timeout(std::time::Duration::from_secs(5),async {
+                while f.mock.count("/v1/chat/completions")==0 {tokio::task::yield_now().await;}
+            })=>{},
+        }
+        assert_eq!(f.mock.count("/v1/chat/completions"), 1);
+        if action == "lock" {
+            f.app.lock().await.unwrap();
+        } else if action == "provider_changed" {
+            let mut config = f.app.list_ai_providers().await.unwrap().remove(0);
+            config.name = "Changed while preview was pending".into();
+            f.app.save_ai_provider(config).await.unwrap();
+        } else {
+            f.app.automation_ai_discard(id.clone()).await.unwrap();
+        }
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_secs(3), &mut generation)
+                .await
+                .unwrap()
+                .is_err()
+        );
+        gate.notify_one();
+        assert_eq!(f.mock.count("/v1/chat/completions"), 1);
+        assert!(f.fake.execs.lock().unwrap().is_empty());
+    }
+}
+
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn device_local_provider_is_ephemeral_scoped_and_keeps_command_policy() {
@@ -108,6 +254,19 @@ async fn device_local_provider_is_ephemeral_scoped_and_keeps_command_policy() {
             .code(),
         "confirmation_required"
     );
+    let draft_context = f.app.automation_ai_prepare(
+        DEVICE_LOCAL_PROVIDER_ID.into(),
+        "Check host connectivity using Ansible ping".into(),
+        "roles/probe/tasks/main.yml".into(),
+        None,
+    ).await.unwrap();
+    f.mock.push_chat(r#"{"version":1,"description":"Check connectivity","files":[{"path":"roles/probe/tasks/main.yml","content":"- name: Check connectivity\n  ansible.builtin.ping: {}\n"}],"variables":[],"dependencies":[],"expected_changes":[],"checks":[],"warnings":[]}"#);
+    let draft = f.app.automation_ai_generate(draft_context["review_id"].as_str().unwrap().into()).await.unwrap();
+    assert!(draft["files"][0]["content"].as_str().unwrap().contains("ansible.builtin.ping"));
+    let captured: serde_json::Value = serde_json::from_str(&f.mock.requests().last().unwrap().body).unwrap();
+    assert_eq!(captured["response_format"]["type"], "json_schema");
+    assert_eq!(captured.pointer("/response_format/json_schema/schema/properties/files/items/properties/path/const").unwrap(), "roles/probe/tasks/main.yml");
+    assert!(f.fake.execs.lock().unwrap().is_empty());
     // An old completion cannot clear the newly registered process.
     f.app
         .clear_device_local_ai_provider(uuid::Uuid::new_v4().to_string())

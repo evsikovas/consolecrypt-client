@@ -27,3 +27,9 @@ abstract interface class PromptService {
   /// Register a presenter; returns the function that detaches it.
   void Function() attachPresenter();
 }
+
+/// Wait/cancel replies remain pending until native workers clean up. An Abort
+/// reply can still cancel waiting; it does not undo cancellation already chosen.
+abstract interface class AutomationTransitionPromptService {
+  Future<void> answerAutomationTransition(String requestId, String decision);
+}

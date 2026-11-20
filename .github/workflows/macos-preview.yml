@@ -1,46 +1,243 @@
-name: macOS preview build
+name: macOS and Android preview builds
 
-# Manual, unpublished test build of one branch: produces a DMG artifact only.
-# Stable installers, update feeds and releases remain tag-only (client.yml).
 on:
   workflow_dispatch:
+    inputs:
+      include_android:
+        description: Build the Android test APK
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: consolecrypt-macos-preview-${{ github.ref }}
-  cancel-in-progress: true
+  group: consolecrypt-macos-preview-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
+  native-runner-smoke:
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67042'
+    runs-on: macos-15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.15']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install and exercise the native Runner
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          CC_NATIVE_RUNNER_PYTHON: ${{ matrix.python }}
+        run: |
+          test "$(uname -m)" = arm64
+          python="/opt/homebrew/bin/python$CC_NATIVE_RUNNER_PYTHON"
+          test -x "$python" || brew install "python@$CC_NATIVE_RUNNER_PYTHON"
+          "$python" -IB - <<'PY'
+          from base64 import b64encode
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          root = Path('runner')
+          src = root / 'src/consolecrypt_runner'
+          files = {path.relative_to(root).as_posix(): path.read_text(encoding='utf-8')
+                   for path in src.rglob('*') if path.suffix in ('.py', '.json') and path.is_file()}
+          profile = f'darwin-arm64-py{sys.version_info.major}{sys.version_info.minor}'
+          name = f'requirements-{profile}.lock'
+          files[name] = (root / name).read_text(encoding='utf-8')
+          if profile == 'darwin-arm64-py315':
+              wheel = 'vendor/pyyaml-6.0.3-py3-none-any.whl'
+              files[wheel] = b64encode((root / wheel).read_bytes()).decode('ascii')
+          with subprocess.Popen([sys.executable, '-IB', str(root / 'setup/environment.py')],
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE) as installer:
+              installer.stdin.write(json.dumps({'action': 'install', 'files': files}).encode() + b'\n')
+              installer.stdin.flush()
+              response = json.loads(installer.stdout.readline(65536))
+              status = installer.wait(timeout=10)
+          if status or not response['ok']:
+              if response.get('error') == 'environment_check_failed':
+                  package_root = Path.home() / '.local/share/consolecrypt/runner-environments'
+                  installations = list(package_root.iterdir())
+                  if len(installations) == 1:
+                      installation = installations[0]
+                      diagnostic = r"""
+          import json
+          from pathlib import Path
+          import subprocess
+          import sys
+          from unittest.mock import patch
+          sys.path.insert(0, sys.argv[1])
+          from consolecrypt_runner import macos_sandbox
+          from consolecrypt_runner.probe import probe
+          print('Interpreter:', sys.executable, Path(sys.executable).resolve(), sys._base_executable, flush=True)
+          run = macos_sandbox.run_macos_worker
+          bounded = macos_sandbox.run_bounded
+          def trace_worker(*args, **kwargs):
+              try:
+                  return run(*args, **kwargs)
+              except (OSError, macos_sandbox.RunnerError) as error:
+                  print('Sandbox bootstrap:', error, flush=True)
+                  raise
+          def trace_process(*args, **kwargs):
+              result = bounded(*args, **kwargs)
+              print('Sandbox probe exit:', result.exit_code, result.output, flush=True)
+              if result.exit_code:
+                  argv = args[0]
+                  pos = argv.index('-p') + 1
+                  params = list(argv[:pos + 1])
+                  # Positive control executes a fixed no-op without project input.
+                  for name, profile in (
+                          ('sandbox-exec positive control', '(version 1)(allow default)'),
+                          ('system executable control', '(version 1)(deny default)(allow process-exec)'
+                           '(allow file-read* file-map-executable (subpath "/usr") (subpath "/System"))')):
+                      control = subprocess.run(['/usr/bin/sandbox-exec', '-p', profile, '/usr/bin/true'],
+                                               env={'PATH': '/usr/bin:/bin'}, capture_output=True, timeout=5)
+                      print(name, control.returncode, flush=True)
+                  options = {**kwargs, 'output_limit': 20000}
+                  for label, command in (
+                          ('system binary', ['/usr/bin/true']),
+                          ('python bootstrap', [sys.executable, '-IBS', '-c', 'print("Python started", flush=True)']),
+                          ('python imports', [sys.executable, '-IB', '-c',
+                                              'import resource,socket,ssl,sqlite3; print("Python imports succeeded", flush=True)'])):
+                      trial = bounded(params + command, **options)
+                      print(label, trial.exit_code, trial.output, flush=True)
+                  checks = (
+                      ('metadata', '(allow file-read-metadata)'),
+                      ('existence', '(allow file-test-existence)'),
+                      ('system library locations', '(allow file-read* file-map-executable'
+                       ' (subpath "/System") (subpath "/usr") (subpath "/Library/Apple") (literal "/dev/zero"))'),
+                      ('system properties', '(allow sysctl-read)'),
+                      ('process metadata', '(allow process-info*)'),
+                      ('system IPC', '(allow mach-lookup (global-name "com.apple.logd")'
+                       ' (global-name "com.apple.system.logger") (global-name "com.apple.notifyd")'
+                       ' (global-name "com.apple.securityd"))'),
+                      ('loader descriptor queries', '(allow system-fcntl)'),
+                      ('system runtime controls', '(allow iokit-open (iokit-registry-entry-class "RootDomainUserClient"))'
+                       '(allow file-ioctl (literal "/dev/null"))'
+                       '(allow mach-lookup (global-name "com.apple.coreservices.launchservicesd"))'
+                       '(allow mach-lookup (global-name "com.apple.system.opendirectoryd.membership"))'),
+                  )
+                  for label, extra in checks + (('combined', '\n'.join(entry for _, entry in checks)),):
+                      trial = bounded(params[:pos] + [params[pos] + '\n' + extra, sys.executable,
+                                      '-IBS', '-c', 'print("Python started", flush=True)'], **options)
+                      print(label, trial.exit_code, trial.output, flush=True)
+                  control = bounded([params[0], '-p', '(version 1)(allow default)', '/usr/bin/true'], **options)
+                  print('positive control through worker process launcher', control.exit_code, flush=True)
+              return result
+          with patch.object(macos_sandbox, 'run_macos_worker', trace_worker), patch.object(
+                  macos_sandbox, 'run_bounded', trace_process):
+              result = probe()
+          profile = f'darwin-arm64-py{sys.version_info.major}{sys.version_info.minor}'
+          manifest = Path(sys.argv[1]) / 'consolecrypt_runner/environments' / f'{profile}.json'
+          expected = json.loads(manifest.read_text())['packages']
+          print('Sandbox:', result['sandbox'])
+          print('Package differences:', sorted(set(expected.items()) ^ set(result['installed'].items())))
+          print('Package content fingerprint:', bool(result['dependency_files_digest']))
+          """
+                      subprocess.run([str(installation / 'venv/bin/python'), '-IB', '-c', diagnostic,
+                                      str(installation / 'src')], timeout=30)
+              raise SystemExit(response.get('error', 'native_runner_install_failed'))
+          paths = response['result']['paths']
+          subprocess.run([paths['python'], '-B', '-m', 'unittest', 'discover',
+                          '-s', 'runner/tests', '-p', 'test_macos_runner.py', '-v'],
+                         env={**os.environ, 'PYTHONPATH': paths['module_dir']},
+                         check=True, timeout=180)
+          PY
+
   macos:
-    if: github.repository == 'evsikovas/consolecrypt-client'
-    runs-on: ${{ fromJSON(vars.MACOS_BUILD_RUNNER || '["macos-26"]') }}
-    timeout-minutes: 150
+    needs: native-runner-smoke
+    if: github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67042'
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 120
+    env:
+      CC_BUILD_NUMBER: '67042'
+      CARGO_BUILD_JOBS: '3'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Native toolchain
         run: source client/scripts/ci-macos-tools.sh --xcode
-      - name: Analyze
+      - name: Build universal preview
+        run: bash client/scripts/build-macos.sh --no-cli
+      - name: Verify and name packages
+        shell: bash
         run: |
-          cd client/flutter
-          flutter pub get
-          flutter analyze
-      - name: Build universal macOS preview
-        run: |
-          bash client/scripts/build-macos.sh --no-cli
-          version="$(cat dist/macos/ConsoleCrypt.version)"
-          cp dist/macos/ConsoleCrypt.dmg "dist/macos/ConsoleCrypt-$version-macos-universal-preview.dmg"
+          set -euo pipefail
           cd dist/macos
-          shasum -a 256 "ConsoleCrypt-$version-macos-universal-preview.dmg" > SHA256SUMS-macos-preview.txt
+          version=$(cat ConsoleCrypt.version)
+          [[ "$version" == '1.2.0+67042' ]]
+          codesign --verify --deep --strict ConsoleCrypt.app
+          for binary in ConsoleCrypt.app/Contents/MacOS/ConsoleCrypt ConsoleCrypt.app/Contents/Frameworks/cc_bridge.framework/Versions/A/cc_bridge; do
+            archs=" $(lipo -archs "$binary") "
+            [[ "$archs" == *' arm64 '* && "$archs" == *' x86_64 '* ]]
+          done
+          hdiutil verify ConsoleCrypt.dmg
+          mount_point=$(mktemp -d "${RUNNER_TEMP:?}/cc-preview-dmg.XXXXXX")
+          trap 'hdiutil detach "$mount_point" >/dev/null 2>&1 || true; rmdir "$mount_point"' EXIT
+          hdiutil attach ConsoleCrypt.dmg -readonly -nobrowse -mountpoint "$mount_point"
+          launcher="$mount_point/ConsoleCrypt Terminal.app"
+          codesign --verify --deep --strict "$launcher"
+          archs=" $(lipo -archs "$launcher/Contents/MacOS/consolecrypt-terminal") "
+          [[ "$archs" == *' arm64 '* && "$archs" == *' x86_64 '* ]]
+          unzip -tq ConsoleCrypt-macos.zip
+          mv ConsoleCrypt.dmg "ConsoleCrypt-$version-macos-universal-preview.dmg"
+          mv ConsoleCrypt-macos.zip "ConsoleCrypt-$version-macos-universal.zip"
+          shasum -a 256 "ConsoleCrypt-$version-macos-universal-preview.dmg" "ConsoleCrypt-$version-macos-universal.zip" > SHA256SUMS-macos.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: macos-preview
+          name: macos-preview-67042
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
           compression-level: 0
           path: |
-            dist/macos/ConsoleCrypt-*-macos-universal-preview.dmg
-            dist/macos/SHA256SUMS-macos-preview.txt
+            dist/macos/ConsoleCrypt-1.2.0+67042-macos-universal-preview.dmg
+            dist/macos/ConsoleCrypt-1.2.0+67042-macos-universal.zip
+            dist/macos/ConsoleCrypt.version
+            dist/macos/SHA256SUMS-macos.txt
+
+  android:
+    if: inputs.include_android && github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67041'
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 180
+    env:
+      CC_BUILD_NUMBER: '67041'
+      CARGO_BUILD_JOBS: '3'
+      ANDROID_HOME: ${{ vars.ANDROID_HOME }}
+      JAVA_HOME: ${{ vars.JAVA_HOME }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Native toolchain
+        run: source client/scripts/ci-macos-tools.sh
+      - name: Build signed ARM64 test APK
+        run: bash client/scripts/build-android.sh
+      - name: Check the build number and name the APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist/android
+          version=$(cat ConsoleCrypt.version)
+          [[ "$version" == '1.2.0+67041' ]]
+          aapt="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}/build-tools/36.0.0/aapt"
+          badging=$("$aapt" dump badging ConsoleCrypt-android-arm64.apk)
+          grep -F "versionCode='67041'" <<< "$badging"
+          mv ConsoleCrypt-android-arm64.apk "ConsoleCrypt-$version-android-arm64.apk"
+          shasum -a 256 "ConsoleCrypt-$version-android-arm64.apk" > SHA256SUMS-android.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-preview-67041
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          path: |
+            dist/android/ConsoleCrypt-1.2.0+67041-android-arm64.apk
+            dist/android/ConsoleCrypt.version
+            dist/android/SHA256SUMS-android.txt

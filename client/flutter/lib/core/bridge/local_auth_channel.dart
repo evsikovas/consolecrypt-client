@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
 
 /// What the OS offers for user-presence checks.
@@ -37,6 +36,11 @@ final class LocalAuthCancelled implements Exception {
   const LocalAuthCancelled();
 }
 
+/// Android could not start or complete a system authentication operation.
+final class LocalAuthFailed implements Exception {
+  const LocalAuthFailed();
+}
+
 /// The Keystore key was permanently invalidated (biometrics changed).
 final class LocalAuthInvalidated implements Exception {
   const LocalAuthInvalidated();
@@ -63,7 +67,7 @@ final class LocalAuthChannel {
   /// Keystore alias of a profile's key.
   static String aliasFor(String profileId) => 'cc-device-unlock-$profileId';
 
-  bool get _supported => Platform.isAndroid;
+  bool get _supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   /// Queries the OS (never throws; unsupported on errors / other platforms).
   Future<LocalAuthAvailability> availability() async {
@@ -111,13 +115,14 @@ final class LocalAuthChannel {
     final material = r['material'];
     final handle = r['handle'];
     if (material is! Uint8List || handle is! Uint8List) throw const LocalAuthCancelled();
-    return LocalAuthKey(material: material, handle: handle);
+    // Platform replies use read-only buffers. Give callers a copy they can wipe.
+    return LocalAuthKey(material: Uint8List.fromList(material), handle: handle);
   }
 
   /// Decrypts the key material in [handle] inside the prompt with [reason].
   Future<Uint8List> releaseKey(Uint8List handle, String reason) async {
-    final r = await _invoke<Uint8List>('releaseKey', {'handle': handle, 'reason': reason});
-    return r;
+    final material = await _invoke<Uint8List>('releaseKey', {'handle': handle, 'reason': reason});
+    return Uint8List.fromList(material);
   }
 
   /// Deletes the Keystore key [alias] (best effort).
@@ -139,8 +144,11 @@ final class LocalAuthChannel {
       if (r == null) throw const LocalAuthCancelled();
       return r;
     } on PlatformException catch (e) {
-      if (e.code == 'invalidated') throw const LocalAuthInvalidated();
-      throw const LocalAuthCancelled();
+      throw switch (e.code) {
+        'invalidated' => const LocalAuthInvalidated(),
+        'cancelled' => const LocalAuthCancelled(),
+        _ => const LocalAuthFailed(),
+      };
     } on MissingPluginException {
       throw const LocalAuthCancelled();
     }

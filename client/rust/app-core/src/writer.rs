@@ -128,6 +128,37 @@ impl VaultWriter {
         self.put_to(target, object).await
     }
 
+    /// Trusted local admission around the SAME routed encrypted mutation.
+    pub(crate) async fn put_checked<G, C>(
+        &self,
+        object: VaultObject,
+        with_guard: G,
+        check_tx: C,
+    ) -> AppResult<()>
+    where
+        G: FnOnce(
+                &mut dyn FnMut() -> Result<(), cc_sync_core::SyncError>,
+            ) -> Result<(), cc_sync_core::SyncError>
+            + Send
+            + 'static,
+        C: FnOnce(&cc_storage_core::Tx<'_>) -> Result<(), cc_sync_core::SyncError> + Send + 'static,
+    {
+        let target = self.target_for(&object, None)?;
+        let object = self.with_new_object_policies(&target, object);
+        let id = object.id();
+        let payload = ObjectPayload::new(object);
+        let (store, engine) = self.parts(&target);
+        let result = match engine {
+            Some(engine) => engine.put_checked(payload, with_guard, check_tx).await,
+            None => store.put_checked(payload, with_guard, check_tx).await,
+        };
+        // Keep the original routing/readback even after committed uncertainty.
+        let refresh = self.refresh_in(target.vault(), id).await;
+        result?;
+        refresh?;
+        Ok(())
+    }
+
     /// Create an object in `vault` (`None` = personal).
     pub(crate) async fn put_in(
         &self,

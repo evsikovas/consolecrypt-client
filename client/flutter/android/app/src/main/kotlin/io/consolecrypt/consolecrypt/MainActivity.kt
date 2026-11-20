@@ -20,6 +20,7 @@ class MainActivity : FlutterActivity() {
     private val kubeAuthBrowser by lazy { AuthSessionBrowser(this, AuthSessionBrowser.KUBERNETES_REDIRECT) }
     private val syncAuthBrowser by lazy { AuthSessionBrowser(this, AuthSessionBrowser.SYNC_SERVER_REDIRECT) }
     private external fun nativeInitialize(context: android.content.Context)
+    private val automationArchive by lazy { AutomationArchivePicker(this) }
     private var exportResult: MethodChannel.Result? = null
     private var exportSource: File? = null
     private var forwardPermissionResult: MethodChannel.Result? = null
@@ -269,9 +270,11 @@ class MainActivity : FlutterActivity() {
                 "dataDirectory" -> if (initialized) {
                     // noBackupFilesDir prevents transfer of DBs without their Keystore keys.
                     val dir = File(noBackupFilesDir, "consolecrypt")
-                    if (dir.isDirectory || dir.mkdirs()) result.success(dir.absolutePath)
+                    val path = runCatching { dir.canonicalPath }.getOrNull()
+                    if (path != null && (dir.isDirectory || dir.mkdirs())) result.success(path)
                     else result.error("storage", "Cannot create private app storage", null)
                 } else result.error("native_init", "Android security initialization failed", null)
+                "pickAutomationArchive" -> automationArchive.open(result)
                 "exportFile" -> {
                     val path = call.argument<String>("path")
                     val source = path?.let { File(it).canonicalFile }
@@ -299,11 +302,19 @@ class MainActivity : FlutterActivity() {
         }
         // Device unlock (S5): Keystore key + BiometricPrompt CryptoObject.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "consolecrypt/local_auth").setMethodCallHandler { call, result ->
+            fun replyWithMaterial(material: ByteArray, payload: Any) {
+                try {
+                    result.success(payload)
+                } finally {
+                    // StandardMethodCodec has already copied the bytes into the reply.
+                    material.fill(0)
+                }
+            }
             val reply = { outcome: DeviceUnlockKeys.Outcome ->
                 when (outcome) {
                     is DeviceUnlockKeys.Outcome.Created ->
-                        result.success(mapOf("material" to outcome.material, "handle" to outcome.handle))
-                    is DeviceUnlockKeys.Outcome.Released -> result.success(outcome.material)
+                        replyWithMaterial(outcome.material, mapOf("material" to outcome.material, "handle" to outcome.handle))
+                    is DeviceUnlockKeys.Outcome.Released -> replyWithMaterial(outcome.material, outcome.material)
                     DeviceUnlockKeys.Outcome.Cancelled -> result.error("cancelled", "Authentication cancelled", null)
                     DeviceUnlockKeys.Outcome.Invalidated -> result.error("invalidated", "Key invalidated", null)
                     is DeviceUnlockKeys.Outcome.Failed -> result.error("failed", outcome.reason, null)
@@ -325,6 +336,7 @@ class MainActivity : FlutterActivity() {
 
     @Deprecated("Activity result API used by FlutterActivity")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (automationArchive.onActivityResult(requestCode, resultCode, data)) return
         if (requestCode != 7401) { super.onActivityResult(requestCode, resultCode, data); return }
         val result = exportResult ?: return
         val source = exportSource
@@ -351,6 +363,7 @@ class MainActivity : FlutterActivity() {
         forwardPermissionResult = null
         exportResult?.success(false)
         exportResult = null; exportSource = null
+        automationArchive.dispose()
         deviceUnlockKeys.cancel()
         super.onDestroy()
     }

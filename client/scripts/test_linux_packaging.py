@@ -60,6 +60,8 @@ class LinuxPackagingTest(unittest.TestCase):
         self.assertEqual((stage / 'usr/bin/consolecrypt').read_text(),
                          '#!/bin/sh\nexec /opt/consolecrypt/consolecrypt "$@"\n')
         self.assertEqual((stage / 'usr/bin/consolecrypt').stat().st_mode & 0o777, 0o755)
+        terminal_launcher = stage / 'usr/share/applications/io.consolecrypt.consolecrypt.terminal.desktop'
+        self.assertIn('Exec=consolecrypt --terminal-only\n', terminal_launcher.read_text(encoding='utf-8'))
         self.assertEqual((app / 'consolecrypt').stat().st_mode & 0o777, 0o755)
         self.assertEqual((app / 'lib/libcc_bridge.so').stat().st_mode & 0o777, 0o644)
         self.assertFalse((stage / 'DEBIAN').exists())

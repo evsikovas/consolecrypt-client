@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
+import 'package:consolecrypt/keepass/kdbx_entry_icons.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
@@ -202,58 +203,59 @@ class KdbxWorkspace extends StatelessWidget {
         ),
       );
 
-  Widget _sourceTile(BuildContext context, KdbxSource source, {ValueChanged<String>? onAction}) => GestureDetector(
-    onSecondaryTapDown: busy
-        ? null
-        : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
-    onLongPressStart: busy || !AppPlatform.isMobile
-        ? null
-        : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
-    child: ListTile(
-      key: ValueKey('keepass-source-${source.id}'),
-      dense: true,
-      visualDensity: VisualDensity.standard,
-      minTileHeight: source.remote ? 56 : 48,
-      minVerticalPadding: 4,
-      minLeadingWidth: 20,
-      horizontalTitleGap: 10,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      titleAlignment: ListTileTitleAlignment.center,
-      selected: session?.source.id == source.id,
-      selectedColor: Theme.of(context).colorScheme.onSurface,
-      selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
-      leading: Icon(
-        manager.sessions.containsKey(source.id) ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
-        size: 18,
-      ),
-      title: Text(
-        source.name,
-        key: ValueKey('keepass-source-title-${source.id}'),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: source.remote ? const Text('WebDAV') : null, // l10n-ignore: protocol.
-      onTap: busy ? null : () => onAction != null ? onAction('open') : onSource(source),
-      trailing: source.remote
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _sourceMenu(context, source, onAction: onAction),
-                const SizedBox(width: 4),
-                GlassIconButton(
-                  key: ValueKey('keepass-source-settings-${source.id}'),
-                  icon: Icons.settings_outlined,
-                  size: 28,
-                  iconSize: 18,
-                  style: GlassIconButtonStyle.plain,
-                  tooltip: context.l10n.commonEdit,
-                  onPressed: busy ? null : () => onAction != null ? onAction('settings') : onEditSource(source),
-                ),
-              ],
-            )
-          : _sourceMenu(context, source, onAction: onAction),
-    ),
-  );
+  Widget _sourceTile(BuildContext context, KdbxSource source, {ValueChanged<String>? onAction, Key? tileKey}) =>
+      GestureDetector(
+        onSecondaryTapDown: busy
+            ? null
+            : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
+        onLongPressStart: busy || !AppPlatform.isMobile
+            ? null
+            : (details) => unawaited(_sourceContext(context, source, details.globalPosition, onAction: onAction)),
+        child: ListTile(
+          key: tileKey ?? ValueKey('keepass-source-${source.id}'),
+          dense: true,
+          visualDensity: VisualDensity.standard,
+          minTileHeight: source.remote ? 56 : 48,
+          minVerticalPadding: 4,
+          minLeadingWidth: 20,
+          horizontalTitleGap: 10,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+          titleAlignment: ListTileTitleAlignment.center,
+          selected: session?.source.id == source.id,
+          selectedColor: Theme.of(context).colorScheme.onSurface,
+          selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
+          leading: Icon(
+            manager.sessions.containsKey(source.id) ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
+            size: 18,
+          ),
+          title: Text(
+            source.name,
+            key: ValueKey('keepass-source-title-${source.id}'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: source.remote ? const Text('WebDAV') : null, // l10n-ignore: protocol.
+          onTap: busy ? null : () => onAction != null ? onAction('open') : onSource(source),
+          trailing: source.remote
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _sourceMenu(context, source, onAction: onAction),
+                    const SizedBox(width: 4),
+                    GlassIconButton(
+                      key: ValueKey('keepass-source-settings-${source.id}'),
+                      icon: Icons.settings_outlined,
+                      size: 28,
+                      iconSize: 18,
+                      style: GlassIconButtonStyle.plain,
+                      tooltip: context.l10n.commonEdit,
+                      onPressed: busy ? null : () => onAction != null ? onAction('settings') : onEditSource(source),
+                    ),
+                  ],
+                )
+              : _sourceMenu(context, source, onAction: onAction),
+        ),
+      );
 
   Widget _unlockOthers(BuildContext context) => Builder(
     builder: (buttonContext) => GlassIconButton(
@@ -321,33 +323,55 @@ class KdbxWorkspace extends StatelessWidget {
     ),
   );
 
-  Widget _sources(BuildContext context, {bool welcome = false}) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Padding(
-        key: const ValueKey('keepass-databases-header'),
-        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-        child: Row(
-          children: [
-            Expanded(child: Text(context.l10n.keepassDatabases, style: Theme.of(context).textTheme.titleSmall)),
-            if (manager.sources.any((s) => !manager.sessions.containsKey(s.id))) _unlockOthers(context),
-            if (!welcome) _addMenu(context),
-          ],
+  Widget _sources(BuildContext context, {bool welcome = false}) {
+    final sources = manager.sources;
+    final recent = welcome ? manager.recentSources : const <KdbxSource>[];
+    final recentIds = recent.map((source) => source.id).toSet();
+    final shared = welcome ? sources.where((s) => s.remote && !recentIds.contains(s.id)) : const <KdbxSource>[];
+    final l = context.l10n;
+    final title = recent.isNotEmpty
+        ? l.keepassRecentDatabases
+        : shared.isNotEmpty
+        ? l.keepassDavDatabases
+        : l.keepassDatabases;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          key: const ValueKey('keepass-databases-header'),
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+          child: Row(
+            children: [
+              Expanded(child: Text(title, style: Theme.of(context).textTheme.titleSmall)),
+              if (sources.any((s) => !manager.sessions.containsKey(s.id))) _unlockOthers(context),
+              if (!welcome) _addMenu(context),
+            ],
+          ),
         ),
-      ),
-      Flexible(
-        child: ListView(
-          shrinkWrap: welcome,
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          children: [
-            for (final source in manager.sources.where((s) => manager.sessions.containsKey(s.id)))
-              _sourceTile(context, source),
-          ],
-        ),
-      ),
-    ],
-  );
+        if (welcome) ...[
+          for (final source in recent)
+            _sourceTile(context, source, tileKey: ValueKey('keepass-recent-source-${source.id}')),
+          if (recent.isNotEmpty && shared.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
+              child: Text(l.keepassDavDatabases, style: Theme.of(context).textTheme.titleSmall),
+            ),
+          for (final source in shared)
+            _sourceTile(context, source, tileKey: ValueKey('keepass-shared-source-${source.id}')),
+        ] else
+          Flexible(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              children: [
+                for (final source in sources.where((s) => manager.sessions.containsKey(s.id)))
+                  _sourceTile(context, source),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 
   bool _entryAvailable(PasswordVaultSession opened, String id) =>
       !busy &&
@@ -482,10 +506,7 @@ class KdbxWorkspace extends StatelessWidget {
                 if (manager.sources.isNotEmpty) ...[
                   const SizedBox(height: 28),
                   const Divider(),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 240),
-                    child: _sources(context, welcome: true),
-                  ),
+                  _sources(context, welcome: true),
                 ],
               ],
             ),
@@ -533,6 +554,12 @@ class KdbxWorkspace extends StatelessWidget {
         value: 'rename',
         label: context.l10n.commonRename,
         icon: Icons.edit_outlined,
+      ),
+      GlassMenuItem(
+        key: const ValueKey('keepass-group-icon'),
+        value: 'icon',
+        label: context.l10n.keepassChooseEntryIcon,
+        icon: Icons.image_outlined,
       ),
       const GlassMenuDivider(),
       GlassMenuItem(
@@ -607,16 +634,7 @@ class KdbxWorkspace extends StatelessWidget {
                 selected: all ? group == null : group == id,
                 selectedColor: Theme.of(context).colorScheme.onSurface,
                 selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
-                leading: Icon(
-                  all
-                      ? Icons.view_list_outlined
-                      : id == session!.data['root']
-                      ? Icons.inbox_outlined
-                      : id == session!.data['recycleBin']
-                      ? Icons.delete_outline_rounded
-                      : Icons.folder_outlined,
-                  size: 18,
-                ),
+                leading: _folderIcon(id, all: all),
                 title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: !all && id != session!.data['root'] && session!.rows('groups').any((row) => row['id'] == id)
                     ? _groupMenu(context, id)
@@ -627,6 +645,19 @@ class KdbxWorkspace extends StatelessWidget {
           ),
         ),
       );
+
+  Widget _folderIcon(String id, {required bool all}) {
+    if (all) return const Icon(Icons.view_list_outlined, size: 18);
+    final opened = session!;
+    if (id == opened.data['root']) return const Icon(Icons.inbox_outlined, size: 18);
+    if (id == opened.data['recycleBin']) return const Icon(Icons.delete_outline_rounded, size: 18);
+    final row = opened.rows('groups').where((row) => row['id'] == id).firstOrNull;
+    return kdbxIconPreview(
+      opened.iconFor(row),
+      kdbxEntryIcon(row?['icon'] as int?, fallback: Icons.folder_outlined),
+      size: 18,
+    );
+  }
 
   Widget _sidebar(BuildContext context) {
     final l = context.l10n;
@@ -765,12 +796,17 @@ class KdbxWorkspace extends StatelessWidget {
                           : (details) => unawaited(_entryContext(context, entry, details.globalPosition)),
                       child: ListTile(
                         key: ValueKey('keepass-entry-${entry['id']}'),
-                        minTileHeight: 84,
-                        minVerticalPadding: 16,
+                        minTileHeight: AppPlatform.isMobile ? 60 : 48,
+                        minVerticalPadding: 6,
+                        dense: !AppPlatform.isMobile,
                         selected: selected?['id'] == entry['id'],
                         selectedColor: Theme.of(context).colorScheme.onSurface,
                         selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
-                        leading: const Icon(Icons.key_outlined, size: 22),
+                        leading: kdbxIconPreview(
+                          session!.iconFor(entry),
+                          kdbxEntryIcon(entry['icon'] as int?),
+                          size: 20,
+                        ),
                         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
                         subtitle: subtitle.isEmpty
                             ? null
@@ -910,6 +946,8 @@ class KdbxWorkspace extends StatelessWidget {
               GlassIconButton(
                 icon: Icons.delete_outline_rounded,
                 tooltip: entry['recycled'] == true ? l.keepassDeletePermanently : l.commonDelete,
+                size: GlassControlSize.md.height,
+                iconSize: 16,
                 onPressed: busy ? null : () => onDelete(entry),
               ),
             ],
@@ -1126,6 +1164,8 @@ class KdbxWorkspace extends StatelessWidget {
                     key: const ValueKey('keepass-database-actions'),
                     icon: Icons.more_vert_rounded,
                     tooltip: l.keepassMore,
+                    size: GlassControlSize.md.height,
+                    iconSize: 16,
                     onPressed: busy ? null : open,
                   ),
                 ),

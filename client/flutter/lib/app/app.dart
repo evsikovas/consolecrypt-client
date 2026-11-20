@@ -17,10 +17,12 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/sharing/enrollment_automation.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/updates/update_settings.dart';
 import 'package:consolecrypt/vault/vault_key_mismatch.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
 
 class ConsoleCryptApp extends ConsumerWidget {
   const ConsoleCryptApp({super.key});
@@ -150,7 +152,18 @@ class AppCommandsScope extends ConsumerWidget {
           ),
           PlatformMenu(
             label: l10n.menuFile,
-            menus: [item(AppCommandId.newHost), item(AppCommandId.newTerminalTab), item(AppCommandId.closeTerminalTab)],
+            menus: [
+              item(AppCommandId.newHost),
+              item(AppCommandId.newTerminalTab),
+              PlatformMenuItem(
+                label: l10n.terminalOnlyOpen,
+                onSelected: () {
+                  final context = rootNavigatorKey.currentContext;
+                  if (context != null) unawaited(showTerminalOnlyWindow(context));
+                },
+              ),
+              item(AppCommandId.closeTerminalTab),
+            ],
           ),
           PlatformMenu(
             label: l10n.menuView,
@@ -158,6 +171,7 @@ class AppCommandsScope extends ConsumerWidget {
               item(AppCommandId.commandPalette),
               item(AppCommandId.snippets),
               item(AppCommandId.toggleSidebar),
+              item(AppCommandId.customizeSidebar),
               item(AppCommandId.toggleTerminalMinimalMode),
               item(AppCommandId.splitTerminalRight),
               item(AppCommandId.splitTerminalDown),

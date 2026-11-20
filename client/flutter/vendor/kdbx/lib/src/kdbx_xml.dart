@@ -190,7 +190,12 @@ class IconNode extends KdbxSubTextNode<KdbxIcon> {
   IconNode(super.node, super.name);
 
   @override
-  KdbxIcon decode(String value) => KdbxIcon.values[int.tryParse(value)!];
+  KdbxIcon decode(String value) {
+    final index = int.tryParse(value);
+    return index != null && index >= 0 && index < KdbxIcon.values.length
+        ? KdbxIcon.values[index]
+        : KdbxIcon.Key;
+  }
 
   @override
   String encode(KdbxIcon value) => value.index.toString();

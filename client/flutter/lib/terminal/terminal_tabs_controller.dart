@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_output.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show Axis;
@@ -159,6 +160,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   TerminalTabsState build() {
     _service = ref.read(terminalServiceProvider);
     ref.onDispose(_disposeAll);
+    if (ref.read(terminalOnlyModeProvider)) return const TerminalTabsState();
     // Sessions belong to the profile that opened them.
     ref.listen(activeProfileProvider.select((p) => p?.id), (prev, next) {
       if (prev != next) closeAll();
@@ -228,7 +230,9 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   /// A tab for an opened [handle]: terminal, output and events bound.
   TerminalTab _adopt(TerminalTarget target, TerminalSessionHandle handle) {
     final service = ref.read(terminalServiceProvider);
-    final scrollback = ref.read(settingsServiceProvider).currentLocal.terminalScrollback;
+    final scrollback = ref.read(terminalOnlyModeProvider)
+        ? const LocalSettings().terminalScrollback
+        : ref.read(settingsServiceProvider).currentLocal.terminalScrollback;
     final terminal = Terminal(maxLines: scrollback, platform: _platform);
     final tab = TerminalTab(sessionId: handle.id, target: target, terminal: terminal, controller: TerminalController());
     _bindTerminal(tab, service);

@@ -144,6 +144,14 @@ pub struct ProfileInfo {
     /// (persisted; see `recovery_kit_check_pending`).
     #[serde(default)]
     pub recovery_kit_pending: bool,
+    /// Ephemeral metadata source of the original active unlocked vault only.
+    /// Missing in old Native, and absent for locked/closed profiles.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notification_scope_id: Option<String>,
+    /// Bounded metadata from the exact same original unlocked emitter.
+    /// This does not authorize actions or expose private event payloads.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub critical_notice_snapshot: Option<serde_json::Value>,
 }
 
 /// Recovery Kit (ADR-0002): shown once, then the user must pass the
@@ -1107,6 +1115,10 @@ impl EditableDto for VaultSettingsDto {
             policies: self.policies.clone(),
             // Edited through `set_sharing_policy` only; kept as it is.
             sharing_policy: existing.map(|e| e.sharing_policy).unwrap_or_default(),
+            // Owned by versioned monitoring source CRUD, never overwritten by
+            // an older generic settings DTO (including unsupported schemas).
+            monitoring: existing.and_then(|e| e.monitoring.clone()),
+            automation: existing.and_then(|e| e.automation.clone()),
             created_at,
             updated_at,
         })
@@ -1753,6 +1765,16 @@ pub enum PromptRequest {
     HostKey(HostKeyPromptDto),
     Passphrase(PassphrasePromptDto),
     Password(PasswordPromptDto),
+    AutomationTransition(AutomationTransitionPromptDto),
+}
+
+/// No decrypted profile/job content is needed to protect a locked-profile exit.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AutomationTransitionPromptDto {
+    pub request_id: String,
+    pub job_count: u32,
+    pub unknown_count: u32,
+    pub operation: String,
 }
 
 // ---- backup ----------------------------------------------------------------------
@@ -1794,12 +1816,177 @@ pub enum ChangeOriginDto {
     ConflictResolution,
 }
 
+/// Strict metadata-only job state for the app event bus. This is not execution
+/// authority or a replacement for the durable job record.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationJobStateDto {
+    Queued,
+    Dispatching,
+    Running,
+    Cancelling,
+    Succeeded,
+    Failed,
+    Cancelled,
+    Interrupted,
+    Unknown,
+    Acknowledged,
+}
+impl AutomationJobStateDto {
+    pub(crate) fn from_state(value: &str) -> Option<Self> {
+        Some(match value {
+            "queued" => Self::Queued,
+            "dispatching" => Self::Dispatching,
+            "running" => Self::Running,
+            "cancelling" => Self::Cancelling,
+            "succeeded" => Self::Succeeded,
+            "failed" => Self::Failed,
+            "cancelled" => Self::Cancelled,
+            "interrupted" => Self::Interrupted,
+            "unknown" => Self::Unknown,
+            "acknowledged" => Self::Acknowledged,
+            _ => return None,
+        })
+    }
+    pub(crate) fn as_state(self) -> &'static str {
+        match self {
+            Self::Queued => "queued",
+            Self::Dispatching => "dispatching",
+            Self::Running => "running",
+            Self::Cancelling => "cancelling",
+            Self::Succeeded => "succeeded",
+            Self::Failed => "failed",
+            Self::Cancelled => "cancelled",
+            Self::Interrupted => "interrupted",
+            Self::Unknown => "unknown",
+            Self::Acknowledged => "acknowledged",
+        }
+    }
+}
+
+/// Coarse original-owner sync observations, never error messages or payloads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CriticalSyncStateDto {
+    Offline,
+    Error,
+    Stopped,
+    DeviceRevoked,
+    ReauthRequired,
+    AccountDisabled,
+    NotTrusted,
+    VaultGone,
+    UpgradeRequired,
+    /// Literal Native phase; not a claim that a historical error was recovered.
+    Idle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CriticalTunnelStateDto {
+    Running,
+    Failed,
+    Stopped,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CriticalTerminalStateDto {
+    Connected,
+    Closed,
+    Failed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CriticalSecurityStateDto {
+    IntegrityWarning,
+    ServerRollback,
+    SecretConflict,
+    ConflictCopy,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CriticalDeviceStateDto {
+    Registered,
+    ApprovalRequested,
+    Revoked,
+    RecoveryChanged,
+    KeyConflict,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CriticalBackupStateDto {
+    Failed,
+    Completed,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CriticalTeamStateDto {
+    InvalidLog,
+    LogRollback,
+    Removed,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CriticalEditStateDto {
+    Error,
+    Conflict,
+    RecoveryAvailable,
+    Synced,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CriticalTransferStateDto {
+    Failed,
+    Completed,
+}
+
+/// Only fixed enum states cross the common-centre boundary. Never clone the
+/// original runtime error/status payload into this projection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "domain", rename_all = "snake_case", deny_unknown_fields)]
+pub enum CriticalRuntimeChangeDto {
+    Sync { state: CriticalSyncStateDto },
+    Tunnel { state: CriticalTunnelStateDto },
+    Terminal { state: CriticalTerminalStateDto },
+    Security { state: CriticalSecurityStateDto },
+    Device { state: CriticalDeviceStateDto },
+    Backup { state: CriticalBackupStateDto },
+    Team { state: CriticalTeamStateDto },
+    Edit { state: CriticalEditStateDto },
+    Transfer { state: CriticalTransferStateDto },
+}
+
 /// Everything the UI may want to react to (see
 /// [`crate::AppCore::subscribe_events`]). Metadata only — re-read objects
 /// through the facade.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AppEvent {
+    /// Memory-only runtime observation from its original unlocked owner.
+    /// This nonce is metadata, not an authorization/execution capability.
+    CriticalStateChanged {
+        profile_id: String,
+        scope_id: String,
+        record_id: String,
+        revision: u64,
+        change: CriticalRuntimeChangeDto,
+    },
+    /// The original owner's bounded metadata stream is incomplete. Never
+    /// turn this into a fabricated failure, completion or successful refresh.
+    CriticalNoticeGap {
+        profile_id: String,
+        scope_id: String,
+    },
+    /// Durable job state committed in its original profile. Never contains
+    /// evidence, paths, host metadata, command text, approval or credentials.
+    AutomationJobChanged {
+        profile_id: String,
+        job_id: String,
+        revision: u64,
+        state: AutomationJobStateDto,
+    },
     /// Profiles were created/removed/renamed or the active one changed.
     ProfilesChanged,
     VaultUnlocked {

@@ -182,9 +182,10 @@ Future<void> copyPrivateWithNotice(
 
 /// Copies non-secret text (public keys, fingerprints, commands). [what] is
 /// a localized noun from the `copyWhat*` keys (defaults to "Text").
-Future<void> copyPlainWithNotice(BuildContext context, WidgetRef ref, String value, {String? what}) async {
+/// Use [notify] = false when a compact dialog shows its own inline confirmation.
+Future<void> copyPlainWithNotice(BuildContext context, WidgetRef ref, String value, {String? what, bool notify = true}) async {
   await ref.read(secureClipboardProvider).copyPlain(value);
-  if (context.mounted) {
+  if (notify && context.mounted) {
     showSnack(context, context.l10n.copiedNotice(what ?? context.l10n.copyWhatText), tone: GlassTone.success);
   }
 }

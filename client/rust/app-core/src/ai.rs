@@ -17,6 +17,7 @@
 //!   `exec_approved` / `terminal_run_approved` accept it.
 
 mod context;
+pub(crate) mod automation_context;
 pub(crate) mod dto;
 mod index;
 mod session;
@@ -59,6 +60,44 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
+
+/// One-use consent to the exact sanitized Ansible request shown by the UI.
+/// Kept only for this unlock; never serialized into the vault or sync.
+pub(crate) struct AutomationAiReview {
+    request: cc_ai_core::automation::PreparedAnsibleRequest,
+    provider: Arc<dyn LlmProvider>,
+    unlock: std::sync::Weak<Unlocked>,
+    generation: u64,
+    deadline: Instant,
+    cancellation: crate::automation_prepare::CancelOnDrop,
+    context: Option<automation_context::ContextContribution>,
+}
+/// One existing bounded registry, distinct artifact purposes. A capture is
+/// metadata for explicit AI context, never a model-send or execution approval.
+pub(crate) enum AutomationAiPrepared {
+    Review(AutomationAiReview),
+    Context(automation_context::ContextCapture),
+}
+impl AutomationAiPrepared {
+    pub(crate) fn deadline(&self) -> Instant {
+        match self { Self::Review(value) => value.deadline, Self::Context(value) => value.deadline }
+    }
+}
+struct AutomationAiActive {
+    runtime: Arc<crate::automation_runners::AutomationRuntime>,
+    id: uuid::Uuid,
+    cancel: CancellationToken,
+}
+impl Drop for AutomationAiActive {
+    fn drop(&mut self) {
+        self.cancel.cancel();
+        self.runtime
+            .ai_active
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&self.id);
+    }
+}
 
 /// Upper bound of a question / description / command sent by the UI.
 const MAX_REQUEST_BYTES: usize = 64 * 1024;
@@ -676,6 +715,211 @@ impl AppCore {
 
     /// Generate Command. `target` = the dialect (`None` → derived from the
     /// host's shell); the host is `context.host_id` (or the terminal's).
+    pub async fn automation_ai_prepare(
+        &self,
+        provider_id: String,
+        task: String,
+        path: String,
+        selected_text: Option<String>,
+    ) -> AppResult<serde_json::Value> {
+        let (owner, unlocked) = self.unlocked().await?;
+        self.automation_ai_prepare_original(owner, unlocked, provider_id, task, path, selected_text, None).await
+    }
+
+    async fn automation_ai_prepare_original(
+        &self, owner: Arc<crate::session::Session>, unlocked: Arc<Unlocked>,
+        provider_id: String, task: String, path: String, selected_text: Option<String>,
+        context: Option<automation_context::ContextContribution>,
+    ) -> AppResult<serde_json::Value> {
+        let generation = owner.automation.unlocked_generation()?;
+        if provider_id.trim().is_empty() {
+            return Err(AppError::invalid("automation_ai", "select a provider"));
+        }
+        let task = match &context { Some(value) => value.render_task(&task)?, None => task };
+        // The legacy call still has no implicit context/RAG or provider fallback.
+        let snapshot = unlocked.working().snapshot();
+        let cfg = unlocked.ai.resolve_config(Some(&provider_id))?;
+        let cancellation = crate::automation_prepare::CancelOnDrop(CancellationToken::new());
+        if cfg.id.to_string() != DEVICE_LOCAL_PROVIDER_ID {
+            let watched = std::iter::once(cfg.id)
+                .chain(cfg.api_key_secret_id)
+                .map(|id| {
+                    snapshot
+                        .get(&id)
+                        .map(|entry| (id, entry.revision))
+                        .ok_or(AppError::AiNotConfigured)
+                })
+                .collect::<AppResult<std::collections::BTreeMap<_, _>>>()?;
+            if !unlocked
+                .working()
+                .watch_revisions(watched, cancellation.0.clone())
+            {
+                return Err(AppError::AiNotConfigured);
+            }
+        }
+        drop(snapshot);
+        if let Some(value) = &context { value.watch(&unlocked, cancellation.0.clone())?; }
+        let provider = unlocked.ai.provider_for(&cfg).await?;
+        if cancellation.0.is_cancelled() {
+            return Err(AppError::AiNotConfigured);
+        }
+        let mut request = cc_ai_core::automation::PreparedAnsibleRequest::new(
+            provider.privacy_profile(),
+            &task,
+            &path,
+            selected_text.as_deref(),
+        )?;
+        if cfg.id.to_string() == DEVICE_LOCAL_PROVIDER_ID {
+            request = request.output_token_limit(2048);
+        }
+        let id = uuid::Uuid::new_v4();
+        let result = serde_json::json!({"review_id":id,"provider_id":cfg.id,
+            "provider_name":cfg.name,"locality":provider.locality(),
+            "privacy_profile":provider.privacy_profile(),"preview":request.preview()});
+        let _profile = self.hold_session(&owner).await?;
+        let _epoch = owner.hold_unlocked(&unlocked).await?;
+        if owner.automation.unlocked_generation()? != generation {
+            return Err(AppError::VaultLocked);
+        }
+        if let Some(value) = &context { value.check_held(self, &owner, &unlocked).await?; }
+        if cancellation.0.is_cancelled() { return Err(AppError::Cancelled); }
+        let deadline = context.as_ref().map(|value| value.deadline())
+            .unwrap_or_else(|| Instant::now() + std::time::Duration::from_secs(600));
+        if deadline <= Instant::now() { return Err(AppError::invalid("automation_ai_context", "context_expired")); }
+        let mut reviews = owner
+            .automation
+            .ai_reviews
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        reviews.retain(|_, review| review.deadline() > Instant::now());
+        if reviews.len() >= 4 {
+            return Err(AppError::invalid("automation_ai", "preview limit reached"));
+        }
+        reviews.insert(
+            id,
+            AutomationAiPrepared::Review(AutomationAiReview {
+                request,
+                provider,
+                unlock: Arc::downgrade(&unlocked),
+                generation,
+                deadline,
+                cancellation,
+                context,
+            }),
+        );
+        drop(reviews);
+        let runtime = Arc::downgrade(&owner.automation);
+        tokio::spawn(async move {
+            tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)).await;
+            if let Some(runtime) = runtime.upgrade() {
+                runtime
+                    .ai_reviews
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .remove(&id);
+            }
+        });
+        Ok(result)
+    }
+
+    pub async fn automation_ai_discard(&self, review_id: String) -> AppResult<()> {
+        let id = uuid::Uuid::parse_str(&review_id)
+            .map_err(|_| AppError::invalid("automation_ai", "invalid review"))?;
+        let (owner, _) = self.unlocked().await?;
+        owner
+            .automation
+            .ai_reviews
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&id);
+        if let Some(cancel) = owner
+            .automation
+            .ai_active
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&id)
+        {
+            cancel.cancel();
+        }
+        Ok(())
+    }
+
+    pub async fn automation_ai_generate(&self, review_id: String) -> AppResult<serde_json::Value> {
+        let id = uuid::Uuid::parse_str(&review_id)
+            .map_err(|_| AppError::invalid("automation_ai", "invalid review"))?;
+        let (owner, unlocked) = self.unlocked().await?;
+        let (review, cancel) = {
+            // Move preview -> active under the same lock order as discard.
+            // Cancellation cannot fall into a gap between these two maps.
+            let mut reviews = owner
+                .automation
+                .ai_reviews
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            let review = match reviews.remove(&id) {
+                Some(AutomationAiPrepared::Review(value)) => value,
+                _ => return Err(AppError::invalid("automation_ai", "preview expired or already consumed")),
+            };
+            let mut active = owner
+                .automation
+                .ai_active
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if active.len() >= 2 {
+                return Err(AppError::invalid(
+                    "automation_ai",
+                    "generation limit reached",
+                ));
+            }
+            let cancel = review.cancellation.0.clone();
+            active.insert(id, cancel.clone());
+            (review, cancel)
+        };
+        let _active = AutomationAiActive {
+            runtime: owner.automation.clone(),
+            id,
+            cancel: cancel.clone(),
+        };
+        if review.deadline <= Instant::now()
+            || owner.automation.unlocked_generation()? != review.generation
+            || !review
+                .unlock
+                .upgrade()
+                .is_some_and(|previous| Arc::ptr_eq(&previous, &unlocked))
+        {
+            return Err(AppError::VaultLocked);
+        }
+        if let Some(value) = &review.context {
+            let _profile = self.hold_session(&owner).await?;
+            let _epoch = owner.hold_unlocked(&unlocked).await?;
+            value.check_held(self, &owner, &unlocked).await?;
+        }
+        let mut shutdown = unlocked.sharing_shutdown.subscribe();
+        if *shutdown.borrow() {
+            return Err(AppError::VaultLocked);
+        }
+        drop(unlocked);
+        let proposal = tokio::select! {
+            biased;
+            _=cancel.cancelled()=>return Err(AppError::from(AiError::Cancelled)),
+            _=shutdown.changed()=>return Err(AppError::VaultLocked),
+            _=owner.automation.stopped.cancelled()=>return Err(AppError::VaultLocked),
+            _=tokio::time::sleep_until(tokio::time::Instant::from_std(review.deadline))=>
+                return Err(AppError::invalid("automation_ai_context", "context_expired")),
+            result=tokio::time::timeout(std::time::Duration::from_secs(180),review.request.generate(review.provider.as_ref()))=>
+                result.map_err(|_|AppError::from(AiError::Timeout))?.map_err(automation_ai_error)?,
+        };
+        let unlocked = review.unlock.upgrade().ok_or(AppError::VaultLocked)?;
+        let _profile = self.hold_session(&owner).await?;
+        let _epoch = owner.hold_unlocked(&unlocked).await?;
+        if owner.automation.unlocked_generation()? != review.generation {
+            return Err(AppError::VaultLocked);
+        }
+        if let Some(value) = &review.context { value.check_held(self, &owner, &unlocked).await?; }
+        if cancel.is_cancelled() { return Err(AppError::Cancelled); }
+        serde_json::to_value(proposal).map_err(AppError::internal)
+    }
+
     pub async fn ai_generate_command(
         &self,
         provider_id: Option<String>,
@@ -925,6 +1169,26 @@ impl AppCore {
         let mut line = a.approved.command().as_bytes().to_vec();
         line.push(b'\r');
         backend.terminal_write(tid, &line).await
+    }
+}
+
+/// Safe finite diagnostics: never expose model response or provider error body.
+fn automation_ai_error(error: AiError) -> AppError {
+    match error {
+        AiError::InvalidResponse(reason) => AppError::invalid(
+            "automation_ai_response",
+            if reason == "automation_response_truncated" {
+                "truncated"
+            } else {
+                "invalid_response"
+            },
+        ),
+        AiError::Http { status, .. } => {
+            AppError::invalid("automation_ai_provider", format!("http_{status}"))
+        }
+        AiError::ModelNotFound(_) => AppError::invalid("automation_ai_provider", "model_not_found"),
+        AiError::Provider(_) => AppError::invalid("automation_ai_provider", "provider_rejected"),
+        other => other.into(),
     }
 }
 

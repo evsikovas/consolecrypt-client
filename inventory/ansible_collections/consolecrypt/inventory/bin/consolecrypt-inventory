@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""Offline CLI for this installed collection; no helper/vault dependencies."""
+from pathlib import Path
+import runpy
+
+runpy.run_path(str(Path(__file__).resolve().parent.parent / 'plugins/module_utils/snapshot.py'), run_name='__main__')

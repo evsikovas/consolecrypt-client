@@ -42,6 +42,12 @@ pub struct OpenAiCompatibleProvider {
 }
 
 impl OpenAiCompatibleProvider {
+    pub(super) fn device_local(settings: ProviderSettings, api_key: SecretString) -> Result<Self> {
+        let mut provider = Self::new(settings, Some(api_key))?;
+        provider.caps.structured_output = StructuredOutput::JsonSchema;
+        Ok(provider)
+    }
+
     /// `api_key` is consumed and stored only in the HTTP client's sensitive
     /// `Authorization` header.
     pub fn new(settings: ProviderSettings, api_key: Option<SecretString>) -> Result<Self> {

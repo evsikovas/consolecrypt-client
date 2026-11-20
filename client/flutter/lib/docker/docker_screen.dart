@@ -25,7 +25,6 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
   DockerSessionInfo? _session;
   DockerHost? _host;
   DockerService? _service;
-
   @override
   void dispose() {
     _disconnect();
@@ -41,7 +40,11 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(dockerScopeProvider, (previous, next) {
-      if (previous?.profileId != next.profileId || !next.unlocked) setState(_disconnect);
+      if (previous?.profileId != next.profileId || !next.unlocked) {
+        setState(() {
+          _disconnect();
+        });
+      }
     });
     final service = ref.watch(dockerServiceProvider);
     final l = context.l10n;
@@ -96,6 +99,15 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
   DockerHost? _failedHost;
   Object? _error;
   int _generation = 0;
+  @override
+  void didUpdateWidget(DockerHostPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.service, oldWidget.service)) {
+      _generation++;
+      _connecting = null;
+      _hosts = widget.service.hosts();
+    }
+  }
 
   void _reload() => setState(() {
     _hosts = widget.service.hosts();
@@ -105,6 +117,7 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
 
   Future<void> _connect(DockerHost host) async {
     if (_connecting != null) return;
+    final originalService = widget.service;
     final generation = ++_generation;
     setState(() {
       _connecting = host.id;
@@ -112,9 +125,9 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
       _failedHost = null;
     });
     try {
-      final session = await widget.service.connect(host.id);
-      if (!mounted || generation != _generation) {
-        unawaited(widget.service.disconnect(session.id).catchError((Object _) {}));
+      final session = await originalService.connect(host.id);
+      if (!mounted || generation != _generation || !identical(widget.service, originalService)) {
+        unawaited(originalService.disconnect(session.id).catchError((Object _) {}));
         return;
       }
       setState(() => _connecting = null);

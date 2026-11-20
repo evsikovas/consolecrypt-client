@@ -27,6 +27,7 @@ Future<void> pumpApp(
   AppLocale locale = AppLocale.en,
   Size size = const Size(1600, 1000),
   List<Override> overrides = const [],
+  bool captureBoundary = false,
 }) async {
   setTestLocale(backend, locale);
   tester.view.physicalSize = size;
@@ -36,7 +37,9 @@ Future<void> pumpApp(
     ProviderScope(
       overrides: [appServicesProvider.overrideWithValue(backend.services), ...overrides],
       retry: (_, _) => null,
-      child: const ConsoleCryptApp(),
+      child: captureBoundary
+          ? const RepaintBoundary(key: ValueKey('automation-proof-root'), child: ConsoleCryptApp())
+          : const ConsoleCryptApp(),
     ),
   );
   await settle(tester);

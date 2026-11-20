@@ -8,6 +8,13 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ru</string>
+		<string>es</string>
+		<string>zh-Hans</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>ConsoleCrypt</string>
 	<key>CFBundleExecutable</key>

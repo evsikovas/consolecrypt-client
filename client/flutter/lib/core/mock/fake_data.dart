@@ -246,7 +246,7 @@ final class FakeInventory {
         ),
         tunnel('SOCKS via bastion', TunnelKind.dynamic, bastionA, '127.0.0.1', 1080),
         tunnel(
-          'Shared Grafana (LAN)',
+          'Shared web panel (LAN)',
           TunnelKind.local,
           bastionB,
           '0.0.0.0',

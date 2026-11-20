@@ -135,12 +135,12 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-shop'))).data, '0/4 running');
 
     // Start all needs no confirmation and only touches stopped containers.
-    await tapKey(tester, 'docker-compose-menu-button-monitoring');
+    await tapKey(tester, 'docker-compose-menu-button-proxy');
     await tapKey(tester, 'docker-compose-menu-startAll');
     expect(find.byType(GlassDialog), findsNothing);
     expect(docker.actions.last.$2, DockerAction.start);
     expect(docker.actions.where((a) => a.$2 == DockerAction.start), hasLength(1));
-    expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-monitoring'))).data, '2/2 running');
+    expect(tester.widget<Text>(find.byKey(const ValueKey('docker-group-count-proxy'))).data, '2/2 running');
 
     // Standalone containers have no project menu.
     expect(find.byKey(const ValueKey('docker-compose-menu-button-')), findsNothing);
@@ -169,7 +169,7 @@ void main() {
     expect(find.byKey(const ValueKey('docker-compose-dialog')), findsNothing);
 
     // A root-only file explains itself; the readable one is still shown.
-    await tapKey(tester, 'docker-compose-menu-button-monitoring');
+    await tapKey(tester, 'docker-compose-menu-button-proxy');
     await tapKey(tester, 'docker-compose-menu-viewYaml');
     expect(find.byKey(const ValueKey('docker-compose-text')), findsOneWidget);
     await tapKey(tester, 'docker-compose-file-1');
@@ -365,23 +365,23 @@ void main() {
     await tapKey(tester, 'confirm-ok');
     await tapKey(tester, 'docker-compose-close');
 
-    // /opt/monitoring is writable by other users in the demo.
-    await tapKey(tester, 'docker-compose-menu-button-monitoring');
+    // /opt/proxy is writable by other users in the demo.
+    await tapKey(tester, 'docker-compose-menu-button-proxy');
     await tapKey(tester, 'docker-compose-menu-editYaml');
     await _unlock(tester);
-    const edited = 'services:\n  grafana:\n    image: grafana/grafana:11.3.0\n';
+    const edited = 'services:\n  cache:\n    image: redis:7.4-alpine\n';
     await tester.enterText(find.byKey(const ValueKey('docker-compose-editor')), edited);
     await tester.pump();
     await tapKey(tester, 'docker-compose-save-only');
     expect(find.text('Save in a shared directory?'), findsOneWidget);
-    expect(find.textContaining('can be written by other users: /opt/monitoring'), findsOneWidget);
+    expect(find.textContaining('can be written by other users: /opt/proxy'), findsOneWidget);
     await tapKey(tester, 'confirm-cancel');
-    expect(docker.composeFiles['/opt/monitoring/docker-compose.yml'], isNot(edited));
+    expect(docker.composeFiles['/opt/proxy/docker-compose.yml'], isNot(edited));
     expect(_editorText(tester), edited);
     await tapKey(tester, 'docker-compose-save-only');
     await tapKey(tester, 'confirm-ok');
     expect(docker.saves.last.allowSharedDirs, isTrue);
-    expect(docker.composeFiles['/opt/monitoring/docker-compose.yml'], edited);
+    expect(docker.composeFiles['/opt/proxy/docker-compose.yml'], edited);
     await tapKey(tester, 'docker-compose-close');
   });
 

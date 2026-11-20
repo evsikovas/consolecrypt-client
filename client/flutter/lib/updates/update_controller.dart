@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:consolecrypt/core/bridge/rust_app_services.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/settings_service.dart';
 import 'package:consolecrypt/updates/update_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,11 +74,7 @@ final updateOpenUrlProvider = Provider<Future<bool> Function(Uri)>(
 /// Leaves the app so Setup (waiting for this process) can replace its files.
 final updateAppExitProvider = Provider<Future<void> Function()>(
   (ref) => () async {
-    try {
-      await RustAppServices.current?.close().timeout(const Duration(seconds: 5));
-    } on Object {
-      // Setup is already running; a slow shutdown must not keep files open.
-    }
+    await RustAppServices.current?.close();
     exit(0);
   },
 );
@@ -86,17 +83,26 @@ final updateAppExitProvider = Provider<Future<void> Function()>(
 /// (vault and connections first) and starts the installed version.
 final updateRelaunchProvider = Provider<Future<void> Function()>(
   (ref) => () async {
-    try {
-      await RustAppServices.current?.close().timeout(const Duration(seconds: 5));
-    } on Object {
-      // The new copy opens the vault itself; a slow shutdown must not block it.
-    }
+    await RustAppServices.current?.close();
     await Process.start('/usr/bin/consolecrypt', const [], mode: ProcessStartMode.detached);
     exit(0);
   },
 );
 
 Uri updateDownloadPage(String languageCode) => Uri.https('consolecrypt.dev', '/download', {'lang': languageCode});
+
+typedef ReleaseUpdatePreparation = Future<void> Function();
+typedef PrepareUpdateInstall = Future<ReleaseUpdatePreparation> Function();
+
+/// Bound to this exact backend instance, even if the root UI goes away while
+/// waiting. Tests replace it without starting a real installer/native profile.
+final updateInstallPreparationProvider = Provider<PrepareUpdateInstall>(
+  (ref) => () async {
+    final app = RustAppServices.current;
+    if (app == null) return () async {};
+    return app.prepareUpdateExit();
+  },
+);
 
 class UpdateController extends Notifier<UpdateState> {
   File? _installer;
@@ -126,6 +132,7 @@ class UpdateController extends Notifier<UpdateState> {
     if (release == null || state.busy) return;
     final inPlace = state.inPlace;
     final service = ref.read(updateServiceProvider);
+    ReleaseUpdatePreparation? releasePreparation;
     try {
       if (!inPlace) throw const UpdateException('portable');
       if (_installer == null || !_installer!.existsSync() || _installer!.uri.pathSegments.last != release.fileName) {
@@ -136,6 +143,13 @@ class UpdateController extends Notifier<UpdateState> {
       }
       if (!ref.mounted) return;
       state = UpdateState(phase: UpdatePhase.installing, release: release, progress: 1, inPlace: inPlace);
+      if (release.platform == 'windows-x64') {
+        // Detect a modified cached file BEFORE asking the user to stop jobs.
+        // install() verifies again immediately before launching Setup.
+        await service.verifyInstaller(_installer!, release);
+        releasePreparation = await ref.read(updateInstallPreparationProvider)();
+        if (!ref.mounted) return;
+      }
       final outcome = await service.install(
         _installer!,
         release,
@@ -156,10 +170,18 @@ class UpdateController extends Notifier<UpdateState> {
       );
       if (outcome == UpdateInstallResult.exitWindows) await ref.read(updateAppExitProvider)();
     } on Object catch (error) {
+      if (error is AppException && error.code == AppErrorCode.cancelled) {
+        // No installer was launched when the user chose Stay. Keep the verified
+        // download; a later explicit attempt can prepare a fresh native lease.
+        if (ref.mounted) state = UpdateState(phase: UpdatePhase.ready, release: release, progress: 1, inPlace: inPlace);
+        return;
+      }
       // A verified cache can change or an installer can fail to launch. A retry
       // must fetch fresh bytes rather than repeatedly reusing a bad file.
       _installer = null;
       if (ref.mounted) state = _failed(error, release, inPlace: inPlace);
+    } finally {
+      await releasePreparation?.call();
     }
   }
 

@@ -5,7 +5,7 @@ use crate::{
     keyfile::PasswordVaultKeyRecord,
     secrets::blocking,
 };
-use cc_crypto_core::{open_password_vault_key, seal_password_vault_key, UnlockKey};
+use cc_crypto_core::{UnlockKey, open_password_vault_key, seal_password_vault_key};
 use cc_platform_core::UnlockProtection;
 use cc_protocol::Bytes;
 use zeroize::Zeroizing;
@@ -56,6 +56,19 @@ impl AppCore {
             return old
                 .map(|r| r.handle.0)
                 .ok_or_else(|| AppError::invalid("password_vault", "not enrolled"));
+        }
+        if external && action == "forget_external_handle" {
+            let _guard = s.hold_unlocked(&u).await?;
+            s.update_keyfile(|k| {
+                if k.password_vault_keys
+                    .get(&name)
+                    .is_some_and(|record| record.handle.0 == *secret)
+                {
+                    k.password_vault_keys.remove(&name);
+                }
+            })
+            .await?;
+            return Ok(vec![]);
         }
         if action == "forget" {
             let _guard = s.hold_unlocked(&u).await?;

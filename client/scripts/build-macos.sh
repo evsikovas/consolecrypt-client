@@ -172,7 +172,7 @@ echo "==> packaging"
 rm -f "$OUT/ConsoleCrypt-macos.zip" "$OUT/ConsoleCrypt.dmg"
 ditto -c -k --keepParent "$OUT/ConsoleCrypt.app" "$OUT/ConsoleCrypt-macos.zip"
 if [[ "$MODE" == release ]]; then
-  bash "$SRC/client/scripts/package-macos.sh" "$OUT/ConsoleCrypt.app" "$OUT/ConsoleCrypt.dmg"
+  bash "$SRC/client/scripts/package-macos.sh" "$OUT/ConsoleCrypt.app" "$OUT/ConsoleCrypt.dmg" "$SIGN_IDENTITY"
 fi
 
 

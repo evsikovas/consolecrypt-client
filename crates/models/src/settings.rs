@@ -26,6 +26,15 @@ pub enum TerminalHistoryMode {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VaultSettings {
+    /// Portable automation metadata/references only. Unsupported versions remain
+    /// opaque and preserved. Never local paths, playbooks or credential material.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub automation: Option<serde_json::Value>,
+    /// Versioned monitoring source configuration, inside the existing encrypted
+    /// settings payload. Raw JSON preserves unsupported future schemas. Metrics,
+    /// query caches and credential material never belong in this catalog.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub monitoring: Option<serde_json::Value>,
     #[serde(default)]
     pub password_vaults: Vec<PasswordVaultConnection>,
     pub id: ObjectId,

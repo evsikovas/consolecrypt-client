@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:consolecrypt/ai/code_blocks.dart';
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/navigation_customization.dart';
+import 'package:consolecrypt/app/navigation_registry.dart';
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -20,6 +23,7 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/rdp/rdp_launcher.dart';
 import 'package:consolecrypt/snippets/run_flow.dart';
+import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/services.dart';
@@ -813,6 +817,17 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
           enabled: !_openingLocal && _openingHost == null,
           onSelect: () => unawaited(_newLocalTerminal()),
         ),
+      if (!AppPlatform.isMobile)
+        _Item(
+          key: const ValueKey('palette-terminal-only'),
+          group: _Group.actions,
+          icon: Icons.open_in_new_rounded,
+          title: l10n.terminalOnlyOpen,
+          onSelect: () async {
+            final opened = await showTerminalOnlyWindow(context);
+            if (opened && mounted) _close();
+          },
+        ),
       _Item(
         group: _Group.actions,
         icon: Icons.add_rounded,
@@ -856,6 +871,28 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         onSelect: () {
           _close();
           router.go(AppRoutes.settings);
+        },
+      ),
+      for (final section in ref.watch(availableNavigationSectionsProvider))
+        if (section.branch != ShellBranch.settings &&
+            (!section.syncedOnly || (ref.read(activeProfileProvider)?.isSynced ?? false)))
+          _Item(
+            group: _Group.actions,
+            icon: section.icon,
+            title: shellBranchLabel(section.branch, l10n),
+            onSelect: () {
+              _close();
+              router.go(navigationBranchRoute(section.branch));
+            },
+          ),
+      _Item(
+        group: _Group.actions,
+        icon: Icons.tune_rounded,
+        title: l10n.navigationCustomize,
+        onSelect: () {
+          final parent = rootNavigatorKey.currentContext;
+          _close();
+          if (parent != null) unawaited(showNavigationCustomization(parent));
         },
       ),
       _Item(

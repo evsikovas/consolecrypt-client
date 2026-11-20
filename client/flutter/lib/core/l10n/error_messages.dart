@@ -38,6 +38,8 @@
 /// | (transport failure) | serverUnreachable / offline |
 library;
 
+import 'package:consolecrypt/automation/automation_project_credentials_errors.dart';
+
 import 'package:consolecrypt/core/models/validation.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
@@ -45,6 +47,8 @@ import 'package:consolecrypt/l10n/app_localizations.dart';
 
 /// Localized, user-presentable text for any error surfaced by a service call.
 String errorMessage(AppLocalizations l, Object error) => switch (error) {
+  AppException(:final args) when args['field'] == 'automation_runner' &&
+      args['rule'] == 'setup_macos_python_missing' => l.automationMacRunnerPython,
   AppException() => _reasonMessage(l, error) ?? errorCodeMessage(l, error.code, args: error.args),
   ValidationError() => validationMessage(l, error.field, error.reason),
   _ => l.errorUnknown,
@@ -212,6 +216,8 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
 /// Localized text for a model [ValidationError] (`field` = snake_case
 /// cc-models field name, `rule` = its English reason).
 String validationMessage(AppLocalizations l, String field, String rule) {
+  if (field == 'automation_credentials') return projectCredentialsIssueMessage(l, projectCredentialsIssueForRule(rule));
+  if (field == 'automation_vault') return l.automationVaultChoose;
   if (field == 'shared_host' && (rule == 'endpoint_changed_review' || rule == 'exact_endpoint_confirmation_required')) {
     return l.sharingEndpointChanged;
   }

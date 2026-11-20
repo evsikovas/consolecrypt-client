@@ -1,0 +1,105 @@
+{
+  "helper": "0.1.0",
+  "protocol": 1,
+  "python": "3.12.3",
+  "system": "Linux",
+  "machine": "x86_64",
+  "packages": {
+    "ansible-core": {
+      "expected": "2.20.11",
+      "actual": "2.20.11",
+      "compatible": true
+    },
+    "ansible-runner": {
+      "expected": "2.4.3",
+      "actual": "2.4.3",
+      "compatible": true
+    },
+    "ansible-lint": {
+      "expected": "26.11.0",
+      "actual": "26.11.0",
+      "compatible": true
+    },
+    "cryptography": {
+      "expected": "50.0.2",
+      "actual": "50.0.2",
+      "compatible": true
+    },
+    "PyYAML": {
+      "expected": "6.0.3",
+      "actual": "6.0.3",
+      "compatible": true
+    }
+  },
+  "installed": {
+    "mypy-extensions": "1.2.0",
+    "jsonschema": "4.26.0",
+    "typing-extensions": "4.16.0",
+    "resolvelib": "1.2.1",
+    "rpds-py": "2026.9.1",
+    "jsonschema-specifications": "2025.9.1",
+    "wcmatch": "12.0.1",
+    "distro": "1.9.0",
+    "pexpect": "4.9.0",
+    "click": "8.5.1",
+    "referencing": "0.37.0",
+    "packaging": "26.3",
+    "pycparser": "3.12",
+    "ansible-runner": "2.4.3",
+    "yamllint": "1.38.0",
+    "ptyprocess": "0.7.0",
+    "pyyaml": "6.0.3",
+    "pathspec": "1.1.1",
+    "subprocess-tee": "0.4.2",
+    "bracex": "3.2.2",
+    "cryptography": "50.0.2",
+    "ansible-core": "2.20.11",
+    "ruamel-yaml": "0.19.1",
+    "markupsafe": "3.0.4",
+    "jinja2": "3.1.6",
+    "python-daemon": "3.1.2",
+    "black": "26.10.1",
+    "pytokens": "0.4.1",
+    "ansible-lint": "26.11.0",
+    "lockfile": "0.12.2",
+    "filelock": "4.2.10",
+    "attrs": "26.1.0",
+    "platformdirs": "4.14.5",
+    "ansible-compat": "26.11.0",
+    "cffi": "2.1.1",
+    "pip": "24.0"
+  },
+  "helper_digest": "ba4ede22273dcb42c7c0ece9b7670f4fbf39356544298777833419a83c4762d9",
+  "dependency_lock": "8115cf5d1fc41cd6cff80e927ab5f0bb81d2ab76f5e41889ff643ac009c4ebcd",
+  "dependency_files_digest": "be5661952cdf29854419d7663715c462c139519bf9955f077488e1e9ba34656d",
+  "environment_digest": "53c4f3df1baad4d728c336e272e7a7cb956546be08464dd23491966bb40c43ba",
+  "non_root": true,
+  "wsl": true,
+  "sandbox": {
+    "filesystem": true,
+    "pid": true,
+    "network": true,
+    "reason": null
+  },
+  "tools": {
+    "ssh": true,
+    "ssh-agent": true,
+    "git": false,
+    "bwrap": true
+  },
+  "capabilities": {
+    "project_snapshot": true,
+    "validate": true,
+    "trusted_worker_bootstrap_v1": true,
+    "vault_job_v1": true,
+    "target_match_v1": true,
+    "declared_inputs_v1": true,
+    "locked_dependencies_v1": true,
+    "project_requirements_v1": true,
+    "static_inventory_sources": true,
+    "execute": false,
+    "strict_egress": false,
+    "service": false
+  },
+  "dependencies_ready": true
+}

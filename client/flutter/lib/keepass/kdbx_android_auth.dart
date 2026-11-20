@@ -44,11 +44,21 @@ class KdbxAndroidAuth {
 
   Future<Uint8List> unlock(KdbxKeyCall call, String reason) async {
     final handle = await call('external_handle', Uint8List(0));
-    final material = await _release(handle, reason);
     try {
-      return await call('release_external', material);
-    } finally {
-      material.fillRange(0, material.length, 0);
+      final material = await _release(handle, reason);
+      try {
+        return await call('release_external', material);
+      } finally {
+        material.fillRange(0, material.length, 0);
+      }
+    } on LocalAuthInvalidated {
+      await call('forget_external_handle', handle);
+      await _cleanup(handle);
+      throw const KdbxFailure('device_key_invalidated');
+    } on LocalAuthCancelled {
+      throw const KdbxFailure('cancelled');
+    } on LocalAuthFailed {
+      throw const KdbxFailure('device_auth_failed');
     }
   }
 
@@ -66,7 +76,16 @@ class KdbxAndroidAuth {
       return;
     }
     final name = 'cc-device-unlock-kdbx-${generateUuidV4()}';
-    final key = await _create(name, reason);
+    final LocalAuthKey key;
+    try {
+      key = await _create(name, reason);
+    } on LocalAuthCancelled {
+      throw const KdbxFailure('cancelled');
+    } on LocalAuthFailed {
+      throw const KdbxFailure('device_auth_failed');
+    } on LocalAuthInvalidated {
+      throw const KdbxFailure('device_auth_failed');
+    }
     Uint8List? payload;
     bool committed = false;
     try {

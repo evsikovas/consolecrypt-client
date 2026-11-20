@@ -19,19 +19,49 @@ final deviceLocalAiAvailableProvider = Provider<bool>(
 
 final localAiRuntimeProvider = Provider<LocalAiRuntime>((ref) {
   final runtime = LocalAiRuntime(supportDirectory: ref.watch(appStoragePathsProvider).localAiRoot);
-  final lifecycle = AppLifecycleListener(
-    onExitRequested: () async {
-      await runtime.stop();
-      return AppExitResponse.exit;
-    },
-  );
+  return bindLocalAiRuntimeLifecycle(ref, runtime);
+});
+
+/// Binds an already-created device process owner. AppServices replacement
+/// revokes its endpoint synchronously but must never replace an unjoined child.
+/// The same binding is exercised with controlled owned children in tests.
+LocalAiRuntime bindLocalAiRuntimeLifecycle(Ref ref, LocalAiRuntime runtime) {
+  void Function()? detachExit;
+  AppLifecycleListener? lifecycle;
+  void bindExit(ApprovedExitActions? approved) {
+    detachExit?.call();
+    lifecycle?.dispose();
+    detachExit = approved?.register(runtime.stop);
+    lifecycle = approved == null
+        ? AppLifecycleListener(
+            onExitRequested: () async {
+              try {
+                await runtime.stop();
+                return AppExitResponse.exit;
+              } catch (_) {
+                return AppExitResponse.cancel;
+              }
+            },
+          )
+        : null;
+  }
+
+  bindExit(ref.read(appServicesProvider).approvedExitActions);
+  ref.listen(appServicesProvider, (_, next) {
+    // stop() invalidates generation/endpoint before its first await. Failure
+    // remains on THIS owner, visible to the same status/Stop retry UI.
+    unawaited(runtime.stop().catchError((Object _) {}));
+    bindExit(next.approvedExitActions);
+  });
   unawaited(runtime.initialize());
   ref.onDispose(() {
-    lifecycle.dispose();
-    unawaited(runtime.dispose());
+    detachExit?.call();
+    lifecycle?.dispose();
+    // Runtime owns its unjoined child; no success/retirement claim on failure.
+    unawaited(runtime.dispose().catchError((Object _) {}));
   });
   return runtime;
-});
+}
 
 final localAiStatusProvider = StreamProvider<LocalAiRuntimeStatus>((ref) {
   final runtime = ref.watch(localAiRuntimeProvider);

@@ -55,6 +55,7 @@ final appStageProvider = Provider<AppStage>((ref) {
 
 abstract final class AppRoutes {
   static const passwords = '/passwords';
+  static const automation = '/automation';
   static const loading = '/loading';
   static const welcome = '/welcome';
   static const login = '/login';
@@ -94,6 +95,7 @@ abstract final class AppRoutes {
 
   static const shellPrefixes = [
     passwords,
+    automation,
     hosts,
     groups,
     credentials,

@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/models/settings.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/updates/update_controller.dart';
 import 'package:consolecrypt/updates/update_service.dart';
 import 'package:crypto/crypto.dart';
@@ -475,7 +476,7 @@ void main() {
         '/SP-',
         '/SILENT',
         '/NORESTART',
-        '/CLOSEAPPLICATIONS',
+        '/NOCLOSEAPPLICATIONS',
         '/RELAUNCH=1',
         '/WAITPID=4242',
       ]);
@@ -673,6 +674,121 @@ void main() {
       expect(exits, 1);
     },
   );
+
+  test('Windows update: Stay never launches Setup, preserves cache, a later explicit approval can install', () async {
+    final release = UpdateRelease(
+      version: '0.8.6',
+      build: 33000,
+      platform: 'windows-x64',
+      url: Uri.parse('https://updates.consolecrypt.dev/releases/0.8.6/setup.exe'),
+      bytes: 3,
+      sha256: sha256.convert([1, 2, 3]).toString(),
+      notes: const {},
+    );
+    final fake = _InstallService(release)..result = UpdateInstallResult.exitWindows;
+    var allow = false, exits = 0, releases = 0, preparations = 0;
+    final container = ProviderContainer(
+      overrides: [
+        updateServiceProvider.overrideWithValue(fake),
+        updateAppExitProvider.overrideWithValue(() async => exits++),
+        updateInstallPreparationProvider.overrideWithValue(() async {
+          preparations++;
+          if (!allow) throw const AppException(AppErrorCode.cancelled, 'Synthetic Stay');
+          return () async {
+            releases++;
+          };
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+    addTearDown(fake.disposeFixture);
+    final controller = container.read(updateControllerProvider.notifier);
+    await controller.check();
+    await controller.downloadAndInstall();
+    expect((fake.installs, exits, releases), (0, 0, 0));
+    expect(container.read(updateControllerProvider).phase, UpdatePhase.ready);
+    expect(fake.downloads, 1);
+    allow = true;
+    await controller.downloadAndInstall();
+    expect((fake.installs, exits, releases, preparations), (1, 1, 1, 2));
+    expect(fake.downloads, 1, reason: 'Stay keeps the verified cache');
+  });
+
+  test('Windows update: preparation finishes before launch and failure releases its exact lease', () async {
+    final release = UpdateRelease(
+      version: '0.8.6',
+      build: 33000,
+      platform: 'windows-x64',
+      url: Uri.parse('https://updates.consolecrypt.dev/releases/0.8.6/setup.exe'),
+      bytes: 3,
+      sha256: sha256.convert([1, 2, 3]).toString(),
+      notes: const {},
+    );
+    final events = <String>[];
+    final fake = _InstallService(release)
+      ..failure = const UpdateException('launch')
+      ..onInstall = () => events.add('launch');
+    final prepared = Completer<ReleaseUpdatePreparation>(), entered = Completer<void>();
+    final container = ProviderContainer(
+      overrides: [
+        updateServiceProvider.overrideWithValue(fake),
+        updateInstallPreparationProvider.overrideWithValue(() async {
+          events.add('prepare');
+          entered.complete();
+          return prepared.future;
+        }),
+        updateAppExitProvider.overrideWithValue(() async => events.add('exit')),
+      ],
+    );
+    addTearDown(container.dispose);
+    addTearDown(fake.disposeFixture);
+    final controller = container.read(updateControllerProvider.notifier);
+    await controller.check();
+    final work = controller.downloadAndInstall();
+    await entered.future;
+    expect(events, ['prepare']);
+    expect(fake.installs, 0);
+    prepared.complete(() async => events.add('release'));
+    await work;
+    expect(events, ['prepare', 'launch', 'release']);
+    expect(container.read(updateControllerProvider).error, 'launch');
+  });
+
+  test('Windows update: disposed UI releases preparation without launching anything', () async {
+    final release = UpdateRelease(
+      version: '0.8.6',
+      build: 33000,
+      platform: 'windows-x64',
+      url: Uri.parse('https://updates.consolecrypt.dev/releases/0.8.6/setup.exe'),
+      bytes: 3,
+      sha256: sha256.convert([1, 2, 3]).toString(),
+      notes: const {},
+    );
+    final fake = _InstallService(release);
+    final prepared = Completer<ReleaseUpdatePreparation>(), entered = Completer<void>();
+    var releases = 0;
+    final container = ProviderContainer(
+      overrides: [
+        updateServiceProvider.overrideWithValue(fake),
+        updateInstallPreparationProvider.overrideWithValue(() async {
+          entered.complete();
+          return prepared.future;
+        }),
+      ],
+    );
+    addTearDown(fake.disposeFixture);
+    final controller = container.read(updateControllerProvider.notifier);
+    await controller.check();
+    final work = controller.downloadAndInstall();
+    await entered.future;
+    container.dispose();
+    prepared.complete(() async {
+      releases++;
+    });
+    await work;
+    expect(fake.installs, 0);
+    expect(releases, 1);
+  });
 }
 
 class _HighWater implements UpdateFeedHighWater {
@@ -699,6 +815,17 @@ class _InstallService extends UpdateService {
   bool inPlace = true;
   UpdateException? failure;
   UpdateInstallResult result = UpdateInstallResult.opened;
+  void Function()? onInstall;
+  Future<void> disposeFixture() async {
+    final resolved = folder.resolveSymbolicLinksSync();
+    final parent = Directory(resolved).parent.resolveSymbolicLinksSync();
+    if (parent != Directory.systemTemp.resolveSymbolicLinksSync() ||
+        !resolved.split(Platform.pathSeparator).last.startsWith('consolecrypt-installer-test-')) {
+      throw StateError('Unexpected installer test fixture');
+    }
+    await Directory(resolved).delete(recursive: true);
+  }
+
   @override
   Future<UpdateRelease?> check() async => release;
   @override
@@ -720,6 +847,7 @@ class _InstallService extends UpdateService {
     String? macosSavePrompt,
   }) async {
     installs++;
+    onInstall?.call();
     await verifyInstaller(file, release);
     if (failNext) {
       failNext = false;

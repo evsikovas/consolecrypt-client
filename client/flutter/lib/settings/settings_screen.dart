@@ -3,6 +3,7 @@ import 'package:consolecrypt/account/profile_switcher.dart';
 import 'package:consolecrypt/app/about.dart';
 import 'package:consolecrypt/app/app_info.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/navigation_customization.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -669,6 +670,12 @@ class _AppearanceSection extends ConsumerWidget {
                 onChanged: (v) => settings.updateLocal(local.copyWith(sidebarStyle: v)),
               ),
             ),
+          ),
+          GlassButton(
+            key: const ValueKey('settings-customize-navigation'),
+            label: l10n.navigationCustomize,
+            icon: Icons.tune_rounded,
+            onPressed: () => showNavigationCustomization(context),
           ),
           const TerminalTabPlacementSetting(id: 'appearance-tab-placement'),
           LabeledValue(

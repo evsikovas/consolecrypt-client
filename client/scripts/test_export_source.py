@@ -10,6 +10,16 @@ spec.loader.exec_module(module)
 
 
 class ExportTests(unittest.TestCase):
+    def test_runner_corresponding_source_is_explicit_and_private_state_stays_out(self):
+        for name in ('runner/src/consolecrypt_runner/service/service_helper.py', 'runner/setup/environment.py',
+                     'runner/deployment/bundle.py', 'runner/deployment/README.md', 'runner/pyproject.toml',
+                     'runner/requirements-darwin-arm64-py315.lock', 'runner/vendor/package_pyyaml.py',
+                     'runner/vendor/pyyaml-6.0.3-py3-none-any.whl', 'runner/vendor/README.md'):
+            self.assertTrue(module.publishable(name), name)
+        for name in ('runner/state/service-version.json', 'runner/keys/identity.v1',
+                     'runner/deployment/.env', 'runner/src/user.sqlite', 'runner/target/release/cc-service-node'):
+            self.assertFalse(module.publishable(name), name)
+
     def test_build_sources_and_licenses_are_kept(self):
         for path in ('LICENSE', 'PROTOCOL_CHANGELOG.md', 'client/flutter/assets/licenses/AGPL-3.0-only.txt',
                      'client/rust/rdp-core/vendor/PROVENANCE.md',

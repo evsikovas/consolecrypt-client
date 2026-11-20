@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,9 +16,21 @@ import 'package:material_ui/material_ui.dart';
 IconData profileIcon(Profile p) => p.isLocal ? Icons.laptop_mac_rounded : Icons.cloud_rounded;
 
 Future<void> switchProfile(BuildContext context, WidgetRef ref, Profile target) async {
-  await runWithFeedback(context, () => ref.read(profileServiceProvider).switchTo(target.id));
-  if (context.mounted) context.go(AppRoutes.hosts); // the gate routes to unlock / login
+  final changed = await _performTransition(context, () => ref.read(profileServiceProvider).switchTo(target.id));
+  if (changed && context.mounted) context.go(AppRoutes.hosts); // the gate routes to unlock / login
 }
+
+Future<bool> _performTransition(BuildContext context, Future<void> Function() action) async =>
+    await runWithFeedback<bool>(context, () async {
+      try {
+        await action();
+        return true;
+      } on AppException catch (error) {
+        if (error.code != AppErrorCode.cancelled) rethrow;
+        return false; // Stay keeps the route, focus and active sessions.
+      }
+    }) ??
+    false;
 
 /// Deletes [profile] from this device after a strong confirmation: a local
 /// profile needs an explicit acknowledgement that its vault is gone for good
@@ -26,8 +39,8 @@ Future<void> switchProfile(BuildContext context, WidgetRef ref, Profile target) 
 Future<void> confirmAndDeleteProfile(BuildContext context, WidgetRef ref, Profile profile) async {
   final ok = await showAppDialog<bool>(context, builder: (_) => _DeleteProfileDialog(profile: profile));
   if (ok != true || !context.mounted) return;
-  await runWithFeedback(context, () => ref.read(profileServiceProvider).delete(profile.id));
-  if (context.mounted) context.go(AppRoutes.hosts);
+  final removed = await _performTransition(context, () => ref.read(profileServiceProvider).delete(profile.id));
+  if (removed && context.mounted) context.go(AppRoutes.hosts);
 }
 
 class _DeleteProfileDialog extends StatefulWidget {

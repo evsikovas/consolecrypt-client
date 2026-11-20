@@ -598,14 +598,24 @@ class _LinkedCredential extends StatelessWidget {
 
 /// "Use existing credential…": all credentials (shared across hosts) plus
 /// "+ New credential…".
+/// Reference-only existing SSH credentials. No reveal, creation or secret edit.
+/// Caller owns its original-scope route and validates the returned reference.
+class SshCredentialReferencePicker extends StatelessWidget {
+  const SshCredentialReferencePicker({super.key});
+  @override
+  Widget build(BuildContext context) => const _CredentialPickerDialog(referenceOnly: true);
+}
+
 class _CredentialPickerDialog extends ConsumerWidget {
-  const _CredentialPickerDialog({this.passwordOnly = false});
-  final bool passwordOnly;
+  const _CredentialPickerDialog({this.passwordOnly = false, this.referenceOnly = false});
+  final bool passwordOnly, referenceOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final credentials = (ref.watch(credentialsProvider).value ?? const <Credential>[])
-        .where((c) => !passwordOnly || c.kind == CredentialKind.password)
+        .where((c) => referenceOnly
+          ? const {CredentialKind.password, CredentialKind.sshPrivateKey, CredentialKind.sshCertificate}.contains(c.kind)
+          : !passwordOnly || c.kind == CredentialKind.password)
         .toList();
     final hosts = ref.watch(hostsProvider).value ?? const <Host>[];
     final l10n = context.l10n;
@@ -637,7 +647,7 @@ class _CredentialPickerDialog extends ConsumerWidget {
                 ],
               ),
       ),
-      leadingAction: GlassButton.plain(
+      leadingAction: referenceOnly ? null : GlassButton.plain(
         key: const ValueKey('picker-new-credential'),
         onPressed: () async {
           final created = passwordOnly

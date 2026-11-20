@@ -372,6 +372,7 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
         vault_id,
         rx,
         cx.session.ctx.clone(),
+        cx.unlocked.notices.clone(),
     )));
     if online {
         cx.session
@@ -395,6 +396,15 @@ async fn open_one(cx: &TeamOpenContext<'_>, m: &TeamMembership) -> AppResult<()>
             start_team_engine(cx, &handle).await?;
         }
     } else {
+        if let Some(warning) = warning {
+            cx.unlocked.notices.team(
+                vault_id,
+                match warning {
+                    TeamWarning::InvalidLog => crate::dto::CriticalTeamStateDto::InvalidLog,
+                    TeamWarning::LogRollback => crate::dto::CriticalTeamStateDto::LogRollback,
+                },
+            );
+        }
         cx.session.ctx.emit(AppEvent::TeamWarning {
             vault_id: vault_id.to_string(),
             warning: warning.map(TeamWarning::code).unwrap_or_default().into(),
@@ -629,6 +639,9 @@ async fn close_locked(
         session.ctx.emit(AppEvent::TeamRemoved {
             vault_id: vault_id.to_string(),
         });
+        unlocked
+            .notices
+            .team(vault_id, crate::dto::CriticalTeamStateDto::Removed);
     }
     session.ctx.emit(AppEvent::ObjectsChanged {
         kind: ObjectKind::Host,
@@ -643,6 +656,7 @@ async fn team_object_event_task(
     vault_id: VaultId,
     mut rx: broadcast::Receiver<SyncEvent>,
     ctx: Arc<AppCtx>,
+    notices: Arc<crate::session::critical_notices::RuntimeNoticeEmitter>,
 ) {
     use crate::dto::ChangeOriginDto;
     let emit = |kind: ObjectKind, id: ObjectId, origin: ChangeOriginDto| {
@@ -685,6 +699,7 @@ async fn team_object_event_task(
             Ok(SyncEvent::ConflictResolved {
                 object_id,
                 conflict_copy,
+                kek_class,
                 ..
             }) => {
                 for id in std::iter::once(object_id).chain(conflict_copy) {
@@ -692,9 +707,28 @@ async fn team_object_event_task(
                         emit(kind, id, ChangeOriginDto::ConflictResolution);
                     }
                 }
+                if kek_class == Some(cc_models::KekClass::Secrets) {
+                    notices.security(
+                        object_id,
+                        crate::dto::CriticalSecurityStateDto::SecretConflict,
+                    );
+                } else if let Some(copy) = conflict_copy {
+                    notices.security(copy, crate::dto::CriticalSecurityStateDto::ConflictCopy);
+                }
             }
-            Ok(SyncEvent::SnapshotCompleted { .. })
-            | Err(broadcast::error::RecvError::Lagged(_)) => {
+            Ok(SyncEvent::IntegrityWarning { object_id, .. }) => notices.security(
+                object_id,
+                crate::dto::CriticalSecurityStateDto::IntegrityWarning,
+            ),
+            Ok(SyncEvent::ServerRollbackDetected { vault_id, .. }) => notices.security(
+                vault_id,
+                crate::dto::CriticalSecurityStateDto::ServerRollback,
+            ),
+            event @ Ok(SyncEvent::SnapshotCompleted { .. })
+            | event @ Err(broadcast::error::RecvError::Lagged(_)) => {
+                if matches!(event, Err(broadcast::error::RecvError::Lagged(_))) {
+                    notices.source_gap();
+                }
                 let Some(team) = writer.teams.get(vault_id) else {
                     break;
                 };

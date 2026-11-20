@@ -23,6 +23,8 @@ insecure-file-store = []
 test-harness = ["cc-sftp-core/test-harness"]
 
 [dependencies]
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["ring"] }
 cc-protocol.workspace = true
 cc-models.workspace = true
 cc-crypto-core.workspace = true
@@ -33,6 +35,9 @@ cc-sync-core.workspace = true
 cc-ssh-core.workspace = true
 cc-db-core.workspace = true
 cc-docker-core.workspace = true
+cc-automation-core.workspace = true
+cc-monitoring-core.workspace = true
+cc-host-mapping.workspace = true
 cc-ssh-agent-core.workspace = true
 cc-terminal-core.workspace = true
 cc-rdp-core.workspace = true
@@ -45,6 +50,11 @@ dunce.workspace = true
 url.workspace = true
 reqwest = { workspace = true, features = ["stream"] }
 sha2 = "0.11"
+aes = { version = "0.9", features = ["zeroize"] }
+ctr = "0.10"
+pbkdf2 = "0.13"
+hmac = { version = "0.13", features = ["zeroize"] }
+getrandom = "0.4"
 flate2 = "1"
 tar = "0.4"
 zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
@@ -67,6 +77,10 @@ chrono.workspace = true
 secrecy.workspace = true
 zeroize.workspace = true
 base64.workspace = true
+x509-parser = "=0.18.1"
+# Existing locked version, dedicated generated TLS client identity only.
+rcgen = "0.14"
+hex.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 # MIT OR Apache-2.0 — O_NOFOLLOW and geteuid for safe compose saves.
@@ -88,7 +102,6 @@ log = "0.4"
 # MIT — in-process mock LLM HTTP servers for the AI integration tests
 # (same version as ai-core's dev-dependency).
 axum = "0.8"
-rcgen = "0.14"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "=0.26.6", default-features = false, features = ["ring", "tls12"] }
 tokio-tungstenite = "0.29"
