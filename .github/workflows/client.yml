@@ -96,7 +96,8 @@ jobs:
           python3 client/scripts/github-build-number.py macos
       - name: Regression checks
         run: |
-          cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-terminal-core -p cc-k8s-core -p cc-app-core -p cc-sync-core -p cc-crypto-core -p cc-sftp-core -p cc-ssh-core -p cc-ssh-agent-core -p cc-tunnel-core --all-targets
+          # Debug sharing tests carry both account flows on one test thread.
+          RUST_MIN_STACK=16777216 cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-terminal-core -p cc-k8s-core -p cc-app-core -p cc-sync-core -p cc-crypto-core -p cc-sftp-core -p cc-ssh-core -p cc-ssh-agent-core -p cc-tunnel-core --all-targets
           python3 -m unittest discover -s client/scripts -p 'test_*version.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_github_build_number.py' -v
           python3 -m unittest discover -s client/scripts -p 'test_release_identity.py' -v
@@ -256,7 +257,14 @@ jobs:
           source client/scripts/ci-macos-tools.sh --xcode
           python3 client/scripts/github-build-number.py ios
       - name: Build and launch an isolated iOS Simulator preview
-        run: bash client/scripts/ci-ios.sh --build-only
+        id: simulator
+        run: |
+          bash client/scripts/ci-ios.sh --build-only
+          version="$(cat dist/ios/ConsoleCrypt-simulator-universal.version)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\+[1-9][0-9]*$ ]]
+          archive="dist/ios/ConsoleCrypt-$version-ios-simulator-universal.zip"
+          [[ -s "$archive" && -s "$archive.sha256" ]]
+          printf 'archive=%s\n' "$archive" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ios-preview
@@ -264,8 +272,8 @@ jobs:
           retention-days: 30
           compression-level: 0
           path: |
-            dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip
-            dist/ios/ConsoleCrypt-*-ios-simulator-universal.zip.sha256
+            ${{ steps.simulator.outputs.archive }}
+            ${{ steps.simulator.outputs.archive }}.sha256
             dist/ios/ConsoleCrypt-simulator-universal.version
 
   publish:

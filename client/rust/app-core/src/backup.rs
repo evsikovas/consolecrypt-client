@@ -367,7 +367,7 @@ impl AppCore {
     }
     async fn backup_now_for(
         &self,
-        s: &Session,
+        s: &std::sync::Arc<Session>,
         u: std::sync::Arc<Unlocked>,
     ) -> AppResult<BackupInfoDto> {
         // Capture ONLY an already-existing original unlock before any work.
@@ -383,6 +383,13 @@ impl AppCore {
             .ok()
             .and_then(|p| p.display_name)
             .unwrap_or_else(|| "vault".into());
+        // The schedule and profile reads can outlive the original unlock.
+        // Check both scopes before admitting the write, then release the
+        // guards so filesystem work never blocks a profile transition.
+        {
+            let _profile = self.hold_session(s).await?;
+            let _unlock = s.hold_unlocked(&u).await?;
+        }
         let now = chrono::Utc::now();
         let path = PathBuf::from(&folder).join(backup_file_name(&name, now));
         let written = self
