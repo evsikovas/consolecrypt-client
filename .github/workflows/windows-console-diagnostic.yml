@@ -1,0 +1,41 @@
+name: Windows console diagnostic
+
+on:
+  push:
+    branches: ['ci/verify-v120-windows-input']
+
+permissions:
+  contents: read
+
+jobs:
+  terminal:
+    runs-on: windows-2025
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: powershell
+    env:
+      CARGO_TARGET_DIR: D:\cc-target\terminal-diagnostic
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      RUST_MIN_STACK: '16777216'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test native hidden input on this runner
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Get-Command perl -ErrorAction SilentlyContinue) -or -not (Get-Command nasm -ErrorAction SilentlyContinue)) {
+            $tools = 'D:\cc-tools\terminal-diagnostic'
+            $archive = Join-Path $tools 'strawberry-perl.zip'
+            New-Item -ItemType Directory -Force -Path $tools | Out-Null
+            Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54051_64bit/strawberry-perl-5.40.5.1-64bit-portable.zip' -OutFile $archive
+            if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '6619fe7eeef921ccddb4aac3972fb602a0c690a3074205b863ade998d7bc79a6') { throw 'Strawberry Perl archive checksum mismatch' }
+            Expand-Archive -LiteralPath $archive -DestinationPath $tools
+            $env:Path = "$tools\perl\bin;$tools\c\bin;" + $env:Path
+          }
+          for ($round = 1; $round -le 4; ++$round) {
+            Write-Host "Native terminal suite $round/4"
+            cargo test --manifest-path client/rust/Cargo.toml --locked -p cc-terminal-core --lib -- --test-threads=4
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
