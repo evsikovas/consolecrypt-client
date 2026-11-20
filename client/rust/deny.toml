@@ -13,6 +13,7 @@ unmaintained = "workspace"
 # Every ignore needs a reason and a review date (docs/public/BUILDING.md).
 # Owner of all exceptions: Alexander Evsikov (@evsikovas).
 ignore = [
+    { id = "RUSTSEC-2026-0543", reason = "Maintenance notice for chrono 0.4.45; keep timestamp wire formats stable during migration. Review 2026-12-18." },
     { id = "RUSTSEC-2023-0071", reason = "rsa (Marvin): upstream has no fix; reviewed ssh-key patch uses system-random RSA blinding for SSH/agent signatures, prefer Ed25519; scope in SECURITY.md. Owner @evsikovas; review 2027-01-21" },
 ]
 

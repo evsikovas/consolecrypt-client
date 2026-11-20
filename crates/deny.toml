@@ -13,7 +13,9 @@ yanked = "deny"
 unmaintained = "workspace"
 # Every ignore needs a reason and a review date (docs/public/BUILDING.md).
 # Owner of all exceptions: Alexander Evsikov (@evsikovas).
-ignore = []
+ignore = [
+    { id = "RUSTSEC-2026-0543", reason = "Maintenance notice for chrono 0.4.45; keep timestamp wire formats stable during migration. Review 2026-12-18." },
+]
 
 [licenses]
 confidence-threshold = 0.9

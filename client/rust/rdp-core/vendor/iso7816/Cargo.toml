@@ -39,7 +39,7 @@ version = "0.3"
 optional = true
 
 [dependencies.heapless]
-version = "0.8"
+version = "0.9.4"
 
 [dependencies.heapless-bytes]
 version = "0.3.0"

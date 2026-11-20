@@ -886,6 +886,14 @@ class _EnvironmentJobs extends _Api implements AutomationProjectCredentialsServi
   }
 }
 
+Future<void> captureJobGuide(WidgetTester tester, AppLocale locale) async {
+  const size = Size(1440, 1000);
+  await _open(tester, _Api(), size: size, locale: locale, openFile: true, libraryOnly: true);
+  await captureAutomationWorkspace(tester, 'automation-library-${locale.wireName}');
+  await tapKey(tester, 'automation-open-run');
+  await captureAutomationWorkspace(tester, 'automation-run-${locale.wireName}');
+}
+
 Future<ProviderContainer> _open(
   WidgetTester tester,
   _Api service, {
@@ -898,6 +906,7 @@ Future<ProviderContainer> _open(
   AppLocale locale = AppLocale.en,
   RuntimeNoticeEventAdapter? serviceEvents,
   String projectId = 'project',
+  bool libraryOnly = false,
 }) async {
   await loadAutomationProofFonts(tester);
   final backend = testBackend();
@@ -945,6 +954,7 @@ Future<ProviderContainer> _open(
   await tapKey(tester, 'automation-project-$projectId');
   if (playbookPicker != null) return container;
   if (openFile) await tapKey(tester, 'automation-file-playbook.yml');
+  if (libraryOnly) return container;
   await tapKey(tester, viaMobileMenu && openFile ? 'automation-phone-editor-run' : 'automation-open-run');
   if (selectRunner && viaMobileMenu) {
     await tapKey(tester, 'automation-run-runner');

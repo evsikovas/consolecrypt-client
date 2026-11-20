@@ -91,7 +91,7 @@ impl<const S: usize> Command<S> {
         self.extended = true;
 
         // add the data to the end.
-        self.data.extend_from_slice(command.data())
+        self.data.extend_from_slice(command.data()).map_err(|_| ())
     }
 }
 

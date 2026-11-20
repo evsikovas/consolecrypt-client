@@ -1307,8 +1307,19 @@ void main() {
     final backend = testBackend();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
+    const config = PasswordVaultConnection(
+      id: 'alignment-dav',
+      name: 'Yandex database with a long name',
+      url: 'https://dav.example/Vault.kdbx',
+    );
     await pumpApp(tester, backend);
     final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final settingsService = container.read(settingsServiceProvider);
+    await tester.runAsync(() async {
+      final settings = await settingsService.watchVault().first;
+      await settingsService.updateVault(settings!.copyWith(passwordVaults: [config]));
+    });
+    await settle(tester);
     final manager = container.read(passwordManagerProvider);
     final session = (await tester.runAsync(
       () => manager.open(KdbxSource.local(fixturePath), password: SecretText('fixture-password')),
@@ -1324,14 +1335,6 @@ void main() {
       }),
     );
     container.read(routerProvider).go(AppRoutes.passwords);
-    await settle(tester);
-    final settings = container.read(vaultSettingsProvider).value!;
-    const config = PasswordVaultConnection(
-      id: 'alignment-dav',
-      name: 'Yandex database with a long name',
-      url: 'https://dav.example/Vault.kdbx',
-    );
-    await container.read(settingsServiceProvider).updateVault(settings.copyWith(passwordVaults: [config]));
     await settle(tester);
     final remote = KdbxSource.dav(config);
     final id = session.rows('entries').single['id'];
@@ -1364,6 +1367,8 @@ void main() {
           expect(row.contains(control.bottomRight), isTrue);
           expect(title.right + 6, lessThanOrEqualTo(control.left));
         }
+        expect(manager.sources.map((source) => source.id), contains(remote.id), reason: 'WebDAV catalog at $size');
+        expect(find.byKey(const ValueKey('keepass-unlock-others')), findsOneWidget, reason: 'Database header at $size');
         await tapKey(tester, 'keepass-unlock-others');
         final remoteRow = tester.getRect(find.byKey(ValueKey('keepass-source-${remote.id}')));
         final remoteGear = tester.getRect(find.byKey(ValueKey('keepass-source-settings-${remote.id}')));
