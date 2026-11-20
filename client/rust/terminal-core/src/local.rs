@@ -751,6 +751,32 @@ mod transport {
 }
 
 #[cfg(test)]
+#[derive(Default)]
+pub(crate) struct CursorPositionRequests {
+    matched: usize,
+}
+
+#[cfg(test)]
+impl CursorPositionRequests {
+    pub(crate) fn feed(&mut self, bytes: &[u8]) -> usize {
+        const QUERY: &[u8] = b"\x1b[6n";
+        let mut requests = 0;
+        for &byte in bytes {
+            if byte == QUERY[self.matched] {
+                self.matched += 1;
+                if self.matched == QUERY.len() {
+                    requests += 1;
+                    self.matched = 0;
+                }
+            } else {
+                self.matched = usize::from(byte == QUERY[0]);
+            }
+        }
+        requests
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]
@@ -1066,30 +1092,6 @@ mod tests {
         })
         .await
         .expect("full input and EOF queues must not delay native close");
-    }
-
-    #[derive(Default)]
-    struct CursorPositionRequests {
-        matched: usize,
-    }
-
-    impl CursorPositionRequests {
-        fn feed(&mut self, bytes: &[u8]) -> usize {
-            const QUERY: &[u8] = b"\x1b[6n";
-            let mut requests = 0;
-            for &byte in bytes {
-                if byte == QUERY[self.matched] {
-                    self.matched += 1;
-                    if self.matched == QUERY.len() {
-                        requests += 1;
-                        self.matched = 0;
-                    }
-                } else {
-                    self.matched = usize::from(byte == QUERY[0]);
-                }
-            }
-            requests
-        }
     }
 
     #[test]

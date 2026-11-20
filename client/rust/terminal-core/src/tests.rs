@@ -119,7 +119,7 @@ async fn read_until(rx: &mut broadcast::Receiver<Bytes>, needle: &str) -> String
 #[cfg(windows)]
 #[tokio::test]
 async fn prerequisite_terminal_accepts_hidden_input_without_ai_command_history() {
-    use crate::local::{LocalCommand, open_command};
+    use crate::local::{CursorPositionRequests, LocalCommand, open_command};
     let system = std::path::PathBuf::from(std::env::var_os("SystemRoot").unwrap());
     let (manager, _) = manager(false);
     let opened = open_command(
@@ -155,32 +155,42 @@ async fn prerequisite_terminal_accepts_hidden_input_without_ai_command_history()
         .await
         .unwrap();
     let mut attachment = manager.attach(id).unwrap();
+    let mut queries = CursorPositionRequests::default();
+    let mut cursor_replies = 0;
+    let mut sent = false;
+    let mut output = Vec::new();
     let completion = tokio::time::timeout(Duration::from_secs(20), async {
-        let mut output = String::from_utf8_lossy(&attachment.snapshot).into_owned();
-        let mut sent = false;
+        let mut bytes = Bytes::from(attachment.snapshot);
         loop {
-            if output.contains("CC_SYNTHETIC_SUDO") && !sent {
+            // ConPTY can split a query across reads, even across the attach boundary.
+            for _ in 0..queries.feed(&bytes) {
+                manager.write(id, b"\x1b[1;1R").await.unwrap();
+                cursor_replies += 1;
+            }
+            output.extend_from_slice(&bytes);
+            let text = String::from_utf8_lossy(&output);
+            if text.contains("CC_SYNTHETIC_SUDO") && !sent {
                 manager.write(id, b"fixture-only-input\r").await.unwrap();
                 sent = true;
             }
-            if output.contains("CC_ACCEPTED_18") {
+            if text.contains("CC_ACCEPTED_18") {
                 break;
             }
-            let bytes = attachment.output.recv().await.unwrap();
-            output.push_str(&String::from_utf8_lossy(&bytes));
-            if bytes.windows(4).any(|part| part == b"\x1b[6n") {
-                manager.write(id, b"\x1b[1;1R").await.unwrap();
-            }
+            bytes = attachment.output.recv().await.unwrap();
         }
         assert!(
-            !output.contains("fixture-only-input"),
+            !String::from_utf8_lossy(&output).contains("fixture-only-input"),
             "secure input must not echo"
         );
         assert_eq!(manager.last_command(id), None);
     })
     .await;
     manager.remove(id).await.unwrap();
-    completion.expect("interactive prerequisite input did not complete");
+    assert!(
+        completion.is_ok(),
+        "interactive prerequisite input timed out: bytes={}, cursor_replies={cursor_replies}, input_sent={sent}",
+        output.len()
+    );
 }
 
 #[tokio::test]
