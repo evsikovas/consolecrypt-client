@@ -203,11 +203,11 @@ jobs:
             dist/macos/SHA256SUMS-macos.txt
 
   android:
-    if: inputs.include_android && github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67038'
+    if: inputs.include_android && github.repository == 'evsikovas/consolecrypt-client' && github.ref_name == 'ci/desktop-preview-67039'
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 180
     env:
-      CC_BUILD_NUMBER: '67038'
+      CC_BUILD_NUMBER: '67039'
       CARGO_BUILD_JOBS: '3'
       ANDROID_HOME: ${{ vars.ANDROID_HOME }}
       JAVA_HOME: ${{ vars.JAVA_HOME }}
@@ -225,19 +225,19 @@ jobs:
           set -euo pipefail
           cd dist/android
           version=$(cat ConsoleCrypt.version)
-          [[ "$version" == '1.2.0+67038' ]]
+          [[ "$version" == '1.2.0+67039' ]]
           aapt="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}/build-tools/36.0.0/aapt"
           badging=$("$aapt" dump badging ConsoleCrypt-android-arm64.apk)
-          grep -F "versionCode='67038'" <<< "$badging"
+          grep -F "versionCode='67039'" <<< "$badging"
           mv ConsoleCrypt-android-arm64.apk "ConsoleCrypt-$version-android-arm64.apk"
           shasum -a 256 "ConsoleCrypt-$version-android-arm64.apk" > SHA256SUMS-android.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: android-preview-67038
+          name: android-preview-67039
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
           path: |
-            dist/android/ConsoleCrypt-1.2.0+67038-android-arm64.apk
+            dist/android/ConsoleCrypt-1.2.0+67039-android-arm64.apk
             dist/android/ConsoleCrypt.version
             dist/android/SHA256SUMS-android.txt

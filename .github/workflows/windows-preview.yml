@@ -5,6 +5,11 @@ name: Windows preview build
 # releases remain tag-only (client.yml).
 on:
   workflow_dispatch:
+    inputs:
+      build_number:
+        description: Test build number
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -22,6 +27,7 @@ jobs:
       run:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
     env:
+      CC_BUILD_NUMBER: ${{ inputs.build_number }}
       CC_CARGO_TARGET_ROOT: D:\cc-target
       CC_CI_TOOLS_DIR: D:\cc-tools
       PYTHONUTF8: '1'
