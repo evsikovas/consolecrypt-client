@@ -10,12 +10,11 @@ permissions:
 jobs:
   macos:
     if: github.repository == 'evsikovas/consolecrypt-client'
-    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    runs-on: macos-15
     timeout-minutes: 180
     env:
       CC_BUILD_NUMBER: '82032'
-      CARGO_BUILD_JOBS: '3'
-      CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
+      CARGO_BUILD_JOBS: '2'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
