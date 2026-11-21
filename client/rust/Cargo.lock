@@ -968,6 +968,7 @@ dependencies = [
  "cc-ssh-core",
  "cc-sync-core",
  "cc-vault-core",
+ "cc-wslc-core",
  "chrono",
  "flutter_rust_bridge",
  "jni 0.22.4",
@@ -978,7 +979,9 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "tokio-util",
  "tracing",
+ "uuid",
  "zeroize",
 ]
 
@@ -1085,6 +1088,8 @@ dependencies = [
  "percent-encoding",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
@@ -1213,7 +1218,7 @@ dependencies = [
  "ironrdp-tokio",
  "picky-krb",
  "rcgen",
- "rfd",
+ "rfd 0.15.4",
  "rustls",
  "secrecy",
  "serde",
@@ -1414,6 +1419,23 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "cc-wslc-core"
+version = "0.1.0"
+dependencies = [
+ "portable-pty",
+ "rfd 0.17.2",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "winreg",
+ "yaml_serde",
  "zeroize",
 ]
 
@@ -4128,6 +4150,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "libyaml-rs"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e126dda6f34391ab7b444f9922055facc83c07a910da3eb16f1e4d9c45dc777"
+
+[[package]]
 name = "libz-sys"
 version = "1.1.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5913,6 +5941,29 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "rfd"
+version = "0.17.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20dafead71c16a34e1ff357ddefc8afc11e7d51d6d2b9fbd07eaa48e3e540220"
+dependencies = [
+ "block2",
+ "dispatch2",
+ "js-sys",
+ "libc",
+ "log",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-core-foundation",
+ "objc2-foundation",
+ "percent-encoding",
+ "raw-window-handle",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -8535,6 +8586,19 @@ name = "xxhash-rust"
 version = "0.8.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "550a2b930b62486a393c52d5c3b84bff264b28aa437ed64694d31e93b1757af7"
+
+[[package]]
+name = "yaml_serde"
+version = "0.10.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33b729a08a9a6be689bbad3e2bf8015926db54b6622cc89c3a5f7dc174b9e918"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "libyaml-rs",
+ "ryu",
+ "serde",
+]
 
 [[package]]
 name = "yasna"

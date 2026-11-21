@@ -23,6 +23,7 @@ final class DockerHost {
   final String name, address;
   final DockerHostKind kind;
   static const localId = 'local'; // l10n-ignore: wire id
+  static bool isLocalId(String id) => id == localId || id.startsWith('local/');
   factory DockerHost.fromJson(DockerJson json) => DockerHost(
     id: json['id'] as String,
     name: json['name'] as String,

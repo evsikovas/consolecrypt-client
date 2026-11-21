@@ -18,6 +18,7 @@ import 'package:consolecrypt/db/db_transport_badge.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+
 class DbConnectionDialog extends ConsumerStatefulWidget {
   const DbConnectionDialog({this.connection, this.template, super.key});
 
@@ -82,9 +83,43 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
       kind: DbRouteKind.docker,
       reference: _route.reference,
       container: _value('dockerContainer'),
+      localEngineId: _route.localEngineId,
     ),
     _ => _route,
   };
+
+  bool get _maySelectExactLocalEngine =>
+      widget.connection == null ||
+      widget.connection!.deviceOnly ||
+      widget.connection!.route.localEngineId != null ||
+      widget.connection!.engine.localOnly;
+
+  List<GlassSelectItem<String>> _dockerEngineItems(Iterable<DbRouteChoice> hosts) {
+    final locals = (_choices?.routes ?? const <DbRouteChoice>[])
+        .where(
+          (choice) =>
+              _maySelectExactLocalEngine &&
+              choice.route.kind == DbRouteKind.docker &&
+              choice.route.localEngineId != null,
+        )
+        .toList();
+    final current = _route.localEngineId;
+    return [
+      GlassSelectItem(value: '', label: context.l10n.dockerLocalHost),
+      for (final engine in locals) GlassSelectItem(value: engine.route.localEngineId!, label: engine.label),
+      if (current != null && !locals.any((choice) => choice.route.localEngineId == current))
+        GlassSelectItem(value: current, label: '${context.l10n.dockerLocalHost} · ${context.l10n.dockerUnavailable}'),
+      for (final host in hosts) GlassSelectItem(value: host.route.reference!, label: host.label),
+    ];
+  }
+
+  void _selectDockerEngine(String value) => setState(
+    () => _route = DbRoute(
+      kind: DbRouteKind.docker,
+      reference: value.isEmpty || value.startsWith('local/') ? null : value,
+      localEngineId: value.startsWith('local/') ? value : null,
+    ),
+  );
 
   /// A saved tunnel listening on the direct loopback address in the form.
   DbRouteChoice? get _matchingTunnel {
@@ -479,15 +514,10 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
       if (kind == DbRouteKind.docker && choices != null) ...[
         GlassDropdownField<String>(
           key: const ValueKey('db-docker-engine'),
-          value: pick(_route.reference, hosts) ?? '',
+          value: _route.localEngineId ?? pick(_route.reference, hosts) ?? '',
           label: l.dbDockerEngine,
-          items: [
-            GlassSelectItem(value: '', label: l.dockerLocalHost),
-            for (final r in hosts) GlassSelectItem(value: r.route.reference!, label: r.label),
-          ],
-          onChanged: _busy
-              ? null
-              : (v) => setState(() => _route = DbRoute(kind: DbRouteKind.docker, reference: v.isEmpty ? null : v)),
+          items: _dockerEngineItems(hosts),
+          onChanged: _busy ? null : _selectDockerEngine,
         ),
         const SizedBox(height: 12),
         _input('dockerContainer', l.dbDockerContainer, required: true),
@@ -639,7 +669,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                           });
                         },
                 ),
-                if (_engine.localOnly && (widget.connection?.deviceOnly ?? true))
+                if ((_engine.localOnly || _route.localEngineId != null) && (widget.connection?.deviceOnly ?? true))
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: InfoBanner(
@@ -800,6 +830,7 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                                     route: DbRoute(
                                       kind: DbRouteKind.docker,
                                       reference: _docker ? _route.reference : null,
+                                      localEngineId: _docker ? _route.localEngineId : null,
                                     ),
                                     label: '',
                                   ),
@@ -825,14 +856,11 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                         const SizedBox(height: 12),
                         GlassDropdownField<String>(
                           key: const ValueKey('db-docker-engine'),
-                          value: _route.reference ?? '',
+                          value: _route.localEngineId ?? _route.reference ?? '',
                           label: l.dbDockerEngine,
-                          items: [
-                            GlassSelectItem(value: '', label: l.dockerLocalHost),
-                            for (final r in choices.routes)
-                              if (r.route.kind == DbRouteKind.ssh)
-                                GlassSelectItem(value: r.route.reference!, label: r.label),
-                          ],
+                          items: _dockerEngineItems(
+                            choices.routes.where((route) => route.route.kind == DbRouteKind.ssh),
+                          ),
                           validator: (_) =>
                               _route.reference != null &&
                                   !choices.routes.any(
@@ -840,15 +868,13 @@ class _DbConnectionDialogState extends ConsumerState<DbConnectionDialog> with Wi
                                   )
                               ? l.dbInvalid
                               : null,
-                          onChanged: _busy
-                              ? null
-                              : (v) => setState(
-                                  () => _route = DbRoute(kind: DbRouteKind.docker, reference: v.isEmpty ? null : v),
-                                ),
+                          onChanged: _busy ? null : _selectDockerEngine,
                         ),
                         const SizedBox(height: 12),
                         _input('dockerContainer', l.dbDockerContainer, required: true),
                         Text(l.dbDockerRouteHelp),
+                        if (!_maySelectExactLocalEngine)
+                          Text(l.dbLocalEngineNewConnectionHelp, key: const ValueKey('db-local-engine-new-help')),
                       ] else if (_tunnel)
                         Text(l.dbTunnelRouteHelp)
                       else

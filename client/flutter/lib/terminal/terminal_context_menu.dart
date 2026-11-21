@@ -57,8 +57,20 @@ Future<void> pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab 
 Future<void> _pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab tab) async {
   final profile = ref.read(terminalOnlyModeProvider) ? null : ref.read(activeProfileProvider)?.id;
   if (!tab.isConnected || !_validOrigin(ref, tab, profile)) return;
+  final text = await readConfirmedTerminalPaste(
+    context,
+    isCurrent: () => tab.isConnected && _validOrigin(ref, tab, profile),
+  );
+  if (text == null || !context.mounted || !tab.isConnected || !_validOrigin(ref, tab, profile)) return;
+  tab.terminal.paste(text);
+  tab.controller.clearSelection();
+}
+
+/// Confirms multiline pastes and checks that the originating session is live.
+Future<String?> readConfirmedTerminalPaste(BuildContext context, {required bool Function() isCurrent}) async {
+  if (!context.mounted || !isCurrent()) return null;
   final text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
-  if (text == null || text.isEmpty || !context.mounted || !_validOrigin(ref, tab, profile) || !tab.isConnected) return;
+  if (text == null || text.isEmpty || !context.mounted || !isCurrent()) return null;
   // Multiline/control-character paste can execute commands even without an
   // explicit Enter. The keyboard shortcut follows the same confirmation path.
   if (RegExp(r'[\x00-\x08\x0a-\x1f\x7f]').hasMatch(text)) {
@@ -79,10 +91,9 @@ Future<void> _pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab
         child: SingleChildScrollView(child: SelectableText(visible)),
       ),
     );
-    if (!approved || !context.mounted || !_validOrigin(ref, tab, profile) || !tab.isConnected) return;
+    if (!approved || !context.mounted || !isCurrent()) return null;
   }
-  tab.terminal.paste(text);
-  tab.controller.clearSelection();
+  return text;
 }
 
 Future<void> showTerminalContextMenu(BuildContext context, WidgetRef ref, TerminalTab tab, Rect anchor) async {

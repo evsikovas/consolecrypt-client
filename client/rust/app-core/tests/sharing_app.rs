@@ -1708,6 +1708,7 @@ async fn database_sharing_requires_capability_trust_route_and_explicit_credentia
     draft.username = "reporting".into();
     draft.database = "orders".into();
     draft.route = DbRoute::Docker {
+        local_engine_id: None,
         host_id: None,
         container: "orders-db".into(),
     };
@@ -1766,6 +1767,7 @@ async fn database_sharing_requires_capability_trust_route_and_explicit_credentia
     assert_eq!(invitations[0].kind, SharingKindDto::DbConnection);
     assert!(invitations[0].preview_json.is_none());
     let docker = DbRoute::Docker {
+        local_engine_id: None,
         host_id: None,
         container: "ignored".into(),
     };
@@ -1807,6 +1809,7 @@ async fn database_sharing_requires_capability_trust_route_and_explicit_credentia
     assert_eq!(
         copied.route,
         DbRoute::Docker {
+            local_engine_id: None,
             host_id: None,
             container: "orders-db".into(),
         }

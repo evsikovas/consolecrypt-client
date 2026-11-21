@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/mapping.dart';
@@ -34,17 +35,24 @@ final class RustDockerService implements DockerService {
   Future<void> disconnect(String sessionId) => guard(() => native.dockerDisconnect(sessionId: sessionId));
 
   @override
-  Future<List<DockerContainer>> containers(String sessionId, {bool all = true}) async => [
-    for (final item in (jsonDecode(
-      await guard(() => native.dockerContainers(sessionId: sessionId, all: all)),
-    ) as List).cast<DockerJson>())
-      DockerContainer.fromJson(item),
+  Future<List<DockerContainer>> containers(String sessionId, {bool all = true}) async {
+    final wire = await guard(() => native.dockerContainers(sessionId: sessionId, all: all));
+    return _decodeLargeReply(wire, _decodeContainers);
+  }
+
+  static List<DockerContainer> _decodeContainers(String wire) => [
+    for (final item in (jsonDecode(wire) as List).cast<DockerJson>()) DockerContainer.fromJson(item),
   ];
+
+  static DockerJson _decodeInspect(String wire) => jsonDecode(wire) as DockerJson;
+
+  static Future<T> _decodeLargeReply<T>(String wire, T Function(String) decode) async =>
+      wire.length < 64 * 1024 ? decode(wire) : Isolate.run(() => decode(wire));
 
   @override
   Future<DockerContainerDetail> inspect(String sessionId, String containerId) async {
-    final inspect =
-        jsonDecode(await guard(() => native.dockerInspect(sessionId: sessionId, container: containerId))) as DockerJson;
+    final wire = await guard(() => native.dockerInspect(sessionId: sessionId, container: containerId));
+    final inspect = await _decodeLargeReply(wire, _decodeInspect);
     final listed = (await containers(sessionId)).where((c) => c.id == containerId || c.name == containerId);
     final container =
         listed.firstOrNull ??

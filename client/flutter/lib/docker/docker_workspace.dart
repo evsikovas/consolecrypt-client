@@ -25,6 +25,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+
 /// Content width from which details and forwards sit beside the list.
 const _sideBySide = 860.0;
 
@@ -504,7 +505,7 @@ class _EngineHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
-    final local = host?.kind == DockerHostKind.local || session.hostId == DockerHost.localId;
+    final local = host?.kind == DockerHostKind.local || DockerHost.isLocalId(session.hostId);
     final platform = [session.os, session.arch].where((s) => s.isNotEmpty).join('/');
     final facts = [
       if (session.engineVersion.isNotEmpty) l.dockerEngineVersion(session.engineVersion),

@@ -30735,6 +30735,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Kubernetes context'**
   String get dockerKubeContext;
+
+  /// Specific local engine routes are device-only; existing vault entries must not be silently moved out of the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose This computer for this saved entry, or create a new connection to bind it to a specific local engine.'**
+  String get dbLocalEngineNewConnectionHelp;
+
+  /// Compose AI proposal workflow: composeAiGenerate
+  ///
+  /// In en, this message translates to:
+  /// **'AI: generate Compose'**
+  String get composeAiGenerate;
+
+  /// Compose AI proposal workflow: composeAiContextHelp
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the services you need. Only this description is sent; current YAML, container environment and secrets are not attached automatically.'**
+  String get composeAiContextHelp;
+
+  /// Compose AI proposal workflow: composeAiDescription
+  ///
+  /// In en, this message translates to:
+  /// **'What should the Compose project run?'**
+  String get composeAiDescription;
+
+  /// Compose AI proposal workflow: composeAiReview
+  ///
+  /// In en, this message translates to:
+  /// **'Review the proposed YAML. Inserting it opens the normal plan; starting services is a separate action.'**
+  String get composeAiReview;
+
+  /// Compose AI proposal workflow: composeAiUse
+  ///
+  /// In en, this message translates to:
+  /// **'Insert into editor'**
+  String get composeAiUse;
+
+  /// Compose AI proposal workflow: composeAiInvalid
+  ///
+  /// In en, this message translates to:
+  /// **'AI did not return a valid Compose YAML document. Refine the description and try again.'**
+  String get composeAiInvalid;
+
+  /// Compose AI proposal workflow: composeAiReplaceTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Replace YAML?'**
+  String get composeAiReplaceTitle;
+
+  /// Compose AI proposal workflow: composeAiReplaceHelp
+  ///
+  /// In en, this message translates to:
+  /// **'The editor already contains data. Replace it with the AI proposal?'**
+  String get composeAiReplaceHelp;
+
+  /// Total number of port entries on a Docker container row
+  ///
+  /// In en, this message translates to:
+  /// **'{total} ports'**
+  String dockerPortCount(int total);
+
+  /// Range of Docker ports currently visible and total
+  ///
+  /// In en, this message translates to:
+  /// **'{start}–{end} of {total}'**
+  String dockerPortRange(int start, int end, int total);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

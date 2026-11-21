@@ -10704,5 +10704,40 @@
   "dockerKubeContext": "Kubernetes-контекст",
   "@dockerKubeContext": {
     "description": "Saved Kubernetes context selected for experimental Docker deployment."
-  }
+  },
+  "dbLocalEngineNewConnectionHelp": "Для этой записи выберите «Этот компьютер». Чтобы привязать подключение к конкретному локальному движку, создайте новое подключение.",
+  "composeAiGenerate": "ИИ: создать Compose",
+  "@composeAiGenerate": {
+    "description": "Compose AI proposal workflow: composeAiGenerate"
+  },
+  "composeAiContextHelp": "Опишите нужные сервисы. ИИ получит только это описание; текущий YAML, переменные контейнеров и секреты не отправляются автоматически.",
+  "@composeAiContextHelp": {
+    "description": "Compose AI proposal workflow: composeAiContextHelp"
+  },
+  "composeAiDescription": "Что должно работать в Compose?",
+  "@composeAiDescription": {
+    "description": "Compose AI proposal workflow: composeAiDescription"
+  },
+  "composeAiReview": "Проверьте предложенный YAML. После вставки откроется обычный план; запуск выполняется отдельно.",
+  "@composeAiReview": {
+    "description": "Compose AI proposal workflow: composeAiReview"
+  },
+  "composeAiUse": "Вставить в редактор",
+  "@composeAiUse": {
+    "description": "Compose AI proposal workflow: composeAiUse"
+  },
+  "composeAiInvalid": "ИИ не вернул корректный Compose YAML. Уточните описание и повторите запрос.",
+  "@composeAiInvalid": {
+    "description": "Compose AI proposal workflow: composeAiInvalid"
+  },
+  "composeAiReplaceTitle": "Заменить YAML?",
+  "@composeAiReplaceTitle": {
+    "description": "Compose AI proposal workflow: composeAiReplaceTitle"
+  },
+  "composeAiReplaceHelp": "В редакторе уже есть данные. Заменить их предложением ИИ?",
+  "@composeAiReplaceHelp": {
+    "description": "Compose AI proposal workflow: composeAiReplaceHelp"
+  },
+  "dockerPortCount": "Портов: {total}",
+  "dockerPortRange": "{start}–{end} из {total}"
 }

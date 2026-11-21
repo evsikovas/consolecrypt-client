@@ -1,0 +1,13 @@
+{
+  "executable": "C:\\Program Files\\WSL\\wslc.exe",
+  "arguments": [
+    "container",
+    "inspect",
+    "--help"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-8",
+  "stdout": "(c) Корпорация Майкрософт (Microsoft Corporation). Все права защищены.\r\nСведения о конфиденциальности этого продукта см. на странице https://aka.ms/privacy.\r\n\r\nОтобразить подробную информацию о контейнере.\r\n\r\nИспользование:  wslc container inspect [параметры] <container-id>...\r\n\r\nАргументы:\r\n  container-id  ИД контейнера\r\n\r\nПараметры:\r\n  -s  --size     Показать общие размеры файлов\r\n  -f  --format   Форматирование вывода — json для однострочного вывода (по умолчанию: JSON с отступами)\r\n  -?  --help     Отображает справку по выбранной команде\r\n\r\nОбщие параметры для \"wslc\":\r\n      --session  Укажите сеанс для использования\r\n",
+  "stderr": ""
+}

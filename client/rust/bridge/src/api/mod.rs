@@ -31,5 +31,6 @@ pub mod sharing;
 pub mod ssh;
 pub mod sync;
 pub mod teams;
+pub mod wslc;
 
 pub mod enrollment;

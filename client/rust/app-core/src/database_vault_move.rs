@@ -111,6 +111,9 @@ impl AppCore {
             .into_iter()
             .find(|connection| connection.id == id)
             .ok_or_else(|| invalid("connection_unavailable"))?;
+        if connection.route.local_docker_engine().is_some() {
+            return Err(invalid("local_only"));
+        }
         if !movable(&connection) {
             return Err(invalid("device_file"));
         }

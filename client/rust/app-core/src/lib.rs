@@ -116,6 +116,9 @@ mod docker_runtime;
 
 mod password_vault;
 
+#[cfg(target_os = "windows")]
+mod wslc_settings;
+
 pub use database_ai::{DbAiConsent, DbAiRequest};
 
 pub use database_import::{DbImportChoice, DbImportReviewDto};

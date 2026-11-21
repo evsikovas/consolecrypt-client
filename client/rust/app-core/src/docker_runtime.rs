@@ -32,6 +32,62 @@ const MAX_FORWARDS: usize = 64;
 pub const LOCAL_HOST: &str = "local";
 const AUTO_SHELL: &str = "/__consolecrypt_auto_shell__";
 
+#[cfg(test)]
+mod local_engine_tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct NeverConnect;
+    #[async_trait]
+    impl DockerConnector for NeverConnect {
+        async fn connect(&self) -> Result<DockerIo, DockerError> {
+            panic!("session selection must not connect to any engine")
+        }
+    }
+
+    #[test]
+    fn named_engines_and_legacy_local_sessions_are_never_interchanged() {
+        let runtime = DockerRuntime::default();
+        let host = ObjectId::new();
+        for (id, host_id, ssh_host) in [
+            ("legacy", "local", None),
+            ("orb", "local/orbstack", None),
+            ("colima", "local/colima/work", None),
+            ("ssh", "remote", Some(host)),
+        ] {
+            runtime.sessions.lock().unwrap().insert(
+                id.into(),
+                Arc::new(LiveDocker {
+                    info: DockerSessionDto {
+                        id: id.into(),
+                        host_id: host_id.into(),
+                        host_name: id.into(),
+                        engine_version: "fixture".into(),
+                        os: "linux".into(),
+                        arch: "arm64".into(),
+                        containers_running: 0,
+                        containers_total: 0,
+                        images: 0,
+                    },
+                    client: DockerClient::new(Arc::new(NeverConnect)),
+                    ssh: None,
+                    local_endpoint: None,
+                    host_id: ssh_host,
+                    cancel: CancellationToken::new(),
+                }),
+            );
+        }
+        assert_eq!(runtime.session_ids(None), ["legacy"]);
+        assert_eq!(runtime.session_ids(Some(host)), ["ssh"]);
+        assert_eq!(runtime.local_session_ids("local/orbstack"), ["orb"]);
+        assert_eq!(runtime.local_session_ids("local/colima/work"), ["colima"]);
+        assert!(runtime.local_session_ids("local/colima/missing").is_empty());
+        runtime.sessions.lock().unwrap()["orb"].cancel.cancel();
+        assert!(runtime.local_session_ids("local/orbstack").is_empty());
+        assert_eq!(runtime.local_session_ids("local/colima/work"), ["colima"]);
+    }
+}
+
 /// Finds the engine socket the SSH user can use and reports why not.
 const SOCKET_PROBE: &str = "for s in /var/run/docker.sock /run/docker.sock \"/run/user/$(id -u)/docker.sock\"; do \
     if [ -S \"$s\" ]; then if [ -r \"$s\" ] && [ -w \"$s\" ]; then echo \"ok $s\"; else \
@@ -125,7 +181,7 @@ struct LiveDocker {
     client: DockerClient,
     ssh: Option<Arc<SshSession>>,
     /// The engine socket of this computer (None over SSH).
-    local_socket: Option<std::path::PathBuf>,
+    local_endpoint: Option<String>,
     host_id: Option<ObjectId>,
     cancel: CancellationToken,
 }
@@ -134,7 +190,7 @@ struct LiveDocker {
 pub(crate) struct ComposeTarget {
     pub client: DockerClient,
     pub ssh: Option<Arc<SshSession>>,
-    pub local_socket: Option<std::path::PathBuf>,
+    pub local_endpoint: Option<String>,
     pub cancel: CancellationToken,
 }
 
@@ -195,7 +251,23 @@ impl DockerRuntime {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .iter()
-            .filter(|(_, live)| live.host_id == host && !live.cancel.is_cancelled())
+            .filter(|(_, live)| {
+                live.host_id == host
+                    && !live.cancel.is_cancelled()
+                    && (host.is_some() || live.info.host_id == LOCAL_HOST)
+            })
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+
+    pub(crate) fn local_session_ids(&self, engine: &str) -> Vec<String> {
+        self.sessions
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .filter(|(_, live)| {
+                live.host_id.is_none() && live.info.host_id == engine && !live.cancel.is_cancelled()
+            })
             .map(|(id, _)| id.clone())
             .collect()
     }
@@ -228,7 +300,7 @@ impl DockerRuntime {
         Ok(ComposeTarget {
             client: live.client.clone(),
             ssh: live.ssh.clone(),
-            local_socket: live.local_socket.clone(),
+            local_endpoint: live.local_endpoint.clone(),
             cancel: live.cancel.clone(),
         })
     }
@@ -288,17 +360,15 @@ impl AppCore {
     pub async fn docker_hosts(&self) -> AppResult<Vec<DockerHostDto>> {
         let (_, unlocked) = self.unlocked().await?;
         let mut hosts = Vec::new();
-        #[cfg(unix)]
-        if !cfg!(any(target_os = "android", target_os = "ios"))
-            && cc_docker_core::local_socket().is_some()
-        {
-            hosts.push(DockerHostDto {
-                id: LOCAL_HOST.into(),
-                name: String::new(),
-                kind: "local",
-                address: String::new(),
-            });
-        }
+        let engines = tokio::task::spawn_blocking(cc_docker_core::local::local_engines)
+            .await
+            .map_err(|_| invalid("local_discovery_failed"))?;
+        hosts.extend(engines.into_iter().map(|engine| DockerHostDto {
+            id: engine.id,
+            name: engine.name,
+            kind: "local",
+            address: engine.endpoint.uri(),
+        }));
         let mut saved: Vec<_> = unlocked.working().hosts().to_vec();
         saved.sort_by_key(|host| host.name.to_lowercase());
         hosts.extend(saved.into_iter().map(|host| DockerHostDto {
@@ -327,91 +397,94 @@ impl AppCore {
         let failed = |failure: &'static str, detail: String| {
             Ok(DockerConnectOutcome::Failed { failure, detail })
         };
-        let (client, ssh, host, name, local_socket) = if host_id == LOCAL_HOST {
-            #[cfg(unix)]
-            {
-                let Some(path) = cc_docker_core::local_socket() else {
+        let (client, ssh, host, name, local_endpoint) =
+            if cc_docker_core::local::is_local_host(&host_id) {
+                let engines = tokio::task::spawn_blocking(cc_docker_core::local::local_engines)
+                    .await
+                    .map_err(|_| invalid("local_discovery_failed"))?;
+                let engine = if host_id == LOCAL_HOST {
+                    engines.into_iter().next()
+                } else {
+                    engines.into_iter().find(|engine| engine.id == host_id)
+                };
+                let Some(engine) = engine else {
                     return failed("not_running", String::new());
                 };
-                let client = DockerClient::new(Arc::new(cc_docker_core::UnixConnector {
-                    path: path.clone(),
-                }));
-                (client, None, None, String::new(), Some(path))
-            }
-            #[cfg(not(unix))]
-            {
-                return failed("not_running", String::new());
-            }
-        } else {
-            let host = crate::dto::parse_id("host_id", &host_id)?;
-            let name = unlocked
-                .working()
-                .host(host)
-                .map(|host| host.name)
-                .ok_or_else(|| invalid("host_unavailable"))?;
-            let prepared = self.sharing_prepare_connection(&host_id).await?;
-            if !Arc::ptr_eq(&unlocked, &prepared.unlocked) {
-                return Err(AppError::VaultLocked);
-            }
-            let session = match prepared
-                .run(async { Ok(unlocked.ssh.connector.connect(&prepared.plan).await?) })
-                .await
-            {
-                Ok(session) => Arc::new(session),
-                Err(AppError::VaultLocked) => return Err(AppError::VaultLocked),
-                Err(_) => return failed("connection_failed", String::new()),
-            };
-            let probe = session
-                .exec(SOCKET_PROBE)
-                .await
-                .map(|output| output.stdout_lossy())
-                .unwrap_or_default();
-            let probe = probe.trim();
-            let socket = match probe.split_whitespace().collect::<Vec<_>>().as_slice() {
-                ["ok", path] => Some((*path).to_owned()),
-                ["denied", _, group @ ..] => {
-                    let _ = session.disconnect().await;
-                    return failed("permission_denied", group.join(" "));
+                let endpoint = engine.endpoint.uri();
+                let connector = cc_docker_core::local::connector(&engine.endpoint)
+                    .map_err(|e| invalid(e.code()))?;
+                let client = DockerClient::new(connector);
+                (client, None, None, engine.name, Some(endpoint))
+            } else {
+                let host = crate::dto::parse_id("host_id", &host_id)?;
+                let name = unlocked
+                    .working()
+                    .host(host)
+                    .map(|host| host.name)
+                    .ok_or_else(|| invalid("host_unavailable"))?;
+                let prepared = self.sharing_prepare_connection(&host_id).await?;
+                if !Arc::ptr_eq(&unlocked, &prepared.unlocked) {
+                    return Err(AppError::VaultLocked);
                 }
-                _ => None,
-            };
-            // Socket forwarding first; the CLI's dial-stdio when the server
-            // forbids it or uses another socket path.
-            let mut chosen = None;
-            if let Some(path) = socket {
-                let client = DockerClient::new(Arc::new(SshSocket {
-                    session: session.clone(),
-                    path,
-                }));
-                if client.info().await.is_ok() {
-                    chosen = Some(client);
-                }
-            }
-            if chosen.is_none() {
-                let client = DockerClient::new(Arc::new(SshDialStdio {
-                    session: session.clone(),
-                }));
-                if tokio::time::timeout(Duration::from_secs(10), client.info())
+                let session = match prepared
+                    .run(async { Ok(unlocked.ssh.connector.connect(&prepared.plan).await?) })
                     .await
-                    .is_ok_and(|r| r.is_ok())
                 {
-                    chosen = Some(client);
-                }
-            }
-            let Some(client) = chosen else {
-                let _ = session.disconnect().await;
-                return match probe {
-                    "missing" => failed("not_running", String::new()),
-                    // The socket is usable but the server refuses to forward
-                    // it and has no Docker CLI for dial-stdio.
-                    _ if probe.starts_with("ok ") => {
-                        failed("connection_failed", "socket_forwarding_disabled".into())
-                    }
-                    _ => failed("connection_failed", String::new()),
+                    Ok(session) => Arc::new(session),
+                    Err(AppError::VaultLocked) => return Err(AppError::VaultLocked),
+                    Err(_) => return failed("connection_failed", String::new()),
                 };
+                let probe = session
+                    .exec(SOCKET_PROBE)
+                    .await
+                    .map(|output| output.stdout_lossy())
+                    .unwrap_or_default();
+                let probe = probe.trim();
+                let socket = match probe.split_whitespace().collect::<Vec<_>>().as_slice() {
+                    ["ok", path] => Some((*path).to_owned()),
+                    ["denied", _, group @ ..] => {
+                        let _ = session.disconnect().await;
+                        return failed("permission_denied", group.join(" "));
+                    }
+                    _ => None,
+                };
+                // Socket forwarding first; the CLI's dial-stdio when the server
+                // forbids it or uses another socket path.
+                let mut chosen = None;
+                if let Some(path) = socket {
+                    let client = DockerClient::new(Arc::new(SshSocket {
+                        session: session.clone(),
+                        path,
+                    }));
+                    if client.info().await.is_ok() {
+                        chosen = Some(client);
+                    }
+                }
+                if chosen.is_none() {
+                    let client = DockerClient::new(Arc::new(SshDialStdio {
+                        session: session.clone(),
+                    }));
+                    if tokio::time::timeout(Duration::from_secs(10), client.info())
+                        .await
+                        .is_ok_and(|r| r.is_ok())
+                    {
+                        chosen = Some(client);
+                    }
+                }
+                let Some(client) = chosen else {
+                    let _ = session.disconnect().await;
+                    return match probe {
+                        "missing" => failed("not_running", String::new()),
+                        // The socket is usable but the server refuses to forward
+                        // it and has no Docker CLI for dial-stdio.
+                        _ if probe.starts_with("ok ") => {
+                            failed("connection_failed", "socket_forwarding_disabled".into())
+                        }
+                        _ => failed("connection_failed", String::new()),
+                    };
+                };
+                (client, Some(session), Some(host), name, None)
             };
-            (client, Some(session), Some(host), name, None)
-        };
         let info = match tokio::time::timeout(Duration::from_secs(15), client.info()).await {
             Ok(Ok(info)) => info,
             Ok(Err(DockerError::PermissionDenied)) => {
@@ -440,7 +513,7 @@ impl AppCore {
                     info: dto.clone(),
                     client,
                     ssh,
-                    local_socket,
+                    local_endpoint,
                     host_id: host,
                     cancel,
                 }),

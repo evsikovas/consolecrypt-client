@@ -23273,5 +23273,65 @@
   "dockerKubeContext": "Kubernetes context",
   "@dockerKubeContext": {
     "description": "Saved Kubernetes context selected for experimental Docker deployment."
+  },
+  "dbLocalEngineNewConnectionHelp": "Choose This computer for this saved entry, or create a new connection to bind it to a specific local engine.",
+  "@dbLocalEngineNewConnectionHelp": {
+    "description": "Specific local engine routes are device-only; existing vault entries must not be silently moved out of the vault."
+  },
+  "composeAiGenerate": "AI: generate Compose",
+  "@composeAiGenerate": {
+    "description": "Compose AI proposal workflow: composeAiGenerate"
+  },
+  "composeAiContextHelp": "Describe the services you need. Only this description is sent; current YAML, container environment and secrets are not attached automatically.",
+  "@composeAiContextHelp": {
+    "description": "Compose AI proposal workflow: composeAiContextHelp"
+  },
+  "composeAiDescription": "What should the Compose project run?",
+  "@composeAiDescription": {
+    "description": "Compose AI proposal workflow: composeAiDescription"
+  },
+  "composeAiReview": "Review the proposed YAML. Inserting it opens the normal plan; starting services is a separate action.",
+  "@composeAiReview": {
+    "description": "Compose AI proposal workflow: composeAiReview"
+  },
+  "composeAiUse": "Insert into editor",
+  "@composeAiUse": {
+    "description": "Compose AI proposal workflow: composeAiUse"
+  },
+  "composeAiInvalid": "AI did not return a valid Compose YAML document. Refine the description and try again.",
+  "@composeAiInvalid": {
+    "description": "Compose AI proposal workflow: composeAiInvalid"
+  },
+  "composeAiReplaceTitle": "Replace YAML?",
+  "@composeAiReplaceTitle": {
+    "description": "Compose AI proposal workflow: composeAiReplaceTitle"
+  },
+  "composeAiReplaceHelp": "The editor already contains data. Replace it with the AI proposal?",
+  "@composeAiReplaceHelp": {
+    "description": "Compose AI proposal workflow: composeAiReplaceHelp"
+  },
+  "dockerPortCount": "{total} ports",
+  "dockerPortRange": "{start}–{end} of {total}",
+  "@dockerPortCount": {
+    "description": "Total number of port entries on a Docker container row",
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@dockerPortRange": {
+    "description": "Range of Docker ports currently visible and total",
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
   }
 }

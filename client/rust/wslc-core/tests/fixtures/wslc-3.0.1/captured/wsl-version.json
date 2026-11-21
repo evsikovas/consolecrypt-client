@@ -1,0 +1,11 @@
+{
+  "executable": "C:\\WINDOWS\\System32\\wsl.exe",
+  "arguments": [
+    "--version"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-16",
+  "stdout": "Версия WSL: 3.0.1.0\r\nВерсия ядра: 6.18.40.1-1\r\nВерсия WSLg: 1.0.79\r\nВерсия MSRDC: 1.2.7214\r\nВерсия Direct3D: 1.611.1-81528511\r\nВерсия DXCore: 10.0.26100.1-240331-1435.ge-release\r\nВерсия Windows: 10.0.28000.3086\r\n",
+  "stderr": ""
+}

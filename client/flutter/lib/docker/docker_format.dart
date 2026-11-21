@@ -102,25 +102,36 @@ String formatDockerPort(DockerPort port) {
   return '$host${port.publicPort}→$private';
 }
 
-/// Distinct port labels of a container (IPv4 and IPv6 bindings collapse when
-/// they are identical apart from the address family).
-List<String> formatDockerPorts(List<DockerPort> ports) => {for (final port in ports) formatDockerPort(port)}.toList();
+/// Distinct labels in engine order. A summary stops once its preview is full.
+List<String> formatDockerPorts(List<DockerPort> ports, {int? limit}) {
+  final labels = <String>{};
+  for (final port in ports) {
+    if (limit != null && labels.length >= limit) break;
+    labels.add(formatDockerPort(port));
+  }
+  return labels.toList();
+}
 
 /// Container ports a forward can target (TCP only, ascending).
-List<int> dockerForwardablePorts(DockerContainer container, [DockerJson? inspect]) {
-  final ports = <int>{
-    for (final port in container.ports)
-      if (port.protocol == 'tcp') port.privatePort,
-  };
+List<int> dockerForwardablePorts(DockerContainer container, [DockerJson? inspect]) =>
+    dockerDeclaredTcpPorts(container, inspect).toSet().toList()..sort();
+
+Iterable<int> dockerDeclaredTcpPorts(DockerContainer container, [DockerJson? inspect]) sync* {
+  for (final port in container.ports) {
+    if (port.protocol == 'tcp' && port.privatePort > 0 && port.privatePort <= 65535) {
+      yield port.privatePort;
+    }
+  }
   final exposed = (inspect?['Config'] as Map?)?['ExposedPorts'];
   if (exposed is Map) {
     for (final key in exposed.keys) {
       final parts = key.toString().split('/');
       final port = int.tryParse(parts.first);
-      if (port != null && (parts.length < 2 || parts[1] == 'tcp')) ports.add(port);
+      if (port != null && port > 0 && port <= 65535 && (parts.length < 2 || parts[1] == 'tcp')) {
+        yield port;
+      }
     }
   }
-  return ports.where((port) => port > 0 && port <= 65535).toList()..sort();
 }
 
 String dockerStateLabel(AppLocalizations l, DockerContainerState state) => switch (state) {

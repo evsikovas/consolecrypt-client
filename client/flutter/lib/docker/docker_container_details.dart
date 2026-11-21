@@ -16,6 +16,7 @@ import 'package:consolecrypt/docker/docker_host_path.dart';
 import 'package:consolecrypt/docker/docker_kube_dialog.dart';
 import 'package:consolecrypt/docker/docker_kube_plan.dart';
 import 'package:consolecrypt/docker/docker_logs_view.dart';
+import 'package:consolecrypt/docker/docker_port_pages.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
@@ -145,7 +146,8 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
     );
     final full = _fullInspect;
     final shown = full ?? _detail?.inspect;
-    final json = shown == null ? '' : const JsonEncoder.withIndent('  ').convert(shown);
+    final jsonTab = shown != null && _tabs.index == DockerDetailsTab.json.index;
+    final json = jsonTab ? const JsonEncoder.withIndent('  ').convert(shown) : '';
     final masked = full == null && json.contains(dockerSecretMask);
     return ContentSurface(
       key: const ValueKey('docker-container-details'),
@@ -337,7 +339,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                     active: _tabs.index == DockerDetailsTab.logs.index,
                   ),
                 ),
-                _detail == null
+                !jsonTab
                     ? const SizedBox.shrink()
                     : Padding(
                         key: const ValueKey('docker-inspect-json'),
@@ -445,7 +447,6 @@ class _DockerOverview extends StatelessWidget {
       for (final entry in (config['Labels'] as Map? ?? const {}).entries) entry.key.toString(): text(entry.value),
     };
     final env = [for (final value in config['Env'] as List? ?? const []) text(value)];
-    final ports = formatDockerPorts(container.ports);
     final health = dockerHealth(l, container.health);
     final info = <(String, String)>[
       (l.dockerImage, text(config['Image']).isEmpty ? container.image : text(config['Image'])),
@@ -476,15 +477,20 @@ class _DockerOverview extends StatelessWidget {
             children: [for (final (label, value) in info) _Fact(label: label, value: value)],
           ),
         ),
-        if (ports.isNotEmpty)
+        if (container.ports.isNotEmpty)
           _Section(
             title: l.dockerPorts,
-            child: Column(
-              key: const ValueKey('docker-ports'),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final port in ports) Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: mono(port)),
-              ],
+            child: DockerPortPages<DockerPort>(
+              key: ValueKey('docker-ports-${container.id}'),
+              ports: container.ports,
+              buildPage: (ports) => Column(
+                key: const ValueKey('docker-ports'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final port in formatDockerPorts(ports))
+                    Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: mono(port)),
+                ],
+              ),
             ),
           ),
         if (networks.isNotEmpty)
@@ -730,6 +736,20 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
 
 /// Asks for the vault passphrase and returns what [reveal] produced with it
 /// (null on cancel). The passphrase is wiped after the attempt.
+Future<T?> showDockerSecretRead<T>(
+  BuildContext context, {
+  required String object,
+  required String title,
+  required String help,
+  required Future<T> Function(StepUpProof proof) read,
+}) => showAppDialog<T>(
+  context,
+  secure: true,
+  barrierDismissible: false,
+  builder: (context) =>
+      _RevealDialog<T>(dialogKey: 'wslc-secret-read', title: title, help: help, object: object, reveal: read),
+);
+
 class _RevealDialog<T> extends ConsumerStatefulWidget {
   const _RevealDialog({
     required this.dialogKey,

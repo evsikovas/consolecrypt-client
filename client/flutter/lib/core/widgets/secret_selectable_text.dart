@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
+
 /// Selectable text that shows a revealed secret (S8/S9, ТР-14/15).
 ///
 /// The standard Copy of [SelectableText] writes an ordinary clipboard entry
@@ -10,10 +11,11 @@ import 'package:material_ui/material_ui.dart';
 /// the caller sends it through `copySecretWithNotice` / `copyPrivate`. Cut,
 /// Share, Look Up and web search are not offered.
 class SecretSelectableText extends StatefulWidget {
-  const SecretSelectableText(this.text, {required this.onCopy, this.style, super.key});
+  const SecretSelectableText(this.text, {required this.onCopy, this.style, this.minLines, this.maxLines, super.key});
 
   final String text;
   final TextStyle? style;
+  final int? minLines, maxLines;
 
   /// Receives the non-empty selected text.
   final Future<void> Function(String selected) onCopy;
@@ -52,6 +54,8 @@ class _SecretSelectableTextState extends State<SecretSelectableText> {
     child: SelectableText(
       widget.text,
       style: widget.style,
+      minLines: widget.minLines,
+      maxLines: widget.maxLines,
       onSelectionChanged: (selection, _) => _selection = selection,
       contextMenuBuilder: (context, state) => AdaptiveTextSelectionToolbar.buttonItems(
         anchors: state.contextMenuAnchors,

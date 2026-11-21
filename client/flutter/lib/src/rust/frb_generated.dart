@@ -30,6 +30,7 @@ import 'api/sharing.dart';
 import 'api/ssh.dart';
 import 'api/sync.dart';
 import 'api/teams.dart';
+import 'api/wslc.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -91,7 +92,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -390035771;
+  int get rustContentHash => -1533526382;
 
   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
     stem: 'cc_bridge',
@@ -1888,6 +1889,27 @@ abstract class RustLibApi extends BaseApi {
     required String action,
     required String object,
     required List<int> material,
+  });
+
+  Future<void> crateApiWslcWslcClose({required String sessionId});
+
+  Future<String> crateApiWslcWslcOpen({required String profileId});
+
+  String crateApiWslcWslcPreview({required String specJson, required bool copy});
+
+  Future<String> crateApiWslcWslcRegistryLogin({
+    required String sessionId,
+    String? server,
+    required String username,
+    required List<int> password,
+  });
+
+  Future<String> crateApiWslcWslcRequest({
+    required String sessionId,
+    required String operation,
+    required String argsJson,
+    Uint8List? passphrase,
+    String? presenceToken,
   });
 
   RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_PortableImportHandle;
@@ -15064,6 +15086,127 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiProfilesVaultVerifyUserPresenceWithMaterialConstMeta => const TaskConstMeta(
     debugName: "vault_verify_user_presence_with_material",
     argNames: ["action", "object", "material"],
+  );
+
+  @override
+  Future<void> crateApiWslcWslcClose({required String sessionId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sessionId, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 594, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiWslcWslcCloseConstMeta,
+        argValues: [sessionId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiWslcWslcCloseConstMeta =>
+      const TaskConstMeta(debugName: "wslc_close", argNames: ["sessionId"]);
+
+  @override
+  Future<String> crateApiWslcWslcOpen({required String profileId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(profileId, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 595, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiWslcWslcOpenConstMeta,
+        argValues: [profileId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiWslcWslcOpenConstMeta =>
+      const TaskConstMeta(debugName: "wslc_open", argNames: ["profileId"]);
+
+  @override
+  String crateApiWslcWslcPreview({required String specJson, required bool copy}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(specJson, serializer);
+          sse_encode_bool(copy, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 596)!;
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiWslcWslcPreviewConstMeta,
+        argValues: [specJson, copy],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiWslcWslcPreviewConstMeta =>
+      const TaskConstMeta(debugName: "wslc_preview", argNames: ["specJson", "copy"]);
+
+  @override
+  Future<String> crateApiWslcWslcRegistryLogin({
+    required String sessionId,
+    String? server,
+    required String username,
+    required List<int> password,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sessionId, serializer);
+          sse_encode_opt_String(server, serializer);
+          sse_encode_String(username, serializer);
+          sse_encode_list_prim_u_8_loose(password, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 597, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiWslcWslcRegistryLoginConstMeta,
+        argValues: [sessionId, server, username, password],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiWslcWslcRegistryLoginConstMeta =>
+      const TaskConstMeta(debugName: "wslc_registry_login", argNames: ["sessionId", "server", "username", "password"]);
+
+  @override
+  Future<String> crateApiWslcWslcRequest({
+    required String sessionId,
+    required String operation,
+    required String argsJson,
+    Uint8List? passphrase,
+    String? presenceToken,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sessionId, serializer);
+          sse_encode_String(operation, serializer);
+          sse_encode_String(argsJson, serializer);
+          sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
+          sse_encode_opt_String(presenceToken, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 598, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiWslcWslcRequestConstMeta,
+        argValues: [sessionId, operation, argsJson, passphrase, presenceToken],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiWslcWslcRequestConstMeta => const TaskConstMeta(
+    debugName: "wslc_request",
+    argNames: ["sessionId", "operation", "argsJson", "passphrase", "presenceToken"],
   );
 
   RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_PortableImportHandle => wire

@@ -14,6 +14,7 @@ import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_result_edits.dart';
 import 'package:consolecrypt/db/db_service.dart';
 
+
 // Demo data of the mock backend; nothing here is shown in release builds.
 // l10n-ignore-file
 
@@ -236,7 +237,8 @@ final class MockDbService
     final json = draft.metadata.toJson();
     if ((json['id'] as String? ?? '').isEmpty) json['id'] = 'mock-${_next++}';
     final previous = _connections.where((c) => c.id == json['id']).firstOrNull;
-    json['device_only'] = previous?.deviceOnly ?? draft.metadata.engine.localOnly;
+    json['device_only'] =
+        previous?.deviceOnly == true || draft.metadata.engine.localOnly || draft.metadata.route.localEngineId != null;
     final saved = DbConnection.fromJson(json);
     _connections
       ..removeWhere((c) => c.id == saved.id)

@@ -18,6 +18,7 @@ import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+
 class DbConnectionsScreen extends ConsumerStatefulWidget {
   const DbConnectionsScreen({required this.onOpen, this.onShare, this.shared = const [], this.onOpenShared, super.key});
   final ValueChanged<DbConnection> onOpen;
@@ -448,7 +449,7 @@ class _DbConnectionEntry extends StatelessWidget {
       entries: [
         GlassMenuItem(value: _DbAction.open, label: l.commonConnect, icon: Icons.play_arrow_rounded),
         GlassMenuItem(value: _DbAction.edit, label: l.commonEdit, icon: Icons.edit_rounded),
-        if (canShare && !c.engine.localOnly)
+        if (canShare && !c.engine.localOnly && !c.deviceOnly)
           GlassMenuItem(value: _DbAction.share, label: l.sharingTitle, icon: Icons.share_outlined),
         if (canMove && dbMovableToVault(c))
           GlassMenuItem(value: _DbAction.moveToVault, label: l.dbMoveToVault, icon: Icons.cloud_upload_outlined),

@@ -1,0 +1,48 @@
+[
+  {
+    "Architecture": "amd64",
+    "Author": "",
+    "Comment": "buildkit.dockerfile.v0",
+    "Config": {
+      "Cmd": [
+        "nginx",
+        "-g",
+        "daemon off;"
+      ],
+      "Entrypoint": null,
+      "Env": [
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      ],
+      "ExposedPorts": {
+        "80/tcp": {}
+      },
+      "Labels": null,
+      "StopSignal": "SIGQUIT",
+      "User": "",
+      "Volumes": null,
+      "WorkingDir": "/"
+    },
+    "Created": "2026-09-23T21:03:36.684422033Z",
+    "Id": "sha256:bdce337470f00c0a5451599e18d7d9c856e6a1635a10ac61b855376c751d607a",
+    "Metadata": {
+      "LastTagTime": "0001-01-01T00:00:00Z"
+    },
+    "Os": "linux",
+    "Parent": "",
+    "RepoDigests": [],
+    "RepoTags": [
+      "mcr.microsoft.com/azurelinux/base/nginx:1.30"
+    ],
+    "RootFS": {
+      "Layers": [
+        "sha256:2d7acfba3a6ad97aa3c136b056142747b9d77efcc36aa4fe0493a5c87060bc90",
+        "sha256:25734f27320806166e381571978567e7a6bc2e2cdde031b4d9d406945fb72743",
+        "sha256:244c33b35273af7348a00dcf84d97137819530e97386e83980d06861c9f31f13",
+        "sha256:e7227c78ac8bc4e808d3899ef2dcb73904940e66c1023e4eb7a5359cd37f5575",
+        "sha256:d32c40f41ba0e8548158bad297f173646b4d937d683618565e80f09be714f2bf"
+      ],
+      "Type": "layers"
+    },
+    "Size": 108106901
+  }
+]

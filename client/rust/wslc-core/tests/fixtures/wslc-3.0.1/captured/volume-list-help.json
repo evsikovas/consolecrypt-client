@@ -1,0 +1,13 @@
+{
+  "executable": "C:\\Program Files\\WSL\\wslc.exe",
+  "arguments": [
+    "volume",
+    "list",
+    "--help"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-8",
+  "stdout": "(c) Корпорация Майкрософт (Microsoft Corporation). Все права защищены.\r\nСведения о конфиденциальности этого продукта см. на странице https://aka.ms/privacy.\r\n\r\nПеречислить все тома в сеансе.\r\n\r\nИспользование:  wslc volume list [параметры]\r\n\r\nПсевдонимы:\r\n  wslc volume list, wslc volume ls\r\n\r\nПараметры:\r\n  -f  --filter   Отфильтровать вывод по заданным условиям\r\n      --format   Формат вывода (json или table) (по умолчанию: table)\r\n  -q  --quiet    Вывести только имена томов\r\n  -?  --help     Отображает справку по выбранной команде\r\n\r\nОбщие параметры для \"wslc\":\r\n      --session  Укажите сеанс для использования\r\n",
+  "stderr": ""
+}

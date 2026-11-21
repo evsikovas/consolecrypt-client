@@ -20,6 +20,22 @@ const _local = DockerSessionInfo(id: 's', hostId: DockerHost.localId, hostName: 
 const _ssh = DockerSessionInfo(id: 's', hostId: 'ssh-web', hostName: 'web-01', engineVersion: '27');
 
 void main() {
+  test('specific local engines stay in restorable Docker routes', () {
+    for (final engine in ['local/context/orbstack', 'local/context/desktop-linux', 'local/colima/work']) {
+      final session = DockerSessionInfo(id: 'engine-session', hostId: engine, hostName: 'fixture', engineVersion: '1');
+      final container = _container('postgres', [_port(5432)]);
+      final endpoint = dockerForwardEndpoint(session, container, 5432);
+      expect(endpoint.route.reference, isNull);
+      expect(endpoint.route.localEngineId, engine);
+      expect(DbRoute.fromJson(endpoint.route.toJson()).sameAs(endpoint.route), isTrue);
+      expect(endpoint.route.sameAs(const DbRoute(kind: DbRouteKind.docker, container: 'db')), isFalse);
+      expect(
+        dockerDatabaseEndpoint(session, container, 5432),
+        isNull,
+        reason: 'VM container IP is not a local host address',
+      );
+    }
+  });
   test('database containers are recognised by their standard ports, the image refines the engine', () {
     final pg = dockerDatabaseTarget(_container('example/app:1', [_port(5432)]))!;
     expect((pg.engine, pg.remotePort), (DbEngine.postgresql, 5432));

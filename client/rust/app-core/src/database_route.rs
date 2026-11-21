@@ -228,8 +228,18 @@ impl AppCore {
                 };
                 Transport::Loopback(address)
             }
-            DbRoute::Docker { host_id, container } => {
-                let forward = self.db_docker_forward(unlocked, *host_id, container, port);
+            DbRoute::Docker {
+                host_id,
+                container,
+                local_engine_id,
+            } => {
+                let forward = self.db_docker_forward(
+                    unlocked,
+                    *host_id,
+                    local_engine_id.as_deref(),
+                    container,
+                    port,
+                );
                 let address = tokio::select! {
                     biased;
                     _ = cancel.cancelled() => return Err(AppError::VaultLocked),

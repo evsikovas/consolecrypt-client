@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
+import 'package:consolecrypt/docker/docker_port_pages.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/tunnels/saved_forwards.dart';
@@ -142,7 +143,7 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
     final tokens = GlassTokens.of(context);
     final created = _created;
     final valid = _remotePort != null && _localPort != null;
-    final local = widget.session.hostId == DockerHost.localId;
+    final local = DockerHost.isLocalId(widget.session.hostId);
     return GlassDialog(
       key: const ValueKey('docker-forward-dialog'),
       title: l.dockerForwardPort,
@@ -191,18 +192,22 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
               ),
               if (_ports.isNotEmpty) ...[
                 const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final port in _ports)
-                      ChoiceChip(
-                        key: ValueKey('docker-forward-port-$port'),
-                        label: Text('$port'),
-                        selected: _remote.text == '$port',
-                        onSelected: _busy ? null : (_) => setState(() => _remote.text = '$port'),
-                      ),
-                  ],
+                DockerPortPages<int>(
+                  ports: _ports,
+                  enabled: !_busy,
+                  buildPage: (ports) => Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final port in ports)
+                        ChoiceChip(
+                          key: ValueKey('docker-forward-port-$port'),
+                          label: Text('$port'),
+                          selected: _remote.text == '$port',
+                          onSelected: _busy ? null : (_) => setState(() => _remote.text = '$port'),
+                        ),
+                    ],
+                  ),
                 ),
               ],
               const SizedBox(height: GlassSpacing.s8),

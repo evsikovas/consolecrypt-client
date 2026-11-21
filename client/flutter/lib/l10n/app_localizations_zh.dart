@@ -16650,4 +16650,41 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get dockerKubeContext => 'Kubernetes 上下文';
+
+  @override
+  String get dbLocalEngineNewConnectionHelp => '此已保存的连接可选择“此电脑”。若要绑定到特定的本地引擎，请新建连接。';
+
+  @override
+  String get composeAiGenerate => '使用 AI 生成 Compose';
+
+  @override
+  String get composeAiContextHelp => '请描述所需的服务。仅发送此描述，当前 YAML、容器环境和密钥留在本机。';
+
+  @override
+  String get composeAiDescription => 'Compose 项目需要运行什么？';
+
+  @override
+  String get composeAiReview => '请检查生成的 YAML。插入后会打开计划，启动服务需要单独操作。';
+
+  @override
+  String get composeAiUse => '插入编辑器';
+
+  @override
+  String get composeAiInvalid => 'AI 未返回有效的 Compose YAML。请调整描述后重试。';
+
+  @override
+  String get composeAiReplaceTitle => '替换 YAML？';
+
+  @override
+  String get composeAiReplaceHelp => '编辑器已有内容。要用 AI 的建议替换吗？';
+
+  @override
+  String dockerPortCount(int total) {
+    return '$total 个端口';
+  }
+
+  @override
+  String dockerPortRange(int start, int end, int total) {
+    return '第 $start–$end 项，共 $total 项';
+  }
 }

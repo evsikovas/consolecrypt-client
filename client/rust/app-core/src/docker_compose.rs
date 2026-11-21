@@ -228,7 +228,7 @@ fn io_error(error: &std::io::Error) -> HostFileError {
 /// session uses.
 #[derive(Debug)]
 pub(crate) struct LocalComposeHost {
-    pub socket: Option<std::path::PathBuf>,
+    pub endpoint: Option<String>,
 }
 
 impl LocalComposeHost {
@@ -245,6 +245,11 @@ impl LocalComposeHost {
                 dirs.push(home.join(relative));
             }
         }
+        if cfg!(windows) {
+            if let Some(programs) = std::env::var_os("ProgramFiles") {
+                dirs.push(std::path::PathBuf::from(programs).join("Docker/Docker/resources/bin"));
+            }
+        }
         dirs
     }
 
@@ -258,7 +263,13 @@ impl LocalComposeHost {
         dirs.extend(Self::extra_dirs());
         dirs.into_iter()
             .filter(|dir| dir.is_absolute())
-            .map(|dir| dir.join(name))
+            .map(|dir| {
+                dir.join(if cfg!(windows) && !name.ends_with(".exe") {
+                    format!("{name}.exe")
+                } else {
+                    name.to_owned()
+                })
+            })
             .find(|path| {
                 std::fs::metadata(path).is_ok_and(|meta| {
                     #[cfg(unix)]
@@ -426,9 +437,15 @@ impl ComposeHost for LocalComposeHost {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .kill_on_drop(true);
-        if let Some(socket) = &self.socket {
-            command.env("DOCKER_HOST", format!("unix://{}", socket.display()));
+        if let Some(endpoint) = &self.endpoint {
+            command
+                .env_remove("DOCKER_CONTEXT")
+                .env_remove("DOCKER_TLS_VERIFY")
+                .env_remove("DOCKER_CERT_PATH")
+                .env("DOCKER_HOST", endpoint);
         }
+        #[cfg(windows)]
+        command.creation_flags(0x08000000);
         // Credential helpers and CLI plugins are looked up on PATH.
         let mut path: Vec<std::path::PathBuf> =
             program.parent().map(Into::into).into_iter().collect();
@@ -1412,7 +1429,7 @@ impl AppCore {
             Some(session) => (Arc::new(SshComposeHost::new(session)), "ssh"),
             None => (
                 Arc::new(LocalComposeHost {
-                    socket: target.local_socket,
+                    endpoint: target.local_endpoint,
                 }),
                 "local",
             ),
@@ -2076,7 +2093,7 @@ mod tests {
         let path = dir.path().join("compose.yaml");
         std::fs::write(&path, BASE).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o640)).unwrap();
-        let host = LocalComposeHost { socket: None };
+        let host = LocalComposeHost { endpoint: None };
         let path = path.to_str().unwrap().to_owned();
         assert_eq!(host.read(&path, MAX_FILE).await.unwrap(), BASE.as_bytes());
         assert_eq!(host.read(&path, 3).await, Err(HostFileError::TooLarge));
@@ -2562,7 +2579,7 @@ mod tests {
     async fn local_shared_directory_is_reported() {
         use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
-        let host = LocalComposeHost { socket: None };
+        let host = LocalComposeHost { endpoint: None };
         let path = dir.path().to_str().unwrap();
         std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o755)).unwrap();
         assert!(!host.shared_dir(path).await.unwrap());
@@ -2630,7 +2647,7 @@ mod tests {
             env_files: vec![],
         };
         let host = LocalFiles {
-            files: LocalComposeHost { socket: None },
+            files: LocalComposeHost { endpoint: None },
         };
         let mut texts = vec!["v: 0\n".to_owned()];
         let (mut written, mut tampered, mut unrestored_rounds) = (0, 0, 0);

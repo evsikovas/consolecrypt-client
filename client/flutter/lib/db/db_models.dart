@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:consolecrypt/core/security/secret_text.dart';
 
+
 typedef DbJson = Map<String, dynamic>;
 
 enum DbEngine {
@@ -135,10 +136,12 @@ final class DbRoute {
     this.targetKind = DbKubeTargetKind.pod,
     this.targetName = '',
     this.container = '',
+    this.localEngineId,
   });
   final DbRouteKind kind;
   final String? reference;
   final String namespace, targetName, container;
+  final String? localEngineId;
   final DbKubeTargetKind targetKind;
 
   static String _referenceKey(DbRouteKind kind) => switch (kind) {
@@ -160,6 +163,7 @@ final class DbRoute {
       targetKind: DbKubeTargetKind.parse(json['target_kind'] as String?),
       targetName: json['target_name'] as String? ?? '',
       container: json['container'] as String? ?? '',
+      localEngineId: json['local_engine_id'] as String?,
     );
   }
   DbJson toJson() => {
@@ -171,6 +175,7 @@ final class DbRoute {
       'target_name': targetName,
     },
     if (kind == DbRouteKind.docker) 'container': container,
+    if (kind == DbRouteKind.docker && localEngineId != null) 'local_engine_id': localEngineId,
   };
 
   /// A forward the core restores on connect (no fixed local port is saved).
@@ -182,7 +187,7 @@ final class DbRoute {
       (kind == DbRouteKind.direct || reference == other.reference) &&
       (kind != DbRouteKind.kubernetes ||
           (namespace == other.namespace && targetKind == other.targetKind && targetName == other.targetName)) &&
-      (kind != DbRouteKind.docker || container == other.container);
+      (kind != DbRouteKind.docker || container == other.container && localEngineId == other.localEngineId);
 }
 
 final class DbAuth {
@@ -375,7 +380,9 @@ final class DbConnection {
     color: json['color'] as String?,
     createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
     updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? ''),
-    deviceOnly: json['device_only'] as bool? ?? DbEngine.parse(json['engine'] as String).localOnly,
+    deviceOnly:
+        json['device_only'] as bool? ??
+        (DbEngine.parse(json['engine'] as String).localOnly || (json['route'] as DbJson?)?['local_engine_id'] != null),
   );
   DbJson toJson() => {
     'id': id,
@@ -893,4 +900,5 @@ DbCell? dbCellFromInput(DbCellKind kind, String input) {
 /// reached through a host (a file on this computer stays here).
 bool dbMovableToVault(DbConnection c) =>
     c.deviceOnly &&
+    c.route.localEngineId == null &&
     (c.engine == DbEngine.cassandra || (c.engine == DbEngine.sqlite && c.route.kind != DbRouteKind.direct));

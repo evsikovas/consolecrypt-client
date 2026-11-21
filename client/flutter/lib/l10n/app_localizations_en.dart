@@ -17416,4 +17416,45 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerKubeContext => 'Kubernetes context';
+
+  @override
+  String get dbLocalEngineNewConnectionHelp =>
+      'Choose This computer for this saved entry, or create a new connection to bind it to a specific local engine.';
+
+  @override
+  String get composeAiGenerate => 'AI: generate Compose';
+
+  @override
+  String get composeAiContextHelp =>
+      'Describe the services you need. Only this description is sent; current YAML, container environment and secrets are not attached automatically.';
+
+  @override
+  String get composeAiDescription => 'What should the Compose project run?';
+
+  @override
+  String get composeAiReview =>
+      'Review the proposed YAML. Inserting it opens the normal plan; starting services is a separate action.';
+
+  @override
+  String get composeAiUse => 'Insert into editor';
+
+  @override
+  String get composeAiInvalid =>
+      'AI did not return a valid Compose YAML document. Refine the description and try again.';
+
+  @override
+  String get composeAiReplaceTitle => 'Replace YAML?';
+
+  @override
+  String get composeAiReplaceHelp => 'The editor already contains data. Replace it with the AI proposal?';
+
+  @override
+  String dockerPortCount(int total) {
+    return '$total ports';
+  }
+
+  @override
+  String dockerPortRange(int start, int end, int total) {
+    return '$start–$end of $total';
+  }
 }

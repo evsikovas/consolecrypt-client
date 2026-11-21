@@ -17,9 +17,11 @@ import 'package:consolecrypt/db/db_query_service.dart';
 import 'package:consolecrypt/db/db_result_edits.dart';
 import 'package:consolecrypt/db/db_service.dart';
 import 'package:consolecrypt/src/rust/api/database.dart' as native;
+import 'package:consolecrypt/src/rust/api/docker.dart' as rs_docker;
 import 'package:consolecrypt/src/rust/api/inventory.dart' as rs_inv;
 import 'package:consolecrypt/src/rust/api/kubernetes.dart' as rs_kube;
 import 'package:file_selector/file_selector.dart';
+
 
 /// Native databases: connections live in the vault, sessions and query streams
 /// in the core. Passwords cross the bridge only as wiped byte buffers.
@@ -117,8 +119,22 @@ final class RustDbService
     } on AppException {
       contexts = const [];
     }
+    // Discovery does not connect or start an engine. A missing local runtime
+    // must not prevent choosing an SSH, tunnel or Kubernetes route.
+    var engines = const <Json>[];
+    try {
+      engines = (jsonDecode(await guard(rs_docker.dockerHosts)) as List).cast<Json>();
+    } on AppException {
+      engines = const [];
+    }
     return DbConnectionChoices(
       routes: [
+        for (final engine in engines)
+          if (engine['kind'] == 'local' && (engine['id'] as String? ?? '').startsWith('local/'))
+            DbRouteChoice(
+              route: DbRoute(kind: DbRouteKind.docker, localEngineId: engine['id'] as String),
+              label: engine['name'] as String? ?? engine['id'] as String,
+            ),
         for (final host in hosts)
           if ((host['protocol'] as String? ?? 'ssh') == 'ssh')
             DbRouteChoice(

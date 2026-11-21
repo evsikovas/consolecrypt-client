@@ -1,0 +1,13 @@
+{
+  "executable": "C:\\Program Files\\WSL\\wslc.exe",
+  "arguments": [
+    "image",
+    "inspect",
+    "--help"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-8",
+  "stdout": "(c) Корпорация Майкрософт (Microsoft Corporation). Все права защищены.\r\nСведения о конфиденциальности этого продукта см. на странице https://aka.ms/privacy.\r\n\r\nПроверить образы.\r\n\r\nИспользование:  wslc image inspect [параметры] <image>...\r\n\r\nАргументы:\r\n  image  Имя образа\r\n\r\nПараметры:\r\n  -f  --format   Форматирование вывода — json для однострочного вывода (по умолчанию: JSON с отступами)\r\n  -?  --help     Отображает справку по выбранной команде\r\n\r\nОбщие параметры для \"wslc\":\r\n      --session  Укажите сеанс для использования\r\n",
+  "stderr": ""
+}

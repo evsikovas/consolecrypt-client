@@ -35,6 +35,11 @@ chrono.workspace = true
 zeroize.workspace = true
 tracing.workspace = true
 
+[target.'cfg(windows)'.dependencies]
+cc-wslc-core.workspace = true
+uuid.workspace = true
+tokio-util = { version = "0.7", features = ["rt"] }
+
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.22"
 ndk-context = "0.1"

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -9,6 +10,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_workspace.dart';
+import 'package:consolecrypt/wslc/wslc_workspace.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -25,6 +27,7 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
   DockerSessionInfo? _session;
   DockerHost? _host;
   DockerService? _service;
+  bool _wslc = false;
   @override
   void dispose() {
     _disconnect();
@@ -32,6 +35,7 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
   }
 
   void _disconnect() {
+    _wslc = false;
     final session = _session, service = _service;
     _session = null;
     if (session != null && service != null) unawaited(service.disconnect(session.id).catchError((Object _) {}));
@@ -60,6 +64,14 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
         ),
       );
     }
+    final profile = ref.watch(activeProfileProvider)?.id;
+    if (_wslc && AppPlatform.isWindows && profile != null) {
+      return WslcWorkspace(
+        key: ValueKey('wslc-$profile'),
+        profileId: profile.value,
+        onBack: () => setState(_disconnect),
+      );
+    }
     final session = _session;
     if (session != null && identical(service, _service)) {
       return DockerWorkspace(
@@ -72,6 +84,7 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
     }
     return DockerHostPicker(
       service: service,
+      onWslc: AppPlatform.isWindows && profile != null ? () => setState(() => _wslc = true) : null,
       onConnected: (host, info) => setState(() {
         _disconnect();
         _service = service;
@@ -85,9 +98,10 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
 /// "This computer" and saved SSH hosts, with search. Connecting shows
 /// progress; a failure explains what to do on the host.
 class DockerHostPicker extends ConsumerStatefulWidget {
-  const DockerHostPicker({required this.service, required this.onConnected, super.key});
+  const DockerHostPicker({required this.service, required this.onConnected, this.onWslc, super.key});
   final DockerService service;
   final void Function(DockerHost host, DockerSessionInfo session) onConnected;
+  final VoidCallback? onWslc;
   @override
   ConsumerState<DockerHostPicker> createState() => _DockerHostPickerState();
 }
@@ -150,6 +164,13 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
       title: l.dockerTitle,
       subtitle: l.dockerSubtitle,
       actions: [
+        if (widget.onWslc != null)
+          GlassButton(
+            key: const ValueKey('docker-open-wslc'),
+            label: 'WSLc',
+            icon: Icons.window_rounded,
+            onPressed: _connecting == null ? widget.onWslc : null,
+          ),
         GlassIconButton(
           key: const ValueKey('docker-hosts-refresh'),
           icon: Icons.refresh,
@@ -229,7 +250,7 @@ class _HostRow extends StatelessWidget {
     final tokens = GlassTokens.of(context);
     final local = host.kind == DockerHostKind.local;
     final narrow = MediaQuery.sizeOf(context).width < 600;
-    final subtitle = local ? l.dockerLocalHostHelp : host.address;
+    final subtitle = local && host.address.isEmpty ? l.dockerLocalHostHelp : host.address;
     return GlassInteractive(
       key: ValueKey('docker-host-${host.id}'),
       semanticLabel: host.name,
@@ -250,7 +271,7 @@ class _HostRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      local ? l.dockerLocalHost : host.name,
+                      local && host.name.isEmpty ? l.dockerLocalHost : host.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: tokens.typography.bodyEmph.copyWith(color: tokens.palette.label),
@@ -305,7 +326,7 @@ class DockerConnectError extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
-    final name = host.kind == DockerHostKind.local ? l.dockerLocalHost : host.name;
+    final name = host.kind == DockerHostKind.local && host.name.isEmpty ? l.dockerLocalHost : host.name;
     final failure = error is DockerException ? (error as DockerException).failure : DockerFailure.other;
     final detail = error is DockerException ? (error as DockerException).detail.trim() : '';
     final retry = GlassButton(

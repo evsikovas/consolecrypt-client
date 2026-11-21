@@ -10,6 +10,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 mod client;
 pub mod compose;
 mod compose_mask;
+pub mod local;
 mod logs;
 pub mod secrets;
 pub use client::{

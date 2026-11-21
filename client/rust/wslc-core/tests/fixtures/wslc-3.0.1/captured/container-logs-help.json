@@ -1,0 +1,13 @@
+{
+  "executable": "C:\\Program Files\\WSL\\wslc.exe",
+  "arguments": [
+    "container",
+    "logs",
+    "--help"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-8",
+  "stdout": "(c) Корпорация Майкрософт (Microsoft Corporation). Все права защищены.\r\nСведения о конфиденциальности этого продукта см. на странице https://aka.ms/privacy.\r\n\r\nПросмотр журналов контейнера.\r\n\r\nИспользование:  wslc container logs [параметры] <container-id>\r\n\r\nПсевдонимы:\r\n  wslc container logs, wslc logs\r\n\r\nАргументы:\r\n  container-id  ИД контейнера\r\n\r\nПараметры:\r\n      --details     Показать дополнительные сведения для журналов\r\n  -f  --follow      Отслеживать вывод журнала.\r\n  -n  --tail        Число строк, отображаемых с конца журналов\r\n  -t  --timestamps  Показывать метки времени в выводе журнала\r\n      --since       Показывать журналы, начиная с отметки времени (в секундах Unix или RFC3339, например, 2024-01-15T10:30:00Z)\r\n      --until       Показать журналы до отметки времени (в секундах эпохи Unix или RFC3339, например, 2024-01-15T10:30:00Z)\r\n  -?  --help        Отображает справку по выбранной команде\r\n\r\nОбщие параметры для \"wslc\":\r\n      --session     Укажите сеанс для использования\r\n",
+  "stderr": ""
+}

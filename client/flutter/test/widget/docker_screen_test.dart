@@ -20,6 +20,7 @@ import 'package:consolecrypt/docker/docker_screen.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,6 +41,31 @@ class _Docker extends MockDockerService {
     forwardsStarted.add((containerId: containerId, remotePort: remotePort, localPort: localPort));
     return super.startForward(sessionId, containerId, remotePort: remotePort, localPort: localPort);
   }
+}
+
+class _PortRangeDocker extends _Docker {
+  final large = DockerContainer(
+    id: 'many-ports',
+    name: 'range-container',
+    image: 'example.invalid/samba:fixture',
+    state: DockerContainerState.running,
+    ports: List.generate(16384, (index) => DockerPort(privatePort: 49152 + index, protocol: 'tcp')),
+  );
+
+  @override
+  Future<List<DockerContainer>> containers(String sessionId, {bool all = true}) async => [
+    large,
+    const DockerContainer(
+      id: 'next-container',
+      name: 'second-container',
+      image: 'example.invalid/worker:fixture',
+      state: DockerContainerState.running,
+    ),
+  ];
+
+  @override
+  Future<DockerContainerDetail> inspect(String sessionId, String containerId) async =>
+      DockerContainerDetail(container: large, inspect: const {});
 }
 
 /// Docker over SSH on the demo inventory host [hostId] (the engine data is
@@ -185,11 +211,59 @@ String _id(WidgetTester tester, String name) => tester
     .id;
 
 void main() {
+  testWidgets('16,384 ports are bounded in the row and paginated in overview and forwarding', (tester) async {
+    await _pump(tester, service: _PortRangeDocker());
+    await _connectLocal(tester);
+    final row = find.byKey(const ValueKey('docker-container-many-ports'));
+    expect(find.descendant(of: row, matching: find.text('49157/tcp')), findsOneWidget);
+    expect(find.descendant(of: row, matching: find.text('49158/tcp')), findsNothing);
+    expect(find.descendant(of: row, matching: find.text('16384 ports')), findsOneWidget);
+    expect(find.byKey(const ValueKey('docker-container-next-container')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('docker-name-many-ports')));
+    await settle(tester);
+
+    final overview = find.byKey(const ValueKey('docker-overview'));
+    final ports = find.descendant(of: overview, matching: find.byKey(const ValueKey('docker-ports')));
+    final next = find.descendant(of: overview, matching: find.byKey(const ValueKey('docker-ports-next')));
+    await tester.ensureVisible(next);
+    expect(find.descendant(of: ports, matching: find.byType(SelectableText)), findsNWidgets(20));
+    expect(find.descendant(of: ports, matching: find.text('49172/tcp')), findsNothing);
+    await tester.tap(next);
+    await settle(tester);
+    expect(find.descendant(of: ports, matching: find.text('49152/tcp')), findsNothing);
+    expect(find.descendant(of: ports, matching: find.text('49172/tcp')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('docker-details-forward')));
+    await settle(tester);
+    final dialog = find.byKey(const ValueKey('docker-forward-dialog'));
+    final nextForward = find.descendant(of: dialog, matching: find.byKey(const ValueKey('docker-ports-next')));
+    expect(find.descendant(of: dialog, matching: find.byType(ChoiceChip)), findsNWidgets(20));
+    await tester.tap(nextForward);
+    await settle(tester);
+    expect(
+      find.descendant(of: dialog, matching: find.byKey(const ValueKey('docker-forward-port-49172'))),
+      findsOneWidget,
+    );
+    final input = find.byKey(const ValueKey('docker-forward-remote'));
+    await tester.enterText(input, '65535');
+    expect(tester.widget<TextField>(input).controller!.text, '65535');
+  });
+
   testWidgets('without a native Docker service the section says it is unavailable', (tester) async {
     await _pump(tester, available: false);
     expect(find.byKey(const ValueKey('docker-unavailable')), findsOneWidget);
     expect(find.text('Docker is unavailable'), findsOneWidget);
   });
+
+  testWidgets('an unlocked desktop shows WSLc only on Windows', (tester) async {
+    final backend = testBackend();
+    await backend.debugSignInDemoAndUnlock();
+    await _pump(tester, signedIn: backend);
+    expect(
+      find.byKey(const ValueKey('docker-open-wslc')),
+      defaultTargetPlatform == TargetPlatform.windows ? findsOneWidget : findsNothing,
+    );
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}));
 
   testWidgets('picking a host lists containers grouped by compose project', (tester) async {
     await _pump(tester);

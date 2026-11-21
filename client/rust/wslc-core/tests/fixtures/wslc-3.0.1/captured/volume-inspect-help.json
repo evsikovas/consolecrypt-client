@@ -1,0 +1,13 @@
+{
+  "executable": "C:\\Program Files\\WSL\\wslc.exe",
+  "arguments": [
+    "volume",
+    "inspect",
+    "--help"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-8",
+  "stdout": "(c) Корпорация Майкрософт (Microsoft Corporation). Все права защищены.\r\nСведения о конфиденциальности этого продукта см. на странице https://aka.ms/privacy.\r\n\r\nОтобразить подробную информацию об одном или нескольких томах.\r\n\r\nИспользование:  wslc volume inspect [параметры] <volume-name>...\r\n\r\nАргументы:\r\n  volume-name  Имя тома\r\n\r\nПараметры:\r\n  -f  --format   Форматирование вывода — json для однострочного вывода (по умолчанию: JSON с отступами)\r\n  -?  --help     Отображает справку по выбранной команде\r\n\r\nОбщие параметры для \"wslc\":\r\n      --session  Укажите сеанс для использования\r\n",
+  "stderr": ""
+}

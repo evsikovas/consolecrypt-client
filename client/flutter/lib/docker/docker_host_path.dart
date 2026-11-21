@@ -16,11 +16,12 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+
 /// Whether a host path of [session] can be browsed. Bind sources always
 /// can; named volumes live in `/var/lib/docker/volumes`, which on macOS and
 /// Windows is inside Docker's virtual machine when Docker runs locally.
 bool dockerHostPathReachable(DockerSessionInfo session, {required bool volume}) =>
-    !volume || session.hostId != DockerHost.localId || AppPlatform.isLinux;
+    !volume || !DockerHost.isLocalId(session.hostId) || AppPlatform.isLinux;
 
 /// A bind source as reported by a local Docker Desktop engine → the path on
 /// this computer (`/host_mnt/Users/…` on macOS, `/run/desktop/mnt/host/c/…`
@@ -45,7 +46,7 @@ String dockerLocalPath(String source, {bool? windows}) {
 /// host (a file opens its folder with the file selected); for Docker on
 /// this computer in the system file manager.
 Future<void> openDockerHostPath(BuildContext context, WidgetRef ref, DockerSessionInfo session, String path) async {
-  if (session.hostId == DockerHost.localId) return _revealLocal(context, dockerLocalPath(path));
+  if (DockerHost.isLocalId(session.hostId)) return _revealLocal(context, dockerLocalPath(path));
   final id = ObjectId(session.hostId);
   final host = ref.read(hostByIdProvider)[id] ?? await _loadHost(ref, id);
   if (!context.mounted) return;
@@ -151,7 +152,7 @@ class DockerHostPathLink extends ConsumerWidget {
       final plain = Text(text, key: ValueKey('docker-path-disabled-$path'), style: base);
       return path.isEmpty ? plain : Tooltip(message: l.dockerVolumeInVm, child: plain);
     }
-    final action = session.hostId == DockerHost.localId ? revealLabel(l) : l.dockerOpenInSftp;
+    final action = DockerHost.isLocalId(session.hostId) ? revealLabel(l) : l.dockerOpenInSftp;
     return Align(
       alignment: AlignmentDirectional.centerStart,
       widthFactor: 1,

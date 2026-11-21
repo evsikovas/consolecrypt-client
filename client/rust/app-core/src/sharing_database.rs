@@ -93,6 +93,7 @@ impl SharedDbRoute {
                 target_name: target_name.clone(),
             }),
             (Self::Docker { container }, DbRoute::Docker { host_id, .. }) => Ok(DbRoute::Docker {
+                local_engine_id: None,
                 host_id,
                 container: container.clone(),
             }),
@@ -177,7 +178,7 @@ pub(crate) async fn prepare(
     // A device-local connection (`DbEngine::local_only`) is never shared;
     // it is not in the vault working set either.
     let connection = u.working().db_connection(id).ok_or_else(invalid)?;
-    if connection.engine.local_only() {
+    if connection.local_only() {
         return Err(AppError::invalid("database", "local_only"));
     }
     let mut ids = vec![connection.id];
@@ -269,7 +270,7 @@ async fn persist(
     secrets: Vec<Secret>,
 ) -> AppResult<DbConnection> {
     // Engines kept on one device are never received into the vault.
-    if connection.engine.local_only() {
+    if connection.local_only() {
         return Err(AppError::invalid("database", "local_only"));
     }
     let mut references = connection.clone();
@@ -374,6 +375,7 @@ impl SharedDbProjection {
                 target_name: String::new(),
             },
             SharedDbRoute::Docker { .. } => DbRoute::Docker {
+                local_engine_id: None,
                 host_id: None,
                 container: String::new(),
             },
@@ -570,6 +572,7 @@ mod tests {
         assert!(projection
             .instantiate(
                 DbRoute::Docker {
+                    local_engine_id: None,
                     host_id: None,
                     container: "db".into()
                 },
@@ -612,6 +615,7 @@ mod tests {
         );
         assert!(!received.production);
         connection.route = DbRoute::Docker {
+            local_engine_id: None,
             host_id: Some(ObjectId::new()),
             container: "redis-1".into(),
         };
@@ -619,6 +623,7 @@ mod tests {
         let (received, _) = projection
             .instantiate(
                 DbRoute::Docker {
+                    local_engine_id: None,
                     host_id: None,
                     container: "ignored".into(),
                 },
@@ -628,6 +633,7 @@ mod tests {
         assert_eq!(
             received.route,
             DbRoute::Docker {
+                local_engine_id: None,
                 host_id: None,
                 container: "redis-1".into(),
             }

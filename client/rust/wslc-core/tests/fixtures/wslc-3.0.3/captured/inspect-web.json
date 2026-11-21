@@ -1,0 +1,63 @@
+[
+  {
+    "Config": {
+      "Cmd": [
+        "nginx",
+        "-g",
+        "daemon off;"
+      ],
+      "Entrypoint": null,
+      "Env": [
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      ],
+      "Healthcheck": null,
+      "Image": "mcr.microsoft.com/azurelinux/base/nginx:1.30",
+      "Labels": {},
+      "StopTimeout": null,
+      "User": "",
+      "WorkingDir": "/"
+    },
+    "Created": "2026-10-01T21:27:11.30526971Z",
+    "HostConfig": {
+      "Memory": 0,
+      "NanoCpus": 0,
+      "NetworkMode": "bridge",
+      "Ulimits": []
+    },
+    "Id": "89df7a8a5158f56eb4789ecd38ee430f824d2d400babd17353103f98a9e4e115",
+    "Image": "sha256:bdce337470f00c0a5451599e18d7d9c856e6a1635a10ac61b855376c751d607a",
+    "Labels": {},
+    "Mounts": [],
+    "Name": "/wslc-desk-web",
+    "NetworkSettings": {
+      "Networks": {
+        "bridge": {
+          "Aliases": [],
+          "DriverOpts": {},
+          "Gateway": "172.17.0.1",
+          "IPAMConfig": null,
+          "IPAddress": "172.17.0.2",
+          "IPPrefixLen": 16,
+          "Links": [],
+          "MacAddress": "02:42:ac:11:00:02"
+        }
+      }
+    },
+    "Ports": {
+      "80/tcp": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "18080"
+        }
+      ]
+    },
+    "State": {
+      "ExitCode": 255,
+      "FinishedAt": "2026-10-08T08:15:28.995095433Z",
+      "Health": null,
+      "Running": false,
+      "StartedAt": "2026-10-01T21:27:31.64276751Z",
+      "Status": "exited"
+    }
+  }
+]

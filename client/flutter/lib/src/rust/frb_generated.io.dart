@@ -30,6 +30,7 @@ import 'api/sharing.dart';
 import 'api/ssh.dart';
 import 'api/sync.dart';
 import 'api/teams.dart';
+import 'api/wslc.dart';
 
 import 'dart:async';
 import 'dart:convert';

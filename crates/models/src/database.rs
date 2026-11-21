@@ -159,6 +159,9 @@ pub enum DbRoute {
         #[serde(default)]
         host_id: Option<ObjectId>,
         container: String,
+        /// A particular engine on this device. Never written to the synced vault.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        local_engine_id: Option<String>,
     },
 }
 
@@ -174,6 +177,14 @@ pub enum DbKubeTargetKind {
 }
 
 impl DbRoute {
+    pub fn local_docker_engine(&self) -> Option<&str> {
+        match self {
+            Self::Docker {
+                local_engine_id, ..
+            } => local_engine_id.as_deref(),
+            _ => None,
+        }
+    }
     pub fn reference(&self) -> Option<ObjectId> {
         match self {
             Self::Direct => None,
@@ -187,6 +198,26 @@ impl DbRoute {
     }
 
     fn validate(&self) -> Result<(), ValidationError> {
+        if let Self::Docker {
+            host_id,
+            local_engine_id: Some(engine),
+            ..
+        } = self
+        {
+            if host_id.is_some()
+                || !engine.starts_with("local/")
+                || engine.len() > 512
+                || engine.split('/').any(|part| {
+                    part.is_empty()
+                        || matches!(part, "." | "..")
+                        || !part
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b"_.-".contains(&b))
+                })
+            {
+                return Err(invalid("route", "invalid local Docker engine"));
+            }
+        }
         if let Self::Docker { container, .. } = self {
             // Docker container names: [a-zA-Z0-9][a-zA-Z0-9_.-]*
             if container.is_empty()
@@ -469,6 +500,11 @@ pub struct DbConnection {
 }
 
 impl DbConnection {
+    /// Engines introduced later, and routes to named device-local Docker engines,
+    /// start in encrypted local storage. A local route must never be synced.
+    pub fn local_only(&self) -> bool {
+        self.engine.local_only() || self.route.local_docker_engine().is_some()
+    }
     pub fn new(name: impl Into<String>, host: impl Into<String>, engine: DbEngine) -> Self {
         let now = chrono::Utc::now();
         Self {
@@ -779,6 +815,7 @@ mod tests {
                 host_id: ObjectId::new(),
             },
             DbRoute::Docker {
+                local_engine_id: None,
                 host_id: None,
                 container: "app".into(),
             },
@@ -970,6 +1007,7 @@ mod tests {
         let host_id = ObjectId::new();
         for host in [None, Some(host_id)] {
             value.route = DbRoute::Docker {
+                local_engine_id: None,
                 host_id: host,
                 container: "shop-postgres-1".into(),
             };
@@ -986,18 +1024,21 @@ mod tests {
         assert_eq!(
             local,
             DbRoute::Docker {
+                local_engine_id: None,
                 host_id: None,
                 container: "pg".into()
             }
         );
         for name in ["", "/pg", "-pg", "pg db", "pg/1"] {
             value.route = DbRoute::Docker {
+                local_engine_id: None,
                 host_id: None,
                 container: name.into(),
             };
             assert!(value.validate().is_err(), "{name}");
         }
         value.route = DbRoute::Docker {
+            local_engine_id: None,
             host_id: Some(ObjectId::NIL),
             container: "pg".into(),
         };
@@ -1080,6 +1121,52 @@ mod tests {
         let mut json = serde_json::to_value(&value).unwrap();
         json["options"]["ssl_context"] = serde_json::json!("insecure");
         assert!(serde_json::from_value::<DbConnection>(json).is_err());
+    }
+
+    #[test]
+    fn named_local_docker_route_preserves_engine_and_old_wire_format() {
+        let legacy = DbRoute::Docker {
+            host_id: None,
+            container: "db".into(),
+            local_engine_id: None,
+        };
+        assert_eq!(
+            serde_json::to_value(&legacy).unwrap(),
+            serde_json::json!({"kind":"docker","host_id":null,"container":"db"})
+        );
+        let mut connection = DbConnection::new("fixture", "127.0.0.1", DbEngine::Postgresql);
+        connection.route = DbRoute::Docker {
+            host_id: None,
+            container: "db".into(),
+            local_engine_id: Some("local/context/colima-work".into()),
+        };
+        connection.validate().unwrap();
+        assert!(connection.local_only());
+        let round: DbConnection =
+            serde_json::from_value(serde_json::to_value(&connection).unwrap()).unwrap();
+        assert_eq!(
+            round.route.local_docker_engine(),
+            Some("local/context/colima-work")
+        );
+        for engine in [
+            "ssh/prod",
+            "local/../escape",
+            "local/",
+            "local/context/bad name",
+        ] {
+            connection.route = DbRoute::Docker {
+                host_id: None,
+                container: "db".into(),
+                local_engine_id: Some(engine.into()),
+            };
+            assert!(connection.validate().is_err());
+        }
+        connection.route = DbRoute::Docker {
+            host_id: Some(ObjectId::new()),
+            container: "db".into(),
+            local_engine_id: Some("local/orbstack".into()),
+        };
+        assert!(connection.validate().is_err());
     }
 
     #[test]

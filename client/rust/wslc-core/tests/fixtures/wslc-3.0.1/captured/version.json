@@ -1,0 +1,11 @@
+{
+  "executable": "C:\\Program Files\\WSL\\wslc.exe",
+  "arguments": [
+    "version"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-8",
+  "stdout": "wslc 3.0.1.0\r\n",
+  "stderr": ""
+}

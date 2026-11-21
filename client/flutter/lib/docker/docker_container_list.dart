@@ -395,7 +395,8 @@ class DockerContainerRow extends StatelessWidget {
     final running = container.state == DockerContainerState.running;
     final active = dockerIsActive(container.state);
     final health = dockerHealth(l, container.health);
-    final ports = formatDockerPorts(container.ports);
+    const portPreviewLimit = 6;
+    final ports = formatDockerPorts(container.ports, limit: portPreviewLimit);
     final database = actions.databaseTarget(container);
     final caption = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
     Widget quick(String key, IconData icon, String tooltip, VoidCallback? onPressed, {Color? color}) => GlassIconButton(
@@ -502,6 +503,8 @@ class DockerContainerRow extends StatelessWidget {
                               key: ValueKey('docker-port-${container.id}-$port'),
                               style: tokens.typography.mono.copyWith(fontSize: 11, color: p.accent),
                             ),
+                          if (ports.length == portPreviewLimit && container.ports.length > portPreviewLimit)
+                            Text(l.dockerPortCount(container.ports.length), style: caption),
                         ],
                       ),
                     ],

@@ -87,10 +87,13 @@ impl AppCore {
         // unless the connection was moved into the vault
         // (database_vault_move).
         let in_vault = !creating && unlocked.working().db_connection(connection.id).is_some();
+        if in_vault && connection.route.local_docker_engine().is_some() {
+            return Err(invalid("local_only"));
+        }
         let local =
             !creating && !in_vault && self.db_saved_connection(connection.id).await?.is_some();
-        if (connection.engine.local_only() && !in_vault) || local {
-            if !connection.engine.local_only() || (!creating && !local) {
+        if (connection.local_only() && !in_vault) || local {
+            if (creating && !connection.local_only()) || (!creating && !local) {
                 // An engine never moves between the vault and this device.
                 return Err(invalid("engine_changed"));
             }
@@ -253,5 +256,75 @@ mod tests {
             Some(SecretValue::new("private-key-without-certificate")),
         )
         .is_err());
+    }
+
+    #[tokio::test]
+    async fn named_local_docker_connection_and_credentials_never_enter_the_synced_vault() {
+        use cc_models::database::{DbEngine, DbRoute};
+        let root = tempfile::tempdir().unwrap();
+        let app = AppCore::new(crate::AppConfig::for_tests(
+            root.path().to_string_lossy().into_owned(),
+        ))
+        .unwrap();
+        app.create_local_profile(
+            "docker engines".into(),
+            "synthetic-local-engine-passphrase".into(),
+        )
+        .await
+        .unwrap();
+        let mut draft = DbConnection::new("local-db", "127.0.0.1", DbEngine::Postgresql);
+        draft.id = ObjectId::NIL;
+        draft.route = DbRoute::Docker {
+            host_id: None,
+            container: "db".into(),
+            local_engine_id: Some("local/colima/work".into()),
+        };
+        let saved = app
+            .db_save_connection(
+                draft,
+                Some(SecretValue::new("SYNTHETIC_LOCAL_ENGINE_PASSWORD")),
+                None,
+            )
+            .await
+            .unwrap();
+        let (_, unlocked) = app.unlocked().await.unwrap();
+        assert!(unlocked.working().db_connection(saved.id).is_none());
+        let secret = saved.auth.password_secret_id.unwrap();
+        assert!(unlocked.working().kind_of(secret).is_none());
+        assert!(app.db_local_secret(secret).await.unwrap().is_some());
+        assert!(app
+            .db_device_only_ids()
+            .await
+            .unwrap()
+            .contains(&saved.id.to_string()));
+        assert_eq!(
+            app.db_saved_connection(saved.id)
+                .await
+                .unwrap()
+                .unwrap()
+                .route
+                .local_docker_engine(),
+            Some("local/colima/work")
+        );
+        assert!(app
+            .db_move_connection_to_vault(saved.id.to_string())
+            .await
+            .is_err());
+        let mut normal = DbConnection::new("vault-db", "db.example.test", DbEngine::Postgresql);
+        normal.id = ObjectId::NIL;
+        let mut normal = app.db_save_connection(normal, None, None).await.unwrap();
+        normal.route = saved.route.clone();
+        assert!(app
+            .db_save_connection(normal.clone(), None, None)
+            .await
+            .is_err());
+        assert_eq!(
+            app.db_saved_connection(normal.id)
+                .await
+                .unwrap()
+                .unwrap()
+                .route,
+            DbRoute::Direct
+        );
     }
 }

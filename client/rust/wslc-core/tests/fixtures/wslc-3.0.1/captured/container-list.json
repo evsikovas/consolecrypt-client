@@ -1,0 +1,16 @@
+{
+  "executable": "C:\\Program Files\\WSL\\wslc.exe",
+  "arguments": [
+    "container",
+    "list",
+    "--all",
+    "--no-trunc",
+    "--format",
+    "json"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-8",
+  "stdout": "",
+  "stderr": ""
+}

@@ -1,0 +1,3 @@
+{"ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Names":"веб-сервер","Image":"example/web:local","State":"running","Ports":"127.0.0.1:8080->80/tcp","HealthStatus":"","CreatedAt":"2026-10-01 10:00:00 +0300 MSK"}
+{"ID":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","Names":"worker","Image":"example/worker:local","State":"exited","Ports":"","HealthStatus":""}
+{"ID":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","Names":"new-state","State":"future-state"}

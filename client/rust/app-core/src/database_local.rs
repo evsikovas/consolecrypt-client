@@ -37,7 +37,9 @@ fn decode(values: &[serde_json::Value]) -> Vec<DbConnection> {
     values
         .iter()
         .filter_map(|value| serde_json::from_value::<DbConnection>(value.clone()).ok())
-        .filter(|connection| connection.engine.local_only() && connection.validate().is_ok())
+        .filter(|connection| {
+            connection.engine != DbEngine::Unknown && connection.validate().is_ok()
+        })
         .collect()
 }
 
@@ -82,7 +84,7 @@ impl AppCore {
         creating: bool,
     ) -> AppResult<DbConnection> {
         let (owner, unlocked) = self.unlocked().await?;
-        if !connection.engine.local_only() || connection.engine == DbEngine::Unknown {
+        if (creating && !connection.local_only()) || connection.engine == DbEngine::Unknown {
             return Err(invalid("engine_unavailable"));
         }
         let existing = if creating {
@@ -193,13 +195,22 @@ impl AppCore {
                     scope: cancel.clone(),
                 })
             }
-            DbRoute::Docker { host_id, container } => {
-                let mut sessions = unlocked.docker.session_ids(*host_id);
+            DbRoute::Docker {
+                host_id,
+                container,
+                local_engine_id,
+            } => {
+                let mut sessions = local_engine_id.as_deref().map_or_else(
+                    || unlocked.docker.session_ids(*host_id),
+                    |engine| unlocked.docker.local_session_ids(engine),
+                );
                 if sessions.is_empty() {
-                    let host = host_id.map_or_else(
-                        || crate::docker_runtime::LOCAL_HOST.to_owned(),
-                        |id| id.to_string(),
-                    );
+                    let host = local_engine_id.clone().unwrap_or_else(|| {
+                        host_id.map_or_else(
+                            || crate::docker_runtime::LOCAL_HOST.to_owned(),
+                            |id| id.to_string(),
+                        )
+                    });
                     match self.docker_connect(host).await {
                         Ok(crate::docker_runtime::DockerConnectOutcome::Connected(session)) => {
                             sessions.push(session.id)
@@ -570,14 +581,16 @@ mod tests {
         future["id"] = serde_json::json!(ObjectId::new().to_string());
         future["engine"] = serde_json::json!("graphdb");
         future["options"] = serde_json::json!({"kind": "graphdb"});
-        let synced = DbConnection::new("pg", "db.example.test", DbEngine::Postgresql);
+        // Editing a device-local Docker route to direct must retain its
+        // device-local record, even for an otherwise syncable engine.
+        let local_pg = DbConnection::new("pg", "db.example.test", DbEngine::Postgresql);
         let values = vec![
             serde_json::to_value(&sqlite).unwrap(),
             future,
             serde_json::json!({"broken": true}),
-            serde_json::to_value(&synced).unwrap(),
+            serde_json::to_value(&local_pg).unwrap(),
         ];
-        assert_eq!(decode(&values), vec![sqlite.clone()]);
+        assert_eq!(decode(&values), vec![sqlite.clone(), local_pg]);
         assert!(same_id(&values[0], sqlite.id));
     }
 }

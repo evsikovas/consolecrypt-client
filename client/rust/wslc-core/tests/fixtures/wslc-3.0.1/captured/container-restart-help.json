@@ -1,0 +1,13 @@
+{
+  "executable": "C:\\Program Files\\WSL\\wslc.exe",
+  "arguments": [
+    "container",
+    "restart",
+    "--help"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-8",
+  "stdout": "(c) Корпорация Майкрософт (Microsoft Corporation). Все права защищены.\r\nСведения о конфиденциальности этого продукта см. на странице https://aka.ms/privacy.\r\n\r\nПерезапускает контейнеры. Контейнеры, которые не запущены, будут запущены.\r\n\r\nИспользование:  wslc container restart [параметры] <container-id>...\r\n\r\nПсевдонимы:\r\n  wslc container restart, wslc restart\r\n\r\nАргументы:\r\n  container-id  ИД контейнера\r\n\r\nПараметры:\r\n  -s  --signal   Сигнал для отправки (по умолчанию — настроенный сигнал STOPSIGNAL контейнера или SIGTERM, если он не настроен)\r\n  -t  --timeout  Время ожидания в секундах перед завершением работы контейнера (по умолчанию: настроенное для контейнера время ожидания остановки)\r\n  -?  --help     Отображает справку по выбранной команде\r\n\r\nОбщие параметры для \"wslc\":\r\n      --session  Укажите сеанс для использования\r\n",
+  "stderr": ""
+}

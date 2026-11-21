@@ -18,12 +18,19 @@ final class DockerDbTarget {
 /// a standard database port, or null. The image tells MariaDB from MySQL;
 /// otherwise the port decides.
 DockerDbTarget? dockerDatabaseTarget(DockerContainer container, [DockerJson? inspect]) {
-  final ports = dockerForwardablePorts(container, inspect);
-  final byPort = ports.map(dbEngineForPort).nonNulls.firstOrNull;
-  if (byPort == null) return null;
   final byImage = dbEngineForImage(container.image);
-  final engine = byImage != null && ports.contains(dbForwardPort(byImage)) ? byImage : byPort;
-  return DockerDbTarget(engine: engine, remotePort: dbForwardPort(engine));
+  int? lowestMatch;
+  for (final port in dockerDeclaredTcpPorts(container, inspect)) {
+    if (byImage != null && port == dbForwardPort(byImage)) {
+      return DockerDbTarget(engine: byImage, remotePort: port);
+    }
+    if (dbStandardPorts.containsKey(port) && (lowestMatch == null || port < lowestMatch)) {
+      lowestMatch = port;
+    }
+  }
+  final byPort = dbStandardPorts[lowestMatch];
+  if (byPort == null) return null;
+  return DockerDbTarget(engine: byPort, remotePort: dbForwardPort(byPort));
 }
 
 /// Where a saved connection finds the database without a temporary forward.
@@ -40,7 +47,7 @@ const _loopbackBinds = {'', '0.0.0.0', '::', '127.0.0.1'}; // l10n-ignore: addre
 /// Null when only a temporary forward can reach it (an unpublished port of
 /// a local container, or a remote one without an IP).
 DockerDbEndpoint? dockerDatabaseEndpoint(DockerSessionInfo session, DockerContainer container, int remotePort) {
-  final local = session.hostId == DockerHost.localId;
+  final local = DockerHost.isLocalId(session.hostId);
   final route = local ? const DbRoute() : DbRoute(kind: DbRouteKind.ssh, reference: session.hostId);
   final bindings = [
     for (final port in container.ports)
@@ -81,7 +88,8 @@ DockerDbEndpoint dockerForwardEndpoint(DockerSessionInfo session, DockerContaine
   port: remotePort,
   route: DbRoute(
     kind: DbRouteKind.docker,
-    reference: session.hostId == DockerHost.localId ? null : session.hostId,
+    reference: DockerHost.isLocalId(session.hostId) ? null : session.hostId,
+    localEngineId: session.hostId.startsWith('local/') ? session.hostId : null,
     container: container.name,
   ),
 );
@@ -120,7 +128,7 @@ Future<void> connectDockerDatabase(
     database: hints.database,
     user: hints.user,
     // A remote engine may be production; the form lets the user say otherwise.
-    production: session.hostId != DockerHost.localId,
+    production: !DockerHost.isLocalId(session.hostId),
     tag: 'docker', // l10n-ignore: tag
   );
 }

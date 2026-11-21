@@ -22,6 +22,14 @@ class _Databases implements DbService {
   Future<DbConnectionChoices> connectionChoices() async => const DbConnectionChoices(
     routes: [
       DbRouteChoice(
+        route: DbRoute(kind: DbRouteKind.docker, localEngineId: 'local/orbstack'),
+        label: 'OrbStack',
+      ),
+      DbRouteChoice(
+        route: DbRoute(kind: DbRouteKind.docker, localEngineId: 'local/colima/work'),
+        label: 'Colima (work)',
+      ),
+      DbRouteChoice(
         route: DbRoute(kind: DbRouteKind.ssh, reference: 'ssh-web'),
         label: 'web-01',
       ),
@@ -130,6 +138,67 @@ DbConnection _connection(DbRoute route, {String host = '127.0.0.1', int port = 5
 AppLocalizations _l(WidgetTester tester) => tester.element(find.byType(DbConnectionDialog)).l10n;
 
 void main() {
+  testWidgets('an existing vault entry cannot be silently moved to a device-only engine', (tester) async {
+    final service = _Databases();
+    await _pump(
+      tester,
+      service,
+      connection: _connection(const DbRoute(kind: DbRouteKind.docker, container: 'pg-1')),
+    );
+    expect(find.byKey(const ValueKey('db-local-engine-new-help')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('db-docker-engine')));
+    await tester.tap(find.byKey(const ValueKey('db-docker-engine')));
+    await settle(tester);
+    expect(find.text('OrbStack'), findsNothing);
+    expect(find.text('Colima (work)'), findsNothing);
+    expect(find.text('web-01'), findsOneWidget);
+    await tester.tap(find.text('web-01'));
+    await settle(tester);
+    await tapKey(tester, 'db-save');
+    expect(service.saved.single.route.reference, 'ssh-web');
+    expect(service.saved.single.route.localEngineId, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('editing and switching named local Docker engines preserves the device-only route', (tester) async {
+    final service = _Databases();
+    await _pump(
+      tester,
+      service,
+      connection: _connection(
+        const DbRoute(kind: DbRouteKind.docker, localEngineId: 'local/orbstack', container: 'pg-1'),
+      ),
+    );
+    expect(find.text('OrbStack'), findsOneWidget);
+    await _choose(tester, 'db-docker-engine', 'Colima (work)');
+    await tapKey(tester, 'db-save');
+    final saved = service.saved.single;
+    expect(saved.route.toJson(), {
+      'kind': 'docker',
+      'host_id': null,
+      'container': 'pg-1',
+      'local_engine_id': 'local/colima/work',
+    });
+    expect(saved.deviceOnly, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a disconnected named engine is retained when editing another field', (tester) async {
+    final service = _Databases();
+    await _pump(
+      tester,
+      service,
+      connection: _connection(
+        const DbRoute(kind: DbRouteKind.docker, localEngineId: 'local/colima/offline', container: 'pg-1'),
+      ),
+    );
+    await enterKey(tester, 'db-field-name', 'offline database');
+    await tapKey(tester, 'db-save');
+    expect(service.saved.single.route.localEngineId, 'local/colima/offline');
+    expect(service.saved.single.route.reference, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a Kubernetes route is shown with its workload and saved as edited', (tester) async {
     final service = _Databases();
     await _pump(

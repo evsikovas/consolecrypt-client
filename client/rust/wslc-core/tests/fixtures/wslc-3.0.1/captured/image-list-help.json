@@ -1,0 +1,13 @@
+{
+  "executable": "C:\\Program Files\\WSL\\wslc.exe",
+  "arguments": [
+    "image",
+    "list",
+    "--help"
+  ],
+  "exitCode": 0,
+  "timedOut": false,
+  "encoding": "utf-8",
+  "stdout": "(c) Корпорация Майкрософт (Microsoft Corporation). Все права защищены.\r\nСведения о конфиденциальности этого продукта см. на странице https://aka.ms/privacy.\r\n\r\nПоказать список изображений.\r\n\r\nИспользование:  wslc image list [параметры]\r\n\r\nПсевдонимы:\r\n  wslc image list, wslc image ls, wslc images\r\n\r\nПараметры:\r\n  -a  --all       Показать все изображения (по умолчанию промежуточные изображения скрываются).\r\n      --digests   Показать дайджест изображений\r\n  -f  --filter    Отфильтровать вывод по заданным условиям\r\n      --format    Формат вывода (json или table) (по умолчанию: table)\r\n      --no-trunc  Не обрезайте вывод\r\n  -q  --quiet     Выводит только идентификаторы контейнеров\r\n      --verbose   Вывести подробные данные\r\n  -?  --help      Отображает справку по выбранной команде\r\n\r\nОбщие параметры для \"wslc\":\r\n      --session   Укажите сеанс для использования\r\n",
+  "stderr": ""
+}

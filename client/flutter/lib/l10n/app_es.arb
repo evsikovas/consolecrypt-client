@@ -5106,5 +5106,16 @@
   "dockerKubeCheckStatus": "Comprobar disponibilidad",
   "dockerKubeUnavailable": "Los contextos de Kubernetes guardados o las API nativas necesarias no están disponibles.",
   "dockerKubeAiFailed": "La IA no pudo generar una respuesta completa. Puedes usar la plantilla.",
-  "dockerKubeContext": "Contexto de Kubernetes"
+  "dockerKubeContext": "Contexto de Kubernetes",
+  "dbLocalEngineNewConnectionHelp": "Elige Este equipo para la conexión guardada o crea una conexión nueva para vincularla a un motor local concreto.",
+  "composeAiGenerate": "Generar Compose con IA",
+  "composeAiContextHelp": "Describe los servicios que necesitas. Solo se envía la descripción. El YAML actual, el entorno del contenedor y los secretos se quedan en el dispositivo.",
+  "composeAiDescription": "¿Qué debe ejecutar el proyecto de Compose?",
+  "composeAiReview": "Revisa el YAML propuesto. Al insertarlo se abre el plan. Puedes iniciar los servicios por separado.",
+  "composeAiUse": "Insertar en el editor",
+  "composeAiInvalid": "La IA no devolvió un documento YAML de Compose válido. Ajusta la descripción y vuelve a intentarlo.",
+  "composeAiReplaceTitle": "¿Reemplazar YAML?",
+  "composeAiReplaceHelp": "El editor ya contiene datos. ¿Quieres sustituirlos por la propuesta de la IA?",
+  "dockerPortCount": "{total} puertos",
+  "dockerPortRange": "{start}–{end} de {total}"
 }

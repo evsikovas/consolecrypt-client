@@ -26,6 +26,8 @@
 
 pub mod api;
 mod state;
+#[cfg(windows)]
+mod wslc_runtime;
 
 #[cfg(target_os = "android")]
 #[allow(unsafe_code)] // JNI boundary; see safety notes in the module.

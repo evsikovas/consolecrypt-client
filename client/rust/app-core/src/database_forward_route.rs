@@ -192,20 +192,26 @@ impl AppCore {
         &self,
         unlocked: &Arc<Unlocked>,
         host_id: Option<ObjectId>,
+        local_engine_id: Option<&str>,
         container: &str,
         port: u16,
     ) -> AppResult<SocketAddr> {
-        let mut sessions = unlocked.docker.session_ids(host_id);
+        let mut sessions = local_engine_id.map_or_else(
+            || unlocked.docker.session_ids(host_id),
+            |engine| unlocked.docker.local_session_ids(engine),
+        );
         if let Some(address) = unlocked.docker.running_forward(&sessions, container, port) {
             return address
                 .parse()
                 .map_err(|_| failure("docker_forward_failed"));
         }
         if sessions.is_empty() {
-            let host = host_id.map_or_else(
-                || crate::docker_runtime::LOCAL_HOST.to_owned(),
-                |id| id.to_string(),
-            );
+            let host = local_engine_id.map(str::to_owned).unwrap_or_else(|| {
+                host_id.map_or_else(
+                    || crate::docker_runtime::LOCAL_HOST.to_owned(),
+                    |id| id.to_string(),
+                )
+            });
             match self.docker_connect(host).await {
                 Ok(crate::docker_runtime::DockerConnectOutcome::Connected(session)) => {
                     sessions.push(session.id)
@@ -450,6 +456,7 @@ mod tests {
     async fn docker_route_connects_the_engine_and_reports_it_unreachable() {
         let (_dir, app, host) = app().await;
         let route = DbRoute::Docker {
+            local_engine_id: None,
             host_id: Some(host.id.parse().unwrap()),
             container: "shop-postgres-1".into(),
         };
@@ -460,6 +467,7 @@ mod tests {
         assert!(app
             .db_save_connection(
                 connection(DbRoute::Docker {
+                    local_engine_id: None,
                     host_id: Some(ObjectId::new()),
                     container: "pg".into()
                 }),

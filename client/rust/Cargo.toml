@@ -20,6 +20,7 @@ members = [
     "k8s-core",
     "db-core",
     "docker-core",
+    "wslc-core",
     "automation-core",
     "app-core",
     "cc-cli",
@@ -69,6 +70,7 @@ cc-ai-core = { path = "ai-core" }
 cc-k8s-core = { path = "k8s-core" }
 cc-db-core = { path = "db-core" }
 cc-docker-core = { path = "docker-core" }
+cc-wslc-core = { path = "wslc-core" }
 cc-app-core = { path = "app-core" }
 
 # common third-party

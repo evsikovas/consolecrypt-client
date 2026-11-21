@@ -74,10 +74,21 @@ pub async fn db_save_connection(
     let password = opt_secret_string("password", password)?.map(SecretValue::new);
     let private_key = opt_secret_string("private_key", private_key)?.map(SecretValue::new);
     with_core(move |c| async move {
-        to_json(
-            &c.db_save_connection(connection, password, private_key)
-                .await?,
-        )
+        let saved = c
+            .db_save_connection(connection, password, private_key)
+            .await?;
+        let local = c
+            .db_device_only_ids()
+            .await?
+            .iter()
+            .any(|id| id == &saved.id.to_string());
+        let mut value = serde_json::to_value(saved)
+            .map_err(|_| BridgeError::invalid("connection", "not serializable"))?;
+        value
+            .as_object_mut()
+            .unwrap()
+            .insert("device_only".into(), local.into());
+        to_json(&value)
     })
     .await
 }
