@@ -387,7 +387,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                                 visible: full != null,
                                 child: DbDocumentView(
                                   key: ValueKey(full == null ? 'docker-json-masked-view' : 'docker-json-full-view'),
-                                  document: shown!,
+                                  document: shown,
                                   rawText: json,
                                   onCopySecret: full == null
                                       ? null

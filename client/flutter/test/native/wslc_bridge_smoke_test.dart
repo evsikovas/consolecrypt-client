@@ -65,7 +65,7 @@ void main() {
           expect(connection['host_id'], hostId);
           final sessionId = connection['id'] as String;
           try {
-            expect(jsonDecode(await docker.dockerContainers(sessionId: sessionId, all: true)), isA<List>());
+            expect(jsonDecode(await docker.dockerContainers(sessionId: sessionId, all: true)), isA<List<Object?>>());
           } finally {
             await docker.dockerDisconnect(sessionId: sessionId);
           }
