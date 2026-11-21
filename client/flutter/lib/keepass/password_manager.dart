@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/keepass/kdbx_android_auth.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
+import 'package:consolecrypt/keepass/kdbx_exchange.dart';
 import 'package:consolecrypt/keepass/webdav.dart';
 import 'package:consolecrypt/src/rust/api/password_vault.dart' as native;
 import 'package:crypto/crypto.dart';
@@ -394,6 +395,33 @@ class PasswordManager {
   }
 
   Future<void> save(PasswordVaultSession session) => _enqueue(session, () => _saveNow(session));
+
+  Future<int> previewExchange(PasswordVaultSession session, String path, KdbxExchangeFormat format) => _enqueue(
+    session,
+    () async => (await session.client.request('previewExchange', {'path': path, 'format': format.name}))! as int,
+  );
+
+  Future<void> cancelExchange(PasswordVaultSession session) => _enqueue(session, () async {
+    await session.client.request('cancelExchange');
+  });
+
+  Future<(int, int)> importExchange(PasswordVaultSession session) => _enqueue(session, () async {
+    final data = await _snapshotRequest(session, 'commitExchange');
+    final added = data.remove('added')! as int;
+    final skipped = data.remove('skipped')! as int;
+    if (added != 0) await _saveNow(session);
+    return (added, skipped);
+  });
+
+  Future<Uint8List> exportExchange(PasswordVaultSession session, KdbxExchangeFormat format) =>
+      _enqueue(session, () async {
+        final bytes = (await session.client.request('exportExchange', {'format': format.name}))! as Uint8List;
+        if (!current(session)) {
+          bytes.fillRange(0, bytes.length, 0);
+          throw const KdbxFailure('closed');
+        }
+        return bytes;
+      });
 
   Future<void> _saveNow(PasswordVaultSession session) async {
     if (!current(session)) throw const KdbxFailure('closed');

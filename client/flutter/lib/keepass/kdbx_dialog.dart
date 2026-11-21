@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -11,10 +13,12 @@ import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
 import 'package:consolecrypt/keepass/kdbx_documents.dart';
 import 'package:consolecrypt/keepass/kdbx_entry_icons.dart';
+import 'package:consolecrypt/keepass/kdbx_exchange.dart';
 import 'package:consolecrypt/keepass/kdbx_nerd_icons.dart';
 import 'package:consolecrypt/keepass/kdbx_workspace.dart';
 import 'package:consolecrypt/keepass/password_generator_dialog.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
+import 'package:consolecrypt/keepass/vault_connection_dialog.dart';
 import 'package:consolecrypt/keepass/webdav.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -410,6 +414,92 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
     if (saved && mounted && _current) showSnack(context, context.l10n.keepassSaved);
   });
 
+  Future<void> _exchangeImport(KdbxSource source) => _run(() async {
+    final manager = _manager;
+    final session = manager.sessions[source.id];
+    if (session == null) return;
+    final path = await ref.read(fileDialogServiceProvider).chooseOpenFile(extensions: const ['csv', 'json']);
+    if (!mounted || !_current || !manager.current(session) || path == null) return;
+    final format = switch (p.extension(path).toLowerCase()) {
+      '.csv' => KdbxExchangeFormat.csv,
+      '.json' => KdbxExchangeFormat.json,
+      _ => throw const KdbxFailure('exchangeFormat'),
+    };
+    final count = await manager.previewExchange(session, path, format);
+    try {
+      if (!mounted || !_current || !manager.current(session)) return;
+      final l = context.l10n;
+      if (count == 0) {
+        showSnack(context, l.keepassExchangeEmpty);
+        return;
+      }
+      final accepted = await showConfirmDialog(
+        context,
+        secure: true,
+        title: l.keepassExchangeImport,
+        message: l.keepassExchangeConfirm(count, source.name),
+        confirmLabel: l.keepassExchangeImport,
+      );
+      if (!accepted || !mounted || !_current || !manager.current(session)) return;
+      final (added, skipped) = await manager.importExchange(session);
+      if (mounted && _current) showSnack(context, l.keepassExchangeResult(added, skipped));
+    } finally {
+      if (manager.current(session)) await manager.cancelExchange(session);
+    }
+  });
+
+  Future<void> _exchangeExport(KdbxSource source, KdbxExchangeFormat format) => _run(() async {
+    final manager = _manager;
+    final session = manager.sessions[source.id];
+    if (session == null) return;
+    final l = context.l10n;
+    final label = format == KdbxExchangeFormat.csv ? l.keepassExchangeCsv : l.keepassExchangeJson;
+    final description = format == KdbxExchangeFormat.csv ? l.keepassExchangeCsvHelp : l.keepassExchangeJsonHelp;
+    if (!await showConfirmDialog(
+          context,
+          secure: true,
+          title: label,
+          message: '${l.keepassExchangePlaintext}\n\n$description',
+          confirmLabel: label,
+        ) ||
+        !mounted ||
+        !_current ||
+        !manager.current(session)) {
+      return;
+    }
+    final dialogs = ref.read(fileDialogServiceProvider);
+    final path = await dialogs.chooseSaveFile(suggestedName: 'Passwords.${format.name}', extensions: [format.name]);
+    if (path == null || !mounted || !_current || !manager.current(session)) return;
+    final bytes = await manager.exportExchange(session, format);
+    final target = File(path);
+    var created = false;
+    var written = false;
+    try {
+      if (!_current || !manager.current(session)) return;
+      try {
+        await target.create(exclusive: true);
+      } on PathExistsException {
+        throw const KdbxFailure('exists');
+      }
+      created = true;
+      if (!_current || !manager.current(session)) return;
+      await target.writeAsBytes(bytes, flush: true);
+      written = true;
+      if (!_current || !manager.current(session)) return;
+      final saved = await dialogs.finishSaveFile(path);
+      if (saved && mounted && _current) showSnack(context, l.keepassSaved);
+    } finally {
+      bytes.fillRange(0, bytes.length, 0);
+      if (created && (AppPlatform.isMobile || !written)) {
+        try {
+          await target.delete();
+        } on PathNotFoundException {
+          // The native exporter can already have removed the staged copy.
+        }
+      }
+    }
+  });
+
   Future<void> _protect(String method, {KdbxSource? source}) => _run(() async {
     final session = _manager.sessions[source?.id ?? _manager.selected];
     if (session == null) return;
@@ -475,6 +565,12 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
         unawaited(_lock(source: source));
       case 'export':
         unawaited(_export(source: source));
+      case 'exchange_import':
+        unawaited(_exchangeImport(source));
+      case 'exchange_csv':
+        unawaited(_exchangeExport(source, KdbxExchangeFormat.csv));
+      case 'exchange_json':
+        unawaited(_exchangeExport(source, KdbxExchangeFormat.json));
       case 'settings':
         unawaited(_connection(source.connection));
       case 'remove':
@@ -539,6 +635,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
       onOpen: _open,
       onCreate: () => _open(create: true),
       onWebDav: _connection,
+      onVault: () => showVaultConnections(context),
       onSource: _select,
       onEditSource: (source) => _connection(source.connection),
       onSourceAction: _sourceAction,
@@ -1100,6 +1197,7 @@ String passwordManagerError(AppLocalizations l, Object error) => error is KdbxFa
         'dav_redirect' => l.keepassDavRedirectError,
         'dav_io' || 'dav_http' => l.keepassDavIoError,
         'io' => l.keepassIoError,
+        'exchangeFormat' => l.keepassExchangeFormatError,
         _ => l.keepassFormatError,
       }
     : errorMessage(l, error);

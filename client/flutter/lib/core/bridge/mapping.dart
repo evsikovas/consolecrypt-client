@@ -844,6 +844,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'saved_forwards': [for (final p in s.savedForwards) p.toJson()],
   'password_vault_files': s.passwordVaultFiles,
   'password_vault_recent_by_profile': s.passwordVaultRecentByProfile,
+  'external_vault_connections': s.externalVaultConnections,
   'theme_mode': s.themeMode.name,
   'ui_font_scale': s.uiFontScale,
   'ui_font_scale_version': 2,
@@ -912,6 +913,12 @@ LocalSettings localSettingsFromJson(Json j) {
                 .take(LocalSettings.passwordVaultRecentLimit)
                 .toList(),
     },
+    externalVaultConnections: [
+      for (final row
+          in j['external_vault_connections'] is List ? (j['external_vault_connections'] as List).take(256) : const [])
+        if (row is Map && row.keys.every((key) => key is String) && row.values.every((value) => value is String))
+          Map<String, String>.from(row),
+    ],
     themeMode: _byWire(AppThemeMode.values, (e) => e.name, j['theme_mode'], d.themeMode),
     uiFontScale: normalizedScale.clamp(LocalSettings.uiFontScaleMin, LocalSettings.uiFontScaleMax),
     uiAccentColor: rgb(j['ui_accent_color']),

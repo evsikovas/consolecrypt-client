@@ -2,11 +2,13 @@
 // ignore_for_file: avoid_slow_async_io
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/keepass/kdbx_exchange.dart';
 import 'package:crypto/crypto.dart';
 import 'package:kdbx/kdbx.dart';
 
@@ -154,6 +156,7 @@ class _Document {
   String? _fingerprint;
   bool _dirty = false;
   bool _remote = false;
+  (KdbxExchangeFormat, List<ExchangeEntry>)? _pendingImport;
   KdbxFile get db => _database ?? (throw const KdbxFailure('closed'));
 
   Future<Uint8List> _read(String path, int max) async {
@@ -180,6 +183,68 @@ class _Document {
   }
 
   String _value(KdbxEntry entry, String key) => entry.getString(KdbxKey(key))?.getText() ?? '';
+
+  Iterable<ExchangeEntry> _exchangeEntries() sync* {
+    for (final group in _tree(db.body.rootGroup)) {
+      if (_recycledGroup(group)) continue;
+      final path = group.breadcrumbs.skip(1).map((part) => part.name.get() ?? '').toList();
+      for (final entry in group.entries) {
+        yield ExchangeEntry(
+          kdbxStandardFields.map((key) => _value(entry, key)).toList(),
+          groups: path,
+          custom: {
+            for (final field in entry.stringEntries)
+              if (!kdbxStandardFields.any((key) => key.toLowerCase() == field.key.key.toLowerCase()))
+                field.key.key: field.value?.getText() ?? '',
+          },
+        );
+      }
+    }
+  }
+
+  KdbxData _applyImport() {
+    final batch = _pendingImport ?? (throw const KdbxFailure('format'));
+    _pendingImport = null;
+    final includeCustom = batch.$1 == KdbxExchangeFormat.json;
+    Digest identity(ExchangeEntry entry) => sha256.convert(
+      utf8.encode(
+        jsonEncode([
+          entry.groups,
+          entry.fields,
+          if (includeCustom)
+            [
+              for (final key in entry.custom.keys.toList()..sort()) [key, entry.custom[key]],
+            ],
+        ]),
+      ),
+    );
+    final matches = _exchangeEntries().map(identity).toSet();
+    var added = 0;
+    for (final row in batch.$2) {
+      if (!matches.add(identity(row))) continue;
+      var parent = db.body.rootGroup;
+      for (final name in row.groups) {
+        parent =
+            parent.groups.where((g) => !_recycledGroup(g) && g.name.get() == name).firstOrNull ??
+            db.createGroup(parent: parent, name: name);
+      }
+      final entry = KdbxEntry.create(db, parent);
+      parent.addEntry(entry);
+      for (var i = 0; i < kdbxStandardFields.length; i++) {
+        final key = kdbxStandardFields[i];
+        entry.setString(
+          KdbxKey(key),
+          key == 'Password' ? ProtectedValue.fromString(row.fields[i]) : PlainValue(row.fields[i]),
+        );
+      }
+      for (final field in row.custom.entries) {
+        entry.setString(KdbxKey(field.key), ProtectedValue.fromString(field.value));
+      }
+      added++;
+    }
+    if (added > 0) _dirty = true;
+    return {...snapshot(), 'added': added, 'skipped': batch.$2.length - added};
+  }
 
   bool _validIcon(Uint8List data) {
     if (data.length < 24 || data.length > 48 * 1024) return false;
@@ -329,6 +394,27 @@ class _Document {
         return snapshot();
       case 'compositeKey':
         return Uint8List.fromList(db.credentials.getHash());
+      case 'previewExchange':
+        _pendingImport = null;
+        final format = KdbxExchangeFormat.values.byName(args['format']! as String);
+        final input = await _read(args['path']! as String, kdbxExchangeMaxBytes);
+        try {
+          final entries = decodeKdbxExchange(format, input);
+          _pendingImport = (format, entries);
+          return entries.length;
+        } catch (_) {
+          throw const KdbxFailure('exchangeFormat');
+        } finally {
+          input.fillRange(0, input.length, 0);
+        }
+      case 'cancelExchange':
+        _pendingImport = null;
+        return null;
+      case 'commitExchange':
+        return _applyImport();
+      case 'exportExchange':
+        final format = KdbxExchangeFormat.values.byName(args['format']! as String);
+        return encodeKdbxExchange(format, _exchangeEntries().take(kdbxExchangeMaxEntries + 1).toList());
       case 'export':
         return db.save();
       case 'saved':

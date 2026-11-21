@@ -32,6 +32,7 @@ class KdbxWorkspace extends StatelessWidget {
     required this.onOpen,
     required this.onCreate,
     required this.onWebDav,
+    required this.onVault,
     required this.onSource,
     required this.onEditSource,
     required this.onSourceAction,
@@ -63,7 +64,7 @@ class KdbxWorkspace extends StatelessWidget {
   final TextEditingController search;
   final bool busy;
   final String? error;
-  final VoidCallback onOpen, onCreate, onWebDav, onNewEntry, onNewGroup, onLock, onExport, onRetrySave;
+  final VoidCallback onOpen, onCreate, onWebDav, onVault, onNewEntry, onNewGroup, onLock, onExport, onRetrySave;
   final ValueChanged<KdbxSource> onSource, onEditSource;
   final void Function(KdbxSource, String) onSourceAction;
   final VoidCallback onGenerator;
@@ -116,10 +117,12 @@ class KdbxWorkspace extends StatelessWidget {
         label: context.l10n.keepassDavAdd,
         icon: Icons.cloud_outlined,
       ),
+      GlassMenuItem(value: 'vault', label: context.l10n.externalVaultTitle, icon: Icons.shield_outlined),
     ],
     onSelected: (action) => switch (action) {
       'open' => onOpen(),
       'create' => onCreate(),
+      'vault' => onVault(),
       _ => onWebDav(),
     },
     builder: (context, open) => GlassIconButton(
@@ -151,6 +154,9 @@ class KdbxWorkspace extends StatelessWidget {
         item('lock', l.keepassLock, Icons.lock_outline_rounded),
         if (opened.data['dirty'] == true) item('save', l.keepassRetrySave, Icons.save_outlined),
         item('export', l.keepassExport, Icons.save_alt_rounded),
+        item('exchange_import', l.keepassExchangeImport, Icons.upload_file_outlined),
+        item('exchange_csv', l.keepassExchangeCsv, Icons.download_outlined),
+        item('exchange_json', l.keepassExchangeJson, Icons.download_outlined),
         const GlassMenuDivider(),
         item('hello', l.keepassHello, Icons.fingerprint_rounded),
         item('security_key', l.keepassSecurityKey, Icons.usb_rounded),
@@ -493,6 +499,12 @@ class KdbxWorkspace extends StatelessWidget {
                       label: l.keepassDavAdd,
                       icon: Icons.cloud_outlined,
                       onPressed: busy ? null : onWebDav,
+                    ),
+                    GlassButton(
+                      key: const ValueKey('keepass-external-vault'),
+                      label: l.externalVaultTitle,
+                      icon: Icons.shield_outlined,
+                      onPressed: busy ? null : onVault,
                     ),
                   ],
                 ),

@@ -123,7 +123,7 @@ abstract final class GlassSizes {
   static const double toolbarGroup = 32;
   static const double sidebarRow = 32;
   static const double sidebarWidth = 240;
-  static const double sidebarCompactWidth = 64;
+  static const double sidebarCompactWidth = 54;
   static const double listRow = 36;
   static const double listRowDense = 30;
   static const double tab = 28;

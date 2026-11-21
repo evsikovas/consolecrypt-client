@@ -92,6 +92,8 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
         : AppPlatform.isMobile
         ? 6.0
         : pagePadding(context);
+    final compactSidebar = ref.watch(sidebarCollapsedProvider);
+    final leftPad = column && compactSidebar ? GlassSpacing.s4 : pad;
     Widget body;
     if (state.tabs.isEmpty) {
       body = Material(
@@ -136,7 +138,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
         type: MaterialType.transparency,
         child: Padding(
           padding: EdgeInsets.fromLTRB(
-            pad,
+            leftPad,
             macTitlebar
                 ? 0
                 : minimal

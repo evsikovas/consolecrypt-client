@@ -202,6 +202,39 @@ Future<void> _submit(WidgetTester tester) => tester.testTextInput.receiveAction(
 Finder _hostRow(Host host) => find.byKey(ValueKey('palette-host-${host.id.value}'));
 
 void main() {
+  testWidgets('Vault and saved OpenBao connections open from the password command palette', (tester) async {
+    final fixture = await _pump(tester, []);
+    final profile = fixture.container.read(activeProfileProvider)!.id.value;
+    final vault = fixture.container.read(vaultStatusProvider).value!.vaultId!.value;
+    final service = fixture.backend.services.settings;
+    await service.updateLocal(
+      service.currentLocal.copyWith(
+        externalVaultConnections: [
+          {
+            'id': 'bao-test',
+            'profile': profile,
+            'vault': vault,
+            'name': 'OpenBao test',
+            'endpoint': 'https://vault.example.invalid',
+            'auth': 'token',
+            'username': '',
+            'authMount': '',
+            'mount': 'secret',
+            'namespace': '',
+            'kv': '2',
+          },
+        ],
+      ),
+    );
+    await _query(tester, 'vault');
+    expect(find.byKey(const ValueKey('palette-external-vault')), findsOneWidget);
+    await _query(tester, 'Passwords: OpenBao test');
+    await tapKey(tester, 'palette-external-vault-bao-test');
+    expect(find.text('Server address'), findsOneWidget);
+    expect(find.text('https://vault.example.invalid'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS}));
+
   const shells = LocalShellProfiles(
     profiles: [
       LocalShellProfile(id: 'zsh', kind: 'native', label: 'zsh', shell: 'zsh'),

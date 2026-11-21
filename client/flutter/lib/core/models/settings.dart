@@ -148,6 +148,7 @@ final class LocalSettings {
     this.savedForwards = const [],
     this.passwordVaultFiles = const [],
     this.passwordVaultRecentByProfile = const {},
+    this.externalVaultConnections = const [],
     this.themeMode = AppThemeMode.system,
     this.uiFontScale = 1,
     this.uiAccentColor,
@@ -209,6 +210,7 @@ final class LocalSettings {
   /// Recently opened source IDs in newest-first order. No unlock material.
   static const passwordVaultRecentLimit = 5;
   final Map<String, List<String>> passwordVaultRecentByProfile;
+  final List<Map<String, String>> externalVaultConnections;
   final List<SavedForward> savedForwards;
   final double terminalFontSize;
 
@@ -298,6 +300,7 @@ final class LocalSettings {
     List<SavedForward>? savedForwards,
     List<Map<String, String>>? passwordVaultFiles,
     Map<String, List<String>>? passwordVaultRecentByProfile,
+    List<Map<String, String>>? externalVaultConnections,
     AppThemeMode? themeMode,
     double? uiFontScale,
     int? uiAccentColor,
@@ -339,6 +342,7 @@ final class LocalSettings {
     savedForwards: savedForwards ?? this.savedForwards,
     passwordVaultFiles: passwordVaultFiles ?? this.passwordVaultFiles,
     passwordVaultRecentByProfile: passwordVaultRecentByProfile ?? this.passwordVaultRecentByProfile,
+    externalVaultConnections: externalVaultConnections ?? this.externalVaultConnections,
     themeMode: themeMode ?? this.themeMode,
     uiFontScale: uiFontScale ?? this.uiFontScale,
     uiAccentColor: resetUiColors ? null : (uiAccentColor ?? this.uiAccentColor),

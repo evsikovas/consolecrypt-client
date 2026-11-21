@@ -187,7 +187,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
             final contentLeft = sidebarWidth;
-            const railWidth = 60.0;
+            const railWidth = 48.0;
             final panelOpen = tools.selected != null;
             final top = minimal ? 0.0 : band;
             final rightInset = minimal || integratedTools ? 0.0 : inset;

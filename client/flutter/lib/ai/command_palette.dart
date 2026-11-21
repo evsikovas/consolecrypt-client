@@ -16,8 +16,10 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/risk_badge.dart';
+import 'package:consolecrypt/keepass/external_vault_store.dart';
 import 'package:consolecrypt/keepass/kdbx_dialog.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
+import 'package:consolecrypt/keepass/vault_connection_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_navigation.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
@@ -320,6 +322,44 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     }
   }
 
+  Iterable<_Item> _externalVaultItems(String query) sync* {
+    final owner = ref.watch(passwordManagerProvider);
+    if (!owner.valid) return;
+    final title = context.l10n.externalVaultTitle;
+    final terms = query.toLowerCase().split(RegExp(r'\s+')).where((term) => term.isNotEmpty);
+    bool matches(String label) => terms.every(label.toLowerCase().contains);
+    void open([String? id]) => unawaited(
+      _passwordAction(() async {
+        if (owner.valid) await showVaultConnections(context, id: id);
+      }),
+    );
+    if (matches('$title HashiCorp Vault OpenBao')) {
+      yield _Item(
+        group: _Group.passwords,
+        key: const ValueKey('palette-external-vault'),
+        icon: Icons.shield_outlined,
+        title: title,
+        subtitle: context.l10n.navPasswords,
+        enabled: !_passwordBusy,
+        onSelect: open,
+      );
+    }
+    final connections = ref.watch(externalVaultConnectionsProvider).where(
+      (connection) => matches('$title ${connection.name} ${connection.endpoint.host}'),
+    );
+    for (final connection in connections.take(50)) {
+      yield _Item(
+        group: _Group.passwords,
+        key: ValueKey('palette-external-vault-${connection.id}'),
+        icon: Icons.shield_outlined,
+        title: connection.name,
+        subtitle: title,
+        enabled: !_passwordBusy,
+        onSelect: () => open(connection.id),
+      );
+    }
+  }
+
   List<_Item> _passwordItems(String query) {
     final l = context.l10n;
     final manager = ref.watch(passwordManagerProvider);
@@ -391,6 +431,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
       return result;
     }
     if (manager.valid) {
+      result.addAll(_externalVaultItems(query));
       for (final session in manager.sessions.values) {
         for (final entry in session.rows('entries')) {
           if (entry['recycled'] == true ||
@@ -644,6 +685,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     bool matchesKube(Iterable<String> values) =>
         q.isEmpty || values.any((value) => value.toLowerCase().contains(q.toLowerCase()));
     final items = <_Item>[
+      ..._externalVaultItems(q),
       if (q.isEmpty ||
           ['пароли:', 'passwords:', 'kdbx', l10n.navPasswords.toLowerCase()].any((v) => v.contains(q.toLowerCase())))
         _Item(

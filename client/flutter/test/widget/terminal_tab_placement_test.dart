@@ -87,6 +87,11 @@ void main() {
         expect(find.byType(GlassTabStrip), findsNothing);
         final column = find.byKey(const ValueKey('terminal-tab-column'));
         expect(column, findsOneWidget);
+        final sidebar = tester.getRect(find.byKey(const ValueKey('glass-sidebar')));
+        final rightRail = tester.getRect(find.byKey(const ValueKey('workspace-tools-rail')));
+        expect(sidebar.width, 54);
+        expect(rightRail.width, lessThanOrEqualTo(48));
+        expect(tester.getRect(column).left - sidebar.right, inInclusiveRange(0, 6));
         // Title and subtitle on separate lines inside the column.
         expect(find.descendant(of: column, matching: find.text('pi@raspberry-pi')), findsOneWidget);
         expect(find.descendant(of: column, matching: find.text('192.168.1.50')), findsOneWidget);

@@ -56,6 +56,7 @@ dependencies:
   super_clipboard: ^0.9.1
   # Authenticate update feeds (Apache-2.0) and installer digests (BSD-3-Clause).
   cryptography: ^2.9.0
+  csv: ^6.0.0
   crypto: ^3.0.7
   # Verified local AI runtime archives (MIT); explicit pin for extraction behavior.
   archive: 4.5.2

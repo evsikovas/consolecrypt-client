@@ -61,13 +61,13 @@ class WorkspaceToolRail extends ConsumerWidget {
             : 0);
     final notes = ref.watch(notesAttentionProvider);
     return Padding(
-      padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(8, 8, 0, 8),
+      padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(4, 8, 0, 8),
       child: GlassSurface(
         key: const ValueKey('workspace-tools-rail'),
         shape: integrated ? GlassRadii.shape(0) : null,
         tint: integrated ? GlassTokens.of(context).surfaces.contentSolid : null,
         shadows: !integrated,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
         child: Column(
           children: [
             for (final tool in _generalTools) ...[

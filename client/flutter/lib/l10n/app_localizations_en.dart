@@ -10,6 +10,145 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get keepassExchangeFormatError =>
+      'Check the file format. CSV needs title and password columns. JSON must come from a ConsoleCrypt export.';
+
+  @override
+  String get keepassExchangeImport => 'Import CSV or JSON';
+
+  @override
+  String get keepassExchangeCsv => 'Export as CSV';
+
+  @override
+  String get keepassExchangeJson => 'Export as JSON';
+
+  @override
+  String get keepassExchangePlaintext => 'The exported file contains unencrypted passwords.';
+
+  @override
+  String get keepassExchangeCsvHelp =>
+      'CSV contains standard fields and groups. Use JSON for custom fields and exact transfer of values that look like spreadsheet formulas.';
+
+  @override
+  String get keepassExchangeJsonHelp =>
+      'JSON contains standard fields, custom fields and groups for import into ConsoleCrypt.';
+
+  @override
+  String get keepassExchangeEmpty => 'The file contains no entries.';
+
+  @override
+  String keepassExchangeConfirm(int count, String database) {
+    return 'Import $count entries into $database? Exact duplicates will be skipped.';
+  }
+
+  @override
+  String keepassExchangeResult(int added, int skipped) {
+    return 'Added $added. Skipped $skipped.';
+  }
+
+  @override
+  String get externalVaultTitle => 'Vault / OpenBao';
+
+  @override
+  String get externalVaultAdd => 'Add connection';
+
+  @override
+  String get externalVaultEndpoint => 'Server address';
+
+  @override
+  String get externalVaultAuth => 'Sign-in method';
+
+  @override
+  String get externalVaultUserpass => 'Username and password';
+
+  @override
+  String get externalVaultToken => 'Access token';
+
+  @override
+  String get externalVaultApiSettings => 'Vault settings';
+
+  @override
+  String get externalVaultMount => 'Secrets mount';
+
+  @override
+  String get externalVaultNamespace => 'Namespace (optional)';
+
+  @override
+  String get externalVaultAuthMount => 'Userpass mount';
+
+  @override
+  String get externalVaultRemember => 'Save sign-in with Touch ID or Windows Hello';
+
+  @override
+  String get externalVaultUseSaved => 'Sign in with device authentication';
+
+  @override
+  String get externalVaultRemoveConnection => 'Remove saved connection';
+
+  @override
+  String get externalVaultNewSecret => 'New secret';
+
+  @override
+  String get externalVaultPath => 'Secret path';
+
+  @override
+  String get externalVaultDeleteVersion => 'Move this version of the secret to Vault’s recoverable deleted state?';
+
+  @override
+  String get externalVaultDeletePermanent => 'Permanently delete this KV v1 secret?';
+
+  @override
+  String get externalVaultJson => 'Secret fields (JSON object)';
+
+  @override
+  String get externalVaultShow => 'Show value';
+
+  @override
+  String get externalVaultHide => 'Hide value';
+
+  @override
+  String get externalVaultInvalidConfig =>
+      'Check the HTTPS server address and Vault paths. Local tests can use HTTP on 127.0.0.1 or ::1.';
+
+  @override
+  String get externalVaultAuthError => 'Vault did not accept these credentials.';
+
+  @override
+  String get externalVaultPermission => 'Access denied. Check the Vault policy and whether the token has expired.';
+
+  @override
+  String get externalVaultListPermission =>
+      'Listing is unavailable. Open a secret by its full path if you have read access.';
+
+  @override
+  String get externalVaultNetwork => 'Vault did not respond. Check the connection and server address.';
+
+  @override
+  String get externalVaultTls =>
+      'Check the server certificate and configure the active Vault address if the server redirects requests.';
+
+  @override
+  String get externalVaultMissing => 'Secret not found. Check its path and the configured mount.';
+
+  @override
+  String get externalVaultConflict =>
+      'The secret already exists, changed on the server or rejected this version. Open it again before saving.';
+
+  @override
+  String get externalVaultJsonInvalid => 'Enter a valid JSON object with named fields.';
+
+  @override
+  String get externalVaultBiometricUnavailable =>
+      'Device authentication is unavailable. You can sign in with the password or token.';
+
+  @override
+  String get externalVaultStoreError =>
+      'Could not use the saved sign-in or update local settings. Try entering the credentials again.';
+
+  @override
+  String get externalVaultRequestError => 'Vault rejected the request or returned an unexpected response.';
+
+  @override
   String get automationProjectChooseFolderEmpty =>
       'Choose an empty folder for a new project. To use existing files, select Open folder.';
 

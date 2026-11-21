@@ -133,7 +133,7 @@ impl AppCore {
         if external || action.ends_with("_external") || action == "external_handle" {
             return Err(AppError::Unsupported("KDBX authenticator operation".into()));
         }
-        let reason = "Unlock your KDBX password database".to_owned();
+        let reason = "Unlock a saved password in ConsoleCrypt".to_owned();
         if action == "enable" {
             if secret.len() != 32 || !s.has_keyfile() {
                 return Err(AppError::invalid("password_vault", "key length or profile"));

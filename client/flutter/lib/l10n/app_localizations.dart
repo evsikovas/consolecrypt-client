@@ -94,6 +94,258 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Invalid password import file
+  ///
+  /// In en, this message translates to:
+  /// **'Check the file format. CSV needs title and password columns. JSON must come from a ConsoleCrypt export.'**
+  String get keepassExchangeFormatError;
+
+  /// KDBX password file exchange
+  ///
+  /// In en, this message translates to:
+  /// **'Import CSV or JSON'**
+  String get keepassExchangeImport;
+
+  /// KDBX password file exchange
+  ///
+  /// In en, this message translates to:
+  /// **'Export as CSV'**
+  String get keepassExchangeCsv;
+
+  /// KDBX password file exchange
+  ///
+  /// In en, this message translates to:
+  /// **'Export as JSON'**
+  String get keepassExchangeJson;
+
+  /// KDBX password file exchange
+  ///
+  /// In en, this message translates to:
+  /// **'The exported file contains unencrypted passwords.'**
+  String get keepassExchangePlaintext;
+
+  /// KDBX password file exchange
+  ///
+  /// In en, this message translates to:
+  /// **'CSV contains standard fields and groups. Use JSON for custom fields and exact transfer of values that look like spreadsheet formulas.'**
+  String get keepassExchangeCsvHelp;
+
+  /// KDBX password file exchange
+  ///
+  /// In en, this message translates to:
+  /// **'JSON contains standard fields, custom fields and groups for import into ConsoleCrypt.'**
+  String get keepassExchangeJsonHelp;
+
+  /// KDBX password file exchange
+  ///
+  /// In en, this message translates to:
+  /// **'The file contains no entries.'**
+  String get keepassExchangeEmpty;
+
+  /// KDBX password file exchange
+  ///
+  /// In en, this message translates to:
+  /// **'Import {count} entries into {database}? Exact duplicates will be skipped.'**
+  String keepassExchangeConfirm(int count, String database);
+
+  /// KDBX password file exchange
+  ///
+  /// In en, this message translates to:
+  /// **'Added {added}. Skipped {skipped}.'**
+  String keepassExchangeResult(int added, int skipped);
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Vault / OpenBao'**
+  String get externalVaultTitle;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Add connection'**
+  String get externalVaultAdd;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get externalVaultEndpoint;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in method'**
+  String get externalVaultAuth;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Username and password'**
+  String get externalVaultUserpass;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Access token'**
+  String get externalVaultToken;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Vault settings'**
+  String get externalVaultApiSettings;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Secrets mount'**
+  String get externalVaultMount;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Namespace (optional)'**
+  String get externalVaultNamespace;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Userpass mount'**
+  String get externalVaultAuthMount;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Save sign-in with Touch ID or Windows Hello'**
+  String get externalVaultRemember;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with device authentication'**
+  String get externalVaultUseSaved;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Remove saved connection'**
+  String get externalVaultRemoveConnection;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'New secret'**
+  String get externalVaultNewSecret;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Secret path'**
+  String get externalVaultPath;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Move this version of the secret to Vault’s recoverable deleted state?'**
+  String get externalVaultDeleteVersion;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete this KV v1 secret?'**
+  String get externalVaultDeletePermanent;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Secret fields (JSON object)'**
+  String get externalVaultJson;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Show value'**
+  String get externalVaultShow;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Hide value'**
+  String get externalVaultHide;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Check the HTTPS server address and Vault paths. Local tests can use HTTP on 127.0.0.1 or ::1.'**
+  String get externalVaultInvalidConfig;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Vault did not accept these credentials.'**
+  String get externalVaultAuthError;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Access denied. Check the Vault policy and whether the token has expired.'**
+  String get externalVaultPermission;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Listing is unavailable. Open a secret by its full path if you have read access.'**
+  String get externalVaultListPermission;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Vault did not respond. Check the connection and server address.'**
+  String get externalVaultNetwork;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Check the server certificate and configure the active Vault address if the server redirects requests.'**
+  String get externalVaultTls;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Secret not found. Check its path and the configured mount.'**
+  String get externalVaultMissing;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'The secret already exists, changed on the server or rejected this version. Open it again before saving.'**
+  String get externalVaultConflict;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid JSON object with named fields.'**
+  String get externalVaultJsonInvalid;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Device authentication is unavailable. You can sign in with the password or token.'**
+  String get externalVaultBiometricUnavailable;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Could not use the saved sign-in or update local settings. Try entering the credentials again.'**
+  String get externalVaultStoreError;
+
+  /// Vault and OpenBao connection
+  ///
+  /// In en, this message translates to:
+  /// **'Vault rejected the request or returned an unexpected response.'**
+  String get externalVaultRequestError;
+
   /// Label or help text for automationProjectChooseFolderEmpty.
   ///
   /// In en, this message translates to:

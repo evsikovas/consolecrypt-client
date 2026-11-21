@@ -10,6 +10,144 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get keepassExchangeFormatError =>
+      'Проверьте формат файла. В CSV нужны столбцы с названием и паролем. JSON должен быть экспортирован из ConsoleCrypt.';
+
+  @override
+  String get keepassExchangeImport => 'Импорт CSV или JSON';
+
+  @override
+  String get keepassExchangeCsv => 'Экспорт в CSV';
+
+  @override
+  String get keepassExchangeJson => 'Экспорт в JSON';
+
+  @override
+  String get keepassExchangePlaintext => 'Пароли в экспортированном файле будут без шифрования.';
+
+  @override
+  String get keepassExchangeCsvHelp =>
+      'В CSV входят основные поля и группы. Для дополнительных полей и точного переноса значений, похожих на формулы, используйте JSON.';
+
+  @override
+  String get keepassExchangeJsonHelp =>
+      'В JSON входят основные и дополнительные поля и группы для импорта в ConsoleCrypt.';
+
+  @override
+  String get keepassExchangeEmpty => 'В файле нет записей.';
+
+  @override
+  String keepassExchangeConfirm(int count, String database) {
+    return 'Добавить записи в базу «$database»? Записей в файле: $count. Точные дубликаты будут пропущены.';
+  }
+
+  @override
+  String keepassExchangeResult(int added, int skipped) {
+    return 'Добавлено: $added. Пропущено: $skipped.';
+  }
+
+  @override
+  String get externalVaultTitle => 'Vault / OpenBao';
+
+  @override
+  String get externalVaultAdd => 'Добавить подключение';
+
+  @override
+  String get externalVaultEndpoint => 'Адрес сервера';
+
+  @override
+  String get externalVaultAuth => 'Способ входа';
+
+  @override
+  String get externalVaultUserpass => 'Логин и пароль';
+
+  @override
+  String get externalVaultToken => 'Токен доступа';
+
+  @override
+  String get externalVaultApiSettings => 'Настройки Vault';
+
+  @override
+  String get externalVaultMount => 'Путь хранилища секретов';
+
+  @override
+  String get externalVaultNamespace => 'Пространство имён (необязательно)';
+
+  @override
+  String get externalVaultAuthMount => 'Путь входа userpass';
+
+  @override
+  String get externalVaultRemember => 'Сохранить вход с Touch ID или Windows Hello';
+
+  @override
+  String get externalVaultUseSaved => 'Войти через защиту устройства';
+
+  @override
+  String get externalVaultRemoveConnection => 'Удалить сохранённое подключение';
+
+  @override
+  String get externalVaultNewSecret => 'Новый секрет';
+
+  @override
+  String get externalVaultPath => 'Путь секрета';
+
+  @override
+  String get externalVaultDeleteVersion => 'Удалить текущую версию секрета? В Vault её можно будет восстановить.';
+
+  @override
+  String get externalVaultDeletePermanent => 'Удалить секрет KV v1 без возможности восстановления?';
+
+  @override
+  String get externalVaultJson => 'Поля секрета в JSON';
+
+  @override
+  String get externalVaultShow => 'Показать значение';
+
+  @override
+  String get externalVaultHide => 'Скрыть значение';
+
+  @override
+  String get externalVaultInvalidConfig =>
+      'Проверьте HTTPS-адрес сервера и пути Vault. Для локальных тестов доступен HTTP на 127.0.0.1 или ::1.';
+
+  @override
+  String get externalVaultAuthError => 'Vault не принял учётные данные.';
+
+  @override
+  String get externalVaultPermission => 'Доступ запрещён. Проверьте политику Vault и срок действия токена.';
+
+  @override
+  String get externalVaultListPermission =>
+      'Список недоступен. Если у вас есть право чтения, откройте секрет по полному пути.';
+
+  @override
+  String get externalVaultNetwork => 'Vault не ответил. Проверьте подключение и адрес сервера.';
+
+  @override
+  String get externalVaultTls =>
+      'Проверьте сертификат сервера. При перенаправлении укажите адрес активного сервера Vault.';
+
+  @override
+  String get externalVaultMissing => 'Секрет не найден. Проверьте его путь и настройки хранилища.';
+
+  @override
+  String get externalVaultConflict =>
+      'Секрет уже существует, изменился на сервере или сервер отклонил версию. Откройте его заново перед сохранением.';
+
+  @override
+  String get externalVaultJsonInvalid => 'Введите корректный JSON-объект с именованными полями.';
+
+  @override
+  String get externalVaultBiometricUnavailable => 'Защита устройства недоступна. Можно войти с паролем или токеном.';
+
+  @override
+  String get externalVaultStoreError =>
+      'Не удалось воспользоваться сохранённым входом или обновить настройки. Попробуйте ввести учётные данные снова.';
+
+  @override
+  String get externalVaultRequestError => 'Vault отклонил запрос или вернул неожиданный ответ.';
+
+  @override
   String get automationProjectChooseFolderEmpty =>
       'Для нового проекта выберите пустую папку. Папку с готовыми файлами можно добавить через «Открыть папку».';
 
