@@ -60,7 +60,9 @@ enum ShellBranch {
   automation,
 }
 
-Page<void> _page(Widget child) => NoTransitionPage<void>(child: child);
+Page<void> _page(Widget child) => NoTransitionPage<void>(
+  child: Material(type: MaterialType.transparency, child: child),
+);
 
 GoRoute _gate(String path, Widget Function(GoRouterState state) build) =>
     GoRoute(path: path, pageBuilder: (context, state) => _page(build(state)));

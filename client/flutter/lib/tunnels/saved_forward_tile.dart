@@ -5,12 +5,47 @@ import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/docker/docker_format.dart';
+import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_auth_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/tunnels/saved_forwards.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
+String savedForwardErrorText(AppLocalizations l, SavedForward plan, Object error) {
+  if (error is DockerException) return dockerErrorText(l, error);
+  if (error is! AppException || !const {'docker', 'kubernetes', 'kubernetes_auth'}.contains(error.args['field'])) {
+    return errorMessage(l, error);
+  }
+  final rule = error.args['rule'];
+  if (rule == 'local_port_busy' || rule == 'local_bind_failed') {
+    final host = plan.localAddress.contains(':') ? '[${plan.localAddress}]' : plan.localAddress;
+    return l.tunnelsLocalAddressUnavailable('$host:${plan.localPort}');
+  }
+  if (plan.kind == SavedForwardKind.docker) {
+    return switch (rule) {
+      'container_not_found' || 'container_unreachable' || 'not_found' => l.dbErrorDockerContainer,
+      'permission_denied' => l.dockerPermissionDeniedTitle,
+      'not_running' ||
+      'host_unavailable' ||
+      'connection_failed' ||
+      'local_discovery_failed' => l.dbErrorDockerUnreachable,
+      _ => l.dbErrorDockerForward,
+    };
+  }
+  return switch (rule) {
+    'not_found' || 'unknown_resource' => l.dbErrorKubeTarget,
+    'forbidden' || 'unauthorized' => l.dbErrorKubeDenied,
+    'closed' ||
+    'transport' ||
+    'unavailable' ||
+    'timeout' ||
+    'connection_dependency_unavailable' => l.dbErrorKubeUnreachable,
+    _ => l.kubeForwardFailed,
+  };
+}
 
 class SavedForwardTile extends ConsumerWidget {
   const SavedForwardTile(this.plan, {super.key});
@@ -49,7 +84,9 @@ class SavedForwardTile extends ConsumerWidget {
       }
       if (context.mounted && manager.valid) ref.invalidate(kubeForwardsProvider(ref.read(kubeScopeProvider)));
     } catch (error) {
-      if (context.mounted && manager.valid) showSnack(context, errorMessage(context.l10n, error), error: true);
+      if (context.mounted && manager.valid) {
+        showSnack(context, savedForwardErrorText(context.l10n, plan, error), error: true);
+      }
     }
   }
 
@@ -61,8 +98,10 @@ class SavedForwardTile extends ConsumerWidget {
     final busy = manager.busy.contains(plan.id);
     final l = context.l10n;
     final host = plan.kind == SavedForwardKind.docker
-        ? plan.connectionId == 'local'
-              ? l.dockerLocalHost
+        ? DockerHost.isLocalId(plan.connectionId)
+              ? plan.connectionId == DockerHost.localId
+                    ? l.dockerLocalHost
+                    : '${l.dockerLocalHost} · ${plan.connectionId.substring('local/'.length)}'
               : ref.watch(hostByIdProvider).values.where((h) => h.id.value == plan.connectionId).firstOrNull?.name ??
                     l.tunnelsDeletedHost
         : ref

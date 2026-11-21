@@ -89,6 +89,8 @@ pub enum ResourceError {
     Timeout,
     #[error("The Kubernetes request was blocked or failed")]
     Transport,
+    #[error("The local port-forward address cannot be bound")]
+    LocalBindFailed,
     #[error("The Kubernetes API is temporarily unavailable")]
     Unavailable,
     #[error("The Kubernetes API rejected the object as invalid")]

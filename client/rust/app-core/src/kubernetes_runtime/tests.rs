@@ -431,9 +431,20 @@ async fn native_forward_is_listed_and_disconnect_closes_its_listener() {
     context.allow_port_forward_in_prod = true;
     app.save_kube_context(context.clone()).await.unwrap();
     let session = app.kube_connect(context.id.to_string()).await.unwrap();
-    app.kube_discover(session.id.clone()).await.unwrap();
+    let occupied = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let port = occupied.local_addr().unwrap().port();
+    let error = app
+        .kube_forward_start(session.id.clone(), "default".into(), "web".into(), 80, port)
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(error, AppError::InvalidInput { reason, .. } if reason == "local_bind_failed")
+    );
+    drop(occupied);
     let forward = app
-        .kube_forward_start(session.id.clone(), "default".into(), "web".into(), 80, 0)
+        .kube_forward_start(session.id.clone(), "default".into(), "web".into(), 80, port)
         .await
         .unwrap();
     assert!(forward.address.starts_with("127.0.0.1:"));
@@ -448,6 +459,14 @@ async fn native_forward_is_listed_and_disconnect_closes_its_listener() {
         .unwrap()
         .unwrap();
     assert_eq!(&bytes, b"hello");
+    app.kube_forward_stop(session.id.clone(), forward.id)
+        .await
+        .unwrap();
+    let restarted = app
+        .kube_forward_start(session.id.clone(), "default".into(), "web".into(), 80, port)
+        .await
+        .unwrap();
+    assert_eq!(restarted.address, forward.address);
     app.kube_disconnect(session.id).await.unwrap();
     assert!(app.kube_forward_list().await.unwrap().is_empty());
     let mut byte = [0];

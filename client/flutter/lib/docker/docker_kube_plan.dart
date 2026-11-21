@@ -6,14 +6,15 @@ import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:yaml/yaml.dart';
 
-enum DockerKubeBlocker { mounts, unsupportedConfiguration }
+enum DockerKubeBlocker { mounts, unsupportedConfiguration, startup }
 
-/// Only these scalar fields may leave the Docker boundary for generation.
-/// Never retain inspect, environment, command arguments or labels here.
+/// Local projection of masked inspect. The process argv stays out of AI input.
 final class DockerKubeSource {
-  const DockerKubeSource({required this.ports, this.blocker});
+  const DockerKubeSource({required this.ports, this.image, this.blocker, this.startup = const []});
   final List<int> ports;
+  final String? image;
   final DockerKubeBlocker? blocker;
+  final List<String> startup;
   bool get unsupported => blocker != null;
 
   factory DockerKubeSource.inspect(DockerContainerDetail detail, DockerSessionInfo session) {
@@ -42,8 +43,44 @@ final class DockerKubeSource {
         const ['Devices', 'DeviceRequests', 'CapAdd', 'ExtraHosts'].any(hasEntries)) {
       blocker = DockerKubeBlocker.unsupportedConfiguration;
     }
-    return DockerKubeSource(ports: List.unmodifiable(ports), blocker: blocker);
+    final configImage = detail.inspect['Config'];
+    final image = configImage is Map ? configImage['Image'] : null;
+    final startup = _startup(detail.inspect);
+    return DockerKubeSource(
+      ports: List.unmodifiable(ports),
+      image: image is String ? DockerKubeTarget.dockerImage(image) : null,
+      blocker: blocker ?? (startup == null ? DockerKubeBlocker.startup : null),
+      startup: blocker == null && startup != null ? startup : const [],
+    );
   }
+
+  static List<String>? _startup(Map<String, dynamic> inspect) {
+    final config = inspect['Config'];
+    final path = inspect['Path'];
+    final args = inspect['Args'];
+    final entrypoint = config is Map ? config['Entrypoint'] : null;
+    final cmd = config is Map ? config['Cmd'] : null;
+    // Never recover a redacted argument from a duplicate representation.
+    if ((path != null && !_safeArgument(path)) ||
+        [args, entrypoint, cmd].any((v) => v != null && (v is! List || !v.every(_safeArgument)))) {
+      return null;
+    }
+    final List<String> argv;
+    if (path is String && path.isNotEmpty && inspect.containsKey('Args')) {
+      argv = [path, ...?((args as List?)?.cast<String>())];
+    } else {
+      final entry = (entrypoint as List?)?.cast<String>() ?? const [];
+      argv = [
+        // Docker's [""] resets the entrypoint.
+        if (!(entry.length == 1 && entry.first.isEmpty)) ...entry,
+        ...?((cmd as List?)?.cast<String>()),
+      ];
+    }
+    return argv.isEmpty || argv.first.isEmpty ? null : List.unmodifiable(argv);
+  }
+
+  static bool _safeArgument(Object? value) =>
+      value is String && !value.contains(dockerSecretMask) && !value.contains('\u0000');
 }
 
 final class DockerKubeTarget {
@@ -53,11 +90,40 @@ final class DockerKubeTarget {
     required this.image,
     required this.port,
     this.pullSecret = '',
+    this.startup = const [],
   });
   final String name, namespace, image, pullSecret;
   final int port;
+  final List<String> startup;
 
   static bool validName(String value) => value.length <= 63 && RegExp(r'^[a-z]([a-z0-9-]*[a-z0-9])?$').hasMatch(value);
+
+  // Docker inspect may return familiar Hub names or a bare local image ID.
+  static String? dockerImage(String reference) {
+    if (reference.isEmpty ||
+        reference.length > 512 ||
+        reference != reference.trim() ||
+        reference.startsWith('sha256:') ||
+        RegExp(r'^(?:[a-f0-9]{12}|[a-f0-9]{64})$').hasMatch(reference)) {
+      return null;
+    }
+    var image = reference;
+    final digest = image.indexOf('@');
+    if (digest >= 0) {
+      final named = image.substring(0, digest);
+      final tag = named.lastIndexOf(':');
+      if (tag > named.lastIndexOf('/')) image = named.substring(0, tag) + image.substring(digest);
+    } else if (!image.split('/').last.contains(':')) {
+      image += ':latest';
+    }
+    final parts = image.split('/');
+    if (parts.length == 1) {
+      image = 'docker.io/library/$image';
+    } else if (!parts.first.contains('.') && !parts.first.contains(':') && parts.first != 'localhost') {
+      image = 'docker.io/$image';
+    }
+    return validImage(image) ? image : null;
+  }
 
   /// Explicit registry and immutable digest or explicit tag; no credentials,
   /// URLs, local image IDs or implicit latest. Reachability is checked by Kube.
@@ -79,11 +145,14 @@ final class DockerKubeTarget {
       validName(name) &&
       validName(namespace) &&
       validImage(image) &&
+      (startup.isEmpty || (startup.first.isNotEmpty && startup.every(DockerKubeSource._safeArgument))) &&
       port > 0 &&
       port <= 65535 &&
       (pullSecret.isEmpty || validName(pullSecret));
 
-  Map<String, dynamic> get deployment => {
+  Map<String, dynamic> get deployment => _deployment(withStartup: true);
+
+  Map<String, dynamic> _deployment({required bool withStartup}) => {
     'apiVersion': 'apps/v1',
     'kind': 'Deployment',
     'metadata': {'name': name, 'namespace': namespace},
@@ -107,6 +176,11 @@ final class DockerKubeTarget {
               'name': name,
               'image': image,
               'imagePullPolicy': 'Always',
+              if (withStartup && startup.isNotEmpty) ...{
+                // Kubernetes expands $(VAR) in both vectors. Escape literal Docker dollars.
+                'command': [startup.first.replaceAll(r'$', r'$$')],
+                if (startup.length > 1) 'args': [for (final arg in startup.skip(1)) arg.replaceAll(r'$', r'$$')],
+              },
               'ports': [
                 {'containerPort': port, 'protocol': 'TCP'},
               ],
@@ -145,19 +219,68 @@ final class DockerKubeTarget {
     },
   };
 
-  String get template =>
-      '${const JsonEncoder.withIndent('  ').convert(deployment)}\n---\n${const JsonEncoder.withIndent('  ').convert(service)}';
+  String get template => _yamlPair(deployment, service);
+  String get aiTemplate => _yamlPair(_deployment(withStartup: false), service);
 
-  // Template contains only user-reviewed deployment settings. No raw Docker or
-  // Kubernetes context, container name, environment, secrets or kubeconfig.
+  // Outbound AI input only includes the reviewed target and resource defaults.
   String get prompt =>
       'Write exactly two Kubernetes YAML documents: Deployment and Service. '
       'Use the following template. Keep every field and identity unchanged except container resources '
       '(requests and limits: cpu and memory) and readinessProbe timing (1..300 seconds). '
       'Do not add any other fields, containers, commands, environment variables or resources. '
       'Return YAML only, no explanation. This is an experimental stateless deployment; '
-      'there is no measured usage data, so keep conservative resource defaults.\n$template';
+      'there is no measured usage data, so keep conservative resource defaults.\n$aiTemplate';
 }
+
+String _yamlPair(Map<String, dynamic> deployment, Map<String, dynamic> service) =>
+    [_yamlDocument(deployment), _yamlDocument(service)].join('\n---\n');
+
+// The manifest builder and validator produce only nonempty maps/lists with
+// known keys and scalar values. Keep presentation and API transport separate.
+String _yamlDocument(Map<String, dynamic> document) {
+  List<String> lines(Object? value) {
+    if (value is Map<String, dynamic>) {
+      final output = <String>[];
+      for (final entry in value.entries) {
+        final child = lines(entry.value);
+        if (entry.value is List || entry.value is Map) {
+          output.add('${entry.key}:');
+          output.addAll(child.map((line) => '  $line'));
+        } else {
+          output.add('${entry.key}: ${child.single}');
+        }
+      }
+      return output;
+    }
+    if (value is List) {
+      final output = <String>[];
+      for (final item in value) {
+        final child = lines(item);
+        output.add('- ${child.first}');
+        output.addAll(child.skip(1).map((line) => '  $line'));
+      }
+      return output;
+    }
+    if (value is! String) return [jsonEncode(value)];
+    if (_plainString.hasMatch(value) && !value.endsWith(':') && !_yamlKeywords.contains(value.toLowerCase())) {
+      return [value];
+    }
+    // Keep YAML line breaks and control characters literal in the decoded argv.
+    // Escape alias indicators after whitespace for the pre-parse alias guard.
+    return [
+      jsonEncode(value).replaceAllMapped(_quotedEscapes, (m) {
+        final hex = m[0]!.codeUnitAt(0).toRadixString(16).padLeft(4, '0');
+        return '\\u$hex';
+      }),
+    ];
+  }
+
+  return lines(document).join('\n');
+}
+
+final _plainString = RegExp(r'^[A-Za-z_][A-Za-z0-9_./@:-]*$');
+const _yamlKeywords = {'y', 'n', 'yes', 'no', 'on', 'off', 'null', 'true', 'false'};
+final _quotedEscapes = RegExp(r'[\u007f-\u009f\u2028\u2029\ufeff]|(?<=\s)[&*]');
 
 final class DockerKubeDocument {
   const DockerKubeDocument(this.resource, this.manifest);
@@ -186,6 +309,28 @@ final class DockerKubeParser {
   }
 
   Future<List<DockerKubeDocument>?> parse(String text, DockerKubeTarget target) async {
+    final documents = await _validate(text, target, fromAi: false);
+    if (documents == null) return null;
+    return [
+      DockerKubeDocument(
+        KubeResourceRef(api: deploymentKind, name: target.name, namespace: target.namespace),
+        documents[0],
+      ),
+      DockerKubeDocument(
+        KubeResourceRef(api: serviceKind, name: target.name, namespace: target.namespace),
+        documents[1],
+      ),
+    ];
+  }
+
+  /// Validate the command-free response before adding the trusted local argv.
+  /// Return the complete manifest for review and a separate server dry-run.
+  Future<String?> mergeAi(String text, DockerKubeTarget target) async {
+    final documents = await _validate(text, target, fromAi: true);
+    return documents?.join('\n---\n');
+  }
+
+  Future<List<String>?> _validate(String text, DockerKubeTarget target, {required bool fromAi}) async {
     cancel();
     if (!target.valid || text.length > 65536) return null;
     final result = _result = Completer<List<String>?>();
@@ -198,7 +343,7 @@ final class DockerKubeParser {
     try {
       final worker = await Isolate.spawn(
         _parse,
-        (port.sendPort, text, target),
+        (port.sendPort, text, target, fromAi),
         onError: port.sendPort,
         onExit: port.sendPort,
       );
@@ -211,18 +356,7 @@ final class DockerKubeParser {
     } catch (_) {
       cancel();
     }
-    final documents = await result.future;
-    if (documents == null) return null;
-    return [
-      DockerKubeDocument(
-        KubeResourceRef(api: deploymentKind, name: target.name, namespace: target.namespace),
-        documents[0],
-      ),
-      DockerKubeDocument(
-        KubeResourceRef(api: serviceKind, name: target.name, namespace: target.namespace),
-        documents[1],
-      ),
-    ];
+    return result.future;
   }
 
   static const deploymentKind = KubeResourceKind(
@@ -247,8 +381,8 @@ final class DockerKubeParser {
     namespaced: false,
   );
 
-  static void _parse((SendPort, String, DockerKubeTarget) request) {
-    final (port, raw, target) = request;
+  static void _parse((SendPort, String, DockerKubeTarget, bool) request) {
+    final (port, raw, target, fromAi) = request;
     try {
       var text = raw.trim();
       if (text.startsWith('```yaml\n') || text.startsWith('```yml\n') || text.startsWith('```json\n')) {
@@ -271,7 +405,7 @@ final class DockerKubeParser {
       final objects = docs.map((d) => jsonDecode(jsonEncode(d.contents.value)) as Map<String, dynamic>).toList();
       final deployment = objects.singleWhere((d) => d['kind'] == 'Deployment');
       final service = objects.singleWhere((d) => d['kind'] == 'Service');
-      final original = target.deployment;
+      final original = target._deployment(withStartup: !fromAi);
       Map<String, dynamic> containerOf(Map<String, dynamic> object) {
         final spec = object['spec'] as Map<String, dynamic>;
         final template = spec['template'] as Map<String, dynamic>;
@@ -318,14 +452,19 @@ final class DockerKubeParser {
         port.send(null);
         return;
       }
-      final encoded = [jsonEncode(deployment), jsonEncode(service)];
       container['resources'] = baseline['resources'];
       container['readinessProbe'] = baseline['readinessProbe'];
       if (!_equal(deployment, original) || !_equal(service, target.service)) {
         port.send(null);
         return;
       }
-      port.send(encoded);
+      final reviewed = target.deployment;
+      containerOf(reviewed)
+        ..['resources'] = resources
+        ..['readinessProbe'] = probe;
+      port.send(
+        fromAi ? [_yamlDocument(reviewed), _yamlDocument(target.service)] : [jsonEncode(reviewed), jsonEncode(service)],
+      );
     } catch (_) {
       port.send(null);
     }

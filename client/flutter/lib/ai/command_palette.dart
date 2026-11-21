@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:consolecrypt/ai/code_blocks.dart';
 import 'package:consolecrypt/app/features.dart';
@@ -19,6 +20,7 @@ import 'package:consolecrypt/core/widgets/risk_badge.dart';
 import 'package:consolecrypt/keepass/external_vault_store.dart';
 import 'package:consolecrypt/keepass/kdbx_dialog.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
+import 'package:consolecrypt/keepass/vault_connection_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_navigation.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
@@ -31,6 +33,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+
+// Launch Windows' own selection overlay; only Windows receives the selected pixels.
+final windowsScreenSnipProvider = Provider<Future<bool> Function()>(
+  (ref) => () async {
+    final local = Platform.environment['LOCALAPPDATA'];
+    final windows = Platform.environment['SystemRoot'];
+    final paths = [
+      if (local != null) '$local\\Microsoft\\WindowsApps\\SnippingTool.exe',
+      if (windows != null) '$windows\\System32\\SnippingTool.exe',
+    ];
+    for (final path in paths) {
+      try {
+        await Process.start(path, ['/clip'], mode: ProcessStartMode.detached);
+        return true;
+      } on ProcessException {
+        continue;
+      }
+    }
+    return false;
+  },
+);
 
 /// Open-palette marker per root navigator (not a global: a torn-down
 /// navigator must not leave a stale "open" flag behind).
@@ -71,7 +94,11 @@ enum _Group { hosts, snippets, kubernetes, passwords, ai, actions }
 
 /// Password queries are an isolated local mode and must never reach AI.
 String? passwordPaletteQuery(String input) {
-  final match = RegExp(r'^\s*(?:пароли|passwords)\s*:\s*(.*)$', caseSensitive: false, dotAll: true).firstMatch(input);
+  final match = RegExp(
+    r'^\s*(?:пароли|passwords|contraseñas|密码)\s*:\s*(.*)$',
+    caseSensitive: false,
+    dotAll: true,
+  ).firstMatch(input);
   return match?.group(1)?.trim();
 }
 
@@ -252,6 +279,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
   bool _passwordBusy = false;
   ({PasswordVaultSession session, String entry})? _passwordCard;
   String _passwordSearch = '';
+  String? _vaultPickerId;
 
   TerminalTarget? _originTarget;
 
@@ -327,14 +355,15 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final title = context.l10n.externalVaultTitle;
     final terms = query.toLowerCase().split(RegExp(r'\s+')).where((term) => term.isNotEmpty);
     bool matches(String label) => terms.every(label.toLowerCase().contains);
-    void open([String? id]) {
+    final saved = ref.watch(externalVaultConnectionsProvider);
+    void open() {
       if (!owner.valid) return;
       final router = GoRouter.of(context);
       _close();
-      router.go(Uri(path: AppRoutes.externalVault, queryParameters: id == null ? null : {'connection': id}).toString());
+      router.go(AppRoutes.externalVault);
     }
 
-    if (matches('$title HashiCorp Vault OpenBao')) {
+    if (saved.isEmpty && matches('$title HashiCorp Vault OpenBao')) {
       yield _Item(
         group: _Group.passwords,
         key: const ValueKey('palette-external-vault'),
@@ -345,9 +374,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         onSelect: open,
       );
     }
-    final connections = ref
-        .watch(externalVaultConnectionsProvider)
-        .where((connection) => matches('$title ${connection.name} ${connection.endpoint.host}'));
+    final connections = saved.where((connection) => matches('$title ${connection.name} ${connection.endpoint.host}'));
     for (final connection in connections.take(50)) {
       yield _Item(
         group: _Group.passwords,
@@ -356,7 +383,12 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         title: connection.name,
         subtitle: title,
         enabled: !_passwordBusy,
-        onSelect: () => open(connection.id),
+        onSelect: () {
+          if (!owner.valid) return;
+          unawaited(_generation?.cancel());
+          _focus.unfocus();
+          setState(() => _vaultPickerId = connection.id);
+        },
       );
     }
   }
@@ -994,10 +1026,52 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     _Group.actions => l10n.paletteGroupActions,
   };
 
+  Future<void> _snip() async {
+    if (!await ref.read(windowsScreenSnipProvider)() && mounted) {
+      showSnack(context, context.l10n.paletteSnipFailed, error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final content = _content(context);
+    if (!AppPlatform.isWindows) return content;
+    // Explorer normally handles this globally. Fall back only if the focused
+    // palette actually receives the chord.
+    return CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.keyS, meta: true, shift: true, includeRepeats: false): _snip},
+      child: content,
+    );
+  }
+
+  Widget _snipButton(AppLocalizations l10n) => GlassIconButton(
+    key: const ValueKey('palette-snip'),
+    tooltip: l10n.paletteScreenSnip,
+    icon: Icons.screenshot_monitor_outlined,
+    onPressed: _snip,
+  );
+
+  Widget _content(BuildContext context) {
     final tokens = GlassTokens.of(context);
     final l10n = context.l10n;
+    if (_vaultPickerId case final id?) {
+      return GlassDialog(
+        key: const ValueKey('command-palette'),
+        title: l10n.commandPalette,
+        width: 660,
+        content: SizedBox(
+          height: MediaQuery.sizeOf(context).height * .6,
+          child: ExternalVaultWorkspace(
+            key: ValueKey(id),
+            id: id,
+            onCopied: _close,
+            onClose: () => setState(() => _vaultPickerId = null),
+          ),
+        ),
+        leadingAction: AppPlatform.isWindows ? _snipButton(l10n) : null,
+        primaryAction: GlassButton(label: l10n.commonClose, onPressed: _close),
+      );
+    }
     final items = _items();
     final showAi = _generating || _command != null || _aiError != null || _streamed.isNotEmpty;
     final selected = _selected.clamp(0, items.isEmpty ? 0 : items.length - 1);
@@ -1063,6 +1137,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
                   ),
                 ),
               ),
+              if (AppPlatform.isWindows) _snipButton(l10n),
             ],
           ),
         ),

@@ -12,6 +12,8 @@ import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
+import 'package:consolecrypt/l10n/app_localizations_ru.dart';
+import 'package:consolecrypt/tunnels/saved_forward_tile.dart';
 import 'package:consolecrypt/tunnels/saved_forwards.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -159,6 +161,23 @@ void main() {
     expect(json['saved_forwards'].toString(), isNot(contains('password')));
   });
 
+  test('occupied local endpoint surfaces its address for both native error codes', () {
+    final l = AppLocalizationsRu();
+    for (final (kind, rule) in [
+      (SavedForwardKind.docker, 'local_port_busy'),
+      (SavedForwardKind.kubernetes, 'local_bind_failed'),
+    ]) {
+      final saved = SavedForward.tryFromJson({...plan(kind: kind).toJson(), 'local_port': 8200})!;
+      final error = AppException(
+        AppErrorCode.validation,
+        'diagnostic',
+        reason: AppErrorReason.invalidField,
+        args: {'field': kind.name, 'rule': rule},
+      );
+      expect(savedForwardErrorText(l, saved, error), l.tunnelsLocalAddressUnavailable('127.0.0.1:8200'));
+    }
+  });
+
   test('Docker saved once, restored by current container name and can stop/restart/remove', () async {
     final backend = testBackend(), docker = _Docker();
     final c = ProviderContainer(
@@ -190,7 +209,7 @@ void main() {
     );
     expect(backend.services.settings.currentLocal.savedForwards, hasLength(1));
     await m.start(saved);
-    expect(docker.targets, hasLength(1));
+    expect(docker.targets, [saved.target]);
     expect(m.handles[saved.id]!.address, startsWith('127.0.0.1:'));
     await m.start(saved);
     expect(docker.targets, hasLength(1));
@@ -242,6 +261,99 @@ void main() {
     kube.allow = true;
     await expectLater(m.start(network, approveNetwork: true), throwsA(isA<AppException>()));
     expect(kube.networkStarts, 1);
+  });
+
+  test('fixed-port presets from settings reuse only a live forward to the saved host or context', () async {
+    final backend = testBackend(), docker = _Docker(), kube = _Kube();
+    final c = ProviderContainer(
+      overrides: [
+        appServicesProvider.overrideWithValue(backend.services),
+        activeProfileProvider.overrideWithValue(profile),
+        vaultStatusProvider.overrideWith((ref) => Stream.value(unlocked)),
+        dockerServiceProvider.overrideWithValue(docker),
+        kubeServiceProvider.overrideWithValue(kube),
+      ],
+    );
+    addTearDown(() async {
+      c.dispose();
+      await backend.dispose();
+    });
+    final settings = localSettingsFromJson({
+      'saved_forwards': [
+        {
+          'id': 'a',
+          'kind': 'docker',
+          'profile': 'profile-a',
+          'connection_id': 'ssh-web',
+          'target': 'shop-postgres-1',
+          'namespace': '',
+          'remote_port': 5432,
+          'local_address': '127.0.0.1',
+          'local_port': 44442,
+        },
+        {
+          'id': 'b',
+          'kind': 'kubernetes',
+          'profile': 'profile-a',
+          'connection_id': 'cluster',
+          'namespace': 'vault',
+          'target': 'vault-0',
+          'remote_port': 8200,
+          'local_address': '127.0.0.1',
+          'local_port': 8200,
+        },
+      ],
+    });
+    await backend.services.settings.updateLocal(settings);
+    c.listen(savedForwardsProvider, (_, _) {});
+    await c.read(vaultStatusProvider.future);
+    final manager = c.read(savedForwardManagerProvider);
+    final dockerPlan = settings.savedForwards.first, kubePlan = settings.savedForwards.last;
+    final wrongHost = await docker.connect('local');
+    await docker.startForward(wrongHost.id, dockerPlan.target, remotePort: 5432, localPort: 44442);
+    KubeForward nativeForward(String contextId) => KubeForward.fromJson({
+      'id': 'pod-forward-$contextId',
+      'session_id': 'browser',
+      'context_id': contextId,
+      'context_name': 'same display name',
+      'namespace': 'vault',
+      'pod': 'vault-0',
+      'remote_port': 8200,
+      'address': '127.0.0.1:8200',
+      'state': 'running',
+    });
+    kube.running.add(nativeForward('other-cluster'));
+    await manager.refresh();
+    expect(manager.handles, isEmpty);
+
+    await docker.disconnect(wrongHost.id);
+    final host = await docker.connect('ssh-web');
+    final existing = await docker.startForward(host.id, dockerPlan.target, remotePort: 5432, localPort: 44442);
+    kube.running
+      ..clear()
+      ..add(nativeForward('cluster'));
+    await manager.start(dockerPlan);
+    await manager.refresh();
+    expect(manager.handles['a']!.forwardId, existing.id);
+    expect(manager.handles['b']!.forwardId, 'pod-forward-cluster');
+    expect(manager.handles.values.every((h) => !h.owned), isTrue);
+    expect(await docker.forwards(), hasLength(1));
+    final autoPlan = SavedForward.tryFromJson({...dockerPlan.toJson(), 'id': 'auto', 'local_port': 0})!;
+    final automatic = await docker.startForward(host.id, dockerPlan.target, remotePort: 5432);
+    await manager.start(autoPlan);
+    expect(manager.handles['auto']!.forwardId, automatic.id);
+    await manager.stop(autoPlan);
+    await manager.stop(dockerPlan);
+    await manager.stop(kubePlan);
+    expect(await docker.containers(host.id), isNotEmpty);
+    expect(kube.disconnects, 0);
+    await manager.start(dockerPlan);
+    await manager.start(kubePlan);
+    expect(manager.handles['a']!.address, '127.0.0.1:44442');
+    expect(manager.handles['b']!.address, '127.0.0.1:8200');
+    expect(kube.running.single.pod, 'vault-0');
+    expect(kube.running.single.namespace, 'vault');
+    expect(manager.handles.values.every((h) => h.owned), isTrue);
   });
 
   test('profile transition hides presets and revokes an in-flight restart', () async {

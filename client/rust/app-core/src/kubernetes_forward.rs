@@ -24,10 +24,12 @@ pub struct KubeForwardRequest {
 pub struct KubeForwardInfo {
     pub id: String,
     pub session_id: String,
+    pub context_id: String,
     pub context_name: String,
     pub namespace: String,
     pub pod: String,
     pub remote_port: u16,
+    pub requested_local_port: u16,
     pub address: String,
     pub state: String,
     pub error_code: Option<String>,
@@ -40,7 +42,7 @@ pub struct KubeForwardInfo {
 struct ForwardHandle {
     info: Arc<Mutex<KubeForwardInfo>>,
     stop: CancellationToken,
-    task: tokio::task::AbortHandle,
+    task: tokio::task::JoinHandle<()>,
     _slot: OwnedSemaphorePermit,
 }
 impl Drop for ForwardHandle {
@@ -207,6 +209,19 @@ impl AppCore {
             .clone()
             .try_acquire_owned()
             .map_err(|_| AppError::invalid("kubernetes", "too_many_forwards"))?;
+        // A saved tunnel opens its own session without first opening the
+        // resource browser. The listener resolves Pods from this session's discovery.
+        if live
+            .resources
+            .kinds()
+            .map_err(super::kubernetes_runtime::resource_error)?
+            .is_empty()
+        {
+            live.resources
+                .discover()
+                .await
+                .map_err(super::kubernetes_runtime::resource_error)?;
+        }
         let listener = live
             .resources
             .forward_listener_on(
@@ -221,10 +236,12 @@ impl AppCore {
         let info = KubeForwardInfo {
             id: uuid::Uuid::new_v4().to_string(),
             session_id,
+            context_id: live.info.context_id.clone(),
             context_name: live.info.context_name.clone(),
             namespace,
             pod,
             remote_port,
+            requested_local_port: local_port,
             address: listener
                 .address()
                 .map_err(super::kubernetes_runtime::resource_error)?
@@ -281,7 +298,7 @@ impl AppCore {
                 ForwardHandle {
                     info: shared,
                     stop,
-                    task: task.abort_handle(),
+                    task,
                     _slot: slot,
                 },
             );
@@ -327,11 +344,16 @@ impl AppCore {
 
     pub async fn kube_forward_stop(&self, session_id: String, forward_id: String) -> AppResult<()> {
         let live = self.kube_live(&session_id).await?;
-        live.forwards
+        let handle = live
+            .forwards
             .handles
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .remove(&forward_id);
+        if let Some(mut handle) = handle {
+            handle.stop.cancel();
+            let _ = (&mut handle.task).await;
+        }
         Ok(())
     }
 }

@@ -19,6 +19,7 @@ pub mod database;
 pub mod database_designer;
 pub mod docker;
 pub mod error;
+pub mod host_metrics;
 pub mod inventory;
 pub mod kubernetes;
 pub mod password_vault;

@@ -208,6 +208,7 @@ mod settings_sync;
 pub use settings_sync::SettingsSyncConsent as ProjectSettingsSyncConsent;
 
 mod settings_review_runtime;
+mod host_metrics;
 
 mod plan;
 

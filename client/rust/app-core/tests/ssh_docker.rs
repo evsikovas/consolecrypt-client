@@ -16,6 +16,65 @@ use secrecy::ExposeSecret;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn host_metrics_sample_on_the_connected_ssh_transport_leaves_pty_untouched() {
+    if !testing::enabled() {
+        return;
+    }
+    let tb = tokio::task::spawn_blocking(|| SshTestbed::start(false))
+        .await
+        .unwrap()
+        .unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let app = app_with(tmp.path(), memory_store(), false);
+    app.create_local_profile("Metrics IT".into(), PASSPHRASE.into())
+        .await
+        .unwrap();
+    let mut host = host("testbed", "127.0.0.1", None);
+    host.port = Some(tb.bastion1_port);
+    host.username = Some(tb.secrets.user.clone());
+    host.host_key_policy = HostKeyPolicy::AcceptNew;
+    let host = app
+        .save_host_with_auth(
+            host,
+            HostAuth::InlinePassword {
+                password: Some(tb.secrets.password.expose_secret().to_owned()),
+            },
+        )
+        .await
+        .unwrap();
+    let term = app.open_terminal(host.id.clone(), 80, 24).await.unwrap();
+    let scope = app.list_profiles().await.unwrap().pop().unwrap();
+    let request = serde_json::json!({
+        "operationId": uuid::Uuid::new_v4(), "hostId": host.id, "terminalId": term.id,
+        "hostUpdatedAtMs": host.updated_at_ms, "profileId": scope.id, "notificationScopeId": scope.notification_scope_id.unwrap()
+    }).to_string();
+    let mut samples = Vec::new();
+    tokio::time::timeout(
+        Duration::from_secs(20),
+        app.host_metrics_watch(&request, |sample| {
+            samples.push(sample);
+            samples.len() < 2
+        }),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert!(samples[0]["cpuPercent"].is_null());
+    assert!((0.0..=100.0).contains(&samples[1]["cpuPercent"].as_f64().unwrap()));
+    assert!(samples[1]["memoryUsed"].as_u64().unwrap() > 0);
+    assert!(samples[1]["diskTotal"].as_u64().unwrap() > 0);
+    assert!(samples[1]["os"].is_string());
+    assert!(samples[1]["receivedPerSecond"].is_number());
+    let pty = app.attach_terminal(term.id.clone()).await.unwrap();
+    assert!(!String::from_utf8_lossy(&pty.snapshot).contains("/proc/stat"));
+    assert_eq!(
+        app.terminal_info(term.id.clone()).await.unwrap().status,
+        TerminalStatusDto::Connected
+    );
+    app.close_terminal(term.id).await.unwrap();
+}
+
 /// Launcher that starts nothing (edit sessions "open" the working copy).
 #[derive(Debug)]
 struct NoLaunch;

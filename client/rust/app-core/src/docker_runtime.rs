@@ -16,6 +16,7 @@ use cc_terminal_core::{OpenedShell, ShellLifetime, TerminalSize, TerminalTarget}
 use serde::Serialize;
 use std::{
     collections::HashMap,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc, Mutex,
@@ -33,6 +34,9 @@ pub const LOCAL_HOST: &str = "local";
 const AUTO_SHELL: &str = "/__consolecrypt_auto_shell__";
 
 #[cfg(test)]
+mod forward_tests;
+
+#[cfg(test)]
 mod local_engine_tests {
     use super::*;
 
@@ -43,6 +47,44 @@ mod local_engine_tests {
         async fn connect(&self) -> Result<DockerIo, DockerError> {
             panic!("session selection must not connect to any engine")
         }
+    }
+
+    #[test]
+    fn restored_forward_uses_current_engine_network_bindings() {
+        use serde_json::json;
+        let mut inspect = json!({
+            "State":{"Running":true},
+            "NetworkSettings":{"Ports":{"5432/tcp":[{"HostIp":"192.0.2.4","HostPort":"15432"}]},
+                "Networks":{"db":{"IPAddress":"172.18.0.7"}}}
+        });
+        assert_eq!(
+            forward_target(&inspect, 5432).unwrap(),
+            "192.0.2.4:15432".parse().unwrap()
+        );
+        inspect["NetworkSettings"]["Ports"]["5432/tcp"][0]["HostIp"] = json!("::");
+        assert_eq!(
+            forward_target(&inspect, 5432).unwrap(),
+            "[::1]:15432".parse().unwrap()
+        );
+        inspect["NetworkSettings"]["Ports"] = json!({});
+        assert_eq!(
+            forward_target(&inspect, 5432).unwrap(),
+            "172.18.0.7:5432".parse().unwrap()
+        );
+        inspect["NetworkSettings"]["Networks"] = json!({"v6":{"GlobalIPv6Address":"2001:db8::2"}});
+        assert_eq!(
+            forward_target(&inspect, 5432).unwrap(),
+            "[2001:db8::2]:5432".parse().unwrap()
+        );
+        inspect["NetworkSettings"]["Networks"] = json!({});
+        assert!(forward_target(&inspect, 5432).is_err());
+        inspect["HostConfig"] = json!({"NetworkMode":"host"});
+        assert_eq!(
+            forward_target(&inspect, 5432).unwrap(),
+            "127.0.0.1:5432".parse().unwrap()
+        );
+        inspect["State"]["Running"] = json!(false);
+        assert!(forward_target(&inspect, 5432).is_err());
     }
 
     #[test]
@@ -166,8 +208,10 @@ pub struct DockerHostDto {
 pub struct DockerForwardDto {
     pub id: String,
     pub session_id: String,
+    pub host_id: String,
     pub container_name: String,
     pub remote_port: u16,
+    pub requested_local_port: u16,
     pub address: String,
     pub state: &'static str,
     pub active_connections: u64,
@@ -205,6 +249,7 @@ struct Forward {
     sent: AtomicU64,
     received: AtomicU64,
     cancel: CancellationToken,
+    listener_closed: CancellationToken,
 }
 
 impl Forward {
@@ -321,6 +366,47 @@ fn invalid(reason: &'static str) -> AppError {
 
 fn docker_error(error: DockerError) -> AppError {
     invalid(error.code())
+}
+
+/// Resolve the upstream on the engine host from the container's current inspect
+/// response. The host side of a published port can be bound to a specific IP.
+fn forward_target(inspect: &serde_json::Value, remote_port: u16) -> AppResult<SocketAddr> {
+    if inspect["State"]["Running"].as_bool() != Some(true) {
+        return Err(invalid("container_unreachable"));
+    }
+    let network = &inspect["NetworkSettings"];
+    let bindings = &network["Ports"][format!("{remote_port}/tcp")];
+    for binding in bindings.as_array().into_iter().flatten() {
+        let Some(port) = binding["HostPort"]
+            .as_str()
+            .and_then(|p| p.parse::<u16>().ok())
+            .filter(|p| *p != 0)
+        else {
+            continue;
+        };
+        let host = match binding["HostIp"].as_str().unwrap_or_default() {
+            "" | "0.0.0.0" => IpAddr::V4(Ipv4Addr::LOCALHOST),
+            "::" => IpAddr::V6(Ipv6Addr::LOCALHOST),
+            other => match other.parse::<IpAddr>() {
+                Ok(ip) => ip,
+                Err(_) => continue,
+            },
+        };
+        return Ok(SocketAddr::new(host, port));
+    }
+    if inspect["HostConfig"]["NetworkMode"].as_str() == Some("host") {
+        return Ok(SocketAddr::from((Ipv4Addr::LOCALHOST, remote_port)));
+    }
+    let address = network["Networks"]
+        .as_object()
+        .into_iter()
+        .flat_map(|n| n.values())
+        .flat_map(|endpoint| [&endpoint["IPAddress"], &endpoint["GlobalIPv6Address"]])
+        .chain([&network["IPAddress"], &network["GlobalIPv6Address"]])
+        .filter_map(|value| value.as_str()?.parse::<IpAddr>().ok())
+        .find(|ip| !ip.is_unspecified())
+        .ok_or_else(|| invalid("container_unreachable"))?;
+    Ok(SocketAddr::new(address, remote_port))
 }
 
 struct ShellLife(CancellationToken);
@@ -533,6 +619,7 @@ impl AppCore {
             live.cancel.cancel();
         }
         unlocked.docker.compose.forget_session(&session_id);
+        let mut closing = Vec::new();
         unlocked
             .docker
             .forwards
@@ -547,9 +634,13 @@ impl AppCore {
                     != session_id;
                 if !keep {
                     forward.cancel.cancel();
+                    closing.push(forward.listener_closed.clone());
                 }
                 keep
             });
+        for closed in closing {
+            closed.cancelled().await;
+        }
         Ok(())
     }
 
@@ -867,31 +958,20 @@ impl AppCore {
         {
             return Err(invalid("too_many_forwards"));
         }
-        let summary = live
+        let inspect = live
             .client
-            .containers(true)
+            .inspect(&container)
             .await
-            .map_err(docker_error)?
-            .into_iter()
-            .find(|c| c.id == container || c.name == container)
-            .ok_or_else(|| invalid("container_not_found"))?;
-        // A published port is reachable on the engine host; otherwise the
-        // container IP on its network (Linux engines route it from the host).
-        let target = summary
-            .ports
-            .iter()
-            .find(|p| {
-                p.private_port == remote_port && p.public_port.is_some() && p.protocol == "tcp"
-            })
-            .map(|p| ("127.0.0.1".to_owned(), p.public_port.unwrap_or(remote_port)))
-            .or_else(|| {
-                summary
-                    .networks
-                    .values()
-                    .next()
-                    .map(|ip| (ip.clone(), remote_port))
-            })
-            .ok_or_else(|| invalid("container_unreachable"))?;
+            .map_err(|error| match error {
+                DockerError::NotFound => invalid("container_not_found"),
+                other => docker_error(other),
+            })?;
+        let target = forward_target(&inspect, remote_port)?;
+        let container_name = inspect["Name"]
+            .as_str()
+            .unwrap_or(&container)
+            .trim_start_matches('/')
+            .to_owned();
         let listener = tokio::net::TcpListener::bind(("127.0.0.1", local_port))
             .await
             .map_err(|_| invalid("local_port_busy"))?;
@@ -905,8 +985,10 @@ impl AppCore {
             info: Mutex::new(DockerForwardDto {
                 id: id.clone(),
                 session_id,
-                container_name: summary.name.clone(),
+                host_id: live.info.host_id.clone(),
+                container_name,
                 remote_port,
+                requested_local_port: local_port,
                 address,
                 state: "running",
                 active_connections: 0,
@@ -918,15 +1000,22 @@ impl AppCore {
             sent: AtomicU64::new(0),
             received: AtomicU64::new(0),
             cancel: cancel.clone(),
+            listener_closed: CancellationToken::new(),
         });
-        unlocked
-            .docker
-            .forwards
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(id, forward.clone());
+        {
+            let mut handles = unlocked
+                .docker
+                .forwards
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            if live.cancel.is_cancelled() {
+                return Err(invalid("session_closed"));
+            }
+            handles.insert(id, forward.clone());
+        }
         let started = forward.snapshot();
         let ssh = live.ssh.clone();
+        let closed = forward.listener_closed.clone().drop_guard();
         tokio::spawn(async move {
             loop {
                 let accepted = tokio::select! {
@@ -938,15 +1027,15 @@ impl AppCore {
                     continue;
                 };
                 let (ssh, target, forward, cancel) =
-                    (ssh.clone(), target.clone(), forward.clone(), cancel.clone());
+                    (ssh.clone(), target, forward.clone(), cancel.clone());
                 tokio::spawn(async move {
                     let upstream: Result<DockerIo, ()> = match &ssh {
                         Some(ssh) => ssh
-                            .open_direct_tcpip(&target.0, target.1, None)
+                            .open_direct_tcpip(&target.ip().to_string(), target.port(), None)
                             .await
                             .map(|stream| Box::new(stream) as DockerIo)
                             .map_err(|_| ()),
-                        None => tokio::net::TcpStream::connect((target.0.as_str(), target.1))
+                        None => tokio::net::TcpStream::connect(target)
                             .await
                             .map(|stream| Box::new(stream) as DockerIo)
                             .map_err(|_| ()),
@@ -972,6 +1061,8 @@ impl AppCore {
                     forward.active.fetch_sub(1, Ordering::Relaxed);
                 });
             }
+            drop(listener);
+            drop(closed);
             forward.info.lock().unwrap_or_else(|e| e.into_inner()).state = "stopped";
         });
         Ok(started)
@@ -991,14 +1082,15 @@ impl AppCore {
 
     pub async fn docker_forward_stop(&self, forward_id: String) -> AppResult<()> {
         let (_, unlocked) = self.unlocked().await?;
-        if let Some(forward) = unlocked
+        let forward = unlocked
             .docker
             .forwards
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .remove(&forward_id)
-        {
+            .remove(&forward_id);
+        if let Some(forward) = forward {
             forward.cancel.cancel();
+            forward.listener_closed.cancelled().await;
         }
         Ok(())
     }

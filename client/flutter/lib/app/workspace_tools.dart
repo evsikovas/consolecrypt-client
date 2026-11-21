@@ -16,13 +16,14 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/notes/notes_panel.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/snippets/snippets_screen.dart';
+import 'package:consolecrypt/terminal/host_metrics_panel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 List<WorkspaceTool> get _generalTools => [
   for (final tool in WorkspaceTool.values)
-    if (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled) tool,
+    if (tool != WorkspaceTool.server && (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled)) tool,
 ];
 
 String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (tool) {
@@ -30,18 +31,21 @@ String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (too
   WorkspaceTool.notes => l.navNotes,
   WorkspaceTool.ai => l.navAiChat,
   WorkspaceTool.forwards => l.navPortForwards,
+  WorkspaceTool.server => l.hostMetricsTitle,
 };
 
-AppSymbol _symbol(WorkspaceTool tool) => switch (tool) {
-  WorkspaceTool.snippets => AppSymbol.snippets,
-  WorkspaceTool.notes => AppSymbol.notes,
-  WorkspaceTool.ai => AppSymbol.ai,
-  WorkspaceTool.forwards => AppSymbol.tunnels,
+Widget _toolIcon(WorkspaceTool tool) => switch (tool) {
+  WorkspaceTool.snippets => const AppSymbolIcon(AppSymbol.snippets),
+  WorkspaceTool.notes => const AppSymbolIcon(AppSymbol.notes),
+  WorkspaceTool.ai => const AppSymbolIcon(AppSymbol.ai),
+  WorkspaceTool.forwards => const AppSymbolIcon(AppSymbol.tunnels),
+  WorkspaceTool.server => const Icon(Icons.show_chart_rounded, size: GlassSizes.iconToolbar),
 };
 
 /// Small permanent rail on the right: helpers never replace the workspace.
 class WorkspaceToolRail extends ConsumerWidget {
-  const WorkspaceToolRail({super.key, this.integrated = false});
+  const WorkspaceToolRail({super.key, required this.branch, this.integrated = false});
+  final ShellBranch branch;
   final bool integrated;
 
   @override
@@ -60,6 +64,7 @@ class WorkspaceToolRail extends ConsumerWidget {
             ? (ref.watch(kubeForwardsProvider(scope)).value ?? const []).where((f) => f.state == 'running').length
             : 0);
     final notes = ref.watch(notesAttentionProvider);
+    final showServer = branch == ShellBranch.terminal && ref.watch(activeSshTerminalProvider) != null;
     return Padding(
       padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(4, 8, 0, 8),
       child: GlassSurface(
@@ -70,11 +75,11 @@ class WorkspaceToolRail extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 10),
         child: Column(
           children: [
-            for (final tool in _generalTools) ...[
+            for (final tool in [..._generalTools, if (showServer) WorkspaceTool.server]) ...[
               GlassSidebarItem(
                 key: ValueKey('nav-${tool.name}'),
                 icon: Icons.code_rounded,
-                leading: AppSymbolIcon(_symbol(tool)),
+                leading: _toolIcon(tool),
                 label: workspaceToolLabel(l, tool),
                 badge: switch (tool) {
                   WorkspaceTool.forwards when forwards > 0 => '$forwards',
@@ -131,7 +136,17 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
         });
       }
     });
-    if (selected != null) _visited.add(selected);
+    if (selected != null && selected != WorkspaceTool.server) _visited.add(selected);
+    final tab = widget.branch == ShellBranch.terminal ? ref.watch(activeSshTerminalProvider) : null;
+    if (selected == WorkspaceTool.server && tab == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            ref.read(workspaceToolsProvider).selected == WorkspaceTool.server &&
+            (widget.branch != ShellBranch.terminal || ref.read(activeSshTerminalProvider) == null)) {
+          _close();
+        }
+      });
+    }
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     return Offstage(
@@ -176,7 +191,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                               ),
                             )
                           else ...[
-                            AppSymbolIcon(_symbol(selected ?? WorkspaceTool.snippets)),
+                            _toolIcon(selected ?? WorkspaceTool.snippets),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -185,6 +200,15 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                               ),
                             ),
                           ],
+                          if (widget.integrated && tab != null)
+                            GlassIconButton(
+                              key: const ValueKey('nav-server'),
+                              selected: selected == WorkspaceTool.server,
+                              icon: Icons.show_chart_rounded,
+                              tooltip: l.hostMetricsTitle,
+                              style: GlassIconButtonStyle.plain,
+                              onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.server),
+                            ),
                           GlassIconButton(
                             key: const ValueKey('workspace-tools-close'),
                             icon: widget.integrated && !AppPlatform.isMobile
@@ -217,9 +241,37 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                             WorkspaceTool.snippets => const SnippetsScreen(embedded: true),
                                             WorkspaceTool.notes => NotesPanel(branch: widget.branch),
                                             WorkspaceTool.forwards => const WorkspaceForwardsPanel(),
+                                            WorkspaceTool.server => const SizedBox.shrink(),
                                           },
                                   ),
                                 ),
+                              ),
+                            if (selected == WorkspaceTool.server && tab != null)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      GlassSpacing.s16,
+                                      GlassSpacing.s12,
+                                      GlassSpacing.s16,
+                                      0,
+                                    ),
+                                    child: Text(
+                                      [
+                                        if (tab.target.label.isNotEmpty) tab.target.label,
+                                        if (tab.target.detail.isNotEmpty && tab.target.detail != tab.target.label)
+                                          tab.target.detail,
+                                      ].join(' · '),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: tokens.typography.title3,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: HostMetricsPanel(key: ValueKey(tab.sessionId), history: tab.hostMetrics),
+                                  ),
+                                ],
                               ),
                           ],
                         ),

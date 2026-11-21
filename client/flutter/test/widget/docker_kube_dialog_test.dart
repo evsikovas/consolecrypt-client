@@ -16,6 +16,7 @@ import 'package:consolecrypt/kubernetes/kube_mutation_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
+import 'package:flutter/foundation.dart' show precisionErrorTolerance;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -24,7 +25,7 @@ const _session = KubeSession(id: 'wizard-session', contextId: 'context', serverV
 const _container = DockerContainer(
   id: 'docker-id',
   name: 'web',
-  image: 'docker.io/library/nginx:1.27',
+  image: 'nginx:1.27',
   state: DockerContainerState.running,
 );
 const _target = DockerKubeTarget(name: 'web', namespace: 'default', image: 'docker.io/library/nginx:1.27', port: 80);
@@ -41,6 +42,8 @@ class _Kube implements KubeService, KubeBrowserService, KubeManifestService {
   final closed = <String>[];
   Completer<void>? pending;
   int inventoryCalls = 0;
+  int statusReads = 0;
+  bool ready = true;
   @override
   Future<List<KubeConnection>> inventory() async {
     inventoryCalls++;
@@ -88,17 +91,33 @@ class _Kube implements KubeService, KubeBrowserService, KubeManifestService {
     manifest.wipe(); // Match the native adapter's consuming boundary.
     calls.add((resource.api.kind, dryRun));
     if (pending != null) await pending!.future;
-    return const KubeResourceDetail(object: {}, yaml: '');
+    return KubeResourceDetail(
+      object: {
+        'metadata': {'name': resource.name, 'namespace': resource.namespace, 'uid': 'test-${resource.api.kind}'},
+      },
+      yaml: '',
+    );
   }
 
   @override
-  Future<KubeResourceDetail> getResource(String sessionId, KubeResourceRef resource) async => const KubeResourceDetail(
-    object: {
-      'metadata': {'generation': 1},
-      'status': {'observedGeneration': 1, 'updatedReplicas': 1, 'readyReplicas': 1, 'availableReplicas': 1},
-    },
-    yaml: '',
-  );
+  Future<KubeResourceDetail> getResource(String sessionId, KubeResourceRef resource) async {
+    statusReads++;
+    return KubeResourceDetail(
+      object: {
+        'metadata': {'generation': 1, 'name': resource.name, 'namespace': resource.namespace, 'uid': 'test-Deployment'},
+        'spec': {'replicas': 1},
+        'status': {
+          'observedGeneration': 1,
+          'replicas': 1,
+          'updatedReplicas': 1,
+          'readyReplicas': ready ? 1 : 0,
+          'availableReplicas': ready ? 1 : 0,
+        },
+      },
+      yaml: '',
+    );
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -133,6 +152,7 @@ Future<ProviderContainer> _pump(
   _Kube kube,
   _Ai ai, {
   DockerKubeBlocker? blocker,
+  List<String> startup = const [],
   bool writable = true,
 }) async {
   tester.view.physicalSize = const Size(1200, 1000);
@@ -156,7 +176,7 @@ Future<ProviderContainer> _pump(
         home: Scaffold(
           body: DockerKubeDialog(
             container: _container,
-            source: DockerKubeSource(ports: const [80], blocker: blocker),
+            source: DockerKubeSource(ports: const [80], blocker: blocker, startup: startup),
           ),
         ),
       ),
@@ -168,7 +188,7 @@ Future<ProviderContainer> _pump(
 
 Future<void> _tap(WidgetTester tester, String key) async {
   final finder = find.byKey(ValueKey(key));
-  if (finder.evaluate().isEmpty || !tester.getRect(finder).overlaps(tester.getRect(find.byType(ListView).first))) {
+  if (finder.evaluate().isEmpty || !tester.getRect(finder).overlaps(tester.getRect(find.byType(Scrollable).first))) {
     await tester.scrollUntilVisible(finder, 200, scrollable: find.byType(Scrollable).first);
   }
   await Scrollable.ensureVisible(tester.element(finder), alignment: 0.5);
@@ -218,28 +238,57 @@ void main() {
     expect(_enabled(tester, 'docker-kube-deploy'), isFalse);
     await _tap(tester, 'docker-kube-validate');
     await _parse(tester);
+    kube.ready = false;
     await _tap(tester, 'docker-kube-deploy');
     expect(kube.calls.where((c) => !c.$2), [('Deployment', false), ('Service', false)]);
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('docker-kube-status')),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
+    expect(find.text('Deployment default/web'), findsOneWidget);
+    expect(find.text('Service default/web'), findsOneWidget);
+    expect(find.textContaining('Waiting for the Deployment'), findsOneWidget);
+    kube.ready = true;
+    await tester.pump(const Duration(seconds: 5));
+    await _settle(tester);
     expect(find.text('Deployment is ready'), findsOneWidget);
+    final reads = kube.statusReads;
+    await tester.pump(const Duration(seconds: 6));
+    expect(kube.statusReads, reads);
     await tester.pumpWidget(const SizedBox.shrink());
     expect(kube.closed, [_session.id]);
   });
 
   testWidgets('AI receives nothing before review; generation never writes to cluster', (tester) async {
     final kube = _Kube(), ai = _Ai();
-    await _pump(tester, kube, ai);
+    const startup = ['nginx', '-g', 'daemon off;'];
+    await _pump(tester, kube, ai, startup: startup);
     await _connect(tester);
+    Rect bounds(String key) => tester.getRect(find.byKey(ValueKey('docker-kube-$key')));
+    for (final (upper, lower) in [
+      ('name', 'image'),
+      ('image', 'port'),
+      ('provider', 'generate'),
+      ('generate', 'yaml'),
+    ]) {
+      expect(
+        bounds(lower).top - bounds(upper).bottom,
+        greaterThanOrEqualTo(8 - precisionErrorTolerance),
+        reason: '$upper / $lower',
+      );
+    }
+    final yamlField = tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-yaml')));
+    expect(yamlField.decoration!.labelText, 'Deployment manifest (YAML)');
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text, _target.image);
     await _tap(tester, 'docker-kube-generate');
     expect(ai.prompts, isEmpty);
-    await _tap(tester, 'docker-kube-send-ai');
+    expect(find.textContaining('daemon off;'), findsNothing);
+    final send = find.byKey(const ValueKey('docker-kube-send-ai'));
+    expect(send.hitTestable(), findsOneWidget);
+    await tester.tap(send);
+    await _settle(tester);
     await _parse(tester);
     expect(ai.prompts, hasLength(1));
+    expect(yamlField.controller!.text, contains('daemon off;'));
+    expect(yamlField.controller!.text, contains('kind: Deployment'));
     expect(ai.prompts.single, contains(_target.image));
+    expect(ai.prompts.single, isNot(contains('daemon off;')));
     expect(ai.prompts.single, isNot(contains('test-cluster')));
     expect(kube.calls, isEmpty);
     expect(_enabled(tester, 'docker-kube-deploy'), isFalse);
@@ -314,11 +363,7 @@ void main() {
     final scope = await _pump(tester, kube, ai);
     await _connect(tester);
     await _tap(tester, 'docker-kube-generate');
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('docker-kube-send-ai')),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
+    expect(find.byKey(const ValueKey('docker-kube-send-ai')).hitTestable(), findsOneWidget);
     scope.read(_scopeProvider.notifier).lock();
     await _settle(tester);
     expect(find.byKey(const ValueKey('docker-kube-send-ai')), findsNothing);

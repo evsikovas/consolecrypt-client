@@ -1,7 +1,17 @@
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum WorkspaceTool { snippets, notes, ai, forwards }
+enum WorkspaceTool { snippets, notes, ai, forwards, server }
+
+final activeSshTerminalProvider = Provider<TerminalTab?>(
+  (ref) => ref.watch(
+    terminalTabsProvider.select((state) {
+      final tab = state.active;
+      return tab != null && tab.host != null && tab.isConnected && !tab.exited ? tab : null;
+    }),
+  ),
+);
 
 final class WorkspaceToolsState {
   const WorkspaceToolsState({this.selected, this.width = 420});

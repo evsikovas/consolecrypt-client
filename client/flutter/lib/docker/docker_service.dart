@@ -172,8 +172,10 @@ final class DockerForward {
   const DockerForward({
     required this.id,
     required this.sessionId,
+    this.hostId,
     required this.containerName,
     required this.remotePort,
+    this.requestedLocalPort,
     required this.address,
     required this.state,
     this.activeConnections = 0,
@@ -182,14 +184,18 @@ final class DockerForward {
     this.errorCode,
   });
   final String id, sessionId, containerName, address;
+  final String? hostId;
+  final int? requestedLocalPort;
   final int remotePort, activeConnections, bytesSent, bytesReceived;
   final DockerForwardState state;
   final String? errorCode;
   factory DockerForward.fromJson(DockerJson json) => DockerForward(
     id: json['id'] as String,
     sessionId: json['session_id'] as String,
+    hostId: json['host_id'] as String?,
     containerName: json['container_name'] as String,
     remotePort: json['remote_port'] as int,
+    requestedLocalPort: json['requested_local_port'] as int?,
     address: json['address'] as String,
     state: DockerForwardState.values.firstWhere(
       (state) => state.name == json['state'],
@@ -498,6 +504,7 @@ abstract interface class DockerService {
   /// Output of an `up -d` job until it ends (the last update has `done`).
   Stream<DockerComposeJobUpdate> composeJob(String jobId);
 
+  /// The engine accepts the container's current ID or its stable Docker name.
   Future<DockerForward> startForward(
     String sessionId,
     String containerId, {

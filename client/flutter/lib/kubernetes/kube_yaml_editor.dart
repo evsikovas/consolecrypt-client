@@ -256,6 +256,7 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
           height: 620,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: GlassSpacing.s8,
             children: [
               KubeWriteBanner(session: widget.session, contextName: widget.contextName),
               if (_masked) Text(l.kubeMaskedEditHelp),
@@ -273,6 +274,7 @@ class _KubeYamlEditorState extends ConsumerState<KubeYamlEditor> with SingleTick
                   controller: _tabs,
                   children: [
                     Column(
+                      spacing: GlassSpacing.s8,
                       children: [
                         if (widget.service is KubeManifestService)
                           Align(

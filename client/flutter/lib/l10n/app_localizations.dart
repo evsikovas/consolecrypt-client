@@ -154,6 +154,132 @@ abstract class AppLocalizations {
   /// **'Added {added}. Skipped {skipped}.'**
   String keepassExchangeResult(int added, int skipped);
 
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'Monitoring'**
+  String get hostMetricsTitle;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading the first sample over SSH…'**
+  String get hostMetricsConnecting;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the server metrics. Check the SSH connection and try again.'**
+  String get hostMetricsReadFailed;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'This view reads live metrics from Linux hosts.'**
+  String get hostMetricsLinuxOnly;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'Live metrics require the built-in SSH client. Select it in the host settings to use this view.'**
+  String get hostMetricsNativeOnly;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated at'**
+  String get hostMetricsLastSample;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'Uptime'**
+  String get hostMetricsUptime;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d {hours} h {minutes} min'**
+  String hostMetricsUptimeValue(int days, int hours, int minutes);
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU usage'**
+  String get hostMetricsCpu;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory used'**
+  String get hostMetricsRam;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'System disk used'**
+  String get hostMetricsDisk;
+
+  /// Live SSH host metrics label.
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get hostMetricsNetwork;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Operating system'**
+  String get hostMetricsOs;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Kernel'**
+  String get hostMetricsKernel;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Processor'**
+  String get hostMetricsProcessor;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Load average'**
+  String get hostMetricsLoadAverage;
+
+  /// Server information in the SSH terminal side panel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} logical CPUs'**
+  String hostMetricsLogicalCpus(int count);
+
+  /// Incoming network traffic in the terminal host monitoring panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Received'**
+  String get hostMetricsReceived;
+
+  /// Outgoing network traffic in the terminal host monitoring panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get hostMetricsSent;
+
+  /// Host monitoring connection status in the SSH terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'The saved host changed. Reconnect to refresh its metrics.'**
+  String get hostMetricsChanged;
+
+  /// Host monitoring connection status in the SSH terminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a server over SSH to see its metrics.'**
+  String get hostMetricsConnectSsh;
+
   /// Vault and OpenBao connection
   ///
   /// In en, this message translates to:
@@ -303,6 +429,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing matches your search'**
   String get externalVaultNoMatches;
+
+  /// Header for one directory in the Vault browser
+  ///
+  /// In en, this message translates to:
+  /// **'Contents of {folder}'**
+  String externalVaultFolderContents(String folder);
 
   /// Vault and OpenBao connection
   ///
@@ -5949,6 +6081,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ask the AI (never runs automatically)'**
   String get paletteGenerateSubtitle;
+
+  /// Open the Windows Snipping Tool over the command palette
+  ///
+  /// In en, this message translates to:
+  /// **'Take a screenshot'**
+  String get paletteScreenSnip;
+
+  /// The Windows Snipping Tool could not be launched
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open Snipping Tool.'**
+  String get paletteSnipFailed;
 
   /// Command palette quick action: create a host.
   ///
@@ -30628,6 +30772,18 @@ abstract class AppLocalizations {
   /// **'Published image (registry/repository:tag or @sha256:digest)'**
   String get dockerKubeImage;
 
+  /// Editor label for the workload manifest in the Docker to Kubernetes wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Deployment manifest (YAML)'**
+  String get dockerKubeManifestYaml;
+
+  /// Explains why manifest generation needs an AI provider
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an AI provider in Settings to generate a manifest.'**
+  String get dockerKubeNoProvider;
+
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
@@ -30685,7 +30841,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'The selected AI provider will receive only the manifest template shown below: image reference, app/namespace names, port and pull-secret name. Review it before sending. Environment values, Docker inspect and Kubernetes credentials are excluded.'**
+  /// **'Review the template below before sending it to the AI provider. ConsoleCrypt adds the Docker startup command locally after receiving the response.'**
   String get dockerKubeAiReview;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -30709,7 +30865,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'I checked image availability and CPU architecture. Local files, writable-layer changes, environment overrides, commands and Compose dependencies will not be copied; image defaults will be used.'**
+  /// **'I checked the image, CPU architecture and startup command. This deployment uses the image’s environment and filesystem. Configure any Docker environment overrides or Compose dependencies separately.'**
   String get dockerKubeAcknowledge;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -30727,7 +30883,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Created resources (not a readiness guarantee)'**
+  /// **'Created resources'**
   String get dockerKubeCreated;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -30739,7 +30895,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Deployment is not ready yet. Check Pods/events in the Kubernetes section, including ImagePullBackOff and CrashLoopBackOff.'**
+  /// **'Waiting for the Deployment replicas to become ready.'**
   String get dockerKubePending;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -30831,6 +30987,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{start}–{end} of {total}'**
   String dockerPortRange(int start, int end, int total);
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker returned an incomplete or masked startup command. Check the container command and prepare its manifest manually.'**
+  String get dockerKubeStartupUnavailable;
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'A resource with this name already exists in this namespace. Choose a new name or manage the existing resource in Kubernetes.'**
+  String get dockerKubeNameTaken;
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'The container process exited. Check its startup command.'**
+  String get dockerKubeTerminated;
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code {code}'**
+  String dockerKubeExitCode(int code);
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes could not schedule the Pod on a node.'**
+  String get dockerKubeUnschedulable;
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes could not configure or start the container. Check the Pod events.'**
+  String get dockerKubeContainerConfig;
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'The Deployment exceeded its rollout deadline.'**
+  String get dockerKubeDeadlineExceeded;
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'The Deployment controller reported a replica failure. Check the ReplicaSet events.'**
+  String get dockerKubeReplicaFailure;
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the status of the created Deployment. Check the cluster connection and read permissions.'**
+  String get dockerKubeStatusUnavailable;
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'Pod diagnostics are unavailable.'**
+  String get dockerKubePodDetailsUnavailable;
+
+  /// Docker to Kubernetes deployment wizard status or guidance.
+  ///
+  /// In en, this message translates to:
+  /// **'This name now belongs to a different Deployment. Open it in Kubernetes to see its status.'**
+  String get dockerKubeReplaced;
+
+  /// Local bind failure when starting a saved tunnel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot listen on {address}. Check whether this port is in use or reserved on this device.'**
+  String tunnelsLocalAddressUnavailable(String address);
+
+  /// Saved Vault and OpenBao connections list.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved connections'**
+  String get externalVaultConnections;
+
+  /// Saved Vault and OpenBao connections list.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved connections yet'**
+  String get externalVaultNoConnections;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

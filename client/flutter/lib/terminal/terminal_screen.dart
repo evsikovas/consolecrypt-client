@@ -317,7 +317,18 @@ class _TerminalTabs extends ConsumerWidget {
       onReorder: controller.moveTab,
       trailing: AppPlatform.isMobile ? null : _SessionToolbar(tab: active),
     );
-    if (AppPlatform.isMobile || active.host == null) return strip;
+    if (AppPlatform.isMobile) {
+      return Row(
+        children: [
+          Expanded(child: strip),
+          if (ref.watch(activeSshTerminalProvider) != null) ...[
+            const SizedBox(width: GlassSpacing.s4),
+            const _ServerMetricsButton(),
+          ],
+        ],
+      );
+    }
+    if (active.host == null) return strip;
     return Row(
       children: [
         _TerminalSftpButton(tab: active),
@@ -437,6 +448,21 @@ class _TerminalSftpButton extends ConsumerWidget {
   );
 }
 
+class _ServerMetricsButton extends ConsumerWidget {
+  const _ServerMetricsButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => GlassIconButton(
+    key: const ValueKey('terminal-server-info'),
+    icon: Icons.show_chart_rounded,
+    tooltip: context.l10n.hostMetricsTitle,
+    style: GlassIconButtonStyle.plain,
+    size: GlassSizes.tab,
+    selected: ref.watch(workspaceToolsProvider.select((s) => s.selected == WorkspaceTool.server)),
+    onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.server),
+  );
+}
+
 Future<void> _tabMenu(BuildContext context, WidgetRef ref, TerminalTab tab, int index, Offset position) async {
   final l10n = context.l10n;
   final controller = ref.read(terminalTabsProvider.notifier);
@@ -512,6 +538,7 @@ class _SessionToolbar extends ConsumerWidget {
     return GlassToolbarGroup(
       children: [
         if (minimal) _MinimalTerminalMenu(tab: tab),
+        if (minimal && ref.watch(activeSshTerminalProvider) != null) const _ServerMetricsButton(),
         if (!minimal) ...[
           GlassIconButton(
             key: const ValueKey('terminal-snippets'),

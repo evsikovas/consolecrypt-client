@@ -265,14 +265,16 @@ class MockDockerService implements DockerService {
     int localPort = 0,
   }) async {
     await mockDelay(latency);
-    final container = _list(sessionId).where((c) => c.id == containerId).firstOrNull;
+    final container = _list(sessionId).where((c) => c.id == containerId || c.name == containerId).firstOrNull;
     if (container == null) throw const DockerException(DockerFailure.other, 'no such container');
     final id = 'docker-forward-${++_next}';
     return _forwards[id] = DockerForward(
       id: id,
       sessionId: sessionId,
+      hostId: _sessions[sessionId]!.hostId,
       containerName: container.name,
       remotePort: remotePort,
+      requestedLocalPort: localPort,
       address: '127.0.0.1:${localPort == 0 ? 49152 + _next : localPort}',
       state: DockerForwardState.running,
       bytesSent: 2048,

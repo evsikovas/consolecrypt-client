@@ -28,10 +28,12 @@ final class KubeForward {
   const KubeForward({
     required this.id,
     required this.sessionId,
+    this.contextId,
     required this.contextName,
     required this.namespace,
     required this.pod,
     required this.remotePort,
+    this.requestedLocalPort,
     required this.address,
     required this.state,
     this.errorCode,
@@ -41,15 +43,19 @@ final class KubeForward {
     this.failedConnections = 0,
   });
   final String id, sessionId, contextName, namespace, pod, address, state;
+  final String? contextId;
+  final int? requestedLocalPort;
   final String? errorCode;
   final int remotePort, activeConnections, bytesSent, bytesReceived, failedConnections;
   factory KubeForward.fromJson(KubeJson json) => KubeForward(
     id: json['id'] as String,
     sessionId: json['session_id'] as String,
+    contextId: json['context_id'] as String?,
     contextName: json['context_name'] as String,
     namespace: json['namespace'] as String,
     pod: json['pod'] as String,
     remotePort: json['remote_port'] as int,
+    requestedLocalPort: json['requested_local_port'] as int?,
     address: json['address'] as String,
     state: json['state'] as String,
     errorCode: json['error_code'] as String?,

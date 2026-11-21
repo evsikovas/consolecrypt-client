@@ -143,6 +143,8 @@ class ExternalVaultSession {
   SecretText? _token;
   bool _closed = false;
 
+  bool get closed => _closed;
+
   void selectMount(ExternalVaultMount mount) {
     vaultPath(mount.path);
     _mount = mount;
@@ -204,14 +206,18 @@ class ExternalVaultSession {
     _token = SecretText(value);
   }
 
-  List<String> _kv(String path, {String? section, bool optional = false}) => [
-    ...vaultPath(_mount.path),
-    if (_mount.versioned && section != null) section,
+  List<String> _kv(String path, {String? section, bool optional = false, ExternalVaultMount? mount}) => [
+    ...vaultPath((mount ?? _mount).path),
+    if ((mount ?? _mount).versioned && section != null) section,
     ...vaultPath(path, optional: optional),
   ];
 
-  Future<List<String>> list(String path) async {
-    final result = await _request('LIST', _kv(path, section: 'metadata', optional: true), missingAsEmpty: true);
+  Future<List<String>> list(String path, {ExternalVaultMount? mount}) async {
+    final result = await _request(
+      'LIST',
+      _kv(path, section: 'metadata', optional: true, mount: mount),
+      missingAsEmpty: true,
+    );
     if (result.isEmpty) return <String>[];
     final keys = _map(result['data'])['keys'];
     if (keys is! List || keys.length > 10000 || keys.any((key) => key is! String)) {
@@ -234,9 +240,9 @@ class ExternalVaultSession {
     return valid;
   }
 
-  Future<ExternalVaultData> read(String path) async {
-    final versioned = _mount.versioned;
-    final response = await _request('GET', _kv(path, section: 'data'));
+  Future<ExternalVaultData> read(String path, {ExternalVaultMount? mount}) async {
+    final versioned = (mount ?? _mount).versioned;
+    final response = await _request('GET', _kv(path, section: 'data', mount: mount));
     final payload = _map(response['data']);
     if (!versioned) return ExternalVaultData(payload, null);
     final version = _map(payload['metadata'])['version'];

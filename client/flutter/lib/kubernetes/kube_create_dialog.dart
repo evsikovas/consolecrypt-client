@@ -193,88 +193,98 @@ class _KubeCreateDialogState extends ConsumerState<KubeCreateDialog> {
         height: 580,
         child: !_current
             ? const SizedBox.shrink()
-            : ListView(
-                children: [
-                  KubeWriteBanner(session: widget.session, contextName: widget.contextName),
-                  TextField(
-                    key: const ValueKey('kube-create-name'),
-                    controller: _name,
-                    enabled: !_busy,
-                    decoration: InputDecoration(labelText: l.kubeName),
-                    onChanged: (_) => _changed(),
-                  ),
-                  if (widget.kind.namespaced)
+            : SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: GlassSpacing.s8,
+                  children: [
+                    KubeWriteBanner(session: widget.session, contextName: widget.contextName),
                     TextField(
-                      key: const ValueKey('kube-create-namespace'),
-                      controller: _namespace,
+                      key: const ValueKey('kube-create-name'),
+                      controller: _name,
                       enabled: !_busy,
-                      decoration: InputDecoration(labelText: l.kubeNamespace),
+                      decoration: InputDecoration(labelText: l.kubeName),
                       onChanged: (_) => _changed(),
                     ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GlassButton(
-                      key: const ValueKey('kube-create-template'),
-                      label: l.kubeManifestTemplate,
-                      onPressed: _valid && !_busy ? _template : null,
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GlassButton(
-                      key: const ValueKey('kube-create-snippet'),
-                      label: l.kubeManifestSnippets,
-                      icon: Icons.code,
-                      onPressed: _busy ? null : _snippet,
-                    ),
-                  ),
-                  TextField(
-                    key: const ValueKey('kube-create-yaml'),
-                    controller: _yaml,
-                    enabled: !_busy,
-                    minLines: 6,
-                    maxLines: 12,
-                    maxLength: 2 * 1024 * 1024,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    enableIMEPersonalizedLearning: false,
-                    style: GlassTokens.of(context).typography.mono,
-                    decoration: InputDecoration(labelText: l.kubeYaml, counterText: ''),
-                    onChanged: (_) => _changed(),
-                  ),
-                  if (_schema != null)
+                    if (widget.kind.namespaced)
+                      TextField(
+                        key: const ValueKey('kube-create-namespace'),
+                        controller: _namespace,
+                        enabled: !_busy,
+                        decoration: InputDecoration(labelText: l.kubeNamespace),
+                        onChanged: (_) => _changed(),
+                      ),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: GlassButton(
-                        key: const ValueKey('kube-create-schema'),
-                        label: l.kubeSchemaFields,
-                        icon: Icons.help_outline,
-                        onPressed: !_canWrite || _busy
-                            ? null
-                            : () => showKubeSchemaFields(
-                                context,
-                                session: widget.session,
-                                kind: widget.kind,
-                                service: widget.service,
-                                editor: _yaml,
-                                onChanged: _changed,
-                              ),
+                        key: const ValueKey('kube-create-template'),
+                        label: l.kubeManifestTemplate,
+                        onPressed: _valid && !_busy ? _template : null,
                       ),
                     ),
-                  if (_schema != null)
-                    ExpansionTile(
-                      title: Text(l.kubeSchema),
-                      children: [SizedBox(height: 200, child: SingleChildScrollView(child: SelectableText(_schema!)))],
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: GlassButton(
+                        key: const ValueKey('kube-create-snippet'),
+                        label: l.kubeManifestSnippets,
+                        icon: Icons.code,
+                        onPressed: _busy ? null : _snippet,
+                      ),
                     ),
-                  if (_busy) const LinearProgressIndicator(),
-                  if (_yaml.text.contains('[redacted]')) Text(l.kubeMaskedEditHelp),
-                  if (_failed) Text(l.kubeApplyFailed),
-                  if (_preview != null)
-                    SizedBox(
-                      height: 200,
-                      child: KubeYamlDiff(before: '', after: _preview!),
+                    TextField(
+                      key: const ValueKey('kube-create-yaml'),
+                      controller: _yaml,
+                      enabled: !_busy,
+                      minLines: 6,
+                      maxLines: 12,
+                      maxLength: 2 * 1024 * 1024,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      enableIMEPersonalizedLearning: false,
+                      style: GlassTokens.of(context).typography.mono,
+                      decoration: InputDecoration(
+                        labelText: l.kubeObjectYaml,
+                        alignLabelWithHint: true,
+                        counterText: '',
+                      ),
+                      onChanged: (_) => _changed(),
                     ),
-                ],
+                    if (_schema != null)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: GlassButton(
+                          key: const ValueKey('kube-create-schema'),
+                          label: l.kubeSchemaFields,
+                          icon: Icons.help_outline,
+                          onPressed: !_canWrite || _busy
+                              ? null
+                              : () => showKubeSchemaFields(
+                                  context,
+                                  session: widget.session,
+                                  kind: widget.kind,
+                                  service: widget.service,
+                                  editor: _yaml,
+                                  onChanged: _changed,
+                                ),
+                        ),
+                      ),
+                    if (_schema != null)
+                      ExpansionTile(
+                        title: Text(l.kubeSchema),
+                        children: [
+                          SizedBox(height: 200, child: SingleChildScrollView(child: SelectableText(_schema!))),
+                        ],
+                      ),
+                    if (_busy) const LinearProgressIndicator(),
+                    if (_yaml.text.contains('[redacted]')) Text(l.kubeMaskedEditHelp),
+                    if (_failed) Text(l.kubeApplyFailed),
+                    if (_preview != null)
+                      SizedBox(
+                        height: 200,
+                        child: KubeYamlDiff(before: '', after: _preview!),
+                      ),
+                  ],
+                ),
               ),
       ),
       primaryAction: GlassButton.prominent(

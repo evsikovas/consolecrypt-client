@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_output.dart';
@@ -22,6 +23,8 @@ final class TerminalTab {
     : title = target.label;
 
   final TerminalSessionId sessionId;
+  final _metrics = TerminalHostMetrics();
+  ValueListenable<HostMetricsHistory> get hostMetrics => _metrics;
   final TerminalTarget target;
   Host? get host => target.sshHost;
   bool get isLocal => target is LocalTerminalTarget;
@@ -171,12 +174,15 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   late TerminalService _service;
   int _generation = 0;
   bool _disposed = false;
+  bool _metricsUnlocked = false;
 
   @override
   TerminalTabsState build() {
     _service = ref.read(terminalServiceProvider);
     ref.onDispose(_disposeAll);
     if (ref.read(terminalOnlyModeProvider)) return const TerminalTabsState();
+    final vault = ref.read(vaultServiceProvider);
+    _metricsUnlocked = vault.currentStatus.isUnlocked;
     // Sessions belong to the profile that opened them.
     ref.listen(activeProfileProvider.select((p) => p?.id), (prev, next) {
       if (prev != next) closeAll();
@@ -184,9 +190,16 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     // A lock (often the idle auto-lock) keeps the open tabs: the core keeps
     // their shells running. Only connections still opening are dropped, as
     // the locked vault refuses them.
-    ref.listen(vaultStatusProvider.select((s) => s.value?.isUnlocked), (_, unlocked) {
-      if (unlocked == false) _generation++;
+    // Follow the service even while Riverpod pauses offscreen UI listeners.
+    final vaultChanges = vault.watchStatus().map((s) => s.isUnlocked).distinct().listen((unlocked) {
+      if (_disposed || unlocked == _metricsUnlocked) return;
+      if (!unlocked) _generation++;
+      _metricsUnlocked = unlocked;
+      for (final tab in _open) {
+        _updateMetrics(tab);
+      }
     });
+    ref.onDispose(() => unawaited(vaultChanges.cancel()));
     return const TerminalTabsState();
   }
 
@@ -199,6 +212,16 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
 
   void _touch() {
     if (!_disposed) state = state.copyWith();
+  }
+
+  void _updateMetrics(TerminalTab tab) {
+    final host = tab.host;
+    final reader = _service;
+    if (_metricsUnlocked && tab.isConnected && !tab.exited && host != null && reader is HostMetricsReader) {
+      tab._metrics.start(host, tab.sessionId, reader as HostMetricsReader);
+    } else {
+      tab._metrics.stop();
+    }
   }
 
   Future<TerminalTab> open(Host host) => openTarget(SshTerminalTarget(host));
@@ -401,6 +424,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
         tab.exited = true;
         if (!_watched(tab)) tab.attention = true;
     }
+    _updateMetrics(tab);
     _touch();
   }
 
@@ -430,6 +454,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
           tab
             ..state = SessionConnectionState.disconnected
             ..message = null;
+          _updateMetrics(tab);
           _touch();
         }
       } finally {
@@ -539,6 +564,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     if (!_open.contains(tab)) return;
     _invalidateInput(tab);
     tab.state = SessionConnectionState.reconnecting;
+    _updateMetrics(tab);
     _touch();
     await _service.reconnect(tab.sessionId);
   }
@@ -546,7 +572,8 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   /// Closes one session: a pane leaves its tab; a split tab hands its
   /// place to its first pane; any other tab leaves the strip.
   Future<void> close(TerminalTab tab) async {
-    _open.remove(tab);
+    if (!_open.remove(tab)) return;
+    tab._metrics.dispose();
     tab._quiet?.cancel();
     _invalidateInput(tab);
     await tab._output?.cancel();
@@ -637,6 +664,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   void _closeSessions() {
     _generation++;
     for (final tab in List.of(_open)) {
+      tab._metrics.dispose();
       _invalidateInput(tab);
       unawaited(tab._output?.cancel());
       unawaited(tab._events?.cancel());

@@ -9,9 +9,11 @@ import 'package:consolecrypt/core/bridge/terminal_attachment_relay.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
 import 'package:consolecrypt/src/rust/api/docker.dart' as rs_docker;
+import 'package:consolecrypt/src/rust/api/host_metrics.dart' as rs_metrics;
 import 'package:consolecrypt/src/rust/api/inventory.dart' as rs_inv;
 import 'package:consolecrypt/src/rust/api/kubernetes.dart' as rs_kube;
 import 'package:consolecrypt/src/rust/api/sftp.dart' as rs_sftp;
@@ -63,6 +65,7 @@ final class RustTerminalService
         LocalTerminalService,
         KubernetesTerminalService,
         DockerTerminalService,
+        HostMetricsReader,
         RuntimeTerminalService {
   RustTerminalService(RustBackend hub) : _hub = hub {
     hub.onPrompt = _routePrompt;
@@ -94,6 +97,32 @@ final class RustTerminalService
     final session = _sessions[id];
     return session != null && session.connected && !session.closed && session.hostId == hostId ? session.rustId : null;
   }
+
+  @override
+  Stream<HostMetricsSample> watchHost(Host host, TerminalSessionId sessionId, String operationId) async* {
+    final nativeId = connectedSshRuntimeId(sessionId, host.id);
+    final scope = _hub?.runtimeNoticeEvents.currentScope.scope;
+    if (nativeId == null || scope == null) throw const AppException(AppErrorCode.notFound, 'SSH session unavailable');
+    final request = jsonEncode({
+      'terminalId': nativeId,
+      'operationId': operationId,
+      'hostId': host.id.value,
+      'hostUpdatedAtMs': host.updatedAt.millisecondsSinceEpoch,
+      'profileId': scope.profileId,
+      'notificationScopeId': scope.nonce,
+    });
+    try {
+      await for (final item in rs_metrics.hostMetricsWatch(requestJson: request)) {
+        yield HostMetricsSample.fromJson(jsonDecode(item) as Json);
+      }
+    } catch (error) {
+      throw toAppException(error);
+    }
+  }
+
+  @override
+  Future<void> cancelHostWatch(String operationId) =>
+      guard(() => rs_metrics.hostMetricsCancel(operationId: operationId));
 
   @override
   Future<LocalShellProfiles> listLocalProfiles() async {

@@ -58,6 +58,18 @@ class _Manifests implements KubeManifestService {
 }
 
 void main() {
+  test('prefills Docker Hub names, tagged digests and registry references from Docker', () {
+    expect(DockerKubeTarget.dockerImage('python:3.14.4-slim'), 'docker.io/library/python:3.14.4-slim');
+    expect(DockerKubeTarget.dockerImage('nginx'), 'docker.io/library/nginx:latest');
+    expect(DockerKubeTarget.dockerImage('team/image:1'), 'docker.io/team/image:1');
+    expect(DockerKubeTarget.dockerImage('ghcr.io/org/image:2'), 'ghcr.io/org/image:2');
+    final digest = 'sha256:${'a' * 64}';
+    expect(DockerKubeTarget.dockerImage('python:3@$digest'), 'docker.io/library/python@$digest');
+    for (final id in [digest, 'a' * 64, 'localhost:5000/image:2', 'https://ghcr.io/org/image']) {
+      expect(DockerKubeTarget.dockerImage(id), isNull);
+    }
+  });
+
   test('requires explicit registry and version, rejects URLs, credentials and local image IDs', () {
     for (final image in [
       'nginx',

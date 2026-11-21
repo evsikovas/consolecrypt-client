@@ -47,6 +47,74 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get hostMetricsTitle => 'Мониторинг';
+
+  @override
+  String get hostMetricsConnecting => 'Читаем первые данные по SSH…';
+
+  @override
+  String get hostMetricsReadFailed =>
+      'Не удалось прочитать метрики сервера. Проверьте подключение по SSH и повторите попытку.';
+
+  @override
+  String get hostMetricsLinuxOnly => 'Сейчас этот экран показывает текущие метрики Linux-серверов.';
+
+  @override
+  String get hostMetricsNativeOnly => 'Для текущих метрик нужен встроенный SSH. Его можно выбрать в настройках хоста.';
+
+  @override
+  String get hostMetricsLastSample => 'Обновлено в';
+
+  @override
+  String get hostMetricsUptime => 'Время работы';
+
+  @override
+  String hostMetricsUptimeValue(int days, int hours, int minutes) {
+    return '$days д $hours ч $minutes мин';
+  }
+
+  @override
+  String get hostMetricsCpu => 'Загрузка процессора';
+
+  @override
+  String get hostMetricsRam => 'Занято памяти';
+
+  @override
+  String get hostMetricsDisk => 'Занято на системном диске';
+
+  @override
+  String get hostMetricsNetwork => 'Сеть';
+
+  @override
+  String get hostMetricsOs => 'Операционная система';
+
+  @override
+  String get hostMetricsKernel => 'Ядро';
+
+  @override
+  String get hostMetricsProcessor => 'Процессор';
+
+  @override
+  String get hostMetricsLoadAverage => 'Средняя нагрузка';
+
+  @override
+  String hostMetricsLogicalCpus(int count) {
+    return 'Логических ЦП: $count';
+  }
+
+  @override
+  String get hostMetricsReceived => 'Приём';
+
+  @override
+  String get hostMetricsSent => 'Передача';
+
+  @override
+  String get hostMetricsChanged => 'Настройки хоста изменились. Переподключитесь, чтобы обновить метрики.';
+
+  @override
+  String get hostMetricsConnectSsh => 'Подключитесь к серверу по SSH, чтобы увидеть его метрики.';
+
+  @override
   String get externalVaultTitle => 'Vault / OpenBao';
 
   @override
@@ -120,6 +188,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get externalVaultNoMatches => 'По вашему запросу ничего не найдено';
+
+  @override
+  String externalVaultFolderContents(String folder) {
+    return 'Содержимое $folder';
+  }
 
   @override
   String get externalVaultAuthError => 'Vault не принял учётные данные.';
@@ -3435,6 +3508,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get paletteGenerateSubtitle => 'Спросить ИИ (никогда не выполняется автоматически)';
+
+  @override
+  String get paletteScreenSnip => 'Сделать снимок экрана';
+
+  @override
+  String get paletteSnipFailed => 'Не удалось открыть «Ножницы».';
 
   @override
   String get paletteNewHost => 'Новый хост';
@@ -17697,6 +17776,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerKubeImage => 'Опубликованный образ (registry/repository:tag или @sha256:digest)';
 
   @override
+  String get dockerKubeManifestYaml => 'Манифест развёртывания (YAML)';
+
+  @override
+  String get dockerKubeNoProvider => 'Для генерации манифеста добавьте провайдера ИИ в настройках.';
+
+  @override
   String get dockerKubeImageHelp =>
       'Сначала опубликуйте образ в registry, доступном узлам кластера. Мастер не загружает локальные образы. Лучше указать digest: образ по тегу может измениться. localhost не является удалённым registry.';
 
@@ -17727,7 +17812,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerKubeAiReview =>
-      'Выбранный ИИ-провайдер получит только показанный ниже шаблон: адрес образа, имена приложения и namespace, порт и имя pull-secret. Проверьте его перед отправкой. Значения окружения, Docker inspect и Kubernetes-учётные данные не передаются.';
+      'Проверьте шаблон перед отправкой ИИ. ConsoleCrypt добавит команду запуска из Docker на этом устройстве после получения ответа.';
 
   @override
   String get dockerKubeSendAi => 'Отправить шаблон ИИ';
@@ -17742,7 +17827,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerKubeAcknowledge =>
-      'Я проверил доступность образа и архитектуру CPU. Локальные файлы, изменения слоя контейнера, переопределения окружения, команды и зависимости Compose не переносятся; используются настройки образа.';
+      'Я проверил образ, архитектуру процессора и команду запуска. Контейнер получит окружение и файлы из образа. Переменные из настроек Docker и зависимости Compose нужно настроить отдельно.';
 
   @override
   String get dockerKubeValidated =>
@@ -17753,14 +17838,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Операция не выполнена. Проверьте доступ к кластеру, права записи, конфликты имён ресурсов и манифест. Перечисленные ниже созданные ресурсы остаются в кластере.';
 
   @override
-  String get dockerKubeCreated => 'Созданные ресурсы (готовность приложения ещё не подтверждена)';
+  String get dockerKubeCreated => 'Созданные ресурсы';
 
   @override
   String get dockerKubeReady => 'Deployment готов';
 
   @override
-  String get dockerKubePending =>
-      'Deployment пока не готов. Проверьте Pods/события в разделе Kubernetes, включая ImagePullBackOff и CrashLoopBackOff.';
+  String get dockerKubePending => 'Ожидание готовности реплик Deployment.';
 
   @override
   String get dockerKubeCheckStatus => 'Проверить готовность';
@@ -17813,4 +17897,56 @@ class AppLocalizationsRu extends AppLocalizations {
   String dockerPortRange(int start, int end, int total) {
     return '$start–$end из $total';
   }
+
+  @override
+  String get dockerKubeStartupUnavailable =>
+      'Docker вернул неполную или скрытую команду запуска. Проверьте команду контейнера и укажите её в манифесте вручную.';
+
+  @override
+  String get dockerKubeNameTaken =>
+      'В этом namespace уже есть ресурс с таким именем. Выберите другое имя или откройте существующий ресурс в разделе Kubernetes.';
+
+  @override
+  String get dockerKubeTerminated => 'Процесс контейнера завершился. Проверьте команду запуска.';
+
+  @override
+  String dockerKubeExitCode(int code) {
+    return 'Код выхода $code';
+  }
+
+  @override
+  String get dockerKubeUnschedulable => 'Kubernetes не смог разместить Pod ни на одном узле.';
+
+  @override
+  String get dockerKubeContainerConfig =>
+      'Kubernetes не смог настроить или запустить контейнер. Подробности есть в событиях Pod.';
+
+  @override
+  String get dockerKubeDeadlineExceeded => 'Истекло время ожидания готовности Deployment.';
+
+  @override
+  String get dockerKubeReplicaFailure =>
+      'Контроллер Deployment сообщил об ошибке реплики. Подробности есть в событиях ReplicaSet.';
+
+  @override
+  String get dockerKubeStatusUnavailable =>
+      'Не удалось получить статус созданного Deployment. Проверьте подключение к кластеру и права на чтение.';
+
+  @override
+  String get dockerKubePodDetailsUnavailable => 'Подробности о состоянии Pod недоступны.';
+
+  @override
+  String get dockerKubeReplaced =>
+      'Под этим именем уже другой Deployment. Его статус можно посмотреть в разделе Kubernetes.';
+
+  @override
+  String tunnelsLocalAddressUnavailable(String address) {
+    return 'Не удалось открыть $address. Проверьте, не занят ли порт другим приложением и не зарезервирован ли он системой.';
+  }
+
+  @override
+  String get externalVaultConnections => 'Сохранённые подключения';
+
+  @override
+  String get externalVaultNoConnections => 'Пока нет сохранённых подключений';
 }

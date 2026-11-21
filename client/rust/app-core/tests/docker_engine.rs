@@ -143,11 +143,12 @@ async fn docker_over_ssh_reports_missing_rights_then_lists_logs_and_forwards() {
     .unwrap()
     .unwrap();
 
-    // Port 8080 of the container through the SSH host.
+    // Restore port 8080 by its saved container name through the SSH host.
     let forward = app
-        .docker_forward_start(session.id.clone(), me.id.clone(), 8080, 0)
+        .docker_forward_start(session.id.clone(), me.name.clone(), 8080, 0)
         .await
         .unwrap();
+    assert_eq!(forward.host_id, saved.id);
     let mut socket = tokio::net::TcpStream::connect(&forward.address)
         .await
         .unwrap();

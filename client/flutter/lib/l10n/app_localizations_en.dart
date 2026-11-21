@@ -47,6 +47,74 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get hostMetricsTitle => 'Monitoring';
+
+  @override
+  String get hostMetricsConnecting => 'Reading the first sample over SSH…';
+
+  @override
+  String get hostMetricsReadFailed => 'Could not read the server metrics. Check the SSH connection and try again.';
+
+  @override
+  String get hostMetricsLinuxOnly => 'This view reads live metrics from Linux hosts.';
+
+  @override
+  String get hostMetricsNativeOnly =>
+      'Live metrics require the built-in SSH client. Select it in the host settings to use this view.';
+
+  @override
+  String get hostMetricsLastSample => 'Updated at';
+
+  @override
+  String get hostMetricsUptime => 'Uptime';
+
+  @override
+  String hostMetricsUptimeValue(int days, int hours, int minutes) {
+    return '$days d $hours h $minutes min';
+  }
+
+  @override
+  String get hostMetricsCpu => 'CPU usage';
+
+  @override
+  String get hostMetricsRam => 'Memory used';
+
+  @override
+  String get hostMetricsDisk => 'System disk used';
+
+  @override
+  String get hostMetricsNetwork => 'Network';
+
+  @override
+  String get hostMetricsOs => 'Operating system';
+
+  @override
+  String get hostMetricsKernel => 'Kernel';
+
+  @override
+  String get hostMetricsProcessor => 'Processor';
+
+  @override
+  String get hostMetricsLoadAverage => 'Load average';
+
+  @override
+  String hostMetricsLogicalCpus(int count) {
+    return '$count logical CPUs';
+  }
+
+  @override
+  String get hostMetricsReceived => 'Received';
+
+  @override
+  String get hostMetricsSent => 'Sent';
+
+  @override
+  String get hostMetricsChanged => 'The saved host changed. Reconnect to refresh its metrics.';
+
+  @override
+  String get hostMetricsConnectSsh => 'Connect to a server over SSH to see its metrics.';
+
+  @override
   String get externalVaultTitle => 'Vault / OpenBao';
 
   @override
@@ -121,6 +189,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get externalVaultNoMatches => 'Nothing matches your search';
+
+  @override
+  String externalVaultFolderContents(String folder) {
+    return 'Contents of $folder';
+  }
 
   @override
   String get externalVaultAuthError => 'Vault did not accept these credentials.';
@@ -3306,6 +3379,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paletteGenerateSubtitle => 'Ask the AI (never runs automatically)';
+
+  @override
+  String get paletteScreenSnip => 'Take a screenshot';
+
+  @override
+  String get paletteSnipFailed => 'Could not open Snipping Tool.';
 
   @override
   String get paletteNewHost => 'New host';
@@ -17355,6 +17434,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dockerKubeImage => 'Published image (registry/repository:tag or @sha256:digest)';
 
   @override
+  String get dockerKubeManifestYaml => 'Deployment manifest (YAML)';
+
+  @override
+  String get dockerKubeNoProvider => 'Choose an AI provider in Settings to generate a manifest.';
+
+  @override
   String get dockerKubeImageHelp =>
       'Publish the image to a registry reachable by cluster nodes first. This wizard does not upload local images. Prefer a digest; a mutable tag can change. localhost is not a remote registry.';
 
@@ -17385,7 +17470,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerKubeAiReview =>
-      'The selected AI provider will receive only the manifest template shown below: image reference, app/namespace names, port and pull-secret name. Review it before sending. Environment values, Docker inspect and Kubernetes credentials are excluded.';
+      'Review the template below before sending it to the AI provider. ConsoleCrypt adds the Docker startup command locally after receiving the response.';
 
   @override
   String get dockerKubeSendAi => 'Send template to AI';
@@ -17400,7 +17485,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerKubeAcknowledge =>
-      'I checked image availability and CPU architecture. Local files, writable-layer changes, environment overrides, commands and Compose dependencies will not be copied; image defaults will be used.';
+      'I checked the image, CPU architecture and startup command. This deployment uses the image’s environment and filesystem. Configure any Docker environment overrides or Compose dependencies separately.';
 
   @override
   String get dockerKubeValidated =>
@@ -17411,14 +17496,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'The operation failed. Check cluster access, write permissions, resource name conflicts and manifest validation. Created resources listed below remain in the cluster.';
 
   @override
-  String get dockerKubeCreated => 'Created resources (not a readiness guarantee)';
+  String get dockerKubeCreated => 'Created resources';
 
   @override
   String get dockerKubeReady => 'Deployment is ready';
 
   @override
-  String get dockerKubePending =>
-      'Deployment is not ready yet. Check Pods/events in the Kubernetes section, including ImagePullBackOff and CrashLoopBackOff.';
+  String get dockerKubePending => 'Waiting for the Deployment replicas to become ready.';
 
   @override
   String get dockerKubeCheckStatus => 'Check readiness';
@@ -17473,4 +17557,56 @@ class AppLocalizationsEn extends AppLocalizations {
   String dockerPortRange(int start, int end, int total) {
     return '$start–$end of $total';
   }
+
+  @override
+  String get dockerKubeStartupUnavailable =>
+      'Docker returned an incomplete or masked startup command. Check the container command and prepare its manifest manually.';
+
+  @override
+  String get dockerKubeNameTaken =>
+      'A resource with this name already exists in this namespace. Choose a new name or manage the existing resource in Kubernetes.';
+
+  @override
+  String get dockerKubeTerminated => 'The container process exited. Check its startup command.';
+
+  @override
+  String dockerKubeExitCode(int code) {
+    return 'Exit code $code';
+  }
+
+  @override
+  String get dockerKubeUnschedulable => 'Kubernetes could not schedule the Pod on a node.';
+
+  @override
+  String get dockerKubeContainerConfig =>
+      'Kubernetes could not configure or start the container. Check the Pod events.';
+
+  @override
+  String get dockerKubeDeadlineExceeded => 'The Deployment exceeded its rollout deadline.';
+
+  @override
+  String get dockerKubeReplicaFailure =>
+      'The Deployment controller reported a replica failure. Check the ReplicaSet events.';
+
+  @override
+  String get dockerKubeStatusUnavailable =>
+      'Could not read the status of the created Deployment. Check the cluster connection and read permissions.';
+
+  @override
+  String get dockerKubePodDetailsUnavailable => 'Pod diagnostics are unavailable.';
+
+  @override
+  String get dockerKubeReplaced =>
+      'This name now belongs to a different Deployment. Open it in Kubernetes to see its status.';
+
+  @override
+  String tunnelsLocalAddressUnavailable(String address) {
+    return 'Cannot listen on $address. Check whether this port is in use or reserved on this device.';
+  }
+
+  @override
+  String get externalVaultConnections => 'Saved connections';
+
+  @override
+  String get externalVaultNoConnections => 'No saved connections yet';
 }

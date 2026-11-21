@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/app/app.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
@@ -143,6 +144,7 @@ _pump(
   WidgetTester tester,
   List<Host> hosts, {
   Group? group,
+  Future<bool> Function()? snip,
   bool demo = false,
   AppLocale locale = AppLocale.en,
   LocalShellProfiles profiles = const LocalShellProfiles(),
@@ -170,6 +172,7 @@ _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        if (snip != null) windowsScreenSnipProvider.overrideWithValue(snip),
         appServicesProvider.overrideWithValue(backend.services),
         terminalServiceProvider.overrideWithValue(terminal),
         aiServiceProvider.overrideWithValue(ai),
@@ -202,7 +205,29 @@ Future<void> _submit(WidgetTester tester) => tester.testTextInput.receiveAction(
 Finder _hostRow(Host host) => find.byKey(ValueKey('palette-host-${host.id.value}'));
 
 void main() {
-  testWidgets('Vault and saved OpenBao connections open from the password command palette', (tester) async {
+  testWidgets('Snipping Tool can be opened from the focused Windows palette', (tester) async {
+    var called = 0;
+    await _pump(
+      tester,
+      [],
+      snip: () async {
+        called++;
+        return true;
+      },
+    );
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await settle(tester);
+    expect(called, 1);
+    await tapKey(tester, 'palette-snip');
+    expect(called, 2);
+    expect(find.byKey(const ValueKey('command-palette')), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('saved OpenBao connection authenticates inside the palette without a duplicate launcher', (tester) async {
     final fixture = await _pump(tester, []);
     final profile = fixture.container.read(activeProfileProvider)!.id.value;
     final vault = fixture.container.read(vaultStatusProvider).value!.vaultId!.value;
@@ -227,11 +252,11 @@ void main() {
       ),
     );
     await _query(tester, 'vault');
-    expect(find.byKey(const ValueKey('palette-external-vault')), findsOneWidget);
+    expect(find.byKey(const ValueKey('palette-external-vault')), findsNothing);
     await _query(tester, 'Passwords: OpenBao test');
     await tapKey(tester, 'palette-external-vault-bao-test');
     expect(find.byKey(const ValueKey('external-vault-workspace')), findsOneWidget);
-    expect(find.byKey(const ValueKey('command-palette')), findsNothing);
+    expect(find.byKey(const ValueKey('command-palette')), findsOneWidget);
     expect(find.text('Server address'), findsOneWidget);
     expect(find.text('https://vault.example.invalid'), findsOneWidget);
     expect(tester.takeException(), isNull);

@@ -226,7 +226,7 @@ impl ResourceApi {
             .map_err(|_| ResourceError::Transport)?;
         let listener = TcpListener::bind(address)
             .await
-            .map_err(|_| ResourceError::Transport)?;
+            .map_err(|_| ResourceError::LocalBindFailed)?;
         if self.guard.cancellation().is_cancelled() {
             return Err(ResourceError::Closed);
         }

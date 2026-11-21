@@ -19,6 +19,48 @@
   "@keepassExchangeConfirm": {"description":"KDBX password file exchange","placeholders":{"count":{"type":"int"},"database":{"type":"String"}}},
   "keepassExchangeResult": "Added {added}. Skipped {skipped}.",
   "@keepassExchangeResult": {"description":"KDBX password file exchange","placeholders":{"added":{"type":"int"},"skipped":{"type":"int"}}},
+  "hostMetricsTitle": "Monitoring",
+  "@hostMetricsTitle": {"description":"Live SSH host metrics label."},
+  "hostMetricsConnecting": "Reading the first sample over SSH…",
+  "@hostMetricsConnecting": {"description":"Live SSH host metrics label."},
+  "hostMetricsReadFailed": "Could not read the server metrics. Check the SSH connection and try again.",
+  "@hostMetricsReadFailed": {"description":"Live SSH host metrics label."},
+  "hostMetricsLinuxOnly": "This view reads live metrics from Linux hosts.",
+  "@hostMetricsLinuxOnly": {"description":"Live SSH host metrics label."},
+  "hostMetricsNativeOnly": "Live metrics require the built-in SSH client. Select it in the host settings to use this view.",
+  "@hostMetricsNativeOnly": {"description":"Live SSH host metrics label."},
+  "hostMetricsLastSample": "Updated at",
+  "@hostMetricsLastSample": {"description":"Live SSH host metrics label."},
+  "hostMetricsUptime": "Uptime",
+  "@hostMetricsUptime": {"description":"Live SSH host metrics label."},
+  "hostMetricsUptimeValue": "{days} d {hours} h {minutes} min",
+  "@hostMetricsUptimeValue": {"description":"Live SSH host metrics label.","placeholders":{"days":{"type":"int"},"hours":{"type":"int"},"minutes":{"type":"int"}}},
+  "hostMetricsCpu": "CPU usage",
+  "@hostMetricsCpu": {"description":"Live SSH host metrics label."},
+  "hostMetricsRam": "Memory used",
+  "@hostMetricsRam": {"description":"Live SSH host metrics label."},
+  "hostMetricsDisk": "System disk used",
+  "@hostMetricsDisk": {"description":"Live SSH host metrics label."},
+  "hostMetricsNetwork": "Network",
+  "@hostMetricsNetwork": {"description":"Live SSH host metrics label."},
+  "hostMetricsOs": "Operating system",
+  "@hostMetricsOs": {"description":"Server information in the SSH terminal side panel."},
+  "hostMetricsKernel": "Kernel",
+  "@hostMetricsKernel": {"description":"Server information in the SSH terminal side panel."},
+  "hostMetricsProcessor": "Processor",
+  "@hostMetricsProcessor": {"description":"Server information in the SSH terminal side panel."},
+  "hostMetricsLoadAverage": "Load average",
+  "@hostMetricsLoadAverage": {"description":"Server information in the SSH terminal side panel."},
+  "hostMetricsLogicalCpus": "{count} logical CPUs",
+  "@hostMetricsLogicalCpus": {"description":"Server information in the SSH terminal side panel.","placeholders":{"count":{"type":"int"}}},
+  "hostMetricsReceived": "Received",
+  "hostMetricsSent": "Sent",
+  "@hostMetricsReceived": {"description":"Incoming network traffic in the terminal host monitoring panel."},
+  "@hostMetricsSent": {"description":"Outgoing network traffic in the terminal host monitoring panel."},
+  "hostMetricsChanged": "The saved host changed. Reconnect to refresh its metrics.",
+  "hostMetricsConnectSsh": "Connect to a server over SSH to see its metrics.",
+  "@hostMetricsChanged": {"description":"Host monitoring connection status in the SSH terminal."},
+  "@hostMetricsConnectSsh": {"description":"Host monitoring connection status in the SSH terminal."},
   "externalVaultTitle": "Vault / OpenBao",
   "@externalVaultTitle": {"description":"Vault and OpenBao connection"},
   "externalVaultAdd": "Add connection",
@@ -68,6 +110,8 @@
   "externalVaultEmpty": "This folder is empty",
   "@externalVaultEmpty": {"description":"Vault and OpenBao secrets workspace"},
   "externalVaultNoMatches": "Nothing matches your search",
+  "externalVaultFolderContents": "Contents of {folder}",
+  "@externalVaultFolderContents": {"description":"Header for one directory in the Vault browser","placeholders":{"folder":{"type":"String"}}},
   "@externalVaultNoMatches": {"description":"Vault and OpenBao secrets workspace"},
   "externalVaultAuthError": "Vault did not accept these credentials.",
   "@externalVaultAuthError": {"description":"Vault and OpenBao connection"},
@@ -4433,6 +4477,14 @@
   "paletteGenerateSubtitle": "Ask the AI (never runs automatically)",
   "@paletteGenerateSubtitle": {
     "description": "Command palette: subtitle of the generate-command item."
+  },
+  "paletteScreenSnip": "Take a screenshot",
+  "paletteSnipFailed": "Could not open Snipping Tool.",
+  "@paletteScreenSnip": {
+    "description": "Open the Windows Snipping Tool over the command palette"
+  },
+  "@paletteSnipFailed": {
+    "description": "The Windows Snipping Tool could not be launched"
   },
   "paletteNewHost": "New host",
   "@paletteNewHost": {
@@ -23194,6 +23246,14 @@
   "@dockerKubeImage": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
+  "dockerKubeManifestYaml": "Deployment manifest (YAML)",
+  "dockerKubeNoProvider": "Choose an AI provider in Settings to generate a manifest.",
+  "@dockerKubeManifestYaml": {
+    "description": "Editor label for the workload manifest in the Docker to Kubernetes wizard"
+  },
+  "@dockerKubeNoProvider": {
+    "description": "Explains why manifest generation needs an AI provider"
+  },
   "dockerKubeImageHelp": "Publish the image to a registry reachable by cluster nodes first. This wizard does not upload local images. Prefer a digest; a mutable tag can change. localhost is not a remote registry.",
   "@dockerKubeImageHelp": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
@@ -23230,7 +23290,7 @@
   "@dockerKubeTemplate": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAiReview": "The selected AI provider will receive only the manifest template shown below: image reference, app/namespace names, port and pull-secret name. Review it before sending. Environment values, Docker inspect and Kubernetes credentials are excluded.",
+  "dockerKubeAiReview": "Review the template below before sending it to the AI provider. ConsoleCrypt adds the Docker startup command locally after receiving the response.",
   "@dockerKubeAiReview": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -23246,7 +23306,7 @@
   "@dockerKubeInvalidTarget": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAcknowledge": "I checked image availability and CPU architecture. Local files, writable-layer changes, environment overrides, commands and Compose dependencies will not be copied; image defaults will be used.",
+  "dockerKubeAcknowledge": "I checked the image, CPU architecture and startup command. This deployment uses the image’s environment and filesystem. Configure any Docker environment overrides or Compose dependencies separately.",
   "@dockerKubeAcknowledge": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -23258,7 +23318,7 @@
   "@dockerKubeFailed": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeCreated": "Created resources (not a readiness guarantee)",
+  "dockerKubeCreated": "Created resources",
   "@dockerKubeCreated": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -23266,7 +23326,7 @@
   "@dockerKubeReady": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubePending": "Deployment is not ready yet. Check Pods/events in the Kubernetes section, including ImagePullBackOff and CrashLoopBackOff.",
+  "dockerKubePending": "Waiting for the Deployment replicas to become ready.",
   "@dockerKubePending": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -23345,5 +23405,71 @@
         "type": "int"
       }
     }
+  },
+  "dockerKubeStartupUnavailable": "Docker returned an incomplete or masked startup command. Check the container command and prepare its manifest manually.",
+  "@dockerKubeStartupUnavailable": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "dockerKubeNameTaken": "A resource with this name already exists in this namespace. Choose a new name or manage the existing resource in Kubernetes.",
+  "@dockerKubeNameTaken": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "dockerKubeTerminated": "The container process exited. Check its startup command.",
+  "@dockerKubeTerminated": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "dockerKubeExitCode": "Exit code {code}",
+  "@dockerKubeExitCode": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance.",
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "dockerKubeUnschedulable": "Kubernetes could not schedule the Pod on a node.",
+  "@dockerKubeUnschedulable": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "dockerKubeContainerConfig": "Kubernetes could not configure or start the container. Check the Pod events.",
+  "@dockerKubeContainerConfig": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "dockerKubeDeadlineExceeded": "The Deployment exceeded its rollout deadline.",
+  "@dockerKubeDeadlineExceeded": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "dockerKubeReplicaFailure": "The Deployment controller reported a replica failure. Check the ReplicaSet events.",
+  "@dockerKubeReplicaFailure": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "dockerKubeStatusUnavailable": "Could not read the status of the created Deployment. Check the cluster connection and read permissions.",
+  "@dockerKubeStatusUnavailable": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "dockerKubePodDetailsUnavailable": "Pod diagnostics are unavailable.",
+  "@dockerKubePodDetailsUnavailable": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "dockerKubeReplaced": "This name now belongs to a different Deployment. Open it in Kubernetes to see its status.",
+  "@dockerKubeReplaced": {
+    "description": "Docker to Kubernetes deployment wizard status or guidance."
+  },
+  "tunnelsLocalAddressUnavailable": "Cannot listen on {address}. Check whether this port is in use or reserved on this device.",
+  "@tunnelsLocalAddressUnavailable": {
+    "description": "Local bind failure when starting a saved tunnel.",
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "externalVaultConnections": "Saved connections",
+  "@externalVaultConnections": {
+    "description": "Saved Vault and OpenBao connections list."
+  },
+  "externalVaultNoConnections": "No saved connections yet",
+  "@externalVaultNoConnections": {
+    "description": "Saved Vault and OpenBao connections list."
   }
 }

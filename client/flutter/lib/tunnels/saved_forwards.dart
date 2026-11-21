@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
+import 'package:consolecrypt/kubernetes/kube_forward_restore.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,6 +36,43 @@ final class ForwardHandle {
   final SavedForwardKind kind;
   final String sessionId, forwardId, address;
   final bool owned;
+}
+
+// A loopback endpoint may already exist in another browser session (for
+// example after reconnecting). Bind only once, and never adopt by display name.
+ForwardHandle? _runningPreset(SavedForward plan, List<DockerForward> docker, List<KubeForward> kube) {
+  if (plan.network) return null;
+  final host = plan.localAddress == 'localhost' ? '127.0.0.1' : plan.localAddress;
+  bool sameListener(String address, int? requestedPort) {
+    final endpoint = Uri.tryParse('tcp://$address');
+    if (endpoint == null || endpoint.host != host || !endpoint.hasPort) return false;
+    if (plan.localPort == 0) return requestedPort == 0;
+    return (requestedPort == null || requestedPort == plan.localPort) && endpoint.port == plan.localPort;
+  }
+
+  if (plan.kind == SavedForwardKind.docker) {
+    for (final f in docker) {
+      if (f.state == DockerForwardState.running &&
+          f.hostId == plan.connectionId &&
+          f.containerName == plan.target &&
+          f.remotePort == plan.remotePort &&
+          sameListener(f.address, f.requestedLocalPort)) {
+        return ForwardHandle(plan.kind, f.sessionId, f.id, f.address);
+      }
+    }
+  } else {
+    for (final f in kube) {
+      if (f.state == 'running' &&
+          f.contextId == plan.connectionId &&
+          f.namespace == plan.namespace &&
+          f.pod == plan.target &&
+          f.remotePort == plan.remotePort &&
+          sameListener(f.address, f.requestedLocalPort)) {
+        return ForwardHandle(plan.kind, f.sessionId, f.id, f.address);
+      }
+    }
+  }
+  return null;
 }
 
 /// Saves metadata only. Starting always goes through the current native
@@ -134,20 +172,22 @@ class SavedForwardManager {
         if (service == null) {
           throw const AppException(AppErrorCode.unsupported, 'Docker unavailable'); // l10n-ignore: diagnostic
         }
+        if (!plan.network) {
+          final running = _runningPreset(plan, await service.forwards(), const []);
+          _check();
+          if (running != null) {
+            attach(plan, running);
+            return;
+          }
+        }
         final session = await service.connect(plan.connectionId);
         _cleanup[plan.id] = () => service.disconnect(session.id);
         try {
           _check();
-          // Resolve by name after container recreation; never keep an old IP/id.
-          final containers = await service.containers(session.id);
-          _check();
-          final target = containers.where((c) => c.name == plan.target).firstOrNull;
-          if (target == null) {
-            throw const AppException(AppErrorCode.notFound, 'Container missing'); // l10n-ignore: diagnostic
-          }
+          // Native resolves the saved name on the current engine, even after recreation.
           final forward = await service.startForward(
             session.id,
-            target.id,
+            plan.target,
             remotePort: plan.remotePort,
             localPort: plan.localPort,
           );
@@ -171,6 +211,14 @@ class SavedForwardManager {
           ); // l10n-ignore: diagnostic
         }
         final browser = service as KubeBrowserService, forwards = service as KubeForwardService;
+        if (!plan.network) {
+          final running = _runningPreset(plan, const [], await forwards.forwards());
+          _check();
+          if (running != null) {
+            attach(plan, running);
+            return;
+          }
+        }
         final session = await browser.connect(plan.connectionId);
         _cleanup[plan.id] = () => browser.disconnect(session.id);
         try {
@@ -235,6 +283,7 @@ class SavedForwardManager {
         final service = ref.read(kubeServiceProvider);
         if (service is KubeForwardService) {
           await (service as KubeForwardService).stopForward(handle.sessionId, handle.forwardId);
+          if (valid) ref.read(kubeForwardRestoreProvider.notifier).forget(handle.forwardId);
         }
         if (handle.owned && service is KubeBrowserService) {
           await (service as KubeBrowserService).disconnect(handle.sessionId);
@@ -250,13 +299,21 @@ class SavedForwardManager {
 
   /// Reconciles stops made in the shared forwards panel.
   Future<void> refresh() async {
-    if (!valid || handles.isEmpty) return;
+    if (!valid) return;
+    final plans = ref
+        .read(settingsServiceProvider)
+        .currentLocal
+        .savedForwards
+        .where((p) => p.profile == profile)
+        .toList();
+    if (handles.isEmpty && plans.isEmpty) return;
     final docker = ref.read(dockerServiceProvider), kube = ref.read(kubeServiceProvider);
     final snapshot = Map.of(handles);
+    final revision = _revision;
     try {
       final d = docker == null ? <DockerForward>[] : await docker.forwards();
       final k = kube is KubeForwardService ? await (kube as KubeForwardService).forwards() : <KubeForward>[];
-      if (!valid) return;
+      if (!valid || revision != _revision) return;
       for (final entry in snapshot.entries) {
         final h = entry.value;
         if (busy.contains(entry.key) || !identical(handles[entry.key], h)) continue;
@@ -268,6 +325,11 @@ class SavedForwardManager {
           final cleanup = _cleanup.remove(entry.key);
           if (cleanup != null) unawaited(cleanup().catchError((Object _) {}));
         }
+      }
+      for (final plan in plans) {
+        if (handles.containsKey(plan.id) || busy.contains(plan.id)) continue;
+        final running = _runningPreset(plan, d, k);
+        if (running != null) handles[plan.id] = running;
       }
       _notify();
     } catch (_) {

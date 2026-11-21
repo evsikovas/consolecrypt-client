@@ -44,6 +44,73 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get hostMetricsTitle => '监控';
+
+  @override
+  String get hostMetricsConnecting => '正在通过 SSH 读取首批指标…';
+
+  @override
+  String get hostMetricsReadFailed => '无法读取服务器指标。请检查 SSH 连接后重试。';
+
+  @override
+  String get hostMetricsLinuxOnly => '此视图显示 Linux 主机的实时指标。';
+
+  @override
+  String get hostMetricsNativeOnly => '实时指标需要内置 SSH 客户端。请在主机设置中选择该客户端。';
+
+  @override
+  String get hostMetricsLastSample => '更新时间';
+
+  @override
+  String get hostMetricsUptime => '运行时间';
+
+  @override
+  String hostMetricsUptimeValue(int days, int hours, int minutes) {
+    return '$days 天 $hours 小时 $minutes 分钟';
+  }
+
+  @override
+  String get hostMetricsCpu => 'CPU 使用情况';
+
+  @override
+  String get hostMetricsRam => '使用的内存';
+
+  @override
+  String get hostMetricsDisk => '使用的系统磁盘';
+
+  @override
+  String get hostMetricsNetwork => '网络';
+
+  @override
+  String get hostMetricsOs => '操作系统';
+
+  @override
+  String get hostMetricsKernel => '内核';
+
+  @override
+  String get hostMetricsProcessor => '处理器';
+
+  @override
+  String get hostMetricsLoadAverage => '平均负载';
+
+  @override
+  String hostMetricsLogicalCpus(int count) {
+    return '$count 个逻辑处理器';
+  }
+
+  @override
+  String get hostMetricsReceived => '接收';
+
+  @override
+  String get hostMetricsSent => '发送';
+
+  @override
+  String get hostMetricsChanged => '主机配置已更改。请重新连接以刷新指标。';
+
+  @override
+  String get hostMetricsConnectSsh => '通过 SSH 连接到服务器以查看其指标。';
+
+  @override
   String get externalVaultTitle => 'Vault / OpenBao';
 
   @override
@@ -117,6 +184,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get externalVaultNoMatches => '没有匹配的结果';
+
+  @override
+  String externalVaultFolderContents(String folder) {
+    return '$folder 的内容';
+  }
 
   @override
   String get externalVaultAuthError => 'Vault 未接受这些凭据。';
@@ -3205,6 +3277,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get paletteGenerateSubtitle => '询问 AI( 从未自动运行 )';
+
+  @override
+  String get paletteScreenSnip => '截取屏幕';
+
+  @override
+  String get paletteSnipFailed => '无法打开截图工具。';
 
   @override
   String get paletteNewHost => '新建主机';
@@ -16596,6 +16674,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeImage => '已发布的镜像（registry/repository:tag 或 @sha256:digest）';
 
   @override
+  String get dockerKubeManifestYaml => '部署清单 (YAML)';
+
+  @override
+  String get dockerKubeNoProvider => '请在设置中添加 AI 提供商以生成清单。';
+
+  @override
   String get dockerKubeImageHelp => '请先将镜像发布到集群节点可以访问的镜像仓库。此向导不会上传本地镜像。建议使用镜像摘要，因为可变标签可能指向其他镜像。localhost 不能用作远程仓库。';
 
   @override
@@ -16623,8 +16707,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeTemplate => '使用模板';
 
   @override
-  String get dockerKubeAiReview =>
-      '所选 AI 服务仅会收到下方的清单模板，其中包含镜像引用、应用名称、命名空间、端口及镜像拉取密钥名称。发送前请检查模板。环境变量的值、Docker inspect 的结果和 Kubernetes 凭据均不会发送。';
+  String get dockerKubeAiReview => '请先检查将发送给 AI 服务的模板。收到回复后，ConsoleCrypt 会在本机添加 Docker 启动命令。';
 
   @override
   String get dockerKubeSendAi => '将模板发送给 AI';
@@ -16637,7 +16720,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeInvalidTarget => '请检查应用和命名空间的名称、已发布镜像的仓库及标签或摘要、TCP 端口和镜像拉取密钥的名称。';
 
   @override
-  String get dockerKubeAcknowledge => '我已确认镜像可用且与 CPU 架构兼容。部署将使用镜像的默认配置。应用的本地文件、可写层改动、环境变量覆盖、命令和 Compose 依赖均不会复制。';
+  String get dockerKubeAcknowledge => '我已检查镜像、CPU 架构和启动命令。部署使用镜像中的环境和文件系统。请单独配置 Docker 中覆盖的环境变量和 Compose 依赖。';
 
   @override
   String get dockerKubeValidated => '两个资源均已通过服务器端试运行。部署只会创建新资源，保留已有资源。';
@@ -16646,13 +16729,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeFailed => '操作失败。请检查集群访问权限、写入权限、资源名称冲突和清单验证结果。下方列出的已创建资源会保留在集群中。';
 
   @override
-  String get dockerKubeCreated => '已创建的资源（就绪状态待确认）';
+  String get dockerKubeCreated => '已创建的资源';
 
   @override
   String get dockerKubeReady => 'Deployment 已就绪';
 
   @override
-  String get dockerKubePending => 'Deployment 尚未就绪。请在 Kubernetes 页面中检查 Pod 和事件，包括 ImagePullBackOff 和 CrashLoopBackOff。';
+  String get dockerKubePending => '正在等待 Deployment 的副本就绪。';
 
   @override
   String get dockerKubeCheckStatus => '检查就绪状态';
@@ -16702,4 +16785,50 @@ class AppLocalizationsZh extends AppLocalizations {
   String dockerPortRange(int start, int end, int total) {
     return '第 $start–$end 项，共 $total 项';
   }
+
+  @override
+  String get dockerKubeStartupUnavailable => 'Docker 返回的启动命令不完整或已被遮盖。请检查容器的启动命令并手动编写清单。';
+
+  @override
+  String get dockerKubeNameTaken => '此命名空间中已存在同名资源。请选择其他名称，或在 Kubernetes 中打开现有资源。';
+
+  @override
+  String get dockerKubeTerminated => '容器进程已退出。请检查启动命令。';
+
+  @override
+  String dockerKubeExitCode(int code) {
+    return '退出码 $code';
+  }
+
+  @override
+  String get dockerKubeUnschedulable => 'Kubernetes 无法将 Pod 调度到节点。';
+
+  @override
+  String get dockerKubeContainerConfig => 'Kubernetes 无法配置或启动容器。请查看 Pod 事件。';
+
+  @override
+  String get dockerKubeDeadlineExceeded => 'Deployment 已超过部署进度期限。';
+
+  @override
+  String get dockerKubeReplicaFailure => 'Deployment 控制器报告副本失败。请查看 ReplicaSet 事件。';
+
+  @override
+  String get dockerKubeStatusUnavailable => '无法读取已创建的 Deployment 的状态。请检查集群连接和读取权限。';
+
+  @override
+  String get dockerKubePodDetailsUnavailable => '无法获取 Pod 的诊断详情。';
+
+  @override
+  String get dockerKubeReplaced => '此名称现已属于另一个 Deployment。请在 Kubernetes 中打开该资源以查看状态。';
+
+  @override
+  String tunnelsLocalAddressUnavailable(String address) {
+    return '无法监听 $address。请检查此设备上的端口是否已被占用或保留。';
+  }
+
+  @override
+  String get externalVaultConnections => '已保存的连接';
+
+  @override
+  String get externalVaultNoConnections => '暂无已保存的连接';
 }
