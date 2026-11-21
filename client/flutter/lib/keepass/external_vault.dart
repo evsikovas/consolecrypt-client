@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:consolecrypt/core/models/settings.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 
 enum ExternalVaultAuth { userpass, token }
@@ -40,6 +41,8 @@ class ExternalVaultConnection {
     required this.namespace,
     required this.versioned,
     this.wrapped,
+    this.credentialId,
+    this.synced = false,
   }) : endpoint = _endpoint(endpoint) {
     if (name.trim().isEmpty || name.length > 120) throw const ExternalVaultFailure('configuration');
     vaultPath(mount);
@@ -58,6 +61,8 @@ class ExternalVaultConnection {
   final ExternalVaultAuth auth;
   final bool versioned;
   final String? wrapped;
+  final String? credentialId;
+  final bool synced;
 
   static Uri _endpoint(String raw) {
     final uri = Uri.tryParse(raw.trim());
@@ -92,7 +97,50 @@ class ExternalVaultConnection {
     authMount,
   ]);
 
-  Map<String, String> toStorage({String? cipherText}) => {
+  // Device profile IDs differ, even when two devices unlock the same vault.
+  String get portableBinding =>
+      jsonEncode([vault, id, endpoint.toString(), namespace, mount, versioned, auth.name, username, authMount]);
+
+  SyncedExternalVault portable({String? credentialId}) => SyncedExternalVault(
+    id: id,
+    name: name,
+    endpoint: endpoint.toString(),
+    auth: auth.name,
+    username: username,
+    authMount: authMount,
+    mount: mount,
+    namespace: namespace,
+    versioned: versioned,
+    credentialId: credentialId,
+  );
+
+  factory ExternalVaultConnection.fromPortable(
+    SyncedExternalVault saved, {
+    required String profile,
+    required String vault,
+    String? wrapped,
+  }) => ExternalVaultConnection(
+    id: saved.id,
+    name: saved.name,
+    endpoint: saved.endpoint,
+    auth: switch (saved.auth) {
+      'token' => ExternalVaultAuth.token,
+      'userpass' => ExternalVaultAuth.userpass,
+      _ => throw const ExternalVaultFailure('configuration'),
+    },
+    username: saved.username,
+    authMount: saved.authMount,
+    mount: saved.mount,
+    namespace: saved.namespace,
+    versioned: saved.versioned,
+    profile: profile,
+    vault: vault,
+    wrapped: wrapped,
+    credentialId: saved.credentialId,
+    synced: true,
+  );
+
+  Map<String, String> toStorage({String? cipherText, bool synced = false}) => {
     'id': id,
     'profile': profile,
     'vault': vault,
@@ -105,6 +153,7 @@ class ExternalVaultConnection {
     'namespace': namespace,
     'kv': versioned ? '2' : '1',
     'wrapped': ?cipherText,
+    if (synced) 'synced': '1',
   };
 
   factory ExternalVaultConnection.fromStorage(Map<String, String> row) => ExternalVaultConnection(
@@ -120,6 +169,7 @@ class ExternalVaultConnection {
     namespace: row['namespace']!,
     versioned: row['kv'] == '2',
     wrapped: row['wrapped'],
+    synced: row['synced'] == '1',
   );
 }
 

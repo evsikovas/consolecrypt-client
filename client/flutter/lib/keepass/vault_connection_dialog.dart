@@ -26,6 +26,9 @@ Future<void> showVaultConnections(BuildContext context, {String? id}) => showApp
 // The workspace owns the authenticated client. A palette opened over it may
 // read the same connection, with its own mount and navigation position.
 typedef _OpenVault = ({ExternalVaultSession client, List<ExternalVaultMount> mounts});
+
+enum _VaultSignIn { manual, device, synced }
+
 final _openVaultsProvider = Provider<Map<String, _OpenVault>>((ref) {
   ref.watch(passwordManagerProvider);
   return {};
@@ -72,7 +75,9 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
   bool _editing = false;
   bool _versioned = true;
   bool _rememberCredential = false;
+  bool _syncCredential = false;
   bool _verified = false;
+  bool _rememberOnAccess = false;
   bool _busy = false;
 
   bool get _current => mounted && _owner.valid;
@@ -90,6 +95,8 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
         if (_picking && open != null && !open.client.closed) {
           _client = open.client;
           _borrowed = true;
+          _rememberOnAccess = true;
+          _verified = target.auth == ExternalVaultAuth.userpass;
           _pickerMount = open.client.mount;
           _mounts = open.mounts;
           _configuring = false;
@@ -122,6 +129,7 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     _folders.clear();
     _mounts = [];
     _verified = false;
+    _rememberOnAccess = false;
     _folder = '';
     _path.clear();
     _search.clear();
@@ -168,27 +176,35 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     _namespace.text = connection?.namespace ?? '';
     _versioned = connection?.versioned ?? true;
     _rememberCredential = false;
+    _syncCredential = false;
     _configuring = true;
     _error = null;
   }
 
-  ExternalVaultConnection _configuration() {
-    final vault = ref.read(vaultStatusProvider).value?.vaultId?.value;
-    if (vault == null || !_current) throw const ExternalVaultFailure('closed');
-    final random = Random.secure();
-    return ExternalVaultConnection(
-      id: _selected?.id ?? base64UrlEncode(List.generate(18, (_) => random.nextInt(256))),
-      profile: _owner.profile,
-      vault: vault,
-      name: _name.text.trim(),
-      endpoint: _endpoint.text,
-      auth: _auth,
-      username: _auth == ExternalVaultAuth.userpass ? _user.text.trim() : '',
-      authMount: _auth == ExternalVaultAuth.userpass ? _authMount.text.trim() : '',
-      mount: _mount.text.trim(),
-      namespace: _namespace.text.trim(),
-      versioned: _versioned,
-    );
+  ExternalVaultConnection _configuration(String id, String profile, String vault) => ExternalVaultConnection(
+    id: id,
+    profile: profile,
+    vault: vault,
+    name: _name.text.trim(),
+    endpoint: _endpoint.text,
+    auth: _auth,
+    username: _auth == ExternalVaultAuth.userpass ? _user.text.trim() : '',
+    authMount: _auth == ExternalVaultAuth.userpass ? _authMount.text.trim() : '',
+    mount: _mount.text.trim(),
+    namespace: _namespace.text.trim(),
+    versioned: _versioned,
+  );
+
+  ExternalVaultConnection? _matchingSavedConnection() {
+    final selected = _selected;
+    if (selected == null) return null;
+    try {
+      final form = _configuration(selected.id, selected.profile, selected.vault);
+      if (form.binding != selected.binding) return null;
+      return ref.read(externalVaultConnectionsProvider).where((item) => item.binding == form.binding).firstOrNull;
+    } on ExternalVaultFailure {
+      return null;
+    }
   }
 
   Future<void> _run(Future<void> Function() fn) async {
@@ -208,17 +224,10 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     }
   }
 
-  Future<void> _persist(ExternalVaultConnection connection, {String? wrapped, bool remove = false}) async {
-    if (!_current) throw const ExternalVaultFailure('closed');
-    final service = ref.read(settingsServiceProvider);
-    final local = service.currentLocal;
-    final rows = [
-      for (final row in local.externalVaultConnections)
-        if (row['id'] != connection.id || row['profile'] != connection.profile || row['vault'] != connection.vault) row,
-      if (!remove) connection.toStorage(cipherText: wrapped),
-    ];
-    if (rows.length > 256) throw const ExternalVaultFailure('store');
-    await service.updateLocal(local.copyWith(externalVaultConnections: rows));
+  Future<void> _rememberConfirmedAccess(ExternalVaultSession client) async {
+    if (!_rememberOnAccess || !_verified || !_current || _client != client) return;
+    await _owner.rememberExternalVault(client.connection);
+    _rememberOnAccess = false;
   }
 
   Future<void> _discardCredential(ExternalVaultConnection connection, String? wrapped) async {
@@ -230,17 +239,26 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     }
   }
 
-  Future<void> _connect({bool saved = false}) => _run(() async {
-    final configuration = _configuration();
+  Future<void> _connect([_VaultSignIn method = _VaultSignIn.manual]) => _run(() async {
+    final vault = ref.read(vaultStatusProvider).value?.vaultId?.value;
+    if (vault == null || !_current) throw const ExternalVaultFailure('closed');
+    final random = Random.secure();
+    final id = _selected?.id ?? base64UrlEncode(List.generate(18, (_) => random.nextInt(256)));
+    final configuration = _configuration(id, _owner.profile, vault);
     FocusScope.of(context).unfocus();
     final previous = _selected;
-    final previousWrapper = previous?.binding == configuration.binding ? previous?.wrapped : null;
-    SecretText? secret;
-    if (saved) {
-      if (previous == null || previousWrapper == null) throw const ExternalVaultFailure('configuration');
-      secret = await _store.unlock(previous, () => _current);
-    } else {
-      secret = SecretText(_credential.text);
+    final saved = _matchingSavedConnection();
+    final previousWrapper = saved?.wrapped;
+    final SecretText secret;
+    switch (method) {
+      case _VaultSignIn.manual:
+        secret = SecretText(_credential.text);
+      case _VaultSignIn.device:
+        if (saved == null || previousWrapper == null) throw const ExternalVaultFailure('configuration');
+        secret = await _store.unlock(saved, () => _current);
+      case _VaultSignIn.synced:
+        if (saved == null || saved.credentialId == null) throw const ExternalVaultFailure('configuration');
+        secret = await _owner.unlockExternalVault(saved);
     }
     _credential.clear();
     if (!_current) {
@@ -252,6 +270,8 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     var connected = false;
     try {
       await client.signIn(secret);
+      if (!_current || _client != client) return;
+      _verified = configuration.auth == ExternalVaultAuth.userpass;
       List<ExternalVaultMount> discovered;
       try {
         discovered = await client.discoverMounts();
@@ -272,26 +292,37 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
       _mounts = discovered;
       await _browse('');
       if (!_current || _client != client) return;
-      if (_rememberCredential && !saved) {
-        if (!_verified && configuration.auth == ExternalVaultAuth.token) {
-          await client.verifyToken();
-        }
-        if (!await _store.available(configuration)) throw const ExternalVaultFailure('biometric');
-        final wrapper = await _store.remember(configuration, secret, () => _current);
-        try {
-          await _persist(configuration, wrapped: wrapper);
-        } catch (_) {
-          await _discardCredential(configuration, wrapper);
-          rethrow;
-        }
-      } else {
-        await _persist(configuration, wrapped: previousWrapper);
+      final rememberOnDevice = _rememberCredential && method != _VaultSignIn.device;
+      final saveForSync = _syncCredential && method != _VaultSignIn.synced;
+      if ((rememberOnDevice || saveForSync) && !_verified && configuration.auth == ExternalVaultAuth.token) {
+        await client.verifyToken();
+        _verified = true;
       }
-      if (previous != null && previous.wrapped != null && (previousWrapper == null || _rememberCredential && !saved)) {
+      String? newWrapper;
+      if (rememberOnDevice) {
+        if (!await _store.available(configuration)) throw const ExternalVaultFailure('biometric');
+        newWrapper = await _store.remember(configuration, secret, () => _current);
+      }
+      try {
+        if (!_current || _client != client) throw const ExternalVaultFailure('closed');
+        await _owner.persistExternalVault(
+          configuration,
+          expected: previous,
+          wrapped: newWrapper ?? previousWrapper,
+          opened: _verified,
+          syncCredential: saveForSync ? secret : null,
+        );
+      } catch (_) {
+        await _discardCredential(configuration, newWrapper);
+        rethrow;
+      }
+      if (previous != null && previous.wrapped != null && (previousWrapper == null || newWrapper != null)) {
         await _discardCredential(previous, previous.wrapped);
       }
       if (!_current) return;
       _configuring = false;
+      // A scoped token can read a known path without permission to list the root.
+      _rememberOnAccess = !_verified;
       connected = true;
       if (!_picking) _openVaults[configuration.binding] = (client: client, mounts: _mounts);
     } finally {
@@ -320,6 +351,7 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     _folders[folder] = keys;
     _path.clear();
     _search.clear();
+    await _rememberConfirmedAccess(client);
   }
 
   Future<void> _selectMount(ExternalVaultMount mount) => _run(() async {
@@ -364,6 +396,7 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     _secretPath = path;
     _data = data;
     _verified = true;
+    await _rememberConfirmedAccess(client);
   }
 
   void _edit() {
@@ -395,6 +428,9 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
         }
       }
       await client.write(path, values, version: _data?.version);
+      if (!_current || client != _client) return;
+      _verified = true;
+      await _rememberConfirmedAccess(client);
       if (!_current || client != _client) return;
       _editing = false;
       _json.clear();
@@ -450,16 +486,15 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     _ => l.externalVaultRequestError,
   };
 
-  Widget _field(TextEditingController controller, String label, {String? hint, ValueChanged<String>? onChanged}) =>
-      TextField(
-        controller: controller,
-        enabled: !_busy,
-        autocorrect: false,
-        enableSuggestions: false,
-        enableIMEPersonalizedLearning: false,
-        onChanged: onChanged,
-        decoration: InputDecoration(labelText: label, hintText: hint),
-      );
+  Widget _field(TextEditingController controller, String label, {String? hint}) => TextField(
+    controller: controller,
+    enabled: !_busy,
+    autocorrect: false,
+    enableSuggestions: false,
+    enableIMEPersonalizedLearning: false,
+    onChanged: (_) => setState(() {}),
+    decoration: InputDecoration(labelText: label, hintText: hint),
+  );
 
   Widget _configForm(AppLocalizations l) => LayoutBuilder(
     builder: (context, constraints) {
@@ -495,12 +530,7 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
       spacing: GlassSpacing.s8,
       children: [
         _field(_name, l.keepassEntryTitle),
-        _field(
-          _endpoint,
-          l.externalVaultEndpoint,
-          hint: 'https://vault.example.com',
-          onChanged: (_) => setState(() {}),
-        ),
+        _field(_endpoint, l.externalVaultEndpoint, hint: 'https://vault.example.com'),
         if (Uri.tryParse(_endpoint.text.trim())?.scheme == 'http')
           Text(l.externalVaultHttpNotice, style: Theme.of(context).textTheme.bodySmall),
         ExpansionTile(
@@ -532,60 +562,80 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     ),
   );
 
-  Widget _signInSettings(AppLocalizations l) => SectionCard(
-    key: const ValueKey('external-vault-sign-in'),
-    title: l.loginModeSignIn,
-    icon: Icons.key_outlined,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: GlassSpacing.s8,
-      children: [
-        GlassSelect<ExternalVaultAuth>(
-          value: _auth,
-          expand: true,
-          semanticLabel: l.externalVaultAuth,
-          items: [
-            GlassSelectItem(value: ExternalVaultAuth.userpass, label: l.externalVaultUserpass),
-            GlassSelectItem(value: ExternalVaultAuth.token, label: l.externalVaultToken),
-          ],
-          onChanged: _busy
-              ? null
-              : (value) => setState(() {
-                  _auth = value;
-                  _credential.clear();
-                }),
-        ),
-        if (_auth == ExternalVaultAuth.userpass) _field(_user, l.keepassUsername),
-        SecretField(
-          controller: _credential,
-          enabled: !_busy,
-          allowReveal: false,
-          label: _auth == ExternalVaultAuth.userpass ? l.keepassEntryPassword : l.externalVaultToken,
-        ),
-        CheckboxListTile(
-          value: _rememberCredential,
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          title: Text(l.externalVaultRemember),
-          onChanged: _busy ? null : (value) => setState(() => _rememberCredential = value!),
-        ),
-        Wrap(
-          spacing: GlassSpacing.toolbarItemGap,
-          runSpacing: GlassSpacing.s8,
-          children: [
-            GlassButton.prominent(label: l.commonConnect, onPressed: _busy ? null : _connect),
-            if (_selected?.wrapped != null)
-              GlassButton(
-                label: l.externalVaultUseSaved,
-                tooltip: l.externalVaultUseSaved,
-                icon: Icons.fingerprint,
-                onPressed: _busy ? null : () => _connect(saved: true),
-              ),
-          ],
-        ),
-      ],
-    ),
-  );
+  Widget _signInSettings(AppLocalizations l) {
+    final saved = _matchingSavedConnection();
+    return SectionCard(
+      key: const ValueKey('external-vault-sign-in'),
+      title: l.loginModeSignIn,
+      icon: Icons.key_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: GlassSpacing.s8,
+        children: [
+          GlassSelect<ExternalVaultAuth>(
+            value: _auth,
+            expand: true,
+            semanticLabel: l.externalVaultAuth,
+            items: [
+              GlassSelectItem(value: ExternalVaultAuth.userpass, label: l.externalVaultUserpass),
+              GlassSelectItem(value: ExternalVaultAuth.token, label: l.externalVaultToken),
+            ],
+            onChanged: _busy
+                ? null
+                : (value) => setState(() {
+                    _auth = value;
+                    _credential.clear();
+                  }),
+          ),
+          if (_auth == ExternalVaultAuth.userpass) _field(_user, l.keepassUsername),
+          SecretField(
+            controller: _credential,
+            enabled: !_busy,
+            allowReveal: false,
+            label: _auth == ExternalVaultAuth.userpass ? l.keepassEntryPassword : l.externalVaultToken,
+          ),
+          CheckboxListTile(
+            key: const ValueKey('external-vault-remember-device'),
+            value: _rememberCredential,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: Text(l.externalVaultRemember),
+            onChanged: _busy ? null : (value) => setState(() => _rememberCredential = value!),
+          ),
+          CheckboxListTile(
+            key: const ValueKey('external-vault-sync-login'),
+            value: _syncCredential,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: Text(l.externalVaultSyncLogin),
+            subtitle: Text(l.externalVaultSyncLoginHelp),
+            onChanged: _busy ? null : (value) => setState(() => _syncCredential = value!),
+          ),
+          Wrap(
+            spacing: GlassSpacing.toolbarItemGap,
+            runSpacing: GlassSpacing.s8,
+            children: [
+              GlassButton.prominent(label: l.commonConnect, onPressed: _busy ? null : _connect),
+              if (saved?.wrapped != null)
+                GlassButton(
+                  label: l.externalVaultUseSaved,
+                  tooltip: l.externalVaultUseSaved,
+                  icon: Icons.fingerprint,
+                  onPressed: _busy ? null : () => _connect(_VaultSignIn.device),
+                ),
+              if (saved?.credentialId != null)
+                GlassButton(
+                  key: const ValueKey('external-vault-use-synced'),
+                  label: l.externalVaultUseSynced,
+                  icon: Icons.cloud_outlined,
+                  onPressed: _busy ? null : () => _connect(_VaultSignIn.synced),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _configurationActions(AppLocalizations l) => Wrap(
     spacing: GlassSpacing.toolbarItemGap,
@@ -614,7 +664,7 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
                   if (!await showConfirmDialog(
                         context,
                         title: l.externalVaultRemoveConnection,
-                        message: chosen.name,
+                        message: chosen.synced ? l.externalVaultRemoveSyncedConnection(chosen.name) : chosen.name,
                         confirmLabel: l.commonDelete,
                         destructive: true,
                         secure: true,
@@ -622,11 +672,36 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
                       !_current) {
                     return;
                   }
-                  await _persist(chosen, remove: true);
+                  await _owner.persistExternalVault(chosen, remove: true);
                   await _discardCredential(chosen, chosen.wrapped);
                   _selected = null;
                   _configuring = false;
                   _credential.clear();
+                }),
+        ),
+      if (_matchingSavedConnection() case final saved? when saved.credentialId != null)
+        GlassButton(
+          key: const ValueKey('external-vault-forget-synced'),
+          style: GlassButtonStyle.destructiveQuiet,
+          label: l.externalVaultForgetSynced,
+          onPressed: _busy
+              ? null
+              : () => _run(() async {
+                  if (!await showConfirmDialog(
+                        context,
+                        title: l.externalVaultForgetSynced,
+                        message: l.externalVaultForgetSyncedHelp,
+                        confirmLabel: l.commonDelete,
+                        destructive: true,
+                        secure: true,
+                      ) ||
+                      !_current) {
+                    return;
+                  }
+                  final updated = await _owner.forgetExternalVaultLogin(saved);
+                  if (!_current) return;
+                  _syncCredential = false;
+                  _selected = updated;
                 }),
         ),
     ],

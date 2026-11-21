@@ -94,6 +94,60 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Advice when the registry explicitly denies an image pull
+  ///
+  /// In en, this message translates to:
+  /// **'The registry denied access. Check the repository name and that the image was published there. For a private repository, verify the cluster credentials or the imagePullSecret in this namespace.'**
+  String get dockerKubeRegistryDenied;
+
+  /// Last observed rollout failure while waiting for the next container restart
+  ///
+  /// In en, this message translates to:
+  /// **'Last observed problem'**
+  String get dockerKubeLastProblem;
+
+  /// Actionable advice for a Docker to Kubernetes deployment. The process exited successfully. A Deployment restarts it to keep a replica running. Compare command and args with Docker and use a foreground server process. For a one-off command, use a Job.
+  ///
+  /// In en, this message translates to:
+  /// **'The process exited successfully. A Deployment restarts it to keep a replica running. Compare command and args with Docker and use a foreground server process. For a one-off command, use a Job.'**
+  String get dockerKubeCompletionAdvice;
+
+  /// Actionable advice for a Docker to Kubernetes deployment. The container ran out of memory. Check its memory use and the limit in the Deployment manifest, then review the previous container logs.
+  ///
+  /// In en, this message translates to:
+  /// **'The container ran out of memory. Check its memory use and the limit in the Deployment manifest, then review the previous container logs.'**
+  String get dockerKubeOomAdvice;
+
+  /// Docker to Kubernetes deployment wizard. Image in the manifest
+  ///
+  /// In en, this message translates to:
+  /// **'Image in the manifest'**
+  String get dockerKubeRequestedImage;
+
+  /// Guide for selecting a published image when a registry digest could not be confirmed
+  ///
+  /// In en, this message translates to:
+  /// **'Could not confirm a registry digest for this image. Enter a published digest or a different published tag that the cluster can pull. For a private registry, enter the full image reference and, if needed, an imagePullSecret from this namespace.'**
+  String get dockerKubeUnverifiedImage;
+
+  /// Docker to Kubernetes deployment wizard. Check the Pod events for the registry error. Verify that the image and tag or digest exist, and that the namespace has the correct imagePullSecret for a private registry.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the Pod events for the registry error. Verify that the image and tag or digest exist, and that the namespace has the correct imagePullSecret for a private registry.'**
+  String get dockerKubePullAdvice;
+
+  /// Docker to Kubernetes deployment wizard. Open the Pod logs and select the previous container. Check the startup command, arguments and memory limit in the Deployment manifest.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the Pod logs and select the previous container. Check the startup command, arguments and memory limit in the Deployment manifest.'**
+  String get dockerKubeCrashAdvice;
+
+  /// Docker to Kubernetes deployment wizard. Open Deployment in Kubernetes
+  ///
+  /// In en, this message translates to:
+  /// **'Open Deployment in Kubernetes'**
+  String get dockerKubeOpenDeployment;
+
   /// Invalid password import file
   ///
   /// In en, this message translates to:
@@ -351,6 +405,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign in with device authentication'**
   String get externalVaultUseSaved;
+
+  /// Opt in to saving this login in the encrypted personal vault
+  ///
+  /// In en, this message translates to:
+  /// **'Save this sign-in in my encrypted ConsoleCrypt vault'**
+  String get externalVaultSyncLogin;
+
+  /// Explains availability on devices with access to the same personal vault
+  ///
+  /// In en, this message translates to:
+  /// **'After syncing, you can use this password or token on any device where you unlock your personal vault.'**
+  String get externalVaultSyncLoginHelp;
+
+  /// Sign in by explicitly retrieving the synced Vault or OpenBao credential
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with the synced credential'**
+  String get externalVaultUseSynced;
+
+  /// Remove the shared password or token while keeping the connection
+  ///
+  /// In en, this message translates to:
+  /// **'Remove synced sign-in'**
+  String get externalVaultForgetSynced;
+
+  /// Confirm removing a connection from the personal ConsoleCrypt vault
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} and its saved sign-in from your personal vault on all synced devices?'**
+  String externalVaultRemoveSyncedConnection(String name);
+
+  /// Confirm removing a synced login from the personal vault
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the saved password or token from your personal vault on all synced devices?'**
+  String get externalVaultForgetSyncedHelp;
 
   /// Vault and OpenBao connection
   ///
@@ -17191,8 +17281,134 @@ abstract class AppLocalizations {
   /// Docker: remove confirmation message
   ///
   /// In en, this message translates to:
-  /// **'The container and its writable layer are deleted. Named volumes are kept.'**
+  /// **'Removing the container deletes its writable layer. Select any volumes or networks you also want to remove.'**
   String get dockerRemoveHelp;
+
+  /// Docker removal dialog section heading for paths inside the container where host files are mounted
+  ///
+  /// In en, this message translates to:
+  /// **'Host files mounted in the container'**
+  String get dockerRemovalBindMounts;
+
+  /// Docker container removal dialog: Used by another container
+  ///
+  /// In en, this message translates to:
+  /// **'Used by another container'**
+  String get dockerRemovalShared;
+
+  /// Docker container removal dialog: Managed externally
+  ///
+  /// In en, this message translates to:
+  /// **'Managed externally'**
+  String get dockerRemovalExternal;
+
+  /// Docker container removal dialog: Built-in Docker network
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in Docker network'**
+  String get dockerRemovalDefaultNetwork;
+
+  /// Docker container removal dialog: Host files are kept
+  ///
+  /// In en, this message translates to:
+  /// **'Host files are kept'**
+  String get dockerRemovalBindKept;
+
+  /// Docker container removal dialog: Docker could not verify exclusive ownership
+  ///
+  /// In en, this message translates to:
+  /// **'Docker could not verify exclusive ownership'**
+  String get dockerRemovalUnverified;
+
+  /// Docker container removal dialog: Stop this container before removing it
+  ///
+  /// In en, this message translates to:
+  /// **'Stop this container before removing it'**
+  String get dockerRemovalStopFirst;
+
+  /// Warn about permanent data loss when one or more volumes are explicitly selected for removal
+  ///
+  /// In en, this message translates to:
+  /// **'All data in the selected volumes will be permanently deleted.'**
+  String get dockerRemovalVolumeWarning;
+
+  /// Docker container removal dialog: Removal result
+  ///
+  /// In en, this message translates to:
+  /// **'Removal result'**
+  String get dockerRemovalResult;
+
+  /// Menu and details action that opens the removal review for one Docker container
+  ///
+  /// In en, this message translates to:
+  /// **'Remove container…'**
+  String get dockerRemoveContainer;
+
+  /// Docker container removal dialog: Container removed
+  ///
+  /// In en, this message translates to:
+  /// **'Container removed'**
+  String get dockerRemovalRemoved;
+
+  /// Docker container removal dialog: Container stopped. Removal was not confirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Container stopped. Removal was not confirmed.'**
+  String get dockerRemovalStopped;
+
+  /// Docker container removal dialog: Container removal was not confirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Container removal was not confirmed.'**
+  String get dockerRemovalKept;
+
+  /// Docker container removal dialog: Removed
+  ///
+  /// In en, this message translates to:
+  /// **'Removed'**
+  String get dockerRemovalResourceRemoved;
+
+  /// Outcome and localized Docker reason for one resource
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped. {reason}'**
+  String dockerRemovalResourceSkipped(String reason);
+
+  /// Outcome and localized Docker reason for one resource
+  ///
+  /// In en, this message translates to:
+  /// **'Removal failed. {reason}'**
+  String dockerRemovalResourceFailed(String reason);
+
+  /// Docker container removal dialog: The container or its resources changed. Open the removal dialog again to review the current state.
+  ///
+  /// In en, this message translates to:
+  /// **'The container or its resources changed. Open the removal dialog again to review the current state.'**
+  String get dockerRemovalChanged;
+
+  /// Why a running container configured with Docker auto-removal cannot use selective cleanup
+  ///
+  /// In en, this message translates to:
+  /// **'Docker automatically removes this container and its anonymous volumes when it stops. With this setting, you cannot choose which volumes to keep.'**
+  String get dockerRemovalAutoRemove;
+
+  /// Docker container removal dialog: Already absent from the engine
+  ///
+  /// In en, this message translates to:
+  /// **'Already absent from the engine'**
+  String get dockerRemovalMissing;
+
+  /// Docker container removal dialog: Docker reports that the resource is in use.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker reports that the resource is in use.'**
+  String get dockerRemovalInUse;
+
+  /// Docker container removal dialog: The operation was interrupted. Refresh to see the current state.
+  ///
+  /// In en, this message translates to:
+  /// **'The operation was interrupted. Refresh to see the current state.'**
+  String get dockerRemovalCancelled;
 
   /// Docker: logs action and details tab
   ///

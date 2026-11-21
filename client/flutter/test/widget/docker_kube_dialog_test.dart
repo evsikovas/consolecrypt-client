@@ -13,6 +13,7 @@ import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
 import 'package:consolecrypt/kubernetes/kube_mutation_service.dart';
+import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
@@ -28,7 +29,15 @@ const _container = DockerContainer(
   image: 'nginx:1.27',
   state: DockerContainerState.running,
 );
-const _target = DockerKubeTarget(name: 'web', namespace: 'default', image: 'docker.io/library/nginx:1.27', port: 80);
+const _published = 'docker.io/library/nginx@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+const _target = DockerKubeTarget(name: 'web', namespace: 'default', image: _published, port: 80);
+const _rs = KubeResourceKind(
+  group: 'apps',
+  version: 'v1',
+  resource: 'replicasets',
+  kind: 'ReplicaSet',
+  namespaced: true,
+);
 final _scopeProvider = NotifierProvider<_Scope, KubeScope>(_Scope.new);
 
 class _Scope extends Notifier<KubeScope> {
@@ -37,13 +46,14 @@ class _Scope extends Notifier<KubeScope> {
   void lock() => state = const KubeScope('profile', false);
 }
 
-class _Kube implements KubeService, KubeBrowserService, KubeManifestService {
+class _Kube implements KubeService, KubeBrowserService, KubeManifestService, KubeOperationsService {
   final calls = <(String, bool)>[];
   final closed = <String>[];
   Completer<void>? pending;
   int inventoryCalls = 0;
   int statusReads = 0;
   bool ready = true;
+  Map<String, dynamic>? containerStatus;
   @override
   Future<List<KubeConnection>> inventory() async {
     inventoryCalls++;
@@ -68,7 +78,12 @@ class _Kube implements KubeService, KubeBrowserService, KubeManifestService {
   Future<List<String>> namespaces(String sessionId) async => ['default'];
   @override
   Future<List<KubeResourceKind>> discover(String sessionId) async => [
-    for (final k in [DockerKubeParser.deploymentKind, DockerKubeParser.serviceKind, DockerKubeParser.namespaceKind])
+    for (final k in [
+      DockerKubeParser.deploymentKind,
+      DockerKubeParser.serviceKind,
+      DockerKubeParser.namespaceKind,
+      _rs,
+    ])
       KubeResourceKind(
         group: k.group,
         version: k.version,
@@ -76,6 +91,32 @@ class _Kube implements KubeService, KubeBrowserService, KubeManifestService {
         kind: k.kind,
         namespaced: k.namespaced,
         verbs: const ['create', 'get', 'list'],
+      ),
+  ];
+  Map<String, dynamic> _owner(String kind, String name, String uid) => {
+    'apiVersion': 'apps/v1',
+    'kind': kind,
+    'name': name,
+    'uid': uid,
+    'controller': true,
+  };
+  @override
+  Future<List<KubeResourceRow>> workloadPods(String sessionId, KubeResourceRef resource) async => [
+    if (containerStatus case final status?)
+      KubeResourceRow(
+        name: 'web-1',
+        namespace: resource.namespace,
+        uid: 'pod',
+        resourceVersion: '2',
+        object: {
+          'metadata': {
+            'namespace': resource.namespace,
+            'ownerReferences': [_owner('ReplicaSet', 'web-rs', 'rs')],
+          },
+          'status': {
+            'containerStatuses': [status],
+          },
+        },
       ),
   ];
   @override
@@ -102,6 +143,19 @@ class _Kube implements KubeService, KubeBrowserService, KubeManifestService {
   @override
   Future<KubeResourceDetail> getResource(String sessionId, KubeResourceRef resource) async {
     statusReads++;
+    if (resource.api.id == _rs.id) {
+      return KubeResourceDetail(
+        yaml: '',
+        object: {
+          'metadata': {
+            'name': 'web-rs',
+            'namespace': resource.namespace,
+            'uid': 'rs',
+            'ownerReferences': [_owner('Deployment', 'web', 'test-Deployment')],
+          },
+        },
+      );
+    }
     return KubeResourceDetail(
       object: {
         'metadata': {'generation': 1, 'name': resource.name, 'namespace': resource.namespace, 'uid': 'test-Deployment'},
@@ -153,6 +207,8 @@ Future<ProviderContainer> _pump(
   _Ai ai, {
   DockerKubeBlocker? blocker,
   List<String> startup = const [],
+  String? publishedImage = _published,
+  Future<DockerKubeSource> Function()? resolveImage,
   bool writable = true,
 }) async {
   tester.view.physicalSize = const Size(1200, 1000);
@@ -176,7 +232,14 @@ Future<ProviderContainer> _pump(
         home: Scaffold(
           body: DockerKubeDialog(
             container: _container,
-            source: DockerKubeSource(ports: const [80], blocker: blocker, startup: startup),
+            source: DockerKubeSource(
+              ports: const [80],
+              sourceImage: _container.image,
+              image: publishedImage,
+              blocker: blocker,
+              startup: startup,
+            ),
+            resolveImage: resolveImage,
           ),
         ),
       ),
@@ -274,6 +337,7 @@ void main() {
       );
     }
     final yamlField = tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-yaml')));
+    expect(find.text('AI provider'), findsOneWidget);
     expect(yamlField.decoration!.labelText, 'Deployment manifest (YAML)');
     expect(tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text, _target.image);
     await _tap(tester, 'docker-kube-generate');
@@ -292,6 +356,120 @@ void main() {
     expect(ai.prompts.single, isNot(contains('test-cluster')));
     expect(kube.calls, isEmpty);
     expect(_enabled(tester, 'docker-kube-deploy'), isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('the wizard preselects a confirmed digest from the image lookup', (tester) async {
+    await _pump(
+      tester,
+      _Kube(),
+      _Ai(),
+      publishedImage: null,
+      resolveImage: () async => const DockerKubeSource(ports: [80], sourceImage: 'nginx:1.27', image: _published),
+    );
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text, _published);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a lookup failure leaves local Docker tags out of generated manifests; manual private images work', (
+    tester,
+  ) async {
+    final kube = _Kube(), ai = _Ai();
+    await _pump(
+      tester,
+      kube,
+      ai,
+      publishedImage: null,
+      resolveImage: () async => throw StateError('registry unavailable'),
+    );
+    final image = find.byKey(const ValueKey('docker-kube-image'));
+    final yaml = find.byKey(const ValueKey('docker-kube-yaml'));
+    await _connect(tester);
+    expect(tester.widget<TextField>(image).controller!.text, isEmpty);
+    expect(find.textContaining('Could not confirm a registry digest'), findsOneWidget);
+    await tester.ensureVisible(image);
+    await tester.enterText(image, 'docker.io/library/nginx:1.27');
+    await _tap(tester, 'docker-kube-template');
+    expect(tester.widget<TextField>(yaml).controller!.text, isEmpty);
+    await tester.ensureVisible(image);
+    await tester.enterText(image, 'registry.example.org/team/web:v1');
+    final secret = find.byKey(const ValueKey('docker-kube-pull-secret'));
+    await tester.ensureVisible(secret);
+    await tester.enterText(secret, 'registry-login');
+    await _tap(tester, 'docker-kube-template');
+    final manifest = tester.widget<TextField>(yaml).controller!.text;
+    expect(manifest, contains('registry.example.org/team/web:v1'));
+    expect(manifest, contains('registry-login'));
+    expect(kube.calls, isEmpty);
+    expect(ai.prompts, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('local-only tag stays empty; a late digest lookup preserves the manually entered image', (tester) async {
+    final kube = _Kube();
+    final pending = Completer<DockerKubeSource>();
+    await _pump(tester, kube, _Ai(), publishedImage: null, resolveImage: () => pending.future);
+    final field = find.byKey(const ValueKey('docker-kube-image'));
+    expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+    await _connect(tester);
+    await tester.ensureVisible(field);
+    await tester.enterText(field, 'registry.example.org/nginx:published');
+    pending.complete(const DockerKubeSource(ports: [80], sourceImage: 'nginx:1.27', image: _published));
+    await _settle(tester);
+    expect(tester.widget<TextField>(field).controller!.text, 'registry.example.org/nginx:published');
+    await _tap(tester, 'docker-kube-template');
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-yaml'))).controller!.text,
+      contains('registry.example.org/nginx:published'),
+    );
+    expect(kube.calls, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a failing rollout shows the cause and keeps it through a transient pending status', (tester) async {
+    final kube = _Kube()..ready = false;
+    await _pump(tester, kube, _Ai());
+    await _templateAndAck(tester);
+    await _tap(tester, 'docker-kube-validate');
+    await _parse(tester);
+    kube.containerStatus = {
+      'image': _published,
+      'state': {
+        'waiting': {'reason': 'ErrImagePull', 'message': 'pull access denied: PRIVATE-ENGINE-OUTPUT'},
+      },
+    };
+    await _tap(tester, 'docker-kube-deploy');
+    expect(find.textContaining('ErrImagePull'), findsOneWidget);
+    expect(find.textContaining(_published), findsOneWidget);
+    expect(find.textContaining('The registry denied access'), findsOneWidget);
+    expect(find.textContaining('PRIVATE-ENGINE-OUTPUT'), findsNothing);
+    expect(find.byKey(const ValueKey('docker-kube-open-deployment')), findsOneWidget);
+    kube.containerStatus = {
+      'restartCount': 51,
+      'state': {
+        'waiting': {'reason': 'CrashLoopBackOff'},
+      },
+      'lastState': {
+        'terminated': {'reason': 'Completed', 'exitCode': 0, 'message': 'PRIVATE-ENGINE-OUTPUT'},
+      },
+    };
+    await tester.pump(const Duration(seconds: 5));
+    await _settle(tester);
+    expect(find.textContaining('CrashLoopBackOff · Completed'), findsOneWidget);
+    expect(find.textContaining('51'), findsOneWidget);
+    expect(find.textContaining('foreground server'), findsOneWidget);
+    expect(find.textContaining('PRIVATE-ENGINE-OUTPUT'), findsNothing);
+    expect(find.byKey(const ValueKey('docker-kube-deploy')), findsNothing);
+    kube.containerStatus = null;
+    await tester.pump(const Duration(seconds: 5));
+    await _settle(tester);
+    expect(find.textContaining('Last observed problem ·'), findsOneWidget);
+    kube.ready = true;
+    await tester.pump(const Duration(seconds: 5));
+    await _settle(tester);
+    expect(find.textContaining('Last observed problem'), findsNothing);
+    expect(find.text('Deployment is ready'), findsOneWidget);
+    expect(kube.calls.length, 4);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

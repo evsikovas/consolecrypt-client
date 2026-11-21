@@ -170,6 +170,7 @@ mod tests {
                     ObjectId::new(),
                     Entry {
                         revision: 1,
+                        external_vault: None,
                         item: Item::Secret {
                             kind: SecretKind::ApiKey,
                         },
@@ -184,6 +185,7 @@ mod tests {
                 ObjectId::new(),
                 Entry {
                     revision: 1,
+                    external_vault: None,
                     item: Item::Secret {
                         kind: SecretKind::ApiKey,
                     },

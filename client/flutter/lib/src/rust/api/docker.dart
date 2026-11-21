@@ -27,6 +27,17 @@ Future<String> dockerContainers({required String sessionId, required bool all}) 
 Future<String> dockerInspect({required String sessionId, required String container}) =>
     RustLib.instance.api.crateApiDockerDockerInspect(sessionId: sessionId, container: container);
 
+/// Registry-confirmed digests for this local image and its source repository.
+Future<List<String>> dockerImageRepoDigests({
+  required String sessionId,
+  required String imageId,
+  required String sourceImage,
+}) => RustLib.instance.api.crateApiDockerDockerImageRepoDigests(
+  sessionId: sessionId,
+  imageId: imageId,
+  sourceImage: sourceImage,
+);
+
 /// The full `docker inspect` after the vault passphrase (sent as bytes) or
 /// a presence token for `docker_reveal` on `<session>/<container>`.
 Future<String> dockerInspectReveal({
@@ -48,6 +59,19 @@ bool dockerContainsSecret({required String text}) =>
 
 Future<void> dockerAction({required String sessionId, required String container, required String action}) =>
     RustLib.instance.api.crateApiDockerDockerAction(sessionId: sessionId, container: container, action: action);
+
+Future<String> dockerRemovalPlan({required String sessionId, required String container}) =>
+    RustLib.instance.api.crateApiDockerDockerRemovalPlan(sessionId: sessionId, container: container);
+
+Future<String> dockerRemoveWithCleanup({
+  required String sessionId,
+  required String container,
+  required String selectionJson,
+}) => RustLib.instance.api.crateApiDockerDockerRemoveWithCleanup(
+  sessionId: sessionId,
+  container: container,
+  selectionJson: selectionJson,
+);
 
 Future<String> dockerLogsStart({
   required String sessionId,

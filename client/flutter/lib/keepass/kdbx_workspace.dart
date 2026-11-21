@@ -4,6 +4,7 @@ import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
+import 'package:consolecrypt/keepass/external_vault.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
 import 'package:consolecrypt/keepass/kdbx_entry_icons.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
@@ -22,6 +23,7 @@ class KdbxWorkspace extends StatelessWidget {
   const KdbxWorkspace({
     super.key,
     required this.manager,
+    required this.vaultConnections,
     required this.session,
     required this.entries,
     required this.group,
@@ -57,6 +59,7 @@ class KdbxWorkspace extends StatelessWidget {
     required this.onDetailsResize,
   });
   final PasswordManager manager;
+  final List<ExternalVaultConnection> vaultConnections;
   final PasswordVaultSession? session;
   final List<KdbxData> entries;
   final String? group;
@@ -64,7 +67,8 @@ class KdbxWorkspace extends StatelessWidget {
   final TextEditingController search;
   final bool busy;
   final String? error;
-  final VoidCallback onOpen, onCreate, onWebDav, onVault, onNewEntry, onNewGroup, onLock, onExport, onRetrySave;
+  final VoidCallback onOpen, onCreate, onWebDav, onNewEntry, onNewGroup, onLock, onExport, onRetrySave;
+  final void Function([String? id]) onVault;
   final ValueChanged<KdbxSource> onSource, onEditSource;
   final void Function(KdbxSource, String) onSourceAction;
   final VoidCallback onGenerator;
@@ -329,16 +333,43 @@ class KdbxWorkspace extends StatelessWidget {
     ),
   );
 
+  Widget _vaultTile(BuildContext context, ExternalVaultConnection connection, {required Key key}) => ListTile(
+    key: key,
+    dense: true,
+    visualDensity: VisualDensity.standard,
+    minTileHeight: 56,
+    minVerticalPadding: 4,
+    minLeadingWidth: 20,
+    horizontalTitleGap: 10,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+    titleAlignment: ListTileTitleAlignment.center,
+    leading: const Icon(Icons.shield_outlined, size: 18),
+    title: Text(connection.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+    subtitle: Text(
+      '${context.l10n.externalVaultTitle} · ${connection.endpoint.origin}',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    ),
+    trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+    onTap: busy ? null : () => onVault(connection.id),
+  );
+
   Widget _sources(BuildContext context, {bool welcome = false}) {
     final sources = manager.sources;
-    final recent = welcome ? manager.recentSources : const <KdbxSource>[];
-    final recentIds = recent.map((source) => source.id).toSet();
-    final shared = welcome ? sources.where((s) => s.remote && !recentIds.contains(s.id)) : const <KdbxSource>[];
+    final recent = welcome ? manager.recentPasswordSources(vaultConnections) : const <RecentPasswordSource>[];
+    final recentKdbx = recent.whereType<RecentKdbxSource>().map((item) => item.source.id).toSet();
+    final recentVaults = recent.whereType<RecentExternalVaultSource>().map((item) => item.connection.id).toSet();
+    final shared = welcome ? sources.where((s) => s.remote && !recentKdbx.contains(s.id)) : const <KdbxSource>[];
+    final savedVaults = welcome
+        ? vaultConnections.where((c) => !recentVaults.contains(c.id))
+        : const <ExternalVaultConnection>[];
     final l = context.l10n;
     final title = recent.isNotEmpty
         ? l.keepassRecentDatabases
         : shared.isNotEmpty
         ? l.keepassDavDatabases
+        : savedVaults.isNotEmpty
+        ? l.externalVaultTitle
         : l.keepassDatabases;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -356,8 +387,19 @@ class KdbxWorkspace extends StatelessWidget {
           ),
         ),
         if (welcome) ...[
-          for (final source in recent)
-            _sourceTile(context, source, tileKey: ValueKey('keepass-recent-source-${source.id}')),
+          for (final item in recent)
+            switch (item) {
+              RecentKdbxSource(:final source) => _sourceTile(
+                context,
+                source,
+                tileKey: ValueKey('keepass-recent-source-${source.id}'),
+              ),
+              RecentExternalVaultSource(:final connection) => _vaultTile(
+                context,
+                connection,
+                key: ValueKey('keepass-recent-vault-${connection.id}'),
+              ),
+            },
           if (recent.isNotEmpty && shared.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
@@ -365,6 +407,13 @@ class KdbxWorkspace extends StatelessWidget {
             ),
           for (final source in shared)
             _sourceTile(context, source, tileKey: ValueKey('keepass-shared-source-${source.id}')),
+          if ((recent.isNotEmpty || shared.isNotEmpty) && savedVaults.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
+              child: Text(l.externalVaultTitle, style: Theme.of(context).textTheme.titleSmall),
+            ),
+          for (final connection in savedVaults)
+            _vaultTile(context, connection, key: ValueKey('keepass-saved-vault-${connection.id}')),
         ] else
           Flexible(
             child: ListView(

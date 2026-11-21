@@ -19,10 +19,24 @@ enum DockerKubeRolloutState {
 }
 
 final class DockerKubeRollout {
-  const DockerKubeRollout(this.state, {this.exitCode, this.podDetailsUnavailable = false});
+  const DockerKubeRollout(
+    this.state, {
+    this.image,
+    this.reason,
+    this.terminationReason,
+    this.exitCode,
+    this.restarts,
+    this.registryDenied = false,
+    this.podDetailsUnavailable = false,
+  });
   final DockerKubeRolloutState state;
-  final int? exitCode;
-  final bool podDetailsUnavailable;
+  final int? exitCode, restarts;
+  final String? image, reason, terminationReason;
+  final bool podDetailsUnavailable, registryDenied;
+  bool get isProcessOrImageFailure =>
+      state == DockerKubeRolloutState.imagePull ||
+      state == DockerKubeRolloutState.crashLoop ||
+      state == DockerKubeRolloutState.terminated;
 }
 
 /// Create-only execution. A partial deployment keeps explicit receipts;
@@ -247,25 +261,56 @@ DockerKubeRollout? _podProblem(Map<String, dynamic> pod) {
     for (final entry in entries.whereType<Map<String, dynamic>>()) {
       final state = entry['state'];
       if (state is! Map) continue;
+      final rawImage = entry['image'];
+      final image = rawImage is String && DockerKubeTarget.dockerImage(rawImage) != null ? rawImage : null;
+      final restarts = entry['restartCount'];
+      DockerKubeRollout termination(DockerKubeRolloutState status, Object? terminated, {String? reason}) {
+        final code = terminated is Map ? terminated['exitCode'] : null;
+        final cause = terminated is Map ? terminated['reason'] : null;
+        // Runtime status messages can contain arguments and credentials. Use only known reason codes.
+        const known = {'OOMKilled', 'Error', 'Completed', 'ContainerCannotRun', 'StartError', 'DeadlineExceeded'};
+        return DockerKubeRollout(
+          status,
+          image: image,
+          reason: reason,
+          exitCode: code is int ? code : null,
+          restarts: restarts is int && restarts >= 0 ? restarts : null,
+          terminationReason: cause is String && known.contains(cause) ? cause : null,
+        );
+      }
+
       final waiting = state['waiting'];
       if (waiting is Map) {
         switch (waiting['reason']) {
           case 'ImagePullBackOff' || 'ErrImagePull' || 'InvalidImageName':
-            return const DockerKubeRollout(DockerKubeRolloutState.imagePull);
+            final message = waiting['message'];
+            return DockerKubeRollout(
+              DockerKubeRolloutState.imagePull,
+              image: image,
+              reason: waiting['reason'] as String,
+              registryDenied:
+                  message is String &&
+                  RegExp(
+                    r'pull access denied|denied: requested access|unauthorized: authentication required|no basic auth credentials',
+                    caseSensitive: false,
+                  ).hasMatch(message),
+            );
           case 'CreateContainerConfigError' || 'CreateContainerError' || 'RunContainerError':
             return const DockerKubeRollout(DockerKubeRolloutState.containerConfig);
           case 'CrashLoopBackOff':
             final last = entry['lastState'];
-            final termination = last is Map ? last['terminated'] : null;
-            final code = termination is Map ? termination['exitCode'] : null;
-            return DockerKubeRollout(DockerKubeRolloutState.crashLoop, exitCode: code is int ? code : null);
+            return termination(
+              DockerKubeRolloutState.crashLoop,
+              last is Map ? last['terminated'] : null,
+              reason: 'CrashLoopBackOff',
+            );
         }
       }
       final terminated = state['terminated'];
       if (terminated is Map) {
         final code = terminated['exitCode'];
         if (group == 'initContainerStatuses' && code == 0) continue;
-        return DockerKubeRollout(DockerKubeRolloutState.terminated, exitCode: code is int ? code : null);
+        return termination(DockerKubeRolloutState.terminated, terminated);
       }
     }
   }

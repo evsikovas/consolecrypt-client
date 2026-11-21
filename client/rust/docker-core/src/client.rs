@@ -13,6 +13,9 @@ use std::{collections::BTreeMap, fmt, time::Duration};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+mod image;
+pub(crate) mod removal;
+
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_BODY: usize = 32 * 1024 * 1024;
 
@@ -435,7 +438,7 @@ impl DockerClient {
             ContainerAction::Pause => (Method::POST, format!("/containers/{id}/pause")),
             ContainerAction::Unpause => (Method::POST, format!("/containers/{id}/unpause")),
             ContainerAction::Kill => (Method::POST, format!("/containers/{id}/kill")),
-            ContainerAction::Remove => (Method::DELETE, format!("/containers/{id}?force=1")),
+            ContainerAction::Remove => (Method::DELETE, format!("/containers/{id}")),
         };
         // Stop and restart wait for the container's own stop timeout.
         let response = tokio::time::timeout(

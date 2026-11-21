@@ -338,7 +338,8 @@ impl AppCore {
     /// groups use it.
     pub async fn delete_credential(&self, id: String) -> AppResult<()> {
         let (id, u) = self.delete_object(&id, ObjectKind::Credential).await?;
-        let refs: Vec<String> = u
+        let _catalog = u.external_vault_edits.lock().await;
+        let mut refs: Vec<String> = u
             .working()
             .hosts()
             .iter()
@@ -359,6 +360,9 @@ impl AppCore {
                     .map(|g| format!("group '{}'", g.name)),
             )
             .collect();
+        if crate::external_vault_sync::credential_in_use(&u, id) {
+            refs.push("vault connection or synced settings".into());
+        }
         if !refs.is_empty() {
             return Err(AppError::InUse {
                 what: "credential".into(),

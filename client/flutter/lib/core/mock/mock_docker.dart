@@ -24,6 +24,8 @@ class MockDockerService implements DockerService {
 
   final _sessions = <String, DockerSessionInfo>{};
   final _containers = <String, List<DockerContainer>>{};
+  final _volumeProjects = <String, Map<String, String?>>{};
+  final _removals = <(String, String), DockerRemovalPlan>{};
   final _forwards = <String, DockerForward>{};
   var _next = 0;
 
@@ -45,6 +47,11 @@ class MockDockerService implements DockerService {
     final id = 'docker-session-${++_next}';
     final containers = _seed(hostId);
     _containers[id] = containers;
+    _volumeProjects[id] = {
+      for (final c in containers)
+        if (_volumeName(c) case final String name) name: c.composeProject,
+      'orphaned-cache': null,
+    };
     final local = host.kind == DockerHostKind.local;
     return _sessions[id] = DockerSessionInfo(
       id: id,
@@ -63,6 +70,8 @@ class MockDockerService implements DockerService {
   Future<void> disconnect(String sessionId) async {
     _sessions.remove(sessionId);
     _containers.remove(sessionId);
+    _volumeProjects.remove(sessionId);
+    _removals.removeWhere((key, _) => key.$1 == sessionId);
     _forwards.removeWhere((_, f) => f.sessionId == sessionId);
   }
 
@@ -81,6 +90,21 @@ class MockDockerService implements DockerService {
     await mockDelay(latency);
     final container = _find(sessionId, containerId);
     return DockerContainerDetail(container: container, inspect: _inspect(container, full: false));
+  }
+
+  static String _imageId(String image) => 'sha256:${_id('image/$image')}';
+
+  @override
+  Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage) async {
+    await mockDelay(latency);
+    final session = _sessions[sessionId];
+    if (session == null) throw const DockerException(DockerFailure.connectionFailed, 'session closed');
+    // The demo engine still has these images after the last container is removed.
+    final image = _seed(session.hostId).map((c) => c.image).where((ref) => _imageId(ref) == imageId).firstOrNull;
+    if (image == null) throw const DockerException(DockerFailure.other, 'unknown image ID');
+    if (sourceImage != image || image == 'example/worker:latest') return const [];
+    final repo = image.split(':').first;
+    return ['docker.io/${repo.contains('/') ? repo : 'library/$repo'}@sha256:${_id('manifest/$image')}'];
   }
 
   @override
@@ -108,6 +132,9 @@ class MockDockerService implements DockerService {
       _list(sessionId).where((c) => c.id == containerId).firstOrNull ??
       (throw const DockerException(DockerFailure.other, 'no such container'));
 
+  static String? _volumeName(DockerContainer c) =>
+      c.image.startsWith('postgres') || c.image.startsWith('redis') ? '${c.composeProject ?? 'data'}_data' : null;
+
   /// The inspect JSON; without [full] secrets read `••••••` as the core
   /// masks them.
   DockerJson _inspect(DockerContainer container, {required bool full}) {
@@ -119,10 +146,12 @@ class MockDockerService implements DockerService {
         : [container.composeService ?? container.name];
     return {
       'Id': container.id,
+      'Image': _imageId(container.image),
       'Name': '/${container.name}',
       'Created': created.toIso8601String(),
       'Path': 'docker-entrypoint.sh',
       'Args': command,
+      'HostConfig': {'Privileged': false, 'NetworkMode': container.networks.keys.firstOrNull ?? 'bridge'},
       'RestartCount': container.name.contains('worker') ? 3 : 0,
       'State': {
         'Status': container.state.name,
@@ -157,11 +186,11 @@ class MockDockerService implements DockerService {
         },
       },
       'Mounts': [
-        if (container.image.startsWith('postgres') || redis)
+        if (_volumeName(container) case final String volume)
           {
             'Type': 'volume',
-            'Name': '${container.composeProject ?? 'data'}_data',
-            'Source': '/var/lib/docker/volumes/${container.composeProject ?? 'data'}_data/_data',
+            'Name': volume,
+            'Source': '/var/lib/docker/volumes/$volume/_data',
             'Destination': container.image.startsWith('postgres') ? '/var/lib/postgresql/data' : '/data',
             'RW': true,
           },
@@ -180,13 +209,15 @@ class MockDockerService implements DockerService {
   @override
   Future<void> action(String sessionId, String containerId, DockerAction action) async {
     await mockDelay(latency);
-    actions.add((containerId, action));
     final list = _list(sessionId);
     final index = list.indexWhere((c) => c.id == containerId);
     if (index < 0) throw const DockerException(DockerFailure.other, 'no such container');
     final current = list[index];
     if (action == DockerAction.remove) {
+      if (_running(current)) throw const DockerException(DockerFailure.other, 'container is running');
       list.removeAt(index);
+      _removals.remove((sessionId, containerId));
+      actions.add((containerId, action));
       return;
     }
     final (state, status) = switch (action) {
@@ -198,7 +229,109 @@ class MockDockerService implements DockerService {
       DockerAction.pause => (DockerContainerState.paused, 'Up 2 hours (Paused)'),
       DockerAction.remove => (current.state, current.status),
     };
+    actions.add((containerId, action));
     list[index] = _copy(current, state: state, status: status);
+  }
+
+  @override
+  Future<DockerRemovalPlan> removalPlan(String sessionId, String containerId) async {
+    await mockDelay(latency);
+    final c = _find(sessionId, containerId);
+    return _removals[(sessionId, containerId)] = DockerRemovalPlan(
+      planId: 'plan-${++_next}',
+      containerId: c.id,
+      name: c.name,
+      running: _running(c),
+      resources: _resources(sessionId, c),
+    );
+  }
+
+  static bool _running(DockerContainer c) => const {
+    DockerContainerState.running,
+    DockerContainerState.paused,
+    DockerContainerState.restarting,
+  }.contains(c.state);
+
+  List<DockerRemovalResource> _resources(String sessionId, DockerContainer c) {
+    final others = _list(sessionId).where((item) => item.id != c.id);
+    DockerRemovalResource resource(DockerRemovalKind kind, String id, String name, String reason) =>
+        DockerRemovalResource(kind: kind, id: id, name: name, eligible: reason == 'eligible', reason: reason);
+    return [
+      if (_volumeName(c) case final String volume)
+        resource(
+          DockerRemovalKind.volume,
+          volume,
+          volume,
+          others.any((x) => _volumeName(x) == volume) ? 'shared' : 'eligible',
+        ),
+      for (final network in c.networks.keys)
+        resource(
+          DockerRemovalKind.network,
+          _id('$sessionId/$network'),
+          network,
+          const {'bridge', 'host', 'none'}.contains(network)
+              ? 'default'
+              : others.any((x) => x.networks.containsKey(network))
+              ? 'shared'
+              : 'eligible',
+        ),
+      if (c.composeService == 'web')
+        resource(DockerRemovalKind.bind, '/etc/nginx/nginx.conf', '/etc/nginx/nginx.conf', 'bind'),
+    ];
+  }
+
+  @override
+  Future<DockerRemovalResult> removeWithCleanup(
+    String sessionId,
+    String containerId,
+    DockerRemovalSelection selection,
+  ) async {
+    await mockDelay(latency);
+    final c = _find(sessionId, containerId);
+    final plan = _removals[(sessionId, containerId)];
+    if (plan == null || selection.planId != plan.planId) {
+      throw const DockerException(DockerFailure.other, 'invalid removal plan');
+    }
+    _removals.remove((sessionId, containerId));
+    if (selection.confirmName != c.name) {
+      throw const DockerException(DockerFailure.other, 'invalid removal confirmation');
+    }
+    final requested = [
+      for (final id in selection.volumes) (DockerRemovalKind.volume, id),
+      for (final id in selection.networks) (DockerRemovalKind.network, id),
+    ];
+    final eligible = {
+      for (final r in plan.resources)
+        if (r.eligible) (r.kind, r.id): r,
+    };
+    if (requested.toSet().length != requested.length || requested.any((key) => !eligible.containsKey(key))) {
+      throw const DockerException(DockerFailure.other, 'invalid removal selection');
+    }
+    final running = _running(c);
+    if (running && (!plan.running || !selection.stopRunning)) {
+      return const DockerRemovalResult(containerRemoved: false, containerStopped: false, error: 'running');
+    }
+    final now = {for (final r in _resources(sessionId, c)) (r.kind, r.id): r};
+    if (running) actions.add((c.id, DockerAction.stop));
+    actions.add((c.id, DockerAction.remove));
+    _list(sessionId).remove(c);
+    final outcomes = <DockerRemovalOutcome>[];
+    for (final key in requested) {
+      final resource = eligible[key]!;
+      final current = now[key];
+      final removed = current?.eligible == true;
+      if (removed && resource.kind == DockerRemovalKind.volume) _volumeProjects[sessionId]!.remove(resource.id);
+      outcomes.add(
+        DockerRemovalOutcome(
+          kind: resource.kind,
+          id: resource.id,
+          name: resource.name,
+          status: removed ? DockerRemovalStatus.removed : DockerRemovalStatus.skipped,
+          reason: removed ? 'removed' : current?.reason ?? 'changed',
+        ),
+      );
+    }
+    return DockerRemovalResult(containerRemoved: true, containerStopped: running, resources: outcomes);
   }
 
   @override
@@ -297,22 +430,17 @@ class MockDockerService implements DockerService {
     await mockDelay(latency);
     final list = _list(sessionId);
     return [
-      for (final project in {...list.map((c) => c.composeProject).nonNulls})
+      for (final volume in _volumeProjects[sessionId]!.entries)
         DockerVolume(
-          name: '${project}_data', // l10n-ignore: demo volume
+          name: volume.key,
           driver: 'local', // l10n-ignore: demo driver
-          mountpoint: '/var/lib/docker/volumes/${project}_data/_data', // l10n-ignore: demo path
-          composeProject: project,
+          mountpoint: '/var/lib/docker/volumes/${volume.key}/_data',
+          composeProject: volume.value,
           usedBy: [
             for (final c in list)
-              if (c.composeProject == project && c.composeService != 'web') c.name,
+              if (_volumeName(c) == volume.key) c.name,
           ],
         ),
-      const DockerVolume(
-        name: 'orphaned-cache',
-        driver: 'local',
-        mountpoint: '/var/lib/docker/volumes/orphaned-cache/_data',
-      ), // l10n-ignore: demo volume
     ];
   }
 

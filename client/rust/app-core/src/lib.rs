@@ -129,6 +129,7 @@ pub use docker_compose::{
     ComposeEdit, ComposeFileDto, ComposeJobUpdate, ComposeProjectDto, ComposeSaveOutcome,
 };
 
+pub use cc_docker_core::{DockerRemovalPlan, DockerRemovalResult, DockerRemovalSelection};
 pub use docker_runtime::{
     DockerConnectOutcome, DockerForwardDto, DockerHostDto, DockerSessionDto, docker_contains_secret,
 };
@@ -152,6 +153,7 @@ pub mod error;
 mod host_auth;
 
 mod inventory;
+mod external_vault_sync;
 
 mod key_trust;
 

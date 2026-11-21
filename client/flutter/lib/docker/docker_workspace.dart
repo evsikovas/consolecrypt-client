@@ -16,6 +16,7 @@ import 'package:consolecrypt/docker/docker_database_connect.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_forwards.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
+import 'package:consolecrypt/docker/docker_removal_dialog.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
 import 'package:consolecrypt/docker/docker_volume_list.dart';
@@ -24,7 +25,6 @@ import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
 
 /// Content width from which details and forwards sit beside the list.
 const _sideBySide = 860.0;
@@ -189,11 +189,11 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   Future<void> _act(DockerContainer container, DockerAction action) async {
     if (_busy.contains(container.id)) return;
     final l = context.l10n;
-    if (action == DockerAction.kill || action == DockerAction.remove) {
+    if (action == DockerAction.kill) {
       final approved = await showConfirmDialog(
         context,
-        title: action == DockerAction.kill ? l.dockerKillTitle(container.name) : l.dockerRemoveTitle(container.name),
-        message: action == DockerAction.kill ? l.dockerKillHelp : l.dockerRemoveHelp,
+        title: l.dockerKillTitle(container.name),
+        message: l.dockerKillHelp,
         confirmLabel: dockerActionLabel(l, action),
         destructive: true,
       );
@@ -201,15 +201,38 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     }
     setState(() => _busy.add(container.id));
     try {
+      if (action == DockerAction.remove) {
+        await _removeContainer(container);
+        return;
+      }
       await widget.service.action(widget.session.id, container.id, action);
-      if (!mounted) return;
-      if (action == DockerAction.remove && _selected == container.id) setState(() => _selected = null);
     } catch (error) {
       if (mounted) showSnack(context, dockerErrorText(context.l10n, error), error: true);
     } finally {
       if (mounted) setState(() => _busy.remove(container.id));
     }
     if (mounted) await _refresh();
+  }
+
+  Future<void> _removeContainer(DockerContainer container) async {
+    final sessionId = widget.session.id;
+    final plan = await widget.service.removalPlan(sessionId, container.id);
+    if (!mounted || widget.session.id != sessionId) return;
+    if (plan.containerId != container.id) throw const DockerException(DockerFailure.other);
+    final local = widget.host?.kind == DockerHostKind.local || DockerHost.isLocalId(widget.session.hostId);
+    final selection = await showDockerRemovalPlan(context, plan, local ? context.l10n.dockerLocalHost : _hostName);
+    if (selection == null || !mounted || widget.session.id != sessionId) return;
+    final result = await widget.service.removeWithCleanup(sessionId, container.id, selection);
+    if (!mounted) return;
+    await _refresh();
+    if (!mounted) return;
+    unawaited(_volumeList.currentState?.refresh());
+    ref.invalidate(dockerForwardsProvider);
+    if (!result.containerRemoved || result.error != null || result.resources.isNotEmpty) {
+      await showDockerRemovalResult(context, result);
+    } else {
+      showSnack(context, context.l10n.dockerRemovalRemoved);
+    }
   }
 
   /// Project-wide engine actions and the compose files dialog.

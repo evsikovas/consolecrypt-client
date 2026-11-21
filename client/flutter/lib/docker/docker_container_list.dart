@@ -46,15 +46,24 @@ List<GlassMenuEntry<Object>> dockerContainerMenu(
   DockerDbTarget? database,
 }) {
   final running = container.state == DockerContainerState.running;
-  GlassMenuItem<Object> engine(DockerAction action, IconData icon, {bool destructive = false}) => GlassMenuItem<Object>(
-    key: ValueKey('docker-menu-${action.name}'),
-    value: action,
-    label: dockerActionLabel(l, action),
-    icon: icon,
-    destructive: destructive,
-    enabled: dockerActionAllowed(action, container.state),
-  );
+  GlassMenuItem<Object> engine(DockerAction action, IconData icon, {bool destructive = false, String? label}) =>
+      GlassMenuItem<Object>(
+        key: ValueKey('docker-menu-${action.name}'),
+        value: action,
+        label: label ?? dockerActionLabel(l, action),
+        icon: icon,
+        destructive: destructive,
+        enabled: dockerActionAllowed(action, container.state),
+      );
   return [
+    GlassMenuItem<Object>(
+      key: const ValueKey('docker-menu-details'),
+      value: DockerMenuCommand.details,
+      label: l.dockerDetails,
+      icon: Icons.info_outline_rounded,
+    ),
+    engine(DockerAction.remove, Icons.delete_outline_rounded, destructive: true, label: l.dockerRemoveContainer),
+    const GlassMenuDivider(),
     GlassMenuItem<Object>(
       key: const ValueKey('docker-menu-logs'),
       value: DockerMenuCommand.logs,
@@ -83,12 +92,6 @@ List<GlassMenuEntry<Object>> dockerContainerMenu(
         icon: Icons.storage_rounded,
         enabled: running,
       ),
-    GlassMenuItem<Object>(
-      key: const ValueKey('docker-menu-details'),
-      value: DockerMenuCommand.details,
-      label: l.dockerDetails,
-      icon: Icons.info_outline_rounded,
-    ),
     const GlassMenuDivider(),
     engine(DockerAction.start, Icons.play_arrow_rounded),
     engine(DockerAction.stop, Icons.stop_rounded),
@@ -105,7 +108,6 @@ List<GlassMenuEntry<Object>> dockerContainerMenu(
       icon: Icons.content_copy_rounded,
     ),
     engine(DockerAction.kill, Icons.flash_on_rounded, destructive: true),
-    engine(DockerAction.remove, Icons.delete_outline_rounded, destructive: true),
   ];
 }
 

@@ -19,8 +19,10 @@ import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_screen.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
+import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,6 +68,93 @@ class _PortRangeDocker extends _Docker {
   @override
   Future<DockerContainerDetail> inspect(String sessionId, String containerId) async =>
       DockerContainerDetail(container: large, inspect: const {});
+}
+
+class _DigestDocker extends _Docker {
+  final lookups = <(String, String, String)>[];
+  @override
+  Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage) {
+    lookups.add((sessionId, imageId, sourceImage));
+    return super.imageRepoDigests(sessionId, imageId, sourceImage);
+  }
+}
+
+class _RemovalDocker extends _Docker {
+  final selections = <DockerRemovalSelection>[];
+  bool partial = false;
+
+  @override
+  Future<DockerRemovalPlan> removalPlan(String sessionId, String containerId) async {
+    final plan = await super.removalPlan(sessionId, containerId);
+    return DockerRemovalPlan(
+      planId: plan.planId,
+      containerId: plan.containerId,
+      name: plan.name,
+      running: plan.running,
+      resources: const [
+        DockerRemovalResource(
+          kind: DockerRemovalKind.volume,
+          id: 'data',
+          name: 'data',
+          eligible: true,
+          reason: 'eligible',
+        ),
+        DockerRemovalResource(
+          kind: DockerRemovalKind.volume,
+          id: 'shared',
+          name: 'other-data',
+          eligible: false,
+          reason: 'shared',
+        ),
+        DockerRemovalResource(
+          kind: DockerRemovalKind.bind,
+          id: '/home/user',
+          name: '/home/user',
+          eligible: false,
+          reason: 'bind',
+        ),
+        DockerRemovalResource(
+          kind: DockerRemovalKind.network,
+          id: 'nid',
+          name: 'private-net',
+          eligible: true,
+          reason: 'eligible',
+        ),
+      ],
+    );
+  }
+
+  @override
+  Future<DockerRemovalResult> removeWithCleanup(
+    String sessionId,
+    String containerId,
+    DockerRemovalSelection selection,
+  ) async {
+    selections.add(selection);
+    final actual = await super.removeWithCleanup(
+      sessionId,
+      containerId,
+      DockerRemovalSelection(
+        planId: selection.planId,
+        stopRunning: selection.stopRunning,
+        confirmName: selection.confirmName,
+      ),
+    );
+    return DockerRemovalResult(
+      containerRemoved: actual.containerRemoved,
+      containerStopped: actual.containerStopped,
+      resources: [
+        if (partial)
+          const DockerRemovalOutcome(
+            kind: DockerRemovalKind.network,
+            id: 'nid',
+            name: 'private-net',
+            status: DockerRemovalStatus.skipped,
+            reason: 'in_use',
+          ),
+      ],
+    );
+  }
 }
 
 /// Docker over SSH on the demo inventory host [hostId] (the engine data is
@@ -146,6 +235,7 @@ Future<void> _pump(
   TerminalService? terminal,
   MockBackend? signedIn,
   ValueNotifier<DockerScope>? scope,
+  KubeScope? kubeScope,
   SecureClipboard? clipboard,
 }) async {
   final backend = signedIn ?? testBackend();
@@ -159,6 +249,7 @@ Future<void> _pump(
     ProviderScope(
       overrides: [
         appServicesProvider.overrideWithValue(backend.services),
+        if (kubeScope != null) kubeScopeProvider.overrideWithValue(kubeScope),
         dockerServiceProvider.overrideWithValue(available ? service ?? _Docker() : null),
         if (scope == null)
           dockerScopeProvider.overrideWithValue(const DockerScope('profile', true))
@@ -253,6 +344,30 @@ void main() {
     await _pump(tester, available: false);
     expect(find.byKey(const ValueKey('docker-unavailable')), findsOneWidget);
     expect(find.text('Docker is unavailable'), findsOneWidget);
+  });
+
+  testWidgets('image lookup runs only when opening the Kubernetes wizard and uses the exact container image ID', (
+    tester,
+  ) async {
+    final service = _DigestDocker(), backend = testBackend();
+    await backend.debugSignInDemoAndUnlock();
+    await _pump(tester, signedIn: backend, service: service, kubeScope: const KubeScope('profile', true));
+    await _connectLocal(tester);
+    final id = _id(tester, 'shop-api-1');
+    await tester.tap(find.byKey(ValueKey('docker-name-$id')));
+    await settle(tester);
+    expect(service.lookups, isEmpty);
+    await tapKey(tester, 'docker-details-kubernetes');
+    final (session, imageId, sourceImage) = service.lookups.single;
+    final inspect = await service.inspect(session, id);
+    expect(imageId, inspect.inspect['Image']);
+    expect(sourceImage, inspect.container.image);
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text,
+      startsWith('docker.io/example/shop-api@sha256:'),
+    );
+    expect(find.text('AI provider'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('an unlocked desktop shows WSLc only on Windows', (tester) async {
@@ -354,7 +469,7 @@ void main() {
   });
 
   testWidgets('row actions call the service; kill and remove ask first', (tester) async {
-    final service = _Docker();
+    final service = _RemovalDocker();
     await _pump(tester, service: service);
     await _connectLocal(tester);
     final web = _id(tester, 'shop-web-1');
@@ -364,6 +479,16 @@ void main() {
 
     final cache = _id(tester, 'proxy-cache-1');
     await tapKey(tester, 'docker-menu-button-$cache');
+    final menuRemove = find.byKey(const ValueKey('docker-menu-remove'));
+    expect(menuRemove.hitTestable(), findsOneWidget);
+    expect(
+      tester.getTopLeft(menuRemove).dy,
+      greaterThan(tester.getTopLeft(find.byKey(const ValueKey('docker-menu-details'))).dy),
+    );
+    expect(
+      tester.getTopLeft(menuRemove).dy,
+      lessThan(tester.getTopLeft(find.byKey(const ValueKey('docker-menu-logs'))).dy),
+    );
     await tapKey(tester, 'docker-menu-remove');
     expect(find.text('Remove proxy-cache-1?'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('confirm-cancel')));
@@ -371,11 +496,18 @@ void main() {
     expect(service.actions.where((a) => a.$2 == DockerAction.remove), isEmpty);
     expect(find.text('proxy-cache-1'), findsOneWidget);
 
-    await tapKey(tester, 'docker-menu-button-$cache');
+    await tester.tap(find.text('proxy-cache-1'), buttons: kSecondaryMouseButton);
+    await settle(tester);
+    expect(menuRemove.hitTestable(), findsOneWidget);
     await tapKey(tester, 'docker-menu-remove');
+    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('confirm-ok'))).onPressed, isNotNull);
     await tester.tap(find.byKey(const ValueKey('confirm-ok')));
     await settle(tester);
     expect(service.actions.last, (cache, DockerAction.remove));
+    final selection = service.selections.single;
+    expect(selection.stopRunning, isFalse);
+    expect(selection.volumes, isEmpty);
+    expect(selection.networks, isEmpty);
     expect(find.text('proxy-cache-1'), findsNothing);
 
     final redis = _id(tester, 'shop-redis-1');
@@ -385,6 +517,62 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('confirm-ok')));
     await settle(tester);
     expect(service.actions.last, (redis, DockerAction.kill));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('container details review stop, protected attachments and a partial cleanup on a narrow screen', (
+    tester,
+  ) async {
+    final service = _RemovalDocker()..partial = true;
+    await _pump(tester, service: service, size: const Size(410, 840));
+    await _connectLocal(tester);
+    final name = find.text('shop-redis-1');
+    await tester.ensureVisible(name);
+    await tester.tap(name);
+    await settle(tester);
+    expect(find.text('Remove container…'), findsOneWidget);
+    await tapKey(tester, 'docker-details-remove');
+    Finder key(String id) => find.byKey(ValueKey(id));
+    expect(find.text('Host files are kept'), findsOneWidget);
+    expect(find.text('Used by another container'), findsOneWidget);
+    expect(key('docker-remove-volume-shared'), findsNothing);
+    expect(key('docker-remove-bind-/home/user'), findsNothing);
+    expect(tester.widget<CheckboxListTile>(key('docker-remove-volume-data')).value, isFalse);
+    expect(tester.widget<CheckboxListTile>(key('docker-remove-network-nid')).value, isFalse);
+    expect(key('docker-remove-volume-warning'), findsNothing);
+    await tapKey(tester, 'docker-remove-volume-data');
+    expect(key('docker-remove-volume-warning'), findsOneWidget);
+    await tapKey(tester, 'docker-remove-volume-data');
+    expect(tester.widget<GlassButton>(key('confirm-ok')).onPressed, isNull);
+    await tapKey(tester, 'docker-remove-stop');
+    await tapKey(tester, 'docker-remove-network-nid');
+    await tapKey(tester, 'confirm-ok');
+    final selection = service.selections.single;
+    expect(selection.confirmName, 'shop-redis-1');
+    expect(selection.networks, ['nid']);
+    expect(selection.volumes, isEmpty);
+    expect(selection.stopRunning, isTrue);
+    expect(find.text('Container removed'), findsOneWidget);
+    expect(find.text('private-net'), findsOneWidget);
+    expect(find.textContaining('Docker reports that the resource is in use.'), findsOneWidget);
+    await tapKey(tester, 'docker-removal-result-close');
+    expect(find.text('The container no longer exists'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('locking the profile dismisses the removal plan without applying it', (tester) async {
+    final scope = ValueNotifier(const DockerScope('profile', true));
+    addTearDown(scope.dispose);
+    final service = _RemovalDocker();
+    await _pump(tester, service: service, scope: scope);
+    await _connectLocal(tester);
+    final cache = _id(tester, 'proxy-cache-1');
+    await tapKey(tester, 'docker-menu-button-$cache');
+    await tapKey(tester, 'docker-menu-remove');
+    scope.value = const DockerScope('profile', false);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('confirm-ok')), findsNothing);
+    expect(service.selections, isEmpty);
     expect(tester.takeException(), isNull);
   });
 

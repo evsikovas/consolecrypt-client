@@ -10,6 +10,39 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get dockerKubeRegistryDenied =>
+      'The registry denied access. Check the repository name and that the image was published there. For a private repository, verify the cluster credentials or the imagePullSecret in this namespace.';
+
+  @override
+  String get dockerKubeLastProblem => 'Last observed problem';
+
+  @override
+  String get dockerKubeCompletionAdvice =>
+      'The process exited successfully. A Deployment restarts it to keep a replica running. Compare command and args with Docker and use a foreground server process. For a one-off command, use a Job.';
+
+  @override
+  String get dockerKubeOomAdvice =>
+      'The container ran out of memory. Check its memory use and the limit in the Deployment manifest, then review the previous container logs.';
+
+  @override
+  String get dockerKubeRequestedImage => 'Image in the manifest';
+
+  @override
+  String get dockerKubeUnverifiedImage =>
+      'Could not confirm a registry digest for this image. Enter a published digest or a different published tag that the cluster can pull. For a private registry, enter the full image reference and, if needed, an imagePullSecret from this namespace.';
+
+  @override
+  String get dockerKubePullAdvice =>
+      'Check the Pod events for the registry error. Verify that the image and tag or digest exist, and that the namespace has the correct imagePullSecret for a private registry.';
+
+  @override
+  String get dockerKubeCrashAdvice =>
+      'Open the Pod logs and select the previous container. Check the startup command, arguments and memory limit in the Deployment manifest.';
+
+  @override
+  String get dockerKubeOpenDeployment => 'Open Deployment in Kubernetes';
+
+  @override
   String get keepassExchangeFormatError =>
       'Check the file format. CSV needs title and password columns. JSON must come from a ConsoleCrypt export.';
 
@@ -149,6 +182,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get externalVaultUseSaved => 'Sign in with device authentication';
+
+  @override
+  String get externalVaultSyncLogin => 'Save this sign-in in my encrypted ConsoleCrypt vault';
+
+  @override
+  String get externalVaultSyncLoginHelp =>
+      'After syncing, you can use this password or token on any device where you unlock your personal vault.';
+
+  @override
+  String get externalVaultUseSynced => 'Sign in with the synced credential';
+
+  @override
+  String get externalVaultForgetSynced => 'Remove synced sign-in';
+
+  @override
+  String externalVaultRemoveSyncedConnection(String name) {
+    return 'Remove $name and its saved sign-in from your personal vault on all synced devices?';
+  }
+
+  @override
+  String get externalVaultForgetSyncedHelp =>
+      'Remove the saved password or token from your personal vault on all synced devices?';
 
   @override
   String get externalVaultRemoveConnection => 'Remove saved connection';
@@ -9517,7 +9572,77 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get dockerRemoveHelp => 'The container and its writable layer are deleted. Named volumes are kept.';
+  String get dockerRemoveHelp =>
+      'Removing the container deletes its writable layer. Select any volumes or networks you also want to remove.';
+
+  @override
+  String get dockerRemovalBindMounts => 'Host files mounted in the container';
+
+  @override
+  String get dockerRemovalShared => 'Used by another container';
+
+  @override
+  String get dockerRemovalExternal => 'Managed externally';
+
+  @override
+  String get dockerRemovalDefaultNetwork => 'Built-in Docker network';
+
+  @override
+  String get dockerRemovalBindKept => 'Host files are kept';
+
+  @override
+  String get dockerRemovalUnverified => 'Docker could not verify exclusive ownership';
+
+  @override
+  String get dockerRemovalStopFirst => 'Stop this container before removing it';
+
+  @override
+  String get dockerRemovalVolumeWarning => 'All data in the selected volumes will be permanently deleted.';
+
+  @override
+  String get dockerRemovalResult => 'Removal result';
+
+  @override
+  String get dockerRemoveContainer => 'Remove container…';
+
+  @override
+  String get dockerRemovalRemoved => 'Container removed';
+
+  @override
+  String get dockerRemovalStopped => 'Container stopped. Removal was not confirmed.';
+
+  @override
+  String get dockerRemovalKept => 'Container removal was not confirmed.';
+
+  @override
+  String get dockerRemovalResourceRemoved => 'Removed';
+
+  @override
+  String dockerRemovalResourceSkipped(String reason) {
+    return 'Skipped. $reason';
+  }
+
+  @override
+  String dockerRemovalResourceFailed(String reason) {
+    return 'Removal failed. $reason';
+  }
+
+  @override
+  String get dockerRemovalChanged =>
+      'The container or its resources changed. Open the removal dialog again to review the current state.';
+
+  @override
+  String get dockerRemovalAutoRemove =>
+      'Docker automatically removes this container and its anonymous volumes when it stops. With this setting, you cannot choose which volumes to keep.';
+
+  @override
+  String get dockerRemovalMissing => 'Already absent from the engine';
+
+  @override
+  String get dockerRemovalInUse => 'Docker reports that the resource is in use.';
+
+  @override
+  String get dockerRemovalCancelled => 'The operation was interrupted. Refresh to see the current state.';
 
   @override
   String get dockerLogs => 'Logs';

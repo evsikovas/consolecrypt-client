@@ -7,6 +7,8 @@ import 'package:consolecrypt/core/bridge/mapping.dart' show guard;
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/keepass/external_vault.dart';
+import 'package:consolecrypt/keepass/external_vault_repository.dart';
 import 'package:consolecrypt/keepass/kdbx_android_auth.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
 import 'package:consolecrypt/keepass/kdbx_exchange.dart';
@@ -40,6 +42,28 @@ class KdbxSource {
       .toString();
 }
 
+sealed class RecentPasswordSource {
+  const RecentPasswordSource();
+  String get id;
+}
+
+final class RecentKdbxSource extends RecentPasswordSource {
+  const RecentKdbxSource(this.source);
+  final KdbxSource source;
+  @override
+  String get id => source.id;
+}
+
+final class RecentExternalVaultSource extends RecentPasswordSource {
+  const RecentExternalVaultSource(this.connection);
+  final ExternalVaultConnection connection;
+  @override
+  String get id {
+    final identity = jsonEncode([connection.profile, connection.vault, connection.id]);
+    return 'vault:${sha256.convert(utf8.encode(identity))}';
+  }
+}
+
 class PasswordVaultSession {
   PasswordVaultSession(this.source, this.client, this.data, this.etag, [this.remoteFingerprint]);
   final KdbxSource source;
@@ -59,15 +83,16 @@ class PasswordVaultSession {
 /// Owns workers for the unlocked ConsoleCrypt profile, independently of UI.
 /// Closing a page leaves databases available to Ctrl+K; locking kills them.
 class PasswordManager {
-  PasswordManager(this.ref, this.profile, String? vault, this.unlocked) {
+  PasswordManager(this.ref, this.profile, this._vault, this.unlocked) {
     // A direct subscription also closes workers if UI providers are paused.
     _status = ref.read(vaultServiceProvider).watchStatus().listen((status) {
-      if (!status.isUnlocked || status.vaultId?.value != vault) dispose();
+      if (!status.isUnlocked || status.vaultId?.value != _vault) dispose();
     });
   }
   StreamSubscription<VaultStatus>? _status;
   final Ref ref;
   final String profile;
+  final String? _vault;
   final bool unlocked;
   final sessions = <String, PasswordVaultSession>{};
   final _changes = StreamController<int>.broadcast();
@@ -124,18 +149,118 @@ class PasswordManager {
     return all.values.toList();
   }
 
-  List<KdbxSource> get recentSources => _recentSources(ref.read(settingsServiceProvider).currentLocal);
+  Iterable<String> _recentIds(LocalSettings local) sync* {
+    yield* local.passwordVaultRecentByProfile[profile] ?? const [];
+    // Versions before the history list moved a local file to the end on open.
+    for (final file in local.passwordVaultFiles.reversed) {
+      if (file['profile'] == profile) yield KdbxSource.local(file['path']!).id;
+    }
+  }
 
-  List<KdbxSource> _recentSources(LocalSettings local) {
+  List<RecentPasswordSource> recentPasswordSources(List<ExternalVaultConnection> connections) {
     if (!valid) return [];
-    final available = {for (final source in sources) source.id: source};
-    final ordered = <String>{
-      ...?local.passwordVaultRecentByProfile[profile],
-      // Older builds already move a file to the end of the catalog on open.
-      for (final file in local.passwordVaultFiles.reversed)
-        if (file['profile'] == profile) KdbxSource.local(file['path']!).id,
-    };
-    return ordered.map((id) => available[id]).nonNulls.take(LocalSettings.passwordVaultRecentLimit).toList();
+    final entries = [
+      for (final source in sources) RecentKdbxSource(source),
+      for (final connection in connections)
+        if (connection.profile == profile && connection.vault == _vault) RecentExternalVaultSource(connection),
+    ];
+    final available = {for (final entry in entries) entry.id: entry};
+    final local = ref.read(settingsServiceProvider).currentLocal;
+    return _recentIds(local)
+        .toSet()
+        .map((id) => available[id])
+        .nonNulls
+        .take(LocalSettings.passwordVaultRecentLimit)
+        .toList();
+  }
+
+  List<KdbxSource> get recentSources =>
+      recentPasswordSources(const []).whereType<RecentKdbxSource>().map((entry) => entry.source).toList();
+
+  LocalSettings _withRecent(LocalSettings local, String id, {bool remove = false}) {
+    final ordered = {if (!remove) id, ..._recentIds(local).where((previous) => previous != id)};
+    return local.copyWith(
+      passwordVaultRecentByProfile: {
+        ...local.passwordVaultRecentByProfile,
+        profile: ordered.take(LocalSettings.passwordVaultRecentLimit).toList(),
+      },
+    );
+  }
+
+  void _checkExternal(ExternalVaultConnection connection) {
+    if (!valid || connection.profile != profile || connection.vault != _vault) {
+      throw const ExternalVaultFailure('closed');
+    }
+  }
+
+  bool _sameExternal(Map<String, String> row, ExternalVaultConnection connection) =>
+      row['id'] == connection.id && row['profile'] == connection.profile && row['vault'] == connection.vault;
+
+  Future<void> persistExternalVault(
+    ExternalVaultConnection connection, {
+    String? wrapped,
+    bool opened = false,
+    bool remove = false,
+    SecretText? syncCredential,
+    ExternalVaultConnection? expected,
+  }) async {
+    _checkExternal(connection);
+    if (syncCredential != null && (!opened || remove || syncCredential.isEmpty)) {
+      throw const ExternalVaultFailure('authentication');
+    }
+    await ref
+        .read(externalVaultRepositoryProvider)
+        .save(
+          connection,
+          expected: expected ?? (remove ? connection : null),
+          syncCredential: syncCredential,
+          remove: remove,
+          updateLocal: (local) {
+            _checkExternal(connection);
+            final rows = [
+              for (final row in local.externalVaultConnections)
+                if (!_sameExternal(row, connection) && (row['synced'] != '1' || row['wrapped'] != null)) row,
+            ];
+            if (!remove && wrapped != null) {
+              if (rows.length >= 256) throw const ExternalVaultFailure('store');
+              rows.add(connection.toStorage(cipherText: wrapped, synced: true));
+            }
+            final next = local.copyWith(externalVaultConnections: rows);
+            return opened || remove
+                ? _withRecent(next, RecentExternalVaultSource(connection).id, remove: remove)
+                : next;
+          },
+        );
+  }
+
+  Future<SecretText> unlockExternalVault(ExternalVaultConnection connection) async {
+    _checkExternal(connection);
+    final secret = await ref.read(externalVaultRepositoryProvider).unlock(connection);
+    if (!valid) {
+      secret.wipe();
+      throw const ExternalVaultFailure('closed');
+    }
+    return secret;
+  }
+
+  Future<ExternalVaultConnection> forgetExternalVaultLogin(ExternalVaultConnection connection) async {
+    _checkExternal(connection);
+    if (!connection.synced || connection.credentialId == null) throw const ExternalVaultFailure('configuration');
+    final repository = ref.read(externalVaultRepositoryProvider);
+    await repository.save(connection, expected: connection, revoke: true);
+    return repository.resolve(connection.portable(), wrapped: connection.wrapped);
+  }
+
+  Future<void> rememberExternalVault(ExternalVaultConnection connection) async {
+    _checkExternal(connection);
+    if (!await ref.read(externalVaultRepositoryProvider).contains(connection)) return;
+    _checkExternal(connection);
+    final service = ref.read(settingsServiceProvider);
+    final local = service.currentLocal;
+    final id = RecentExternalVaultSource(connection).id;
+    if (local.passwordVaultRecentByProfile[profile]?.firstOrNull != id) {
+      await service.updateLocal(_withRecent(local, id));
+    }
   }
 
   Future<void> _remember(KdbxSource source) async {
@@ -149,17 +274,8 @@ class PasswordManager {
               if (file['profile'] != profile || KdbxSource.local(file['path']!).id != source.id) file,
             {'profile': profile, 'path': source.path},
           ];
-    final recent = <String>{source.id, for (final entry in _recentSources(local)) entry.id};
     try {
-      await settings.updateLocal(
-        local.copyWith(
-          passwordVaultFiles: files,
-          passwordVaultRecentByProfile: {
-            ...local.passwordVaultRecentByProfile,
-            profile: recent.take(LocalSettings.passwordVaultRecentLimit).toList(),
-          },
-        ),
-      );
+      await settings.updateLocal(_withRecent(local.copyWith(passwordVaultFiles: files), source.id));
     } catch (_) {
       // A remote session already has its saved connection. A failed history
       // write must not make a successful WebDAV unlock fail.
@@ -183,13 +299,22 @@ class PasswordManager {
         await settings.updateVault(
           vault.copyWith(passwordVaults: vault.passwordVaults.where((c) => KdbxSource.dav(c).id != source.id).toList()),
         );
+        check();
+        final local = settings.currentLocal;
+        if (local.passwordVaultRecentByProfile[profile]?.contains(source.id) == true) {
+          await settings.updateLocal(_withRecent(local, source.id, remove: true));
+        }
       } else {
         final local = settings.currentLocal;
         await settings.updateLocal(
-          local.copyWith(
-            passwordVaultFiles: local.passwordVaultFiles
-                .where((f) => f['profile'] != profile || KdbxSource.local(f['path']!).id != source.id)
-                .toList(),
+          _withRecent(
+            local.copyWith(
+              passwordVaultFiles: local.passwordVaultFiles
+                  .where((f) => f['profile'] != profile || KdbxSource.local(f['path']!).id != source.id)
+                  .toList(),
+            ),
+            source.id,
+            remove: true,
           ),
         );
       }
@@ -249,6 +374,11 @@ class PasswordManager {
     if (existing != null) {
       password?.wipe();
       selected = source.id;
+      if (ref.read(settingsServiceProvider).currentLocal.passwordVaultRecentByProfile[profile]?.firstOrNull !=
+          source.id) {
+        await _remember(source);
+        if (!current(existing)) throw const KdbxFailure('closed');
+      }
       notify();
       return existing;
     }

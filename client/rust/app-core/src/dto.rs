@@ -28,6 +28,7 @@ pub use cc_models::credential::{CredentialKind, KeyAlgorithm};
 pub use cc_models::host::{HostKeyPolicy, ProxyKind, SshBackend};
 pub use cc_models::known_host::{KnownHostMarker, KnownHostSource};
 pub use cc_models::settings::TerminalHistoryMode;
+pub use crate::external_vault_sync::ExternalVaultConfig;
 pub use cc_models::snippet::{RiskLevel, SnippetSource, SnippetType};
 pub use cc_models::tunnel::TunnelKind;
 pub use cc_models::ObjectKind;
@@ -1003,6 +1004,11 @@ impl KnownHostDto {
 /// Vault-wide synced settings (singleton).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VaultSettingsDto {
+    /// Projected from independent encrypted records, not the settings singleton.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub external_vaults: Option<Vec<ExternalVaultConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original_external_vaults: Option<Vec<ExternalVaultConfig>>,
     #[serde(default)]
     pub password_vaults: Vec<cc_models::settings::PasswordVaultConnection>,
     pub id: String,
@@ -1033,6 +1039,8 @@ impl EditableDto for VaultSettingsDto {
     }
     fn from_model(s: &VaultSettings) -> Self {
         Self {
+            external_vaults: None,
+            original_external_vaults: None,
             password_vaults: s.password_vaults.clone(),
             id: s.id.to_string(),
             vault_name: s.vault_name.clone(),

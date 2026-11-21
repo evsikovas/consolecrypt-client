@@ -10,6 +10,39 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get dockerKubeRegistryDenied =>
+      'Реестр отказал в доступе. Проверьте имя репозитория и убедитесь, что образ в нём опубликован. Для закрытого репозитория проверьте учётные данные кластера или imagePullSecret в этом namespace.';
+
+  @override
+  String get dockerKubeLastProblem => 'Последняя обнаруженная ошибка';
+
+  @override
+  String get dockerKubeCompletionAdvice =>
+      'Процесс завершился успешно. Deployment запускает его снова, чтобы поддерживать работающую реплику. Сверьте command и args с Docker и укажите сервер, который продолжает работать на переднем плане. Для разовой команды используйте Job.';
+
+  @override
+  String get dockerKubeOomAdvice =>
+      'Контейнеру не хватило памяти. Проверьте потребление памяти, лимит в манифесте Deployment и логи предыдущего запуска контейнера.';
+
+  @override
+  String get dockerKubeRequestedImage => 'Образ в манифесте';
+
+  @override
+  String get dockerKubeUnverifiedImage =>
+      'Не удалось подтвердить digest образа в реестре. Укажите digest или другой опубликованный тег, доступный кластеру. Для закрытого реестра укажите полный адрес образа и при необходимости imagePullSecret из этого namespace.';
+
+  @override
+  String get dockerKubePullAdvice =>
+      'Откройте события Pod, чтобы увидеть ответ реестра. Проверьте адрес образа и его тег или digest. Для закрытого реестра проверьте imagePullSecret в этом namespace.';
+
+  @override
+  String get dockerKubeCrashAdvice =>
+      'Откройте логи Pod и выберите предыдущий запуск контейнера. Проверьте команду запуска, аргументы и лимит памяти в манифесте Deployment.';
+
+  @override
+  String get dockerKubeOpenDeployment => 'Открыть Deployment в Kubernetes';
+
+  @override
   String get keepassExchangeFormatError =>
       'Проверьте формат файла. В CSV нужны столбцы с названием и паролем. JSON должен быть экспортирован из ConsoleCrypt.';
 
@@ -149,6 +182,28 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get externalVaultUseSaved => 'Войти через защиту устройства';
+
+  @override
+  String get externalVaultSyncLogin => 'Сохранить данные входа в моём зашифрованном хранилище ConsoleCrypt';
+
+  @override
+  String get externalVaultSyncLoginHelp =>
+      'После синхронизации вы сможете войти с этим паролем или токеном на любом устройстве, где разблокируете своё личное хранилище.';
+
+  @override
+  String get externalVaultUseSynced => 'Войти с синхронизированными данными';
+
+  @override
+  String get externalVaultForgetSynced => 'Удалить синхронизированные данные входа';
+
+  @override
+  String externalVaultRemoveSyncedConnection(String name) {
+    return 'Удалить подключение «$name» и его данные входа из личного хранилища на всех синхронизированных устройствах?';
+  }
+
+  @override
+  String get externalVaultForgetSyncedHelp =>
+      'Удалить сохранённый пароль или токен из личного хранилища на всех синхронизированных устройствах?';
 
   @override
   String get externalVaultRemoveConnection => 'Удалить сохранённое подключение';
@@ -9730,7 +9785,77 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get dockerRemoveHelp => 'Контейнер и его записываемый слой будут удалены. Именованные тома сохранятся.';
+  String get dockerRemoveHelp =>
+      'При удалении контейнера стирается его записываемый слой. Отметьте тома и сети, которые тоже хотите удалить.';
+
+  @override
+  String get dockerRemovalBindMounts => 'Файлы хоста в контейнере';
+
+  @override
+  String get dockerRemovalShared => 'Используется другим контейнером';
+
+  @override
+  String get dockerRemovalExternal => 'Управляется отдельно от контейнера';
+
+  @override
+  String get dockerRemovalDefaultNetwork => 'Встроенная сеть Docker';
+
+  @override
+  String get dockerRemovalBindKept => 'Файлы на хосте сохраняются';
+
+  @override
+  String get dockerRemovalUnverified => 'Не удалось подтвердить, что ресурс принадлежит только этому контейнеру';
+
+  @override
+  String get dockerRemovalStopFirst => 'Остановить контейнер перед удалением';
+
+  @override
+  String get dockerRemovalVolumeWarning => 'Все данные в выбранных томах будут удалены безвозвратно.';
+
+  @override
+  String get dockerRemovalResult => 'Результат удаления';
+
+  @override
+  String get dockerRemoveContainer => 'Удалить контейнер…';
+
+  @override
+  String get dockerRemovalRemoved => 'Контейнер удалён';
+
+  @override
+  String get dockerRemovalStopped => 'Контейнер остановлен. Удаление не подтверждено.';
+
+  @override
+  String get dockerRemovalKept => 'Удаление контейнера не подтверждено.';
+
+  @override
+  String get dockerRemovalResourceRemoved => 'Удалено';
+
+  @override
+  String dockerRemovalResourceSkipped(String reason) {
+    return 'Пропущено. $reason';
+  }
+
+  @override
+  String dockerRemovalResourceFailed(String reason) {
+    return 'Ошибка удаления. $reason';
+  }
+
+  @override
+  String get dockerRemovalChanged =>
+      'Контейнер или его ресурсы изменились. Откройте окно удаления ещё раз, чтобы проверить текущее состояние.';
+
+  @override
+  String get dockerRemovalAutoRemove =>
+      'Docker автоматически удаляет этот контейнер и его анонимные тома при остановке. При такой настройке нельзя выбрать, какие тома сохранить.';
+
+  @override
+  String get dockerRemovalMissing => 'Ресурс уже отсутствует в Docker';
+
+  @override
+  String get dockerRemovalInUse => 'Ресурс всё ещё используется в Docker.';
+
+  @override
+  String get dockerRemovalCancelled => 'Операция прервана. Обновите список, чтобы увидеть текущее состояние.';
 
   @override
   String get dockerLogs => 'Логи';

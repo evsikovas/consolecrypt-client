@@ -12,6 +12,37 @@ BridgeError _e(String code, [Map<String, String> details = const {}, String? rea
     BridgeError(code: code, message: 'diag $code', reason: reason, details: details);
 
 void main() {
+  test('only explicit Vault catalog edits send changed records and their original snapshot', () {
+    const connection = SyncedExternalVault(
+      id: 'fixture',
+      name: 'Test Vault',
+      endpoint: 'https://fixture.invalid',
+      auth: 'userpass',
+      username: 'tester',
+      authMount: 'userpass',
+      mount: 'kv',
+      namespace: '',
+      versioned: true,
+      credentialId: 'cred',
+    );
+    final json = {
+      'id': 'settings',
+      'vault_name': 'Personal',
+      'created_at_ms': 1,
+      'updated_at_ms': 2,
+      'external_vaults': [connection.toJson()],
+    };
+    final model = vaultSettingsFromJson(json);
+    expect(model.externalVaults.single.toJson(), connection.toJson());
+    final rename = vaultSettingsToJson(model.copyWith(vaultName: 'Changed'), base: json);
+    expect(rename['external_vaults'], isNull);
+    expect(rename['original_external_vaults'], isNull);
+    final remove = vaultSettingsToJson(model.copyWith(externalVaults: []), base: json);
+    expect(remove['external_vaults'], isEmpty);
+    expect(remove['original_external_vaults'], [connection.toJson()]);
+    final legacy = Map.of(json)..remove('external_vaults');
+    expect(vaultSettingsFromJson(legacy).externalVaults, isEmpty);
+  });
   test('default editor persists locally, survives unrelated edits and resets explicitly', () {
     for (final editor in [
       const AppRef(AppRefKind.path, '/Applications/Visual Studio Code.app'),

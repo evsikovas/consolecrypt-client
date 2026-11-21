@@ -14,6 +14,7 @@ import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
+import 'package:consolecrypt/kubernetes/kube_navigation.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
@@ -21,9 +22,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 class DockerKubeDialog extends ConsumerStatefulWidget {
-  const DockerKubeDialog({required this.source, required this.container, super.key});
+  const DockerKubeDialog({required this.source, required this.container, this.resolveImage, super.key});
   final DockerKubeSource source;
   final DockerContainer container;
+  final Future<DockerKubeSource> Function()? resolveImage;
   @override
   ConsumerState<DockerKubeDialog> createState() => _DockerKubeDialogState();
 }
@@ -32,6 +34,9 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
   late final KubeScope _scope;
   late final DockerScope _dockerScope;
   late final KubeService _service = ref.read(kubeServiceProvider);
+  late DockerKubeSource _source = widget.source;
+  bool _resolvingImage = false;
+  bool _imageEdited = false;
   final _name = TextEditingController(),
       _namespace = TextEditingController(),
       _image = TextEditingController(),
@@ -48,7 +53,7 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
   ObjectId? _providerId;
   (AiProviderConfig, DockerKubeTarget)? _review;
   bool _busy = false, _newNamespace = false, _acknowledged = false, _namespaceCreated = false;
-  DockerKubeRollout? _rollout;
+  DockerKubeRollout? _rollout, _lastPodProblem;
   Timer? _statusTimer;
   bool _readingStatus = false;
   String? _error;
@@ -72,7 +77,8 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
     image: _image.text.trim(),
     port: int.tryParse(_port.text.trim()) ?? 0,
     pullSecret: _pullSecret.text.trim(),
-    startup: widget.source.startup,
+    startup: _source.startup,
+    source: _source,
   );
 
   @override
@@ -85,14 +91,33 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
     if (name.length > 50) name = name.substring(0, 50);
     _name.text = name.replaceAll(RegExp(r'-+$'), '');
     _port.text = (widget.source.ports.firstOrNull ?? 8080).toString();
-    _image.text = widget.source.image ?? DockerKubeTarget.dockerImage(widget.container.image) ?? '';
+    _image.text = _source.image ?? '';
     ref.listenManual(kubeScopeProvider, (_, next) {
       if (!identical(_scope, next)) _expire();
     });
     ref.listenManual(dockerScopeProvider, (_, next) {
       if (!identical(_dockerScope, next)) _expire();
     });
-    if (!widget.source.unsupported) unawaited(_load());
+    if (_current && !_source.unsupported) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_current) unawaited(_load());
+      });
+      if (widget.resolveImage case final resolve?) unawaited(_resolveImage(resolve));
+    }
+  }
+
+  Future<void> _resolveImage(Future<DockerKubeSource> Function() resolve) async {
+    _resolvingImage = true;
+    try {
+      final source = await resolve().timeout(const Duration(seconds: 10));
+      if (!_current) return;
+      _source = source;
+      if (!_imageEdited && _image.text.isEmpty) _image.text = source.image ?? '';
+    } catch (_) {
+      // A published reference can still be supplied manually.
+    } finally {
+      if (_current) setState(() => _resolvingImage = false);
+    }
   }
 
   Future<void> _load() async {
@@ -207,6 +232,7 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
       _namespaceCreated = false;
       _acknowledged = false;
       _rollout = null;
+      _lastPodProblem = null;
     });
     try {
       if (old != null) await _disconnect(old);
@@ -411,7 +437,11 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
       final result = await _deployment!.readRollout(_service as KubeBrowserService, current: current);
       if (!current()) return;
       _rollout = result;
-      if (remaining > 0 && result.state == DockerKubeRolloutState.progressing) {
+      if (result.isProcessOrImageFailure) _lastPodProblem = result;
+      if (result.state == DockerKubeRolloutState.ready || result.state == DockerKubeRolloutState.replaced) {
+        _lastPodProblem = null;
+      }
+      if (remaining > 0 && (result.state == DockerKubeRolloutState.progressing || result.isProcessOrImageFailure)) {
         _statusTimer = Timer(const Duration(seconds: 5), () => unawaited(_status(remaining: remaining - 1)));
       }
     } catch (_) {
@@ -435,7 +465,21 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
       DockerKubeRolloutState.unavailable => l.dockerKubeStatusUnavailable,
       DockerKubeRolloutState.replaced => l.dockerKubeReplaced,
     };
-    return rollout.exitCode == null ? message : '$message · ${l.dockerKubeExitCode(rollout.exitCode!)}';
+    return [
+      message,
+      ?rollout.reason,
+      ?rollout.terminationReason,
+      if (rollout.exitCode case final code?) l.dockerKubeExitCode(code),
+      if (rollout.restarts case final count? when count > 0) '${l.dockerRestartCount} · $count',
+    ].join(' · ');
+  }
+
+  void _openDeployment(KubeResourceRef resource) {
+    if (!_current || _busy || _context == null || _rollout?.state == DockerKubeRolloutState.replaced) return;
+    closeDialog<KubeNavigationRequest>(
+      context,
+      KubeNavigationRequest(scope: _scope, contextId: _context!.id, namespace: resource.namespace, resource: resource),
+    );
   }
 
   @override
@@ -490,6 +534,10 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
       );
     }
     if (_current && _started) {
+      final deployment = _deployment!.created.where((r) => r.api.id == DockerKubeParser.deploymentKind.id).firstOrNull;
+      final status = _rollout;
+      final previous = status?.state == DockerKubeRolloutState.progressing ? _lastPodProblem : null;
+      final problem = status?.isProcessOrImageFailure == true ? status : previous;
       return PopScope(
         canPop: !_busy,
         child: GlassDialog(
@@ -504,10 +552,31 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
                 for (final resource in _deployment!.created)
                   SelectableText('${resource.api.kind} ${resource.namespace}/${resource.name}'),
                 if (_error != null) Text(_error!, key: const ValueKey('docker-kube-error')),
-                if (_rollout case final result?)
-                  Text(_statusLabel(l, result), key: const ValueKey('docker-kube-status')),
+                if (status != null) Text(_statusLabel(l, status), key: const ValueKey('docker-kube-status')),
+                if (previous != null) Text('${l.dockerKubeLastProblem} · ${_statusLabel(l, previous)}'),
+                if (problem case final result?) ...[
+                  if (result.image case final image?)
+                    SelectableText('${l.dockerImage} · $image')
+                  else if (_target.manifestImage case final requestedImage?)
+                    SelectableText('${l.dockerKubeRequestedImage} · $requestedImage'),
+                  Text(switch (result) {
+                    DockerKubeRollout(registryDenied: true) => l.dockerKubeRegistryDenied,
+                    DockerKubeRollout(state: DockerKubeRolloutState.imagePull) => l.dockerKubePullAdvice,
+                    DockerKubeRollout(terminationReason: 'OOMKilled') => l.dockerKubeOomAdvice,
+                    DockerKubeRollout(exitCode: 0) ||
+                    DockerKubeRollout(terminationReason: 'Completed') => l.dockerKubeCompletionAdvice,
+                    _ => l.dockerKubeCrashAdvice,
+                  }),
+                ],
                 if (_rollout?.podDetailsUnavailable ?? false) Text(l.dockerKubePodDetailsUnavailable),
                 if (_readingStatus || _busy) const LinearProgressIndicator(),
+                if (!_busy && deployment != null && _rollout?.state != DockerKubeRolloutState.replaced)
+                  GlassButton(
+                    key: const ValueKey('docker-kube-open-deployment'),
+                    label: l.dockerKubeOpenDeployment,
+                    icon: Icons.open_in_new_rounded,
+                    onPressed: () => _openDeployment(deployment),
+                  ),
               ],
             ),
           ),
@@ -527,7 +596,10 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
       enableSuggestions: false,
       enableIMEPersonalizedLearning: false,
       decoration: InputDecoration(labelText: label),
-      onChanged: (_) => _changed(target: true),
+      onChanged: (_) {
+        if (identical(controller, _image)) _imageEdited = true;
+        _changed(target: true);
+      },
     );
     return PopScope(
       canPop: !_busy,
@@ -606,14 +678,21 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
                       ],
                       field(_name, 'name', l.kubeName),
                       field(_image, 'image', l.dockerKubeImage),
-                      Text(l.dockerKubeImageHelp),
+                      if (_resolvingImage) const LinearProgressIndicator(minHeight: 2),
+                      Text(
+                        !_resolvingImage &&
+                                _source.image == null &&
+                                !_source.acceptsImage(_image.text.trim(), pullSecret: _pullSecret.text.trim())
+                            ? l.dockerKubeUnverifiedImage
+                            : l.dockerKubeImageHelp,
+                      ),
                       field(_port, 'port', l.dockerKubePort),
                       field(_pullSecret, 'pull-secret', l.dockerKubePullSecret),
                       DropdownButtonFormField<String>(
                         key: const ValueKey('docker-kube-provider'),
                         initialValue: selected?.id.value,
                         isExpanded: true,
-                        decoration: InputDecoration(labelText: l.aiProviderDialogProviderLabel),
+                        decoration: InputDecoration(labelText: l.kubeAiProvider),
                         items: [for (final p in providers) DropdownMenuItem(value: p.id.value, child: Text(p.name))],
                         onChanged: enabled
                             ? (value) => setState(() => _providerId = value == null ? null : ObjectId(value))

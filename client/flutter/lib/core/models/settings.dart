@@ -48,6 +48,53 @@ final class PasswordVaultConnection {
   };
 }
 
+/// Portable Vault/OpenBao connection. Authentication material lives in the
+/// linked encrypted credential. Device biometric handles stay in local settings.
+final class SyncedExternalVault {
+  const SyncedExternalVault({
+    required this.id,
+    required this.name,
+    required this.endpoint,
+    required this.auth,
+    required this.username,
+    required this.authMount,
+    required this.mount,
+    required this.namespace,
+    required this.versioned,
+    this.credentialId,
+  });
+
+  final String id, name, endpoint, auth, username, authMount, mount, namespace;
+  final bool versioned;
+  final String? credentialId;
+
+  factory SyncedExternalVault.fromJson(Map<String, Object?> json) => SyncedExternalVault(
+    id: json['id']! as String,
+    name: json['name']! as String,
+    endpoint: json['endpoint']! as String,
+    auth: json['auth']! as String,
+    username: json['username']! as String,
+    authMount: json['auth_mount']! as String,
+    mount: json['mount']! as String,
+    namespace: json['namespace']! as String,
+    versioned: json['versioned']! as bool,
+    credentialId: json['credential_id'] as String?,
+  );
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'name': name,
+    'endpoint': endpoint,
+    'auth': auth,
+    'username': username,
+    'auth_mount': authMount,
+    'mount': mount,
+    'namespace': namespace,
+    'versioned': versioned,
+    'credential_id': credentialId,
+  };
+}
+
 /// Mirrors `cc_models::settings::VaultSettings` — synced, E2EE.
 final class VaultSettings {
   const VaultSettings({
@@ -59,6 +106,8 @@ final class VaultSettings {
     this.defaultPrivacyProfile = PrivacyProfile.strict,
     this.syncAiConversations = false,
     this.passwordVaults = const [],
+    this.externalVaults = const [],
+    this.originalExternalVaults,
   });
 
   final ObjectId id;
@@ -67,6 +116,10 @@ final class VaultSettings {
   final PrivacyProfile defaultPrivacyProfile;
   final bool syncAiConversations;
   final List<PasswordVaultConnection> passwordVaults;
+  final List<SyncedExternalVault> externalVaults;
+
+  /// Snapshot of the catalog that an explicit edit was based on.
+  final List<SyncedExternalVault>? originalExternalVaults;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -76,6 +129,7 @@ final class VaultSettings {
     PrivacyProfile? defaultPrivacyProfile,
     bool? syncAiConversations,
     List<PasswordVaultConnection>? passwordVaults,
+    List<SyncedExternalVault>? externalVaults,
   }) => VaultSettings(
     id: id,
     vaultName: vaultName ?? this.vaultName,
@@ -83,6 +137,8 @@ final class VaultSettings {
     defaultPrivacyProfile: defaultPrivacyProfile ?? this.defaultPrivacyProfile,
     syncAiConversations: syncAiConversations ?? this.syncAiConversations,
     passwordVaults: passwordVaults ?? this.passwordVaults,
+    externalVaults: externalVaults ?? this.externalVaults,
+    originalExternalVaults: externalVaults == null ? null : this.externalVaults,
     createdAt: createdAt,
     updatedAt: DateTime.now().toUtc(),
   );

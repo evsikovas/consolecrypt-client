@@ -81,6 +81,100 @@ void main() {
     expect((pod['readinessProbe'] as Map)['tcpSocket'], {'port': 8080});
   });
 
+  DockerKubeSource imageSource(String configured, List<String> repoDigests) => DockerKubeSource.inspect(
+    DockerContainerDetail(
+      container: _container,
+      inspect: {
+        'HostConfig': {'NetworkMode': 'bridge'},
+        'Mounts': <Object>[],
+        'Path': 'app',
+        'Args': <String>[],
+        'Config': {'Image': configured},
+      },
+    ),
+    _session,
+    repoDigests: repoDigests,
+  );
+
+  test('local-only tag and its equivalent Hub spellings cannot generate or validate a deployment', () async {
+    final source = imageSource('local-stateless-api:local', []);
+    expect(source.sourceImage, 'local-stateless-api:local');
+    expect(source.image, isNull);
+    for (final spelling in [
+      'local-stateless-api:local',
+      'library/local-stateless-api:local',
+      'docker.io/local-stateless-api:local',
+      'docker.io/library/local-stateless-api:local',
+      'index.docker.io/library/local-stateless-api:local',
+      'registry-1.docker.io:443/library/local-stateless-api:local',
+    ]) {
+      final target = DockerKubeTarget(name: 'api', namespace: 'test', image: spelling, port: 8080, source: source);
+      expect(target.valid, isFalse, reason: spelling);
+      expect(source.acceptsImage(spelling, pullSecret: 'regcred'), isFalse, reason: spelling);
+      expect(await parser.parse(target.template, target), isNull);
+      expect(await parser.mergeAi(target.aiTemplate, target), isNull);
+    }
+    final target = DockerKubeTarget(
+      name: 'api',
+      namespace: 'test',
+      image: 'team/published-api:v2',
+      port: 8080,
+      source: source,
+    );
+    expect(target.valid, isTrue);
+    final parsed = await parser.parse(target.template, target);
+    expect(
+      _containerSpec(jsonDecode(parsed!.first.manifest) as Map<String, dynamic>)['image'],
+      'docker.io/team/published-api:v2',
+    );
+  });
+
+  test('only a digest from the configured repository prefills Docker Hub and private images', () {
+    final version = 'sha256:${'a' * 64}';
+    final other = 'sha256:${'b' * 64}';
+    final source = imageSource('python:3', ['unrelated/base@$other', 'python:local', 'python@$version']);
+    expect(source.image, 'docker.io/library/python@$version');
+    expect(source.acceptsImage('python:3'), isTrue);
+    expect(imageSource('team/python:3', ['python@$version']).image, isNull);
+    expect(
+      imageSource('registry.example.org:5000/api:1', ['registry.example.org:5000/api@$version']).image,
+      'registry.example.org:5000/api@$version',
+    );
+    expect(imageSource('local-stateless-api:local', ['python@$version']).image, isNull);
+    expect(imageSource('sha256:${'c' * 64}', ['python@$version']).image, isNull);
+  });
+
+  test('fully qualified pins or named repositories can use explicit, node or default service account credentials', () {
+    final version = 'sha256:${'c' * 64}';
+    for (final input in ['registry.example.org/team/api:v1', 'registry.example.org/team/api@$version']) {
+      final source = imageSource(input, []);
+      expect(source.image, isNull);
+      expect(source.acceptsImage(input), isTrue);
+      expect(source.acceptsImage(input, pullSecret: 'registry-auth'), isTrue);
+      final target = DockerKubeTarget(
+        name: 'api',
+        namespace: 'test',
+        port: 80,
+        image: input,
+        source: source,
+        pullSecret: 'registry-auth',
+      );
+      expect(target.valid, isTrue);
+      expect(_containerSpec(target.deployment)['image'], input);
+    }
+    final source = imageSource('team/api:v1', []);
+    expect(source.acceptsImage('team/api:v1', pullSecret: 'registry-auth'), isFalse);
+    expect(source.acceptsImage('docker.io/team/api:v1'), isTrue);
+    expect(source.acceptsImage('docker.io/team/api:v1', pullSecret: 'registry-auth'), isTrue);
+    final pinnedHub = imageSource('alpine@$version', []);
+    expect(pinnedHub.acceptsImage('docker.io/library/alpine@$version'), isTrue);
+    final fullHub = imageSource('docker.io/library/alpine:3', []);
+    expect(fullHub.acceptsImage('docker.io/library/alpine:3', pullSecret: 'team.registry-auth'), isTrue);
+    final observed = imageSource('python:3', ['python@$version']);
+    expect(observed.resolveImage('python:3'), 'docker.io/library/python@$version');
+    expect(imageSource('python@$version', ['python@sha256:${'d' * 64}']).image, isNull);
+  });
+
   test('inspect uses the resolved process or combines config vectors without shell splitting', () {
     final config = {
       'Entrypoint': ['/entrypoint', 'one word'],

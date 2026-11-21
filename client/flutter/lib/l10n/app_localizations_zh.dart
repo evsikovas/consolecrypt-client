@@ -10,6 +10,35 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get dockerKubeRegistryDenied => '镜像仓库拒绝访问。请检查仓库名称，并确认镜像已发布到该仓库。对于私有仓库，请检查集群凭据或此命名空间中的 imagePullSecret。';
+
+  @override
+  String get dockerKubeLastProblem => '上次检测到的问题';
+
+  @override
+  String get dockerKubeCompletionAdvice =>
+      '进程已正常退出。Deployment 会重新启动它以维持一个运行中的副本。请对照 Docker 检查 command 和 args，并使用持续在前台运行的服务进程。一次性任务可使用 Job。';
+
+  @override
+  String get dockerKubeOomAdvice => '容器内存不足。请检查内存用量及 Deployment 清单中的内存限制，并查看容器上一次运行的日志。';
+
+  @override
+  String get dockerKubeRequestedImage => '清单中的镜像';
+
+  @override
+  String get dockerKubeUnverifiedImage =>
+      '无法在仓库中确认此镜像的摘要。请输入已发布的摘要或集群可以拉取的其他已发布标签。对于私有仓库，请输入完整镜像引用，并在需要时填写此命名空间中已有的 imagePullSecret。';
+
+  @override
+  String get dockerKubePullAdvice => '请在 Pod 事件中查看镜像仓库返回的错误。检查镜像及其标签或摘要是否存在。使用私有仓库时，请检查该命名空间中的 imagePullSecret。';
+
+  @override
+  String get dockerKubeCrashAdvice => '请打开 Pod 日志并选择上一次运行的容器。在 Deployment 清单中检查启动命令、参数和内存限制。';
+
+  @override
+  String get dockerKubeOpenDeployment => '在 Kubernetes 中打开 Deployment';
+
+  @override
   String get keepassExchangeFormatError => '请检查文件格式。CSV 需要标题和密码列。JSON 必须来自 ConsoleCrypt 导出。';
 
   @override
@@ -145,6 +174,26 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get externalVaultUseSaved => '使用设备身份验证登录';
+
+  @override
+  String get externalVaultSyncLogin => '将登录凭据保存到我的加密 ConsoleCrypt 保管库';
+
+  @override
+  String get externalVaultSyncLoginHelp => '同步后，你可以在任何已解锁个人保管库的设备上使用此密码或令牌。';
+
+  @override
+  String get externalVaultUseSynced => '使用已同步的凭据登录';
+
+  @override
+  String get externalVaultForgetSynced => '移除已同步的登录凭据';
+
+  @override
+  String externalVaultRemoveSyncedConnection(String name) {
+    return '要从个人保管库中移除连接“$name”及其登录凭据吗？此更改将同步到所有设备。';
+  }
+
+  @override
+  String get externalVaultForgetSyncedHelp => '要从个人保管库中移除已保存的密码或令牌吗？此更改将同步到所有设备。';
 
   @override
   String get externalVaultRemoveConnection => '移除已保存的连接';
@@ -9171,7 +9220,74 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get dockerRemoveHelp => '容器及其可写层被删除。命名的卷被保存。';
+  String get dockerRemoveHelp => '删除容器会清除其可写层。请选择要一并删除的卷或网络。';
+
+  @override
+  String get dockerRemovalBindMounts => '挂载到容器内的主机文件';
+
+  @override
+  String get dockerRemovalShared => '其他容器正在使用';
+
+  @override
+  String get dockerRemovalExternal => '由外部管理';
+
+  @override
+  String get dockerRemovalDefaultNetwork => 'Docker 内置网络';
+
+  @override
+  String get dockerRemovalBindKept => '主机文件将保留';
+
+  @override
+  String get dockerRemovalUnverified => '无法确认此资源是否仅由该容器使用';
+
+  @override
+  String get dockerRemovalStopFirst => '删除前停止此容器';
+
+  @override
+  String get dockerRemovalVolumeWarning => '所选卷中的所有数据都将被永久删除。';
+
+  @override
+  String get dockerRemovalResult => '删除结果';
+
+  @override
+  String get dockerRemoveContainer => '删除容器…';
+
+  @override
+  String get dockerRemovalRemoved => '容器已删除';
+
+  @override
+  String get dockerRemovalStopped => '容器已停止，但未确认是否已删除。';
+
+  @override
+  String get dockerRemovalKept => '未确认是否已删除容器。';
+
+  @override
+  String get dockerRemovalResourceRemoved => '已删除';
+
+  @override
+  String dockerRemovalResourceSkipped(String reason) {
+    return '已跳过。$reason';
+  }
+
+  @override
+  String dockerRemovalResourceFailed(String reason) {
+    return '删除失败。$reason';
+  }
+
+  @override
+  String get dockerRemovalChanged => '容器或其资源已发生变化。请重新打开删除对话框以查看当前状态。';
+
+  @override
+  String get dockerRemovalAutoRemove => 'Docker 会在容器停止时自动删除该容器及其匿名卷。在此设置下无法选择要保留的卷。';
+
+  @override
+  String get dockerRemovalMissing => '该资源已不存在';
+
+  @override
+  String get dockerRemovalInUse => 'Docker 报告该资源仍在使用。';
+
+  @override
+  String get dockerRemovalCancelled => '操作已中断。请刷新以查看当前状态。';
 
   @override
   String get dockerLogs => '日志';

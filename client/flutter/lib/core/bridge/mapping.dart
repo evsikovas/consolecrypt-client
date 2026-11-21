@@ -632,6 +632,10 @@ Json snippetToJson(Snippet s, {Json? base}) => {
 };
 
 VaultSettings vaultSettingsFromJson(Json j) => VaultSettings(
+  externalVaults: [
+    for (final config in j['external_vaults'] as List? ?? [])
+      SyncedExternalVault.fromJson((config as Map).cast<String, Object?>()),
+  ],
   passwordVaults: [
     for (final p in j['password_vaults'] as List? ?? [])
       PasswordVaultConnection.fromJson((p as Map).cast<String, Object?>()),
@@ -657,6 +661,9 @@ VaultSettings vaultSettingsFromJson(Json j) => VaultSettings(
 
 Json vaultSettingsToJson(VaultSettings s, {Json? base}) => {
   ...?base,
+  // General edits (including older bridge callers) do not mutate the external catalog.
+  'external_vaults': s.originalExternalVaults == null ? null : s.externalVaults.map((v) => v.toJson()).toList(),
+  'original_external_vaults': s.originalExternalVaults?.map((v) => v.toJson()).toList(),
   'password_vaults': s.passwordVaults.map((p) => p.toJson()).toList(),
   'id': s.id.value,
   'vault_name': s.vaultName,

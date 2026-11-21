@@ -650,7 +650,11 @@ impl AppCore {
             .all_vault_settings()
             .into_iter()
             .max_by_key(|s| s.updated_at)
-            .map(|s| VaultSettingsDto::from_model(&s))
+            .map(|s| {
+                let mut dto = VaultSettingsDto::from_model(&s);
+                dto.external_vaults = Some(u.working().external_vaults());
+                dto
+            })
             .ok_or_else(|| AppError::not_found("vault settings", "-"))
     }
 
@@ -663,6 +667,17 @@ impl AppCore {
         let _unlock = owner.hold_unlocked(&u).await?;
         let ws = u.working();
         let newest = ws.all_vault_settings().into_iter().max_by_key(|s| s.updated_at);
+        if let Some(original) = &s.original_external_vaults {
+            // A catalog edit is independent of ordinary settings changes from any client.
+            let settings = newest.as_ref().filter(|settings| settings.id.to_string() == s.id)
+                .ok_or_else(|| AppError::invalid("external_vaults", "settings changed"))?;
+            let rows = s.external_vaults.as_deref()
+                .ok_or_else(|| AppError::invalid("external_vaults", "expected new catalog"))?;
+            crate::external_vault_sync::save_changes(&u, original, rows).await?;
+            let mut result = VaultSettingsDto::from_model(settings);
+            result.external_vaults = Some(ws.external_vaults());
+            return Ok(result);
+        }
         // A sync conflict can produce two settings IDs. Preserve synced
         // settings from the newest object even when the caller edits an older ID.
         let legacy_payload = newest.as_ref().and_then(|s| s.legacy_payload.clone());
@@ -681,7 +696,9 @@ impl AppCore {
         validate_refs(ws, &object)?;
         u.writer.put(object).await?;
         let stored = ws.vault_settings(id).ok_or_else(|| AppError::internal("settings vanished after save"))?;
-        Ok(VaultSettingsDto::from_model(&stored))
+        let mut result = VaultSettingsDto::from_model(&stored);
+        result.external_vaults = Some(ws.external_vaults());
+        Ok(result)
     }
 
     // ---- AI provider configs ---------------------------------------------------

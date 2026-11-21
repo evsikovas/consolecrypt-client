@@ -10,14 +10,44 @@ enum DockerKubeBlocker { mounts, unsupportedConfiguration, startup }
 
 /// Local projection of masked inspect. The process argv stays out of AI input.
 final class DockerKubeSource {
-  const DockerKubeSource({required this.ports, this.image, this.blocker, this.startup = const []});
+  const DockerKubeSource({required this.ports, this.image, this.sourceImage, this.blocker, this.startup = const []});
   final List<int> ports;
+
+  /// The registry-confirmed manifest digest for this exact local image.
   final String? image;
+
+  /// The reference used to create the Docker container. A tag alone can be local-only.
+  final String? sourceImage;
   final DockerKubeBlocker? blocker;
   final List<String> startup;
   bool get unsupported => blocker != null;
 
-  factory DockerKubeSource.inspect(DockerContainerDetail detail, DockerSessionInfo session) {
+  /// Re-entering the same local tag, including its familiar Docker Hub aliases,
+  /// must not manufacture evidence of a published image.
+  bool acceptsImage(String input, {String pullSecret = ''}) => resolveImage(input, pullSecret: pullSecret) != null;
+
+  String? resolveImage(String input, {String pullSecret = ''}) {
+    final canonical = DockerKubeTarget.dockerImage(input);
+    if (canonical == null) return null;
+    final original = sourceImage;
+    if (original != null && canonical == DockerKubeTarget.dockerImage(original)) {
+      if (image != null) return image;
+      // A manually entered pin or explicit repository can be reachable from
+      // the nodes using node credentials or an imagePullSecret. Never accept
+      // a manufactured Docker Hub library tag as a way around the check.
+      if (!DockerKubeTarget.validImage(input)) return null;
+      if (canonical.contains('@sha256:') || !canonical.startsWith('docker.io/library/')) return canonical;
+      return DockerKubeTarget.validImage(original) && DockerKubeTarget.validPullSecret(pullSecret) ? canonical : null;
+    }
+    // An alternative is a deliberate published version or digest supplied by the user.
+    return canonical == image || input.split('/').last.contains(':') ? canonical : null;
+  }
+
+  factory DockerKubeSource.inspect(
+    DockerContainerDetail detail,
+    DockerSessionInfo session, {
+    List<String> repoDigests = const [],
+  }) {
     final host = detail.inspect['HostConfig'];
     final config = host is Map ? host : const <String, Object?>{};
     final mounts = detail.inspect['Mounts'];
@@ -44,14 +74,35 @@ final class DockerKubeSource {
       blocker = DockerKubeBlocker.unsupportedConfiguration;
     }
     final configImage = detail.inspect['Config'];
-    final image = configImage is Map ? configImage['Image'] : null;
+    final configuredImage = configImage is Map ? configImage['Image'] : null;
+    final sourceImage = configuredImage is String && configuredImage.isNotEmpty
+        ? configuredImage
+        : detail.container.image;
+    final original = DockerKubeTarget.dockerImage(sourceImage);
+    final image = _publishedImage(original, repoDigests);
     final startup = _startup(detail.inspect);
     return DockerKubeSource(
       ports: List.unmodifiable(ports),
-      image: image is String ? DockerKubeTarget.dockerImage(image) : null,
+      image: image,
+      sourceImage: sourceImage,
       blocker: blocker ?? (startup == null ? DockerKubeBlocker.startup : null),
       startup: blocker == null && startup != null ? startup : const [],
     );
+  }
+
+  static String? _publishedImage(String? original, List<String> repoDigests) {
+    if (original == null) return null;
+    final split = original.contains('@') ? original.indexOf('@') : original.lastIndexOf(':');
+    final repository = original.substring(0, split);
+    for (final digest in repoDigests) {
+      final canonical = DockerKubeTarget.dockerImage(digest);
+      if (canonical != null &&
+          canonical.startsWith('$repository@sha256:') &&
+          (!original.contains('@') || canonical == original)) {
+        return canonical;
+      }
+    }
+    return null;
   }
 
   static List<String>? _startup(Map<String, dynamic> inspect) {
@@ -91,12 +142,21 @@ final class DockerKubeTarget {
     required this.port,
     this.pullSecret = '',
     this.startup = const [],
+    this.source,
   });
   final String name, namespace, image, pullSecret;
+  final DockerKubeSource? source;
   final int port;
   final List<String> startup;
 
   static bool validName(String value) => value.length <= 63 && RegExp(r'^[a-z]([a-z0-9-]*[a-z0-9])?$').hasMatch(value);
+
+  static bool validPullSecret(String value) =>
+      value.isNotEmpty &&
+      value.length <= 253 &&
+      value
+          .split('.')
+          .every((label) => label.length <= 63 && RegExp(r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$').hasMatch(label));
 
   // Docker inspect may return familiar Hub names or a bare local image ID.
   static String? dockerImage(String reference) {
@@ -112,7 +172,10 @@ final class DockerKubeTarget {
     if (digest >= 0) {
       final named = image.substring(0, digest);
       final tag = named.lastIndexOf(':');
-      if (tag > named.lastIndexOf('/')) image = named.substring(0, tag) + image.substring(digest);
+      if (tag > named.lastIndexOf('/')) {
+        if (!RegExp(r'^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$').hasMatch(named.substring(tag + 1))) return null;
+        image = named.substring(0, tag) + image.substring(digest);
+      }
     } else if (!image.split('/').last.contains(':')) {
       image += ':latest';
     }
@@ -122,11 +185,21 @@ final class DockerKubeTarget {
     } else if (!parts.first.contains('.') && !parts.first.contains(':') && parts.first != 'localhost') {
       image = 'docker.io/$image';
     }
+    final slash = image.indexOf('/');
+    final registry = image.substring(0, slash);
+    if (const {
+      'docker.io',
+      'index.docker.io',
+      'registry-1.docker.io',
+    }.contains(registry.replaceFirst(RegExp(r':443$'), ''))) {
+      final name = image.substring(slash + 1);
+      image = name.contains('/') ? 'docker.io/$name' : 'docker.io/library/$name';
+    }
     return validImage(image) ? image : null;
   }
 
   /// Explicit registry and immutable digest or explicit tag; no credentials,
-  /// URLs, local image IDs or implicit latest. Reachability is checked by Kube.
+  /// URLs, local image IDs or implicit latest.
   static bool validImage(String value) {
     if (value.length > 512 ||
         !RegExp(
@@ -134,21 +207,32 @@ final class DockerKubeTarget {
         ).hasMatch(value)) {
       return false;
     }
-    final registry = value.split('/').first.split(':').first;
-    return registry.contains('.') &&
-        !const ['localhost', '127.0.0.1', '0.0.0.0'].contains(registry) &&
+    final authority = value.split('/').first.split(':');
+    final registry = authority.first;
+    final port = authority.length == 2 ? int.tryParse(authority.last) : null;
+    if (authority.length > 1 && (port == null || port < 1 || port > 65535)) return false;
+    final label = RegExp(r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$');
+    return (registry.contains('.') || port != null) &&
+        registry.split('.').every(label.hasMatch) &&
+        registry != 'localhost' &&
+        !registry.endsWith('.localhost') &&
+        !registry.startsWith('127.') &&
+        registry != '0.0.0.0' &&
         !value.contains('//') &&
-        !value.contains('/../');
+        !value.contains('/../') &&
+        !value.contains('/./');
   }
+
+  String? get manifestImage => source == null ? image : source!.resolveImage(image, pullSecret: pullSecret);
 
   bool get valid =>
       validName(name) &&
       validName(namespace) &&
-      validImage(image) &&
+      (source?.acceptsImage(image, pullSecret: pullSecret) ?? validImage(image)) &&
       (startup.isEmpty || (startup.first.isNotEmpty && startup.every(DockerKubeSource._safeArgument))) &&
       port > 0 &&
       port <= 65535 &&
-      (pullSecret.isEmpty || validName(pullSecret));
+      (pullSecret.isEmpty || validPullSecret(pullSecret));
 
   Map<String, dynamic> get deployment => _deployment(withStartup: true);
 
@@ -174,7 +258,7 @@ final class DockerKubeTarget {
           'containers': [
             {
               'name': name,
-              'image': image,
+              'image': manifestImage,
               'imagePullPolicy': 'Always',
               if (withStartup && startup.isNotEmpty) ...{
                 // Kubernetes expands $(VAR) in both vectors. Escape literal Docker dollars.

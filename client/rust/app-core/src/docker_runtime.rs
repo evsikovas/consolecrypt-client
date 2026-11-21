@@ -27,6 +27,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+mod removal;
+
 const MAX_SESSIONS: usize = 16;
 const MAX_LOG_STREAMS: usize = 32;
 const MAX_FORWARDS: usize = 64;
@@ -266,6 +268,7 @@ impl Forward {
 pub(crate) struct DockerRuntime {
     shutdown: CancellationToken,
     sessions: Mutex<HashMap<String, Arc<LiveDocker>>>,
+    removals: removal::PendingRemovals,
     logs: Mutex<HashMap<String, Arc<LogStream>>>,
     forwards: Mutex<HashMap<String, Arc<Forward>>>,
     pub(crate) compose: crate::docker_compose::ComposeState,
@@ -275,6 +278,7 @@ impl DockerRuntime {
     pub(crate) fn close(&self) {
         self.shutdown.cancel();
         self.compose.close();
+        self.removals.clear();
         self.logs.lock().unwrap_or_else(|e| e.into_inner()).clear();
         self.forwards
             .lock()
@@ -619,6 +623,7 @@ impl AppCore {
             live.cancel.cancel();
         }
         unlocked.docker.compose.forget_session(&session_id);
+        unlocked.docker.removals.forget_session(&session_id);
         let mut closing = Vec::new();
         unlocked
             .docker
@@ -665,6 +670,21 @@ impl AppCore {
             live.info.host_name.clone(),
             info,
         ))
+    }
+
+    pub async fn docker_image_repo_digests(
+        &self,
+        session_id: String,
+        image_id: String,
+        source_image: String,
+    ) -> AppResult<Vec<String>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! {
+            biased;
+            _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+            digests = live.client.image_repo_digests(&image_id, &source_image) => digests.map_err(docker_error),
+        }
     }
 
     pub async fn docker_volumes(

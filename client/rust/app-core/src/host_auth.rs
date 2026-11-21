@@ -181,7 +181,8 @@ async fn new_password_credential(
 
 /// Delete a credential and its secrets unless something still uses it.
 pub(crate) async fn delete_credential_if_unused(u: &Unlocked, id: ObjectId) -> AppResult<()> {
-    let used = u
+    let _catalog = u.external_vault_edits.lock().await;
+    let used = crate::external_vault_sync::credential_in_use(u, id) || u
         .working()
         .hosts()
         .iter()

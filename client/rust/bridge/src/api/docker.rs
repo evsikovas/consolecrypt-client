@@ -30,6 +30,21 @@ pub async fn docker_inspect(session_id: String, container: String) -> Result<Str
         .await
 }
 
+/// Registry-confirmed digests for this local image and its source repository.
+pub async fn docker_image_repo_digests(
+    session_id: String,
+    image_id: String,
+    source_image: String,
+) -> Result<Vec<String>, BridgeError> {
+    with_core(move |c| async move {
+        Ok(
+            c.docker_image_repo_digests(session_id, image_id, source_image)
+                .await?,
+        )
+    })
+    .await
+}
+
 /// The full `docker inspect` after the vault passphrase (sent as bytes) or
 /// a presence token for `docker_reveal` on `<session>/<container>`.
 pub async fn docker_inspect_reveal(
@@ -62,6 +77,30 @@ pub async fn docker_action(
 ) -> Result<(), BridgeError> {
     with_core(move |c| async move { Ok(c.docker_action(session_id, container, action).await?) })
         .await
+}
+
+pub async fn docker_removal_plan(
+    session_id: String,
+    container: String,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_removal_plan(session_id, container).await?) })
+        .await
+}
+
+pub async fn docker_remove_with_cleanup(
+    session_id: String,
+    container: String,
+    selection_json: String,
+) -> Result<String, BridgeError> {
+    let selection = serde_json::from_str::<cc_app_core::DockerRemovalSelection>(&selection_json)
+        .map_err(|_| BridgeError::invalid("selection", "invalid removal selection"))?;
+    with_core(move |c| async move {
+        to_json(
+            &c.docker_remove_with_cleanup(session_id, container, selection)
+                .await?,
+        )
+    })
+    .await
 }
 
 pub async fn docker_logs_start(

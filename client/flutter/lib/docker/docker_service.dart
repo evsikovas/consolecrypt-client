@@ -5,6 +5,9 @@ library;
 
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/docker/docker_removal.dart';
+
+export 'package:consolecrypt/docker/docker_removal.dart';
 
 typedef DockerJson = Map<String, dynamic>;
 
@@ -444,6 +447,9 @@ abstract interface class DockerService {
   /// `docker inspect` with secrets masked natively.
   Future<DockerContainerDetail> inspect(String sessionId, String containerId);
 
+  /// Registry-confirmed digests for the immutable image ID and original repository.
+  Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage);
+
   /// The full `docker inspect`, secrets included; the core checks the vault
   /// passphrase or a presence token for [StepUpAction.dockerReveal] on
   /// `<session>/<container>` first (throws [DockerWrongPassphrase], or
@@ -455,6 +461,12 @@ abstract interface class DockerService {
   /// then go to the clipboard as a secret).
   bool containsSecret(String text);
   Future<void> action(String sessionId, String containerId, DockerAction action);
+
+  /// Inspect the selected container and identify attached resources the user can remove.
+  Future<DockerRemovalPlan> removalPlan(String sessionId, String containerId);
+
+  /// Submit the choices from a single-use [removalPlan] in the same session.
+  Future<DockerRemovalResult> removeWithCleanup(String sessionId, String containerId, DockerRemovalSelection selection);
 
   /// Last [tail] lines, then new lines while [follow] (cancel the
   /// subscription to stop).

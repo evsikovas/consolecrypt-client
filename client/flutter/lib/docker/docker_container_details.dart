@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
@@ -19,8 +20,11 @@ import 'package:consolecrypt/docker/docker_logs_view.dart';
 import 'package:consolecrypt/docker/docker_port_pages.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:consolecrypt/kubernetes/kube_navigation.dart';
+import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 enum DockerDetailsTab { overview, logs, json }
@@ -122,6 +126,44 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
     } finally {
       if (mounted && generation == _generation) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _openKubernetes() async {
+    final detail = _detail;
+    if (detail == null || _loading || !_scope.unlocked || !identical(_scope, ref.read(dockerScopeProvider))) return;
+    final session = widget.session, service = widget.service;
+    final source = DockerKubeSource.inspect(detail, session);
+    // The image ID identifies what this container actually runs, even after a tag moves.
+    final imageId = detail.inspect['Image'];
+    final canInspect =
+        !source.unsupported &&
+        source.image == null &&
+        imageId is String &&
+        RegExp(r'^sha256:[0-9a-f]{64}$').hasMatch(imageId);
+    final request = await showAppDialog<KubeNavigationRequest>(
+      context,
+      secure: true,
+      barrierDismissible: false,
+      builder: (_) => DockerKubeDialog(
+        container: detail.container,
+        source: source,
+        resolveImage: canInspect
+            ? () async => DockerKubeSource.inspect(
+                detail,
+                session,
+                repoDigests: await service.imageRepoDigests(session.id, imageId, source.sourceImage ?? ''),
+              )
+            : null,
+      ),
+    );
+    if (request == null ||
+        !mounted ||
+        !identical(_scope, ref.read(dockerScopeProvider)) ||
+        !identical(request.scope, ref.read(kubeScopeProvider))) {
+      return;
+    }
+    ref.read(kubeNavigationProvider.notifier).open(request);
+    context.go(AppRoutes.kubernetes);
   }
 
   @override
@@ -251,6 +293,16 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                       ? () => unawaited(widget.actions.run(container, DockerAction.restart))
                       : null,
                 ),
+                GlassButton(
+                  key: const ValueKey('docker-details-remove'),
+                  style: GlassButtonStyle.destructiveQuiet,
+                  label: l.dockerRemoveContainer,
+                  icon: Icons.delete_outline_rounded,
+                  size: GlassControlSize.sm,
+                  onPressed: busy || !dockerActionAllowed(DockerAction.remove, container.state)
+                      ? null
+                      : () => unawaited(widget.actions.run(container, DockerAction.remove)),
+                ),
                 action(
                   'terminal',
                   l.dockerTerminal,
@@ -275,17 +327,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                   'kubernetes',
                   l.dockerKubeDeploy,
                   Icons.cloud_upload_outlined,
-                  _detail == null || _loading
-                      ? null
-                      : () => showAppDialog<void>(
-                          context,
-                          secure: true,
-                          barrierDismissible: false,
-                          builder: (_) => DockerKubeDialog(
-                            source: DockerKubeSource.inspect(_detail!, widget.session),
-                            container: container,
-                          ),
-                        ),
+                  _detail == null || _loading ? null : _openKubernetes,
                 ),
               ],
             ),

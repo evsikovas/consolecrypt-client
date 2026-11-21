@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
+import 'package:consolecrypt/keepass/external_vault_store.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
 import 'package:consolecrypt/keepass/kdbx_documents.dart';
 import 'package:consolecrypt/keepass/kdbx_entry_icons.dart';
@@ -589,6 +590,17 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
     }
   }
 
+  void _openVault([String? id]) {
+    if (!_current) return;
+    if (widget.embedded) {
+      context.go(
+        Uri(path: AppRoutes.externalVault, queryParameters: id == null ? null : {'connection': id}).toString(),
+      );
+    } else {
+      unawaited(showVaultConnections(context, id: id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(activeProfileProvider.select((p) => p?.id), (previous, next) {
@@ -623,6 +635,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
       onDetailsResize: (delta, minimum, maximum) =>
           setState(() => _detailsWidth = (_detailsWidth.clamp(minimum, maximum) - delta).clamp(minimum, maximum)),
       manager: manager,
+      vaultConnections: ref.watch(externalVaultConnectionsProvider),
       session: _session,
       entries: entries,
       group: _group,
@@ -637,7 +650,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
       onOpen: _open,
       onCreate: () => _open(create: true),
       onWebDav: _connection,
-      onVault: () => widget.embedded ? context.go(AppRoutes.externalVault) : showVaultConnections(context),
+      onVault: _openVault,
       onSource: _select,
       onEditSource: (source) => _connection(source.connection),
       onSourceAction: _sourceAction,
@@ -1108,12 +1121,7 @@ Future<PasswordVaultSession?> unlockKdbxSource(
   final manager = ref.read(passwordManagerProvider);
   manager.check();
   if (source.remote && !KdbxWebDav.isFileUri(Uri.parse(source.path))) throw const KdbxFailure('dav_url');
-  final existing = manager.sessions[source.id];
-  if (existing != null) {
-    manager.selected = source.id;
-    manager.notify();
-    return existing;
-  }
+  if (manager.sessions.containsKey(source.id)) return manager.open(source);
   final methods = <String>{};
   final appPins = <String>{};
   if (!create) {

@@ -3,31 +3,13 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/mapping.dart' show guard;
-import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/keepass/external_vault.dart';
 import 'package:consolecrypt/src/rust/api/password_vault.dart' as native;
 import 'package:crypto/crypto.dart' show sha256;
 import 'package:cryptography/cryptography.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final externalVaultConnectionsProvider = Provider<List<ExternalVaultConnection>>((ref) {
-  final profile = ref.watch(activeProfileProvider.select((p) => p?.id.value));
-  final status = ref.watch(vaultStatusProvider).value;
-  final local = ref.watch(localSettingsProvider).value;
-  if (profile == null || status?.isUnlocked != true || local == null) return const [];
-  final vault = status?.vaultId?.value;
-  final connections = <ExternalVaultConnection>[];
-  for (final row in local.externalVaultConnections) {
-    if (row['profile'] != profile || row['vault'] != vault) continue;
-    try {
-      connections.add(ExternalVaultConnection.fromStorage(row));
-    } catch (_) {
-      // Old or damaged settings must not open a connection or break the list.
-    }
-  }
-  return connections;
-});
+export 'external_vault_repository.dart' show externalVaultConnectionsProvider;
 
 typedef ExternalVaultKeyOperation = Future<Uint8List> Function(String action, String id, Uint8List? material);
 

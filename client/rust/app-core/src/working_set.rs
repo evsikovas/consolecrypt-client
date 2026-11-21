@@ -41,6 +41,8 @@ pub(crate) enum Item {
 pub(crate) struct Entry {
     pub revision: i64,
     pub item: Item,
+    // Parsed once during readback. Contains portable connection metadata only.
+    pub(crate) external_vault: Option<Box<crate::ExternalVaultConfig>>,
 }
 
 impl Entry {
@@ -52,6 +54,10 @@ impl Entry {
     }
 
     fn from_decrypted(d: DecryptedObject) -> Self {
+        let external_vault = match &d.payload.object {
+            VaultObject::Secret(secret) => crate::external_vault_sync::connection_record(secret).map(Box::new),
+            _ => None,
+        };
         let item = match d.payload.object {
             VaultObject::Secret(s) => Item::Secret { kind: s.kind },
             other => Item::Object(Box::new(other)),
@@ -59,6 +65,7 @@ impl Entry {
         Self {
             revision: d.revision,
             item,
+            external_vault,
         }
     }
 }
@@ -623,6 +630,16 @@ impl WorkingSet {
             Some(Item::Secret { kind }) => Some(*kind),
             _ => None,
         }
+    }
+
+    pub(crate) fn external_vaults(&self) -> Vec<crate::ExternalVaultConfig> {
+        let state = self.read();
+        let mut rows: Vec<_> = state.entries.iter()
+            .filter(|(id, _)| !state.origin.contains_key(id))
+            .filter_map(|(_, entry)| entry.external_vault.as_deref().cloned())
+            .collect();
+        rows.sort_by(|a, b| a.id.cmp(&b.id));
+        rows
     }
 
     /// All live object ids of a kind.

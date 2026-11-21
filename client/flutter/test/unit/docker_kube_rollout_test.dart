@@ -278,6 +278,37 @@ void main() {
       expect(result.exitCode, code);
     });
   }
+  test(
+    'records known OOM reason and restart count without exposing an unknown runtime reason or credentialed image URL',
+    () async {
+      await create();
+      for (final reason in ['OOMKilled', 'User supplied secret']) {
+        cluster.pods.clear();
+        cluster.pods.add(
+          _pod({
+            'containerStatuses': [
+              {
+                'image': 'https://user:password@example.com/worker',
+                'restartCount': 7,
+                'state': {
+                  'waiting': {'reason': 'CrashLoopBackOff'},
+                },
+                'lastState': {
+                  'terminated': {'exitCode': 137, 'reason': reason},
+                },
+              },
+            ],
+          }),
+        );
+        final result = await read();
+        expect(result.reason, 'CrashLoopBackOff');
+        expect(result.image, isNull);
+        expect(result.exitCode, 137);
+        expect(result.restarts, 7);
+        expect(result.terminationReason, reason == 'OOMKilled' ? reason : null);
+      }
+    },
+  );
   test('reports Pod scheduling conditions and ignores successfully completed init containers', () async {
     await create();
     cluster.pods.add(

@@ -392,7 +392,10 @@ final class RustBackend {
 
   // ---- inventory mirror ---------------------------------------------------------------
 
+  int _vaultSettingsLoad = 0;
+
   void clearInventory() {
+    _vaultSettingsLoad++;
     for (final m in [rawHosts, rawGroups, rawJumpProfiles, rawTunnels, rawSnippets, rawAiProviders]) {
       m.clear();
     }
@@ -438,7 +441,7 @@ final class RustBackend {
     if (kinds.contains('snippet')) jobs.add(_loadSnippets());
     if (kinds.contains('tunnel')) jobs.add(_loadTunnels());
     if (kinds.contains('ai_provider')) jobs.add(_loadAiProviders());
-    if (kinds.contains('vault_settings')) jobs.add(_loadVaultSettings());
+    if (kinds.contains('vault_settings') || kinds.contains('secret')) jobs.add(_loadVaultSettings());
     try {
       await Future.wait(jobs);
     } on AppException catch (e) {
@@ -512,7 +515,13 @@ final class RustBackend {
   }
 
   Future<void> _loadVaultSettings() async {
+    final request = ++_vaultSettingsLoad;
+    final profile = activeInfo?['id'];
+    final owner = activeVaultId?.value;
     final j = decodeObject(await guard(rs_inv.vaultSettingsGet));
+    if (request != _vaultSettingsLoad || !isUnlocked || profile != activeInfo?['id'] || owner != activeVaultId?.value) {
+      return;
+    }
     rawVaultSettings = j;
     vaultSettings.value = vaultSettingsFromJson(j);
     vaultStatus.value = _computeVault();

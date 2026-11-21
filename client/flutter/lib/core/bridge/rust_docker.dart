@@ -66,6 +66,10 @@ final class RustDockerService implements DockerService {
   }
 
   @override
+  Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage) =>
+      guard(() => native.dockerImageRepoDigests(sessionId: sessionId, imageId: imageId, sourceImage: sourceImage));
+
+  @override
   Future<DockerJson> revealInspect(String sessionId, String containerId, StepUpProof proof) async {
     try {
       final json = await withStepUp(
@@ -92,6 +96,28 @@ final class RustDockerService implements DockerService {
   @override
   Future<void> action(String sessionId, String containerId, DockerAction action) =>
       guard(() => native.dockerAction(sessionId: sessionId, container: containerId, action: action.name));
+
+  @override
+  Future<DockerRemovalPlan> removalPlan(String sessionId, String containerId) async {
+    final wire = await guard(() => native.dockerRemovalPlan(sessionId: sessionId, container: containerId));
+    return DockerRemovalPlan.fromJson(decodeObject(wire));
+  }
+
+  @override
+  Future<DockerRemovalResult> removeWithCleanup(
+    String sessionId,
+    String containerId,
+    DockerRemovalSelection selection,
+  ) async {
+    final wire = await guard(
+      () => native.dockerRemoveWithCleanup(
+        sessionId: sessionId,
+        container: containerId,
+        selectionJson: jsonEncode(selection.toJson()),
+      ),
+    );
+    return DockerRemovalResult.fromJson(decodeObject(wire));
+  }
 
   @override
   Stream<List<DockerLogLine>> logs(

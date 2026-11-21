@@ -10,6 +10,39 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get dockerKubeRegistryDenied =>
+      'El registro ha denegado el acceso. Comprueba el nombre del repositorio y si la imagen se ha publicado allí. Si es privado, revisa las credenciales del clúster o el imagePullSecret del namespace.';
+
+  @override
+  String get dockerKubeLastProblem => 'Último problema detectado';
+
+  @override
+  String get dockerKubeCompletionAdvice =>
+      'El proceso terminó correctamente. El Deployment lo reinicia para mantener una réplica activa. Compara command y args con Docker y usa un servidor que siga en primer plano. Para una tarea puntual, utiliza un Job.';
+
+  @override
+  String get dockerKubeOomAdvice =>
+      'El contenedor se quedó sin memoria. Comprueba el consumo y el límite de memoria en el manifiesto del Deployment, y consulta los registros del contenedor anterior.';
+
+  @override
+  String get dockerKubeRequestedImage => 'Imagen en el manifiesto';
+
+  @override
+  String get dockerKubeUnverifiedImage =>
+      'No se pudo confirmar el digest en el registro. Introduce un digest publicado u otra etiqueta que el clúster pueda descargar. Para un registro privado, indica la referencia completa y, si hace falta, un imagePullSecret de este namespace.';
+
+  @override
+  String get dockerKubePullAdvice =>
+      'Consulta los eventos del Pod para ver el error del registro. Comprueba la imagen y su etiqueta o digest. Para un registro privado, revisa el imagePullSecret del namespace.';
+
+  @override
+  String get dockerKubeCrashAdvice =>
+      'Abre los registros del Pod y selecciona el contenedor anterior. Revisa el comando de inicio, los argumentos y el límite de memoria en el manifiesto del Deployment.';
+
+  @override
+  String get dockerKubeOpenDeployment => 'Abrir el Deployment en Kubernetes';
+
+  @override
   String get keepassExchangeFormatError =>
       'Compruebe el formato. El CSV debe tener columnas de título y contraseña. El JSON debe proceder de una exportación de ConsoleCrypt.';
 
@@ -151,6 +184,28 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get externalVaultUseSaved => 'Acceder con la autenticación del dispositivo';
+
+  @override
+  String get externalVaultSyncLogin => 'Guardar el acceso en mi bóveda cifrada de ConsoleCrypt';
+
+  @override
+  String get externalVaultSyncLoginHelp =>
+      'Tras la sincronización, podrás usar esta contraseña o token en cualquier dispositivo donde desbloquees tu bóveda personal.';
+
+  @override
+  String get externalVaultUseSynced => 'Acceder con la credencial sincronizada';
+
+  @override
+  String get externalVaultForgetSynced => 'Eliminar la credencial sincronizada';
+
+  @override
+  String externalVaultRemoveSyncedConnection(String name) {
+    return '¿Quieres eliminar la conexión «$name» y su credencial de tu bóveda personal en todos tus dispositivos sincronizados?';
+  }
+
+  @override
+  String get externalVaultForgetSyncedHelp =>
+      '¿Quieres eliminar la contraseña o el token guardados en tu bóveda personal en todos tus dispositivos sincronizados?';
 
   @override
   String get externalVaultRemoveConnection => 'Quitar conexión guardada';
@@ -9599,7 +9654,78 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get dockerRemoveHelp => 'El contenedor y su capa de escritura se eliminan. Se conservan volúmenes marcados.';
+  String get dockerRemoveHelp =>
+      'Al eliminar el contenedor se borra su capa de escritura. Selecciona los volúmenes o redes que también quieras eliminar.';
+
+  @override
+  String get dockerRemovalBindMounts => 'Archivos del host montados en el contenedor';
+
+  @override
+  String get dockerRemovalShared => 'En uso por otro contenedor';
+
+  @override
+  String get dockerRemovalExternal => 'Se gestiona de forma externa';
+
+  @override
+  String get dockerRemovalDefaultNetwork => 'Red integrada de Docker';
+
+  @override
+  String get dockerRemovalBindKept => 'Se conservan los archivos del host';
+
+  @override
+  String get dockerRemovalUnverified => 'Docker no pudo verificar que el recurso fuera exclusivo de este contenedor';
+
+  @override
+  String get dockerRemovalStopFirst => 'Detener el contenedor antes de eliminarlo';
+
+  @override
+  String get dockerRemovalVolumeWarning =>
+      'Todos los datos de los volúmenes seleccionados se eliminarán de forma permanente.';
+
+  @override
+  String get dockerRemovalResult => 'Resultado de la eliminación';
+
+  @override
+  String get dockerRemoveContainer => 'Eliminar contenedor…';
+
+  @override
+  String get dockerRemovalRemoved => 'Contenedor eliminado';
+
+  @override
+  String get dockerRemovalStopped => 'El contenedor se detuvo. No se confirmó su eliminación.';
+
+  @override
+  String get dockerRemovalKept => 'No se confirmó la eliminación del contenedor.';
+
+  @override
+  String get dockerRemovalResourceRemoved => 'Eliminado';
+
+  @override
+  String dockerRemovalResourceSkipped(String reason) {
+    return 'Omitido. $reason';
+  }
+
+  @override
+  String dockerRemovalResourceFailed(String reason) {
+    return 'No se pudo eliminar. $reason';
+  }
+
+  @override
+  String get dockerRemovalChanged =>
+      'El contenedor o sus recursos cambiaron. Vuelve a abrir el diálogo de eliminación para revisar el estado actual.';
+
+  @override
+  String get dockerRemovalAutoRemove =>
+      'Docker elimina automáticamente el contenedor y sus volúmenes anónimos al detenerlo. Con esta configuración no puedes elegir qué volúmenes conservar.';
+
+  @override
+  String get dockerRemovalMissing => 'El recurso ya no existe en Docker';
+
+  @override
+  String get dockerRemovalInUse => 'Docker indica que el recurso está en uso.';
+
+  @override
+  String get dockerRemovalCancelled => 'La operación se interrumpió. Actualiza la lista para ver el estado actual.';
 
   @override
   String get dockerLogs => 'Registros';

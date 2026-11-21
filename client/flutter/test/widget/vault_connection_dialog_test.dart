@@ -92,12 +92,12 @@ void main() {
       await settle(tester);
     }
 
-    Future<void> waitFor(Finder finder) async {
-      for (var attempt = 0; attempt < 80 && finder.evaluate().isEmpty; attempt++) {
+    Future<void> waitFor(Finder finder, {bool visible = true}) async {
+      for (var attempt = 0; attempt < 80 && finder.evaluate().isNotEmpty != visible; attempt++) {
         await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
         await tester.pump(const Duration(milliseconds: 30));
       }
-      expect(finder, findsOneWidget);
+      expect(finder, visible ? findsOneWidget : findsNothing);
     }
 
     await tapText('Add connection');
@@ -112,6 +112,16 @@ void main() {
     await tester.tap(find.text('Access token').last);
     await settle(tester);
     await tester.enterText(field('Access token'), 'fixture-access-token');
+    final syncLogin = find.byKey(const ValueKey('external-vault-sync-login'));
+    expect(tester.widget<CheckboxListTile>(syncLogin).value, isFalse);
+    FocusManager.instance.primaryFocus?.unfocus();
+    await settle(tester);
+    final syncCheckbox = find.descendant(of: syncLogin, matching: find.byType(Checkbox));
+    await tester.ensureVisible(syncCheckbox);
+    await settle(tester);
+    await tester.tap(syncCheckbox);
+    await settle(tester);
+    expect(tester.widget<CheckboxListTile>(syncLogin).value, isTrue);
     await tester.ensureVisible(find.descendant(of: workspace, matching: find.text('Connect')));
     await HttpOverrides.runWithHttpOverrides(() => tapText('Connect'), _RealHttp());
 
@@ -182,6 +192,87 @@ void main() {
       expect(item, findsNothing);
       expect(requests.where((r) => r.$2 == '/v1/sys/internal/ui/mounts'), hasLength(1));
     }
+
+    final connection = container.read(externalVaultConnectionsProvider).single;
+    expect(connection.credentialId, isNotNull);
+    expect(connection.wrapped, isNull);
+    final stored = ExternalVaultConnection(
+      id: 'older-openbao',
+      name: 'Operations OpenBao',
+      profile: connection.profile,
+      vault: connection.vault,
+      endpoint: 'https://bao.example/organization',
+      auth: ExternalVaultAuth.userpass,
+      username: 'operator',
+      authMount: 'userpass',
+      mount: 'kv',
+      namespace: '',
+      versioned: true,
+    );
+    final settings = container.read(settingsServiceProvider);
+    final local = settings.currentLocal;
+    await settings.updateLocal(
+      local.copyWith(
+        externalVaultConnections: [
+          ...local.externalVaultConnections,
+          stored.toStorage(cipherText: 'fixture-wrapped'),
+          {...stored.toStorage(), 'id': 'other-vault', 'vault': 'other-profile-vault'},
+        ],
+        passwordVaultFiles: [
+          for (var i = 0; i < 5; i++) {'profile': connection.profile, 'path': 'Fixture$i.kdbx'},
+        ],
+      ),
+    );
+    await tapText('Passwords');
+    final recent = find.byKey(ValueKey('keepass-recent-vault-${connection.id}'));
+    final older = find.byKey(ValueKey('keepass-saved-vault-${stored.id}'));
+    expect(recent, findsOneWidget);
+    expect(older, findsOneWidget);
+    expect(find.text(stored.name), findsOneWidget);
+    expect(find.text(connection.name), findsOneWidget);
+    expect(find.text('Fixture0.kdbx'), findsNothing);
+    expect(find.text('Fixture1.kdbx'), findsOneWidget);
+    expect(tester.getTopLeft(recent).dy, lessThan(tester.getTopLeft(find.text('Fixture4.kdbx')).dy));
+    expect(find.textContaining('fixture-wrapped'), findsNothing);
+    final requestCount = requests.length;
+    await tester.ensureVisible(older);
+    await tester.tap(older);
+    await waitFor(field('Server address'));
+    expect(tester.widget<TextField>(field('Title')).controller!.text, stored.name);
+    expect(tester.widget<TextField>(field('Server address')).controller!.text, stored.endpoint.toString());
+    expect(tester.widget<SecretField>(find.byType(SecretField)).controller.text, isEmpty);
+    expect(find.text('Sign in with device authentication'), findsOneWidget);
+    await tapText('Passwords');
+    await tester.ensureVisible(recent);
+    await tester.tap(recent);
+    await waitFor(field('Access token'));
+    expect(tester.widget<TextField>(field('Title')).controller!.text, connection.name);
+    expect(tester.widget<TextField>(field('Access token')).controller!.text, isEmpty);
+    expect(requests, hasLength(requestCount));
+    final useSynced = find.byKey(const ValueKey('external-vault-use-synced'));
+    expect(useSynced, findsOneWidget);
+    expect(tester.widget<CheckboxListTile>(syncLogin).value, isFalse);
+    final address = field('Server address');
+    await tester.enterText(address, 'http://127.0.0.1:1');
+    await settle(tester);
+    expect(useSynced, findsNothing);
+    await tester.enterText(address, connection.endpoint.toString());
+    await settle(tester);
+    expect(useSynced, findsOneWidget);
+    await HttpOverrides.runWithHttpOverrides(() => tapKey(tester, 'external-vault-use-synced'), _RealHttp());
+    await waitFor(folder);
+    expect(requests.skip(requestCount).map((r) => r.$3), ['fixture-access-token', 'fixture-access-token']);
+    await tapText('Passwords');
+    await tester.ensureVisible(recent);
+    await tester.tap(recent);
+    await waitFor(useSynced);
+    await tapKey(tester, 'external-vault-forget-synced');
+    await tapKey(tester, 'confirm-ok');
+    await waitFor(useSynced, visible: false);
+    expect(
+      container.read(externalVaultConnectionsProvider).singleWhere((c) => c.id == connection.id).credentialId,
+      isNull,
+    );
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.android}));
@@ -320,7 +411,8 @@ void main() {
     await tester.ensureVisible(remember);
     await tester.tap(remember);
     await tester.pumpAndSettle();
-    expect(tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value, isTrue);
+    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('external-vault-remember-device'))).value, isTrue);
+    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('external-vault-sync-login'))).value, isFalse);
     expect(find.descendant(of: signIn, matching: find.text(l.externalVaultUseSaved)), findsOneWidget);
     final auth = find.byType(GlassSelect<ExternalVaultAuth>);
     await tester.ensureVisible(auth);

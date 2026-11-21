@@ -13,6 +13,10 @@ mod compose_mask;
 pub mod local;
 mod logs;
 pub mod secrets;
+pub use client::removal::{
+    DockerRemovalPlan, DockerRemovalResource, DockerRemovalResult, DockerRemovalSelection,
+    DockerRemovedResource,
+};
 pub use client::{
     ContainerSummary, DockerClient, EngineInfo, ExecOutput, ExecSession, LogLine, PortMapping,
     VolumeSummary,
