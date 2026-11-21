@@ -104,7 +104,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get externalVaultHide => '隐藏值';
 
   @override
-  String get externalVaultInvalidConfig => '请检查 HTTPS 地址和 Vault 路径。本地测试可在 127.0.0.1 或 ::1 上使用 HTTP。';
+  String get externalVaultInvalidConfig => '请输入以 http:// 或 https:// 开头的服务器地址，并检查 Vault 路径。';
+
+  @override
+  String get externalVaultHttpNotice => 'HTTP 会以明文传输凭据和机密值。';
+
+  @override
+  String get externalVaultSearch => '搜索当前文件夹或输入机密路径';
+
+  @override
+  String get externalVaultEmpty => '此文件夹为空';
+
+  @override
+  String get externalVaultNoMatches => '没有匹配的结果';
 
   @override
   String get externalVaultAuthError => 'Vault 未接受这些凭据。';
@@ -16575,7 +16587,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeIntro => '此实验功能支持一个无状态 Linux 容器、一个副本和一个内部 ClusterIP 服务。部署前请检查清单。';
 
   @override
-  String get dockerKubeUnsupported => '此容器使用了挂载、宿主机或设备功能，或者无法验证其配置。此实验功能不支持数据或特权工作负载。';
+  String get dockerKubeUnsupported => '向导需要配置已经验证的 Linux 容器，且容器无需使用宿主机网络、设备或额外权限即可运行。请选择兼容的容器，或手动准备 Kubernetes 清单。';
+
+  @override
+  String get dockerKubeMountsBlocked => '此容器挂载了文件或卷。向导适用于没有挂载的容器。请选择其他容器，或手动准备 Kubernetes 清单并配置挂载。';
 
   @override
   String get dockerKubeImage => '已发布的镜像（registry/repository:tag 或 @sha256:digest）';

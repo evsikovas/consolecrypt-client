@@ -17,6 +17,7 @@ import 'package:consolecrypt/hosts/host_editor_screen.dart';
 import 'package:consolecrypt/hosts/hosts_screen.dart';
 import 'package:consolecrypt/hosts/known_hosts_screen.dart';
 import 'package:consolecrypt/keepass/kdbx_dialog.dart';
+import 'package:consolecrypt/keepass/vault_connection_dialog.dart';
 import 'package:consolecrypt/kubernetes/kubernetes_screen.dart';
 import 'package:consolecrypt/rdp/rdp_screen.dart';
 import 'package:consolecrypt/settings/settings_screen.dart';
@@ -143,7 +144,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.kubernetes, const KubernetesScreen()),
           _branch(AppRoutes.databases, const DatabasesScreen()),
           _branch(AppRoutes.docker, const DockerScreen()),
-          _branch(AppRoutes.passwords, const KdbxManagerScreen()),
+          _branch(
+            AppRoutes.passwords,
+            const KdbxManagerScreen(),
+            routes: [
+              GoRoute(
+                path: 'vault',
+                pageBuilder: (context, state) {
+                  final id = state.uri.queryParameters['connection'];
+                  return _page(
+                    ExternalVaultWorkspace(key: ValueKey(id), id: id, onClose: () => context.go(AppRoutes.passwords)),
+                  );
+                },
+              ),
+            ],
+          ),
           _branch(AppRoutes.automation, const AutomationScreen()),
         ],
       ),

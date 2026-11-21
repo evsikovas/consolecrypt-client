@@ -6,17 +6,21 @@ import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:yaml/yaml.dart';
 
+enum DockerKubeBlocker { mounts, unsupportedConfiguration }
+
 /// Only these scalar fields may leave the Docker boundary for generation.
 /// Never retain inspect, environment, command arguments or labels here.
 final class DockerKubeSource {
-  const DockerKubeSource({required this.ports, required this.unsupported});
+  const DockerKubeSource({required this.ports, this.blocker});
   final List<int> ports;
-  final bool unsupported;
+  final DockerKubeBlocker? blocker;
+  bool get unsupported => blocker != null;
 
   factory DockerKubeSource.inspect(DockerContainerDetail detail, DockerSessionInfo session) {
     final host = detail.inspect['HostConfig'];
     final config = host is Map ? host : const <String, Object?>{};
     final mounts = detail.inspect['Mounts'];
+    bool hasEntries(String key) => config[key] is List && (config[key] as List).isNotEmpty;
     final ports =
         detail.container.ports
             .where((p) => p.protocol == 'tcp' && p.privatePort > 0 && p.privatePort <= 65535)
@@ -24,27 +28,21 @@ final class DockerKubeSource {
             .toSet()
             .toList()
           ..sort();
-    return DockerKubeSource(
-      ports: List.unmodifiable(ports),
-      // Fail closed when inspect cannot establish that this is stateless.
-      unsupported:
-          session.os.toLowerCase() != 'linux' ||
-          host is! Map ||
-          mounts is! List ||
-          mounts.isNotEmpty ||
-          config['Privileged'] == true ||
-          const ['host', 'container'].any((s) => '${config['NetworkMode']}'.startsWith(s)) ||
-          config['PidMode'] == 'host' ||
-          config['IpcMode'] == 'host' ||
-          [
-            'Devices',
-            'DeviceRequests',
-            'CapAdd',
-            'Binds',
-            'VolumesFrom',
-            'ExtraHosts',
-          ].any((key) => config[key] is List && (config[key] as List).isNotEmpty),
-    );
+    DockerKubeBlocker? blocker;
+    // Fail closed when inspect cannot establish that this is stateless.
+    if ((mounts is List && mounts.isNotEmpty) || hasEntries('Binds') || hasEntries('VolumesFrom')) {
+      blocker = DockerKubeBlocker.mounts;
+    } else if (session.os.toLowerCase() != 'linux' ||
+        host is! Map ||
+        mounts is! List ||
+        config['Privileged'] == true ||
+        const ['host', 'container'].any((s) => '${config['NetworkMode']}'.startsWith(s)) ||
+        config['PidMode'] == 'host' ||
+        config['IpcMode'] == 'host' ||
+        const ['Devices', 'DeviceRequests', 'CapAdd', 'ExtraHosts'].any(hasEntries)) {
+      blocker = DockerKubeBlocker.unsupportedConfiguration;
+    }
+    return DockerKubeSource(ports: List.unmodifiable(ports), blocker: blocker);
   }
 }
 

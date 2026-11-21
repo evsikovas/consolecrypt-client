@@ -40,18 +40,23 @@ class _Kube implements KubeService, KubeBrowserService, KubeManifestService {
   final calls = <(String, bool)>[];
   final closed = <String>[];
   Completer<void>? pending;
+  int inventoryCalls = 0;
   @override
-  Future<List<KubeConnection>> inventory() async => [
-    const KubeConnection(
-      id: 'context',
-      name: 'test-cluster',
-      clusterName: 'cluster',
-      server: 'https://cluster',
-      namespace: 'default',
-      authentication: 'token',
-      production: false,
-    ),
-  ];
+  Future<List<KubeConnection>> inventory() async {
+    inventoryCalls++;
+    return [
+      const KubeConnection(
+        id: 'context',
+        name: 'test-cluster',
+        clusterName: 'cluster',
+        server: 'https://cluster',
+        namespace: 'default',
+        authentication: 'token',
+        production: false,
+      ),
+    ];
+  }
+
   @override
   Future<KubeSession> connect(String contextId) async => _session;
   @override
@@ -127,7 +132,7 @@ Future<ProviderContainer> _pump(
   WidgetTester tester,
   _Kube kube,
   _Ai ai, {
-  bool unsupported = false,
+  DockerKubeBlocker? blocker,
   bool writable = true,
 }) async {
   tester.view.physicalSize = const Size(1200, 1000);
@@ -151,7 +156,7 @@ Future<ProviderContainer> _pump(
         home: Scaffold(
           body: DockerKubeDialog(
             container: _container,
-            source: DockerKubeSource(ports: const [80], unsupported: unsupported),
+            source: DockerKubeSource(ports: const [80], blocker: blocker),
           ),
         ),
       ),
@@ -278,11 +283,18 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('unsupported mounts/capabilities cannot prepare or deploy', (tester) async {
+  testWidgets('a container with mounted files shows only guidance and a close button', (tester) async {
     final kube = _Kube();
-    await _pump(tester, kube, _Ai(), unsupported: true);
+    await _pump(tester, kube, _Ai(), blocker: DockerKubeBlocker.mounts);
+    final dialog = find.byType(GlassDialog);
+    final l = tester.element(dialog).l10n;
+    expect(find.text(l.dockerKubeMountsBlocked), findsOneWidget);
+    expect(find.text(l.commonClose), findsOneWidget);
+    expect(tester.getSize(dialog).height, lessThan(450));
     expect(find.byKey(const ValueKey('docker-kube-context')), findsNothing);
-    expect(_enabled(tester, 'docker-kube-deploy'), isFalse);
+    expect(find.byKey(const ValueKey('docker-kube-validate')), findsNothing);
+    expect(find.byKey(const ValueKey('docker-kube-deploy')), findsNothing);
+    expect(kube.inventoryCalls, 0);
     expect(kube.calls, isEmpty);
     await tester.pumpWidget(const SizedBox.shrink());
   });

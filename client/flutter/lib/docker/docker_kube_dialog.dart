@@ -89,7 +89,7 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
     ref.listenManual(dockerScopeProvider, (_, next) {
       if (!identical(_dockerScope, next)) _expire();
     });
-    unawaited(_load());
+    if (!widget.source.unsupported) unawaited(_load());
   }
 
   Future<void> _load() async {
@@ -409,6 +409,23 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
+    if (widget.source.blocker case final blocker?) {
+      return GlassDialog(
+        title: l.dockerKubeDeploy,
+        icon: Icons.info_outline,
+        width: 560,
+        content: !_current
+            ? null
+            : SingleChildScrollView(
+                child: Text(switch (blocker) {
+                  DockerKubeBlocker.mounts => l.dockerKubeMountsBlocked,
+                  DockerKubeBlocker.unsupportedConfiguration => l.dockerKubeUnsupported,
+                }),
+              ),
+        primaryAction: GlassButton(label: l.commonClose, onPressed: () => closeDialog<void>(context)),
+      );
+    }
+
     final providers = ref.watch(aiProvidersProvider).value ?? const <AiProviderConfig>[];
     final selected =
         providers.where((p) => p.id == _providerId).firstOrNull ??
@@ -416,7 +433,7 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
         providers.firstOrNull;
     final session = _session;
     if (session != null) ref.watch(kubeWriteAccessProvider(session));
-    final enabled = !_busy && _review == null && !_started && !widget.source.unsupported;
+    final enabled = !_busy && _review == null && !_started;
     final review = _review;
     Widget field(TextEditingController controller, String key, String label) => TextField(
       key: ValueKey('docker-kube-$key'),
@@ -440,142 +457,139 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
               : ListView(
                   children: [
                     Text(l.dockerKubeIntro),
-                    if (widget.source.unsupported) Text(l.dockerKubeUnsupported),
-                    if (!widget.source.unsupported) ...[
-                      DropdownButtonFormField<String>(
-                        key: const ValueKey('docker-kube-context'),
-                        initialValue: _context?.id,
-                        decoration: InputDecoration(labelText: l.dockerKubeContext),
-                        items: [for (final c in _contexts) DropdownMenuItem(value: c.id, child: Text(c.name))],
-                        onChanged: enabled
-                            ? (id) {
-                                if (id != null) unawaited(_connect(_contexts.firstWhere((c) => c.id == id)));
-                              }
-                            : null,
-                      ),
-                      if (session != null) ...[
-                        KubeWriteBanner(session: session, contextName: _context!.name),
-                        if (!_newNamespace)
-                          DropdownButtonFormField<String>(
-                            key: ValueKey('docker-kube-namespace-${session.id}-${_namespace.text}'),
-                            initialValue: _namespaces.contains(_namespace.text) ? _namespace.text : null,
-                            decoration: InputDecoration(labelText: l.kubeNamespace),
-                            items: [for (final ns in _namespaces) DropdownMenuItem(value: ns, child: Text(ns))],
-                            onChanged: enabled
-                                ? (value) {
-                                    if (value != null) {
-                                      _namespace.text = value;
-                                      _changed(target: true);
-                                    }
-                                  }
-                                : null,
-                          ),
-                        CheckboxListTile(
-                          key: const ValueKey('docker-kube-new-namespace'),
-                          title: Text(l.dockerKubeNewNamespace),
-                          value: _newNamespace,
+                    DropdownButtonFormField<String>(
+                      key: const ValueKey('docker-kube-context'),
+                      initialValue: _context?.id,
+                      decoration: InputDecoration(labelText: l.dockerKubeContext),
+                      items: [for (final c in _contexts) DropdownMenuItem(value: c.id, child: Text(c.name))],
+                      onChanged: enabled
+                          ? (id) {
+                              if (id != null) unawaited(_connect(_contexts.firstWhere((c) => c.id == id)));
+                            }
+                          : null,
+                    ),
+                    if (session != null) ...[
+                      KubeWriteBanner(session: session, contextName: _context!.name),
+                      if (!_newNamespace)
+                        DropdownButtonFormField<String>(
+                          key: ValueKey('docker-kube-namespace-${session.id}-${_namespace.text}'),
+                          initialValue: _namespaces.contains(_namespace.text) ? _namespace.text : null,
+                          decoration: InputDecoration(labelText: l.kubeNamespace),
+                          items: [for (final ns in _namespaces) DropdownMenuItem(value: ns, child: Text(ns))],
                           onChanged: enabled
                               ? (value) {
-                                  _newNamespace = value ?? false;
-                                  _namespace.clear();
-                                  _changed(target: true);
+                                  if (value != null) {
+                                    _namespace.text = value;
+                                    _changed(target: true);
+                                  }
                                 }
                               : null,
                         ),
-                        if (_newNamespace) ...[
-                          field(_namespace, 'namespace-name', l.kubeNamespace),
-                          Text(l.dockerKubeNamespaceHelp),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: GlassButton(
-                              key: const ValueKey('docker-kube-create-namespace'),
-                              label: l.dockerKubeCreateNamespace,
-                              onPressed: enabled && _canWrite && DockerKubeTarget.validName(_namespace.text.trim())
-                                  ? _createNamespace
-                                  : null,
-                            ),
-                          ),
-                        ],
-                        if (_namespaceCreated)
-                          Text(l.dockerKubeNamespaceCreated, key: const ValueKey('docker-kube-namespace-created')),
-                      ],
-                      field(_name, 'name', l.kubeName),
-                      field(_image, 'image', l.dockerKubeImage),
-                      Text(l.dockerKubeImageHelp),
-                      field(_port, 'port', l.dockerKubePort),
-                      field(_pullSecret, 'pull-secret', l.dockerKubePullSecret),
-                      DropdownButtonFormField<String>(
-                        key: const ValueKey('docker-kube-provider'),
-                        initialValue: selected?.id.value,
-                        decoration: InputDecoration(labelText: l.aiProviderDialogProviderLabel),
-                        items: [for (final p in providers) DropdownMenuItem(value: p.id.value, child: Text(p.name))],
-                        onChanged: enabled
-                            ? (value) => setState(() => _providerId = value == null ? null : ObjectId(value))
-                            : null,
-                      ),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          GlassButton(
-                            key: const ValueKey('docker-kube-generate'),
-                            label: l.dockerKubeGenerate,
-                            icon: Icons.auto_awesome,
-                            onPressed: enabled && _target.valid && selected != null
-                                ? () => setState(() => _review = (selected, _target))
-                                : null,
-                          ),
-                          GlassButton(
-                            key: const ValueKey('docker-kube-template'),
-                            label: l.dockerKubeTemplate,
-                            onPressed: enabled ? _template : null,
-                          ),
-                        ],
-                      ),
-                      if (review != null) ...[
-                        Text(review.$1.name),
-                        Text(l.dockerKubeAiReview),
-                        SizedBox(height: 220, child: SingleChildScrollView(child: SelectableText(review.$2.template))),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            GlassButton(
-                              key: const ValueKey('docker-kube-send-ai'),
-                              label: l.dockerKubeSendAi,
-                              onPressed: () => _generate(review.$1, review.$2),
-                            ),
-                            GlassButton(label: l.commonCancel, onPressed: () => setState(() => _review = null)),
-                          ],
-                        ),
-                      ],
-                      TextField(
-                        key: const ValueKey('docker-kube-yaml'),
-                        controller: _yaml,
-                        enabled: enabled,
-                        minLines: 8,
-                        maxLines: 16,
-                        maxLength: 65536,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        enableIMEPersonalizedLearning: false,
-                        style: GlassTokens.of(context).typography.mono,
-                        decoration: InputDecoration(labelText: l.kubeYaml, counterText: ''),
-                        onChanged: (_) => _changed(),
-                      ),
                       CheckboxListTile(
-                        key: const ValueKey('docker-kube-acknowledge'),
-                        title: Text(l.dockerKubeAcknowledge),
-                        value: _acknowledged,
+                        key: const ValueKey('docker-kube-new-namespace'),
+                        title: Text(l.dockerKubeNewNamespace),
+                        value: _newNamespace,
                         onChanged: enabled
                             ? (value) {
-                                _acknowledged = value ?? false;
-                                _changed();
+                                _newNamespace = value ?? false;
+                                _namespace.clear();
+                                _changed(target: true);
                               }
                             : null,
                       ),
-                      if (_deployment?.validated ?? false)
-                        Text(l.dockerKubeValidated, key: const ValueKey('docker-kube-validated')),
+                      if (_newNamespace) ...[
+                        field(_namespace, 'namespace-name', l.kubeNamespace),
+                        Text(l.dockerKubeNamespaceHelp),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: GlassButton(
+                            key: const ValueKey('docker-kube-create-namespace'),
+                            label: l.dockerKubeCreateNamespace,
+                            onPressed: enabled && _canWrite && DockerKubeTarget.validName(_namespace.text.trim())
+                                ? _createNamespace
+                                : null,
+                          ),
+                        ),
+                      ],
+                      if (_namespaceCreated)
+                        Text(l.dockerKubeNamespaceCreated, key: const ValueKey('docker-kube-namespace-created')),
                     ],
+                    field(_name, 'name', l.kubeName),
+                    field(_image, 'image', l.dockerKubeImage),
+                    Text(l.dockerKubeImageHelp),
+                    field(_port, 'port', l.dockerKubePort),
+                    field(_pullSecret, 'pull-secret', l.dockerKubePullSecret),
+                    DropdownButtonFormField<String>(
+                      key: const ValueKey('docker-kube-provider'),
+                      initialValue: selected?.id.value,
+                      decoration: InputDecoration(labelText: l.aiProviderDialogProviderLabel),
+                      items: [for (final p in providers) DropdownMenuItem(value: p.id.value, child: Text(p.name))],
+                      onChanged: enabled
+                          ? (value) => setState(() => _providerId = value == null ? null : ObjectId(value))
+                          : null,
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        GlassButton(
+                          key: const ValueKey('docker-kube-generate'),
+                          label: l.dockerKubeGenerate,
+                          icon: Icons.auto_awesome,
+                          onPressed: enabled && _target.valid && selected != null
+                              ? () => setState(() => _review = (selected, _target))
+                              : null,
+                        ),
+                        GlassButton(
+                          key: const ValueKey('docker-kube-template'),
+                          label: l.dockerKubeTemplate,
+                          onPressed: enabled ? _template : null,
+                        ),
+                      ],
+                    ),
+                    if (review != null) ...[
+                      Text(review.$1.name),
+                      Text(l.dockerKubeAiReview),
+                      SizedBox(height: 220, child: SingleChildScrollView(child: SelectableText(review.$2.template))),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          GlassButton(
+                            key: const ValueKey('docker-kube-send-ai'),
+                            label: l.dockerKubeSendAi,
+                            onPressed: () => _generate(review.$1, review.$2),
+                          ),
+                          GlassButton(label: l.commonCancel, onPressed: () => setState(() => _review = null)),
+                        ],
+                      ),
+                    ],
+                    TextField(
+                      key: const ValueKey('docker-kube-yaml'),
+                      controller: _yaml,
+                      enabled: enabled,
+                      minLines: 8,
+                      maxLines: 16,
+                      maxLength: 65536,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      enableIMEPersonalizedLearning: false,
+                      style: GlassTokens.of(context).typography.mono,
+                      decoration: InputDecoration(labelText: l.kubeYaml, counterText: ''),
+                      onChanged: (_) => _changed(),
+                    ),
+                    CheckboxListTile(
+                      key: const ValueKey('docker-kube-acknowledge'),
+                      title: Text(l.dockerKubeAcknowledge),
+                      value: _acknowledged,
+                      onChanged: enabled
+                          ? (value) {
+                              _acknowledged = value ?? false;
+                              _changed();
+                            }
+                          : null,
+                    ),
+                    if (_deployment?.validated ?? false)
+                      Text(l.dockerKubeValidated, key: const ValueKey('docker-kube-validated')),
                     if (_busy) const LinearProgressIndicator(),
                     if (_error != null) Text(_error!, key: const ValueKey('docker-kube-error')),
                     if (_started) ...[

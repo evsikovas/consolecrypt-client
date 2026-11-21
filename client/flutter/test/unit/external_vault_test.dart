@@ -166,10 +166,53 @@ void main() {
     expect(crossOriginRequests, 0);
   });
 
-  test('rejects insecure endpoints, embedded credentials and traversal before any request', () {
+  realTest('discovers visible KV engines and switches API versions without changing the saved binding', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final requests = <(String, String, String?)>[];
+    server.listen((request) async {
+      final path = request.uri.path;
+      requests.add((request.method, path, request.headers.value('X-Vault-Token')));
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(switch (path) {
+        '/v1/sys/internal/ui/mounts' => '{"data":{"secret":{"kv/":{"type":"kv","options":{"version":"2"}},"legacy/":{"type":"kv"},"transit/":{"type":"transit"}}}}',
+        '/v1/kv/metadata/applications' => '{"data":{"keys":["vaultwarden"]}}',
+        '/v1/legacy/entry' => '{"data":{"username":"fixture"}}',
+        _ => '{"data":{}}',
+      });
+      await request.response.close();
+    });
+    final config = configuration('http://127.0.0.1:${server.port}', auth: ExternalVaultAuth.token);
+    final originalBinding = config.binding;
+    final session = ExternalVaultSession(config);
+    addTearDown(session.close);
+    final token = SecretText('fixture-token');
+    try {
+      await session.signIn(token);
+    } finally {
+      token.wipe();
+    }
+    final mounts = await session.discoverMounts();
+    expect(mounts, [(path: 'kv', versioned: true), (path: 'legacy', versioned: false)]);
+    session.selectMount(mounts.first);
+    expect(await session.list('applications'), ['vaultwarden']);
+    session.selectMount(mounts.last);
+    expect((await session.read('entry')).values, {'username': 'fixture'});
+    expect(config.binding, originalBinding);
+    expect(requests, [
+      ('GET', '/v1/sys/internal/ui/mounts', 'fixture-token'),
+      ('LIST', '/v1/kv/metadata/applications', 'fixture-token'),
+      ('GET', '/v1/legacy/entry', 'fixture-token'),
+    ]);
+  });
+
+  test('accepts explicit HTTP and HTTPS, rejects other schemes, embedded credentials and traversal', () {
+    expect(configuration('http://192.0.2.7:8200').endpoint.scheme, 'http');
+    expect(configuration('http://vault.example.invalid').endpoint.scheme, 'http');
     for (final endpoint in [
-      'http://vault.example.invalid',
+      'ftp://vault.example.invalid',
       'https://u:p@vault.example.invalid',
+      'http://u:p@vault.example.invalid',
       'https://vault.example.invalid/?token=test',
     ]) {
       expect(() => configuration(endpoint), throwsA(isA<ExternalVaultFailure>()));

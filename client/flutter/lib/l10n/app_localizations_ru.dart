@@ -107,8 +107,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get externalVaultHide => 'Скрыть значение';
 
   @override
-  String get externalVaultInvalidConfig =>
-      'Проверьте HTTPS-адрес сервера и пути Vault. Для локальных тестов доступен HTTP на 127.0.0.1 или ::1.';
+  String get externalVaultInvalidConfig => 'Укажите адрес сервера с http:// или https:// и проверьте пути Vault.';
+
+  @override
+  String get externalVaultHttpNotice => 'HTTP передаёт учётные данные и секреты без шифрования.';
+
+  @override
+  String get externalVaultSearch => 'Поиск в папке или путь секрета';
+
+  @override
+  String get externalVaultEmpty => 'В этой папке пока пусто';
+
+  @override
+  String get externalVaultNoMatches => 'По вашему запросу ничего не найдено';
 
   @override
   String get externalVaultAuthError => 'Vault не принял учётные данные.';
@@ -17676,7 +17687,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerKubeUnsupported =>
-      'Контейнер использует тома или возможности хоста/устройств, либо его настройки не удалось проверить. Данные и привилегированные приложения в этом эксперименте не поддерживаются.';
+      'Для мастера нужен Linux-контейнер с проверенной конфигурацией без доступа к сети хоста, устройствам и дополнительным привилегиям. Выберите подходящий контейнер или подготовьте манифест Kubernetes вручную.';
+
+  @override
+  String get dockerKubeMountsBlocked =>
+      'У этого контейнера подключены файлы или тома. Мастер работает с контейнерами без монтирований. Выберите другой контейнер или подготовьте манифест Kubernetes и настройте монтирования вручную.';
 
   @override
   String get dockerKubeImage => 'Опубликованный образ (registry/repository:tag или @sha256:digest)';

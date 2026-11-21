@@ -95,14 +95,26 @@ void main() {
     expect(selected.ports, [80]);
     expect(target.prompt, isNot(contains('never-send')));
     expect(target.prompt, isNot(contains(container.name)));
-    for (final unsafe in <Map<String, dynamic>>[
-      {},
-      {
+    expect(inspect({}).blocker, DockerKubeBlocker.unsupportedConfiguration);
+    expect(
+      inspect({
         ...safe,
         'Mounts': [
-          {'Type': 'bind', 'Source': '/private'},
+          {'Type': 'bind', 'Source': '/private', 'Destination': '/config/bot.env', 'RW': false},
         ],
-      },
+      }).blocker,
+      DockerKubeBlocker.mounts,
+    );
+    expect(
+      inspect({
+        ...safe,
+        'HostConfig': {
+          'Binds': ['/private:/config/bot.env:ro'],
+        },
+      }).blocker,
+      DockerKubeBlocker.mounts,
+    );
+    for (final unsafe in <Map<String, dynamic>>[
       {
         ...safe,
         'HostConfig': {'Privileged': true},
@@ -132,7 +144,7 @@ void main() {
         'HostConfig': {'PidMode': 'host'},
       },
     ]) {
-      expect(inspect(unsafe).unsupported, isTrue);
+      expect(inspect(unsafe).blocker, DockerKubeBlocker.unsupportedConfiguration);
     }
   });
 

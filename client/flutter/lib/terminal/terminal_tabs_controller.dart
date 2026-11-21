@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -75,6 +76,21 @@ final class TerminalTab {
   StreamSubscription<TerminalEvent>? _events;
 
   bool get isConnected => state == SessionConnectionState.connected;
+
+  /// Sends clipboard text after the paste confirmation and session check.
+  void pasteText(String text) {
+    final destination = target;
+    if (!terminal.bracketedPasteMode &&
+        AppPlatform.isWindows &&
+        destination is LocalTerminalTarget &&
+        destination.profile.kind == 'powershell') {
+      // ConPTY's Win32 key event for Shift+Enter. PSReadLine uses it to add
+      // a line and advance the cursor without submitting the current buffer.
+      const addLine = '\x1b[13;28;13;1;16;1_';
+      text = text.replaceAll(RegExp(r'\r\n|[\r\n]'), addLine);
+    }
+    terminal.paste(text);
+  }
 
   /// Split panes (TODO-07): sessions shown beside this tab along
   /// [splitAxis]. Each pane is a tab of its own whose [owner] is this one;

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
@@ -22,6 +23,7 @@ import 'package:consolecrypt/keepass/vault_connection_dialog.dart';
 import 'package:consolecrypt/keepass/webdav.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
 
@@ -635,7 +637,7 @@ class _KdbxManagerDialogState extends ConsumerState<KdbxManagerDialog> {
       onOpen: _open,
       onCreate: () => _open(create: true),
       onWebDav: _connection,
-      onVault: () => showVaultConnections(context),
+      onVault: () => widget.embedded ? context.go(AppRoutes.externalVault) : showVaultConnections(context),
       onSource: _select,
       onEditSource: (source) => _connection(source.connection),
       onSourceAction: _sourceAction,

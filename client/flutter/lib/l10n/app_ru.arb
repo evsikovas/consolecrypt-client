@@ -29,7 +29,11 @@
   "externalVaultJson": "Поля секрета в JSON",
   "externalVaultShow": "Показать значение",
   "externalVaultHide": "Скрыть значение",
-  "externalVaultInvalidConfig": "Проверьте HTTPS-адрес сервера и пути Vault. Для локальных тестов доступен HTTP на 127.0.0.1 или ::1.",
+  "externalVaultInvalidConfig": "Укажите адрес сервера с http:// или https:// и проверьте пути Vault.",
+  "externalVaultHttpNotice": "HTTP передаёт учётные данные и секреты без шифрования.",
+  "externalVaultSearch": "Поиск в папке или путь секрета",
+  "externalVaultEmpty": "В этой папке пока пусто",
+  "externalVaultNoMatches": "По вашему запросу ничего не найдено",
   "externalVaultAuthError": "Vault не принял учётные данные.",
   "externalVaultPermission": "Доступ запрещён. Проверьте политику Vault и срок действия токена.",
   "externalVaultListPermission": "Список недоступен. Если у вас есть право чтения, откройте секрет по полному пути.",
@@ -10605,9 +10609,13 @@
   "@dockerKubeIntro": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeUnsupported": "Контейнер использует тома или возможности хоста/устройств, либо его настройки не удалось проверить. Данные и привилегированные приложения в этом эксперименте не поддерживаются.",
+  "dockerKubeUnsupported": "Для мастера нужен Linux-контейнер с проверенной конфигурацией без доступа к сети хоста, устройствам и дополнительным привилегиям. Выберите подходящий контейнер или подготовьте манифест Kubernetes вручную.",
   "@dockerKubeUnsupported": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeMountsBlocked": "У этого контейнера подключены файлы или тома. Мастер работает с контейнерами без монтирований. Выберите другой контейнер или подготовьте манифест Kubernetes и настройте монтирования вручную.",
+  "@dockerKubeMountsBlocked": {
+    "description": "Explains what to do when the experimental deployment wizard cannot migrate the selected container's mounts."
   },
   "dockerKubeImage": "Опубликованный образ (registry/repository:tag или @sha256:digest)",
   "@dockerKubeImage": {

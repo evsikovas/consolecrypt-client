@@ -433,6 +433,49 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('desktop cluster header keeps adjacent actions apart', (tester) async {
+    await _pump(tester, _OperationsService(), language: 'ru');
+    final permissions = find.byKey(const ValueKey('kube-permissions'));
+    final terminal = find.byKey(const ValueKey('kube-toggle-terminal'));
+    final disconnect = find.byKey(const ValueKey('kube-disconnect'));
+    expect(tester.getSize(permissions).height, tester.getSize(disconnect).height);
+    expect(tester.getSize(terminal).height, tester.getSize(disconnect).height);
+    expect(tester.getRect(terminal).left - tester.getRect(permissions).right, GlassSpacing.toolbarItemGap);
+    expect(tester.getRect(disconnect).left - tester.getRect(terminal).right, GlassSpacing.toolbarItemGap);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('port forwarding separates fields and wrapped port shortcuts on a narrow screen', (tester) async {
+    final service = _ForwardService();
+    await _pump(tester, service, size: const Size(412, 740), language: 'ru', textScale: 1.3);
+    unawaited(
+      showKubeForwardDialog(
+        tester.element(find.byType(KubernetesScreen)),
+        session: service.session,
+        resource: const KubeResourceRef(api: _pods, name: 'demo-pod', namespace: 'default'),
+        service: service,
+        detail: const KubeResourceDetail(object: {}, yaml: '', containers: []),
+        ports: List.generate(8, (index) => 8200 + index),
+      ),
+    );
+    await settle(tester);
+    final dialog = find.byKey(const ValueKey('kube-forward-dialog'));
+    final remote = find.byKey(const ValueKey('kube-forward-remote'));
+    final local = find.byKey(const ValueKey('kube-forward-local'));
+    final shortcuts = find.descendant(of: dialog, matching: find.byType(Wrap));
+    final firstPort = find.descendant(of: shortcuts, matching: find.text('8200'));
+    final lastPort = find.descendant(of: shortcuts, matching: find.text('8207'));
+
+    expect(tester.getRect(shortcuts).top - tester.getRect(remote).bottom, GlassSpacing.s8);
+    expect(tester.getRect(local).top - tester.getRect(shortcuts).bottom, GlassSpacing.s8);
+    expect(tester.getRect(lastPort).top, greaterThan(tester.getRect(firstPort).bottom));
+    await tester.ensureVisible(lastPort);
+    await settle(tester);
+    await tester.tap(lastPort);
+    await settle(tester);
+    expect(tester.widget<TextField>(remote).controller!.text, '8207');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('network forwarding requires explicit consent and resets it when address changes', (tester) async {
     final service = _NetworkForwardService();
     await _pump(tester, service);

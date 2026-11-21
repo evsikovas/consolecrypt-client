@@ -82,6 +82,7 @@ void main() {
       expect(find.byKey(const ValueKey('workspace-tools-rail')), findsNothing);
       expect(tester.takeException(), isNull, reason: 'hosts');
       final c = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+      final layoutErrors = <String>[];
       for (final route in [
         AppRoutes.groups,
         AppRoutes.newHost,
@@ -89,14 +90,25 @@ void main() {
         AppRoutes.knownHosts,
         AppRoutes.terminal,
         AppRoutes.sftp,
+        AppRoutes.devices,
+        AppRoutes.sharing,
+        AppRoutes.rdp,
+        AppRoutes.kubernetes,
+        AppRoutes.databases,
+        AppRoutes.docker,
+        AppRoutes.passwords,
+        AppRoutes.externalVault,
+        AppRoutes.automation,
+        AppRoutes.tunnels,
         AppRoutes.settings,
         AppRoutes.backups,
         AppRoutes.sync,
       ]) {
         c.read(routerProvider).go(route);
         await settle(tester);
-        expect(tester.takeException(), isNull, reason: route);
+        if (tester.takeException() case final error?) layoutErrors.add('$route: $error');
       }
+      expect(layoutErrors, isEmpty);
       await tapKey(tester, 'mobile-ai');
       expect(tester.takeException(), isNull, reason: 'AI');
       await enterKey(tester, 'ai-input', 'Черновик');

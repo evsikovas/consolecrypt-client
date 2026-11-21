@@ -217,6 +217,7 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: GlassSpacing.s8,
                 children: [
                   Text('${widget.resource.namespace}/${widget.resource.name}'),
                   Text(l.kubeForwardHelp),
@@ -236,7 +237,8 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
                     ),
                     if (_ports.isNotEmpty)
                       Wrap(
-                        spacing: 6,
+                        spacing: GlassSpacing.s6,
+                        runSpacing: GlassSpacing.s6,
                         children: _ports
                             .map(
                               (port) => ActionChip(
@@ -252,7 +254,11 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(5)],
                       enabled: !_busy,
-                      decoration: InputDecoration(labelText: l.kubeLocalPort, helperText: l.kubeLocalPortHelp),
+                      decoration: InputDecoration(
+                        labelText: l.kubeLocalPort,
+                        helperText: l.kubeLocalPortHelp,
+                        helperMaxLines: 3,
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                     if (_networkAllowed) ...[

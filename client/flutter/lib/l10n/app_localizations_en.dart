@@ -108,7 +108,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get externalVaultInvalidConfig =>
-      'Check the HTTPS server address and Vault paths. Local tests can use HTTP on 127.0.0.1 or ::1.';
+      'Enter a server address starting with http:// or https:// and check the Vault paths.';
+
+  @override
+  String get externalVaultHttpNotice => 'HTTP sends credentials and secret values without encryption.';
+
+  @override
+  String get externalVaultSearch => 'Search this folder or enter a secret path';
+
+  @override
+  String get externalVaultEmpty => 'This folder is empty';
+
+  @override
+  String get externalVaultNoMatches => 'Nothing matches your search';
 
   @override
   String get externalVaultAuthError => 'Vault did not accept these credentials.';
@@ -17333,7 +17345,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerKubeUnsupported =>
-      'This container uses mounts or host/device capabilities, or its configuration could not be checked. Data and privileged workloads are not supported by this experiment.';
+      'The wizard needs a verified Linux container that can run without host networking, devices or extra privileges. Select a compatible container or prepare a Kubernetes manifest manually.';
+
+  @override
+  String get dockerKubeMountsBlocked =>
+      'This container has mounted files or volumes. The wizard works with containers without mounts. Select another container or prepare a Kubernetes manifest and configure its mounts manually.';
 
   @override
   String get dockerKubeImage => 'Published image (registry/repository:tag or @sha256:digest)';

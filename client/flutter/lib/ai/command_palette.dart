@@ -19,7 +19,6 @@ import 'package:consolecrypt/core/widgets/risk_badge.dart';
 import 'package:consolecrypt/keepass/external_vault_store.dart';
 import 'package:consolecrypt/keepass/kdbx_dialog.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
-import 'package:consolecrypt/keepass/vault_connection_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_navigation.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
@@ -328,11 +327,13 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final title = context.l10n.externalVaultTitle;
     final terms = query.toLowerCase().split(RegExp(r'\s+')).where((term) => term.isNotEmpty);
     bool matches(String label) => terms.every(label.toLowerCase().contains);
-    void open([String? id]) => unawaited(
-      _passwordAction(() async {
-        if (owner.valid) await showVaultConnections(context, id: id);
-      }),
-    );
+    void open([String? id]) {
+      if (!owner.valid) return;
+      final router = GoRouter.of(context);
+      _close();
+      router.go(Uri(path: AppRoutes.externalVault, queryParameters: id == null ? null : {'connection': id}).toString());
+    }
+
     if (matches('$title HashiCorp Vault OpenBao')) {
       yield _Item(
         group: _Group.passwords,
@@ -344,9 +345,9 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         onSelect: open,
       );
     }
-    final connections = ref.watch(externalVaultConnectionsProvider).where(
-      (connection) => matches('$title ${connection.name} ${connection.endpoint.host}'),
-    );
+    final connections = ref
+        .watch(externalVaultConnectionsProvider)
+        .where((connection) => matches('$title ${connection.name} ${connection.endpoint.host}'));
     for (final connection in connections.take(50)) {
       yield _Item(
         group: _Group.passwords,

@@ -157,30 +157,28 @@ class _TunnelTile extends ConsumerWidget {
         TunnelKind.dynamic => Icons.hub_rounded,
       }),
       title: Row(
+        spacing: GlassSpacing.s6,
         children: [
-          Flexible(
+          Expanded(
             child: Text(
               tunnel.name,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: t.bodyEmph.copyWith(color: p.label),
             ),
           ),
-          const SizedBox(width: GlassSpacing.s8),
-          GlassBadge(label: tunnel.kind.localized(l10n), dense: true),
-          if (tunnel.bindsPublicly) ...[
-            const SizedBox(width: GlassSpacing.s6),
+          if (tunnel.bindsPublicly)
             Tooltip(
               message: l10n.tunnelsPublicBindTooltip(tunnel.bindHost),
               child: Icon(Icons.warning_rounded, color: p.danger, size: 18),
             ),
-          ],
         ],
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            l10n.tunnelsTileSubtitle(_summary(l10n, tunnel), hostName),
+            '${tunnel.kind.localized(l10n)} · ${l10n.tunnelsTileSubtitle(_summary(l10n, tunnel), hostName)}',
             style: t.mono.copyWith(fontSize: 12, color: tokens.secondaryLabel),
           ),
           const SizedBox(height: GlassSpacing.s2),
@@ -196,6 +194,7 @@ class _TunnelTile extends ConsumerWidget {
       onTap: onEdit,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: GlassSpacing.toolbarItemGap,
         children: [
           Switch.adaptive(
             key: ValueKey('tunnel-switch-${tunnel.name}'),

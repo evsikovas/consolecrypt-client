@@ -148,6 +148,51 @@ class _PendingRequestCard extends ConsumerWidget {
     final t = tokens.typography;
     final ago = formatRelative(l10n, request.createdAt);
     final platform = d.platform.localized(l10n);
+    final details = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: GlassSpacing.s16,
+      children: [
+        Icon(platformIcon(d.platform), size: 32, color: p.warning),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: GlassSpacing.s4,
+            children: [
+              Text(l10n.devicesPendingTitle(d.name), style: t.title3.copyWith(color: p.label)),
+              Text(
+                request.expiresAt.isAfter(DateTime.now())
+                    ? l10n.devicesPendingMeta(platform, ago, formatRemaining(l10n, request.expiresAt))
+                    : l10n.devicesPendingMetaExpired(platform, ago),
+                style: t.callout.copyWith(color: tokens.secondaryLabel),
+              ),
+              Text(l10n.devicesPendingHint),
+            ],
+          ),
+        ),
+      ],
+    );
+    final actions = Wrap(
+      alignment: WrapAlignment.end,
+      spacing: GlassSpacing.toolbarItemGap,
+      runSpacing: GlassSpacing.s8,
+      children: [
+        GlassButton(
+          style: GlassButtonStyle.destructiveQuiet,
+          onPressed: () => runWithFeedback(
+            context,
+            () => ref.read(devicesServiceProvider).reject(request.requestId),
+            success: l10n.devicesRequestRejected,
+          ),
+          label: l10n.devicesReject,
+        ),
+        GlassButton(
+          key: const ValueKey('review-request'),
+          icon: Icons.verified_user_rounded,
+          onPressed: () => showApproveDeviceDialog(context, request),
+          label: l10n.devicesReviewApprove,
+        ),
+      ],
+    );
     // A content-layer banner card in the warning role (§4.1), not glass.
     return DecoratedBox(
       key: ValueKey('pending-${d.name}'),
@@ -157,45 +202,20 @@ class _PendingRequestCard extends ConsumerWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(GlassSpacing.card),
-        child: Row(
-          children: [
-            Icon(platformIcon(d.platform), size: 32, color: p.warning),
-            const SizedBox(width: GlassSpacing.s16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.devicesPendingTitle(d.name), style: t.title3.copyWith(color: p.label)),
-                  const SizedBox(height: GlassSpacing.s2),
-                  Text(
-                    request.expiresAt.isAfter(DateTime.now())
-                        ? l10n.devicesPendingMeta(platform, ago, formatRemaining(l10n, request.expiresAt))
-                        : l10n.devicesPendingMetaExpired(platform, ago),
-                    style: t.callout.copyWith(color: tokens.secondaryLabel),
-                  ),
-                  const SizedBox(height: GlassSpacing.s4),
-                  Text(l10n.devicesPendingHint),
-                ],
-              ),
-            ),
-            const SizedBox(width: GlassSpacing.s12),
-            GlassButton(
-              style: GlassButtonStyle.destructiveQuiet,
-              onPressed: () => runWithFeedback(
-                context,
-                () => ref.read(devicesServiceProvider).reject(request.requestId),
-                success: l10n.devicesRequestRejected,
-              ),
-              label: l10n.devicesReject,
-            ),
-            const SizedBox(width: GlassSpacing.s8),
-            GlassButton(
-              key: const ValueKey('review-request'),
-              icon: Icons.verified_user_rounded,
-              onPressed: () => showApproveDeviceDialog(context, request),
-              label: l10n.devicesReviewApprove,
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) => constraints.maxWidth < 640
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: GlassSpacing.s12,
+                  children: [details, actions],
+                )
+              : Row(
+                  spacing: GlassSpacing.s12,
+                  children: [
+                    Expanded(child: details),
+                    Flexible(child: actions),
+                  ],
+                ),
         ),
       ),
     );
@@ -242,70 +262,91 @@ class _DeviceTile extends StatelessWidget {
             Icons.hourglass_top_rounded,
           );
     final quarantine = protection && device.inQuarantine ? device.quarantineUntil : null;
-    return ListTile(
-      key: ValueKey('device-${device.name}'),
-      leading: Icon(platformIcon(device.platform)),
-      title: Row(
-        children: [
-          Flexible(
-            child: Text(
-              device.name,
-              overflow: TextOverflow.ellipsis,
-              style: tokens.typography.bodyEmph.copyWith(color: p.label),
-            ),
-          ),
-          if (device.isCurrent) ...[
-            const SizedBox(width: GlassSpacing.s8),
-            GlassBadge(label: l10n.devicesThisDevice, tone: GlassTone.accent, dense: true),
-          ],
-          if (quarantine != null) ...[
-            const SizedBox(width: GlassSpacing.s8),
-            GlassBadge(
-              key: ValueKey('quarantine-${device.name}'),
-              label: l10n.devicesQuarantineBadge(formatDate(l10n, quarantine)),
-              tone: GlassTone.warning,
-              icon: Icons.schedule_rounded,
-              dense: true,
-            ),
-          ],
-        ],
-      ),
-      subtitle: Text(
-        [
-          device.platform.localized(l10n),
-          if (device.lastSeenAt != null) l10n.devicesLastSeen(formatRelative(l10n, device.lastSeenAt!)),
-          l10n.devicesAdded(formatDate(l10n, device.createdAt)),
-          if (device.revokedAt != null) l10n.devicesRevokedOn(formatDate(l10n, device.revokedAt!)),
-        ].join(' · '),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GlassBadge(label: label, tone: tone, icon: icon),
-          const SizedBox(width: GlassSpacing.s4),
-          GlassMenuButton<_DeviceAction>(
-            entries: [
-              GlassMenuItem(value: _DeviceAction.rename, label: l10n.commonRename, icon: Icons.edit_rounded),
-              if (!device.isCurrent)
-                GlassMenuItem(
-                  key: ValueKey('revoke-${device.name}'),
-                  value: _DeviceAction.revoke,
-                  label: l10n.devicesRevokeMenu,
-                  icon: Icons.block_rounded,
-                  destructive: true,
+    final metadata = [
+      device.platform.localized(l10n),
+      if (device.lastSeenAt != null) l10n.devicesLastSeen(formatRelative(l10n, device.lastSeenAt!)),
+      l10n.devicesAdded(formatDate(l10n, device.createdAt)),
+      if (device.revokedAt != null) l10n.devicesRevokedOn(formatDate(l10n, device.revokedAt!)),
+    ].join(' · ');
+    final name = Text(
+      device.name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: tokens.typography.bodyEmph.copyWith(color: p.label),
+    );
+    final quarantineLabel = quarantine == null ? null : l10n.devicesQuarantineBadge(formatDate(l10n, quarantine));
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 640;
+        return ListTile(
+          key: ValueKey('device-${device.name}'),
+          leading: Icon(platformIcon(device.platform)),
+          title: compact
+              ? name
+              : Row(
+                  spacing: GlassSpacing.s8,
+                  children: [
+                    Flexible(child: name),
+                    if (device.isCurrent)
+                      GlassBadge(label: l10n.devicesThisDevice, tone: GlassTone.accent, dense: true),
+                    if (quarantineLabel != null)
+                      GlassBadge(
+                        key: ValueKey('quarantine-${device.name}'),
+                        label: quarantineLabel,
+                        tone: GlassTone.warning,
+                        icon: Icons.schedule_rounded,
+                        dense: true,
+                      ),
+                  ],
                 ),
+          subtitle: compact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: GlassSpacing.s4,
+                  children: [
+                    Text(metadata),
+                    Row(
+                      spacing: GlassSpacing.s4,
+                      children: [
+                        Icon(icon, size: 14, color: p.tone(tone)),
+                        Flexible(child: Text(label)),
+                      ],
+                    ),
+                    if (device.isCurrent) Text(l10n.devicesThisDevice),
+                    if (quarantineLabel != null) Text(quarantineLabel, key: ValueKey('quarantine-${device.name}')),
+                  ],
+                )
+              : Text(metadata),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: GlassSpacing.s4,
+            children: [
+              if (!compact) GlassBadge(label: label, tone: tone, icon: icon),
+              GlassMenuButton<_DeviceAction>(
+                entries: [
+                  GlassMenuItem(value: _DeviceAction.rename, label: l10n.commonRename, icon: Icons.edit_rounded),
+                  if (!device.isCurrent)
+                    GlassMenuItem(
+                      key: ValueKey('revoke-${device.name}'),
+                      value: _DeviceAction.revoke,
+                      label: l10n.devicesRevokeMenu,
+                      icon: Icons.block_rounded,
+                      destructive: true,
+                    ),
+                ],
+                onSelected: (v) => v == _DeviceAction.rename ? onRename() : onRevoke(),
+                builder: (context, open) => GlassIconButton(
+                  key: ValueKey('device-menu-${device.name}'),
+                  icon: Icons.more_horiz_rounded,
+                  tooltip: GlassStrings.of(context).moreActions,
+                  style: GlassIconButtonStyle.plain,
+                  onPressed: device.isRevoked ? null : open,
+                ),
+              ),
             ],
-            onSelected: (v) => v == _DeviceAction.rename ? onRename() : onRevoke(),
-            builder: (context, open) => GlassIconButton(
-              key: ValueKey('device-menu-${device.name}'),
-              icon: Icons.more_horiz_rounded,
-              tooltip: GlassStrings.of(context).moreActions,
-              style: GlassIconButtonStyle.plain,
-              onPressed: device.isRevoked ? null : open,
-            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

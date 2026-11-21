@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/keepass/external_vault.dart';
 import 'package:consolecrypt/keepass/external_vault_store.dart';
@@ -14,18 +15,23 @@ import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-Future<void> showVaultConnections(BuildContext context, {String? id}) =>
-    showAppDialog<void>(context, secure: true, barrierDismissible: false, builder: (_) => _VaultConnections(id: id));
+Future<void> showVaultConnections(BuildContext context, {String? id}) => showAppDialog<void>(
+  context,
+  secure: true,
+  barrierDismissible: false,
+  builder: (_) => ExternalVaultWorkspace(id: id),
+);
 
-class _VaultConnections extends ConsumerStatefulWidget {
-  const _VaultConnections({this.id});
+class ExternalVaultWorkspace extends ConsumerStatefulWidget {
+  const ExternalVaultWorkspace({super.key, this.id, this.onClose});
   final String? id;
+  final VoidCallback? onClose;
 
   @override
-  ConsumerState<_VaultConnections> createState() => _VaultConnectionsState();
+  ConsumerState<ExternalVaultWorkspace> createState() => _VaultConnectionsState();
 }
 
-class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
+class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
   late final _owner = ref.read(passwordManagerProvider);
   final _store = ExternalVaultCredentialStore();
   final _name = TextEditingController();
@@ -37,11 +43,13 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
   final _credential = TextEditingController();
   final _path = TextEditingController();
   final _json = TextEditingController();
+  final _search = TextEditingController();
   ExternalVaultAuth _auth = ExternalVaultAuth.userpass;
   ExternalVaultConnection? _selected;
   ExternalVaultSession? _client;
   ExternalVaultData? _data;
   List<String> _keys = [];
+  List<ExternalVaultMount> _mounts = [];
   String _folder = '';
   String? _secretPath, _error, _listError, _revealed;
   Timer? _hide;
@@ -78,9 +86,11 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
     _client?.close();
     _client = null;
     _keys = [];
+    _mounts = [];
     _verified = false;
     _folder = '';
     _path.clear();
+    _search.clear();
     _clearDetail();
     _credential.clear();
   }
@@ -95,7 +105,18 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
   void dispose() {
     _owner.validity.removeListener(_expire);
     _closeSession();
-    for (final controller in [_name, _endpoint, _user, _authMount, _mount, _namespace, _credential, _path, _json]) {
+    for (final controller in [
+      _name,
+      _endpoint,
+      _user,
+      _authMount,
+      _mount,
+      _namespace,
+      _credential,
+      _path,
+      _json,
+      _search,
+    ]) {
       controller.dispose();
     }
     super.dispose();
@@ -177,6 +198,7 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
 
   Future<void> _connect({bool saved = false}) => _run(() async {
     final configuration = _configuration();
+    FocusScope.of(context).unfocus();
     final previous = _selected;
     final previousWrapper = previous?.binding == configuration.binding ? previous?.wrapped : null;
     SecretText? secret;
@@ -196,6 +218,24 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
     var connected = false;
     try {
       await client.signIn(secret);
+      List<ExternalVaultMount> discovered;
+      try {
+        discovered = await client.discoverMounts();
+      } on ExternalVaultFailure {
+        // Older or restricted servers can still use the configured KV mount.
+        discovered = [];
+      }
+      if (!_current || _client != client) return;
+      final configured = client.mount;
+      final match = discovered.where((mount) => mount.path == configured.path).firstOrNull;
+      if (match != null) {
+        client.selectMount(match);
+      } else if (configured.path == 'secret' && discovered.isNotEmpty) {
+        client.selectMount(discovered.first);
+      } else {
+        discovered = [...discovered, configured];
+      }
+      _mounts = discovered;
       await _browse('');
       if (!_current || _client != client) return;
       if (_rememberCredential && !saved) {
@@ -243,12 +283,26 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
     _folder = folder;
     _keys = keys;
     _path.clear();
+    _search.clear();
   }
+
+  Future<void> _selectMount(ExternalVaultMount mount) => _run(() async {
+    final client = _client!;
+    final previous = client.mount;
+    client.selectMount(mount);
+    try {
+      await _browse('');
+    } catch (_) {
+      if (_current && _client == client) client.selectMount(previous);
+      rethrow;
+    }
+  });
 
   String _underFolder(String name) => _folder.isEmpty ? name : '$_folder/$name';
 
   Future<void> _open(String path) async {
     if (path.isEmpty) throw const ExternalVaultFailure('configuration');
+    FocusScope.of(context).unfocus();
     final client = _client!;
     final data = await client.read(path);
     if (!_current || client != _client) {
@@ -280,7 +334,7 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
       throw const ExternalVaultFailure('json');
     }
     try {
-      if (!client.connection.versioned && _data == null) {
+      if (!client.mount.versioned && _data == null) {
         try {
           final existing = await client.read(path);
           existing.values.clear();
@@ -316,7 +370,7 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
           title: l.commonDelete,
           destructive: true,
           confirmLabel: l.commonDelete,
-          message: client.connection.versioned ? l.externalVaultDeleteVersion : l.externalVaultDeletePermanent,
+          message: client.mount.versioned ? l.externalVaultDeleteVersion : l.externalVaultDeletePermanent,
         ) ||
         !_current ||
         client != _client) {
@@ -345,180 +399,269 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
     _ => l.externalVaultRequestError,
   };
 
-  Widget _field(TextEditingController controller, String label, {String? hint}) => TextField(
-    controller: controller,
-    enabled: !_busy,
-    autocorrect: false,
-    enableSuggestions: false,
-    decoration: InputDecoration(labelText: label, hintText: hint),
-  );
-
-  Widget _configForm(AppLocalizations l) => ListView(
-    children: [
-      _field(_name, l.keepassEntryTitle),
-      _field(_endpoint, l.externalVaultEndpoint, hint: 'https://vault.example.com'),
-      GlassSelect<ExternalVaultAuth>(
-        value: _auth,
-        expand: true,
-        semanticLabel: l.externalVaultAuth,
-        items: [
-          GlassSelectItem(value: ExternalVaultAuth.userpass, label: l.externalVaultUserpass),
-          GlassSelectItem(value: ExternalVaultAuth.token, label: l.externalVaultToken),
-        ],
-        onChanged: _busy
-            ? null
-            : (value) => setState(() {
-                _auth = value;
-                _credential.clear();
-              }),
-      ),
-      if (_auth == ExternalVaultAuth.userpass) _field(_user, l.keepassUsername),
-      SecretField(
-        controller: _credential,
+  Widget _field(TextEditingController controller, String label, {String? hint, ValueChanged<String>? onChanged}) =>
+      TextField(
+        controller: controller,
         enabled: !_busy,
-        allowReveal: false,
-        label: _auth == ExternalVaultAuth.userpass ? l.keepassEntryPassword : l.externalVaultToken,
-      ),
-      ExpansionTile(
-        title: Text(l.externalVaultApiSettings),
-        children: [
-          _field(_mount, l.externalVaultMount),
-          _field(_namespace, l.externalVaultNamespace),
-          if (_auth == ExternalVaultAuth.userpass) _field(_authMount, l.externalVaultAuthMount),
-          GlassSelect<bool>(
-            value: _versioned,
-            expand: true,
-            items: const [
-              GlassSelectItem(value: true, label: 'KV v2'),
-              GlassSelectItem(value: false, label: 'KV v1'),
-            ],
-            onChanged: _busy ? null : (value) => setState(() => _versioned = value),
-          ),
-        ],
-      ),
-      CheckboxListTile(
-        value: _rememberCredential,
-        title: Text(l.externalVaultRemember),
-        onChanged: _busy ? null : (value) => setState(() => _rememberCredential = value!),
-      ),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          GlassButton.prominent(label: l.commonConnect, onPressed: _busy ? null : _connect),
-          if (_selected?.wrapped != null)
-            GlassButton(
-              label: l.externalVaultUseSaved,
-              icon: Icons.fingerprint,
-              onPressed: _busy ? null : () => _connect(saved: true),
+        autocorrect: false,
+        enableSuggestions: false,
+        enableIMEPersonalizedLearning: false,
+        onChanged: onChanged,
+        decoration: InputDecoration(labelText: label, hintText: hint),
+      );
+
+  Widget _configForm(AppLocalizations l) => SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: GlassSpacing.s8,
+      children: [
+        _field(_name, l.keepassEntryTitle),
+        _field(
+          _endpoint,
+          l.externalVaultEndpoint,
+          hint: 'https://vault.example.com',
+          onChanged: (_) => setState(() {}),
+        ),
+        if (Uri.tryParse(_endpoint.text.trim())?.scheme == 'http')
+          Text(l.externalVaultHttpNotice, style: Theme.of(context).textTheme.bodySmall),
+        GlassSelect<ExternalVaultAuth>(
+          value: _auth,
+          expand: true,
+          semanticLabel: l.externalVaultAuth,
+          items: [
+            GlassSelectItem(value: ExternalVaultAuth.userpass, label: l.externalVaultUserpass),
+            GlassSelectItem(value: ExternalVaultAuth.token, label: l.externalVaultToken),
+          ],
+          onChanged: _busy
+              ? null
+              : (value) => setState(() {
+                  _auth = value;
+                  _credential.clear();
+                }),
+        ),
+        if (_auth == ExternalVaultAuth.userpass) _field(_user, l.keepassUsername),
+        SecretField(
+          controller: _credential,
+          enabled: !_busy,
+          allowReveal: false,
+          label: _auth == ExternalVaultAuth.userpass ? l.keepassEntryPassword : l.externalVaultToken,
+        ),
+        ExpansionTile(
+          title: Text(l.externalVaultApiSettings),
+          childrenPadding: const EdgeInsets.only(bottom: GlassSpacing.s8),
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: GlassSpacing.s8,
+              children: [
+                _field(_mount, l.externalVaultMount),
+                _field(_namespace, l.externalVaultNamespace),
+                if (_auth == ExternalVaultAuth.userpass) _field(_authMount, l.externalVaultAuthMount),
+                GlassSelect<bool>(
+                  value: _versioned,
+                  expand: true,
+                  items: const [
+                    GlassSelectItem(value: true, label: 'KV v2'),
+                    GlassSelectItem(value: false, label: 'KV v1'),
+                  ],
+                  onChanged: _busy ? null : (value) => setState(() => _versioned = value),
+                ),
+              ],
             ),
-          if (_selected != null)
+          ],
+        ),
+        CheckboxListTile(
+          value: _rememberCredential,
+          title: Text(l.externalVaultRemember),
+          onChanged: _busy ? null : (value) => setState(() => _rememberCredential = value!),
+        ),
+        Wrap(
+          spacing: GlassSpacing.toolbarItemGap,
+          runSpacing: GlassSpacing.s8,
+          children: [
+            GlassButton.prominent(label: l.commonConnect, onPressed: _busy ? null : _connect),
+            if (_selected?.wrapped != null)
+              GlassButton(
+                label: l.externalVaultUseSaved,
+                icon: Icons.fingerprint,
+                onPressed: _busy ? null : () => _connect(saved: true),
+              ),
+            if (_selected != null)
+              GlassButton.plain(
+                label: l.externalVaultRemoveConnection,
+                onPressed: _busy
+                    ? null
+                    : () => _run(() async {
+                        final chosen = _selected!;
+                        if (!await showConfirmDialog(
+                              context,
+                              title: l.externalVaultRemoveConnection,
+                              message: chosen.name,
+                              confirmLabel: l.commonDelete,
+                              destructive: true,
+                              secure: true,
+                            ) ||
+                            !_current) {
+                          return;
+                        }
+                        await _persist(chosen, remove: true);
+                        await _discardCredential(chosen, chosen.wrapped);
+                        _selected = null;
+                        _configuring = false;
+                        _credential.clear();
+                      }),
+              ),
             GlassButton.plain(
-              label: l.externalVaultRemoveConnection,
+              label: l.commonBack,
               onPressed: _busy
                   ? null
-                  : () => _run(() async {
-                      final chosen = _selected!;
-                      if (!await showConfirmDialog(
-                            context,
-                            title: l.externalVaultRemoveConnection,
-                            message: chosen.name,
-                            confirmLabel: l.commonDelete,
-                            destructive: true,
-                            secure: true,
-                          ) ||
-                          !_current) {
-                        return;
-                      }
-                      await _persist(chosen, remove: true);
-                      await _discardCredential(chosen, chosen.wrapped);
-                      _selected = null;
+                  : () => setState(() {
                       _configuring = false;
+                      _error = null;
                       _credential.clear();
                     }),
             ),
-          GlassButton.plain(
-            label: l.commonBack,
-            onPressed: _busy
-                ? null
-                : () => setState(() {
-                    _configuring = false;
-                    _error = null;
-                    _credential.clear();
-                  }),
-          ),
-        ],
-      ),
-    ],
+          ],
+        ),
+      ],
+    ),
   );
 
-  Widget _browser(AppLocalizations l) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text(_client!.connection.name, style: Theme.of(context).textTheme.titleMedium),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          GlassButton.plain(
-            label: _folder.isEmpty ? l.commonBack : _folder,
-            icon: Icons.arrow_upward,
-            onPressed: _busy
-                ? null
-                : () {
-                    if (_folder.isEmpty) {
-                      setState(() {
-                        _closeSession();
-                        _error = null;
-                      });
-                    } else {
-                      unawaited(_run(() => _browse(vaultPath(_folder).take(vaultPath(_folder).length - 1).join('/'))));
-                    }
-                  },
+  void _openSearchPath() {
+    final query = _search.text.trim();
+    if (query.isEmpty) return;
+    final path = query.contains('/') ? query : _underFolder(query);
+    unawaited(_run(() => path.endsWith('/') ? _browse(path.substring(0, path.length - 1)) : _open(path)));
+  }
+
+  Widget _browser(AppLocalizations l) {
+    final client = _client!;
+    final path = vaultPath(_folder, optional: true);
+    final query = _search.text.trim().toLowerCase();
+    final entries = _keys.where((entry) => entry.toLowerCase().contains(query)).toList();
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: GlassSpacing.s8,
+            children: [
+              Wrap(
+                spacing: GlassSpacing.toolbarItemGap,
+                runSpacing: GlassSpacing.s8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  GlassButton.plain(
+                    label: l.commonBack,
+                    icon: Icons.arrow_back,
+                    onPressed: _busy ? null : () => setState(_closeSession),
+                  ),
+                  if (_mounts.length > 1)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 220),
+                      child: GlassSelect<ExternalVaultMount>(
+                        value: client.mount,
+                        expand: true,
+                        semanticLabel: l.externalVaultMount,
+                        items: [for (final mount in _mounts) GlassSelectItem(value: mount, label: mount.path)],
+                        onChanged: _busy ? null : _selectMount,
+                      ),
+                    ),
+                  GlassButton(
+                    label: l.externalVaultNewSecret,
+                    icon: Icons.add,
+                    onPressed: _busy ? null : () => setState(_edit),
+                  ),
+                ],
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: GlassSpacing.s4,
+                  children: [
+                    GlassButton.plain(
+                      label: client.mount.path,
+                      icon: Icons.folder_outlined,
+                      onPressed: _busy || path.isEmpty ? null : () => _run(() => _browse('')),
+                    ),
+                    for (var i = 0; i < path.length; i++) ...[
+                      const Icon(Icons.chevron_right, size: 16),
+                      _folderCrumb(path[i], path.take(i + 1).join('/'), current: i == path.length - 1),
+                    ],
+                  ],
+                ),
+              ),
+              Row(
+                spacing: GlassSpacing.s8,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: const ValueKey('external-vault-search'),
+                      controller: _search,
+                      enabled: !_busy,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      enableIMEPersonalizedLearning: false,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        labelText: l.externalVaultSearch,
+                        prefixIcon: const Icon(Icons.search),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                      onSubmitted: (_) => _openSearchPath(),
+                    ),
+                  ),
+                  GlassButton(label: l.commonOpen, onPressed: _busy || query.isEmpty ? null : _openSearchPath),
+                ],
+              ),
+              if (_listError case final error?) Text(_errorText(l, error)),
+              const SizedBox.shrink(),
+            ],
           ),
-          GlassButton(
-            label: l.externalVaultNewSecret,
-            icon: Icons.add,
-            onPressed: _busy ? null : () => setState(_edit),
-          ),
-        ],
-      ),
-      Row(
-        children: [
-          Expanded(child: _field(_path, l.externalVaultPath)),
-          const SizedBox(width: 8),
-          GlassButton(label: l.commonOpen, onPressed: _busy ? null : () => _run(() => _open(_path.text.trim()))),
-        ],
-      ),
-      if (_listError case final error?) Text(_errorText(l, error)),
-      Expanded(
-        child: ListView.builder(
-          itemCount: _keys.length,
-          itemBuilder: (context, index) {
-            final key = _keys[index];
-            final folder = key.endsWith('/');
-            final label = folder ? key.substring(0, key.length - 1) : key;
-            return ListTile(
-              dense: true,
-              title: Text(label),
-              leading: Icon(folder ? Icons.folder_outlined : Icons.key_outlined),
-              onTap: _busy
-                  ? null
-                  : () => _run(() => folder ? _browse(_underFolder(label)) : _open(_underFolder(label))),
-            );
-          },
         ),
-      ),
-    ],
+        if (entries.isEmpty && _listError == null)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: Text(query.isEmpty ? l.externalVaultEmpty : l.externalVaultNoMatches)),
+          )
+        else
+          SliverList.builder(
+            itemCount: entries.length,
+            itemBuilder: (context, index) {
+              final key = entries[index];
+              final folder = key.endsWith('/');
+              final label = folder ? key.substring(0, key.length - 1) : key;
+              final path = _underFolder(label);
+              return ListTile(
+                key: ValueKey('external-vault-item-$key'),
+                dense: true,
+                selected: !folder && _secretPath == path,
+                leading: Icon(folder ? Icons.folder_outlined : Icons.key_outlined, size: 18),
+                trailing: const Icon(Icons.chevron_right, size: 16),
+                title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                onTap: _busy ? null : () => _run(() => folder ? _browse(path) : _open(path)),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _folderCrumb(String label, String path, {required bool current}) => GlassButton.plain(
+    label: label,
+    tooltip: path,
+    onPressed: _busy || current ? null : () => _run(() => _browse(path)),
   );
 
   Widget _detail(AppLocalizations l) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
+    spacing: GlassSpacing.s8,
     children: [
-      Text(_secretPath!, style: Theme.of(context).textTheme.titleMedium),
+      Text(_secretPath!, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
       Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: GlassSpacing.toolbarItemGap,
+        runSpacing: GlassSpacing.s8,
         children: [
           GlassButton.plain(
             label: l.commonBack,
@@ -541,13 +684,17 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
               ListTile(
                 dense: true,
                 title: Text(pair.key),
-                subtitle: _revealed == pair.key ? SelectableText(_value(pair.value)) : const Text('••••••••'),
+                subtitle: _revealed == pair.key
+                    ? RevealedSecret(child: SelectableText(_value(pair.value)))
+                    : const Text('••••••••'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
+                  spacing: GlassSpacing.toolbarItemGap,
                   children: [
-                    IconButton(
+                    GlassIconButton(
+                      size: GlassControlSize.md.height,
                       tooltip: _revealed == pair.key ? l.externalVaultHide : l.externalVaultShow,
-                      icon: Icon(_revealed == pair.key ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                      icon: _revealed == pair.key ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                       onPressed: _busy
                           ? null
                           : () => setState(() {
@@ -558,9 +705,10 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
                               });
                             }),
                     ),
-                    IconButton(
+                    GlassIconButton(
+                      size: GlassControlSize.md.height,
                       tooltip: l.commonCopy,
-                      icon: const Icon(Icons.copy_outlined),
+                      icon: Icons.copy_outlined,
                       onPressed: _busy
                           ? null
                           : () => _run(() async {
@@ -584,36 +732,44 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
 
   String _value(Object? value) => value is String ? value : jsonEncode(value);
 
-  Widget _editor(AppLocalizations l) => ListView(
-    children: [
-      if (_secretPath == null) _field(_path, l.externalVaultPath) else Text(_secretPath!),
-      TextField(
-        controller: _json,
-        enabled: !_busy,
-        maxLines: 10,
-        autocorrect: false,
-        enableSuggestions: false,
-        decoration: InputDecoration(labelText: l.externalVaultJson),
-      ),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          GlassButton.prominent(label: l.commonSave, onPressed: _busy ? null : _write),
-          GlassButton.plain(
-            label: l.commonCancel,
-            onPressed: _busy
-                ? null
-                : () => setState(() {
-                    _editing = false;
-                    _json.clear();
-                    _error = null;
-                    _path.clear();
-                  }),
+  Widget _editor(AppLocalizations l) => SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: GlassSpacing.s8,
+      children: [
+        if (_secretPath == null) _field(_path, l.externalVaultPath) else Text(_secretPath!),
+        RevealedSecretText(
+          controller: _json,
+          child: TextField(
+            controller: _json,
+            enabled: !_busy,
+            maxLines: 10,
+            autocorrect: false,
+            enableSuggestions: false,
+            enableIMEPersonalizedLearning: false,
+            decoration: InputDecoration(labelText: l.externalVaultJson),
           ),
-        ],
-      ),
-    ],
+        ),
+        Wrap(
+          spacing: GlassSpacing.toolbarItemGap,
+          runSpacing: GlassSpacing.s8,
+          children: [
+            GlassButton.prominent(label: l.commonSave, onPressed: _busy ? null : _write),
+            GlassButton.plain(
+              label: l.commonCancel,
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                      _editing = false;
+                      _json.clear();
+                      _error = null;
+                      _path.clear();
+                    }),
+            ),
+          ],
+        ),
+      ],
+    ),
   );
 
   @override
@@ -626,10 +782,22 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
         ? _configForm(l)
         : _editing
         ? _editor(l)
-        : _data != null
-        ? _detail(l)
         : _client != null
-        ? _browser(l)
+        ? LayoutBuilder(
+            builder: (context, constraints) {
+              if (_data == null) return _browser(l);
+              if (constraints.maxWidth < 800) return _detail(l);
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: GlassSpacing.s12,
+                children: [
+                  Expanded(child: _browser(l)),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: _detail(l)),
+                ],
+              );
+            },
+          )
         : ListView(
             children: [
               for (final connection in connections)
@@ -650,22 +818,53 @@ class _VaultConnectionsState extends ConsumerState<_VaultConnections> {
               ),
             ],
           );
+    final workspace = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: GlassSpacing.s8,
+      children: [
+        if (_busy) const LinearProgressIndicator(),
+        if (_error case final error?)
+          Text(_errorText(l, error), style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        Expanded(child: child),
+      ],
+    );
+    if (widget.onClose case final onClose?) {
+      final connection = _client?.connection;
+      return Padding(
+        key: const ValueKey('external-vault-workspace'),
+        padding: const EdgeInsets.all(GlassSpacing.s16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: GlassSpacing.s12,
+          children: [
+            Wrap(
+              spacing: GlassSpacing.toolbarItemGap,
+              runSpacing: GlassSpacing.s8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                GlassButton.plain(label: l.navPasswords, icon: Icons.arrow_back, onPressed: onClose),
+                Text(l.externalVaultTitle, style: Theme.of(context).textTheme.titleMedium),
+                if (connection != null) Text(connection.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (connection?.endpoint.scheme == 'http') const Text('HTTP'), // l10n-ignore: protocol name.
+              ],
+            ),
+            Expanded(
+              child: connection != null
+                  ? workspace
+                  : Align(
+                      alignment: AlignmentDirectional.topStart,
+                      child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 660), child: workspace),
+                    ),
+            ),
+          ],
+        ),
+      );
+    }
     return GlassDialog(
       title: l.externalVaultTitle,
       icon: Icons.shield_outlined,
       width: 660,
-      content: SizedBox(
-        height: min(MediaQuery.sizeOf(context).height * .60, 580),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (_busy) const LinearProgressIndicator(),
-            if (_error case final error?)
-              Text(_errorText(l, error), style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            Expanded(child: child),
-          ],
-        ),
-      ),
+      content: SizedBox(height: min(MediaQuery.sizeOf(context).height * .60, 580), child: workspace),
       primaryAction: GlassButton(label: l.commonClose, onPressed: () => Navigator.of(context).pop()),
     );
   }

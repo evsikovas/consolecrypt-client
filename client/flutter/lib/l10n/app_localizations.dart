@@ -277,8 +277,32 @@ abstract class AppLocalizations {
   /// Vault and OpenBao connection
   ///
   /// In en, this message translates to:
-  /// **'Check the HTTPS server address and Vault paths. Local tests can use HTTP on 127.0.0.1 or ::1.'**
+  /// **'Enter a server address starting with http:// or https:// and check the Vault paths.'**
   String get externalVaultInvalidConfig;
+
+  /// Vault and OpenBao secrets workspace
+  ///
+  /// In en, this message translates to:
+  /// **'HTTP sends credentials and secret values without encryption.'**
+  String get externalVaultHttpNotice;
+
+  /// Vault and OpenBao secrets workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Search this folder or enter a secret path'**
+  String get externalVaultSearch;
+
+  /// Vault and OpenBao secrets workspace
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is empty'**
+  String get externalVaultEmpty;
+
+  /// Vault and OpenBao secrets workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches your search'**
+  String get externalVaultNoMatches;
 
   /// Vault and OpenBao connection
   ///
@@ -30589,8 +30613,14 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'This container uses mounts or host/device capabilities, or its configuration could not be checked. Data and privileged workloads are not supported by this experiment.'**
+  /// **'The wizard needs a verified Linux container that can run without host networking, devices or extra privileges. Select a compatible container or prepare a Kubernetes manifest manually.'**
   String get dockerKubeUnsupported;
+
+  /// Explains what to do when the experimental deployment wizard cannot migrate the selected container's mounts.
+  ///
+  /// In en, this message translates to:
+  /// **'This container has mounted files or volumes. The wizard works with containers without mounts. Select another container or prepare a Kubernetes manifest and configure its mounts manually.'**
+  String get dockerKubeMountsBlocked;
 
   /// Experimental Docker to Kubernetes deployment wizard.
   ///

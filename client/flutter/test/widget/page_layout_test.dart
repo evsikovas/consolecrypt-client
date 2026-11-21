@@ -1,9 +1,12 @@
 import 'dart:ui' as ui;
 
+import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -23,6 +26,23 @@ Future<List<int>> _edgeAlpha(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('main desktop sections fit a compact window', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, locale: AppLocale.ru, size: const Size(1024, 800));
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final router = container.read(routerProvider);
+    final layoutErrors = <String>[];
+    for (final route in [...AppRoutes.shellPrefixes, AppRoutes.externalVault]) {
+      if (route == AppRoutes.ai || route == AppRoutes.snippets) continue;
+      router.go(route);
+      await settle(tester);
+      if (tester.takeException() case final error?) layoutErrors.add('$route: $error');
+    }
+    expect(layoutErrors, isEmpty);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   for (final width in [1024.0, 1600.0]) {
     for (final scale in [1.0, 1.4]) {
       testWidgets('page headings, actions and first content do not overlap at $width / $scale', (tester) async {

@@ -59,8 +59,16 @@
   "@externalVaultShow": {"description":"Vault and OpenBao connection"},
   "externalVaultHide": "Hide value",
   "@externalVaultHide": {"description":"Vault and OpenBao connection"},
-  "externalVaultInvalidConfig": "Check the HTTPS server address and Vault paths. Local tests can use HTTP on 127.0.0.1 or ::1.",
+  "externalVaultInvalidConfig": "Enter a server address starting with http:// or https:// and check the Vault paths.",
   "@externalVaultInvalidConfig": {"description":"Vault and OpenBao connection"},
+  "externalVaultHttpNotice": "HTTP sends credentials and secret values without encryption.",
+  "@externalVaultHttpNotice": {"description":"Vault and OpenBao secrets workspace"},
+  "externalVaultSearch": "Search this folder or enter a secret path",
+  "@externalVaultSearch": {"description":"Vault and OpenBao secrets workspace"},
+  "externalVaultEmpty": "This folder is empty",
+  "@externalVaultEmpty": {"description":"Vault and OpenBao secrets workspace"},
+  "externalVaultNoMatches": "Nothing matches your search",
+  "@externalVaultNoMatches": {"description":"Vault and OpenBao secrets workspace"},
   "externalVaultAuthError": "Vault did not accept these credentials.",
   "@externalVaultAuthError": {"description":"Vault and OpenBao connection"},
   "externalVaultPermission": "Access denied. Check the Vault policy and whether the token has expired.",
@@ -23174,9 +23182,13 @@
   "@dockerKubeIntro": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeUnsupported": "This container uses mounts or host/device capabilities, or its configuration could not be checked. Data and privileged workloads are not supported by this experiment.",
+  "dockerKubeUnsupported": "The wizard needs a verified Linux container that can run without host networking, devices or extra privileges. Select a compatible container or prepare a Kubernetes manifest manually.",
   "@dockerKubeUnsupported": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeMountsBlocked": "This container has mounted files or volumes. The wizard works with containers without mounts. Select another container or prepare a Kubernetes manifest and configure its mounts manually.",
+  "@dockerKubeMountsBlocked": {
+    "description": "Explains what to do when the experimental deployment wizard cannot migrate the selected container's mounts."
   },
   "dockerKubeImage": "Published image (registry/repository:tag or @sha256:digest)",
   "@dockerKubeImage": {

@@ -17,7 +17,11 @@ import 'package:xterm/xterm.dart';
 import '../helpers/fake_native_clipboard.dart';
 import '../helpers/test_app.dart';
 
-Future<(MockBackend, ProviderContainer, TerminalTab)> _open(WidgetTester tester, {bool compact = false}) async {
+Future<(MockBackend, ProviderContainer, TerminalTab)> _open(
+  WidgetTester tester, {
+  bool compact = false,
+  LocalShellProfile? localProfile,
+}) async {
   final b = testBackend();
   addTearDown(b.dispose);
   await b.debugSignInDemoAndUnlock();
@@ -29,9 +33,11 @@ Future<(MockBackend, ProviderContainer, TerminalTab)> _open(WidgetTester tester,
     size: compact ? const Size(1024, 720) : const Size(1600, 1000),
   );
   final c = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
-  final tab = await c
-      .read(terminalTabsProvider.notifier)
-      .open(b.inventory.currentHosts.firstWhere((h) => h.name == 'raspberry-pi'));
+  final terminals = c.read(terminalTabsProvider.notifier);
+  if (localProfile != null) b.terminal.localShellProfiles = LocalShellProfiles(profiles: [localProfile]);
+  final tab = localProfile == null
+      ? await terminals.open(b.inventory.currentHosts.firstWhere((h) => h.name == 'raspberry-pi'))
+      : await terminals.openTarget(LocalTerminalTarget(localProfile));
   c.read(routerProvider).go(AppRoutes.terminal);
   await settle(tester);
   return (b, c, tab);
@@ -57,6 +63,37 @@ void _clipboard(WidgetTester tester, {Future<Object?> Function(MethodCall)? hand
 }
 
 void main() {
+  testWidgets('Windows PowerShell paste adds continuation lines in order without submitting', (tester) async {
+    const profile = LocalShellProfile(
+      id: 'windows:powershell',
+      kind: 'powershell',
+      label: 'Windows PowerShell',
+      shell: 'powershell',
+    );
+    final (_, _, tab) = await _open(tester, localProfile: profile);
+    final writes = <String>[];
+    tab.terminal.onOutput = writes.add;
+    const clipboard = 'first\r\n  second\n\nthird\r';
+    _clipboard(tester, handler: (call) async => call.method == 'Clipboard.getData' ? {'text': clipboard} : null);
+    await tester.tap(find.byType(TerminalView).first);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(writes, isEmpty);
+    await tapKey(tester, 'confirm-ok');
+    const continuation = '\x1b[13;28;13;1;16;1_';
+    expect(writes, ['first$continuation  second$continuation${continuation}third$continuation']);
+
+    writes.clear();
+    tab.terminal.write('\x1b[?2004h');
+    await _menu(tester);
+    await tapKey(tester, 'terminal-menu-paste');
+    await tapKey(tester, 'confirm-ok');
+    expect(writes, ['\x1b[200~$clipboard\x1b[201~']);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('Windows Shift Insert pastes once through bracketed paste and never sends Insert', (tester) async {
     final (_, _, tab) = await _open(tester);
     tab.terminal.write('\x1b[?2004h');

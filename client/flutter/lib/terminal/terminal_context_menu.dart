@@ -62,7 +62,7 @@ Future<void> _pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab
     isCurrent: () => tab.isConnected && _validOrigin(ref, tab, profile),
   );
   if (text == null || !context.mounted || !tab.isConnected || !_validOrigin(ref, tab, profile)) return;
-  tab.terminal.paste(text);
+  tab.pasteText(text);
   tab.controller.clearSelection();
 }
 

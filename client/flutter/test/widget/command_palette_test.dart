@@ -230,6 +230,8 @@ void main() {
     expect(find.byKey(const ValueKey('palette-external-vault')), findsOneWidget);
     await _query(tester, 'Passwords: OpenBao test');
     await tapKey(tester, 'palette-external-vault-bao-test');
+    expect(find.byKey(const ValueKey('external-vault-workspace')), findsOneWidget);
+    expect(find.byKey(const ValueKey('command-palette')), findsNothing);
     expect(find.text('Server address'), findsOneWidget);
     expect(find.text('https://vault.example.invalid'), findsOneWidget);
     expect(tester.takeException(), isNull);

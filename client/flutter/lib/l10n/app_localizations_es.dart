@@ -108,7 +108,19 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get externalVaultInvalidConfig =>
-      'Compruebe la dirección HTTPS y las rutas de Vault. Las pruebas locales pueden usar HTTP en 127.0.0.1 o ::1.';
+      'Introduce una dirección que empiece por http:// o https:// y comprueba las rutas de Vault.';
+
+  @override
+  String get externalVaultHttpNotice => 'HTTP envía las credenciales y los secretos sin cifrar.';
+
+  @override
+  String get externalVaultSearch => 'Buscar en esta carpeta o introducir una ruta';
+
+  @override
+  String get externalVaultEmpty => 'Esta carpeta está vacía';
+
+  @override
+  String get externalVaultNoMatches => 'No hay resultados para tu búsqueda';
 
   @override
   String get externalVaultAuthError => 'Vault rechazó las credenciales.';
@@ -17479,7 +17491,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dockerKubeUnsupported =>
-      'El contenedor usa montajes o funciones del host o de dispositivos, o no se pudo verificar su configuración. Esta función experimental no admite datos ni cargas privilegiadas.';
+      'El asistente requiere un contenedor Linux con una configuración verificada que pueda ejecutarse sin usar la red del host, dispositivos ni privilegios adicionales. Selecciona un contenedor compatible o prepara el manifiesto de Kubernetes manualmente.';
+
+  @override
+  String get dockerKubeMountsBlocked =>
+      'Este contenedor tiene archivos o volúmenes montados. El asistente funciona con contenedores sin montajes. Selecciona otro contenedor o prepara un manifiesto de Kubernetes y configura los montajes manualmente.';
 
   @override
   String get dockerKubeImage => 'Imagen publicada (registry/repository:tag o @sha256:digest)';

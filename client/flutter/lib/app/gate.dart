@@ -55,6 +55,7 @@ final appStageProvider = Provider<AppStage>((ref) {
 
 abstract final class AppRoutes {
   static const passwords = '/passwords';
+  static const externalVault = '$passwords/vault';
   static const automation = '/automation';
   static const loading = '/loading';
   static const welcome = '/welcome';

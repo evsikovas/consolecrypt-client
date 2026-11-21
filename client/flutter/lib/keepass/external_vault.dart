@@ -66,7 +66,7 @@ class ExternalVaultConnection {
         uri.userInfo.isNotEmpty ||
         uri.hasQuery ||
         uri.hasFragment ||
-        (uri.scheme != 'https' && (uri.scheme != 'http' || !{'127.0.0.1', '::1'}.contains(uri.host)))) {
+        (uri.scheme != 'https' && uri.scheme != 'http')) {
       throw const ExternalVaultFailure('configuration');
     }
     final prefix = uri.pathSegments.where((segment) => segment.isNotEmpty).toList();
@@ -129,13 +129,48 @@ class ExternalVaultData {
   final int? version;
 }
 
+typedef ExternalVaultMount = ({String path, bool versioned});
+
 /// Only an explicit user action reads or mutates a secret value.
 class ExternalVaultSession {
-  ExternalVaultSession(this.connection) : _http = HttpClient()..connectionTimeout = const Duration(seconds: 12);
+  ExternalVaultSession(this.connection)
+    : _http = HttpClient()..connectionTimeout = const Duration(seconds: 12),
+      _mount = (path: connection.mount, versioned: connection.versioned);
   final ExternalVaultConnection connection;
   final HttpClient _http;
+  ExternalVaultMount _mount;
+  ExternalVaultMount get mount => _mount;
   SecretText? _token;
   bool _closed = false;
+
+  void selectMount(ExternalVaultMount mount) {
+    vaultPath(mount.path);
+    _mount = mount;
+  }
+
+  /// This endpoint returns metadata about stores visible to the current token.
+  Future<List<ExternalVaultMount>> discoverMounts() async {
+    final result = await _request('GET', const ['sys', 'internal', 'ui', 'mounts']);
+    final stores = _map(result['data'])['secret'];
+    if (stores is! Map || stores.length > 10000) return const [];
+    final mounts = <ExternalVaultMount>[];
+    for (final entry in stores.entries) {
+      final key = entry.key;
+      final settings = entry.value;
+      if (key is! String || settings is! Map || settings['type'] != 'kv') continue;
+      final path = key.endsWith('/') ? key.substring(0, key.length - 1) : key;
+      try {
+        vaultPath(path);
+        final options = settings['options'];
+        final version = options is Map ? options['version'] : null;
+        if (version != null && version != '1' && version != '2') continue;
+        mounts.add((path: path, versioned: version == '2'));
+      } on ExternalVaultFailure {
+        continue;
+      }
+    }
+    return mounts..sort((a, b) => a.path.compareTo(b.path));
+  }
 
   Future<void> signIn(SecretText credential) async {
     if (credential.isEmpty || credential.byteLength > 16384) throw const ExternalVaultFailure('authentication');
@@ -170,8 +205,8 @@ class ExternalVaultSession {
   }
 
   List<String> _kv(String path, {String? section, bool optional = false}) => [
-    ...vaultPath(connection.mount),
-    if (connection.versioned && section != null) section,
+    ...vaultPath(_mount.path),
+    if (_mount.versioned && section != null) section,
     ...vaultPath(path, optional: optional),
   ];
 
@@ -200,9 +235,10 @@ class ExternalVaultSession {
   }
 
   Future<ExternalVaultData> read(String path) async {
+    final versioned = _mount.versioned;
     final response = await _request('GET', _kv(path, section: 'data'));
     final payload = _map(response['data']);
-    if (!connection.versioned) return ExternalVaultData(payload, null);
+    if (!versioned) return ExternalVaultData(payload, null);
     final version = _map(payload['metadata'])['version'];
     if (version is! int || version <= 0) throw const ExternalVaultFailure('response');
     return ExternalVaultData(_map(payload['data']), version);
@@ -212,18 +248,18 @@ class ExternalVaultSession {
     await _request(
       'POST',
       _kv(path, section: 'data'),
-      payload: connection.versioned
+      payload: _mount.versioned
           ? {
               'data': values,
               'options': {'cas': version ?? 0},
             }
           : values,
-      compareAndSet: connection.versioned,
+      compareAndSet: _mount.versioned,
     );
   }
 
   Future<void> delete(String path, int? version) async {
-    if (connection.versioned) {
+    if (_mount.versioned) {
       if (version == null || version <= 0) throw const ExternalVaultFailure('response');
       await _request(
         'POST',

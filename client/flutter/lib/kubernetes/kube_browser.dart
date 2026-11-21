@@ -1966,6 +1966,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     return SizedBox(
       height: 36,
       child: Row(
+        spacing: GlassSpacing.toolbarItemGap,
         children: [
           Expanded(
             child: Row(
@@ -1993,9 +1994,15 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                 ),
                 if (!narrow) ...[
                   const SizedBox(width: GlassSpacing.s8),
-                  Text(
-                    session == null || session.serverVersion.isEmpty ? widget.connection.server : session.serverVersion,
-                    style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                  Flexible(
+                    child: Text(
+                      session == null || session.serverVersion.isEmpty
+                          ? widget.connection.server
+                          : session.serverVersion,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                    ),
                   ),
                 ],
                 const SizedBox(width: GlassSpacing.s12),
@@ -2025,6 +2032,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
           if (session != null && widget.service is KubeAiService)
             GlassIconButton(
               key: const ValueKey('kube-open-ai'),
+              size: GlassControlSize.md.height,
               icon: Icons.auto_awesome,
               tooltip: l.kubeAiAssistant,
               onPressed: () => _showAi(),
@@ -2032,6 +2040,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
           if (session != null && widget.service is KubeOperationsService)
             GlassIconButton(
               key: const ValueKey('kube-permissions'),
+              size: GlassControlSize.md.height,
               icon: Icons.policy_outlined,
               tooltip: l.kubePermissions,
               onPressed: () => showAppDialog<void>(
@@ -2047,14 +2056,15 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
           if (session != null)
             GlassIconButton(
               key: const ValueKey('kube-toggle-terminal'),
+              size: GlassControlSize.md.height,
               icon: Icons.terminal,
               tooltip: l.kubeShowPanel,
               onPressed: _toggleTerminals,
             ),
-          const SizedBox(width: GlassSpacing.s4),
           if (narrow)
             GlassIconButton(
               key: const ValueKey('kube-disconnect'),
+              size: GlassControlSize.md.height,
               icon: Icons.logout_rounded,
               tooltip: session == null ? l.kubeBackToContexts : l.kubeDisconnect,
               onPressed: widget.onClose,

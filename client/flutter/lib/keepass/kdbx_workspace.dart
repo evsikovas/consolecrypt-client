@@ -975,6 +975,7 @@ class KdbxWorkspace extends StatelessWidget {
       key: const ValueKey('keepass-compact-navigation'),
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       child: Row(
+        spacing: GlassSpacing.toolbarItemGap,
         children: [
           Expanded(
             child: GlassMenuButton<String>(
@@ -1003,11 +1004,7 @@ class KdbxWorkspace extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 6),
-          if (manager.sources.any((s) => !manager.sessions.containsKey(s.id))) ...[
-            _unlockOthers(context),
-            const SizedBox(width: 6),
-          ],
+          if (manager.sources.any((s) => !manager.sessions.containsKey(s.id))) _unlockOthers(context),
           GlassMenuButton<String>(
             entries: [
               GlassMenuItem(
@@ -1060,6 +1057,7 @@ class KdbxWorkspace extends StatelessWidget {
                   : Icons.folder_outlined,
               tooltip: l.keepassGroups,
               style: GlassIconButtonStyle.plain,
+              size: GlassControlSize.md.height,
               onPressed: busy ? null : open,
             ),
           ),
@@ -1125,6 +1123,7 @@ class KdbxWorkspace extends StatelessWidget {
                     key: const ValueKey('keepass-new-entry'),
                     tooltip: l.keepassNewEntry,
                     icon: Icons.add_rounded,
+                    size: GlassControlSize.md.height,
                     onPressed: busy ? null : onNewEntry,
                   )
                 else
@@ -1139,6 +1138,7 @@ class KdbxWorkspace extends StatelessWidget {
                     key: const ValueKey('keepass-new-group'),
                     tooltip: l.keepassNewGroup,
                     icon: Icons.create_new_folder_outlined,
+                    size: GlassControlSize.md.height,
                     onPressed: busy ? null : onNewGroup,
                   )
                 else
@@ -1160,6 +1160,7 @@ class KdbxWorkspace extends StatelessWidget {
                     key: const ValueKey('keepass-generator-open'),
                     tooltip: l.keepassGenerator,
                     icon: Icons.auto_fix_high_rounded,
+                    size: GlassControlSize.md.height,
                     onPressed: busy ? null : onGenerator,
                   )
                 else
@@ -1168,6 +1169,21 @@ class KdbxWorkspace extends StatelessWidget {
                     label: l.keepassGenerator,
                     icon: Icons.auto_fix_high_rounded,
                     onPressed: busy ? null : onGenerator,
+                  ),
+                if (compact)
+                  GlassIconButton(
+                    key: const ValueKey('keepass-external-vault'),
+                    tooltip: l.externalVaultTitle,
+                    icon: Icons.shield_outlined,
+                    size: GlassControlSize.md.height,
+                    onPressed: busy ? null : onVault,
+                  )
+                else
+                  GlassButton(
+                    key: const ValueKey('keepass-external-vault'),
+                    label: l.externalVaultTitle,
+                    icon: Icons.shield_outlined,
+                    onPressed: busy ? null : onVault,
                   ),
                 GlassMenuButton<String>(
                   entries: _sourceEntries(context, session!.source),
