@@ -17666,4 +17666,96 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get keepassNerdIconLoadFailed => 'Не удалось загрузить значки';
+
+  @override
+  String get dockerKubeDeploy => 'Развернуть в Kubernetes · Экспериментально';
+
+  @override
+  String get dockerKubeIntro =>
+      'Экспериментально: один stateless Linux-контейнер, одна реплика и внутренний Service ClusterIP. Проверьте манифест перед развёртыванием.';
+
+  @override
+  String get dockerKubeUnsupported =>
+      'Контейнер использует тома или возможности хоста/устройств, либо его настройки не удалось проверить. Данные и привилегированные приложения в этом эксперименте не поддерживаются.';
+
+  @override
+  String get dockerKubeImage => 'Опубликованный образ (registry/repository:tag или @sha256:digest)';
+
+  @override
+  String get dockerKubeImageHelp =>
+      'Сначала опубликуйте образ в registry, доступном узлам кластера. Мастер не загружает локальные образы. Лучше указать digest: образ по тегу может измениться. localhost не является удалённым registry.';
+
+  @override
+  String get dockerKubePort => 'TCP-порт контейнера / Service';
+
+  @override
+  String get dockerKubePullSecret => 'Существующий imagePullSecret в этом namespace (необязательно)';
+
+  @override
+  String get dockerKubeNewNamespace => 'Новый namespace';
+
+  @override
+  String get dockerKubeCreateNamespace => 'Создать namespace сейчас';
+
+  @override
+  String get dockerKubeNamespaceHelp =>
+      'Создание namespace сразу изменяет кластер. Проверка приложения на сервере станет доступна после создания namespace.';
+
+  @override
+  String get dockerKubeNamespaceCreated => 'Namespace создан. При отмене он останется в кластере.';
+
+  @override
+  String get dockerKubeGenerate => 'Создать YAML с ИИ';
+
+  @override
+  String get dockerKubeTemplate => 'Использовать шаблон';
+
+  @override
+  String get dockerKubeAiReview =>
+      'Выбранный ИИ-провайдер получит только показанный ниже шаблон: адрес образа, имена приложения и namespace, порт и имя pull-secret. Проверьте его перед отправкой. Значения окружения, Docker inspect и Kubernetes-учётные данные не передаются.';
+
+  @override
+  String get dockerKubeSendAi => 'Отправить шаблон ИИ';
+
+  @override
+  String get dockerKubeManifestRejected =>
+      'Манифест выходит за рамки эксперимента: разрешены ровно один Deployment и один Service ClusterIP с выбранными образом, именами и портом. Менять можно только ресурсы и интервалы TCP readiness.';
+
+  @override
+  String get dockerKubeInvalidTarget =>
+      'Проверьте имена приложения и namespace, опубликованный образ с явным registry и тегом/digest, TCP-порт и имя pull-secret.';
+
+  @override
+  String get dockerKubeAcknowledge =>
+      'Я проверил доступность образа и архитектуру CPU. Локальные файлы, изменения слоя контейнера, переопределения окружения, команды и зависимости Compose не переносятся; используются настройки образа.';
+
+  @override
+  String get dockerKubeValidated =>
+      'Оба ресурса прошли server dry-run. Развёртывание создаёт новые ресурсы и не перезаписывает существующие.';
+
+  @override
+  String get dockerKubeFailed =>
+      'Операция не выполнена. Проверьте доступ к кластеру, права записи, конфликты имён ресурсов и манифест. Перечисленные ниже созданные ресурсы остаются в кластере.';
+
+  @override
+  String get dockerKubeCreated => 'Созданные ресурсы (готовность приложения ещё не подтверждена)';
+
+  @override
+  String get dockerKubeReady => 'Deployment готов';
+
+  @override
+  String get dockerKubePending =>
+      'Deployment пока не готов. Проверьте Pods/события в разделе Kubernetes, включая ImagePullBackOff и CrashLoopBackOff.';
+
+  @override
+  String get dockerKubeCheckStatus => 'Проверить готовность';
+
+  @override
+  String get dockerKubeUnavailable => 'Сохранённые Kubernetes-контексты или необходимые Native API недоступны.';
+
+  @override
+  String get dockerKubeAiFailed => 'ИИ не создал полный ответ. Можно использовать шаблон.';
+
+  @override
+  String get dockerKubeContext => 'Kubernetes-контекст';
 }

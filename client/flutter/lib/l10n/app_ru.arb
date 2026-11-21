@@ -10596,5 +10596,113 @@
   "keepassNerdIconLoadFailed": "Не удалось загрузить значки",
   "@keepassNerdIconLoadFailed": {
     "description": "Label for a desktop interface control."
+  },
+  "dockerKubeDeploy": "Развернуть в Kubernetes · Экспериментально",
+  "@dockerKubeDeploy": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeIntro": "Экспериментально: один stateless Linux-контейнер, одна реплика и внутренний Service ClusterIP. Проверьте манифест перед развёртыванием.",
+  "@dockerKubeIntro": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeUnsupported": "Контейнер использует тома или возможности хоста/устройств, либо его настройки не удалось проверить. Данные и привилегированные приложения в этом эксперименте не поддерживаются.",
+  "@dockerKubeUnsupported": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeImage": "Опубликованный образ (registry/repository:tag или @sha256:digest)",
+  "@dockerKubeImage": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeImageHelp": "Сначала опубликуйте образ в registry, доступном узлам кластера. Мастер не загружает локальные образы. Лучше указать digest: образ по тегу может измениться. localhost не является удалённым registry.",
+  "@dockerKubeImageHelp": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubePort": "TCP-порт контейнера / Service",
+  "@dockerKubePort": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubePullSecret": "Существующий imagePullSecret в этом namespace (необязательно)",
+  "@dockerKubePullSecret": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeNewNamespace": "Новый namespace",
+  "@dockerKubeNewNamespace": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeCreateNamespace": "Создать namespace сейчас",
+  "@dockerKubeCreateNamespace": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeNamespaceHelp": "Создание namespace сразу изменяет кластер. Проверка приложения на сервере станет доступна после создания namespace.",
+  "@dockerKubeNamespaceHelp": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeNamespaceCreated": "Namespace создан. При отмене он останется в кластере.",
+  "@dockerKubeNamespaceCreated": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeGenerate": "Создать YAML с ИИ",
+  "@dockerKubeGenerate": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeTemplate": "Использовать шаблон",
+  "@dockerKubeTemplate": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeAiReview": "Выбранный ИИ-провайдер получит только показанный ниже шаблон: адрес образа, имена приложения и namespace, порт и имя pull-secret. Проверьте его перед отправкой. Значения окружения, Docker inspect и Kubernetes-учётные данные не передаются.",
+  "@dockerKubeAiReview": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeSendAi": "Отправить шаблон ИИ",
+  "@dockerKubeSendAi": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeManifestRejected": "Манифест выходит за рамки эксперимента: разрешены ровно один Deployment и один Service ClusterIP с выбранными образом, именами и портом. Менять можно только ресурсы и интервалы TCP readiness.",
+  "@dockerKubeManifestRejected": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeInvalidTarget": "Проверьте имена приложения и namespace, опубликованный образ с явным registry и тегом/digest, TCP-порт и имя pull-secret.",
+  "@dockerKubeInvalidTarget": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeAcknowledge": "Я проверил доступность образа и архитектуру CPU. Локальные файлы, изменения слоя контейнера, переопределения окружения, команды и зависимости Compose не переносятся; используются настройки образа.",
+  "@dockerKubeAcknowledge": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeValidated": "Оба ресурса прошли server dry-run. Развёртывание создаёт новые ресурсы и не перезаписывает существующие.",
+  "@dockerKubeValidated": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeFailed": "Операция не выполнена. Проверьте доступ к кластеру, права записи, конфликты имён ресурсов и манифест. Перечисленные ниже созданные ресурсы остаются в кластере.",
+  "@dockerKubeFailed": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeCreated": "Созданные ресурсы (готовность приложения ещё не подтверждена)",
+  "@dockerKubeCreated": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeReady": "Deployment готов",
+  "@dockerKubeReady": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubePending": "Deployment пока не готов. Проверьте Pods/события в разделе Kubernetes, включая ImagePullBackOff и CrashLoopBackOff.",
+  "@dockerKubePending": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeCheckStatus": "Проверить готовность",
+  "@dockerKubeCheckStatus": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeUnavailable": "Сохранённые Kubernetes-контексты или необходимые Native API недоступны.",
+  "@dockerKubeUnavailable": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeAiFailed": "ИИ не создал полный ответ. Можно использовать шаблон.",
+  "@dockerKubeAiFailed": {
+    "description": "Experimental Docker to Kubernetes deployment wizard."
+  },
+  "dockerKubeContext": "Kubernetes-контекст",
+  "@dockerKubeContext": {
+    "description": "Saved Kubernetes context selected for experimental Docker deployment."
   }
 }

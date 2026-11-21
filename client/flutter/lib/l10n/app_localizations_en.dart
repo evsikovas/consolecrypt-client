@@ -17323,4 +17323,97 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keepassNerdIconLoadFailed => 'Could not load icons';
+
+  @override
+  String get dockerKubeDeploy => 'Deploy to Kubernetes · Experimental';
+
+  @override
+  String get dockerKubeIntro =>
+      'Experimental: one stateless Linux container, one replica and an internal ClusterIP Service. Review the manifest before deploying.';
+
+  @override
+  String get dockerKubeUnsupported =>
+      'This container uses mounts or host/device capabilities, or its configuration could not be checked. Data and privileged workloads are not supported by this experiment.';
+
+  @override
+  String get dockerKubeImage => 'Published image (registry/repository:tag or @sha256:digest)';
+
+  @override
+  String get dockerKubeImageHelp =>
+      'Publish the image to a registry reachable by cluster nodes first. This wizard does not upload local images. Prefer a digest; a mutable tag can change. localhost is not a remote registry.';
+
+  @override
+  String get dockerKubePort => 'Container / Service TCP port';
+
+  @override
+  String get dockerKubePullSecret => 'Existing imagePullSecret in this namespace (optional)';
+
+  @override
+  String get dockerKubeNewNamespace => 'New namespace';
+
+  @override
+  String get dockerKubeCreateNamespace => 'Create namespace now';
+
+  @override
+  String get dockerKubeNamespaceHelp =>
+      'Creating a namespace changes the cluster immediately. The app dry-run becomes available after the namespace exists.';
+
+  @override
+  String get dockerKubeNamespaceCreated => 'Namespace created. It will remain if you cancel.';
+
+  @override
+  String get dockerKubeGenerate => 'Generate YAML with AI';
+
+  @override
+  String get dockerKubeTemplate => 'Use template';
+
+  @override
+  String get dockerKubeAiReview =>
+      'The selected AI provider will receive only the manifest template shown below: image reference, app/namespace names, port and pull-secret name. Review it before sending. Environment values, Docker inspect and Kubernetes credentials are excluded.';
+
+  @override
+  String get dockerKubeSendAi => 'Send template to AI';
+
+  @override
+  String get dockerKubeManifestRejected =>
+      'The manifest is outside this experiment: exactly one Deployment and one ClusterIP Service are allowed, with the selected image, names and port. Only resources and TCP readiness timing may be edited.';
+
+  @override
+  String get dockerKubeInvalidTarget =>
+      'Check the app/namespace names, published image with explicit registry and tag/digest, TCP port and pull-secret name.';
+
+  @override
+  String get dockerKubeAcknowledge =>
+      'I checked image availability and CPU architecture. Local files, writable-layer changes, environment overrides, commands and Compose dependencies will not be copied; image defaults will be used.';
+
+  @override
+  String get dockerKubeValidated =>
+      'Server dry-run passed for both resources. Deploy creates new resources and never overwrites existing ones.';
+
+  @override
+  String get dockerKubeFailed =>
+      'The operation failed. Check cluster access, write permissions, resource name conflicts and manifest validation. Created resources listed below remain in the cluster.';
+
+  @override
+  String get dockerKubeCreated => 'Created resources (not a readiness guarantee)';
+
+  @override
+  String get dockerKubeReady => 'Deployment is ready';
+
+  @override
+  String get dockerKubePending =>
+      'Deployment is not ready yet. Check Pods/events in the Kubernetes section, including ImagePullBackOff and CrashLoopBackOff.';
+
+  @override
+  String get dockerKubeCheckStatus => 'Check readiness';
+
+  @override
+  String get dockerKubeUnavailable => 'Saved Kubernetes contexts or the required native APIs are unavailable.';
+
+  @override
+  String get dockerKubeAiFailed =>
+      'AI generation failed or ended without a complete answer. You can use the template instead.';
+
+  @override
+  String get dockerKubeContext => 'Kubernetes context';
 }

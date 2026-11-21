@@ -17469,4 +17469,97 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get keepassNerdIconLoadFailed => 'No se pudo cargar iconos';
+
+  @override
+  String get dockerKubeDeploy => 'Desplegar en Kubernetes · Experimental';
+
+  @override
+  String get dockerKubeIntro =>
+      'Función experimental para un contenedor Linux sin estado, una réplica y un servicio ClusterIP interno. Revisa el manifiesto antes de desplegar.';
+
+  @override
+  String get dockerKubeUnsupported =>
+      'El contenedor usa montajes o funciones del host o de dispositivos, o no se pudo verificar su configuración. Esta función experimental no admite datos ni cargas privilegiadas.';
+
+  @override
+  String get dockerKubeImage => 'Imagen publicada (registry/repository:tag o @sha256:digest)';
+
+  @override
+  String get dockerKubeImageHelp =>
+      'Publica primero la imagen en un registro accesible desde los nodos del clúster. El asistente no sube imágenes locales. Usa un resumen de imagen siempre que puedas, ya que una etiqueta mutable puede cambiar. No uses localhost como registro remoto.';
+
+  @override
+  String get dockerKubePort => 'Puerto TCP del contenedor y del servicio';
+
+  @override
+  String get dockerKubePullSecret => 'imagePullSecret existente en este espacio de nombres (opcional)';
+
+  @override
+  String get dockerKubeNewNamespace => 'Nuevo espacio de nombres';
+
+  @override
+  String get dockerKubeCreateNamespace => 'Crear espacio de nombres ahora';
+
+  @override
+  String get dockerKubeNamespaceHelp =>
+      'Crear un espacio de nombres modifica el clúster de inmediato. Podrás validar la aplicación en el servidor cuando exista el espacio de nombres.';
+
+  @override
+  String get dockerKubeNamespaceCreated => 'Espacio de nombres creado. Se conservará si cancelas.';
+
+  @override
+  String get dockerKubeGenerate => 'Generar YAML con IA';
+
+  @override
+  String get dockerKubeTemplate => 'Usar plantilla';
+
+  @override
+  String get dockerKubeAiReview =>
+      'El proveedor de IA seleccionado recibirá la plantilla de manifiesto que aparece abajo. Incluye la referencia de la imagen, el nombre de la aplicación y del espacio de nombres, el puerto y el nombre del secreto de descarga. Revísala antes de enviarla. Se excluyen los valores de entorno, Docker inspect y las credenciales de Kubernetes.';
+
+  @override
+  String get dockerKubeSendAi => 'Enviar plantilla a la IA';
+
+  @override
+  String get dockerKubeManifestRejected =>
+      'El manifiesto debe incluir exactamente un Deployment y un servicio ClusterIP con la imagen, los nombres y el puerto seleccionados. Solo puedes editar los recursos y los tiempos de la comprobación de disponibilidad TCP.';
+
+  @override
+  String get dockerKubeInvalidTarget =>
+      'Comprueba los nombres de la aplicación y del espacio de nombres, la imagen publicada con registro y etiqueta o resumen explícitos, el puerto TCP y el nombre del secreto de descarga.';
+
+  @override
+  String get dockerKubeAcknowledge =>
+      'He comprobado la disponibilidad de la imagen y la arquitectura de CPU. Se usarán los valores predeterminados de la imagen. Se omitirán los archivos locales, los cambios en la capa de escritura, las variables de entorno sobrescritas, los comandos y las dependencias de Compose.';
+
+  @override
+  String get dockerKubeValidated =>
+      'Ambos recursos pasaron la validación en seco en el servidor. El despliegue solo crea recursos nuevos y conserva los existentes.';
+
+  @override
+  String get dockerKubeFailed =>
+      'La operación falló. Comprueba el acceso al clúster, los permisos de escritura, los conflictos de nombres y la validación del manifiesto. Los recursos ya creados que aparecen abajo se conservan en el clúster.';
+
+  @override
+  String get dockerKubeCreated => 'Recursos creados (disponibilidad sin confirmar)';
+
+  @override
+  String get dockerKubeReady => 'El Deployment está listo';
+
+  @override
+  String get dockerKubePending =>
+      'El Deployment aún no está listo. Revisa los Pods y sus eventos en Kubernetes, incluidos ImagePullBackOff y CrashLoopBackOff.';
+
+  @override
+  String get dockerKubeCheckStatus => 'Comprobar disponibilidad';
+
+  @override
+  String get dockerKubeUnavailable =>
+      'Los contextos de Kubernetes guardados o las API nativas necesarias no están disponibles.';
+
+  @override
+  String get dockerKubeAiFailed => 'La IA no pudo generar una respuesta completa. Puedes usar la plantilla.';
+
+  @override
+  String get dockerKubeContext => 'Contexto de Kubernetes';
 }

@@ -13,6 +13,8 @@ import 'package:consolecrypt/db/db_document_view.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_host_path.dart';
+import 'package:consolecrypt/docker/docker_kube_dialog.dart';
+import 'package:consolecrypt/docker/docker_kube_plan.dart';
 import 'package:consolecrypt/docker/docker_logs_view.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
@@ -267,6 +269,22 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                     running ? () => unawaited(widget.actions.database!(container, database)) : null,
                     tooltip: l.dockerConnectDatabaseHelp(database.engine.label),
                   ),
+                action(
+                  'kubernetes',
+                  l.dockerKubeDeploy,
+                  Icons.cloud_upload_outlined,
+                  _detail == null || _loading
+                      ? null
+                      : () => showAppDialog<void>(
+                          context,
+                          secure: true,
+                          barrierDismissible: false,
+                          builder: (_) => DockerKubeDialog(
+                            source: DockerKubeSource.inspect(_detail!, widget.session),
+                            container: container,
+                          ),
+                        ),
+                ),
               ],
             ),
           ),

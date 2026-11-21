@@ -16567,4 +16567,87 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get keepassNerdIconLoadFailed => '无法装入图标';
+
+  @override
+  String get dockerKubeDeploy => '部署到 Kubernetes · 实验功能';
+
+  @override
+  String get dockerKubeIntro => '此实验功能支持一个无状态 Linux 容器、一个副本和一个内部 ClusterIP 服务。部署前请检查清单。';
+
+  @override
+  String get dockerKubeUnsupported => '此容器使用了挂载、宿主机或设备功能，或者无法验证其配置。此实验功能不支持数据或特权工作负载。';
+
+  @override
+  String get dockerKubeImage => '已发布的镜像（registry/repository:tag 或 @sha256:digest）';
+
+  @override
+  String get dockerKubeImageHelp => '请先将镜像发布到集群节点可以访问的镜像仓库。此向导不会上传本地镜像。建议使用镜像摘要，因为可变标签可能指向其他镜像。localhost 不能用作远程仓库。';
+
+  @override
+  String get dockerKubePort => '容器和服务的 TCP 端口';
+
+  @override
+  String get dockerKubePullSecret => '此命名空间中已有的 imagePullSecret（可选）';
+
+  @override
+  String get dockerKubeNewNamespace => '新命名空间';
+
+  @override
+  String get dockerKubeCreateNamespace => '立即创建命名空间';
+
+  @override
+  String get dockerKubeNamespaceHelp => '创建命名空间会立即修改集群。命名空间创建后，可以在服务器上试运行应用。';
+
+  @override
+  String get dockerKubeNamespaceCreated => '命名空间已创建。取消操作后仍会保留。';
+
+  @override
+  String get dockerKubeGenerate => '使用 AI 生成 YAML';
+
+  @override
+  String get dockerKubeTemplate => '使用模板';
+
+  @override
+  String get dockerKubeAiReview =>
+      '所选 AI 服务仅会收到下方的清单模板，其中包含镜像引用、应用名称、命名空间、端口及镜像拉取密钥名称。发送前请检查模板。环境变量的值、Docker inspect 的结果和 Kubernetes 凭据均不会发送。';
+
+  @override
+  String get dockerKubeSendAi => '将模板发送给 AI';
+
+  @override
+  String get dockerKubeManifestRejected =>
+      '清单必须包含且仅包含一个 Deployment 和一个 ClusterIP 服务，并使用所选镜像、名称及端口。只能修改资源配置和 TCP 就绪探测的时间参数。';
+
+  @override
+  String get dockerKubeInvalidTarget => '请检查应用和命名空间的名称、已发布镜像的仓库及标签或摘要、TCP 端口和镜像拉取密钥的名称。';
+
+  @override
+  String get dockerKubeAcknowledge => '我已确认镜像可用且与 CPU 架构兼容。部署将使用镜像的默认配置。应用的本地文件、可写层改动、环境变量覆盖、命令和 Compose 依赖均不会复制。';
+
+  @override
+  String get dockerKubeValidated => '两个资源均已通过服务器端试运行。部署只会创建新资源，保留已有资源。';
+
+  @override
+  String get dockerKubeFailed => '操作失败。请检查集群访问权限、写入权限、资源名称冲突和清单验证结果。下方列出的已创建资源会保留在集群中。';
+
+  @override
+  String get dockerKubeCreated => '已创建的资源（就绪状态待确认）';
+
+  @override
+  String get dockerKubeReady => 'Deployment 已就绪';
+
+  @override
+  String get dockerKubePending => 'Deployment 尚未就绪。请在 Kubernetes 页面中检查 Pod 和事件，包括 ImagePullBackOff 和 CrashLoopBackOff。';
+
+  @override
+  String get dockerKubeCheckStatus => '检查就绪状态';
+
+  @override
+  String get dockerKubeUnavailable => '已保存的 Kubernetes 上下文或所需的原生 API 不可用。';
+
+  @override
+  String get dockerKubeAiFailed => 'AI 未能生成完整响应。可以使用模板。';
+
+  @override
+  String get dockerKubeContext => 'Kubernetes 上下文';
 }

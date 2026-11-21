@@ -30573,6 +30573,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not load icons'**
   String get keepassNerdIconLoadFailed;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Deploy to Kubernetes · Experimental'**
+  String get dockerKubeDeploy;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Experimental: one stateless Linux container, one replica and an internal ClusterIP Service. Review the manifest before deploying.'**
+  String get dockerKubeIntro;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'This container uses mounts or host/device capabilities, or its configuration could not be checked. Data and privileged workloads are not supported by this experiment.'**
+  String get dockerKubeUnsupported;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Published image (registry/repository:tag or @sha256:digest)'**
+  String get dockerKubeImage;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish the image to a registry reachable by cluster nodes first. This wizard does not upload local images. Prefer a digest; a mutable tag can change. localhost is not a remote registry.'**
+  String get dockerKubeImageHelp;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Container / Service TCP port'**
+  String get dockerKubePort;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing imagePullSecret in this namespace (optional)'**
+  String get dockerKubePullSecret;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'New namespace'**
+  String get dockerKubeNewNamespace;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Create namespace now'**
+  String get dockerKubeCreateNamespace;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating a namespace changes the cluster immediately. The app dry-run becomes available after the namespace exists.'**
+  String get dockerKubeNamespaceHelp;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Namespace created. It will remain if you cancel.'**
+  String get dockerKubeNamespaceCreated;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate YAML with AI'**
+  String get dockerKubeGenerate;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Use template'**
+  String get dockerKubeTemplate;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'The selected AI provider will receive only the manifest template shown below: image reference, app/namespace names, port and pull-secret name. Review it before sending. Environment values, Docker inspect and Kubernetes credentials are excluded.'**
+  String get dockerKubeAiReview;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Send template to AI'**
+  String get dockerKubeSendAi;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'The manifest is outside this experiment: exactly one Deployment and one ClusterIP Service are allowed, with the selected image, names and port. Only resources and TCP readiness timing may be edited.'**
+  String get dockerKubeManifestRejected;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the app/namespace names, published image with explicit registry and tag/digest, TCP port and pull-secret name.'**
+  String get dockerKubeInvalidTarget;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'I checked image availability and CPU architecture. Local files, writable-layer changes, environment overrides, commands and Compose dependencies will not be copied; image defaults will be used.'**
+  String get dockerKubeAcknowledge;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Server dry-run passed for both resources. Deploy creates new resources and never overwrites existing ones.'**
+  String get dockerKubeValidated;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'The operation failed. Check cluster access, write permissions, resource name conflicts and manifest validation. Created resources listed below remain in the cluster.'**
+  String get dockerKubeFailed;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Created resources (not a readiness guarantee)'**
+  String get dockerKubeCreated;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Deployment is ready'**
+  String get dockerKubeReady;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Deployment is not ready yet. Check Pods/events in the Kubernetes section, including ImagePullBackOff and CrashLoopBackOff.'**
+  String get dockerKubePending;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Check readiness'**
+  String get dockerKubeCheckStatus;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved Kubernetes contexts or the required native APIs are unavailable.'**
+  String get dockerKubeUnavailable;
+
+  /// Experimental Docker to Kubernetes deployment wizard.
+  ///
+  /// In en, this message translates to:
+  /// **'AI generation failed or ended without a complete answer. You can use the template instead.'**
+  String get dockerKubeAiFailed;
+
+  /// Saved Kubernetes context selected for experimental Docker deployment.
+  ///
+  /// In en, this message translates to:
+  /// **'Kubernetes context'**
+  String get dockerKubeContext;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
