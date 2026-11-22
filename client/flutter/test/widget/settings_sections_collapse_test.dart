@@ -12,7 +12,7 @@ void main() {
     await backend.debugSignInDemoAndUnlock();
     await pumpApp(tester, backend, locale: AppLocale.ru);
     await tapKey(tester, 'nav-settings');
-    final heading = find.text('Безопасность');
+    final heading = find.descendant(of: find.byType(SectionCard), matching: find.text('Безопасность'));
     await tester.ensureVisible(heading);
     await settle(tester);
     final before = backend.services.settings.currentLocal.clipboardClearSeconds;

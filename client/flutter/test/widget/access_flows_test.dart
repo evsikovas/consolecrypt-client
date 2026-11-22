@@ -46,6 +46,7 @@ void main() {
     await enterKey(tester, 'unlock-passphrase', MockCloud.demoPassphrase);
     await tapKey(tester, 'unlock-submit');
     expect(find.text('Hosts'), findsWidgets);
+    await enterKey(tester, 'hosts-search', 'prod-db-1');
     expect(find.byKey(const ValueKey('host-prod-db-1')), findsOneWidget);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
@@ -169,12 +170,14 @@ void main() {
 
     await enterKey(tester, 'recovery-input', MockCloud.demoRecoveryWords.join(' '));
     await tapKey(tester, 'recovery-submit');
+    await enterKey(tester, 'hosts-search', 'prod-db-1');
     expect(find.byKey(const ValueKey('host-prod-db-1')), findsOneWidget);
 
     // The new passphrase now unlocks the vault.
     await tapKey(tester, 'lock-vault');
     await enterKey(tester, 'unlock-passphrase', 'seven brisk otters juggle neon');
     await tapKey(tester, 'unlock-submit');
+    await enterKey(tester, 'hosts-search', 'prod-db-1');
     expect(find.byKey(const ValueKey('host-prod-db-1')), findsOneWidget);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
