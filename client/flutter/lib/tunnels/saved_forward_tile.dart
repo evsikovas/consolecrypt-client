@@ -180,7 +180,7 @@ class SavedForwardTile extends ConsumerWidget {
                 ],
               ),
               Text('$product · $host'),
-              Text('$address → ${plan.remotePort}/tcp', style: GlassTokens.of(context).typography.mono),
+              Text('$address → ${plan.remotePort}/tcp', style: GlassTokens.of(context).typography.mono), // l10n-ignore: TCP port notation.
               Text(state),
             ],
           ),

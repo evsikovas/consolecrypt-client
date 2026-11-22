@@ -3,7 +3,7 @@ description: "ConsoleCrypt desktop client UI: zero-knowledge E2EE SSH client (Fl
 # Never published to pub.dev; distributed as a desktop application.
 publish_to: 'none'
 
-version: 1.2.1+67036
+version: 1.2.2+67037
 
 environment:
   sdk: ^3.13.4

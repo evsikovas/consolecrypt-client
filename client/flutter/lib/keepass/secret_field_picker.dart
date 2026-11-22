@@ -167,7 +167,7 @@ class _PickerState extends State<SecretFieldPicker> {
               runSpacing: 4,
               children: [
                 Text('↑ ↓   ${l.uiFieldNavigation}', style: tokens.typography.caption),
-                Text('Enter   ${l.commonCopy}', style: tokens.typography.caption),
+                Text('Enter   ${l.commonCopy}', style: tokens.typography.caption), // l10n-ignore: keyboard keycap with localized action.
               ],
             ),
           ),

@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -25,6 +26,10 @@ void main() {
     expect(find.descendant(of: inspector, matching: find.text('prod-web-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('connect-prod-web-1')), findsOneWidget);
     expect(tester.getRect(inspector).top, greaterThan(tester.getRect(select).bottom));
+    final listSurface = find
+        .ancestor(of: find.byKey(const ValueKey('hosts-search')), matching: find.byType(ContentSurface))
+        .first;
+    expect(tester.getRect(inspector).top - tester.getRect(listSurface).bottom, greaterThanOrEqualTo(GlassSpacing.s12));
     final connect = tester.getRect(find.byKey(const ValueKey('host-inspector-connect')));
     final sftp = tester.getRect(find.byKey(const ValueKey('host-inspector-sftp')));
     final edit = tester.getRect(find.byKey(const ValueKey('host-inspector-edit')));
@@ -40,6 +45,38 @@ void main() {
     await captureAutomationWorkspace(tester, 'design-passwords-windows');
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  for (final (width, scale) in [(1420.0, 1.0), (1350.0, 1.4)]) {
+    testWidgets('host inspector fields and actions stay separate at ${width}x$scale', (tester) async {
+      final backend = testBackend();
+      addTearDown(backend.dispose);
+      await backend.debugSignInDemoAndUnlock();
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpApp(tester, backend, locale: AppLocale.ru, size: Size(width, 820));
+      await enterKey(tester, 'hosts-search', 'prod-web');
+      await tapKey(tester, 'inspect-prod-web-1');
+      final inspector = find.byKey(const ValueKey('host-inspector'));
+      final bounds = tester.getRect(inspector);
+      final title = find.descendant(of: inspector, matching: find.text('prod-web-1'));
+      final rects = [tester.getRect(title)];
+      for (final action in ['connect', 'sftp', 'edit', 'close']) {
+        final button = find.byKey(ValueKey('host-inspector-$action'));
+        expect(button.hitTestable(), findsOneWidget);
+        final rect = tester.getRect(button);
+        expect(rect.left, greaterThanOrEqualTo(bounds.left));
+        expect(rect.right, lessThanOrEqualTo(bounds.right));
+        expect(rects.any((previous) => previous.overlaps(rect)), isFalse, reason: action);
+        rects.add(rect);
+      }
+      final values = find.descendant(of: inspector, matching: find.byType(SelectableText));
+      expect(values, findsAtLeastNWidgets(3));
+      final lastButtonBottom = rects.map((rect) => rect.bottom).reduce((a, b) => a > b ? a : b);
+      for (var i = 0; i < values.evaluate().length; i++) {
+        expect(tester.getRect(values.at(i)).top, greaterThan(lastButtonBottom));
+      }
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }
 
   testWidgets('operational sections fit in desktop and narrow windows', (tester) async {
     final backend = testBackend();

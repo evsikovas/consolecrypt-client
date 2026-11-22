@@ -1317,7 +1317,7 @@ class _PasswordPaletteSurface extends StatelessWidget {
                     const Icon(Icons.search, size: 17),
                     Expanded(child: Text(l.commandPalette, style: tokens.typography.bodyEmph)),
                     ?snip,
-                    const Text('Esc'),
+                    const Text('Esc'), // l10n-ignore: keyboard keycap.
                     GlassIconButton(
                       icon: Icons.close,
                       tooltip: l.commonClose,

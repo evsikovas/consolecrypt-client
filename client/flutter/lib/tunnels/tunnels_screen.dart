@@ -168,7 +168,7 @@ class _TunnelsScreenState extends ConsumerState<TunnelsScreen> {
                                     ),
                                     LabeledValue(
                                       label: l10n.uiForward,
-                                      value: SelectableText('${f.name}:${f.remotePort}/tcp'),
+                                      value: SelectableText('${f.name}:${f.remotePort}/tcp'), // l10n-ignore: TCP port notation.
                                     ),
                                     LabeledValue(
                                       label: l10n.kubeForwardNetwork,

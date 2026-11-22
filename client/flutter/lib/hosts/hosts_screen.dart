@@ -559,7 +559,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                       child: ContentSurface(padding: const EdgeInsets.all(GlassSpacing.s12), child: content),
                     ),
                     if (inspected != null) ...[
-                      const SizedBox(width: GlassSpacing.s12),
+                      const SizedBox(height: GlassSpacing.s12),
                       ConstrainedBox(
                         constraints: BoxConstraints(maxHeight: constraints.maxHeight * .46),
                         child: _HostInspector(
@@ -717,24 +717,11 @@ class _HostInspector extends ConsumerWidget {
     final tokens = GlassTokens.of(context);
     final icon = host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded;
     final port = host.port ?? (host.isRdp ? defaultRdpPort : defaultSshPort);
-    final secondary = [
-      if (!host.isRdp)
-        GlassButton(
-          key: const ValueKey('host-inspector-sftp'),
-
-          label: l.navSftp,
-          icon: Icons.folder_copy_rounded,
-          onPressed: () async {
-            await ref.read(sftpControllerProvider.notifier).connect(host);
-            if (context.mounted) context.go(AppRoutes.sftp);
-          },
-        ),
-      GlassButton(
-        key: const ValueKey('host-inspector-edit'),
-        label: l.commonEdit,
-        icon: Icons.edit_outlined,
-        onPressed: () => context.go(AppRoutes.editHost(host.id)),
-      ),
+    final details = [
+      (l.hostEditorAddressLabel, host.address),
+      if (host.username case final name?) (l.hostEditorUsernameLabel, name),
+      (l.hostEditorPortLabel, '$port'),
+      if (groupName.isNotEmpty) (l.navGroups, groupName),
     ];
     return SingleChildScrollView(
       primary: false,
@@ -745,32 +732,55 @@ class _HostInspector extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(GlassSpacing.s12, GlassSpacing.s4, GlassSpacing.s4, GlassSpacing.s4),
-              child: Row(
-                spacing: GlassSpacing.s8,
+              padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s12, vertical: GlassSpacing.s8),
+              child: OverflowBar(
+                alignment: MainAxisAlignment.spaceBetween,
+                spacing: GlassSpacing.s12,
+                overflowSpacing: GlassSpacing.s8,
                 children: [
-                  Icon(icon, size: GlassSizes.iconToolbar, color: tokens.secondaryLabel),
-                  Expanded(
-                    child: Text(
-                      host.name,
-                      style: tokens.typography.title3,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: GlassSpacing.s8,
+                    children: [
+                      Icon(icon, size: GlassSizes.iconToolbar, color: tokens.secondaryLabel),
+                      Flexible(child: Text(host.name, style: tokens.typography.title3)),
+                    ],
                   ),
-                  GlassButton.prominent(
-                    key: const ValueKey('host-inspector-connect'),
-                    label: l.commonConnect,
-                    icon: icon,
-                    onPressed: () => connectToHost(context, ref, host),
-                  ),
-                  ...secondary,
-                  GlassIconButton(
-                    key: const ValueKey('host-inspector-close'),
-                    icon: Icons.close_rounded,
-                    tooltip: l.commonClose,
-                    style: GlassIconButtonStyle.plain,
-                    onPressed: onClose,
+                  Wrap(
+                    spacing: GlassSpacing.s8,
+                    runSpacing: GlassSpacing.s8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      GlassButton.prominent(
+                        key: const ValueKey('host-inspector-connect'),
+                        label: l.commonConnect,
+                        icon: icon,
+                        onPressed: () => connectToHost(context, ref, host),
+                      ),
+                      if (!host.isRdp)
+                        GlassButton(
+                          key: const ValueKey('host-inspector-sftp'),
+                          label: l.navSftp,
+                          icon: Icons.folder_copy_rounded,
+                          onPressed: () async {
+                            await ref.read(sftpControllerProvider.notifier).connect(host);
+                            if (context.mounted) context.go(AppRoutes.sftp);
+                          },
+                        ),
+                      GlassButton(
+                        key: const ValueKey('host-inspector-edit'),
+                        label: l.commonEdit,
+                        icon: Icons.edit_outlined,
+                        onPressed: () => context.go(AppRoutes.editHost(host.id)),
+                      ),
+                      GlassIconButton(
+                        key: const ValueKey('host-inspector-close'),
+                        icon: Icons.close_rounded,
+                        tooltip: l.commonClose,
+                        style: GlassIconButtonStyle.plain,
+                        onPressed: onClose,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -778,18 +788,31 @@ class _HostInspector extends ConsumerWidget {
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.all(GlassSpacing.s12),
-              child: Wrap(
-                spacing: 20,
-                runSpacing: 8,
-                children: [
-                  for (final (name, value) in [
-                    (l.hostEditorAddressLabel, host.address),
-                    if (host.username case final name?) (l.hostEditorUsernameLabel, name),
-                    (l.hostEditorPortLabel, '$port'),
-                    if (groupName.isNotEmpty) (l.navGroups, groupName),
-                  ])
-                    SelectableText('$name  ·  $value', style: tokens.typography.callout),
-                ],
+              child: LayoutBuilder(
+                builder: (context, bounds) {
+                  const gap = GlassSpacing.s12;
+                  final minWidth = MediaQuery.textScalerOf(context).scale(180);
+                  final columns = ((bounds.maxWidth + gap) / (minWidth + gap)).floor().clamp(1, details.length);
+                  final width = (bounds.maxWidth - gap * (columns - 1)) / columns;
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      for (final (label, value) in details)
+                        SizedBox(
+                          width: width,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            spacing: GlassSpacing.s4,
+                            children: [
+                              Text(label, style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel)),
+                              SelectableText(value, style: tokens.typography.callout),
+                            ],
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           ],

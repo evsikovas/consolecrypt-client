@@ -47,7 +47,7 @@ final class TerminalOnlySettings implements SettingsService {
         (Platform.isWindows
             ? env['LOCALAPPDATA']
             : Platform.isMacOS && home != null
-            ? path.join(home, 'Library', 'Application Support')
+            ? path.join(home, 'Library', 'Application Support') // l10n-ignore: macOS filesystem path.
             : env['XDG_CONFIG_HOME'] ?? (home == null ? null : path.join(home, '.config')));
     if (root == null || root.isEmpty) throw const FileSystemException('No terminal settings directory');
     return File(path.join(root, 'ConsoleCrypt', 'terminal-only.json'));
