@@ -42,11 +42,11 @@ class _PickerState extends State<SecretFieldPicker> {
   Widget build(BuildContext context) {
     final l = context.l10n, tokens = GlassTokens.of(context);
     final fields = widget.fields;
-    final current = index.clamp(0, fields.isEmpty ? 0 : fields.length - 1);
+    int current() => index.clamp(0, fields.isEmpty ? 0 : fields.length - 1);
     final height = 44.0 + (MediaQuery.textScalerOf(context).scale(16) - 16).clamp(0, 80);
     void move(int delta) {
       if (fields.isEmpty) return;
-      final next = (current + delta).clamp(0, fields.length - 1);
+      final next = (current() + delta).clamp(0, fields.length - 1);
       setState(() => index = next);
       if (scroll.hasClients) {
         final start = next * height, end = start + height;
@@ -68,7 +68,7 @@ class _PickerState extends State<SecretFieldPicker> {
         } else if (e.logicalKey == LogicalKeyboardKey.arrowUp) {
           move(-1);
         } else if (e.logicalKey == LogicalKeyboardKey.enter || e.logicalKey == LogicalKeyboardKey.numpadEnter) {
-          if (fields.isNotEmpty && e is KeyDownEvent) fields[current].copy?.call();
+          if (fields.isNotEmpty && e is KeyDownEvent) fields[current()].copy?.call();
         } else {
           return KeyEventResult.ignored;
         }
@@ -112,7 +112,7 @@ class _PickerState extends State<SecretFieldPicker> {
               itemExtent: height,
               itemCount: fields.length,
               itemBuilder: (context, i) {
-                final field = fields[i], selected = i == current;
+                final field = fields[i], selected = i == current();
                 return Semantics(
                   selected: selected,
                   button: true,

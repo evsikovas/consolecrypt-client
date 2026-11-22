@@ -48,6 +48,8 @@ class _PasswordManager extends Fake implements PasswordManager {
 
 void main() {
   testWidgets('Passwords opens Vault folders and masked secrets over HTTP', (tester) async {
+    tester.binding.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.binding.platformDispatcher.clearPlatformBrightnessTestValue);
     final requests = <(String, String, String?)>[];
     final server = (await tester.runAsync(() async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -59,8 +61,7 @@ void main() {
           '/v1/sys/internal/ui/mounts' => '{"data":{"secret":{"kv/":{"type":"kv","options":{"version":"2"}}}}}',
           '/v1/kv/metadata' => '{"data":{"keys":["applications/","infrastructure/"]}}',
           '/v1/kv/metadata/applications' => '{"data":{"keys":["vaultwarden","other"]}}',
-          '/v1/kv/data/applications/vaultwarden' =>
-            '{"data":{"data":{"password":"fixture-secret-value"},"metadata":{"version":2}}}',
+          '/v1/kv/data/applications/vaultwarden' => '{"data":{"data":{"password":"fixture-secret-value","username":"fixture-login","api_key":"fixture-api-key"},"metadata":{"version":2}}}',
           _ => '{}',
         });
         await request.response.close();
@@ -96,12 +97,12 @@ void main() {
       await settle(tester);
     }
 
-    Future<void> waitFor(Finder finder, {bool visible = true}) async {
+    Future<void> waitFor(Finder finder, {bool visible = true, int count = 1}) async {
       for (var attempt = 0; attempt < 80 && finder.evaluate().isNotEmpty != visible; attempt++) {
         await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
         await tester.pump(const Duration(milliseconds: 30));
       }
-      expect(finder, visible ? findsOneWidget : findsNothing);
+      expect(finder, visible ? findsNWidgets(count) : findsNothing);
     }
 
     await tapText('Add connection');
@@ -148,17 +149,17 @@ void main() {
     expect(requests.every((request) => !request.$2.contains('/data/')), isTrue);
 
     await tester.tap(item);
-    await waitFor(find.text('••••••••'));
+    await waitFor(find.text('••••••••'), count: 3);
     expect(item, mobile ? findsNothing : findsOneWidget);
     if (!mobile) {
       expect(Material.of(tester.element(folder)), isNot(same(Material.of(tester.element(item)))));
       expect(tester.getRect(folder).right, lessThan(tester.getRect(item).left));
-      expect(tester.getRect(item).right, lessThan(tester.getRect(find.text('••••••••')).left));
+      expect(tester.getRect(item).right, lessThan(tester.getRect(find.text('••••••••').first).left));
     }
     expect(find.text('fixture-secret-value'), findsNothing);
     if (!mobile) await captureAutomationWorkspace(tester, 'design-vault-secret-windows');
-    final show = find.widgetWithIcon(GlassIconButton, Icons.visibility_outlined);
-    final copy = find.widgetWithIcon(GlassIconButton, Icons.copy_outlined);
+    final show = find.widgetWithIcon(GlassIconButton, Icons.visibility_outlined).first;
+    final copy = find.widgetWithIcon(GlassIconButton, Icons.copy_outlined).first;
     expect(tester.getSize(show), tester.getSize(copy));
     expect(tester.getRect(copy).left - tester.getRect(show).right, GlassSpacing.toolbarItemGap);
     await tester.tap(show);
@@ -189,10 +190,16 @@ void main() {
       final field = inside(find.byKey(const ValueKey('external-vault-field-password')));
       await waitFor(field);
       expect(find.text('fixture-secret-value'), findsNothing);
+      setTestLocale(backend, AppLocale.ru);
+      await settle(tester);
+      expect(inside(find.text('fixture-login')), findsNothing);
+      expect(inside(find.text('fixture-api-key')), findsNothing);
       await captureAutomationWorkspace(tester, 'design-vault-palette-windows');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await settle(tester);
       expect(clipboard.values, ['fixture-secret-value']);
+      setTestLocale(backend, AppLocale.en);
+      await settle(tester);
       expect(palette, findsNothing);
       expect(folder, findsOneWidget);
       expect(item, findsNothing);

@@ -96,7 +96,7 @@ class _TunnelsScreenState extends ConsumerState<TunnelsScreen> {
                   builder: (context, bounds) {
                     final wide = bounds.maxWidth >= 740 * MediaQuery.textScalerOf(context).scale(12) / 12;
                     Widget header(String source) => WorkspaceColumns(
-                      actionWidth: 152,
+                      actionWidth: tunnelTableActionsWidth,
                       flex: const [3, 2, 4, 3],
                       cells: [Text(l10n.uiTunnel), Text(source), Text(l10n.uiForward), Text(l10n.syncScreenState)],
                     );
@@ -262,10 +262,13 @@ class _TunnelTile extends ConsumerWidget {
           style: GlassIconButtonStyle.plain,
           onPressed: onEdit,
         ),
-        Switch.adaptive(
+        GlassIconButton(
           key: ValueKey('tunnel-switch-${tunnel.name}'),
-          value: running,
-          onChanged: (v) => runWithFeedback(context, () => v ? service.start(tunnel.id) : service.stop(tunnel.id)),
+          size: 32,
+          tooltip: running ? l10n.tunnelsStopSaved : l10n.tunnelsStartSaved,
+          icon: running ? Icons.stop_rounded : Icons.play_arrow_rounded,
+          style: GlassIconButtonStyle.plain,
+          onPressed: () => runWithFeedback(context, () => running ? service.stop(tunnel.id) : service.start(tunnel.id)),
         ),
         GlassIconButton(
           tooltip: l10n.commonDelete,
@@ -292,7 +295,7 @@ class _TunnelTile extends ConsumerWidget {
           onTap: onSelect,
           child: WorkspaceColumns(
             flex: const [3, 2, 4, 3],
-            actionWidth: 152,
+            actionWidth: tunnelTableActionsWidth,
             actions: actions,
             cells: [
               Row(

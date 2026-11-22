@@ -48,6 +48,8 @@ String savedForwardErrorText(AppLocalizations l, SavedForward plan, Object error
   };
 }
 
+const tunnelTableActionsWidth = 3 * kMinInteractiveDimension + 2 * GlassSpacing.toolbarItemGap;
+
 class SavedForwardTile extends ConsumerWidget {
   const SavedForwardTile(this.plan, {super.key, this.wide = false, this.selected = false, this.onSelect});
   final SavedForward plan;
@@ -167,7 +169,7 @@ class SavedForwardTile extends ConsumerWidget {
           onTap: onSelect,
           child: WorkspaceColumns(
             flex: const [3, 2, 4, 3],
-            actionWidth: 152,
+            actionWidth: tunnelTableActionsWidth,
             actions: actions,
             cells: [
               Row(
