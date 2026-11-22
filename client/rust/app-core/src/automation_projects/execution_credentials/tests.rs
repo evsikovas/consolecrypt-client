@@ -487,6 +487,7 @@ async fn selected_environment_never_lowers_native_production_host_or_group_tags(
         crate::working_set::Entry {
             revision: 1,
             item: crate::working_set::Item::Object(Box::new(VaultObject::Group(group))),
+            external_vault: None,
         },
     );
     let mut watched = frozen.revisions.clone();
