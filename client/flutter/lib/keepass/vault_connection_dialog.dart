@@ -12,6 +12,7 @@ import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/keepass/external_vault.dart';
 import 'package:consolecrypt/keepass/external_vault_store.dart';
+import 'package:consolecrypt/keepass/password_field_row.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -758,7 +759,7 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
                 ),
               ),
             if (!_picking)
-              GlassButton(
+              GlassButton.prominent(
                 label: l.externalVaultNewSecret,
                 icon: Icons.add,
                 onPressed: _busy ? null : () => setState(_edit),
@@ -1080,45 +1081,36 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
           return InkWell(
             key: ValueKey('external-vault-field-$key'),
             onTap: !_picking || _busy ? null : () => _copyField(key),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s16, vertical: GlassSpacing.s12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: GlassSpacing.s4,
-                children: [
-                  Row(
-                    spacing: GlassSpacing.toolbarItemGap,
-                    children: [
-                      Expanded(child: Text(key, style: text.titleSmall)),
-                      if (!_picking)
-                        GlassIconButton(
-                          size: GlassControlSize.md.height,
-                          tooltip: revealed ? l.externalVaultHide : l.externalVaultShow,
-                          icon: revealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          onPressed: _busy
-                              ? null
-                              : () => setState(() {
-                                  _hide?.cancel();
-                                  _revealed = revealed ? null : key;
-                                  _hide = Timer(const Duration(seconds: 20), () {
-                                    if (mounted) setState(() => _revealed = null);
-                                  });
-                                }),
-                        ),
-                      GlassIconButton(
-                        size: GlassControlSize.md.height,
-                        tooltip: l.commonCopy,
-                        icon: Icons.copy_outlined,
-                        onPressed: _busy ? null : () => _copyField(key),
-                      ),
-                    ],
+            child: PasswordFieldRow(
+              label: key,
+              value: revealed
+                  ? RevealedSecret(child: SelectableText(_value(fields[key]), style: tokens.typography.mono))
+                  : Text('••••••••', style: tokens.typography.mono.copyWith(color: tokens.secondaryLabel)),
+              actions: [
+                if (!_picking)
+                  GlassIconButton(
+                    size: GlassControlSize.md.height,
+                    style: GlassIconButtonStyle.plain,
+                    tooltip: revealed ? l.externalVaultHide : l.externalVaultShow,
+                    icon: revealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                            _hide?.cancel();
+                            _revealed = revealed ? null : key;
+                            _hide = Timer(const Duration(seconds: 20), () {
+                              if (mounted) setState(() => _revealed = null);
+                            });
+                          }),
                   ),
-                  if (revealed)
-                    RevealedSecret(child: SelectableText(_value(fields[key]), style: tokens.typography.mono))
-                  else
-                    Text('••••••••', style: tokens.typography.mono.copyWith(color: tokens.secondaryLabel)),
-                ],
-              ),
+                GlassIconButton(
+                  size: GlassControlSize.md.height,
+                  style: GlassIconButtonStyle.plain,
+                  tooltip: l.commonCopy,
+                  icon: Icons.copy_outlined,
+                  onPressed: _busy ? null : () => _copyField(key),
+                ),
+              ],
             ),
           );
         },

@@ -2817,110 +2817,115 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Row(
-                              key: const ValueKey('automation-editor-toolbar'),
-                              children: [
-                                if (editingOnPhone)
-                                  GlassIconButton(
-                                    key: const ValueKey('automation-phone-editor-files'),
-                                    tooltip: l.automationLibraryFiles,
-                                    icon: Icons.arrow_back,
-                                    size: 40,
-                                    onPressed: busy ? null : _backToPhoneFiles,
-                                  )
-                                else if (!_phoneWorkspace) ...[
-                                  GlassIconButton(
-                                    key: const ValueKey('automation-toggle-file-tree'),
-                                    tooltip: l.automationLibraryFiles,
-                                    icon: Icons.view_sidebar_outlined,
-                                    selected: showTree,
-                                    onPressed: () => setState(() => fileTreeCollapsed = !fileTreeCollapsed),
+                            LayoutBuilder(
+                              builder: (context, toolbar) => Row(
+                                key: const ValueKey('automation-editor-toolbar'),
+                                spacing: GlassSpacing.s8,
+                                children: [
+                                  if (editingOnPhone)
+                                    GlassIconButton(
+                                      key: const ValueKey('automation-phone-editor-files'),
+                                      tooltip: l.automationLibraryFiles,
+                                      icon: Icons.arrow_back,
+                                      size: 40,
+                                      onPressed: busy ? null : _backToPhoneFiles,
+                                    )
+                                  else if (!_phoneWorkspace) ...[
+                                    GlassIconButton(
+                                      key: const ValueKey('automation-toggle-file-tree'),
+                                      tooltip: l.automationLibraryFiles,
+                                      icon: Icons.view_sidebar_outlined,
+                                      size: 28,
+                                      selected: showTree,
+                                      onPressed: () => setState(() => fileTreeCollapsed = !fileTreeCollapsed),
+                                    ),
+                                  ],
+                                  Expanded(
+                                    child: Text /* l10n-ignore: filename and dirty marker */ (
+                                      '${file?.path ?? newPath}${dirty ? ' •' : ''}', // l10n-ignore: document path and dirty marker
+                                      style: GlassTokens.of(context).typography.mono,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                  const SizedBox(width: GlassSpacing.s8),
-                                ],
-                                Expanded(
-                                  child: Text /* l10n-ignore: filename and dirty marker */ (
-                                    '${file?.path ?? newPath}${dirty ? ' •' : ''}', // l10n-ignore: document path and dirty marker
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Expanded(
-                                  flex: 3,
-                                  child: Wrap(
-                                    alignment: WrapAlignment.end,
-                                    crossAxisAlignment: WrapCrossAlignment.center,
-                                    spacing: 6,
-                                    runSpacing: 4,
-                                    children: [
-                                      if (ref.watch(automationJobServiceProvider) case final jobs? when editingOnPhone)
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(maxWidth: toolbar.maxWidth * .65),
+                                    child: Wrap(
+                                      alignment: WrapAlignment.end,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      spacing: GlassSpacing.s4,
+                                      runSpacing: GlassSpacing.s4,
+                                      children: [
+                                        if (ref.watch(automationJobServiceProvider) case final jobs?
+                                            when editingOnPhone)
+                                          GlassIconButton(
+                                            key: const ValueKey('automation-phone-editor-run'),
+                                            tooltip: l.automationRun,
+                                            icon: Icons.play_arrow,
+                                            size: 40,
+                                            onPressed: busy ? null : () => _run(jobs),
+                                          ),
                                         GlassIconButton(
-                                          key: const ValueKey('automation-phone-editor-run'),
-                                          tooltip: l.automationRun,
-                                          icon: Icons.play_arrow,
-                                          size: 40,
-                                          onPressed: busy ? null : () => _run(jobs),
-                                        ),
-                                      GlassIconButton(
-                                        key: const ValueKey('automation-save'),
-                                        tooltip: l.commonSave,
-                                        icon: Icons.save_outlined,
-                                        size: AppPlatform.isMobile ? 40 : 28,
-                                        iconSize: 16,
-                                        onPressed: !dirty || busy ? null : _save,
-                                      ),
-                                      if (file != null &&
-                                          project?.readOnly == false &&
-                                          project?.revision != null &&
-                                          widget.service is AutomationVaultFileService &&
-                                          (file!.path.endsWith('.yml') || file!.path.endsWith('.yaml')))
-                                        GlassIconButton(
-                                          key: const ValueKey('automation-vault-file-open'),
-                                          tooltip: l.automationVaultFileTitle,
-                                          icon: Icons.lock_outline,
+                                          key: const ValueKey('automation-save'),
+                                          tooltip: l.commonSave,
+                                          icon: Icons.save_outlined,
                                           size: AppPlatform.isMobile ? 40 : 28,
                                           iconSize: 16,
-                                          onPressed: busy ? null : () => unawaited(_vaultFile()),
+                                          onPressed: !dirty || busy ? null : _save,
                                         ),
-                                      if (!AppPlatform.isMobile &&
-                                          file != null &&
-                                          widget.service is AutomationEditorService) ...[
-                                        GlassIconButton(
-                                          key: const ValueKey('automation-open-editor'),
-                                          size: AppPlatform.isMobile ? 40 : 28,
-                                          iconSize: 16,
-                                          tooltip: l.automationOpenEditor,
-                                          onPressed: busy
-                                              ? null
-                                              : () => _externalEditor(widget.service as AutomationEditorService),
-                                          icon: Icons.open_in_new,
-                                        ),
-                                        GlassIconButton(
-                                          key: const ValueKey('automation-reload-file'),
-                                          size: AppPlatform.isMobile ? 40 : 28,
-                                          iconSize: 16,
-                                          tooltip: l.automationReloadFile,
-                                          onPressed: busy ? null : () => _read(file!.path),
-                                          icon: Icons.refresh,
-                                        ),
+                                        if (file != null &&
+                                            project?.readOnly == false &&
+                                            project?.revision != null &&
+                                            widget.service is AutomationVaultFileService &&
+                                            (file!.path.endsWith('.yml') || file!.path.endsWith('.yaml')))
+                                          GlassIconButton(
+                                            key: const ValueKey('automation-vault-file-open'),
+                                            tooltip: l.automationVaultFileTitle,
+                                            icon: Icons.lock_outline,
+                                            size: AppPlatform.isMobile ? 40 : 28,
+                                            iconSize: 16,
+                                            onPressed: busy ? null : () => unawaited(_vaultFile()),
+                                          ),
+                                        if (!AppPlatform.isMobile &&
+                                            file != null &&
+                                            widget.service is AutomationEditorService) ...[
+                                          GlassIconButton(
+                                            key: const ValueKey('automation-open-editor'),
+                                            size: AppPlatform.isMobile ? 40 : 28,
+                                            iconSize: 16,
+                                            tooltip: l.automationOpenEditor,
+                                            onPressed: busy
+                                                ? null
+                                                : () => _externalEditor(widget.service as AutomationEditorService),
+                                            icon: Icons.open_in_new,
+                                          ),
+                                          GlassIconButton(
+                                            key: const ValueKey('automation-reload-file'),
+                                            size: AppPlatform.isMobile ? 40 : 28,
+                                            iconSize: 16,
+                                            tooltip: l.automationReloadFile,
+                                            onPressed: busy ? null : () => _read(file!.path),
+                                            icon: Icons.refresh,
+                                          ),
+                                        ],
+                                        if (widget.service case final AutomationAiService ai)
+                                          GlassIconButton(
+                                            key: const ValueKey('automation-ai-open'),
+                                            tooltip: l.automationAiTitle,
+                                            size: AppPlatform.isMobile ? 40 : 28,
+                                            iconSize: 16,
+                                            onPressed:
+                                                busy ||
+                                                    !((file?.path ?? newPath ?? '').endsWith('.yml') ||
+                                                        (file?.path ?? newPath ?? '').endsWith('.yaml'))
+                                                ? null
+                                                : () => _ai(ai),
+                                            icon: Icons.auto_awesome,
+                                          ),
                                       ],
-                                      if (widget.service case final AutomationAiService ai)
-                                        GlassIconButton(
-                                          key: const ValueKey('automation-ai-open'),
-                                          tooltip: l.automationAiTitle,
-                                          size: AppPlatform.isMobile ? 40 : 28,
-                                          iconSize: 16,
-                                          onPressed:
-                                              busy ||
-                                                  !((file?.path ?? newPath ?? '').endsWith('.yml') ||
-                                                      (file?.path ?? newPath ?? '').endsWith('.yaml'))
-                                              ? null
-                                              : () => _ai(ai),
-                                          icon: Icons.auto_awesome,
-                                        ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Expanded(

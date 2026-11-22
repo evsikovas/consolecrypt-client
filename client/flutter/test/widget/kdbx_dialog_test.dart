@@ -24,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kdbx/kdbx.dart' as keepass;
 import 'package:material_ui/material_ui.dart';
 
+import '../helpers/automation_ui_proof.dart';
 import '../helpers/test_app.dart';
 
 class _Files extends Fake implements FileDialogService {
@@ -689,6 +690,7 @@ void main() {
   testWidgets('welcome actions disappear after opening; folders are above pinned databases and fields have spacing', (
     tester,
   ) async {
+    await loadAutomationProofFonts(tester);
     final backend = testBackend();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
@@ -698,6 +700,7 @@ void main() {
       tester,
       backend,
       locale: AppLocale.ru,
+      captureBoundary: true,
       overrides: [fileDialogServiceProvider.overrideWithValue(_Files(fixturePath))],
     );
     final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
@@ -722,6 +725,7 @@ void main() {
     );
     await tester.tap(find.text('Test entry'));
     await settle(tester);
+    await captureAutomationWorkspace(tester, 'design-kdbx-details-windows');
     final boundary = tester.renderObject<RenderRepaintBoundary>(
       find.ancestor(of: find.byKey(const ValueKey('keepass-manager')), matching: find.byType(RepaintBoundary)).last,
     );

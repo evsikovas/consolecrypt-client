@@ -106,6 +106,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
   void _browse(String location) {
     setState(() {
       _location = location;
+      _inspectedHost = null;
       _search.clear();
       _tags.clear();
     });
@@ -273,9 +274,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
           final wide = constraints.maxWidth >= 760;
           final inspect =
               !AppPlatform.isMobile && !_cards && showHosts && hosts.isNotEmpty && constraints.maxWidth >= 980;
-          final inspected = inspect
-              ? (hosts.where((host) => host.id == _inspectedHost).firstOrNull ?? hosts.first)
-              : null;
+          final inspected = inspect ? hosts.where((host) => host.id == _inspectedHost).firstOrNull : null;
           final navigation = InventoryNavigation(
             groups: groups,
             hosts: allHosts,
@@ -306,7 +305,10 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                   ViewModeToggle(
                     keyPrefix: 'inventory-view',
                     cards: _cards,
-                    onChanged: (cards) => setState(() => _cards = cards),
+                    onChanged: (cards) => setState(() {
+                      _cards = cards;
+                      _inspectedHost = null;
+                    }),
                   ),
                 ],
               ),
@@ -432,7 +434,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                               : _scroll;
                           return Scrollbar(
                             controller: listController,
-                            thumbVisibility: true,
+                            thickness: 4,
                             child: CustomScrollView(
                               controller: listController,
                               slivers: [
@@ -484,7 +486,11 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                                         groupName: groupPathName(groups, host.groupId),
                                         cards: _cards,
                                         inspected: inspected?.id == host.id,
-                                        onInspect: inspect ? () => setState(() => _inspectedHost = host.id) : null,
+                                        onInspect: inspect
+                                            ? () => setState(() {
+                                                _inspectedHost = _inspectedHost == host.id ? null : host.id;
+                                              })
+                                            : null,
                                         onDelete: () => _delete(host),
                                       );
                                       return Padding(
@@ -530,7 +536,11 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                 const SizedBox(width: GlassSpacing.s12),
                 SizedBox(
                   width: 272,
-                  child: _HostInspector(host: inspected, groupName: groupPathName(groups, inspected.groupId)),
+                  child: _HostInspector(
+                    host: inspected,
+                    groupName: groupPathName(groups, inspected.groupId),
+                    onClose: () => setState(() => _inspectedHost = null),
+                  ),
                 ),
               ],
             ],
@@ -666,69 +676,110 @@ enum _HostAction {
 }
 
 class _HostInspector extends ConsumerWidget {
-  const _HostInspector({required this.host, required this.groupName});
+  const _HostInspector({required this.host, required this.groupName, required this.onClose});
 
   final Host host;
   final String groupName;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
+    final icon = host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded;
     final port = host.port ?? (host.isRdp ? defaultRdpPort : defaultSshPort);
+    final secondary = [
+      if (!host.isRdp)
+        GlassButton(
+          key: const ValueKey('host-inspector-sftp'),
+          expand: true,
+          label: l.navSftp,
+          icon: Icons.folder_copy_rounded,
+          onPressed: () async {
+            await ref.read(sftpControllerProvider.notifier).connect(host);
+            if (context.mounted) context.go(AppRoutes.sftp);
+          },
+        ),
+      GlassButton(
+        key: const ValueKey('host-inspector-edit'),
+        expand: true,
+        label: l.commonEdit,
+        icon: Icons.edit_outlined,
+        onPressed: () => context.go(AppRoutes.editHost(host.id)),
+      ),
+    ];
     return SingleChildScrollView(
       primary: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SectionCard(
-            key: const ValueKey('host-inspector'),
-            title: host.name,
-            icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                LabeledValue(
-                  label: l.hostEditorAddressLabel,
-                  labelWidth: 92,
-                  value: SelectableText(host.address, style: tokens.typography.mono),
-                ),
-                if (host.username case final username?)
-                  LabeledValue(label: l.hostEditorUsernameLabel, labelWidth: 92, value: SelectableText(username)),
-                LabeledValue(label: l.hostEditorPortLabel, labelWidth: 92, value: Text('$port')),
-                if (groupName.isNotEmpty) LabeledValue(label: l.navGroups, labelWidth: 92, value: Text(groupName)),
-                const SizedBox(height: GlassSpacing.s12),
-                GlassButton.prominent(
-                  key: const ValueKey('host-inspector-connect'),
-                  label: l.commonConnect,
-                  icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
-                  onPressed: () => connectToHost(context, ref, host),
-                ),
-                const SizedBox(height: GlassSpacing.s8),
-                Wrap(
-                  spacing: GlassSpacing.s8,
-                  runSpacing: GlassSpacing.s8,
-                  children: [
-                    if (!host.isRdp)
-                      GlassButton(
-                        label: l.navSftp,
-                        icon: Icons.folder_copy_rounded,
-                        onPressed: () async {
-                          await ref.read(sftpControllerProvider.notifier).connect(host);
-                          if (context.mounted) context.go(AppRoutes.sftp);
-                        },
-                      ),
-                    GlassButton(
-                      label: l.commonEdit,
-                      icon: Icons.edit_outlined,
-                      onPressed: () => context.go(AppRoutes.editHost(host.id)),
+      child: ContentSurface(
+        key: const ValueKey('host-inspector'),
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(GlassSpacing.s12, GlassSpacing.s4, GlassSpacing.s4, GlassSpacing.s4),
+              child: Row(
+                spacing: GlassSpacing.s8,
+                children: [
+                  Icon(icon, size: GlassSizes.iconToolbar, color: tokens.secondaryLabel),
+                  Expanded(
+                    child: Text(
+                      host.name,
+                      style: tokens.typography.title3,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  GlassIconButton(
+                    key: const ValueKey('host-inspector-close'),
+                    icon: Icons.close_rounded,
+                    tooltip: l.commonClose,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: onClose,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(GlassSpacing.s12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  LabeledValue(
+                    label: l.hostEditorAddressLabel,
+                    labelWidth: 92,
+                    value: SelectableText(host.address, style: tokens.typography.mono),
+                  ),
+                  if (host.username case final username?)
+                    LabeledValue(label: l.hostEditorUsernameLabel, labelWidth: 92, value: SelectableText(username)),
+                  LabeledValue(label: l.hostEditorPortLabel, labelWidth: 92, value: Text('$port')),
+                  if (groupName.isNotEmpty) LabeledValue(label: l.navGroups, labelWidth: 92, value: Text(groupName)),
+                  const SizedBox(height: GlassSpacing.s12),
+                  GlassButton.prominent(
+                    key: const ValueKey('host-inspector-connect'),
+                    expand: true,
+                    label: l.commonConnect,
+                    icon: icon,
+                    onPressed: () => connectToHost(context, ref, host),
+                  ),
+                  const SizedBox(height: GlassSpacing.s8),
+                  if (MediaQuery.textScalerOf(context).scale(14) > 18)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      spacing: GlassSpacing.s8,
+                      children: secondary,
+                    )
+                  else
+                    Row(
+                      spacing: GlassSpacing.s8,
+                      children: [for (final button in secondary) Expanded(child: button)],
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -844,6 +895,7 @@ class _HostTile extends ConsumerWidget {
           onPressed: () => connectToHost(context, ref, host),
           icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
           tooltip: l10n.commonConnect,
+          style: GlassIconButtonStyle.plain,
         ),
         const SizedBox(width: GlassSpacing.s4),
         GlassMenuButton<_HostAction>(

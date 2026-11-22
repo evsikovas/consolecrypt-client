@@ -19,6 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../helpers/automation_ui_proof.dart';
 import '../helpers/test_app.dart';
 
 class _Clipboard extends SecureClipboard {
@@ -68,6 +69,7 @@ void main() {
     addTearDown(() => server.close(force: true));
     final backend = testBackend();
     addTearDown(backend.dispose);
+    await loadAutomationProofFonts(tester);
     await backend.debugSignInDemoAndUnlock();
     final mobile = AppPlatform.isMobile;
     final clipboard = _Clipboard();
@@ -77,6 +79,7 @@ void main() {
       overrides: [secureClipboardProvider.overrideWithValue(clipboard)],
       locale: AppLocale.en,
       size: mobile ? const Size(360, 800) : const Size(1600, 1050),
+      captureBoundary: true,
     );
     final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
     container.read(routerProvider).go(AppRoutes.passwords);
@@ -152,6 +155,7 @@ void main() {
       expect(tester.getRect(item).right, lessThan(tester.getRect(find.text('••••••••')).left));
     }
     expect(find.text('fixture-secret-value'), findsNothing);
+    if (!mobile) await captureAutomationWorkspace(tester, 'design-vault-secret-windows');
     final show = find.widgetWithIcon(GlassIconButton, Icons.visibility_outlined);
     final copy = find.widgetWithIcon(GlassIconButton, Icons.copy_outlined);
     expect(tester.getSize(show), tester.getSize(copy));

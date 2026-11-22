@@ -224,8 +224,10 @@ void main() {
     await tester.pump();
     final field = tester.widget<TextField>(find.byKey(const ValueKey('automation-editor')));
     expect(field.decoration!.filled, isFalse);
+    expect(field.decoration!.enabledBorder, InputBorder.none);
+    expect(field.decoration!.focusedBorder, InputBorder.none);
     final frame = tester.widget<Container>(find.byKey(const ValueKey('ansible-editor-frame')));
-    expect((frame.decoration! as BoxDecoration).border, isNotNull);
+    expect((frame.decoration! as BoxDecoration).border, isNull);
     expect(field.controller!.text, contains('# … 2'));
     expect(raw.text, source);
     expect(saves, isEmpty);

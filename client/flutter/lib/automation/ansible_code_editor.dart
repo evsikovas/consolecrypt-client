@@ -244,11 +244,7 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
     return Container(
       key: const ValueKey('ansible-editor-frame'),
       clipBehavior: Clip.hardEdge,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border.all(color: Theme.of(context).dividerColor),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration(color: tokens.surfaces.paper, borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -331,6 +327,9 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
                                   decoration: const InputDecoration(
                                     filled: false,
                                     border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    disabledBorder: InputBorder.none,
                                     isDense: true,
                                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   ),

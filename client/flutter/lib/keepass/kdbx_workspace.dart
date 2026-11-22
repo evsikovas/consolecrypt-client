@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/keepass/external_vault.dart';
 import 'package:consolecrypt/keepass/kdbx_client.dart';
 import 'package:consolecrypt/keepass/kdbx_entry_icons.dart';
+import 'package:consolecrypt/keepass/password_field_row.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
@@ -94,8 +95,10 @@ class KdbxWorkspace extends StatelessWidget {
         dragStartBehavior: DragStartBehavior.down,
         onHorizontalDragUpdate: (details) => onDelta(details.delta.dx),
         child: SizedBox(
-          width: 10,
-          child: Center(child: Container(width: 1, color: Theme.of(context).dividerColor)),
+          width: GlassSpacing.s8,
+          child: Center(
+            child: ColoredBox(color: GlassTokens.of(context).surfaces.separator, child: const SizedBox(width: 1)),
+          ),
         ),
       ),
     ),
@@ -682,7 +685,7 @@ class KdbxWorkspace extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Padding(
-            padding: EdgeInsets.only(left: depth * 14.0),
+            padding: EdgeInsetsDirectional.only(start: depth.clamp(0, 5) * 14.0),
             child: GestureDetector(
               onSecondaryTapDown: all || !_groupAvailable(session!, id)
                   ? null
@@ -693,6 +696,10 @@ class KdbxWorkspace extends StatelessWidget {
               child: ListTile(
                 key: ValueKey('keepass-group-${all ? 'all' : id}'),
                 dense: true,
+                minTileHeight: 36,
+                contentPadding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
+                horizontalTitleGap: GlassSpacing.s8,
+                shape: GlassRadii.shape(GlassTokens.of(context).radii.row),
                 selected: all ? group == null : group == id,
                 selectedColor: Theme.of(context).colorScheme.onSurface,
                 selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
@@ -741,49 +748,55 @@ class KdbxWorkspace extends StatelessWidget {
       return n;
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(l.keepassEntryViews, style: Theme.of(context).textTheme.titleSmall),
-              ),
-              _folder(context, id: root, label: l.keepassAllGroups, all: true),
-              Tooltip(
-                message: l.keepassUngroupedHelp,
-                child: _folder(context, id: root, label: l.keepassUngrouped),
-              ),
-              const Divider(key: ValueKey('keepass-folder-tree-divider'), height: 18),
-              Padding(
-                key: const ValueKey('keepass-folder-tree-heading'),
-                padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
-                child: Text(l.keepassGroups, style: Theme.of(context).textTheme.titleSmall),
-              ),
-              for (final row in folders)
-                _folder(context, id: row['id']! as String, label: row['label']! as String, depth: depth(row, root)),
-              if (trash != null) ...[
-                const Divider(key: ValueKey('keepass-trash-divider'), height: 18),
-                _folder(context, id: bin! as String, label: l.keepassRecycleBin),
-                for (final row in groups.where(
-                  (row) => row['recycled'] == true && row['id'] != bin && row['id'] != root,
-                ))
-                  _folder(
-                    context,
-                    id: row['id']! as String,
-                    label: row['label']! as String,
-                    depth: 1 + depth(row, bin),
-                  ),
+    return LayoutBuilder(
+      builder: (context, bounds) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s4),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(l.keepassEntryViews, style: Theme.of(context).textTheme.titleSmall),
+                ),
+                _folder(context, id: root, label: l.keepassAllGroups, all: true),
+                Tooltip(
+                  message: l.keepassUngroupedHelp,
+                  child: _folder(context, id: root, label: l.keepassUngrouped),
+                ),
+                const Divider(key: ValueKey('keepass-folder-tree-divider'), height: 18),
+                Padding(
+                  key: const ValueKey('keepass-folder-tree-heading'),
+                  padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                  child: Text(l.keepassGroups, style: Theme.of(context).textTheme.titleSmall),
+                ),
+                for (final row in folders)
+                  _folder(context, id: row['id']! as String, label: row['label']! as String, depth: depth(row, root)),
+                if (trash != null) ...[
+                  const Divider(key: ValueKey('keepass-trash-divider'), height: 18),
+                  _folder(context, id: bin! as String, label: l.keepassRecycleBin),
+                  for (final row in groups.where(
+                    (row) => row['recycled'] == true && row['id'] != bin && row['id'] != root,
+                  ))
+                    _folder(
+                      context,
+                      id: row['id']! as String,
+                      label: row['label']! as String,
+                      depth: 1 + depth(row, bin),
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        const Divider(height: 1),
-        SizedBox(key: const ValueKey('keepass-databases-bottom'), height: 180, child: _sources(context)),
-      ],
+          const Divider(height: 1),
+          SizedBox(
+            key: const ValueKey('keepass-databases-bottom'),
+            height: (bounds.maxHeight * .30).clamp(0.0, 180.0),
+            child: _sources(context),
+          ),
+        ],
+      ),
     );
   }
 
@@ -791,11 +804,11 @@ class KdbxWorkspace extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(GlassSpacing.s8),
         child: GlassField(
           fieldKey: const ValueKey('keepass-search'),
           controller: search,
-          size: GlassFieldSize.lg,
+          size: AppPlatform.isMobile ? GlassFieldSize.lg : GlassFieldSize.md,
           search: true,
           placeholder: context.l10n.keepassSearch,
           leadingIcon: Icons.search_rounded,
@@ -821,7 +834,7 @@ class KdbxWorkspace extends StatelessWidget {
         child: entries.isEmpty
             ? Center(child: Text(context.l10n.keepassEmpty))
             : ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, 0, GlassSpacing.s8, GlassSpacing.s8),
                 itemCount: entries.length,
                 separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
@@ -861,6 +874,8 @@ class KdbxWorkspace extends StatelessWidget {
                         minTileHeight: AppPlatform.isMobile ? 60 : 48,
                         minVerticalPadding: 6,
                         dense: !AppPlatform.isMobile,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
+                        shape: GlassRadii.shape(GlassTokens.of(context).radii.row),
                         selected: selected?['id'] == entry['id'],
                         selectedColor: Theme.of(context).colorScheme.onSurface,
                         selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
@@ -900,103 +915,108 @@ class KdbxWorkspace extends StatelessWidget {
 
   Widget _details(BuildContext context, {bool compact = false}) {
     final l = context.l10n;
+    final tokens = GlassTokens.of(context);
     final entry = selected;
     if (entry == null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(l.keepassNoSelection, textAlign: TextAlign.center),
+          child: Text(
+            l.keepassNoSelection,
+            textAlign: TextAlign.center,
+            style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+          ),
         ),
       );
     }
-    Widget field(String key, String label, {String? value}) => Container(
+    final folder = session!.rows('groups').where((g) => g['id'] == entry['group']).firstOrNull;
+    final folderName = (folder?['name'] ?? folder?['label']) as String?;
+    Widget field(String key, String label, {String? value}) => PasswordFieldRow(
       key: ValueKey('keepass-detail-$key'),
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.fromLTRB(10, 4, 6, 4),
-      constraints: BoxConstraints(minHeight: AppPlatform.isMobile ? 52 : 48),
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).dividerColor),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: Theme.of(context).textTheme.labelMedium),
-                const SizedBox(height: 2),
-                SelectableText(
-                  value ?? '••••••••',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ), // l10n-ignore: secret mask.
-              ],
-            ),
-          ),
-          GlassIconButton(
-            key: ValueKey('keepass-detail-copy-$key'),
-            icon: Icons.copy_outlined,
-            size: 28,
-            iconSize: 18,
-            style: GlassIconButtonStyle.plain,
-            tooltip: '${l.keepassCopyField}: $label',
-            onPressed: busy ? null : () => onCopy(entry, key),
-          ),
-        ],
-      ),
+      label: label,
+      value: value == null
+          ? Text('••••••••', style: tokens.typography.mono.copyWith(color: tokens.secondaryLabel)) // l10n-ignore: mask.
+          : SelectableText(value, style: key == 'Notes' ? tokens.typography.body : tokens.typography.mono),
+      actions: [
+        GlassIconButton(
+          key: ValueKey('keepass-detail-copy-$key'),
+          icon: Icons.copy_outlined,
+          size: GlassControlSize.md.height,
+          iconSize: 16,
+          style: GlassIconButtonStyle.plain,
+          tooltip: '${l.keepassCopyField}: $label',
+          onPressed: busy ? null : () => onCopy(entry, key),
+        ),
+      ],
     );
+    final fields = [
+      field('UserName', l.keepassUsername, value: entry['username']! as String),
+      field('Password', l.keepassEntryPassword),
+      if ((entry['url']! as String).isNotEmpty) field('URL', l.keepassUrl, value: entry['url']! as String),
+      field('Notes', l.keepassNotes, value: entry['notes'] as String? ?? ''),
+      for (final key in (entry['fields'] as List<Object?>? ?? []).cast<String>().where(
+        (k) => !['title', 'username', 'password', 'url', 'notes'].contains(k.toLowerCase()),
+      ))
+        field(key, key),
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(GlassSpacing.s12),
           child: Row(
+            spacing: GlassSpacing.s8,
             children: [
               if (compact)
                 GlassIconButton(
                   key: const ValueKey('keepass-back-entries'),
                   icon: Icons.arrow_back_rounded,
                   tooltip: l.keepassBackEntries,
+                  style: GlassIconButtonStyle.plain,
                   onPressed: () => onEntry(null),
                 ),
+              if (!compact) kdbxIconPreview(session!.iconFor(entry), kdbxEntryIcon(entry['icon'] as int?), size: 20),
               Expanded(
-                child: Text(
-                  entry['title']! as String,
-                  style: Theme.of(context).textTheme.titleLarge,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: GlassSpacing.s4,
+                  children: [
+                    Text(
+                      entry['title']! as String,
+                      style: tokens.typography.title3,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (folderName != null && folderName.isNotEmpty)
+                      Text(
+                        folderName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                      ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
+        const Divider(height: 1),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  session!.rows('groups').where((g) => g['id'] == entry['group']).firstOrNull?['name'] as String? ?? '',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 12),
-                field('UserName', l.keepassUsername, value: entry['username']! as String),
-                field('Password', l.keepassEntryPassword),
-                if ((entry['url']! as String).isNotEmpty) field('URL', l.keepassUrl, value: entry['url']! as String),
-                field('Notes', l.keepassNotes, value: entry['notes'] as String? ?? ''),
-                for (final key in (entry['fields'] as List<Object?>? ?? []).cast<String>().where(
-                  (k) => !['title', 'username', 'password', 'url', 'notes'].contains(k.toLowerCase()),
-                ))
-                  field(key, key),
-              ],
-            ),
+          child: ListView.separated(
+            primary: false,
+            padding: EdgeInsets.zero,
+            itemCount: fields.length,
+            itemBuilder: (_, index) => fields[index],
+            separatorBuilder: (_, _) => const Divider(height: 1, indent: GlassSpacing.s12, endIndent: GlassSpacing.s12),
           ),
         ),
         const Divider(height: 1),
         Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
+          padding: const EdgeInsets.all(GlassSpacing.s8),
+          child: Wrap(
+            spacing: GlassSpacing.s8,
+            runSpacing: GlassSpacing.s4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               GlassButton(
                 key: const ValueKey('keepass-edit-entry'),
@@ -1004,10 +1024,10 @@ class KdbxWorkspace extends StatelessWidget {
                 icon: Icons.edit_outlined,
                 onPressed: busy ? null : () => onEdit(entry),
               ),
-              const Spacer(),
               GlassIconButton(
                 icon: Icons.delete_outline_rounded,
                 tooltip: entry['recycled'] == true ? l.keepassDeletePermanently : l.commonDelete,
+                style: GlassIconButtonStyle.plain,
                 size: GlassControlSize.md.height,
                 iconSize: 16,
                 onPressed: busy ? null : () => onDelete(entry),
@@ -1119,10 +1139,115 @@ class KdbxWorkspace extends StatelessWidget {
     );
   }
 
+  Widget _databaseToolbar(BuildContext context, PasswordVaultSession opened) {
+    final l = context.l10n;
+    final tokens = GlassTokens.of(context);
+    return ContentSurface(
+      padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s12, vertical: GlassSpacing.s8),
+      child: LayoutBuilder(
+        builder: (context, bounds) {
+          final compact = bounds.maxWidth < 820;
+          Widget action(String id, String label, IconData icon, VoidCallback onPressed, {bool primary = false}) {
+            final callback = busy ? null : onPressed;
+            return compact
+                ? GlassIconButton(
+                    key: ValueKey(id),
+                    icon: icon,
+                    tooltip: label,
+                    size: GlassControlSize.md.height,
+                    style: primary ? GlassIconButtonStyle.prominent : GlassIconButtonStyle.glass,
+                    onPressed: callback,
+                  )
+                : GlassButton(
+                    key: ValueKey(id),
+                    label: label,
+                    icon: icon,
+                    style: primary ? GlassButtonStyle.prominent : GlassButtonStyle.glass,
+                    onPressed: callback,
+                  );
+          }
+
+          final actions = Wrap(
+            spacing: GlassSpacing.s8,
+            runSpacing: GlassSpacing.s8,
+            alignment: bounds.maxWidth < 440 ? WrapAlignment.start : WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              action('keepass-new-entry', l.keepassNewEntry, Icons.add_rounded, onNewEntry, primary: true),
+              action('keepass-new-group', l.keepassNewGroup, Icons.create_new_folder_outlined, onNewGroup),
+              if (opened.data['dirty'] == true && !busy)
+                action('keepass-save', l.keepassRetrySave, Icons.refresh_rounded, onRetrySave),
+              action('keepass-generator-open', l.keepassGenerator, Icons.auto_fix_high_rounded, onGenerator),
+              action('keepass-external-vault', l.externalVaultTitle, Icons.shield_outlined, onVault),
+              GlassMenuButton<String>(
+                entries: _sourceEntries(context, opened.source),
+                onSelected: (action) => onSourceAction(opened.source, action),
+                builder: (context, open) => GlassIconButton(
+                  key: const ValueKey('keepass-database-actions'),
+                  icon: Icons.more_horiz_rounded,
+                  tooltip: l.keepassMore,
+                  size: GlassControlSize.md.height,
+                  onPressed: busy ? null : open,
+                ),
+              ),
+            ],
+          );
+          final source = Row(
+            spacing: GlassSpacing.s8,
+            children: [
+              Icon(
+                opened.source.remote ? Icons.cloud_outlined : Icons.lock_open_rounded,
+                size: GlassSizes.iconToolbar,
+                color: tokens.palette.accent,
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: GlassSpacing.s2,
+                  children: [
+                    Text(
+                      opened.source.name,
+                      style: tokens.typography.title3,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      opened.busy
+                          ? l.keepassAutosaving
+                          : opened.data['dirty'] == true
+                          ? l.keepassDirty
+                          : l.keepassAutosaved,
+                      style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+          return bounds.maxWidth < 440
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: GlassSpacing.s8,
+                  children: [source, actions],
+                )
+              : Row(
+                  spacing: GlassSpacing.s12,
+                  children: [
+                    Expanded(child: source),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: bounds.maxWidth * .72),
+                      child: actions,
+                    ),
+                  ],
+                );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final compact = MediaQuery.sizeOf(context).width < 700;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1138,117 +1263,10 @@ class KdbxWorkspace extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: InfoBanner(tone: BannerTone.danger, message: error!),
           ),
-        if (session != null)
+        if (session case final opened?)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 280),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        session!.source.name,
-                        style: Theme.of(context).textTheme.titleMedium,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        session!.busy
-                            ? l.keepassAutosaving
-                            : session!.data['dirty'] == true
-                            ? l.keepassDirty
-                            : l.keepassAutosaved,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                if (compact)
-                  GlassIconButton(
-                    key: const ValueKey('keepass-new-entry'),
-                    tooltip: l.keepassNewEntry,
-                    icon: Icons.add_rounded,
-                    size: GlassControlSize.md.height,
-                    onPressed: busy ? null : onNewEntry,
-                  )
-                else
-                  GlassButton(
-                    key: const ValueKey('keepass-new-entry'),
-                    label: l.keepassNewEntry,
-                    icon: Icons.add_rounded,
-                    onPressed: busy ? null : onNewEntry,
-                  ),
-                if (compact)
-                  GlassIconButton(
-                    key: const ValueKey('keepass-new-group'),
-                    tooltip: l.keepassNewGroup,
-                    icon: Icons.create_new_folder_outlined,
-                    size: GlassControlSize.md.height,
-                    onPressed: busy ? null : onNewGroup,
-                  )
-                else
-                  GlassButton(
-                    key: const ValueKey('keepass-new-group'),
-                    label: l.keepassNewGroup,
-                    icon: Icons.create_new_folder_outlined,
-                    onPressed: busy ? null : onNewGroup,
-                  ),
-                if (session!.data['dirty'] == true && !busy)
-                  GlassButton(
-                    key: const ValueKey('keepass-save'),
-                    label: l.keepassRetrySave,
-                    icon: Icons.refresh_rounded,
-                    onPressed: onRetrySave,
-                  ),
-                if (compact)
-                  GlassIconButton(
-                    key: const ValueKey('keepass-generator-open'),
-                    tooltip: l.keepassGenerator,
-                    icon: Icons.auto_fix_high_rounded,
-                    size: GlassControlSize.md.height,
-                    onPressed: busy ? null : onGenerator,
-                  )
-                else
-                  GlassButton(
-                    key: const ValueKey('keepass-generator-open'),
-                    label: l.keepassGenerator,
-                    icon: Icons.auto_fix_high_rounded,
-                    onPressed: busy ? null : onGenerator,
-                  ),
-                if (compact)
-                  GlassIconButton(
-                    key: const ValueKey('keepass-external-vault'),
-                    tooltip: l.externalVaultTitle,
-                    icon: Icons.shield_outlined,
-                    size: GlassControlSize.md.height,
-                    onPressed: busy ? null : onVault,
-                  )
-                else
-                  GlassButton(
-                    key: const ValueKey('keepass-external-vault'),
-                    label: l.externalVaultTitle,
-                    icon: Icons.shield_outlined,
-                    onPressed: busy ? null : onVault,
-                  ),
-                GlassMenuButton<String>(
-                  entries: _sourceEntries(context, session!.source),
-                  onSelected: (action) => onSourceAction(session!.source, action),
-                  builder: (context, open) => GlassIconButton(
-                    key: const ValueKey('keepass-database-actions'),
-                    icon: Icons.more_vert_rounded,
-                    tooltip: l.keepassMore,
-                    size: GlassControlSize.md.height,
-                    iconSize: 16,
-                    onPressed: busy ? null : open,
-                  ),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
+            child: _databaseToolbar(context, opened),
           ),
         Expanded(
           child: session == null
@@ -1256,11 +1274,15 @@ class KdbxWorkspace extends StatelessWidget {
               : LayoutBuilder(
                   builder: (context, constraints) {
                     if (constraints.maxWidth < 700) {
-                      return Column(
-                        children: [
-                          _compactNavigation(context),
-                          Expanded(child: selected == null ? _entryList(context) : _details(context, compact: true)),
-                        ],
+                      return ContentSurface(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _compactNavigation(context),
+                            const Divider(height: 1),
+                            Expanded(child: selected == null ? _entryList(context) : _details(context, compact: true)),
+                          ],
+                        ),
                       );
                     }
                     final wide = constraints.maxWidth >= 1050;
@@ -1269,34 +1291,38 @@ class KdbxWorkspace extends StatelessWidget {
                         : (constraints.maxWidth - 250).clamp(170.0, 300.0);
                     final side = sidebarWidth.clamp(170.0, sideLimit);
                     final detail = detailsWidth.clamp(300.0, (constraints.maxWidth - side - 280).clamp(300.0, 720.0));
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(width: side, child: _sidebar(context)),
-                        _splitter(
-                          context,
-                          'keepass-sidebar-resize',
-                          l.keepassResizeGroups,
-                          (delta) => onSidebarResize(delta, 170, sideLimit),
-                        ),
-                        Expanded(
-                          child: !wide && selected != null ? _details(context, compact: true) : _entryList(context),
-                        ),
-                        if (wide) ...[
+                    return ContentSurface(
+                      kind: ContentSurfaceKind.solid,
+                      padding: EdgeInsets.zero,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(width: side, child: _sidebar(context)),
                           _splitter(
                             context,
-                            'keepass-details-resize',
-                            l.keepassResizeCard,
-                            (delta) =>
-                                onDetailsResize(delta, 300, (constraints.maxWidth - side - 280).clamp(300.0, 720.0)),
+                            'keepass-sidebar-resize',
+                            l.keepassResizeGroups,
+                            (delta) => onSidebarResize(delta, 170, sideLimit),
                           ),
-                          SizedBox(
-                            key: const ValueKey('keepass-details-pane'),
-                            width: detail,
-                            child: _details(context),
+                          Expanded(
+                            child: !wide && selected != null ? _details(context, compact: true) : _entryList(context),
                           ),
+                          if (wide) ...[
+                            _splitter(
+                              context,
+                              'keepass-details-resize',
+                              l.keepassResizeCard,
+                              (delta) =>
+                                  onDetailsResize(delta, 300, (constraints.maxWidth - side - 280).clamp(300.0, 720.0)),
+                            ),
+                            SizedBox(
+                              key: const ValueKey('keepass-details-pane'),
+                              width: detail,
+                              child: _details(context),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     );
                   },
                 ),
