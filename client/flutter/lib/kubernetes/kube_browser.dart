@@ -1836,9 +1836,23 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                     builder: (context, area) {
                       final navWidth = area.maxWidth < 900 ? 196.0 : 232.0;
                       final showNav = _navigatorOpen && area.maxWidth >= 560;
-                      final inspectorWidth = _inspectorWidth
-                          .clamp(380.0, math.max(380.0, area.maxWidth * .62))
-                          .toDouble();
+                      final showWorkspace = _panelOpen && session != null && rightPanel;
+                      final workspaceWidth = showWorkspace ? area.maxWidth * .34 : 0.0;
+                      final centerWidth =
+                          area.maxWidth -
+                          (showNav ? navWidth + GlassSpacing.s12 : 0) -
+                          (showWorkspace ? workspaceWidth + GlassSpacing.s12 : 0);
+                      const minInspectorWidth = 380.0;
+                      const minListWidth = 400.0;
+                      final hasInspector = inspected != null && session != null;
+                      final split = hasInspector && centerWidth >= minInspectorWidth + minListWidth + GlassSpacing.s12;
+                      final inspectorOnly = hasInspector && !split;
+                      final maxInspectorWidth = split
+                          ? math.min(centerWidth * .62, centerWidth - minListWidth - GlassSpacing.s12)
+                          : centerWidth;
+                      final inspectorWidth = split
+                          ? _inspectorWidth.clamp(minInspectorWidth, maxInspectorWidth).toDouble()
+                          : centerWidth;
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -1871,25 +1885,23 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                           Expanded(
                             child: Stack(
                               children: [
-                                Positioned.fill(child: main),
+                                Positioned.fill(
+                                  right: split ? inspectorWidth + GlassSpacing.s12 : 0,
+                                  child: ExcludeFocus(
+                                    excluding: inspectorOnly,
+                                    child: Offstage(offstage: inspectorOnly, child: main),
+                                  ),
+                                ),
                                 if (inspected != null && session != null)
                                   Positioned(
                                     top: 0,
                                     bottom: 0,
                                     right: 0,
                                     width: inspectorWidth,
-                                    // Drawer over the table: the list keeps
-                                    // its columns instead of being squeezed.
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(tokens.radii.card),
-                                        boxShadow: const [
-                                          BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(-6, 0)),
-                                        ],
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: [
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        if (split)
                                           MouseRegion(
                                             cursor: SystemMouseCursors.resizeColumn,
                                             child: GestureDetector(
@@ -1897,50 +1909,60 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                               behavior: HitTestBehavior.opaque,
                                               onHorizontalDragUpdate: (details) => setState(
                                                 () => _inspectorWidth = (inspectorWidth - details.delta.dx)
-                                                    .clamp(380.0, math.max(380.0, area.maxWidth * .62))
+                                                    .clamp(minInspectorWidth, maxInspectorWidth)
                                                     .toDouble(),
                                               ),
-                                              child: const SizedBox(width: 6),
+                                              child: VerticalDivider(
+                                                width: GlassSpacing.s8,
+                                                thickness: 1,
+                                                color: tokens.surfaces.separator,
+                                              ),
                                             ),
                                           ),
-                                          Expanded(
-                                            child: KubeResourceDetails(
-                                              key: ValueKey('kube-inspector-${inspected.id}'),
-                                              embedded: true,
-                                              session: session,
-                                              resource: inspected,
-                                              service: widget.service,
-                                              gitOpsMonitor: _gitOps,
-                                              initialLogs: _pendingAction == KubeResourceOpenAction.logs,
-                                              initialAction: _pendingAction,
-                                              contextName: widget.connection.name,
-                                              onSelectResource: (target) {
-                                                if (_current) unawaited(_openObject(target));
-                                              },
-                                              onEmbeddedClose: (changed) {
-                                                if (!_current) return;
-                                                setState(() => _inspected = null);
-                                                if (changed) unawaited(_refresh());
-                                              },
-                                              onChanged: () {
-                                                if (_current && _view == 'resources') unawaited(_refresh());
-                                              },
-                                              onTerminalOpened: _showTerminals,
-                                              onExplain: widget.service is KubeAiService ? _showAi : null,
-                                              onPinLogs: _pinLogs,
-                                              onOutput: _recordOutput,
-                                            ),
+                                        Expanded(
+                                          child: KubeResourceDetails(
+                                            key: ValueKey('kube-inspector-${inspected.id}'),
+                                            embedded: true,
+                                            session: session,
+                                            resource: inspected,
+                                            service: widget.service,
+                                            gitOpsMonitor: _gitOps,
+                                            initialLogs: _pendingAction == KubeResourceOpenAction.logs,
+                                            initialAction: _pendingAction,
+                                            contextName: widget.connection.name,
+                                            onSelectResource: (target) {
+                                              if (_current) unawaited(_openObject(target));
+                                            },
+                                            onEmbeddedClose: (changed) {
+                                              if (!_current) return;
+                                              setState(() => _inspected = null);
+                                              if (changed) unawaited(_refresh());
+                                            },
+                                            onChanged: () {
+                                              if (_current && _view == 'resources') unawaited(_refresh());
+                                            },
+                                            onTerminalOpened: () {
+                                              if (inspectorOnly) _inspected = null;
+                                              _showTerminals();
+                                            },
+                                            onExplain: widget.service is KubeAiService ? _showAi : null,
+                                            onPinLogs: (resource, containers) {
+                                              if (!_current) return;
+                                              if (inspectorOnly) _inspected = null;
+                                              _pinLogs(resource, containers);
+                                            },
+                                            onOutput: _recordOutput,
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                               ],
                             ),
                           ),
-                          if (_panelOpen && session != null && rightPanel) ...[
+                          if (showWorkspace) ...[
                             const SizedBox(width: GlassSpacing.s12),
-                            SizedBox(width: area.maxWidth * .34, child: _workspace(session)),
+                            SizedBox(width: workspaceWidth, child: _workspace(session)),
                           ],
                         ],
                       );

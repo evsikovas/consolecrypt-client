@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:consolecrypt/app/theme/app_theme.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
@@ -44,6 +45,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../helpers/automation_ui_proof.dart';
 import '../helpers/fake_native_clipboard.dart';
 import '../helpers/test_app.dart';
 
@@ -104,6 +106,7 @@ Future<ProviderContainer> _pump(
   double textScale = 1,
   TerminalService? terminalService,
   bool unlockVault = true,
+  bool capture = false,
 }) async {
   final backend = testBackend();
   addTearDown(backend.dispose);
@@ -125,13 +128,19 @@ Future<ProviderContainer> _pump(
       ],
       child: MaterialApp(
         locale: Locale(language),
+        theme: capture ? AppTheme.dark(platform: TargetPlatform.windows) : null,
         localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
         supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
           child: child!,
         ),
-        home: const Scaffold(body: KubernetesScreen()),
+        home: capture
+            ? const RepaintBoundary(
+                key: ValueKey('automation-proof-root'),
+                child: Scaffold(body: KubernetesScreen()),
+              )
+            : const Scaffold(body: KubernetesScreen()),
       ),
     ),
   );
@@ -148,6 +157,42 @@ Future<ProviderContainer> _pump(
 }
 
 void main() {
+  for (final width in [1024.0, 1600.0]) {
+    testWidgets('Pod logs and resource filters fit without overlap at $width', (tester) async {
+      await loadAutomationProofFonts(tester);
+      await _pump(tester, _Service(), size: Size(width, 915), language: 'ru', textScale: 1.5, capture: true);
+      final row = find.byKey(const ValueKey('kube-resource-demo-pod'));
+      final details = find.byKey(const ValueKey('kube-resource-details'));
+      await tapKey(tester, 'kube-resource-demo-pod');
+      await tapKey(tester, 'kube-logs-tab');
+      expect(details, findsOneWidget);
+      if (width < 1200) {
+        expect(row, findsNothing);
+      } else {
+        expect(tester.getRect(details).left, greaterThan(tester.getRect(row).right));
+      }
+      final source = find.byKey(const ValueKey('kube-log-source-controls'));
+      final stream = find.byKey(const ValueKey('kube-log-stream-controls'));
+      final query = find.byKey(const ValueKey('kube-log-filter'));
+      final options = find.byKey(const ValueKey('kube-log-filter-options'));
+      expect(tester.getRect(stream).top - tester.getRect(source).bottom, closeTo(GlassSpacing.s8, .1));
+      expect(tester.getRect(query).top - tester.getRect(stream).bottom, closeTo(GlassSpacing.s8, .1));
+      expect(tester.getRect(options).top - tester.getRect(query).bottom, closeTo(GlassSpacing.s8, .1));
+      await captureAutomationWorkspace(tester, 'design-kubernetes-logs-${width.toInt()}');
+      await tapKey(tester, 'kube-close-details');
+      expect(row, findsOneWidget);
+      if (width < 1200) {
+        await tapKey(tester, 'kube-resource-demo-pod');
+        await tapKey(tester, 'kube-logs-tab');
+        await tapKey(tester, 'kube-pin-logs');
+        expect(details, findsNothing);
+        expect(row, findsOneWidget);
+        expect(find.byKey(const ValueKey('kube-panel-resize')), findsOneWidget);
+      }
+      expect(tester.takeException(), isNull);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }
+
   testWidgets('cold connection completes discovery before resolving namespaces', (tester) async {
     final service = _ColdDiscoveryService();
     await _pump(tester, service);

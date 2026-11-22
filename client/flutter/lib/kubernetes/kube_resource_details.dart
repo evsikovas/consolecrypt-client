@@ -651,6 +651,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                           padding: const EdgeInsets.fromLTRB(GlassSpacing.s12, GlassSpacing.s8, GlassSpacing.s12, 0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
+                            spacing: GlassSpacing.s8,
                             children: [
                               if (widget.onPinLogs != null)
                                 Align(

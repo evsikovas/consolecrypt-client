@@ -287,6 +287,19 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
         .toSet()
         .toList();
     final canFollow = _advanced != null || widget.service is KubeLogService;
+    final tokens = GlassTokens.of(context);
+    final sourceWidth = MediaQuery.textScalerOf(context).scale(190).clamp(190.0, 284.0).toDouble();
+    Widget labeledSelect<T>(String label, T value, List<GlassSelectItem<T>> items, ValueChanged<T> changed) => SizedBox(
+      width: sourceWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: GlassSpacing.s4,
+        children: [
+          Text(label, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
+          GlassSelect<T>(value: value, items: items, onChanged: changed, expand: true, semanticLabel: label),
+        ],
+      ),
+    );
     return LayoutBuilder(
       builder: (context, constraints) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -296,11 +309,13 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: GlassSpacing.s8,
                 children: [
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                    key: const ValueKey('kube-log-source-controls'),
+                    spacing: GlassSpacing.s8,
+                    runSpacing: GlassSpacing.s8,
+                    crossAxisAlignment: WrapCrossAlignment.end,
                     children: [
                       if (targets.length > 1)
                         SizedBox(
@@ -319,44 +334,29 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
                           ),
                         ),
                       if (containers.isNotEmpty)
-                        SizedBox(
-                          width: 190,
-                          child: GlassDropdownField<String>(
-                            key: ValueKey(('log-containers', _container, containers.join(','))),
-                            value: _container ?? '',
-                            label: l.kubeContainer,
-                            items: [
-                              GlassSelectItem(value: '', label: l.kubeLogDefaultContainer),
-                              ...containers.map((name) => GlassSelectItem(value: name, label: name)),
-                            ],
-                            onChanged: (value) => _configure(() => _container = value.isEmpty ? null : value),
-                          ),
-                        ),
+                        labeledSelect<String>(l.kubeContainer, _container ?? '', [
+                          GlassSelectItem(value: '', label: l.kubeLogDefaultContainer),
+                          ...containers.map((name) => GlassSelectItem(value: name, label: name)),
+                        ], (value) => _configure(() => _container = value.isEmpty ? null : value)),
                       if (_advanced != null)
-                        SizedBox(
-                          width: 190,
-                          child: GlassDropdownField<int>(
-                            value: _since,
-                            label: l.kubeLogSince,
-                            items: [
-                              GlassSelectItem(value: 0, label: l.kubeLogAllTime),
-                              GlassSelectItem(value: 60, label: l.kubeLogLastMinute),
-                              GlassSelectItem(value: 3600, label: l.kubeLogLastHour),
-                              GlassSelectItem(value: 86400, label: l.kubeLogLastDay),
-                              if (!const {0, 60, 3600, 86400}.contains(_since))
-                                GlassSelectItem(
-                                  value: _since,
-                                  label: Duration(seconds: _since).toString().split('.').first,
-                                ),
-                            ],
-                            onChanged: (value) => _configure(() => _since = value),
-                          ),
-                        ),
-                      TextButton(onPressed: _busy ? null : _load, child: Text(l.kubeRefreshDetails)),
+                        labeledSelect<int>(l.kubeLogSince, _since, [
+                          GlassSelectItem(value: 0, label: l.kubeLogAllTime),
+                          GlassSelectItem(value: 60, label: l.kubeLogLastMinute),
+                          GlassSelectItem(value: 3600, label: l.kubeLogLastHour),
+                          GlassSelectItem(value: 86400, label: l.kubeLogLastDay),
+                          if (!const {0, 60, 3600, 86400}.contains(_since))
+                            GlassSelectItem(
+                              value: _since,
+                              label: Duration(seconds: _since).toString().split('.').first,
+                            ),
+                        ], (value) => _configure(() => _since = value)),
+                      GlassButton.plain(label: l.kubeRefreshDetails, onPressed: _busy ? null : _load),
                     ],
                   ),
                   Wrap(
-                    spacing: 8,
+                    key: const ValueKey('kube-log-stream-controls'),
+                    spacing: GlassSpacing.s8,
+                    runSpacing: GlassSpacing.s8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       FilterChip(
@@ -407,11 +407,16 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
                   TextField(
                     key: const ValueKey('kube-log-filter'),
                     controller: _search,
-                    decoration: InputDecoration(labelText: l.kubeLogFilter),
+                    decoration: InputDecoration(
+                      labelText: l.kubeLogFilter,
+                      prefixIcon: const Icon(Icons.search_rounded, size: GlassSizes.iconToolbar),
+                    ),
                     onChanged: (_) => _scheduleFilter(),
                   ),
                   Wrap(
-                    spacing: 8,
+                    key: const ValueKey('kube-log-filter-options'),
+                    spacing: GlassSpacing.s8,
+                    runSpacing: GlassSpacing.s8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       FilterChip(
@@ -451,7 +456,7 @@ class _KubeLogsPanelState extends ConsumerState<KubeLogsPanel> with WidgetsBindi
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: GlassSpacing.s8),
           Expanded(
             child: _visible.isEmpty
                 ? Center(child: Text(l.kubeNoLogs))
