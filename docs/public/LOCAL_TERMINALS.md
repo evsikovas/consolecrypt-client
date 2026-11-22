@@ -1,5 +1,7 @@
 # Локальные терминалы / Local terminals — 0.5
 
+ConsoleCrypt 1.2.1 · [Установить приложения на Mac и проверить вставку в PowerShell](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-terminals)
+
 ## Русский
 
 ### Режим «Только терминал»

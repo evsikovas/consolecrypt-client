@@ -1,5 +1,7 @@
 # Kubernetes
 
+ConsoleCrypt 1.2.1 · [Развернуть контейнер в Kubernetes](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-deploy) · [Мониторинг SSH и восстановление проброса](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-ssh)
+
 ## Русский
 
 Раздел Kubernetes объединяет подключения к кластерам, ресурсы, логи, терминалы

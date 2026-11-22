@@ -1,5 +1,7 @@
 # Docker
 
+ConsoleCrypt 1.2.1 · [Локальный Docker и удаление контейнера](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-docker) · [Развернуть контейнер в Kubernetes](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-deploy)
+
 ## Русский
 
 Раздел Docker показывает контейнеры, тома и compose-проекты движка на этом
@@ -41,7 +43,7 @@ docker CLI. Если Docker не запущен, приложение так и 
 логи и терминал. В меню «…» — приостановить и возобновить, принудительно
 завершить, удалить, пробросить порт, подключиться к БД, сведения и
 копирование ID. Принудительное завершение и удаление требуют подтверждения;
-именованные тома при удалении контейнера сохраняются.
+по умолчанию тома и сети сохраняются. Доступные для удаления ресурсы выбираются отдельно.
 
 ### Сведения, логи и терминал
 
@@ -221,8 +223,9 @@ All / Running / Stopped switch narrows the list.
 Each row shows the state, health, image, short ID, status and ports. Buttons
 start, stop and restart the container and open its logs and terminal. The “…”
 menu adds pause and resume, kill, remove, port forwarding, connecting to a
-database, details and Copy ID. Kill and Remove ask for confirmation; named
-volumes survive removal.
+database, details and Copy ID. Kill and Remove ask for confirmation. Volumes and
+networks are kept by default. Select individual eligible resources in the
+removal dialog to delete them.
 
 ### Details, logs and terminal
 

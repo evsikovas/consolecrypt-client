@@ -1,5 +1,7 @@
 # Менеджер паролей KDBX
 
+ConsoleCrypt 1.2.1 · [Подключение Vault и OpenBao](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-vault) · [Импорт и экспорт базы KDBX](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-kdbx)
+
 Откройте раздел **Пароли** в боковой панели. До открытия базы доступны
 **Создать KDBX**, **Открыть KDBX** и **Подключить WebDAV**, ниже — сохранённые базы.
 В разделе учётных данных отдельного входа в KDBX больше нет.
