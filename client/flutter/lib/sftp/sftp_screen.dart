@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
@@ -182,66 +183,78 @@ class _SftpScreenState extends ConsumerState<SftpScreen> with NoteContextPublish
 
     final actions = SftpActions(context, ref);
     final selection = state.selectedEntries;
+    final mobile = AppPlatform.isMobile;
+    final tokens = GlassTokens.of(context);
+    Widget filePane(Widget child) => Material(
+      color: tokens.surfaces.contentSolid,
+      shape: GlassRadii.shape(tokens.radii.card).copyWith(side: BorderSide(color: tokens.surfaces.hairlineCard)),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
     return Material(
-      color: theme.colorScheme.surface,
+      color: mobile ? theme.colorScheme.surface : Colors.transparent,
       child: Focus(
         onKeyEvent: _onKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SftpToolbar(
-              searchController: _search,
-              searchFocus: _searchFocus,
-              onQuickLook: SftpActions.isEnabled(SftpAction.quickLook, selection)
-                  ? () => unawaited(actions.run(SftpAction.quickLook, selection))
-                  : null,
-              actionMenuEntries: actions.glassMenuEntries(selection),
-              onAction: (action) => actions.runChoice(action, selection),
-              onSwitchHost: () => unawaited(_connect()),
-              onDisconnect: () => unawaited(_disconnect()),
-              onSearchEscape: _onSearchEscape,
-            ),
-            const Divider(height: 1),
-            // A folder that cannot be listed says so in the list itself.
-            if (state.error != null && !identical(state.error, state.currentFailure))
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                child: InfoBanner(
-                  tone: BannerTone.danger,
-                  message: errorMessage(l10n, state.error!),
-                  action: TextButton(onPressed: controller.clearError, child: Text(l10n.commonClose)),
+        child: Padding(
+          padding: mobile ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SftpToolbar(
+                searchController: _search,
+                searchFocus: _searchFocus,
+                onQuickLook: SftpActions.isEnabled(SftpAction.quickLook, selection)
+                    ? () => unawaited(actions.run(SftpAction.quickLook, selection))
+                    : null,
+                actionMenuEntries: actions.glassMenuEntries(selection),
+                onAction: (action) => actions.runChoice(action, selection),
+                onSwitchHost: () => unawaited(_connect()),
+                onDisconnect: () => unawaited(_disconnect()),
+                onSearchEscape: _onSearchEscape,
+              ),
+              if (mobile) const Divider(height: 1) else const SizedBox(height: GlassSpacing.s8),
+              // A folder that cannot be listed says so in the list itself.
+              if (state.error != null && !identical(state.error, state.currentFailure))
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  child: InfoBanner(
+                    tone: BannerTone.danger,
+                    message: errorMessage(l10n, state.error!),
+                    action: TextButton(onPressed: controller.clearError, child: Text(l10n.commonClose)),
+                  ),
+                ),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final remote = Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SftpPathBar(key: _pathBar, onEditingDone: _listFocus.requestFocus),
+                        const Divider(height: 1),
+                        Expanded(
+                          child: AppPlatform.isMobile ? const SftpMobileList() : SftpFileList(focusNode: _listFocus),
+                        ),
+                      ],
+                    );
+                    if (mobile) return remote;
+                    if (!state.prefs.showLocalPane) return filePane(remote);
+                    final localWidth = (constraints.maxWidth * 0.38).clamp(0.0, 420.0);
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(width: localWidth, child: filePane(const SftpLocalPane())),
+                        const SizedBox(width: GlassSpacing.s8),
+                        Expanded(child: filePane(remote)),
+                      ],
+                    );
+                  },
                 ),
               ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final remote = Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SftpPathBar(key: _pathBar, onEditingDone: _listFocus.requestFocus),
-                      const Divider(height: 1),
-                      Expanded(
-                        child: AppPlatform.isMobile ? const SftpMobileList() : SftpFileList(focusNode: _listFocus),
-                      ),
-                    ],
-                  );
-                  if (AppPlatform.isMobile || !state.prefs.showLocalPane) return remote;
-                  final localWidth = (constraints.maxWidth * 0.38).clamp(240.0, 420.0);
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(width: localWidth, child: const SftpLocalPane()),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: remote),
-                    ],
-                  );
-                },
-              ),
-            ),
-            const SftpActivityDrawer(),
-            const Divider(height: 1),
-            const SftpStatusBar(),
-          ],
+              const SftpActivityDrawer(),
+              if (mobile) const Divider(height: 1),
+              const SftpStatusBar(),
+            ],
+          ),
         ),
       ),
     );

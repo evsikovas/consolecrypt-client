@@ -178,7 +178,7 @@ void main() {
       }
       expect(GlassTokens.dark().ambient.base.b, greaterThan(GlassTokens.dark().ambient.base.r));
       // Blue text only where it is legible; light mode uses a deeper blue.
-      expect(GlassPalette.dark.accent, GlassPalette.brandBlue);
+      expect(GlassPalette.dark.accent, isNot(GlassPalette.brandBlue));
       expect(Wcag.contrast(GlassPalette.brandBlue, const Color(0xFFFFFFFF)), lessThan(Wcag.bodyText));
       expect(GlassPalette.light.accent, isNot(GlassPalette.brandBlue));
     });

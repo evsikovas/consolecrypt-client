@@ -187,7 +187,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
             final contentLeft = sidebarWidth;
-            const railWidth = 48.0;
+            const railWidth = GlassSizes.workspaceRailWidth;
             final panelOpen = tools.selected != null;
             final top = minimal ? 0.0 : band;
             final rightInset = minimal || integratedTools ? 0.0 : inset;
@@ -298,7 +298,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                           location: location,
                           compact: compact,
                           canCollapse: !narrowWindow,
-                          leadingInset: toolbarOnTop ? scope.trafficLightsLeading - GlassSpacing.s12 : 0,
+                          leadingInset: toolbarOnTop
+                              ? scope.trafficLightsLeading - GlassSpacing.s12 - GlassToolbar.frameInset
+                              : 0,
                         ),
                 ),
               ],
@@ -349,12 +351,13 @@ class _Sidebar extends ConsumerWidget {
       style: style,
       compact: compact,
       reserveTrafficLights: reserveTrafficLights,
+      topPadding: style == GlassSidebarStyle.floating ? GlassSpacing.s4 : GlassSpacing.s12,
       header: compact
           ? Center(child: ProfileSwitcher(compact: compact))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(padding: EdgeInsets.fromLTRB(8, 0, 8, 16), child: BrandMark.wordmark(height: 27)),
+                const Padding(padding: EdgeInsets.fromLTRB(8, 0, 8, 12), child: BrandMark.wordmark(height: 27)),
                 ProfileSwitcher(compact: compact),
               ],
             ),
@@ -754,25 +757,23 @@ class _ShellToolbar extends ConsumerWidget {
       builder: (context, constraints) => GlassToolbar(
         leadingInset: leadingInset,
         leadingMaxWidth: 220,
+        framed: true,
         // Tiny desktop windows keep palette and actions usable; their title is
         // already available in the window/sidebar and must not consume the last
         // pixels needed by the search capsule.
         leading: constraints.maxWidth < 300
             ? const []
             : [
-                GlassToolbarGroup(
-                  children: [
-                    if (canCollapse)
-                      GlassIconButton(
-                        key: const ValueKey('toggle-sidebar'),
-                        icon: Icons.view_sidebar_rounded,
-                        tooltip: sidebarToggleTooltip(l10n, collapsed: compact, ref.watch(appCommandsProvider)),
-                        style: GlassIconButtonStyle.plain,
-                        onPressed: () => ref.read(sidebarCollapsedProvider.notifier).toggle(),
-                      ),
-                    GlassToolbarTitle(title),
-                  ],
-                ),
+                if (canCollapse)
+                  GlassButton(
+                    key: const ValueKey('toggle-sidebar'),
+                    icon: Icons.view_sidebar_rounded,
+                    label: title,
+                    tooltip: sidebarToggleTooltip(l10n, collapsed: compact, ref.watch(appCommandsProvider)),
+                    onPressed: () => ref.read(sidebarCollapsedProvider.notifier).toggle(),
+                  )
+                else
+                  GlassToolbarTitle(title),
               ],
         center: _SearchCapsule(
           backdrop: live,
@@ -821,38 +822,48 @@ class _SearchCapsule extends StatelessWidget {
       onPressed: onPressed,
       builder: (context, state) => GlassFocusRing(
         visible: state.focusVisible,
-        shape: const StadiumBorder(),
-        child: GlassCapsule(
+        shape: GlassRadii.shape(tokens.radii.md),
+        child: GlassSurface(
+          variant: GlassVariant.thin,
+          shape: GlassRadii.shape(tokens.radii.md),
+          padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
           backdrop: backdrop,
           interactive: true,
-          child: LayoutBuilder(
-            builder: (context, constraints) => Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.search_rounded, size: 18, color: tokens.secondaryLabel),
-                if (constraints.maxWidth > 80) ...[
-                  const SizedBox(width: GlassSpacing.s6),
-                  Flexible(
-                    fit: FlexFit.tight,
-                    child: Text(
-                      placeholder,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: tokens.typography.body.copyWith(color: tokens.secondaryLabel),
+          shadows: false,
+          child: SizedBox(
+            height: GlassSizes.toolbarGroup,
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.search_rounded, size: 18, color: tokens.secondaryLabel),
+                  if (constraints.maxWidth > 80) ...[
+                    const SizedBox(width: GlassSpacing.s6),
+                    Flexible(
+                      fit: FlexFit.tight,
+                      child: Text(
+                        placeholder,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.typography.body.copyWith(color: tokens.secondaryLabel),
+                      ),
                     ),
-                  ),
-                ],
-                if (constraints.maxWidth > 220) ...[
-                  const SizedBox(width: GlassSpacing.s6),
-                  DecoratedBox(
-                    decoration: ShapeDecoration(color: tokens.surfaces.inset, shape: GlassRadii.shape(tokens.radii.xs)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      child: Text(shortcut, style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel)),
+                  ],
+                  if (constraints.maxWidth > 220) ...[
+                    const SizedBox(width: GlassSpacing.s6),
+                    DecoratedBox(
+                      decoration: ShapeDecoration(
+                        color: tokens.surfaces.inset,
+                        shape: GlassRadii.shape(tokens.radii.xs),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        child: Text(shortcut, style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel)),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

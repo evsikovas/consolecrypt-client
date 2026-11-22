@@ -26,8 +26,8 @@ void main() {
     await backend.debugSignInDemoAndUnlock();
     await pumpApp(tester, backend, size: const Size(1100, 800));
     await tapKey(tester, 'toggle-sidebar');
-    Finder titleGroup() =>
-        find.ancestor(of: find.byKey(const ValueKey('toggle-sidebar')), matching: find.byType(GlassToolbarGroup));
+    final title = find.byKey(const ValueKey('toggle-sidebar'));
+    Finder titleGroup() => title;
     expect(tester.getRect(titleGroup()).left, leading);
     expect(tester.getRect(find.byKey(const ValueKey('toggle-sidebar'))).left, greaterThanOrEqualTo(leading));
     leading = 132;
@@ -36,7 +36,7 @@ void main() {
     expect(tester.getRect(titleGroup()).left, leading);
     expect(tester.takeException(), isNull);
     await tapKey(tester, 'toggle-sidebar');
-    expect(tester.getRect(titleGroup()).left, greaterThan(240));
+    expect(tester.getRect(titleGroup()).left, greaterThan(GlassSizes.sidebarWidth));
     await tester.pumpWidget(const SizedBox.shrink());
     await settle(tester);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
@@ -59,7 +59,11 @@ void main() {
         expect(tester.getSize(search).width, width == 1600 ? greaterThan(420) : greaterThan(150));
         final toolbar = tester.getRect(find.byType(GlassToolbar));
         final menu = tester.getRect(find.byKey(const ValueKey('shell-menu')));
-        expect(toolbar.right - menu.right, closeTo(12, 1), reason: 'unused toolbar width belongs to search');
+        expect(
+          toolbar.right - menu.right,
+          closeTo(12 + GlassToolbar.frameInset, 1),
+          reason: 'unused toolbar width belongs to search',
+        );
         expect(
           tester.getRect(connection).left - tester.getRect(search).right,
           closeTo(12, 1),

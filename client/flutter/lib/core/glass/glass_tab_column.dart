@@ -27,15 +27,15 @@ class GlassTabColumn extends StatefulWidget {
     this.onReorder,
   });
 
-  static const double defaultWidth = 232;
+  static const double defaultWidth = 176;
   static const double defaultMinWidth = 160;
   static const double defaultMaxWidth = 420;
 
   /// Panel width when folded to icons.
-  static const double collapsedWidth = 48;
+  static const double collapsedWidth = 44;
 
   /// The resize gap right of the panel (part of the widget's width).
-  static const double handleWidth = GlassSpacing.s8;
+  static const double handleWidth = GlassSpacing.s4;
 
   final List<GlassTab> tabs;
   final int? activeIndex;

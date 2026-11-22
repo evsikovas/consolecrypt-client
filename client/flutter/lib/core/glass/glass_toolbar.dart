@@ -25,6 +25,7 @@ class GlassToolbar extends StatelessWidget {
     this.trailing = const [],
     this.leadingInset = 0,
     this.leadingMaxWidth,
+    this.framed = false,
     this.padding = const EdgeInsets.symmetric(horizontal: GlassSpacing.s12),
   });
 
@@ -39,6 +40,12 @@ class GlassToolbar extends StatelessWidget {
   /// A null value retains the balanced layout used by the design gallery.
   final double? leadingMaxWidth;
   final EdgeInsetsGeometry padding;
+
+  /// A continuous glass frame for the desktop shell. Other toolbars keep their
+  /// existing placement, including the native titlebar in Terminal Only.
+  final bool framed;
+
+  static const frameInset = GlassSpacing.s4;
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +95,21 @@ class GlassToolbar extends StatelessWidget {
         ),
       ),
     );
+    if (framed) {
+      final tokens = GlassTokens.of(context);
+      band = SizedBox(
+        height: GlassSizes.toolbarBand,
+        child: Padding(
+          padding: const EdgeInsets.all(frameInset),
+          child: GlassSurface(
+            variant: GlassVariant.thin,
+            shape: GlassRadii.shape(tokens.radii.menu),
+            shadows: false,
+            child: band,
+          ),
+        ),
+      );
+    }
     if (passthrough) {
       // Groups can move without their own constraints changing (a longer
       // title, the sidebar collapsing): re-send every native passthrough

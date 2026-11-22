@@ -224,11 +224,46 @@ class SftpToolbar extends ConsumerWidget {
         ),
       );
     }
-    return SizedBox(
-      height: GlassSizes.toolbarGroup,
+    return GlassSurface(
+      variant: GlassVariant.thin,
+      shape: GlassRadii.shape(GlassTokens.of(context).radii.card),
+      padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8, vertical: GlassSpacing.s4),
+      shadows: false,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final searchWidth = (constraints.maxWidth * 0.24).clamp(140.0, 240.0);
+          final search = _SearchField(
+            controller: searchController,
+            focusNode: searchFocus,
+            onChanged: controller.setFilter,
+            onEscape: onSearchEscape,
+          );
+          final disconnect = GlassIconButton(
+            key: const ValueKey('sftp-disconnect'),
+            icon: Icons.link_off_rounded,
+            tooltip: l10n.sftpDisconnect,
+            onPressed: onDisconnect,
+          );
+          if (constraints.maxWidth < 580) {
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: hostGroup),
+                    disconnect,
+                  ],
+                ),
+                const SizedBox(height: GlassSpacing.s4),
+                Row(
+                  children: [
+                    Flexible(child: actionsGroup),
+                    const SizedBox(width: GlassSpacing.s8),
+                    Expanded(child: search),
+                  ],
+                ),
+              ],
+            );
+          }
+          final searchWidth = (constraints.maxWidth * 0.21).clamp(128.0, 232.0);
           return Row(
             children: [
               Flexible(
@@ -237,22 +272,9 @@ class SftpToolbar extends ConsumerWidget {
               const SizedBox(width: GlassSpacing.toolbarGroupGap),
               actionsGroup,
               const SizedBox(width: GlassSpacing.toolbarGroupGap),
-              SizedBox(
-                width: searchWidth,
-                child: _SearchField(
-                  controller: searchController,
-                  focusNode: searchFocus,
-                  onChanged: controller.setFilter,
-                  onEscape: onSearchEscape,
-                ),
-              ),
+              SizedBox(width: searchWidth, child: search),
               const SizedBox(width: GlassSpacing.toolbarGroupGap),
-              GlassIconButton(
-                key: const ValueKey('sftp-disconnect'),
-                icon: Icons.link_off_rounded,
-                tooltip: l10n.sftpDisconnect,
-                onPressed: onDisconnect,
-              ),
+              disconnect,
             ],
           );
         },

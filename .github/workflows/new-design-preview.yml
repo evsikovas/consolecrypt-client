@@ -1,0 +1,136 @@
+name: New design test builds
+
+on:
+  push:
+    branches: [new-design]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consolecrypt-new-design-preview
+  cancel-in-progress: true
+
+env:
+  CC_BUILD_NUMBER: '86040'
+
+jobs:
+  windows:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: windows-2025
+    timeout-minutes: 150
+    defaults:
+      run:
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+    env:
+      CC_CARGO_TARGET_ROOT: D:\cc-target
+      CC_CI_TOOLS_DIR: D:\cc-tools
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Package Windows preview
+        run: |
+          & client/scripts/ci-windows.ps1 -PackageOnly
+          if ($LASTEXITCODE -ne 0) { throw 'Windows preview build failed' }
+          $version = (Get-Content 'dist/windows/ConsoleCrypt.version' -Raw).Trim()
+          if ($version -ne "1.2.1+$env:CC_BUILD_NUMBER") { throw "Unexpected Windows version $version" }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: new-design-windows
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          path: |
+            dist/windows/*-setup.exe
+            dist/windows/ConsoleCrypt-windows.zip
+            dist/windows/*.sha256
+            dist/windows/ConsoleCrypt.version
+
+  macos:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: ${{ fromJSON(vars.MACOS_BUILD_RUNNER || '["self-hosted","macOS","ARM64","consolecrypt","client"]') }}
+    timeout-minutes: 180
+    env:
+      CARGO_BUILD_JOBS: '3'
+      CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Native toolchain
+        run: source client/scripts/ci-macos-tools.sh --xcode
+      - name: Package universal macOS preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          caffeinate -i bash client/scripts/build-macos.sh
+          cd dist/macos
+          version=$(cat ConsoleCrypt.version)
+          [[ "$version" == "1.2.1+$CC_BUILD_NUMBER" ]]
+          codesign --verify --deep --strict ConsoleCrypt.app
+          archs=" $(lipo -archs ConsoleCrypt.app/Contents/MacOS/ConsoleCrypt) "
+          [[ "$archs" == *' arm64 '* && "$archs" == *' x86_64 '* ]]
+          hdiutil verify ConsoleCrypt.dmg
+          package="ConsoleCrypt-$version-new-design-macos-universal.dmg"
+          mv ConsoleCrypt.dmg "$package"
+          shasum -a 256 "$package" > SHA256SUMS-macos.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: new-design-macos
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          path: |
+            dist/macos/*-new-design-macos-universal.dmg
+            dist/macos/SHA256SUMS-macos.txt
+            dist/macos/ConsoleCrypt.version
+
+  android:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 180
+    env:
+      CARGO_BUILD_JOBS: '3'
+      ANDROID_HOME: ${{ vars.ANDROID_HOME }}
+      JAVA_HOME: ${{ vars.JAVA_HOME }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: android-design-preview
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: android-design-preview
+          persist-credentials: false
+      - name: Native toolchain
+        run: source client/scripts/ci-macos-tools.sh
+      - name: Package signed Android ARM64 preview
+        run: |
+          set -euo pipefail
+          caffeinate -i bash client/scripts/build-android.sh
+          cd dist/android
+          version=$(cat ConsoleCrypt.version)
+          [[ "$version" == "1.2.1+$CC_BUILD_NUMBER" ]]
+          apk=ConsoleCrypt-android-arm64.apk
+          tools="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}/build-tools/36.0.0"
+          badging=$("$tools/aapt" dump badging "$apk")
+          grep -Fq "package: name='io.consolecrypt.consolecrypt' versionCode='$CC_BUILD_NUMBER' versionName='1.2.1'" <<< "$badging"
+          grep -Eq "^native-code: 'arm64-v8a'[[:space:]]*$" <<< "$badging"
+          signatures=$("$tools/apksigner" verify --print-certs "$apk")
+          signer=$(sed -nE 's/^Signer #[0-9]+ certificate SHA-256 digest: ([0-9a-f]+)$/\1/p' <<< "$signatures")
+          [[ "$signer" == 26c5639c133881b103123361eb19d226c0dc0dce19eafa26c661862847d8e485 ]]
+          package="ConsoleCrypt-$version-new-design-android-arm64.apk"
+          mv "$apk" "$package"
+          shasum -a 256 "$package" > SHA256SUMS-android.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: new-design-android
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          path: |
+            android-design-preview/dist/android/*-new-design-android-arm64.apk
+            android-design-preview/dist/android/SHA256SUMS-android.txt
+            android-design-preview/dist/android/ConsoleCrypt.version

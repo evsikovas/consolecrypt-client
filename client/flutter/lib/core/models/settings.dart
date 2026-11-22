@@ -282,7 +282,7 @@ final class LocalSettings {
   /// Width of the expanded tab column, resized by dragging its edge.
   static const terminalTabColumnMin = 160.0;
   static const terminalTabColumnMax = 420.0;
-  static const terminalTabColumnDefault = 232.0;
+  static const terminalTabColumnDefault = 176.0;
   final double terminalTabColumnWidth;
 
   /// The tab column is folded to icons.

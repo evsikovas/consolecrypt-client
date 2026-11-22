@@ -73,6 +73,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                 automaticallyImplyLeading: false,
                 titleSpacing: 16,
                 title: const BrandMark.wordmark(height: 25),
+                shape: Border(bottom: BorderSide(color: tokens.surfaces.hairlineCard)),
                 actions: [
                   GlassIconButton(
                     key: const ValueKey('mobile-snippets'),
@@ -182,7 +183,8 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
             : NavigationBar(
                 key: const ValueKey('mobile-navigation'),
                 selectedIndex: selected < 0 ? primary.length : selected,
-                height: 72,
+                height: 68,
+                elevation: 0,
                 backgroundColor: tokens.surfaces.contentSolid,
                 indicatorColor: tokens.sidebarSelection,
                 onDestinationSelected: (index) {

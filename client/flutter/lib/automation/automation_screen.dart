@@ -106,7 +106,9 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
   Object? error;
   bool busy = false, dirty = false;
   bool requirementsSavedPending = false;
-  double sidebarWidth = 250;
+  static const _fileTreeMinWidth = 184.0;
+  double sidebarWidth = 200;
+  bool fileTreeCollapsed = false;
   int request = 0;
   VoidCallback? _retireExternalEditor;
   int workspacePage = 0;
@@ -2564,8 +2566,9 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // 210px navigation + 10px divider + 360px editor fit side by side.
-                final compact = constraints.maxWidth < 580;
+                // Leave room for the editor after the file tree and its resize handle.
+                final compact = constraints.maxWidth < _fileTreeMinWidth + GlassSpacing.s8 + 360;
+                final showTree = !fileTreeCollapsed || file == null && newPath == null;
                 final tree = ContentSurface(
                   key: const ValueKey('automation-project-tree'),
                   padding: EdgeInsets.zero,
@@ -2807,7 +2810,8 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                   ),
                 );
                 final body = ContentSurface(
-                  padding: const EdgeInsets.all(10),
+                  kind: ContentSurfaceKind.solid,
+                  padding: const EdgeInsets.all(GlassSpacing.s8),
                   child: file == null && newPath == null
                       ? Center(child: Text(l.automationChooseFile))
                       : Column(
@@ -2823,7 +2827,17 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                     icon: Icons.arrow_back,
                                     size: 40,
                                     onPressed: busy ? null : _backToPhoneFiles,
+                                  )
+                                else if (!_phoneWorkspace) ...[
+                                  GlassIconButton(
+                                    key: const ValueKey('automation-toggle-file-tree'),
+                                    tooltip: l.automationLibraryFiles,
+                                    icon: Icons.view_sidebar_outlined,
+                                    selected: showTree,
+                                    onPressed: () => setState(() => fileTreeCollapsed = !fileTreeCollapsed),
                                   ),
+                                  const SizedBox(width: GlassSpacing.s8),
+                                ],
                                 Expanded(
                                   child: Text /* l10n-ignore: filename and dirty marker */ (
                                     '${file?.path ?? newPath}${dirty ? ' •' : ''}', // l10n-ignore: document path and dirty marker
@@ -2949,27 +2963,34 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                 if (compact) {
                   return Column(
                     children: [
-                      SizedBox(height: 180, child: tree),
-                      const SizedBox(height: 8),
-                      Expanded(child: body),
+                      if (showTree) ...[SizedBox(height: 148, child: tree), const SizedBox(height: GlassSpacing.s8)],
+                      Expanded(key: const ValueKey('automation-editor-pane'), child: body),
                     ],
                   );
                 }
-                final width = sidebarWidth.clamp(210.0, (constraints.maxWidth - 360).clamp(210.0, 520.0));
+                final maximum = (constraints.maxWidth - 360 - GlassSpacing.s8).clamp(_fileTreeMinWidth, 520.0);
+                final width = sidebarWidth.clamp(_fileTreeMinWidth, maximum);
                 return Row(
                   children: [
-                    SizedBox(width: width, child: tree),
-                    MouseRegion(
-                      cursor: SystemMouseCursors.resizeColumn,
-                      child: GestureDetector(
-                        key: const ValueKey('automation-project-resize'),
-                        behavior: HitTestBehavior.opaque,
-                        onHorizontalDragUpdate: (details) =>
-                            setState(() => sidebarWidth = (width + details.delta.dx).clamp(210, 520)),
-                        child: const SizedBox(width: 10, height: double.infinity, child: VerticalDivider(width: 1)),
+                    if (showTree) ...[
+                      SizedBox(width: width, child: tree),
+                      MouseRegion(
+                        cursor: SystemMouseCursors.resizeColumn,
+                        child: GestureDetector(
+                          key: const ValueKey('automation-project-resize'),
+                          behavior: HitTestBehavior.opaque,
+                          onHorizontalDragUpdate: (details) => setState(
+                            () => sidebarWidth = (width + details.delta.dx).clamp(_fileTreeMinWidth, maximum),
+                          ),
+                          child: const SizedBox(
+                            width: GlassSpacing.s8,
+                            height: double.infinity,
+                            child: VerticalDivider(width: 1),
+                          ),
+                        ),
                       ),
-                    ),
-                    Expanded(child: body),
+                    ],
+                    Expanded(key: const ValueKey('automation-editor-pane'), child: body),
                   ],
                 );
               },

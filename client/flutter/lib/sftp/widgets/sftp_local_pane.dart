@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
@@ -98,13 +99,13 @@ class SftpLocalPane extends ConsumerWidget {
             const Divider(height: 1),
             Expanded(
               child: ListView.builder(
-                itemExtent: 26,
+                itemExtent: GlassSizes.listRowDense,
                 itemCount: visible.length,
                 itemBuilder: (context, i) {
                   final e = visible[i];
                   final selected = state.localSelection.contains(e.path);
                   final kind = e.isDirectory ? const FileKind(FileKindGroup.folder) : fileKindForName(e.name);
-                  final fg = selected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface;
+                  final fg = theme.colorScheme.onSurface;
                   final row = GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => controller.selectLocal(
@@ -116,7 +117,7 @@ class SftpLocalPane extends ConsumerWidget {
                         : unawaited(uploadPaths(context, ref, [e.path], state.remotePath)),
                     child: ColoredBox(
                       color: selected
-                          ? theme.colorScheme.primary
+                          ? GlassTokens.of(context).selectionOnGlass
                           : (i.isOdd ? theme.colorScheme.onSurface.withValues(alpha: 0.025) : Colors.transparent),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),

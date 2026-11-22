@@ -284,28 +284,35 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
                         Expanded(
                           key: const ValueKey('terminal-only-viewport'),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s6, vertical: GlassSpacing.s4),
-                            child: Column(
-                              children: [
-                                if (_opening || active?.state == SessionConnectionState.connecting)
-                                  const LinearProgressIndicator(),
-                                if (_error != null) Padding(padding: const EdgeInsets.all(8), child: Text(_error!)),
-                                Expanded(
-                                  child: active == null
-                                      ? Center(
-                                          child: GlassButton(label: l.paletteNewLocalTerminal, onPressed: newTab),
-                                        )
-                                      : TerminalPane(
-                                          key: ValueKey((active.sessionId, active.renderGeneration)),
-                                          tab: active,
-                                        ),
-                                ),
-                                if (active?.state == SessionConnectionState.disconnected)
-                                  Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Text(active!.exited ? l.terminalOnlyShellExited : l.terminalOnlyShellError),
+                            padding: const EdgeInsets.all(GlassSpacing.s4),
+                            child: ContentSurface(
+                              kind: ContentSurfaceKind.solid,
+                              color: background,
+                              padding: const EdgeInsets.all(GlassSpacing.s8),
+                              child: Column(
+                                children: [
+                                  if (_opening || active?.state == SessionConnectionState.connecting)
+                                    const LinearProgressIndicator(),
+                                  if (_error != null) Padding(padding: const EdgeInsets.all(8), child: Text(_error!)),
+                                  Expanded(
+                                    child: active == null
+                                        ? Center(
+                                            child: GlassButton(label: l.paletteNewLocalTerminal, onPressed: newTab),
+                                          )
+                                        : TerminalPane(
+                                            key: ValueKey((active.sessionId, active.renderGeneration)),
+                                            tab: active,
+                                          ),
                                   ),
-                              ],
+                                  if (active?.state == SessionConnectionState.disconnected)
+                                    Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Text(
+                                        active!.exited ? l.terminalOnlyShellExited : l.terminalOnlyShellError,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

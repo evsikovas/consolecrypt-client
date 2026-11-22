@@ -1094,7 +1094,7 @@ void main() {
     await tester.drag(find.byKey(const ValueKey('automation-project-resize')), const Offset(-400, 0));
     await settle(tester);
     final tree = tester.getRect(find.byKey(const ValueKey('automation-project-tree')));
-    expect(tree.width, 210);
+    expect(tree.width, 184);
     for (final key in ['automation-create-menu', 'automation-project-menu']) {
       final button = tester.getRect(find.byKey(ValueKey(key)));
       expect(button.left, greaterThanOrEqualTo(tree.left));
@@ -1105,6 +1105,26 @@ void main() {
     await tapKey(tester, 'automation-project-menu');
     expect(find.byKey(const ValueKey('automation-ansible-settings')).hitTestable(), findsOneWidget);
     await captureAutomationWorkspace(tester, 'project-settings-menu');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('folding the file tree frees space without replacing the draft', (tester) async {
+    await _open(tester, _Projects());
+    await tapKey(tester, 'automation-file-playbook.yml');
+    final tree = find.byKey(const ValueKey('automation-project-tree'));
+    final pane = find.byKey(const ValueKey('automation-editor-pane'));
+    final editor = find.byKey(const ValueKey('automation-editor'));
+    final initialWidth = tester.getSize(pane).width;
+    await tester.enterText(editor, '# unsaved playbook');
+    await tester.pump();
+    await tapKey(tester, 'automation-toggle-file-tree');
+    expect(tree, findsNothing);
+    expect(tester.getSize(pane).width, greaterThan(initialWidth));
+    expect(find.text('# unsaved playbook'), findsOneWidget);
+    await tapKey(tester, 'automation-toggle-file-tree');
+    expect(tree, findsOneWidget);
+    expect(tester.getSize(pane).width, initialWidth);
+    expect(find.text('# unsaved playbook'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

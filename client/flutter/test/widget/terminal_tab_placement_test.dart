@@ -89,8 +89,8 @@ void main() {
         expect(column, findsOneWidget);
         final sidebar = tester.getRect(find.byKey(const ValueKey('glass-sidebar')));
         final rightRail = tester.getRect(find.byKey(const ValueKey('workspace-tools-rail')));
-        expect(sidebar.width, 54);
-        expect(rightRail.width, lessThanOrEqualTo(48));
+        expect(sidebar.width, GlassSizes.sidebarCompactWidth);
+        expect(rightRail.width, lessThanOrEqualTo(GlassSizes.workspaceRailWidth));
         expect(tester.getRect(column).left - sidebar.right, inInclusiveRange(0, 6));
         // Title and subtitle on separate lines inside the column.
         expect(find.descendant(of: column, matching: find.text('pi@raspberry-pi')), findsOneWidget);
@@ -254,7 +254,11 @@ void main() {
     await backend.debugSignInDemoAndUnlock();
     await pumpApp(tester, backend);
     expect(_sidebarCompact(tester), isFalse);
-    String tooltip(String key) => tester.widget<GlassIconButton>(find.byKey(ValueKey(key))).tooltip;
+    String tooltip(String key) => switch (tester.widget(find.byKey(ValueKey(key)))) {
+      GlassButton(:final tooltip) => tooltip!,
+      GlassIconButton(:final tooltip) => tooltip,
+      _ => throw StateError('No sidebar toggle'),
+    };
     expect(tooltip('toggle-sidebar'), 'Collapse sidebar to icons (Ctrl+Shift+S)');
     final footer = tester.widget<GlassButton>(find.byKey(const ValueKey('sidebar-footer-toggle')));
     expect(footer.label, 'Collapse');

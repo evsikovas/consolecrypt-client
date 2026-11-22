@@ -168,7 +168,7 @@ final class GlassOptics {
     required this.clearDimming,
   });
 
-  /// Neutral tint colour (light `#F7F8FA`, dark `#1C1D21`).
+  /// Neutral tint colour (light `#F7F8FA`, dark `#16181D`).
   final Color tintBase;
 
   /// Rim gradient colours at stops 0, 0.45, 1.
@@ -200,18 +200,18 @@ final class GlassOptics {
     final dark = brightness == Brightness.dark;
     const white = Color(0xFFFFFFFF);
     return GlassOptics(
-      tintBase: dark ? const Color(0xFF1C1D21) : const Color(0xFFF7F8FA),
+      tintBase: dark ? const Color(0xFF16181D) : const Color(0xFFF7F8FA),
       rimStops: dark
-          ? [white.withValues(alpha: 0.30), white.withValues(alpha: 0.06), white.withValues(alpha: 0.16)]
+          ? [white.withValues(alpha: 0.20), white.withValues(alpha: 0.07), white.withValues(alpha: 0.12)]
           : [white.withValues(alpha: 0.75), white.withValues(alpha: 0.12), white.withValues(alpha: 0.40)],
       rimAngleDegrees: 135,
       secureRim: white.withValues(alpha: dark ? 0.14 : 0.55),
       highContrastRim: dark ? white.withValues(alpha: 0.55) : const Color(0xFF000000).withValues(alpha: 0.45),
       darkEdge: const Color(0xFF000000).withValues(alpha: dark ? 0.50 : 0.10),
-      highlightTop: white.withValues(alpha: dark ? 0.10 : 0.30),
+      highlightTop: white.withValues(alpha: dark ? 0.065 : 0.22),
       highlightHeight: 14,
       hotspotRadius: 120,
-      hotspotAlpha: dark ? 0.06 : 0.10,
+      hotspotAlpha: dark ? 0.04 : 0.07,
       hotspotPressedAlpha: 0.18,
       clearDimming: const Color(0x59000000),
     );
@@ -265,22 +265,22 @@ final class AmbientSpec {
     final dark = brightness == Brightness.dark;
     return AmbientSpec(
       // Cool blue ambience follows the default shield and interface accent.
-      base: dark ? const Color(0xFF0D131E) : const Color(0xFFF0F1F4),
+      base: dark ? const Color(0xFF14171D) : const Color(0xFFF0F1F4),
       blobs: [
         AmbientBlob(
           center: const Offset(0.12, 0.08),
           radius: 0.55,
-          color: dark ? const Color(0x6B224B89) : const Color(0x4D8FB6FF),
+          color: dark ? const Color(0x343F4B60) : const Color(0x4D8FB6FF),
         ),
         AmbientBlob(
           center: const Offset(0.92, 0.18),
           radius: 0.50,
-          color: dark ? const Color(0x4224395B) : const Color(0x2EA8BCCC),
+          color: dark ? const Color(0x15383F50) : const Color(0x2EA8BCCC),
         ),
         AmbientBlob(
           center: const Offset(0.70, 0.95),
           radius: 0.60,
-          color: dark ? const Color(0x33243754) : const Color(0x26BFCFE8),
+          color: dark ? const Color(0x14404754) : const Color(0x26BFCFE8),
         ),
       ],
       // Local-only profiles (ADR-0106) swap the blue glow for cool slate, so
@@ -288,7 +288,7 @@ final class AmbientSpec {
       localCueBlob: AmbientBlob(
         center: const Offset(0.12, 0.08),
         radius: 0.55,
-        color: dark ? const Color(0x662E3A48) : const Color(0x478FA3B8),
+        color: dark ? const Color(0x343F4852) : const Color(0x478FA3B8),
       ),
       grain: dark ? 0.015 : 0,
     );

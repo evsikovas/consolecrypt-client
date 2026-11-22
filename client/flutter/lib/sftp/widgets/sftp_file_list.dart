@@ -20,8 +20,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-const sftpRowHeight = 26.0;
-const _headerHeight = 28.0;
+const sftpRowHeight = GlassSizes.listRowDense;
+const _headerHeight = GlassSizes.sidebarRow;
 const _indent = 16.0;
 
 /// The remote file list (content surface): sortable / resizable /
@@ -635,9 +635,10 @@ class _RowItem extends StatelessWidget {
     final l10n = context.l10n;
     final e = row.entry;
     final kind = fileKindOf(e);
+    final tokens = GlassTokens.of(context);
     final activeSelection = selected && focused;
-    final fg = activeSelection ? scheme.onPrimary : scheme.onSurface;
-    final secondary = activeSelection ? scheme.onPrimary.withValues(alpha: 0.85) : scheme.onSurfaceVariant;
+    final fg = scheme.onSurface;
+    final secondary = scheme.onSurfaceVariant;
     final dim = e.isHidden ? 0.55 : 1.0;
     final base = theme.textTheme.bodyMedium?.copyWith(fontSize: 13, color: fg, height: 1.2);
     final small = base?.copyWith(color: secondary, fontSize: 12.5);
@@ -651,7 +652,7 @@ class _RowItem extends StatelessWidget {
         row: row,
         kind: kind,
         style: base,
-        iconColor: activeSelection ? scheme.onPrimary : kind.color(scheme),
+        iconColor: activeSelection ? tokens.palette.accent : kind.color(scheme),
         dim: dim,
         renaming: renaming,
         onToggle: onToggle,
@@ -692,14 +693,18 @@ class _RowItem extends StatelessWidget {
       if (dropHover || osDropHighlight) {
         background = scheme.primary.withValues(alpha: 0.22);
       } else if (selected) {
-        background = focused ? scheme.primary : scheme.onSurface.withValues(alpha: 0.12);
+        background = focused ? tokens.selectionOnGlass : tokens.rowSelection;
       } else {
         background = index.isOdd ? scheme.onSurface.withValues(alpha: 0.025) : null;
       }
       return DecoratedBox(
         decoration: BoxDecoration(
           color: background,
-          border: isCursor && focused && !selected ? Border.all(color: scheme.primary.withValues(alpha: 0.6)) : null,
+          border: activeSelection
+              ? BorderDirectional(start: BorderSide(color: tokens.palette.accent, width: 2))
+              : isCursor && focused
+              ? Border.all(color: tokens.palette.accent.withValues(alpha: 0.6))
+              : null,
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),

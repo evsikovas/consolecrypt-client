@@ -20,7 +20,7 @@ enum GlassSidebarStyle {
 }
 
 /// Floating glass sidebar (§4.1): static `glass.regular` (never live — it
-/// sits over the painted ambient backdrop), width 240 (compact 64). On macOS
+/// sits over the painted ambient backdrop), using the shell navigation widths. On macOS
 /// the top 52 pt are reserved for the traffic lights.
 class GlassSidebar extends StatelessWidget {
   const GlassSidebar({
@@ -31,6 +31,7 @@ class GlassSidebar extends StatelessWidget {
     this.style = GlassSidebarStyle.floating,
     this.compact = false,
     this.reserveTrafficLights,
+    this.topPadding = GlassSpacing.s12,
     this.navigationWrapper,
   });
 
@@ -47,6 +48,7 @@ class GlassSidebar extends StatelessWidget {
 
   /// Defaults to `true` on macOS.
   final bool? reserveTrafficLights;
+  final double topPadding;
 
   /// Optional interaction wrapper for the list and its free area. The profile
   /// header and critical footer keep their independent context actions.
@@ -68,7 +70,7 @@ class GlassSidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(height: reserve ? GlassSizes.trafficLightsTop : GlassSpacing.s12),
+          SizedBox(height: reserve ? GlassSizes.trafficLightsTop : topPadding),
           if (header != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, 0, GlassSpacing.s8, GlassSpacing.s8),
@@ -182,9 +184,12 @@ class GlassSidebarItem extends StatelessWidget {
           visible: state.focusVisible,
           shape: shape,
           child: DecoratedBox(
-            decoration: ShapeDecoration(color: bg, shape: shape),
+            decoration: ShapeDecoration(
+              color: bg,
+              shape: selected ? shape.copyWith(side: BorderSide(color: tokens.surfaces.separator)) : shape,
+            ),
             child: SizedBox(
-              height: GlassSizes.sidebarRow + 4,
+              height: GlassSizes.sidebarRow,
               child: compact
                   ? Center(
                       child: badgeWidget == null

@@ -91,10 +91,10 @@ final class GlassPalette {
   );
 
   static const dark = GlassPalette(
-    label: Color(0xFFF5F5F7),
-    secondary: Color(0xFFC7C7CC),
-    tertiary: Color(0xFF98989F),
-    accent: brandBlue,
+    label: Color(0xFFEDF0F4),
+    secondary: Color(0xFFB4BAC4),
+    tertiary: Color(0xFF959FAA),
+    accent: Color(0xFF83B3FF),
     accentFill: brandBlue,
     onAccent: Color(0xFF000000),
     info: Color(0xFF6CB4FF),
@@ -246,16 +246,16 @@ final class GlassSurfaces {
     final dark = brightness == Brightness.dark;
     final ink = dark ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
     return GlassSurfaces(
-      content: dark ? const Color(0xE61D2431) : const Color(0xE0FFFFFF),
-      contentSolid: dark ? const Color(0xFF171D29) : const Color(0xFFFFFFFF),
+      content: dark ? const Color(0xF221232B) : const Color(0xE0FFFFFF),
+      contentSolid: dark ? const Color(0xFF1A1D25) : const Color(0xFFFFFFFF),
       paper: dark ? const Color(0xFF16171B) : const Color(0xFFFFFFFF),
-      inset: dark ? const Color(0xFF232B3B) : const Color(0xFFF2F4F7),
+      inset: dark ? const Color(0xFF252932) : const Color(0xFFF2F4F7),
       fillField: ink.withValues(alpha: dark ? 0.07 : 0.05),
       fillHover: ink.withValues(alpha: dark ? 0.07 : 0.05),
       fillPressed: ink.withValues(alpha: dark ? 0.12 : 0.09),
-      separator: ink.withValues(alpha: highContrast ? 0.30 : (dark ? 0.12 : 0.10)),
+      separator: ink.withValues(alpha: highContrast ? 0.30 : 0.10),
       hairlineCard: ink.withValues(alpha: highContrast ? 0.30 : 0.08),
-      cardTopHighlight: dark ? const Color(0x0AFFFFFF) : const Color(0x00FFFFFF),
+      cardTopHighlight: dark ? const Color(0x08FFFFFF) : const Color(0x00FFFFFF),
       barrier: const Color(0xFF000000).withValues(alpha: dark ? 0.45 : 0.25),
       secureBarrier: const Color(0xFF000000).withValues(alpha: dark ? 0.60 : 0.45),
       approvalBarrier: const Color(0xFF000000).withValues(alpha: dark ? 0.65 : 0.50),
