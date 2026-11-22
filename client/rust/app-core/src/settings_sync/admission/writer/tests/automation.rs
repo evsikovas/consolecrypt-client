@@ -184,6 +184,8 @@ async fn stale_generic_edit_with_legacy_absence_preserves_actual_remote_automati
     b.save_vault_settings(dto).await.unwrap();
     b.sync_now().await.unwrap();
     f.a.sync_now().await.unwrap();
+    readback_barrier(&b).await;
+    readback_barrier(&f.a).await;
     assert_eq!(
         b.automation_project_metadata_catalog().await.unwrap()["catalog"],
         expected["catalog"]
