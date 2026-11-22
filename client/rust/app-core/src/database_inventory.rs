@@ -93,8 +93,7 @@ impl AppCore {
         let local =
             !creating && !in_vault && self.db_saved_connection(connection.id).await?.is_some();
         if (connection.local_only() && !in_vault) || local {
-            if (creating && !connection.local_only()) || (!creating && !local) {
-                // An engine never moves between the vault and this device.
+            if !creating && !local {
                 return Err(invalid("engine_changed"));
             }
             // An SQLite file has no password or client key.
@@ -188,6 +187,15 @@ impl AppCore {
         } else {
             self.db_saved_connection(connection.id).await?
         };
+        // A named Docker route can make an ordinary engine device-local.
+        // Editing its route keeps it here, but cannot recast the saved ID
+        // between the ordinary and device-local engine families.
+        if existing
+            .as_ref()
+            .is_some_and(|old| old.engine.local_only() != connection.engine.local_only())
+        {
+            return Err(invalid("engine_changed"));
+        }
         let secrets =
             prepare_credentials(&mut connection, existing.as_ref(), password, private_key)?;
         let fresh: std::collections::HashSet<_> = secrets.iter().map(|secret| secret.id).collect();
@@ -325,6 +333,22 @@ mod tests {
                 .unwrap()
                 .route,
             DbRoute::Direct
+        );
+        let mut direct = saved;
+        direct.route = DbRoute::Direct;
+        let direct = app.db_save_connection(direct, None, None).await.unwrap();
+        assert!(unlocked.working().db_connection(direct.id).is_none());
+        let mut changed = direct.clone();
+        changed.engine = DbEngine::Cassandra;
+        changed.options = cc_models::database::DbOptions::for_engine(DbEngine::Cassandra);
+        let error = app
+            .db_save_connection(changed, None, None)
+            .await
+            .unwrap_err();
+        assert!(format!("{error:?}").contains("engine_changed"), "{error:?}");
+        assert_eq!(
+            app.db_saved_connection(direct.id).await.unwrap(),
+            Some(direct)
         );
     }
 }
