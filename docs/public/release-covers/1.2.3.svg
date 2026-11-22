@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="810" viewBox="0 0 1440 810" role="img" aria-labelledby="title desc">
+  <title id="title">ConsoleCrypt 1.2.3</title>
+  <desc id="desc">Interface update. A vector illustration of the Hosts workspace and the terminal monitoring panel.</desc>
+  <rect width="1440" height="810" fill="#181c24"/>
+  <path fill="#a9c6ff" d="M704 0h736v810H704z"/>
+  <g transform="translate(66 74)" fill="none" stroke="#a9c6ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m3 8 21-8 21 8v14c0 13-10 22-21 28C13 44 3 35 3 22z"/><path d="m15 15 7 7-7 7m12 0h8"/>
+  </g>
+  <g font-family="Segoe UI,Arial,sans-serif">
+    <text x="131" y="112" fill="#f2f5fa" font-size="38" font-weight="600">ConsoleCrypt</text>
+    <text x="58" y="446" fill="#f2f5fa" font-size="175" font-weight="650" letter-spacing="-10">1.2.3</text>
+    <text x="70" y="528" fill="#a9c6ff" font-size="44" font-weight="500">Interface update</text>
+  </g>
+  <g stroke="#222a39" stroke-width="3" stroke-linejoin="round">
+    <rect x="781" y="123" width="560" height="355" rx="13" fill="#f1f5fb"/>
+    <path d="M782 180h558M902 181v296" fill="none"/>
+    <g stroke-width="2" fill="none"><circle cx="807" cy="152" r="5"/><circle cx="826" cy="152" r="5"/><circle cx="845" cy="152" r="5"/></g>
+    <path d="M801 223h75m-75 35h52m-52 35h62" fill="none" stroke-width="5"/>
+    <path d="M927 216h143" fill="none" stroke-width="7"/>
+    <rect x="916" y="245" width="407" height="42" rx="4" fill="#c8dbff" stroke="none"/>
+    <g fill="none" stroke-width="5"><path d="M936 266h80m51 0h124m-255 49h112m19 0h83m-214 50h95m36 0h122"/></g>
+    <g fill="#718aa1" stroke="none"><circle cx="1295" cy="266" r="5"/><circle cx="1295" cy="315" r="5"/><circle cx="1295" cy="365" r="5"/></g>
+    <rect x="862" y="422" width="505" height="239" rx="11" fill="#222a39"/>
+    <g fill="none" stroke="#546071" stroke-width="1.5"><path d="M879 465h470m-157 0v177m18-40h125m-125-35h125m-125-35h125"/></g>
+    <g stroke-linecap="round" fill="none"><path d="m888 444 5 5-5 5m10 0h8" stroke="#a9c6ff"/><path d="m892 494 7 6-7 6m19-6h94" stroke="#b4cfff"/><path d="M891 529h167m-167 20h116" stroke="#8192aa"/><path d="m891 592 7 6-7 6m20-5h13" stroke="#e5edf9"/></g>
+    <path d="m1210 598 14-12 12 5 12-18 10 8 15-42 11 16 13-5 13 17 12-10 14 4" fill="none" stroke="#a9c6ff" stroke-width="3"/>
+  </g>
+</svg>
