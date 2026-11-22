@@ -1,7 +1,5 @@
 # Kubernetes
 
-ConsoleCrypt 1.2.1 · [Развернуть контейнер в Kubernetes](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-deploy) · [Мониторинг SSH и восстановление проброса](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-ssh)
-
 ## Русский
 
 Раздел Kubernetes объединяет подключения к кластерам, ресурсы, логи, терминалы
@@ -87,6 +85,8 @@ CLI через локальный прокси. На компьютере мож
 Массовые изменения запрещены в production даже при открытом окне. Exec и port-forward имеют отдельные разрешения
 production-контекста.
 
+[Развернуть контейнер в Kubernetes](https://consolecrypt.dev/guide?lang=ru#docker-details-deploy-kubernetes)
+
 ### Логи, shell и туннели
 
 В карточке Pod выберите контейнер и откройте логи. Доступны поток, фильтр,
@@ -116,6 +116,8 @@ macOS, Windows, Linux и Android. Блокировка хранилища (в т
 Запущенные пробросы Kubernetes и Docker собраны в общей правой панели
 «Проброс портов»: состояние, локальный адрес с копированием, трафик и
 остановка. Панель открывается сама после запуска проброса.
+
+[Восстановление сохранённого туннеля](https://consolecrypt.dev/guide?lang=ru#tunnels-restore)
 
 ### Подключение к базе данных
 

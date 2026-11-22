@@ -1,7 +1,5 @@
 # Локальные терминалы / Local terminals — 0.5
 
-ConsoleCrypt 1.2.1 · [Установить приложения на Mac и проверить вставку в PowerShell](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-terminals)
-
 ## Русский
 
 ### Режим «Только терминал»
@@ -11,6 +9,8 @@ ConsoleCrypt 1.2.1 · [Установить приложения на Mac и п�
 - **Linux.** Откройте **ConsoleCrypt Terminal** из списка приложений. Команда для запуска из скрипта — `consolecrypt --terminal-only`.
 
 Режим сразу открывает системную оболочку и работает без входа в хранилище. `Ctrl+T` и `Ctrl+N` (`⌘T` и `⌘N` на Mac) открывают выбор оболочки для новой вкладки. `Ctrl+K` (`⌘K`) открывает палитру. Кнопка рядом с палитрой позволяет перенести вкладки наверх или влево.
+
+[Установка обоих приложений из DMG](https://consolecrypt.dev/guide?lang=ru#first-start-macos-install)
 
 ### Локальная оболочка в основном приложении
 
@@ -44,6 +44,8 @@ ConsoleCrypt 1.2.1 · [Установить приложения на Mac и п�
 Локальные оболочки не создают фиктивные записи хостов и не синхронизируются как
 SSH-подключения. В 0.5 они доступны на macOS и Windows; Linux, Android и iOS
 продолжают использовать существующие удалённые подключения.
+
+[Многострочная вставка в PowerShell](https://consolecrypt.dev/guide?lang=ru#local-terminals-powershell-paste)
 
 ### ИИ и сниппеты
 

@@ -8,7 +8,8 @@ MongoDB, Apache Cassandra и ScyllaDB, а также с файлами SQLite. �
 конструктор таблиц, копирование и экспорт, а также ИИ-помощник. Драйверы встроены в
 приложение, поэтому `psql`, `mysql`, `clickhouse-client`, `redis-cli`, `mongosh` и `cqlsh`
 устанавливать не нужно. Раздел
-доступен на macOS, Windows, Linux и Android; сборка и проверка iOS отложены.
+доступен на macOS, Windows, Linux и Android. Для iOS релизный CI собирает ZIP и проверяет запуск приложения в Xcode Simulator на Mac.
+Проверка этого раздела на физическом iPhone требует отдельного прогона.
 
 ### Подключения
 
@@ -758,8 +759,8 @@ Redis, MongoDB, Apache Cassandra and ScyllaDB, and SQLite files. It offers the s
 tree, a tabbed query editor with history, a result grid, EXPLAIN, cell editing, a table
 designer, copy and export, and an AI assistant. Drivers are built into the app; no external
 command-line clients
-are needed. The section is available on macOS, Windows, Linux and Android;
-the iOS build and testing are deferred.
+are needed. The section is available on macOS, Windows, Linux and Android. For iOS, release CI packages the app as a ZIP and checks that it launches in Xcode Simulator on a Mac.
+Testing this feature on a physical iPhone requires a separate run.
 
 ### Connections
 

@@ -1,7 +1,5 @@
 # Docker
 
-ConsoleCrypt 1.2.1 · [Локальный Docker и удаление контейнера](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-docker) · [Развернуть контейнер в Kubernetes](https://consolecrypt.dev/guide?lang=ru#release-1-2-1-deploy)
-
 ## Русский
 
 Раздел Docker показывает контейнеры, тома и compose-проекты движка на этом
@@ -9,8 +7,8 @@ ConsoleCrypt 1.2.1 · [Локальный Docker и удаление конте�
 контейнера, сведения inspect, проброс портов, подключение к базе данных из
 контейнера и правка compose-файлов. Клиент обращается к Docker API сам:
 для локального движка — через его сокет, для SSH-хоста — через SSH-подключение
-этого хоста. Раздел доступен на macOS, Windows, Linux и Android; сборка и
-проверка iOS отложены.
+этого хоста. Раздел доступен на macOS, Windows, Linux и Android. Для iOS релизный CI собирает ZIP и проверяет запуск приложения в Xcode Simulator на Mac.
+Проверка этого раздела на физическом iPhone требует отдельного прогона.
 
 ### Хосты и права
 
@@ -31,6 +29,8 @@ docker CLI. Если Docker не запущен, приложение так и 
 повышает права и не использует `sudo`. Смена профиля и блокировка хранилища
 закрывают сессию Docker.
 
+[Выбор локального движка и WSL](https://consolecrypt.dev/guide?lang=ru#docker-containers-local-engine)
+
 ### Контейнеры
 
 Контейнеры сгруппированы по compose-проектам: сначала проекты с запущенными
@@ -44,6 +44,8 @@ docker CLI. Если Docker не запущен, приложение так и 
 завершить, удалить, пробросить порт, подключиться к БД, сведения и
 копирование ID. Принудительное завершение и удаление требуют подтверждения;
 по умолчанию тома и сети сохраняются. Доступные для удаления ресурсы выбираются отдельно.
+
+[Порты и удаление контейнера](https://consolecrypt.dev/guide?lang=ru#docker-containers-remove)
 
 ### Сведения, логи и терминал
 
@@ -62,6 +64,8 @@ docker CLI. Если Docker не запущен, приложение так и 
 «Терминал» открывает оболочку внутри контейнера во вкладке терминала.
 Автоматический выбор пробует `bash`, `ash` и `sh`; оболочку можно указать
 явно.
+
+[Развернуть контейнер в Kubernetes](https://consolecrypt.dev/guide?lang=ru#docker-details-deploy-kubernetes)
 
 ### Секреты
 
@@ -193,7 +197,8 @@ container, inspect details, port forwarding, connecting to a container’s
 database and editing compose files. The client talks to the Docker API itself:
 through the socket for a local engine and through the host’s SSH connection
 for a remote one. The section is available on macOS, Windows, Linux and
-Android; the iOS build and testing are deferred.
+Android. For iOS, release CI packages the app as a ZIP and checks that it launches in Xcode Simulator on a Mac.
+Testing this feature on a physical iPhone requires a separate run.
 
 ### Hosts and permissions
 

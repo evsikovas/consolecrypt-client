@@ -13,7 +13,7 @@
 
 ![ConsoleCrypt 1.2.1](https://raw.githubusercontent.com/evsikovas/consolecrypt-client/refs/tags/v1.2.1/docs/public/release-covers/1.2.1.png)
 
-[Руководство со скриншотами](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/ru.md#release-1-2-1)
+[Руководство со скриншотами](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/ru.md)
 
 ## English
 
@@ -26,7 +26,7 @@ Passwords now opens HashiCorp Vault and OpenBao. Docker adds an experimental wiz
 - **SSH and tunnels.** When connected to Linux through the built-in SSH client, view CPU, memory and disk usage and network throughput. Sampling continues while the session is open, even with the panel collapsed. Restoring saved Docker and Kubernetes port forwards has been fixed.
 - **Terminal and macOS.** Multiline paste in local PowerShell has been fixed. In the new blue DMG, ConsoleCrypt and ConsoleCrypt Terminal sit in a row with the Applications folder. Drag either app or both into the folder.
 
-[Illustrated guide](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/en.md#release-1-2-1)
+[Illustrated guide](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/en.md)
 
 ## Español
 
@@ -39,7 +39,7 @@ Ahora puedes abrir HashiCorp Vault y OpenBao desde Contraseñas. Docker incorpor
 - **SSH y túneles.** Al conectarte a Linux con el cliente SSH integrado, puedes consultar el uso de CPU, memoria y disco, y la velocidad de la red. Las mediciones continúan mientras la sesión esté abierta, incluso con el panel contraído. Se ha corregido la restauración de los reenvíos de puertos guardados de Docker y Kubernetes.
 - **Terminal y macOS.** Se ha corregido el pegado de varias líneas en PowerShell local. En el nuevo DMG azul, ConsoleCrypt y ConsoleCrypt Terminal aparecen en la misma fila que la carpeta Aplicaciones. Arrastra a la carpeta la aplicación que quieras instalar o ambas.
 
-[Guía con capturas de pantalla](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/es.md#release-1-2-1)
+[Guía con capturas de pantalla](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/es.md)
 
 ## 简体中文
 
@@ -52,4 +52,4 @@ Ahora puedes abrir HashiCorp Vault y OpenBao desde Contraseñas. Docker incorpor
 - **SSH 和隧道。** 使用内置 SSH 客户端连接 Linux 主机后，可查看 CPU、内存、磁盘使用率以及网络吞吐量。只要会话保持打开，即使收起面板也会继续采样。修复了恢复已保存的 Docker 和 Kubernetes 端口转发时的问题。
 - **终端和 macOS。** 修复了本地 PowerShell 中的多行粘贴。新版蓝色 DMG 将 ConsoleCrypt、ConsoleCrypt Terminal 和「应用程序」文件夹排列在同一行。可将任一应用或两个应用一起拖入文件夹安装。
 
-[图文指南](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/zh.md#release-1-2-1)
+[图文指南](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/zh.md)

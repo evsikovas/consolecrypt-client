@@ -35,14 +35,15 @@
 
 4. **Actions → Client tag release** проверит совпадение версии и происхождение
    коммита из `main` и проверку зависимостей (`cargo deny`, `osv-scanner`; см.
-   [BUILDING.md](BUILDING.md#проверка-зависимостей)), затем соберёт macOS,
-   Windows, Linux и Android (iOS не собирается — сборки отложены). Перед тегом закройте открытый issue
+   [BUILDING.md](BUILDING.md#проверка-зависимостей)), затем соберёт macOS, Windows, Linux,
+   Android и iOS Simulator. Отдельное задание подготовит пакеты RuStore. Перед тегом закройте открытый issue
    «Уязвимые зависимости»: обновите пакет или оформите исключение с датой
    пересмотра. Локально: `python3 client/scripts/dependency-audit.py check`.
    Номера сборок выдаются отдельно каждой платформе; все сохраняют одну `X.Y.Z`.
-5. После успеха всех платформ publisher проверит `ConsoleCrypt.version`, соберёт
-   шесть установочных файлов (DMG, EXE, ZIP, DEB, RPM, APK) и
-   `SHA256SUMS-X.Y.Z.txt`, загрузит их в draft и опубликует GitHub Release.
+5. После успеха всех заданий publisher проверит `ConsoleCrypt.version` и загрузит в черновик
+   девять файлов. В выпуск входят DMG для macOS, EXE и портативный ZIP для Windows, DEB и RPM для Linux,
+   прямой Android APK, универсальный ZIP для iOS Simulator на Mac, а также APK и AAB для RuStore.
+   Вместе с ними он загрузит `SHA256SUMS-X.Y.Z.txt` и опубликует GitHub Release.
    Существующий релиз не перезаписывается. Если загрузка оборвалась после создания
    draft, проверьте его вручную перед повторным запуском; опубликованные файлы
    и теги остаются неизменяемыми, исправления выпускаются новой версией.
@@ -84,10 +85,11 @@
 ## English
 
 Keep the tested baseline on `main`. Update the source version and release notes,
-push the commit, then push its matching stable `vX.Y.Z` tag. Only the tag builds
-native packages, and only after the hosted dependency audit (`cargo deny`,
-`osv-scanner`) passes; fix or document any open "Уязвимые зависимости" issue first. The workflow publishes a complete GitHub Release after all four
-platforms (macOS, Windows, Linux, Android; no iOS) pass and dispatches signed update metadata on trusted `main`. Website
+push the commit, then push its matching stable `vX.Y.Z` tag. CI runs the hosted
+dependency audit (`cargo deny`, `osv-scanner`) before building. Resolve or document
+any open dependency audit issue before tagging. The release contains nine packages
+for macOS, Windows, Linux, Android and iOS Simulator, including the RuStore APK and AAB.
+After publication, CI requests signed update metadata on trusted `main`. Website
 and server deployment are independent tag releases. Preserve signing identities,
 app IDs and the Ed25519 update trust anchor. Old clients still require installer
 bytes on their previously trusted domains.
