@@ -1,7 +1,5 @@
 # ConsoleCrypt 1.2.1
 
-![ConsoleCrypt 1.2.1](https://raw.githubusercontent.com/evsikovas/consolecrypt-client/refs/tags/v1.2.1/docs/public/release-covers/1.2.1.png)
-
 ## Русский
 
 В разделе «Пароли» теперь можно работать с HashiCorp Vault и OpenBao. В Docker появился экспериментальный мастер переноса контейнера в Kubernetes.
@@ -12,6 +10,10 @@
 - **Docker → Kubernetes · Экспериментально.** Выберите контейнер Linux без постоянных томов и опубликованный образ, доступный кластеру. Мастер проверяет digest перед автоподстановкой и переносит команду запуска с аргументами. Проверьте шаблон или черновик ИИ, выполните серверную проверку и подтвердите создание Deployment с одной репликой и внутреннего Service. При сбое видны образ, причина и число перезапусков.
 - **SSH и туннели.** При подключении к Linux через встроенный SSH-клиент мониторинг показывает загрузку CPU, памяти и диска, а также скорость сети. Замеры продолжаются, пока сессия открыта, даже если панель свёрнута. Исправлено восстановление сохранённых пробросов портов Docker и Kubernetes.
 - **Терминал и macOS.** Исправлена многострочная вставка в локальный PowerShell. В новом синем DMG приложения ConsoleCrypt и ConsoleCrypt Terminal стоят в один ряд с папкой Applications. Перетащите туда нужное приложение или оба.
+
+![ConsoleCrypt 1.2.1](https://raw.githubusercontent.com/evsikovas/consolecrypt-client/refs/tags/v1.2.1/docs/public/release-covers/1.2.1.png)
+
+[Руководство со скриншотами](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/ru.md#release-1-2-1)
 
 ## English
 
@@ -24,6 +26,8 @@ Passwords now opens HashiCorp Vault and OpenBao. Docker adds an experimental wiz
 - **SSH and tunnels.** When connected to Linux through the built-in SSH client, view CPU, memory and disk usage and network throughput. Sampling continues while the session is open, even with the panel collapsed. Restoring saved Docker and Kubernetes port forwards has been fixed.
 - **Terminal and macOS.** Multiline paste in local PowerShell has been fixed. In the new blue DMG, ConsoleCrypt and ConsoleCrypt Terminal sit in a row with the Applications folder. Drag either app or both into the folder.
 
+[Illustrated guide](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/en.md#release-1-2-1)
+
 ## Español
 
 Ahora puedes abrir HashiCorp Vault y OpenBao desde Contraseñas. Docker incorpora un asistente experimental para desplegar un contenedor en Kubernetes.
@@ -35,6 +39,8 @@ Ahora puedes abrir HashiCorp Vault y OpenBao desde Contraseñas. Docker incorpor
 - **SSH y túneles.** Al conectarte a Linux con el cliente SSH integrado, puedes consultar el uso de CPU, memoria y disco, y la velocidad de la red. Las mediciones continúan mientras la sesión esté abierta, incluso con el panel contraído. Se ha corregido la restauración de los reenvíos de puertos guardados de Docker y Kubernetes.
 - **Terminal y macOS.** Se ha corregido el pegado de varias líneas en PowerShell local. En el nuevo DMG azul, ConsoleCrypt y ConsoleCrypt Terminal aparecen en la misma fila que la carpeta Aplicaciones. Arrastra a la carpeta la aplicación que quieras instalar o ambas.
 
+[Guía con capturas de pantalla](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/es.md#release-1-2-1)
+
 ## 简体中文
 
 现在可以在「密码」中打开 HashiCorp Vault 和 OpenBao。Docker 新增了将容器部署到 Kubernetes 的实验性向导。
@@ -45,3 +51,5 @@ Ahora puedes abrir HashiCorp Vault y OpenBao desde Contraseñas. Docker incorpor
 - **Docker → Kubernetes（实验性）。** 选择没有持久化挂载的 Linux 容器和集群可以拉取的已发布镜像。向导会先验证镜像摘要，再自动填入镜像地址，并保留启动命令及其参数。可以审阅模板或 AI 草稿，在服务器上试运行，然后确认创建单副本 Deployment 和集群内部的 Service。如果 Pod 启动失败，可以查看镜像、原因和重启次数。
 - **SSH 和隧道。** 使用内置 SSH 客户端连接 Linux 主机后，可查看 CPU、内存、磁盘使用率以及网络吞吐量。只要会话保持打开，即使收起面板也会继续采样。修复了恢复已保存的 Docker 和 Kubernetes 端口转发时的问题。
 - **终端和 macOS。** 修复了本地 PowerShell 中的多行粘贴。新版蓝色 DMG 将 ConsoleCrypt、ConsoleCrypt Terminal 和「应用程序」文件夹排列在同一行。可将任一应用或两个应用一起拖入文件夹安装。
+
+[图文指南](https://github.com/evsikovas/consolecrypt-docs/blob/main/guide/zh.md#release-1-2-1)
