@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Wait for the public download page to link every verified release package."""
+"""Wait for verified direct downloads and the official store listing."""
 import argparse
 from html.parser import HTMLParser
 import importlib.util
@@ -8,19 +8,28 @@ from pathlib import Path
 import re
 import sys
 import time
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qsl, unquote, urlsplit
 from urllib.request import Request, urlopen
 
 WEBSITE = 'https://consolecrypt.dev/download'
+RUSTORE_LISTING = 'https://www.rustore.ru/catalog/app/io.consolecrypt.consolecrypt'
+RUSTORE_PACKAGES = {'rustore-arm64.apk', 'rustore-arm64.aab'}
 
 
 def identity(url):
     parsed = urlsplit(url)
-    if (parsed.scheme != 'https' or parsed.hostname != 'github.com'
-            or parsed.username or parsed.password or parsed.port not in (None, 443)
-            or parsed.query or parsed.fragment):
+    if (parsed.scheme != 'https' or parsed.username is not None or parsed.password is not None
+            or parsed.port not in (None, 443) or parsed.fragment):
         return None
-    return unquote(parsed.path)
+    origin_path = f'https://{parsed.hostname}{parsed.path}'
+    if origin_path == RUSTORE_LISTING:
+        # The official badge includes campaign and link-attribution parameters.
+        if all(key.startswith('utm_') or key in {'rsm', 'mt_link_id', 'mt_sub1'}
+               for key, _ in parse_qsl(parsed.query, keep_blank_values=True)):
+            return RUSTORE_LISTING
+    if parsed.hostname == 'github.com' and not parsed.query:
+        return 'https://github.com' + unquote(parsed.path)
+    return None
 
 
 class DownloadPage(HTMLParser):
@@ -45,8 +54,18 @@ def ready(contents, version, urls):
     page = DownloadPage()
     page.feed(contents)
     expected = {identity(url) for url in urls}
+    store_files = any(link.lower().endswith(('-rustore-arm64.apk', '-rustore-arm64.aab'))
+                      for link in page.links)
+    heading = re.search(r'Текущий релиз · ' + re.escape(version) + r'(?![\w.])',
+                        ' '.join(' '.join(page.text).split()))
     return (bool(expected) and None not in expected and expected <= page.links
-            and f'Текущий релиз · {version}' in ' '.join(' '.join(page.text).split()))
+            and not store_files and heading is not None)
+
+
+def public_links(verified):
+    links = {RUSTORE_LISTING if item['suffix'] in RUSTORE_PACKAGES else item['url']
+             for item in verified['installers']}
+    return sorted(links)
 
 
 def release_links(tag):
@@ -59,7 +78,7 @@ def release_links(tag):
     with verifier.fetch(asset['browser_download_url']) as response:
         sums = response.read(65537).decode('utf-8')
     verified = verifier.validate(release, sums)
-    return [item['url'] for item in verified['installers']]
+    return public_links(verified)
 
 
 def main():
@@ -77,7 +96,7 @@ def main():
             with urlopen(request, timeout=20) as response:
                 contents = response.read(2 * 1024 * 1024 + 1)
             if len(contents) <= 2 * 1024 * 1024 and ready(contents.decode('utf-8'), args.tag[1:], links):
-                print(f'Website ready: {args.tag}, {len(links)} verified package links')
+                print(f'Website ready: {args.tag}, {len(links)} public download links')
                 return 0
         except (OSError, UnicodeError, ValueError):
             pass

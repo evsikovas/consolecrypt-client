@@ -1,4 +1,5 @@
 import importlib.util
+from html import escape
 from pathlib import Path
 import unittest
 
@@ -32,6 +33,35 @@ class DownloadReadiness(unittest.TestCase):
                         self.heading + self.links.replace('https://', 'https%3A%2F%2F')):
             self.assertFalse(website.ready(content, '1.0.0', self.urls))
         self.assertFalse(website.ready(self.heading + self.links, '1.0.0', []))
+
+    def test_store_artifacts_map_to_the_listing_after_full_verification(self):
+        packages = [{'suffix': url.rsplit('61015-', 1)[1], 'url': url} for url in self.urls]
+        self.assertEqual(set(website.public_links({'installers': packages})), set(self.urls))
+        store_urls = []
+        for suffix in ('rustore-arm64.apk', 'rustore-arm64.aab'):
+            url = self.urls[0].replace('macos-universal.dmg', suffix)
+            packages.append({'suffix': suffix, 'url': url})
+            store_urls.append(url)
+        links = website.public_links({'installers': packages})
+        self.assertEqual(len(links), 8)
+        self.assertEqual(set(links), {*self.urls, website.RUSTORE_LISTING})
+        badge = website.RUSTORE_LISTING + '?utm_source=available_in_rustore&utm_medium=io.consolecrypt.consolecrypt&rsm=1&mt_link_id=iios36&mt_sub1=io.consolecrypt.consolecrypt'
+        page = self.heading + self.links
+        for href in (website.RUSTORE_LISTING, badge):
+            self.assertTrue(website.ready(page + f'<a href="{escape(href)}">RuStore</a>', '1.0.0', links))
+        for href in (None, website.RUSTORE_LISTING + 'x', website.RUSTORE_LISTING + '?next=elsewhere',
+                     website.RUSTORE_LISTING.replace('rustore.ru', 'rustore.ru.example.com'),
+                     website.RUSTORE_LISTING.replace('https://', 'http://'), *store_urls):
+            with self.subTest(href=href):
+                content = page if href is None else page + f'<a href="{href}">RuStore</a>'
+                self.assertFalse(website.ready(content, '1.0.0', links))
+        for url in store_urls:
+            content = page + f'<a href="{badge}">RuStore</a><a href="{url}">Package</a>'
+            self.assertFalse(website.ready(content, '1.0.0', links))
+
+    def test_patch_release_heading_must_match_exactly(self):
+        heading = self.heading.replace('1.0.0', '1.2.10')
+        self.assertFalse(website.ready(heading + self.links, '1.2.1', self.urls))
 
 
 if __name__ == '__main__':
