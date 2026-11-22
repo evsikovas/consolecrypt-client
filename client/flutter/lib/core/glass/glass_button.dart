@@ -118,9 +118,7 @@ class GlassButton extends StatelessWidget {
     // Nothing moves on the secure material (approvals, secrets, risk).
     final still = GlassOnGlass.maybeOf(context)?.secure ?? false;
     final motion = tokens.motion(scope.appearance);
-    final shape = size.isCapsule
-        ? const StadiumBorder() as OutlinedBorder
-        : GlassRadii.shape(size == GlassControlSize.sm ? tokens.radii.sm : tokens.radii.md);
+    final shape = GlassRadii.shape(size == GlassControlSize.sm ? tokens.radii.sm : tokens.radii.md);
     final enabled = onPressed != null && !busy;
     final p = tokens.palette;
 
@@ -159,7 +157,7 @@ class GlassButton extends StatelessWidget {
           child: SizedBox(
             height: AppPlatform.isMobile ? size.height.clamp(48.0, double.infinity) : size.height,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: size.isCapsule ? size.height / 2 : 10),
+              padding: EdgeInsets.symmetric(horizontal: size.isCapsule ? GlassSpacing.s16 : GlassSpacing.s12),
               child: content,
             ),
           ),
@@ -205,6 +203,7 @@ class GlassButton extends StatelessWidget {
                 : GlassSurface(
                     variant: GlassVariant.thin,
                     shape: shape,
+                    shadows: false,
                     interactive: true,
                     enabled: state.enabled,
                     child: padded,
@@ -335,7 +334,9 @@ class GlassIconButton extends StatelessWidget {
     final motion = tokens.motion(GlassScope.of(context).appearance);
     final onGlass = AppPlatform.isMobile || GlassOnGlass.isOnGlass(context);
     final still = GlassOnGlass.maybeOf(context)?.secure ?? false;
-    const shape = StadiumBorder();
+    final shape = style == GlassIconButtonStyle.prominent
+        ? const StadiumBorder() as OutlinedBorder
+        : GlassRadii.shape(tokens.radii.md);
     return Tooltip(
       message: tooltip,
       child: GlassInteractive(
@@ -371,6 +372,7 @@ class GlassIconButton extends StatelessWidget {
             GlassIconButtonStyle.glass when !onGlass => GlassSurface(
               variant: GlassVariant.thin,
               shape: shape,
+              shadows: false,
               interactive: true,
               enabled: state.enabled,
               child: glyph,

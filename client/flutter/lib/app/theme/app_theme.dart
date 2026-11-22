@@ -143,7 +143,7 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: const Color(0x00000000),
       canvasColor: canvas,
       dividerTheme: DividerThemeData(color: s.separator, space: 1, thickness: 1),
-      // Fields use fills with a subtle focus underline below the text.
+      // Outlined fields on content keep their perimeter visible at rest.
       inputDecorationTheme: InputDecorationTheme(
         isDense: true,
         filled: true,
@@ -151,10 +151,10 @@ abstract final class AppTheme {
         hoverColor: const Color(0x00000000),
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         border: GlassInputBorder(radius: r.md),
-        enabledBorder: GlassInputBorder(radius: r.md),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(r.md), borderSide: hair),
         disabledBorder: GlassInputBorder(radius: r.md),
-        focusedBorder: GlassInputBorder(
-          radius: r.md,
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(r.md),
           borderSide: BorderSide(color: tokens.focusRingColor.withValues(alpha: .75), width: 1),
         ),
         errorBorder: GlassInputBorder(
@@ -230,6 +230,7 @@ abstract final class AppTheme {
         style: ButtonStyle(
           foregroundColor: fg(p.label),
           overlayColor: overlay(p.label),
+          shape: buttonShape,
           splashFactory: NoSplash.splashFactory,
         ),
       ),
@@ -239,7 +240,7 @@ abstract final class AppTheme {
         disabledColor: s.fillField,
         checkmarkColor: p.accent,
         side: BorderSide.none,
-        shape: const StadiumBorder(),
+        shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(r.sm)),
         labelStyle: t.callout.copyWith(color: p.label),
         secondaryLabelStyle: t.callout.copyWith(color: p.label, fontWeight: FontWeight.w600),
         padding: const EdgeInsets.symmetric(horizontal: 4),

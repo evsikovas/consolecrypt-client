@@ -110,15 +110,16 @@ class GlassTabStrip extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: AppPlatform.isMobile ? 54 : GlassSizes.tabTrack,
+              height: AppPlatform.isMobile ? 56 : GlassSizes.tabTrack,
               child: Row(
                 children: [
                   Expanded(
                     child: GlassSurface(
                       variant: GlassVariant.thin,
-                      shape: const StadiumBorder(),
+                      shape: GlassRadii.shape(GlassTokens.of(context).radii.menu),
+                      shadows: false,
                       child: Padding(
-                        padding: const EdgeInsets.all(3),
+                        padding: const EdgeInsets.all(GlassSpacing.s4),
                         child: _EdgeFadeScroll(
                           activeIndex: activeIndex,
                           children: [
@@ -190,7 +191,7 @@ class _TabChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
     final p = tokens.palette;
-    const shape = StadiumBorder();
+    final shape = GlassRadii.shape(tokens.radii.sm);
     Widget chip = GlassInteractive(
       onPressed: onSelect,
       selected: active,
@@ -202,7 +203,7 @@ class _TabChip extends StatelessWidget {
       ].join(', '),
       builder: (context, state) {
         final bg = active
-            ? tokens.surfaces.segmentThumb
+            ? tokens.sidebarSelection
             : state.hovered
             ? tokens.surfaces.fillHover
             : const Color(0x00000000);
@@ -212,8 +213,7 @@ class _TabChip extends StatelessWidget {
           child: DecoratedBox(
             decoration: ShapeDecoration(
               color: bg,
-              shape: shape,
-              shadows: active ? const [BoxShadow(color: Color(0x1F000000), offset: Offset(0, 1), blurRadius: 3)] : null,
+              shape: active ? shape.copyWith(side: BorderSide(color: tokens.surfaces.separator)) : shape,
             ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: GlassSizes.tabMinWidth, maxWidth: GlassSizes.tabMaxWidth),

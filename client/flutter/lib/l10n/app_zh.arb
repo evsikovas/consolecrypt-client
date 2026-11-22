@@ -5658,5 +5658,9 @@
   "wslcDisconnectFromNetwork": "断开网络连接",
   "wslcGateway": "网关 {gateway}",
   "wslcTheRuntimeReturnedNoMountInformation": "运行时未返回挂载信息",
-  "wslcNoMountedVolumesOrDirectories": "没有已挂载的卷或目录"
+  "wslcNoMountedVolumesOrDirectories": "没有已挂载的卷或目录",
+  "navAreaAccess": "\u8bbf\u95ee",
+  "navAreaWorkspaces": "\u5de5\u4f5c\u533a",
+  "navAreaProfile": "\u914d\u7f6e\u6587\u4ef6",
+  "hostInspector": "\u4e3b\u673a\u8be6\u60c5"
 }

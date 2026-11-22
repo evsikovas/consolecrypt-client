@@ -400,62 +400,65 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                   onDisconnect: widget.onDisconnect,
                 ),
                 const SizedBox(height: GlassSpacing.s12),
-                Wrap(
-                  spacing: GlassSpacing.s8,
-                  runSpacing: GlassSpacing.s8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    GlassSegmented<bool>(
-                      key: const ValueKey('docker-view'),
-                      inChrome: false,
-                      semanticLabel: l.dockerView,
-                      selected: _volumes,
-                      onChanged: (value) => setState(() => _volumes = value),
-                      segments: [
-                        GlassSegment(
-                          key: const ValueKey('docker-view-containers'),
-                          value: false,
-                          label: l.dockerStandalone,
-                        ),
-                        GlassSegment(key: const ValueKey('docker-view-volumes'), value: true, label: l.dockerVolumes),
-                      ],
-                    ),
-                    SizedBox(
-                      width: constraints.maxWidth < 600 ? constraints.maxWidth : 320,
-                      child: GlassField(
-                        key: const ValueKey('docker-filter'),
-                        fieldKey: const ValueKey('docker-filter-input'),
-                        search: true,
-                        placeholder: l.dockerFilterContainers,
-                        onChanged: (value) => setState(() => _query = value),
-                      ),
-                    ),
-                    if (!_volumes)
-                      GlassSegmented<DockerStateFilter>(
-                        key: const ValueKey('docker-state-filter'),
+                ContentSurface(
+                  padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
+                  child: Wrap(
+                    spacing: GlassSpacing.s8,
+                    runSpacing: GlassSpacing.s8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      GlassSegmented<bool>(
+                        key: const ValueKey('docker-view'),
                         inChrome: false,
-                        semanticLabel: l.dockerStateFilter,
-                        selected: _filter,
-                        onChanged: (value) => setState(() => _filter = value),
+                        semanticLabel: l.dockerView,
+                        selected: _volumes,
+                        onChanged: (value) => setState(() => _volumes = value),
                         segments: [
                           GlassSegment(
-                            key: const ValueKey('docker-filter-all'),
-                            value: DockerStateFilter.all,
-                            label: l.dockerFilterAll(containers.length),
+                            key: const ValueKey('docker-view-containers'),
+                            value: false,
+                            label: l.dockerStandalone,
                           ),
-                          GlassSegment(
-                            key: const ValueKey('docker-filter-running'),
-                            value: DockerStateFilter.running,
-                            label: l.dockerFilterRunning(active),
-                          ),
-                          GlassSegment(
-                            key: const ValueKey('docker-filter-stopped'),
-                            value: DockerStateFilter.stopped,
-                            label: l.dockerFilterStopped(containers.length - active),
-                          ),
+                          GlassSegment(key: const ValueKey('docker-view-volumes'), value: true, label: l.dockerVolumes),
                         ],
                       ),
-                  ],
+                      SizedBox(
+                        width: constraints.maxWidth < 600 ? constraints.maxWidth : 320,
+                        child: GlassField(
+                          key: const ValueKey('docker-filter'),
+                          fieldKey: const ValueKey('docker-filter-input'),
+                          search: true,
+                          placeholder: l.dockerFilterContainers,
+                          onChanged: (value) => setState(() => _query = value),
+                        ),
+                      ),
+                      if (!_volumes)
+                        GlassSegmented<DockerStateFilter>(
+                          key: const ValueKey('docker-state-filter'),
+                          inChrome: false,
+                          semanticLabel: l.dockerStateFilter,
+                          selected: _filter,
+                          onChanged: (value) => setState(() => _filter = value),
+                          segments: [
+                            GlassSegment(
+                              key: const ValueKey('docker-filter-all'),
+                              value: DockerStateFilter.all,
+                              label: l.dockerFilterAll(containers.length),
+                            ),
+                            GlassSegment(
+                              key: const ValueKey('docker-filter-running'),
+                              value: DockerStateFilter.running,
+                              label: l.dockerFilterRunning(active),
+                            ),
+                            GlassSegment(
+                              key: const ValueKey('docker-filter-stopped'),
+                              value: DockerStateFilter.stopped,
+                              label: l.dockerFilterStopped(containers.length - active),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
                 if (_error != null && _loaded)
                   Padding(

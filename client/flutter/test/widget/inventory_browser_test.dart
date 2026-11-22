@@ -103,6 +103,7 @@ void main() {
     await tapKey(tester, 'inventory-delete-group');
     await tapKey(tester, 'confirm-ok');
     expect(backend.inventory.currentHosts.length, before);
+    await enterKey(tester, 'hosts-search', 'prod-db-1');
     expect(find.byKey(const ValueKey('host-prod-db-1')), findsOneWidget);
     expect(backend.cloud.activeData!.groups.any((g) => g.name == 'Databases'), isFalse);
     expect(tester.takeException(), isNull);

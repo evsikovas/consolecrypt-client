@@ -49,6 +49,62 @@ class PageScaffold extends StatelessWidget {
       );
     }
     if (scrollable) content = ScrollEdgeEffect(child: SingleChildScrollView(child: content));
+    final colors = tokens.palette;
+    final heading = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!embedded)
+          Semantics(
+            header: true,
+            child: Text(title, style: tokens.typography.title1.copyWith(color: colors.label)),
+          ),
+        if (subtitle case final value?) ...[
+          if (!embedded) const SizedBox(height: GlassSpacing.s4),
+          Text(value, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
+        ],
+      ],
+    );
+    Widget buildHeader() => LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = !embedded && constraints.maxWidth >= 600;
+        final actionRow = Wrap(
+          spacing: GlassSpacing.s8,
+          runSpacing: GlassSpacing.s8,
+          alignment: wide ? WrapAlignment.end : WrapAlignment.start,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: actions,
+        );
+        if (!wide) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              heading,
+              if (actions.isNotEmpty) ...[
+                if (!embedded || subtitle != null) const SizedBox(height: GlassSpacing.s12),
+                actionRow,
+              ],
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: heading),
+            if (actions.isNotEmpty) ...[
+              const SizedBox(width: GlassSpacing.s12),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth * .6),
+                child: actionRow,
+              ),
+            ],
+          ],
+        );
+      },
+    );
+    final viewport = MediaQuery.of(context);
+    final compact = viewport.size.width < 600;
+    final headerGap = compact && !embedded ? GlassSpacing.s8 : GlassSpacing.s12;
+    final showHeader = embedded ? subtitle != null || actions.isNotEmpty : !compact || viewport.viewInsets.bottom == 0;
     return Semantics(
       container: true,
       explicitChildNodes: true,
@@ -58,86 +114,18 @@ class PageScaffold extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (embedded)
+            if (showHeader)
               Padding(
-                padding: EdgeInsets.fromLTRB(pad, 12, pad, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (subtitle != null) ...[
-                      Text(subtitle!, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
-                      const SizedBox(height: 10),
-                    ],
-                    if (actions.isNotEmpty)
-                      Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: actions),
-                  ],
-                ),
-              )
-            else if (MediaQuery.sizeOf(context).width >= 600 || MediaQuery.viewInsetsOf(context).bottom == 0)
-              Padding(
-                // Keep the page heading and its actions clear of the shell
-                // toolbar, with an equal gap before the first content row.
-                padding: EdgeInsets.fromLTRB(pad, GlassSpacing.s24, pad, GlassSpacing.s24),
-                // Actions may take at most 60 % of the width and wrap onto more lines,
-                // so long (e.g. Russian) button labels never squeeze the subtitle.
-                child: LayoutBuilder(
-                  builder: (context, constraints) => constraints.maxWidth < 600
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Semantics(
-                              header: true,
-                              child: Text(title, style: tokens.typography.title1.copyWith(color: tokens.palette.label)),
-                            ),
-                            if (subtitle != null) ...[
-                              const SizedBox(height: 4),
-                              Text(subtitle!, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
-                            ],
-                            if (actions.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              Wrap(spacing: 8, runSpacing: 8, children: actions),
-                            ],
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Semantics(
-                                    header: true,
-                                    child: Text(
-                                      title,
-                                      style: tokens.typography.title1.copyWith(color: tokens.palette.label),
-                                    ),
-                                  ),
-                                  if (subtitle != null) ...[
-                                    const SizedBox(height: GlassSpacing.s4),
-                                    Text(
-                                      subtitle!,
-                                      style: tokens.typography.body.copyWith(color: tokens.secondaryLabel),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            if (actions.isNotEmpty) ...[
-                              const SizedBox(width: GlassSpacing.s12),
-                              ConstrainedBox(
-                                constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.6),
-                                child: Wrap(
-                                  spacing: GlassSpacing.s8,
-                                  runSpacing: GlassSpacing.s8,
-                                  alignment: WrapAlignment.end,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: actions,
-                                ),
-                              ),
-                            ],
-                          ],
+                padding: EdgeInsets.fromLTRB(pad, headerGap, pad, headerGap),
+                child: embedded
+                    ? buildHeader()
+                    : ContentSurface(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: compact ? GlassSpacing.s8 : GlassSpacing.s16,
+                          vertical: headerGap,
                         ),
-                ),
+                        child: buildHeader(),
+                      ),
               ),
             Expanded(child: content),
           ],
@@ -213,51 +201,73 @@ class _SectionCardState extends State<SectionCard> {
           ),
       ],
     );
-    return ContentSurface(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: collapsible
-                    ? Semantics(
-                        expanded: expanded,
-                        child: InkWell(
-                          onTap: () => setState(() => _expanded = !_expanded),
-                          child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: heading),
+    return LayoutBuilder(
+      builder: (context, bounds) {
+        final wide = bounds.maxWidth >= 600;
+        final header = Row(
+          children: [
+            Expanded(
+              child: collapsible
+                  ? Semantics(
+                      expanded: expanded,
+                      child: InkWell(
+                        onTap: () => setState(() => _expanded = !_expanded),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s4),
+                          child: heading,
                         ),
-                      )
-                    : heading,
-              ),
-              if (MediaQuery.sizeOf(context).width >= 600) ?trailing,
-            ],
+                      ),
+                    )
+                  : heading,
+            ),
+            if (wide && trailing != null) ...[const SizedBox(width: GlassSpacing.s8), trailing],
+          ],
+        );
+        return ContentSurface(
+          padding: EdgeInsets.zero,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(tokens.radii.card),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: tokens.surfaces.fillField,
+                    border: expanded ? Border(bottom: BorderSide(color: tokens.surfaces.separator)) : null,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s12, vertical: GlassSpacing.s8),
+                    child: header,
+                  ),
+                ),
+                ExcludeFocus(
+                  excluding: !expanded,
+                  child: Offstage(
+                    offstage: !expanded,
+                    child: Padding(
+                      padding: const EdgeInsets.all(GlassSpacing.s12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (!wide && trailing != null) ...[
+                            Align(alignment: AlignmentDirectional.centerStart, child: trailing),
+                            const SizedBox(height: GlassSpacing.s8),
+                          ],
+                          if (subtitle != null) ...[
+                            Text(subtitle, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
+                            const SizedBox(height: GlassSpacing.s12),
+                          ],
+                          widget.child,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          if (expanded && trailing != null && MediaQuery.sizeOf(context).width < 600)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Align(alignment: Alignment.centerLeft, child: trailing),
-            ),
-          if (expanded && subtitle != null)
-            Padding(
-              padding: const EdgeInsets.only(top: GlassSpacing.s4),
-              child: Text(subtitle, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
-            ),
-          ExcludeFocus(
-            excluding: !expanded,
-            child: Offstage(
-              offstage: !expanded,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: GlassSpacing.s12),
-                  widget.child,
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

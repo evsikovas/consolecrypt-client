@@ -63,6 +63,26 @@ const navigationSections = [
   NavigationSection(ShellBranch.settings, Icons.settings_rounded),
 ];
 
+enum NavigationArea { access, workspaces, profile }
+
+NavigationArea navigationArea(ShellBranch branch) => switch (branch) {
+  ShellBranch.hosts ||
+  ShellBranch.groups ||
+  ShellBranch.credentials ||
+  ShellBranch.passwords ||
+  ShellBranch.automation ||
+  ShellBranch.knownHosts ||
+  ShellBranch.sharing => NavigationArea.access,
+  ShellBranch.sync || ShellBranch.backups || ShellBranch.settings => NavigationArea.profile,
+  _ => NavigationArea.workspaces,
+};
+
+String navigationAreaLabel(NavigationArea area, AppLocalizations l) => switch (area) {
+  NavigationArea.access => l.navAreaAccess,
+  NavigationArea.workspaces => l.navAreaWorkspaces,
+  NavigationArea.profile => l.navAreaProfile,
+};
+
 /// Original application glyphs, shared by sidebar and configuration.
 Widget navigationSectionIcon(NavigationSection item) =>
     item.branch == ShellBranch.rdp || item.branch == ShellBranch.docker

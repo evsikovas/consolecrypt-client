@@ -24463,5 +24463,21 @@
   "wslcTheRuntimeReturnedNoMountInformation": "The runtime returned no mount information",
   "@wslcTheRuntimeReturnedNoMountInformation": {"description":"WSLc container details page. The runtime returned no mount information"},
   "wslcNoMountedVolumesOrDirectories": "No mounted volumes or directories",
-  "@wslcNoMountedVolumesOrDirectories": {"description":"WSLc container details page. No mounted volumes or directories"}
+  "@wslcNoMountedVolumesOrDirectories": {"description":"WSLc container details page. No mounted volumes or directories"},
+  "navAreaAccess": "Access",
+  "navAreaWorkspaces": "Workspaces",
+  "navAreaProfile": "Profile",
+  "hostInspector": "Host details",
+  "@navAreaAccess": {
+    "description": "Sidebar heading for hosts, credentials and access tools."
+  },
+  "@navAreaWorkspaces": {
+    "description": "Sidebar heading for terminal and infrastructure workspaces."
+  },
+  "@navAreaProfile": {
+    "description": "Sidebar heading for profile sync, backups and settings."
+  },
+  "@hostInspector": {
+    "description": "Button tooltip for showing the host in the side-by-side inspector."
+  }
 }

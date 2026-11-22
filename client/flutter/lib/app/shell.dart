@@ -346,6 +346,15 @@ class _Sidebar extends ConsumerWidget {
               (preferences?.visible(i.id, defaultVisible: i.defaultPinned) ?? i.defaultPinned),
         );
     final items = preferences?.ordered(available, (item) => item.id) ?? available.toList();
+    final sectionStarts = {
+      for (final (i, item) in items.indexed)
+        if (i == 0 || navigationArea(items[i - 1].branch) != navigationArea(item.branch))
+          i: navigationArea(item.branch),
+    };
+    // Section labels follow the default grouping. Preserve the order chosen
+    // by the user when items from different sections are interleaved.
+    final showSections = sectionStarts.values.toSet().length == sectionStarts.length;
+    final tokens = GlassTokens.of(context);
     return GlassSidebar(
       navigationWrapper: (child) => NavigationContextArea(child: child),
       style: style,
@@ -376,9 +385,29 @@ class _Sidebar extends ConsumerWidget {
             },
           ),
         ),
-        for (final item in items) ...[
-          if (item.branch == ShellBranch.terminal || item.branch == ShellBranch.sync)
-            const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Divider(height: 1)),
+        for (final (index, item) in items.indexed) ...[
+          if (sectionStarts[index] case final area? when showSections)
+            if (compact)
+              if (index > 0)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: GlassSpacing.s4, vertical: GlassSpacing.s8),
+                  child: Divider(height: 1),
+                )
+              else
+                const SizedBox(height: GlassSpacing.s4)
+            else
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  GlassSpacing.s8,
+                  GlassSpacing.s12,
+                  GlassSpacing.s4,
+                  GlassSpacing.s4,
+                ),
+                child: Text(
+                  navigationAreaLabel(area, l10n),
+                  style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+                ),
+              ),
           GlassSidebarItem(
             key: ValueKey('nav-${item.branch.name}'),
             icon: item.icon,

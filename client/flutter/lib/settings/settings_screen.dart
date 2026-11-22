@@ -38,46 +38,106 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final List<GlobalKey> _anchors = List.generate(7, (_) => GlobalKey());
+  int _selected = 0;
+
+  void _goTo(int index) {
+    final section = _anchors[index].currentContext;
+    if (section == null) return;
+    setState(() => _selected = index);
+    Scrollable.ensureVisible(section, duration: Duration.zero);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final entries = [
+      (l.settingsProfilesTitle, Icons.person_outline_rounded),
+      (l.settingsAccountLabel, Icons.sync_rounded),
+      (l.settingsAppearanceTitle, Icons.palette_outlined),
+      (l.settingsSecurityTitle, Icons.shield_outlined),
+      (l.settingsTerminalTitle, Icons.terminal_rounded),
+      (l.settingsShortcutsTitle, Icons.keyboard_outlined),
+      (l.settingsAboutTitle, Icons.info_outline_rounded),
+    ];
+    Widget target(int index, Widget child) => KeyedSubtree(key: _anchors[index], child: child);
+    const gap = SizedBox(height: GlassSpacing.s12);
+    final sections = SectionCardCollapseScope(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          target(0, const _ProfilesSection()),
+          gap,
+          target(1, const _AccountSyncSection()),
+          gap,
+          const _VaultSection(),
+          gap,
+          const TeamsSettingsSection(),
+          gap,
+          target(2, const _AppearanceSection()),
+          gap,
+          target(3, const _SecuritySection()),
+          gap,
+          const LocalAiSettings(),
+          const _AiSection(),
+          gap,
+          target(4, const _TerminalSection()),
+          gap,
+          target(5, const ShortcutSettingsSection()),
+          const SftpSettingsSection(),
+          const RdpMobileSettingsSection(),
+          gap,
+          const CliSettingsSection(),
+          gap,
+          const UpdateSettingsSection(),
+          gap,
+          target(6, const _AboutSection()),
+        ],
+      ),
+    );
     return PageScaffold(
-      title: context.l10n.settingsTitle,
-      scrollable: true,
-      body: const SectionCardCollapseScope(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _ProfilesSection(),
-            SizedBox(height: GlassSpacing.s16),
-            _AccountSyncSection(),
-            SizedBox(height: GlassSpacing.s16),
-            _VaultSection(),
-            SizedBox(height: GlassSpacing.s16),
-            TeamsSettingsSection(),
-            SizedBox(height: GlassSpacing.s16),
-            _AppearanceSection(),
-            SizedBox(height: GlassSpacing.s16),
-            _SecuritySection(),
-            SizedBox(height: GlassSpacing.s16),
-            LocalAiSettings(),
-            _AiSection(),
-            SizedBox(height: GlassSpacing.s16),
-            _TerminalSection(),
-            SizedBox(height: GlassSpacing.s16),
-            ShortcutSettingsSection(),
-            SftpSettingsSection(),
-            RdpMobileSettingsSection(),
-            SizedBox(height: GlassSpacing.s16),
-            CliSettingsSection(),
-            SizedBox(height: GlassSpacing.s16),
-            UpdateSettingsSection(),
-            SizedBox(height: GlassSpacing.s16),
-            _AboutSection(),
-          ],
-        ),
+      title: l.settingsTitle,
+      body: LayoutBuilder(
+        builder: (context, bounds) {
+          final wide = !AppPlatform.isMobile && bounds.maxWidth >= 736 && bounds.maxHeight >= 360;
+          final scrollbar = ScrollEdgeEffect(child: SingleChildScrollView(primary: false, child: sections));
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (wide) ...[
+                SizedBox(
+                  width: 184,
+                  child: ContentSurface(
+                    padding: const EdgeInsets.all(GlassSpacing.s8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final (index, (label, icon)) in entries.indexed)
+                          GlassSidebarItem(
+                            key: ValueKey('settings-section-$index'),
+                            label: label,
+                            icon: icon,
+                            selected: _selected == index,
+                            onPressed: () => _goTo(index),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: GlassSpacing.s12),
+              ],
+              Expanded(child: scrollbar),
+            ],
+          );
+        },
       ),
     );
   }

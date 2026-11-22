@@ -19684,4 +19684,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get wslcNoMountedVolumesOrDirectories => 'Нет подключённых томов и каталогов';
+
+  @override
+  String get navAreaAccess => 'Доступ';
+
+  @override
+  String get navAreaWorkspaces => 'Рабочая среда';
+
+  @override
+  String get navAreaProfile => 'Профиль';
+
+  @override
+  String get hostInspector => 'Сведения о хосте';
 }

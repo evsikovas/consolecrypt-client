@@ -19506,4 +19506,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get wslcNoMountedVolumesOrDirectories => 'No hay volúmenes ni carpetas montados';
+
+  @override
+  String get navAreaAccess => 'Acceso';
+
+  @override
+  String get navAreaWorkspaces => 'Espacios de trabajo';
+
+  @override
+  String get navAreaProfile => 'Perfil';
+
+  @override
+  String get hostInspector => 'Detalles del host';
 }

@@ -160,17 +160,23 @@ class GlassToolbarGroup extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context) => GlassCapsule(
+  Widget build(BuildContext context) => GlassSurface(
+    variant: GlassVariant.thin,
+    shape: GlassRadii.shape(GlassTokens.of(context).radii.menu),
     backdrop: backdrop,
     padding: padding,
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final (i, w) in children.indexed) ...[
-          if (i > 0) const SizedBox(width: GlassSpacing.toolbarItemGap),
-          Flexible(child: w),
+    shadows: false,
+    child: SizedBox(
+      height: GlassSizes.toolbarGroup,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (i, w) in children.indexed) ...[
+            if (i > 0) const SizedBox(width: GlassSpacing.toolbarItemGap),
+            Flexible(child: w),
+          ],
         ],
-      ],
+      ),
     ),
   );
 }

@@ -440,7 +440,7 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
         final header = tokens.typography.caption.copyWith(
           color: tokens.secondaryLabel,
           fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
+          letterSpacing: 0,
         );
         return Stack(
           children: [
@@ -455,8 +455,9 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
                   width: width,
                   child: Column(
                     children: [
-                      SizedBox(
-                        height: 32,
+                      Container(
+                        height: GlassSizes.sidebarRow,
+                        color: tokens.surfaces.fillField,
                         child: Row(
                           children: [
                             SizedBox(width: lead + trailing),
@@ -476,7 +477,7 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
                                             children: [
                                               Flexible(
                                                 child: Text(
-                                                  _label(column).toUpperCase(),
+                                                  _label(column),
                                                   maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
                                                   style: header.copyWith(

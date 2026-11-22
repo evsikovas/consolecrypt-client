@@ -734,10 +734,11 @@ class _DbWorkspaceState extends ConsumerState<DbWorkspace>
   /// Title row of a docked panel: icon, caption and trailing actions.
   Widget _panelHeader(IconData icon, String title, List<Widget> actions) {
     final tokens = GlassTokens.of(context);
-    return SizedBox(
-      height: 36,
+    return Container(
+      height: GlassSpacing.s40,
+      color: tokens.surfaces.fillField,
       child: Padding(
-        padding: const EdgeInsets.only(left: GlassSpacing.s12, right: GlassSpacing.s4),
+        padding: const EdgeInsetsDirectional.only(start: GlassSpacing.s12, end: GlassSpacing.s4),
         child: Row(
           children: [
             Icon(icon, size: 15, color: tokens.secondaryLabel),

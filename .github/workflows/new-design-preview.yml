@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CC_BUILD_NUMBER: '86040'
+  CC_BUILD_NUMBER: '86041'
 
 jobs:
   windows:
@@ -50,7 +50,7 @@ jobs:
 
   macos:
     if: github.repository == 'evsikovas/consolecrypt-client'
-    runs-on: ${{ fromJSON(vars.MACOS_BUILD_RUNNER || '["self-hosted","macOS","ARM64","consolecrypt","client"]') }}
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 180
     env:
       CARGO_BUILD_JOBS: '3'
@@ -58,6 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          clean: false
           persist-credentials: false
       - name: Native toolchain
         run: source client/scripts/ci-macos-tools.sh --xcode
@@ -65,6 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git restore --source=HEAD -- client/flutter/pubspec.yaml client/flutter/lib/app/app_info.dart
           caffeinate -i bash client/scripts/build-macos.sh
           cd dist/macos
           version=$(cat ConsoleCrypt.version)
@@ -83,7 +85,7 @@ jobs:
           retention-days: 14
           compression-level: 0
           path: |
-            dist/macos/*-new-design-macos-universal.dmg
+            dist/macos/ConsoleCrypt-1.2.1+${{ env.CC_BUILD_NUMBER }}-new-design-macos-universal.dmg
             dist/macos/SHA256SUMS-macos.txt
             dist/macos/ConsoleCrypt.version
 
@@ -103,12 +105,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: android-design-preview
+          clean: false
           persist-credentials: false
       - name: Native toolchain
         run: source client/scripts/ci-macos-tools.sh
       - name: Package signed Android ARM64 preview
         run: |
           set -euo pipefail
+          git restore --source=HEAD -- client/flutter/pubspec.yaml client/flutter/lib/app/app_info.dart
           caffeinate -i bash client/scripts/build-android.sh
           cd dist/android
           version=$(cat ConsoleCrypt.version)
@@ -131,6 +135,6 @@ jobs:
           retention-days: 14
           compression-level: 0
           path: |
-            android-design-preview/dist/android/*-new-design-android-arm64.apk
+            android-design-preview/dist/android/ConsoleCrypt-1.2.1+${{ env.CC_BUILD_NUMBER }}-new-design-android-arm64.apk
             android-design-preview/dist/android/SHA256SUMS-android.txt
             android-design-preview/dist/android/ConsoleCrypt.version

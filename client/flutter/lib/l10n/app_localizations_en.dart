@@ -19349,4 +19349,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wslcNoMountedVolumesOrDirectories => 'No mounted volumes or directories';
+
+  @override
+  String get navAreaAccess => 'Access';
+
+  @override
+  String get navAreaWorkspaces => 'Workspaces';
+
+  @override
+  String get navAreaProfile => 'Profile';
+
+  @override
+  String get hostInspector => 'Host details';
 }

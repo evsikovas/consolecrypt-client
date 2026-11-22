@@ -1375,20 +1375,23 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: GlassSpacing.s12,
           children: [
-            Wrap(
-              spacing: GlassSpacing.toolbarItemGap,
-              runSpacing: GlassSpacing.s8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                GlassButton.plain(
-                  label: _picking ? l.commonBack : l.navPasswords,
-                  icon: Icons.arrow_back,
-                  onPressed: onClose,
-                ),
-                Text(l.externalVaultTitle, style: Theme.of(context).textTheme.titleMedium),
-                if (connection != null) Text(connection.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                if (connection?.endpoint.scheme == 'http') const Text('HTTP'), // l10n-ignore: protocol name.
-              ],
+            ContentSurface(
+              padding: const EdgeInsets.all(GlassSpacing.s8),
+              child: Wrap(
+                spacing: GlassSpacing.toolbarItemGap,
+                runSpacing: GlassSpacing.s8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  GlassButton.plain(
+                    label: _picking ? l.commonBack : l.navPasswords,
+                    icon: Icons.arrow_back,
+                    onPressed: onClose,
+                  ),
+                  Text(l.externalVaultTitle, style: Theme.of(context).textTheme.titleMedium),
+                  if (connection != null) Text(connection.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (connection?.endpoint.scheme == 'http') const Text('HTTP'), // l10n-ignore: protocol name.
+                ],
+              ),
             ),
             Expanded(child: workspace),
           ],

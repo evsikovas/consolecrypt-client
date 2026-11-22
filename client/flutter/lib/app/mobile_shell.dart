@@ -180,31 +180,41 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                   ),
                 ),
               )
-            : NavigationBar(
-                key: const ValueKey('mobile-navigation'),
-                selectedIndex: selected < 0 ? primary.length : selected,
-                height: 68,
-                elevation: 0,
-                backgroundColor: tokens.surfaces.contentSolid,
-                indicatorColor: tokens.sidebarSelection,
-                onDestinationSelected: (index) {
-                  if (index == primary.length) {
-                    setState(() => _more = true);
-                  } else {
-                    _go(primary[index]);
-                  }
-                },
-                destinations: [
-                  for (final branch in primary)
-                    NavigationDestination(
-                      icon: Icon(navigationSections.firstWhere((section) => section.branch == branch).icon),
-                      label: shellBranchLabel(branch, l),
-                    ),
-                  NavigationDestination(
-                    icon: Badge(isLabelVisible: kubeAlerts > 0, child: const Icon(Icons.grid_view_rounded)),
-                    label: l.mobileMore,
+            : SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(GlassSpacing.s8, 0, GlassSpacing.s8, GlassSpacing.s8),
+                child: Material(
+                  shape: GlassRadii.shape(tokens.radii.panel)
+                      .copyWith(side: BorderSide(color: tokens.surfaces.hairlineCard)),
+                  color: tokens.surfaces.contentSolid,
+                  clipBehavior: Clip.antiAlias,
+                  child: NavigationBar(
+                    key: const ValueKey('mobile-navigation'),
+                    selectedIndex: selected < 0 ? primary.length : selected,
+                    height: 64,
+                    elevation: 0,
+                    backgroundColor: tokens.surfaces.contentSolid,
+                    indicatorColor: tokens.sidebarSelection,
+                    onDestinationSelected: (index) {
+                      if (index == primary.length) {
+                        setState(() => _more = true);
+                      } else {
+                        _go(primary[index]);
+                      }
+                    },
+                    destinations: [
+                      for (final branch in primary)
+                        NavigationDestination(
+                          icon: Icon(navigationSections.firstWhere((section) => section.branch == branch).icon),
+                          label: shellBranchLabel(branch, l),
+                        ),
+                      NavigationDestination(
+                        icon: Badge(isLabelVisible: kubeAlerts > 0, child: const Icon(Icons.grid_view_rounded)),
+                        label: l.mobileMore,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
       ),
     );

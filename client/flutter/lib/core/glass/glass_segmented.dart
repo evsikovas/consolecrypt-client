@@ -51,6 +51,8 @@ class GlassSegmented<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
     final motion = tokens.motion(GlassScope.of(context).appearance);
+    final trackShape = GlassRadii.shape(tokens.radii.md);
+    final thumbShape = GlassRadii.shape(tokens.radii.sm);
     final n = segments.length;
     final index = segments.indexWhere((s) => s.value == selected);
     final change = onChanged;
@@ -72,9 +74,8 @@ class GlassSegmented<T> extends StatelessWidget {
               heightFactor: 1,
               child: DecoratedBox(
                 decoration: ShapeDecoration(
-                  color: tokens.surfaces.segmentThumb,
-                  shape: const StadiumBorder(),
-                  shadows: const [BoxShadow(color: Color(0x1F000000), offset: Offset(0, 1), blurRadius: 3)],
+                  color: tokens.sidebarSelection,
+                  shape: thumbShape.copyWith(side: BorderSide(color: tokens.surfaces.separator)),
                 ),
               ),
             ),
@@ -97,7 +98,7 @@ class GlassSegmented<T> extends StatelessWidget {
                 );
                 return GlassFocusRing(
                   visible: state.focusVisible,
-                  shape: const StadiumBorder(),
+                  shape: thumbShape,
                   child: SizedBox(
                     height: GlassSizes.segmented - 4,
                     child: Padding(
@@ -146,8 +147,8 @@ class GlassSegmented<T> extends StatelessWidget {
 
     final onGlass = GlassOnGlass.isOnGlass(context);
     final Widget track = inChrome && !onGlass
-        ? GlassSurface(variant: GlassVariant.thin, shape: const StadiumBorder(), child: body)
-        : GlassFill(color: tokens.surfaces.fillField, shape: const StadiumBorder(), child: body);
+        ? GlassSurface(variant: GlassVariant.thin, shape: trackShape, shadows: false, child: body)
+        : GlassFill(color: tokens.surfaces.fillField, shape: trackShape, child: body);
     return Semantics(
       container: true,
       label: semanticLabel,

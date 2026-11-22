@@ -18536,4 +18536,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get wslcNoMountedVolumesOrDirectories => '没有已挂载的卷或目录';
+
+  @override
+  String get navAreaAccess => '访问';
+
+  @override
+  String get navAreaWorkspaces => '工作区';
+
+  @override
+  String get navAreaProfile => '配置文件';
+
+  @override
+  String get hostInspector => '主机详情';
 }

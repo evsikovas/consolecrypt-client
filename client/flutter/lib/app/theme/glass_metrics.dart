@@ -128,7 +128,7 @@ abstract final class GlassSizes {
   static const double listRow = 36;
   static const double listRowDense = 30;
   static const double tab = 28;
-  static const double tabTrack = 34;
+  static const double tabTrack = 36;
   static const double tabMinWidth = 120;
   static const double tabMaxWidth = 220;
   static const double toast = 44;
@@ -137,7 +137,7 @@ abstract final class GlassSizes {
   static const double badge = 20;
   static const double badgeDense = 16;
   static const double statusPill = 24;
-  static const double menuItem = 26;
+  static const double menuItem = 28;
   static const double menuMinWidth = 200;
   static const double segmented = 28;
 

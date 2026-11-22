@@ -2685,6 +2685,12 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         ),
       );
     }
-    return Column(children: [fields, if (_namespacesFailed) Text(l.kubeNamespacesFailed)]);
+    return ContentSurface(
+      padding: const EdgeInsets.all(GlassSpacing.s8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [fields, if (_namespacesFailed) Text(l.kubeNamespacesFailed)],
+      ),
+    );
   }
 }

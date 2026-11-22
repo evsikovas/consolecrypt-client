@@ -34056,6 +34056,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No mounted volumes or directories'**
   String get wslcNoMountedVolumesOrDirectories;
+
+  /// Sidebar heading for hosts, credentials and access tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Access'**
+  String get navAreaAccess;
+
+  /// Sidebar heading for terminal and infrastructure workspaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspaces'**
+  String get navAreaWorkspaces;
+
+  /// Sidebar heading for profile sync, backups and settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get navAreaProfile;
+
+  /// Button tooltip for showing the host in the side-by-side inspector.
+  ///
+  /// In en, this message translates to:
+  /// **'Host details'**
+  String get hostInspector;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

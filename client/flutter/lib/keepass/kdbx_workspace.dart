@@ -503,45 +503,50 @@ class KdbxWorkspace extends StatelessWidget {
 
   Widget _welcome(BuildContext context) {
     final l = context.l10n;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 740),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+    final tokens = GlassTokens.of(context);
+    final sourcesAvailable = manager.sources.isNotEmpty || vaultConnections.isNotEmpty;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: GlassSpacing.s12,
+        children: [
+          ContentSurface(
+            padding: const EdgeInsets.all(GlassSpacing.s16),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.password_rounded, size: 56, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(height: 20),
-                Text(l.keepassWelcome, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
-                const SizedBox(height: 10),
-                Text(l.keepassWelcomeHelp, textAlign: TextAlign.center),
-                if (AppPlatform.isMobile) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    l.keepassMobileFilesHelp,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-                const SizedBox(height: 28),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  alignment: WrapAlignment.center,
+                Row(
                   children: [
+                    Icon(Icons.password_rounded, size: 24, color: tokens.palette.accent),
+                    const SizedBox(width: GlassSpacing.s12),
+                    Expanded(
+                      child: Semantics(header: true, child: Text(l.keepassWelcome, style: tokens.typography.title1)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: GlassSpacing.s8),
+                Text(l.keepassWelcomeHelp, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
+                if (AppPlatform.isMobile) ...[
+                  const SizedBox(height: GlassSpacing.s8),
+                  Text(l.keepassMobileFilesHelp, style: tokens.typography.callout),
+                ],
+                const SizedBox(height: GlassSpacing.s16),
+                Wrap(
+                  spacing: GlassSpacing.s8,
+                  runSpacing: GlassSpacing.s8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    GlassButton.prominent(
+                      key: const ValueKey('keepass-open'),
+                      label: l.keepassOpen,
+                      icon: Icons.folder_open_rounded,
+                      onPressed: busy ? null : onOpen,
+                    ),
                     GlassButton(
                       key: const ValueKey('keepass-create'),
                       label: l.keepassCreate,
                       icon: Icons.add_rounded,
                       onPressed: busy ? null : onCreate,
-                    ),
-                    GlassButton(
-                      key: const ValueKey('keepass-open'),
-                      label: l.keepassOpen,
-                      icon: Icons.folder_open_rounded,
-                      onPressed: busy ? null : onOpen,
                     ),
                     GlassButton(
                       key: const ValueKey('keepass-webdav'),
@@ -555,24 +560,20 @@ class KdbxWorkspace extends StatelessWidget {
                       icon: Icons.shield_outlined,
                       onPressed: busy ? null : onVault,
                     ),
+                    GlassButton.plain(
+                      key: const ValueKey('keepass-generator-open'),
+                      label: l.keepassGenerator,
+                      icon: Icons.auto_fix_high_rounded,
+                      onPressed: busy ? null : onGenerator,
+                    ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                GlassButton.plain(
-                  key: const ValueKey('keepass-generator-open'),
-                  label: l.keepassGenerator,
-                  icon: Icons.auto_fix_high_rounded,
-                  onPressed: busy ? null : onGenerator,
-                ),
-                if (manager.sources.isNotEmpty) ...[
-                  const SizedBox(height: 28),
-                  const Divider(),
-                  _sources(context, welcome: true),
-                ],
               ],
             ),
           ),
-        ),
+          if (sourcesAvailable)
+            ContentSurface(padding: const EdgeInsets.all(GlassSpacing.s8), child: _sources(context, welcome: true)),
+        ],
       ),
     );
   }

@@ -147,7 +147,7 @@ class _GlassFieldState extends State<GlassField> {
     final strings = GlassStrings.of(context);
     final p = tokens.palette;
     final error = widget.errorText;
-    final shape = widget.search ? const StadiumBorder() as OutlinedBorder : GlassRadii.shape(tokens.radii.md);
+    final shape = GlassRadii.shape(tokens.radii.md);
     final mono = widget.mono || widget.secret;
     final textStyle = (mono ? tokens.typography.mono : tokens.typography.body).copyWith(
       color: p.label.withValues(alpha: widget.enabled ? 1 : 0.38),
@@ -179,19 +179,24 @@ class _GlassFieldState extends State<GlassField> {
       decoration: InputDecoration.collapsed(
         hintText: widget.placeholder,
         hintStyle: textStyle.copyWith(color: tokens.secondaryLabel),
-      ),
+      ).copyWith(disabledBorder: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none),
     );
 
+    final border = error != null
+        ? BorderSide(color: p.danger, width: 1.5)
+        : _focused
+        ? BorderSide(color: tokens.focusRingColor, width: tokens.focusRingWidth)
+        : BorderSide(color: tokens.surfaces.hairlineCard);
     final box = DecoratedBox(
       decoration: ShapeDecoration(
         color: tokens.surfaces.fillField,
-        shape: shape.copyWith(side: error != null ? BorderSide(color: p.danger, width: 1.5) : BorderSide.none),
+        shape: shape.copyWith(side: border),
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: height),
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: widget.search ? height / 2 : GlassSpacing.s8,
+            horizontal: widget.search ? GlassSpacing.s12 : GlassSpacing.s8,
             vertical: widget.maxLines > 1 ? GlassSpacing.s6 : 0,
           ),
           child: Row(
@@ -220,18 +225,7 @@ class _GlassFieldState extends State<GlassField> {
     );
 
     final children = <Widget>[
-      Material(
-        type: MaterialType.transparency,
-        child: DecoratedBox(
-          position: DecorationPosition.foreground,
-          decoration: BoxDecoration(
-            border: _focused
-                ? Border(bottom: BorderSide(color: tokens.focusRingColor.withValues(alpha: .75), width: 1))
-                : null,
-          ),
-          child: box,
-        ),
-      ),
+      Material(type: MaterialType.transparency, child: box),
       if (widget.secret && _focused && _capsLock)
         _FieldNote(icon: Icons.warning_rounded, text: strings.capsLockOn, color: p.warning, style: tokens),
       if (error != null) _FieldNote(icon: Icons.error_rounded, text: error, color: p.danger, style: tokens),

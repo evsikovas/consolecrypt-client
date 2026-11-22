@@ -5658,5 +5658,9 @@
   "wslcDisconnectFromNetwork": "Desconectar de la red",
   "wslcGateway": "puerta de enlace {gateway}",
   "wslcTheRuntimeReturnedNoMountInformation": "El entorno de ejecución no proporcionó datos de montajes",
-  "wslcNoMountedVolumesOrDirectories": "No hay volúmenes ni carpetas montados"
+  "wslcNoMountedVolumesOrDirectories": "No hay volúmenes ni carpetas montados",
+  "navAreaAccess": "Acceso",
+  "navAreaWorkspaces": "Espacios de trabajo",
+  "navAreaProfile": "Perfil",
+  "hostInspector": "Detalles del host"
 }
