@@ -94,12 +94,7 @@ class KdbxWorkspace extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         dragStartBehavior: DragStartBehavior.down,
         onHorizontalDragUpdate: (details) => onDelta(details.delta.dx),
-        child: SizedBox(
-          width: GlassSpacing.s8,
-          child: Center(
-            child: ColoredBox(color: GlassTokens.of(context).surfaces.separator, child: const SizedBox(width: 1)),
-          ),
-        ),
+        child: VerticalDivider(width: GlassSpacing.s8, thickness: 1, color: GlassTokens.of(context).surfaces.separator),
       ),
     ),
   );
