@@ -75,9 +75,12 @@ void main() {
     await tapKey(tester, 'external-vault-layout');
     final token = find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == 'Access token');
     await tester.enterText(token, 'fixture-token');
-    await tester.ensureVisible(find.text('Connect'));
+    await tester.pump();
+    final connect = find.byKey(const ValueKey('external-vault-connect'));
+    expect(tester.widget<GlassButton>(connect).onPressed, isNotNull);
+    await tester.ensureVisible(connect);
     await HttpOverrides.runWithHttpOverrides(() async {
-      await tester.tap(find.text('Connect'));
+      await tester.tap(connect);
       await settle(tester);
     }, _Loopback());
 

@@ -1102,10 +1102,9 @@ class _HostTile extends ConsumerWidget {
                   Expanded(child: heading),
                 ],
               ),
-              Text(
+              SelectableText(
                 endpoint,
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 style: t.mono.copyWith(fontSize: t.callout.fontSize),
               ),
               Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis),
