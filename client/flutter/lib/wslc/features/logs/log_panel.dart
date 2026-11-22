@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/features/logs/log_format.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
@@ -11,10 +12,8 @@ import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-
 const _maxLines = 10000;
 const _maxBytes = 10 * 1024 * 1024;
-const _reading = 'Чтение';
 
 /// UTF-8 length without allocating an encoded copy of every line.
 int utf8Length(String text) {
@@ -114,7 +113,7 @@ class _LogPanelState extends State<LogPanel> {
   int evicted = 0;
   BigInt dropped = BigInt.zero;
   BigInt truncated = BigInt.zero;
-  String status = 'Подключение…';
+  String? status;
 
   @override
   void initState() {
@@ -198,7 +197,7 @@ class _LogPanelState extends State<LogPanel> {
     await stop();
     if (!mounted) return;
     setState(() {
-      status = 'Подключение…';
+      status = null;
       resetBuffer();
     });
     await start();
@@ -241,7 +240,7 @@ class _LogPanelState extends State<LogPanel> {
           truncated = batch.truncatedTotal;
         });
       }
-      if (batch.status != _reading && batch.entries.isEmpty) await stop();
+      if (batch.status != readingLogStatus && batch.entries.isEmpty) await stop();
       if (follow && batch.entries.isNotEmpty) scrollToEnd();
     } catch (e) {
       await stop();
@@ -279,14 +278,15 @@ class _LogPanelState extends State<LogPanel> {
   String get loadedText => lines.map((r) => r.entry.text).join('\n');
 
   Future<void> save() async {
-    final messenger = ScaffoldMessenger.of(context);
+    final notify = WslcApiScope.notifierOf(context);
+    final l10n = context.l10n;
     try {
       final path = await api.saveLoadedLogs(text: loadedText);
       if (path != null) {
-        messenger.showSnackBar(SnackBar(content: Text('Сохранено: $path')));
+        notify(l10n.wslcSaved(path));
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+      notify(errorText(e), error: true);
     }
   }
 
@@ -302,7 +302,8 @@ class _LogPanelState extends State<LogPanel> {
   Widget build(BuildContext context) {
     final p = DeskPalette.of(context);
     final source = matches ?? lines;
-    final live = status == _reading;
+    final live = status == readingLogStatus;
+    final statusLabel = logStatusLabel(status, context.l10n);
     final baseStyle = TextStyle(
       fontFamily: monoFont,
       fontFamilyFallback: monoFallback,
@@ -323,14 +324,14 @@ class _LogPanelState extends State<LogPanel> {
         Row(
           children: [
             Expanded(
-              child: SearchField(controller: search, hint: 'Поиск в загруженных логах', onChanged: setQuery),
+              child: SearchField(controller: search, hint: context.l10n.wslcSearchLoadedLogs, onChanged: setQuery),
             ),
             const SizedBox(width: 10),
             _ToolbarToggle(
               selected: follow,
               icon: follow ? Icons.vertical_align_bottom_rounded : Icons.pause_rounded,
-              label: follow ? 'Следить' : 'Пауза',
-              tooltip: follow ? 'Приостановить автопрокрутку' : 'Включить автопрокрутку',
+              label: follow ? context.l10n.dockerLogsFollow : context.l10n.kubePauseLogs,
+              tooltip: follow ? context.l10n.wslcPauseAutoscroll : context.l10n.wslcEnableAutoscroll,
               onTap: () {
                 setState(() => follow = !follow);
                 if (follow) scrollToEnd();
@@ -338,17 +339,17 @@ class _LogPanelState extends State<LogPanel> {
             ),
             const SizedBox(width: 4),
             IconButton(
-              tooltip: 'Очистить отображение',
+              tooltip: context.l10n.wslcClearView,
               onPressed: () => setState(resetBuffer),
               icon: const Icon(Icons.clear_all_rounded),
             ),
             IconButton(
-              tooltip: 'Скопировать загруженные логи',
+              tooltip: context.l10n.wslcCopyLoadedLogs,
               onPressed: () => WslcApiScope.copy(context, ClipboardData(text: loadedText)),
               icon: const Icon(Icons.copy_all_rounded),
             ),
             IconButton(
-              tooltip: 'Сохранить загруженные логи',
+              tooltip: context.l10n.wslcSaveLoadedLogs,
               onPressed: save,
               icon: const Icon(Icons.save_alt_rounded),
             ),
@@ -367,12 +368,12 @@ class _LogPanelState extends State<LogPanel> {
                     setState(() => period = v);
                     unawaited(restart());
                   },
-                  items: const [
-                    (LogPeriod.tail, '1000 строк', null),
-                    (LogPeriod.minutes5, '5 мин', null),
-                    (LogPeriod.hour, '1 час', null),
-                    (LogPeriod.day, '24 часа', null),
-                    (LogPeriod.all, 'Всё', null),
+                  items: [
+                    (LogPeriod.tail, context.l10n.wslcLinesLogPanel, null),
+                    (LogPeriod.minutes5, context.l10n.wslcMin, null),
+                    (LogPeriod.hour, context.l10n.wslcHour, null),
+                    (LogPeriod.day, context.l10n.wslcHours, null),
+                    (LogPeriod.all, context.l10n.wslcAll, null),
                   ],
                 ),
                 const SizedBox(width: 10),
@@ -382,16 +383,16 @@ class _LogPanelState extends State<LogPanel> {
                     streamFilter = v;
                     rebuildMatches();
                   }),
-                  items: const [
-                    (LogStream.all, 'Все потоки', null),
+                  items: [
+                    (LogStream.all, context.l10n.wslcAllStreams, null),
                     (LogStream.stdout, 'stdout', null),
                     (LogStream.stderr, 'stderr', null),
                   ],
                 ),
                 const SizedBox(width: 10),
                 FilterChip(
-                  label: const Text('Время'),
-                  tooltip: 'Метки времени runtime в локальном времени',
+                  label: Text(context.l10n.dockerLogsTimestamps),
+                  tooltip: context.l10n.wslcShowRuntimeTimestampsInLocalTime,
                   selected: timestamps,
                   onSelected: (v) {
                     setState(() => timestamps = v);
@@ -400,8 +401,8 @@ class _LogPanelState extends State<LogPanel> {
                 ),
                 const SizedBox(width: 8),
                 FilterChip(
-                  label: const Text('JSON'),
-                  tooltip: 'Форматировать строки-объекты JSON',
+                  label: Text(context.l10n.dockerInspectJson),
+                  tooltip: context.l10n.wslcFormatLinesContainingJSONObjects,
                   selected: formatJson,
                   onSelected: (v) => setState(() => formatJson = v),
                 ),
@@ -432,7 +433,7 @@ class _LogPanelState extends State<LogPanel> {
               child: source.isEmpty
                   ? Center(
                       child: Text(
-                        filtering ? 'Совпадений нет' : status,
+                        filtering ? context.l10n.wslcNoMatches : statusLabel,
                         style: baseStyle.copyWith(color: p.terminalText.withValues(alpha: .5)),
                       ),
                     )
@@ -447,7 +448,7 @@ class _LogPanelState extends State<LogPanel> {
                             final line = source.elementAt(index);
                             final entry = line.entry;
                             final style = baseStyle.copyWith(color: levelColors[line.level] ?? p.terminalText);
-                            final suffix = entry.truncated ? ' … [усечено]' : '';
+                            final suffix = entry.truncated ? context.l10n.wslcTruncated : '';
                             final body = formatJson ? line.pretty ?? line.message : line.message;
                             final stamp = line.split?.$1;
                             final lower = body.toLowerCase();
@@ -488,11 +489,17 @@ class _LogPanelState extends State<LogPanel> {
             Expanded(
               child: Text(
                 [
-                  status,
-                  plural(lines.length, 'строка', 'строки', 'строк'),
-                  if (filtering) 'показано: ${source.length}',
-                  'вытеснено: ${BigInt.from(evicted) + dropped}',
-                  'усечено: $truncated',
+                  statusLabel,
+                  plural(
+                    lines.length,
+                    context.l10n.wslcLine,
+                    context.l10n.wslcLines,
+                    context.l10n.wslcLinesFileEditor,
+                    locale: context.l10n.localeName,
+                  ),
+                  if (filtering) context.l10n.wslcShown(source.length),
+                  context.l10n.wslcEvicted(BigInt.from(evicted) + dropped),
+                  context.l10n.wslcTruncatedLogPanel(truncated),
                 ].join('  ·  '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -500,7 +507,7 @@ class _LogPanelState extends State<LogPanel> {
               ),
             ),
             Tooltip(
-              message: 'Логи могут содержать секреты',
+              message: context.l10n.wslcLogsMayContainSecrets,
               child: Icon(Icons.privacy_tip_outlined, size: 15, color: p.faint),
             ),
           ],

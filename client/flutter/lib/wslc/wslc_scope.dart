@@ -5,10 +5,13 @@ import 'package:consolecrypt/wslc/src/rust/api/desk.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
+typedef WslcNotice = void Function(String message, {bool error});
+
 /// Dialogs retain their original API lease even if the app switches profiles.
 class WslcApiScope extends InheritedWidget {
-  const WslcApiScope({required this.api, required this.copySecret, required super.child, super.key});
+  const WslcApiScope({required this.api, required this.copySecret, required this.notify, required super.child, super.key});
   final WslcApi api;
+  final WslcNotice notify;
   final Future<void> Function(String) copySecret;
   static WslcApiScope _scope(BuildContext context) {
     if (!context.mounted) throw StateError('WSLc workspace was closed');
@@ -18,6 +21,7 @@ class WslcApiScope extends InheritedWidget {
   }
 
   static WslcApi of(BuildContext context) => _scope(context).api;
+  static WslcNotice notifierOf(BuildContext context) => _scope(context).notify;
   static Future<void> copy(BuildContext context, ClipboardData data) => _scope(context).copySecret(data.text ?? '');
   @override
   bool updateShouldNotify(WslcApiScope oldWidget) => oldWidget.api != api;
@@ -53,6 +57,7 @@ Future<T?> showWslcDialog<T>({
     builder: (context) => WslcApiScope(
       api: scope.api,
       copySecret: scope.copySecret,
+      notify: scope.notify,
       child: containsSecrets ? RevealedSecret(child: Builder(builder: builder)) : Builder(builder: builder),
     ),
   );

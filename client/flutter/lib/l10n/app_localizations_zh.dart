@@ -161,6 +161,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get externalVaultApiSettings => 'Vault 设置';
 
   @override
+  String externalVaultKvVersion(int version) {
+    return 'KV 版本 $version';
+  }
+
+  @override
   String get externalVaultMount => '机密引擎挂载路径';
 
   @override
@@ -16947,4 +16952,1588 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get externalVaultNoConnections => '暂无已保存的连接';
+
+  @override
+  String get wslcRuntimeUnavailable => '运行时不可用';
+
+  @override
+  String get wslcUnknownAction => '未知操作';
+
+  @override
+  String wslcCheckTheResultOfTheCommandWillNot(Object value, Object value2) {
+    return '请检查$value的结果。命令不会自动重试。$value2';
+  }
+
+  @override
+  String wslcCheckTheResult(Object label) {
+    return '$label：请检查结果';
+  }
+
+  @override
+  String get wslcCheckTheResultsOfSomeOperationsCommandsWill => '部分操作的结果需要检查。命令不会自动重试。';
+
+  @override
+  String get wslcActionCurrentlyUnavailable => '操作当前不可用';
+
+  @override
+  String get wslcStart => '启动';
+
+  @override
+  String get wslcStop => '停止';
+
+  @override
+  String get wslcRestart => '重启';
+
+  @override
+  String wslcCreated(Object value) {
+    return '创建于 $value';
+  }
+
+  @override
+  String wslcRemoveSelectedItems(Object length) {
+    return '删除所选项目（$length）？';
+  }
+
+  @override
+  String get wslcDataInTheSelectedVolumesWillBeLost => '所选卷中的数据将丢失。';
+
+  @override
+  String get wslcRemovalCannotBeUndone => '删除操作无法撤销。';
+
+  @override
+  String wslcRemoved(Object removed) {
+    return '已删除：$removed';
+  }
+
+  @override
+  String wslcRemovedOf(Object removed, Object length) {
+    return '已删除 $removed/$length';
+  }
+
+  @override
+  String get wslcLookingForItemsToRemove => '正在查找可删除的项目…';
+
+  @override
+  String get wslcCouldNotLoadTheList => '无法加载列表';
+
+  @override
+  String get wslcEverythingIsClean => '已清理完毕';
+
+  @override
+  String wslcUpToCanBeFreed(Object value) {
+    return '最多可释放 $value';
+  }
+
+  @override
+  String wslcFound(Object length) {
+    return '已找到：$length';
+  }
+
+  @override
+  String wslcOf(Object value, Object value2) {
+    return '$value/$value2';
+  }
+
+  @override
+  String get wslcCleanUpSelectedItems => '清理所选项目';
+
+  @override
+  String wslcCleanUpSelectedItemsCleanupPage(Object length, Object value2) {
+    return '清理所选项目（$length$value2）';
+  }
+
+  @override
+  String get wslcNothingToCleanUp => '没有可清理的项目';
+
+  @override
+  String get wslcThereAreNoStoppedContainersAllImagesVolumes => '没有已停止的容器。所有镜像、卷和网络都在使用中。';
+
+  @override
+  String get wslcLogStreamReading => '正在读取日志';
+
+  @override
+  String get wslcLogStreamTimedOut => '日志流读取超时';
+
+  @override
+  String get wslcStoppedContainers => '已停止的容器';
+
+  @override
+  String get wslcUnusedImages => '未使用的镜像';
+
+  @override
+  String get wslcUnusedVolumes => '未使用的卷';
+
+  @override
+  String get wslcEmptyNetworks => '空网络';
+
+  @override
+  String get wslcRemovesTheContainerFilesystemNamedVolumesAreKept => '将删除容器文件系统，保留命名卷。';
+
+  @override
+  String get wslcNoContainersUseTheseImagesYouCanDownload => '没有容器使用这些镜像，可重新下载。';
+
+  @override
+  String get wslcTheseVolumesAreNotAttachedToAnyContainer => '这些卷未挂载到容器。删除卷会清除其中的数据，请先备份需要保留的内容。';
+
+  @override
+  String get wslcUserDefinedNetworksWithNoAttachedContainers => '没有连接容器的自定义网络。';
+
+  @override
+  String get wslcDockerComposeFile => 'Docker Compose 文件';
+
+  @override
+  String get wslcComposeProjectDirectory => 'Compose 项目目录';
+
+  @override
+  String get wslcPasteDockerComposeYmlToStartTheServices => '粘贴 docker-compose.yml 即可启动服务，效果与 docker compose up -d 相同';
+
+  @override
+  String get wslcOpenFile => '打开文件…';
+
+  @override
+  String get wslcBackToFile => '返回文件';
+
+  @override
+  String get wslcStopping => '正在停止…';
+
+  @override
+  String get wslcRebuildImagesBuild => '重新构建镜像（--build）';
+
+  @override
+  String get wslcStopAndRemove => '停止并删除';
+
+  @override
+  String get wslcFromNameOrTheDirectory => '取自 name: 或目录名';
+
+  @override
+  String get wslcProjectDirectory => '项目目录';
+
+  @override
+  String get wslcRelativePathsEnvEnvFileAndBuild => '相对路径、.env、env_file 和 build';
+
+  @override
+  String get wslcChooseDirectory => '选择目录';
+
+  @override
+  String get wslcPasteDockerComposeYml => '粘贴 docker-compose.yml';
+
+  @override
+  String get wslcOrOpenAFileToPreviewThePlan => '或打开文件以在启动前预览执行计划';
+
+  @override
+  String get wslcParsingFile => '正在解析文件…';
+
+  @override
+  String wslcProject(Object project) {
+    return '项目 $project';
+  }
+
+  @override
+  String get wslcService => '个服务';
+
+  @override
+  String get wslcServices => '个服务';
+
+  @override
+  String get wslcServicesComposeDialog => '个服务';
+
+  @override
+  String get wslcDifferencesFromDocker => '与 Docker 的差异';
+
+  @override
+  String get wslcServicesInStartupOrder => '服务（按启动顺序）';
+
+  @override
+  String get wslcNetworksAndVolumes => '网络和卷';
+
+  @override
+  String get wslcExternal => ' · 外部';
+
+  @override
+  String get wslcExternalComposeDialog => ' · 外部';
+
+  @override
+  String wslcWSLcCommands(Object length) {
+    return 'WSLc 命令（$length）';
+  }
+
+  @override
+  String wslcBuild(Object image) {
+    return '构建 → $image';
+  }
+
+  @override
+  String wslcVariables(Object length) {
+    return '变量数：$length';
+  }
+
+  @override
+  String wslcAfter(Object service, Object value2) {
+    return '在 $service$value2 之后';
+  }
+
+  @override
+  String get wslcHealthy => '（健康）';
+
+  @override
+  String get wslcCompleted => '（已完成）';
+
+  @override
+  String wslcProjectReady(Object project) {
+    return '项目已就绪：$project';
+  }
+
+  @override
+  String wslcStopAndRemoveComposeDialog(Object project) {
+    return '停止并删除 $project？';
+  }
+
+  @override
+  String get wslcAsWithDockerComposeDownThisStopsAnd => '与 docker compose down 一样，将停止并删除项目容器及其创建的网络，保留镜像。';
+
+  @override
+  String wslcAlsoRemoveProjectVolumes(Object ownVolumes) {
+    return '同时删除项目卷（$ownVolumes）';
+  }
+
+  @override
+  String get wslcDataInTheseVolumesWillBeLostV => '这些卷中的数据将丢失（-v）';
+
+  @override
+  String get wslcCancelled => '已取消';
+
+  @override
+  String get wslcStoppedOnRequest => '已按请求停止';
+
+  @override
+  String get wslcDirectoriesForMounts => '挂载目录';
+
+  @override
+  String wslcNetwork(Object name) {
+    return '网络 $name';
+  }
+
+  @override
+  String get wslcExternalNetworkFound => '已找到外部网络';
+
+  @override
+  String get wslcAlreadyExists => '已存在';
+
+  @override
+  String wslcExternalNetworkNotFound(Object name) {
+    return '找不到外部网络 $name';
+  }
+
+  @override
+  String get wslcNetworkCreated => '已创建网络';
+
+  @override
+  String wslcVolume(Object name) {
+    return '卷 $name';
+  }
+
+  @override
+  String get wslcExternalVolumeFound => '已找到外部卷';
+
+  @override
+  String wslcExternalVolumeNotFound(Object name) {
+    return '找不到外部卷 $name';
+  }
+
+  @override
+  String get wslcVolumeCreated => '已创建卷';
+
+  @override
+  String wslcBuilding(Object image) {
+    return '正在构建 $image';
+  }
+
+  @override
+  String get wslcImageAlreadyBuilt => '镜像已构建';
+
+  @override
+  String get wslcBuilt => '构建完成';
+
+  @override
+  String wslcImage(Object image) {
+    return '镜像 $image';
+  }
+
+  @override
+  String get wslcAlreadyDownloaded => '已下载';
+
+  @override
+  String get wslcDownloaded => '下载完成';
+
+  @override
+  String get wslcWindowsFolder => 'Windows 文件夹';
+
+  @override
+  String get wslcUnknownType => '未知类型';
+
+  @override
+  String get wslcShowInFileExplorer => '在文件资源管理器中显示';
+
+  @override
+  String get wslcThisVolumeIsStoredInsideTheWSLcVM => '该卷存储在 WSLc 虚拟机内。打开容器文件即可查看其内容。';
+
+  @override
+  String get wslcShowFiles => '显示文件';
+
+  @override
+  String get wslcCopyWindowsPath => '复制 Windows 路径';
+
+  @override
+  String get wslcCopyVolumeName => '复制卷名';
+
+  @override
+  String get wslcCopyPathInsideContainer => '复制容器内路径';
+
+  @override
+  String get wslcShowFilesInContainer => '查看容器中的文件';
+
+  @override
+  String get wslcOpenTerminalHere => '在此处打开终端';
+
+  @override
+  String get wslcReadingEnvironment => '正在读取环境变量…';
+
+  @override
+  String get wslcCouldNotReadTheEnvironment => '无法读取环境变量';
+
+  @override
+  String get wslcSearchByVariableName => '按变量名搜索';
+
+  @override
+  String wslcHideVariablesFromTheImage(Object inherited) {
+    return '隐藏镜像自带的变量（$inherited）';
+  }
+
+  @override
+  String get wslcHideValues => '隐藏值';
+
+  @override
+  String get wslcShowAll => '全部显示';
+
+  @override
+  String get wslcCopyAsEnv => '复制为 .env';
+
+  @override
+  String get wslcNoEnvironmentVariables => '没有环境变量';
+
+  @override
+  String get wslcEmpty => '（空）';
+
+  @override
+  String get wslcFromImage => '来自镜像';
+
+  @override
+  String get wslcCopyValue => '复制值';
+
+  @override
+  String wslcValueOf(Object key) {
+    return '$key 的值';
+  }
+
+  @override
+  String get wslcValuesAreReadWhenYouOpenThisTab => '打开此标签页时才会读取值，值不会保存。锁形图标表示变量可能包含密钥等敏感信息。';
+
+  @override
+  String get wslcUploadFileToContainer => '上传文件到容器';
+
+  @override
+  String get wslcReplaceFile => '替换文件？';
+
+  @override
+  String wslcAlreadyExistsAndWillBeOverwritten(Object target) {
+    return '$target 已存在，将被覆盖。';
+  }
+
+  @override
+  String wslcUploaded(Object target) {
+    return '已上传：$target';
+  }
+
+  @override
+  String get wslcFilesAreAvailableWhileTheContainerIsRunning => '容器运行时可查看文件';
+
+  @override
+  String get wslcStartTheContainerToBrowseItsFilesystem => '启动容器以浏览其文件系统';
+
+  @override
+  String get wslcCopyPath => '复制路径';
+
+  @override
+  String get wslcUploadAFileFromThisComputer => '从本机上传文件到此处';
+
+  @override
+  String get wslcOpenTerminalInThisDirectory => '在此目录打开终端';
+
+  @override
+  String get wslcReadingDirectory => '正在读取目录…';
+
+  @override
+  String get wslcCouldNotReadDirectory => '无法读取目录';
+
+  @override
+  String get wslcLink => '链接';
+
+  @override
+  String get wslcDownloadToComputer => '下载到本机';
+
+  @override
+  String get wslcCloseWithoutSaving => '关闭且不保存？';
+
+  @override
+  String get wslcChangesToThisFileWillBeLost => '对此文件所做的更改将丢失。';
+
+  @override
+  String get wslcGoBack => '返回';
+
+  @override
+  String get wslcEdit => '编辑';
+
+  @override
+  String get wslcDiscardEdits => '放弃更改';
+
+  @override
+  String get wslcReadingFile => '正在读取文件…';
+
+  @override
+  String get wslcCannotOpenThisFileAsText => '无法以文本方式打开此文件';
+
+  @override
+  String get wslcUTFTextFilesUpToMB => '最大 2 MB 的 UTF-8 文本文件';
+
+  @override
+  String get wslcLine => '行';
+
+  @override
+  String get wslcLines => '行';
+
+  @override
+  String get wslcLinesFileEditor => '行';
+
+  @override
+  String get wslcEditing => ' · 编辑模式';
+
+  @override
+  String get wslcReadOnly => ' · 只读';
+
+  @override
+  String get wslcUnsavedChanges => ' · 有未保存的更改';
+
+  @override
+  String get wslcPowerShellCommandSettingsThatMatchTheImageCMD => 'PowerShell 命令。与镜像一致的配置（CMD、PATH 和工作目录）已省略。';
+
+  @override
+  String wslcIncludeEnvironmentVariableValues(Object envCount) {
+    return '包含环境变量值（$envCount）';
+  }
+
+  @override
+  String get wslcValuesMayContainPasswordsAndTokens => '这些值可能包含密码和令牌';
+
+  @override
+  String get wslcCloneInWizard => '在向导中克隆';
+
+  @override
+  String get wslcCopy => '复制';
+
+  @override
+  String wslcCommand(Object message) {
+    return '命令：$message';
+  }
+
+  @override
+  String get wslcDirectoryToMount => '要挂载的目录';
+
+  @override
+  String get wslcFromCompose => '从 Compose 导入…';
+
+  @override
+  String get wslcNameOptional => '名称（可选）';
+
+  @override
+  String get wslcTheImageIsNotAvailableLocallyWSLcWill => '本地没有此镜像。WSLc 将在创建容器时拉取镜像。';
+
+  @override
+  String get wslcThisComputerOnlyTheWholeNetwork => '127.0.0.1：仅本机。0.0.0.0：整个网络。';
+
+  @override
+  String get wslcHostPort => '主机端口';
+
+  @override
+  String get wslcContainerPort => '容器端口';
+
+  @override
+  String get wslcDirectoriesAndVolumes => '目录和卷';
+
+  @override
+  String get wslcWindowsDirectoryOrNamedVolumePathInContainer => 'Windows 目录或命名卷 → 容器内路径';
+
+  @override
+  String get wslcVolumeRunWizard => '卷';
+
+  @override
+  String get wslcVolumeNameCreatedIfNeeded => '卷名（需要时会创建）';
+
+  @override
+  String get wslcCPathToFolder => 'C:\\path\\to\\folder';
+
+  @override
+  String get wslcPathInContainer => '/path/in/container';
+
+  @override
+  String get wslcPassedThroughATemporaryFileRatherThanThe => '通过临时文件传递，不写入命令行';
+
+  @override
+  String get wslcVariable => '变量';
+
+  @override
+  String get wslcNAME => '名称';
+
+  @override
+  String get wslcAdvanced => '高级';
+
+  @override
+  String get wslcCommandOverridesTheImageCMD => '命令（覆盖镜像的 CMD）';
+
+  @override
+  String get wslcWorkingDirectory => '工作目录';
+
+  @override
+  String get wslcRemoveAfterStoppingRm => '停止后删除（--rm）';
+
+  @override
+  String get wslcCreateWithoutStarting => '仅创建，不启动';
+
+  @override
+  String get wslcCreatingPullingTheImageIfItIsMissing => '正在创建… 若本地缺少镜像，则会自动拉取。';
+
+  @override
+  String get wslcCreateAndStart => '创建并启动';
+
+  @override
+  String get wslcRemove => '移除';
+
+  @override
+  String wslcTemplateSaved(Object name) {
+    return '已保存模板“$name”';
+  }
+
+  @override
+  String get wslcSaveAsTemplate => '另存为模板';
+
+  @override
+  String get wslcATemplateWithThisNameWillBeReplaced => '同名模板将被替换';
+
+  @override
+  String get wslcSaveEnvironmentVariableValues => '保存环境变量值';
+
+  @override
+  String get wslcOtherwiseOnlyNamesAreSavedEnterTheValues => '未选择时仅保存变量名，创建容器时再填写值。';
+
+  @override
+  String get wslcTheTemplateExcludesTheContainerNameTemplatesAre => '模板不包含容器名称。模板在本设备的当前配置文件中加密保存，不会发送到服务器。';
+
+  @override
+  String get wslcTemplates => '模板';
+
+  @override
+  String get wslcSaveAsTemplateTemplates => '另存为模板…';
+
+  @override
+  String get wslcTheTerminalIsAvailableWhileTheContainerIs => '容器运行时可打开终端';
+
+  @override
+  String get wslcSessionEnded => '会话已结束';
+
+  @override
+  String wslcWslcExecItBashOrSh(Object cols, Object rows) {
+    return 'wslc exec -it · bash 或 sh · $cols×$rows';
+  }
+
+  @override
+  String get wslcReconnect => '重新连接';
+
+  @override
+  String get wslcNewSession => '新建会话';
+
+  @override
+  String get wslcOpenInSeparateWindow => '在单独窗口中打开';
+
+  @override
+  String get wslcCopyTheSelectionWithCtrlShiftCAnd => '按 Ctrl+Shift+C 复制选区，按 Ctrl+Shift+V 粘贴。关闭标签页会结束本次会话，容器将继续运行。';
+
+  @override
+  String wslcPulling(Object image) {
+    return '正在拉取 $image';
+  }
+
+  @override
+  String get wslcImageDownloaded => '镜像已下载';
+
+  @override
+  String get wslcPullImage => '拉取镜像';
+
+  @override
+  String get wslcDownload => '下载';
+
+  @override
+  String get wslcImageImageDialogs => '镜像';
+
+  @override
+  String get wslcImageBuilt => '镜像已构建';
+
+  @override
+  String get wslcBuildContextDirectory => '构建上下文目录';
+
+  @override
+  String wslcBuildArgumentMustUseKEYVALUE(Object t) {
+    return '构建参数“$t”必须采用 KEY=VALUE 格式';
+  }
+
+  @override
+  String get wslcChooseTheBuildContextDirectory => '选择构建上下文目录';
+
+  @override
+  String get wslcBuildImage => '构建镜像';
+
+  @override
+  String get wslcDockerfileOptionalDefaultsToTheOneInThe => 'Dockerfile（可选，默认使用构建上下文中的文件）';
+
+  @override
+  String get wslcCommaSeparatedTags => '以逗号分隔的标签';
+
+  @override
+  String get wslcBuildArgumentsOneKEYVALUEPerLine => '构建参数，每行一个 KEY=VALUE';
+
+  @override
+  String get wslcTargetStageOptional => '目标阶段（可选）';
+
+  @override
+  String get wslcDisableCache => '禁用缓存';
+
+  @override
+  String get wslcPullUpdatedBaseImages => '拉取最新基础镜像';
+
+  @override
+  String get wslcBuildImageDialogs => '构建';
+
+  @override
+  String get wslcCreateContainer => '创建容器…';
+
+  @override
+  String get wslcAddTag => '添加标签…';
+
+  @override
+  String get wslcPushToRegistry => '推送到仓库…';
+
+  @override
+  String get wslcSaveAsTar => '另存为 tar…';
+
+  @override
+  String wslcNewTagFor(Object source) {
+    return '$source 的新标签';
+  }
+
+  @override
+  String wslcAddedTag(Object target) {
+    return '已添加标签 $target';
+  }
+
+  @override
+  String get wslcPushImage => '推送镜像？';
+
+  @override
+  String wslcTheImageWillBePushedToTheRegistry(Object image) {
+    return '$image\n\n镜像将推送到其名称指定的镜像仓库。如果需要身份验证，请先在“镜像仓库”中登录。';
+  }
+
+  @override
+  String wslcPushing(Object image) {
+    return '正在推送 $image';
+  }
+
+  @override
+  String get wslcImagePushed => '镜像已推送';
+
+  @override
+  String get wslcSignedIn => '已登录';
+
+  @override
+  String wslcSignedOutOf(Object name) {
+    return '已退出 $name';
+  }
+
+  @override
+  String get wslcRegistries => '镜像仓库';
+
+  @override
+  String get wslcServerEGGhcrIoLeaveBlankFor => '服务器，例如 ghcr.io（留空使用默认值）';
+
+  @override
+  String get wslcPasswordOrAccessToken => '密码或访问令牌';
+
+  @override
+  String get wslcThePasswordIsPassedToWSLcThroughStdin => '密码通过标准输入传递给 WSLc，应用不会保存密码。';
+
+  @override
+  String get wslcSignedInDuringThisSession => '本次会话中已登录';
+
+  @override
+  String get wslcSaveImageAsTar => '将镜像保存为 tar';
+
+  @override
+  String wslcSaving(Object ref) {
+    return '正在保存 $ref';
+  }
+
+  @override
+  String get wslcImageTarArchiveWslcSaveDockerSave => '镜像 tar 归档（wslc save / docker save）';
+
+  @override
+  String wslcLoadingImagesFrom(Object value) {
+    return '正在从 $value 加载镜像';
+  }
+
+  @override
+  String get wslcImagesLoaded => '镜像已加载';
+
+  @override
+  String get wslcFilesystemTarArchiveWslcExport => '文件系统 tar 归档（wslc export）';
+
+  @override
+  String get wslcNewImageName => '新镜像名称';
+
+  @override
+  String get wslcMyImportedOptional => 'my/imported:1（可选）';
+
+  @override
+  String wslcImporting(Object value) {
+    return '正在导入 $value';
+  }
+
+  @override
+  String get wslcImageCreated => '镜像已创建';
+
+  @override
+  String get wslcImportFromArchives => '从归档导入';
+
+  @override
+  String get wslcLoadImagesFromTarLoad => '从 tar 加载镜像（load）…';
+
+  @override
+  String get wslcImportFilesystemFromTarImport => '从 tar 导入文件系统（import）…';
+
+  @override
+  String get wslcSearchByRepositoryTagOrID => '按仓库、标签或 ID 搜索';
+
+  @override
+  String get wslcNoImagesYet => '暂无镜像';
+
+  @override
+  String get wslcUntagged => '无标签';
+
+  @override
+  String wslcContainers(Object containers) {
+    return '容器数：$containers';
+  }
+
+  @override
+  String get wslcSizeUnknown => '大小未知';
+
+  @override
+  String wslcImageInventoryPages(Object value, Object value2) {
+    return '镜像 $value$value2';
+  }
+
+  @override
+  String get wslcDeleteImage => '删除镜像';
+
+  @override
+  String get wslcDeleteImageInventoryPages => '删除镜像？';
+
+  @override
+  String get wslcRemoveImageTag => '移除镜像标签？';
+
+  @override
+  String get wslcUnnamed => '未命名';
+
+  @override
+  String wslcTheImageIsUsedByContainerSThe(Object containers) {
+    return '有 $containers 个容器使用此镜像。只要这些容器还存在，运行时就会拒绝删除镜像。 ';
+  }
+
+  @override
+  String get wslcThisCannotBeUndoneYouWillNeedTo => '此操作无法撤销。之后如需使用，必须重新拉取镜像。';
+
+  @override
+  String wslcOnlyTheTagWillBeRemovedTheLayers(Object value) {
+    return '仅移除标签 $value。镜像的所有标签都被移除后，其镜像层才会被删除。';
+  }
+
+  @override
+  String get wslcImageDeleted => '镜像已删除';
+
+  @override
+  String get wslcSearchByVolumeName => '按卷名称搜索';
+
+  @override
+  String get wslcNoVolumesYet => '暂无卷';
+
+  @override
+  String get wslcCreateVolume => '创建卷';
+
+  @override
+  String wslcDriver(Object value) {
+    return '驱动程序 $value';
+  }
+
+  @override
+  String get wslcSizeUnavailable => '大小不可用';
+
+  @override
+  String get wslcDeleteVolume => '删除卷';
+
+  @override
+  String get wslcDeleteVolumeInventoryPages => '删除卷？';
+
+  @override
+  String wslcAllDataInThisVolumeWillBePermanently(Object name) {
+    return '$name\n\n此卷上的所有数据将被永久删除。如果卷已挂载到容器，运行时会拒绝删除。';
+  }
+
+  @override
+  String wslcVolumeDeleted(Object name) {
+    return '卷 $name 已删除';
+  }
+
+  @override
+  String get wslcYes => '是';
+
+  @override
+  String get wslcNo => '否';
+
+  @override
+  String get wslcSearchByNameIDOrDriver => '按名称、ID 或驱动程序搜索';
+
+  @override
+  String get wslcNoNetworksFound => '未找到网络';
+
+  @override
+  String get wslcCreateNetwork => '创建网络';
+
+  @override
+  String get wslcInternal => '内部';
+
+  @override
+  String get wslcConnectContainer => '连接容器';
+
+  @override
+  String get wslcDeleteNetwork => '删除网络';
+
+  @override
+  String get wslcDeleteNetworkInventoryPages => '删除网络？';
+
+  @override
+  String wslcTheRuntimeWillRefuseToDeleteThisNetwork(Object name) {
+    return '$name\n\n如果仍有容器连接到此网络，运行时会拒绝删除。';
+  }
+
+  @override
+  String wslcNetworkDeleted(Object name) {
+    return '网络 $name 已删除';
+  }
+
+  @override
+  String wslcVolumeCreatedResourceDialogs(Object name) {
+    return '卷 $name 已创建';
+  }
+
+  @override
+  String get wslcNewVolume => '新建卷';
+
+  @override
+  String get wslcEnterAVolumeName => '请输入卷名称';
+
+  @override
+  String get wslcOptionsOneKEYVALUEPerLine => '每行输入一个 KEY=VALUE 选项';
+
+  @override
+  String get wslcVolumeNameEGAppData => '卷名称，例如 app-data';
+
+  @override
+  String get wslcGuestInTheVMFilesystemDefault => 'guest — 存储在虚拟机文件系统中（默认）';
+
+  @override
+  String get wslcVhdSeparateVirtualDisk => 'vhd — 使用独立虚拟磁盘';
+
+  @override
+  String get wslcDriverOptionsKEYVALUEOptional => '驱动程序选项 KEY=VALUE（可选）';
+
+  @override
+  String wslcNetworkCreatedResourceDialogs(Object name) {
+    return '网络 $name 已创建';
+  }
+
+  @override
+  String get wslcNewNetwork => '新建网络';
+
+  @override
+  String get wslcEnterANetworkName => '请输入网络名称';
+
+  @override
+  String get wslcNetworkNameEGBackend => '网络名称，例如 backend';
+
+  @override
+  String get wslcSubnetCIDREGOptional => '子网 CIDR，例如 10.231.0.0/24（可选）';
+
+  @override
+  String get wslcGatewayEG => '网关，例如 10.231.0.1';
+
+  @override
+  String get wslcContainerAddressRangeInCIDRNotationOptional => '容器地址范围，使用 CIDR 表示（可选）';
+
+  @override
+  String get wslcInternalNetworkWithoutExternalAccess => '内部网络，无法访问外部网络';
+
+  @override
+  String wslcContainerConnectedToNetwork(Object net) {
+    return '容器已连接到网络 $net';
+  }
+
+  @override
+  String get wslcConnect => '连接';
+
+  @override
+  String get wslcSelectANetworkAndAContainer => '请选择网络和容器';
+
+  @override
+  String get wslcNetworkAliasOptional => '网络别名（可选）';
+
+  @override
+  String get wslcStaticIPvAddressFromTheSubnetOptional => '子网内的静态 IPv4 地址（可选）';
+
+  @override
+  String wslcContainerDisconnectedFromNetwork(Object network) {
+    return '容器已与网络 $network 断开连接';
+  }
+
+  @override
+  String wslcBackingUpVolume(Object volume) {
+    return '正在备份卷 $volume';
+  }
+
+  @override
+  String wslcBackupSavedTo(Object path) {
+    return '备份已保存到 $path';
+  }
+
+  @override
+  String get wslcVolumeArchiveTarGz => '卷归档文件（.tar.gz）';
+
+  @override
+  String wslcRestoringVolume(Object target) {
+    return '正在还原卷 $target';
+  }
+
+  @override
+  String wslcVolumeRestored(Object target) {
+    return '卷 $target 已还原';
+  }
+
+  @override
+  String get wslcRestoreToANewVolume => '还原到新卷';
+
+  @override
+  String get wslcRestoreVolume => '还原卷';
+
+  @override
+  String get wslcVolumeNameCreatedIfItDoesNotExist => '卷名称（如果不存在则创建）';
+
+  @override
+  String get wslcClearVolumeBeforeRestoring => '还原前清空卷';
+
+  @override
+  String get wslcOtherwiseArchiveFilesAreMergedIntoTheExisting => '否则，归档中的文件将写入现有卷并覆盖同名文件';
+
+  @override
+  String get wslcBackUpToArchive => '备份到归档文件…';
+
+  @override
+  String get wslcRestoreFromArchive => '从归档文件还原…';
+
+  @override
+  String get wslcSearchLoadedLogs => '搜索已加载的日志';
+
+  @override
+  String get wslcPauseAutoscroll => '暂停自动滚动';
+
+  @override
+  String get wslcEnableAutoscroll => '启用自动滚动';
+
+  @override
+  String get wslcClearView => '清空当前视图';
+
+  @override
+  String get wslcCopyLoadedLogs => '复制已加载的日志';
+
+  @override
+  String get wslcSaveLoadedLogs => '保存已加载的日志';
+
+  @override
+  String get wslcLinesLogPanel => '1000 行';
+
+  @override
+  String get wslcMin => '5 分钟';
+
+  @override
+  String get wslcHour => '1 小时';
+
+  @override
+  String get wslcHours => '24 小时';
+
+  @override
+  String get wslcAll => '全部';
+
+  @override
+  String get wslcAllStreams => '所有流';
+
+  @override
+  String get wslcShowRuntimeTimestampsInLocalTime => '以本地时间显示运行时的时间戳';
+
+  @override
+  String get wslcFormatLinesContainingJSONObjects => '格式化包含 JSON 对象的日志行';
+
+  @override
+  String get wslcNoMatches => '无匹配项';
+
+  @override
+  String get wslcTruncated => ' … [已截断]';
+
+  @override
+  String wslcShown(Object length) {
+    return '已显示：$length';
+  }
+
+  @override
+  String wslcEvicted(Object value) {
+    return '已移出缓冲区：$value';
+  }
+
+  @override
+  String wslcTruncatedLogPanel(Object truncated) {
+    return '已截断：$truncated';
+  }
+
+  @override
+  String get wslcLogsMayContainSecrets => '日志可能包含机密信息';
+
+  @override
+  String get wslcEnterHexDigitsEGBFF => '请输入 6 位十六进制数，例如 #4B89FF';
+
+  @override
+  String wslcColorSpectrum(Object value) {
+    return '色谱 — $value';
+  }
+
+  @override
+  String wslcHueDegrees(Object value) {
+    return '色相：$value 度';
+  }
+
+  @override
+  String wslcSaturationPercent(Object value) {
+    return '饱和度：$value%';
+  }
+
+  @override
+  String wslcBrightnessPercent(Object value) {
+    return '亮度：$value%';
+  }
+
+  @override
+  String get wslcSelect => '选择';
+
+  @override
+  String get wslcWSLcConnection => 'WSLc 连接';
+
+  @override
+  String get wslcEnterThePathToTheInstalledWslcExe => '输入已安装的 wslc.exe 的路径，或留空以使用标准 WSL 目录。';
+
+  @override
+  String get wslcPathToWslcExe => 'wslc.exe 路径';
+
+  @override
+  String get wslcAvailable => '可用';
+
+  @override
+  String get wslcUnavailable => '不可用';
+
+  @override
+  String get wslcRefreshData => '刷新数据';
+
+  @override
+  String wslcEveryS(Object seconds) {
+    return '每 $seconds 秒';
+  }
+
+  @override
+  String wslcSavedRunTemplates(Object length) {
+    return '已保存的运行模板：$length';
+  }
+
+  @override
+  String get wslcTemplatesAreStoredInThisProfileSEncrypted =>
+      '模板存储在此设备上当前配置文件的加密数据库中。外观和剪贴板清除选项可在 ConsoleCrypt 通用设置中调整。';
+
+  @override
+  String get wslcBuildingMap => '正在构建拓扑图…';
+
+  @override
+  String get wslcCouldNotBuildMap => '无法构建拓扑图';
+
+  @override
+  String get wslcWindowsFolderTopologyPage => 'Windows 文件夹';
+
+  @override
+  String get wslcOpenCleanup => '打开清理工具';
+
+  @override
+  String wslcUnused(Object length) {
+    return '未使用：$length';
+  }
+
+  @override
+  String get wslcNoConnectionsYet => '暂无连接';
+
+  @override
+  String get wslcVolumesFoldersAndNetworks => '卷、文件夹和网络';
+
+  @override
+  String get wslcRunning => '正在运行…';
+
+  @override
+  String wslcErrorExitCode(Object exitCode) {
+    return '错误，退出代码 $exitCode';
+  }
+
+  @override
+  String get wslcWaitingForOutput => '正在等待输出…';
+
+  @override
+  String wslcPortIsNotPublishedOnThisComputer(Object containerPort) {
+    return '$containerPort：端口未发布到本机';
+  }
+
+  @override
+  String get wslcOpenOrCopyPortAddress => '打开或复制端口地址';
+
+  @override
+  String wslcCopyPorts(Object value) {
+    return '复制 $value';
+  }
+
+  @override
+  String wslcCopyLocalhost(Object hostPort) {
+    return '复制 localhost:$hostPort';
+  }
+
+  @override
+  String wslcCopyPortsOther(Object address, Object hostPort) {
+    return '复制 $address:$hostPort';
+  }
+
+  @override
+  String wslcThisPortIsPublishedOnlyOnAndCannot(Object hostIp, Object hostPort, Object value3) {
+    return '此端口仅发布在 $hostIp，无法通过本机的 IP 地址访问。如需从网络访问，请将其发布为 0.0.0.0:$hostPort:$value3。';
+  }
+
+  @override
+  String get wslcUnclosedQuote => '引号未闭合';
+
+  @override
+  String get wslcKB => 'KB';
+
+  @override
+  String get wslcMB => 'MB';
+
+  @override
+  String get wslcGB => 'GB';
+
+  @override
+  String get wslcTB => 'TB';
+
+  @override
+  String get wslcS => '/秒';
+
+  @override
+  String get wslcCollectingData => '正在收集数据…';
+
+  @override
+  String get wslcCopyFullID => '复制完整 ID';
+
+  @override
+  String get wslcWSLcSessionClosed => 'WSLc 会话已关闭';
+
+  @override
+  String get wslcShowContainerData => '显示容器数据';
+
+  @override
+  String get wslcConfirmAccessToTheHiddenWSLcEnvironmentVariables => '请确认是否访问 WSLc 隐藏的环境变量。';
+
+  @override
+  String get wslcContainerEngines => '容器引擎';
+
+  @override
+  String get wslcConnections => '连接';
+
+  @override
+  String get wslcCleanup => '清理';
+
+  @override
+  String get wslcOrphanedProjectContainers => '项目孤立容器';
+
+  @override
+  String wslcTheirServicesAreAbsentFromTheFileSo(Object value) {
+    return '$value：文件中没有对应服务，已保留容器';
+  }
+
+  @override
+  String get wslcUnchangedAlreadyRunning => '配置未变，已在运行';
+
+  @override
+  String get wslcStarting => '正在启动…';
+
+  @override
+  String get wslcUnchangedStarted => '配置未变，已启动';
+
+  @override
+  String get wslcConfigurationChangedRecreating => '配置已更改，正在重新创建…';
+
+  @override
+  String wslcTheNameIsInUseByAContainer(Object containerName) {
+    return '名称 $containerName 已被其他项目的容器使用';
+  }
+
+  @override
+  String get wslcCreating => '正在创建…';
+
+  @override
+  String wslcConnectingTo(Object network) {
+    return '正在连接到 $network…';
+  }
+
+  @override
+  String get wslcCreatedAndStarted => '已创建并启动';
+
+  @override
+  String get wslcRecreatedAndStarted => '已重新创建并启动';
+
+  @override
+  String wslcWaitingForToBecomeHealthy(Object service) {
+    return '正在等待 $service 通过健康检查…';
+  }
+
+  @override
+  String wslcWaitingForToFinish(Object service) {
+    return '正在等待 $service 结束…';
+  }
+
+  @override
+  String wslcIsUnhealthyDependentServicesDidNotStart(Object service) {
+    return '$service 未通过健康检查。依赖该服务的服务未启动。';
+  }
+
+  @override
+  String wslcStoppedBeforeBecomingHealthy(Object service) {
+    return '$service 在通过健康检查前已停止';
+  }
+
+  @override
+  String wslcHasNoHealthCheckAndCannotSatisfyService(Object service) {
+    return '$service 没有健康检查，无法满足 service_healthy';
+  }
+
+  @override
+  String wslcExitedWithCode(Object service, Object exitCode) {
+    return '$service 已退出，退出码为 $exitCode';
+  }
+
+  @override
+  String wslcTimedOutAfterMin(Object service, Object inMinutes) {
+    return '$service：等待 $inMinutes 分钟后超时';
+  }
+
+  @override
+  String wslcExitedWithCodeComposeRunner(Object value, Object value2) {
+    return '已退出，退出码为 $value$value2';
+  }
+
+  @override
+  String get wslcProjectContainers => '项目容器';
+
+  @override
+  String get wslcNoneFound => '未找到';
+
+  @override
+  String wslcRemoving(Object name) {
+    return '正在删除 $name';
+  }
+
+  @override
+  String get wslcStoppedAndRemoved => '已停止并删除';
+
+  @override
+  String get wslcAlreadyGone => '已不存在';
+
+  @override
+  String get wslcRemovedComposeRunner => '已删除';
+
+  @override
+  String get wslcRemovedComposeRunnerOther => '已删除';
+
+  @override
+  String wslcStopTheSelectedContainers(Object length) {
+    return '停止所选容器（$length）？';
+  }
+
+  @override
+  String wslcRestartTheSelectedContainers(Object length) {
+    return '重启所选容器（$length）？';
+  }
+
+  @override
+  String wslcRemoveTheSelectedContainers(Object length) {
+    return '删除所选容器（$length）？';
+  }
+
+  @override
+  String wslcRemovalCannotBeUndoneNamedVolumesWillBe(Object value) {
+    return '$value删除操作无法撤销。命名卷将保留。';
+  }
+
+  @override
+  String get wslcRunningContainersWillBeForciblyStopped => '运行中的容器将被强制停止。';
+
+  @override
+  String get wslcTheRuntimeMayRemoveContainersWithAutoRemove => '运行时可能在容器停止后删除已启用自动删除的容器。';
+
+  @override
+  String wslcDoneOf(Object done, Object length, Object value3) {
+    return '已完成：$done/$length$value3';
+  }
+
+  @override
+  String get wslcRunningContainersPage => '运行中';
+
+  @override
+  String get wslcSearchByNameIDImageOrPort => '按名称、ID、镜像或端口搜索';
+
+  @override
+  String get wslcRunningContainersPageOther => '运行中';
+
+  @override
+  String get wslcStopped => '已停止';
+
+  @override
+  String get wslcNewContainer => '新建容器';
+
+  @override
+  String get wslcDockerComposeStartFromYAML => 'Docker Compose：从 YAML 启动';
+
+  @override
+  String get wslcBulkActions => '批量操作';
+
+  @override
+  String wslcStopAllRunningContainers(Object running) {
+    return '停止所有运行中的容器（$running）';
+  }
+
+  @override
+  String wslcStartAllStoppedContainers(Object stopped) {
+    return '启动所有已停止的容器（$stopped）';
+  }
+
+  @override
+  String get wslcNotConnectedToWSLc => '未连接到 WSLc';
+
+  @override
+  String get wslcNoContainersYet => '暂无容器';
+
+  @override
+  String get wslcCheckTheConnectionInSettings => '请在设置中检查连接';
+
+  @override
+  String get wslcSelectNewToCreateYourFirstContainer => '选择“新建”以创建第一个容器';
+
+  @override
+  String get wslcChangeTheSearchTermOrFilter => '请更改搜索词或筛选条件';
+
+  @override
+  String wslcSelected(Object count) {
+    return '已选择：$count';
+  }
+
+  @override
+  String wslcUnknown(Object value) {
+    return '未知（$value）';
+  }
+
+  @override
+  String get wslcStopThisContainer => '停止此容器？';
+
+  @override
+  String get wslcRestartThisContainer => '重启此容器？';
+
+  @override
+  String get wslcAutoRemoveIsEnabledTheRuntimeMayRemove => '已启用自动删除。运行时可能在容器停止后将其删除。';
+
+  @override
+  String get wslcAutoRemoveIsDisabled => '自动删除已禁用。';
+
+  @override
+  String get wslcTheAutoRemoveSettingIsUnknownTheRuntime => '自动删除设置未知。运行时可能在容器停止后将其删除。';
+
+  @override
+  String get wslcRemoveThisContainer => '删除此容器？';
+
+  @override
+  String wslcRemovalCannotBeUndoneNamedVolumesWillBeContainerActions(Object name, Object id, Object value3) {
+    return '$name\n$id\n\n$value3删除操作无法撤销。命名卷将保留。';
+  }
+
+  @override
+  String get wslcTheContainerIsRunningItWillBeForcibly => '容器正在运行。它将被强制停止并删除。';
+
+  @override
+  String wslcContainerRemoved(Object name) {
+    return '已删除容器 $name';
+  }
+
+  @override
+  String get wslcMoreActions => '更多操作';
+
+  @override
+  String get wslcOpenInBrowser => '在浏览器中打开';
+
+  @override
+  String wslcOpen(Object value) {
+    return '打开 $value';
+  }
+
+  @override
+  String get wslcDetails => '详情';
+
+  @override
+  String get wslcStartupCommand => '启动命令…';
+
+  @override
+  String get wslcExportFilesystemAsTar => '将文件系统导出为 tar…';
+
+  @override
+  String get wslcCopyID => '复制 ID';
+
+  @override
+  String get wslcCopyName => '复制名称';
+
+  @override
+  String get wslcExportContainerFilesystem => '导出容器文件系统';
+
+  @override
+  String wslcExporting(Object name) {
+    return '正在导出 $name';
+  }
+
+  @override
+  String wslcSaved(Object path) {
+    return '已保存：$path';
+  }
+
+  @override
+  String get wslcBackToList => '返回列表';
+
+  @override
+  String get wslcStartupCommandContainerDetailsPage => '启动命令';
+
+  @override
+  String get wslcRemoveContainer => '删除容器';
+
+  @override
+  String get wslcContainerNoLongerFound => '找不到该容器';
+
+  @override
+  String get wslcTheRuntimeMayHaveRemovedItWhenIt => '运行时可能已在容器停止后将其删除';
+
+  @override
+  String get wslcLoadingInspectData => '正在加载检查数据…';
+
+  @override
+  String get wslcCouldNotLoadInspectData => '无法加载检查数据';
+
+  @override
+  String get wslcExitCode => '退出码';
+
+  @override
+  String get wslcFinished => '已结束';
+
+  @override
+  String get wslcUnknownContainerDetailsPage => '未知';
+
+  @override
+  String get wslcEnabled => '已启用';
+
+  @override
+  String get wslcDisabled => '已禁用';
+
+  @override
+  String get wslcStopTimeout => '停止超时';
+
+  @override
+  String wslcSContainerDetailsPage(Object stopTimeoutSeconds) {
+    return '$stopTimeoutSeconds 秒';
+  }
+
+  @override
+  String get wslcReceiveInBlueSendInYellow => '蓝色表示接收，黄色表示发送';
+
+  @override
+  String get wslcDiskReadWrite => '磁盘读写';
+
+  @override
+  String get wslcProcesses => '进程';
+
+  @override
+  String get wslcNoPublishedPorts => '没有已发布的端口';
+
+  @override
+  String get wslcSelectAPortToOpenItInA => '选择端口可在浏览器中打开或复制其地址。';
+
+  @override
+  String get wslcStartup => '启动';
+
+  @override
+  String get wslcImageID => '镜像 ID';
+
+  @override
+  String get wslcConnectToNetwork => '连接网络';
+
+  @override
+  String get wslcTheRuntimeReturnedNoNetworkInformation => '运行时未返回网络信息';
+
+  @override
+  String get wslcDisconnectFromNetwork => '断开网络连接';
+
+  @override
+  String wslcGateway(Object gateway) {
+    return '网关 $gateway';
+  }
+
+  @override
+  String get wslcTheRuntimeReturnedNoMountInformation => '运行时未返回挂载信息';
+
+  @override
+  String get wslcNoMountedVolumesOrDirectories => '没有已挂载的卷或目录';
 }

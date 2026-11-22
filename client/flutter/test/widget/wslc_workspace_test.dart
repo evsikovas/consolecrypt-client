@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:consolecrypt/app/gate.dart' show AppRoutes;
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart' as cc;
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
@@ -15,6 +16,7 @@ import 'package:consolecrypt/wslc/features/compose/compose_dialog.dart';
 import 'package:consolecrypt/wslc/features/containers/run_wizard.dart';
 import 'package:consolecrypt/wslc/src/rust/api/desk.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
+import 'package:consolecrypt/wslc/wslc_scope.dart';
 import 'package:consolecrypt/wslc/wslc_workspace.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -237,6 +239,7 @@ void main() {
     await pumpApp(
       tester,
       backend,
+      locale: cc.AppLocale.es,
       overrides: [
         wslcApiFactoryProvider.overrideWithValue(
           ({required profileId, required reveal}) => api = _Api(profileId: profileId, reveal: reveal),
@@ -250,14 +253,17 @@ void main() {
     await tapKey(tester, 'docker-open-wslc');
     expect(find.text('fixture-web'), findsWidgets);
     expect(api.calls, contains('list_containers'));
+    final rowContext = tester.element(find.text('fixture-web').first);
+    final l10n = rowContext.l10n;
+    final notify = WslcApiScope.notifierOf(rowContext);
     await tester.tap(find.text('fixture-web').first);
     await settle(tester);
-    await tester.tap(find.text('Окружение').first);
+    await tester.tap(find.text(l10n.kubeExecEnvironment).first);
     await settle(tester);
-    await tester.tap(find.byTooltip('Скопировать значение').first);
+    await tester.tap(find.byTooltip(l10n.wslcCopyValue).first);
     await settle(tester);
     expect(clipboard.values, ['synthetic-test-token']);
-    await tester.tap(find.text('Терминал').last);
+    await tester.tap(find.text(l10n.navTerminal).last);
     await settle(tester);
     expect(find.byType(TerminalView), findsOneWidget);
     await tester.tap(find.byType(TerminalView));
@@ -303,7 +309,7 @@ void main() {
     await settle(tester);
     final oldOutput = api.delayedOutput = Completer<TerminalOutput>();
     await tester.pump(const Duration(milliseconds: 40));
-    await tester.tap(find.text('Новая сессия'));
+    await tester.tap(find.text(l10n.wslcNewSession));
     await settle(tester);
     expect(api.openedTerminals, 2);
     api.delayedOutput = null;
@@ -326,8 +332,10 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await backend.services.vault.lock();
     await settle(tester);
+    notify('Late workspace notification', error: true);
     lateRead.complete({'text': 'must never reach an expired terminal'});
     await settle(tester);
+    expect(find.text('Late workspace notification'), findsNothing);
     expect(api.writes, isEmpty);
     expect(api.closed, isTrue);
     expect(find.byType(WslcWorkspace), findsNothing);

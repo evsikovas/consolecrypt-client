@@ -308,12 +308,12 @@ final class DockerKubeTarget {
 
   // Outbound AI input only includes the reviewed target and resource defaults.
   String get prompt =>
-      'Write exactly two Kubernetes YAML documents: Deployment and Service. '
-      'Use the following template. Keep every field and identity unchanged except container resources '
-      '(requests and limits: cpu and memory) and readinessProbe timing (1..300 seconds). '
-      'Do not add any other fields, containers, commands, environment variables or resources. '
-      'Return YAML only, no explanation. This is an experimental stateless deployment; '
-      'there is no measured usage data, so keep conservative resource defaults.\n$aiTemplate';
+      'Write exactly two Kubernetes YAML documents: Deployment and Service. ' // l10n-ignore: model output contract
+      'Use the following template. Keep every field and identity unchanged except container resources ' // l10n-ignore: model template restrictions
+      '(requests and limits: cpu and memory) and readinessProbe timing (1..300 seconds). ' // l10n-ignore: model field restrictions
+      'Do not add any other fields, containers, commands, environment variables or resources. ' // l10n-ignore: model schema instruction
+      'Return YAML only, no explanation. This is an experimental stateless deployment; ' // l10n-ignore: model output contract
+      'there is no measured usage data, so keep conservative resource defaults.\n$aiTemplate'; // l10n-ignore: model instruction and serialized template
 }
 
 String _yamlPair(Map<String, dynamic> deployment, Map<String, dynamic> service) =>

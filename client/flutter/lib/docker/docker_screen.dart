@@ -167,7 +167,7 @@ class _DockerHostPickerState extends ConsumerState<DockerHostPicker> {
         if (widget.onWslc != null)
           GlassButton(
             key: const ValueKey('docker-open-wslc'),
-            label: 'WSLc',
+            label: 'WSLc', // l10n-ignore: product name
             icon: Icons.window_rounded,
             onPressed: _connecting == null ? widget.onWslc : null,
           ),

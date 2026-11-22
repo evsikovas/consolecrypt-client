@@ -291,7 +291,7 @@ DockerKubeRollout? _podProblem(Map<String, dynamic> pod) {
               registryDenied:
                   message is String &&
                   RegExp(
-                    r'pull access denied|denied: requested access|unauthorized: authentication required|no basic auth credentials',
+                    r'pull access denied|denied: requested access|unauthorized: authentication required|no basic auth credentials', // l10n-ignore: container registry error signatures
                     caseSensitive: false,
                   ).hasMatch(message),
             );

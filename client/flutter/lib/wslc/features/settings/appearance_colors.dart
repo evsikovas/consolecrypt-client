@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/wslc_scope.dart';
 import 'package:material_ui/material_ui.dart';
@@ -61,7 +62,7 @@ class _AppearanceColorRowState extends State<AppearanceColorRow> {
   Future<void> apply({bool reset = false}) async {
     final color = reset ? null : parseHexColor(hex.text);
     if (!reset && color == null) {
-      setState(() => error = 'Введите 6 HEX-цифр, например #4B89FF');
+      setState(() => error = context.l10n.wslcEnterHexDigitsEGBFF);
       return;
     }
     setState(() {
@@ -143,7 +144,7 @@ class _AppearanceColorRowState extends State<AppearanceColorRow> {
                 key: ValueKey('${widget.label}-hex'),
                 maxLength: 7,
                 decoration: InputDecoration(
-                  labelText: 'HEX-код цвета',
+                  labelText: context.l10n.settingsColorHex,
                   semanticCounterText: widget.label,
                   counterText: '',
                 ),
@@ -155,12 +156,12 @@ class _AppearanceColorRowState extends State<AppearanceColorRow> {
             OutlinedButton.icon(
               onPressed: saving ? null : spectrum,
               icon: const Icon(Icons.palette_outlined, size: 18),
-              label: const Text('Спектр цветов'),
+              label: Text(context.l10n.colorSpectrum),
             ),
-            FilledButton(onPressed: saving ? null : () => apply(), child: const Text('Применить')),
+            FilledButton(onPressed: saving ? null : () => apply(), child: Text(context.l10n.sftpInfoApply)),
             TextButton(
               onPressed: saving || widget.value == null ? null : () => apply(reset: true),
-              child: const Text('По умолчанию'),
+              child: Text(context.l10n.glassModeStandard),
             ),
           ],
         ),
@@ -194,7 +195,7 @@ class _SpectrumDialogState extends State<_SpectrumDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text('Спектр цветов — ${widget.label.toLowerCase()}'),
+    title: Text(context.l10n.wslcColorSpectrum(widget.label.toLowerCase())),
     content: SizedBox(
       width: 380,
       child: SingleChildScrollView(
@@ -227,7 +228,7 @@ class _SpectrumDialogState extends State<_SpectrumDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text('Оттенок'),
+            Text(context.l10n.colorHue),
             DecoratedBox(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -248,7 +249,7 @@ class _SpectrumDialogState extends State<_SpectrumDialog> {
                 min: 0,
                 max: 360,
                 label: '${color.hue.round()}°',
-                semanticFormatterCallback: (v) => 'Оттенок ${v.round()} градусов',
+                semanticFormatterCallback: (v) => context.l10n.wslcHueDegrees(v.round()),
                 activeColor: Colors.transparent,
                 inactiveColor: Colors.transparent,
                 thumbColor: Colors.white,
@@ -256,18 +257,18 @@ class _SpectrumDialogState extends State<_SpectrumDialog> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text('Насыщенность'),
+            Text(context.l10n.colorSaturation),
             Slider(
               value: color.saturation,
               label: '${(color.saturation * 100).round()}%',
-              semanticFormatterCallback: (v) => 'Насыщенность ${(v * 100).round()} процентов',
+              semanticFormatterCallback: (v) => context.l10n.wslcSaturationPercent((v * 100).round()),
               onChanged: (v) => setState(() => color = color.withSaturation(v)),
             ),
-            const Text('Яркость'),
+            Text(context.l10n.colorBrightness),
             Slider(
               value: color.value,
               label: '${(color.value * 100).round()}%',
-              semanticFormatterCallback: (v) => 'Яркость ${(v * 100).round()} процентов',
+              semanticFormatterCallback: (v) => context.l10n.wslcBrightnessPercent((v * 100).round()),
               onChanged: (v) => setState(() => color = color.withValue(v)),
             ),
           ],
@@ -275,8 +276,8 @@ class _SpectrumDialogState extends State<_SpectrumDialog> {
       ),
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
-      FilledButton(onPressed: () => Navigator.pop(context, color.toColor()), child: const Text('Выбрать')),
+      TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonCancel)),
+      FilledButton(onPressed: () => Navigator.pop(context, color.toColor()), child: Text(context.l10n.wslcSelect)),
     ],
   );
 }

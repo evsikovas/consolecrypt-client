@@ -169,6 +169,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get externalVaultApiSettings => 'Vault settings';
 
   @override
+  String externalVaultKvVersion(int version) {
+    return 'KV version $version';
+  }
+
+  @override
   String get externalVaultMount => 'Secrets mount';
 
   @override
@@ -17734,4 +17739,1614 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get externalVaultNoConnections => 'No saved connections yet';
+
+  @override
+  String get wslcRuntimeUnavailable => 'Runtime unavailable';
+
+  @override
+  String get wslcUnknownAction => 'Unknown action';
+
+  @override
+  String wslcCheckTheResultOfTheCommandWillNot(Object value, Object value2) {
+    return 'Check the result of $value. The command will not be retried automatically. $value2';
+  }
+
+  @override
+  String wslcCheckTheResult(Object label) {
+    return '$label: check the result';
+  }
+
+  @override
+  String get wslcCheckTheResultsOfSomeOperationsCommandsWill =>
+      'Check the results of some operations. Commands will not be retried automatically.';
+
+  @override
+  String get wslcActionCurrentlyUnavailable => 'Action currently unavailable';
+
+  @override
+  String get wslcStart => 'start';
+
+  @override
+  String get wslcStop => 'stop';
+
+  @override
+  String get wslcRestart => 'restart';
+
+  @override
+  String wslcCreated(Object value) {
+    return 'created $value';
+  }
+
+  @override
+  String wslcRemoveSelectedItems(Object length) {
+    return 'Remove selected items ($length)?';
+  }
+
+  @override
+  String get wslcDataInTheSelectedVolumesWillBeLost => 'Data in the selected volumes will be lost.';
+
+  @override
+  String get wslcRemovalCannotBeUndone => 'Removal cannot be undone.';
+
+  @override
+  String wslcRemoved(Object removed) {
+    return 'Removed: $removed';
+  }
+
+  @override
+  String wslcRemovedOf(Object removed, Object length) {
+    return 'Removed $removed of $length';
+  }
+
+  @override
+  String get wslcLookingForItemsToRemove => 'Looking for items to remove…';
+
+  @override
+  String get wslcCouldNotLoadTheList => 'Could not load the list';
+
+  @override
+  String get wslcEverythingIsClean => 'Everything is clean';
+
+  @override
+  String wslcUpToCanBeFreed(Object value) {
+    return 'Up to $value can be freed';
+  }
+
+  @override
+  String wslcFound(Object length) {
+    return 'Found: $length';
+  }
+
+  @override
+  String wslcOf(Object value, Object value2) {
+    return '$value of $value2';
+  }
+
+  @override
+  String get wslcCleanUpSelectedItems => 'Clean up selected items';
+
+  @override
+  String wslcCleanUpSelectedItemsCleanupPage(Object length, Object value2) {
+    return 'Clean up selected items ($length$value2)';
+  }
+
+  @override
+  String get wslcNothingToCleanUp => 'Nothing to clean up';
+
+  @override
+  String get wslcThereAreNoStoppedContainersAllImagesVolumes =>
+      'There are no stopped containers. All images, volumes and networks are in use.';
+
+  @override
+  String get wslcLogStreamReading => 'Reading logs';
+
+  @override
+  String get wslcLogStreamTimedOut => 'The log stream timed out';
+
+  @override
+  String get wslcStoppedContainers => 'Stopped containers';
+
+  @override
+  String get wslcUnusedImages => 'Unused images';
+
+  @override
+  String get wslcUnusedVolumes => 'Unused volumes';
+
+  @override
+  String get wslcEmptyNetworks => 'Empty networks';
+
+  @override
+  String get wslcRemovesTheContainerFilesystemNamedVolumesAreKept =>
+      'Removes the container filesystem. Named volumes are kept.';
+
+  @override
+  String get wslcNoContainersUseTheseImagesYouCanDownload =>
+      'No containers use these images. You can download them again.';
+
+  @override
+  String get wslcTheseVolumesAreNotAttachedToAnyContainer =>
+      'These volumes are not attached to any container. Removing them erases their data. Back up anything you need.';
+
+  @override
+  String get wslcUserDefinedNetworksWithNoAttachedContainers => 'User-defined networks with no attached containers.';
+
+  @override
+  String get wslcDockerComposeFile => 'Docker Compose file';
+
+  @override
+  String get wslcComposeProjectDirectory => 'Compose project directory';
+
+  @override
+  String get wslcPasteDockerComposeYmlToStartTheServices =>
+      'Paste docker-compose.yml to start the services as with docker compose up -d';
+
+  @override
+  String get wslcOpenFile => 'Open file…';
+
+  @override
+  String get wslcBackToFile => 'Back to file';
+
+  @override
+  String get wslcStopping => 'Stopping…';
+
+  @override
+  String get wslcRebuildImagesBuild => 'Rebuild images (--build)';
+
+  @override
+  String get wslcStopAndRemove => 'Stop and remove';
+
+  @override
+  String get wslcFromNameOrTheDirectory => 'from name: or the directory';
+
+  @override
+  String get wslcProjectDirectory => 'Project directory';
+
+  @override
+  String get wslcRelativePathsEnvEnvFileAndBuild => 'Relative paths, .env, env_file and build';
+
+  @override
+  String get wslcChooseDirectory => 'Choose directory';
+
+  @override
+  String get wslcPasteDockerComposeYml => 'Paste docker-compose.yml';
+
+  @override
+  String get wslcOrOpenAFileToPreviewThePlan => 'or open a file to preview the plan before starting';
+
+  @override
+  String get wslcParsingFile => 'Parsing file…';
+
+  @override
+  String wslcProject(Object project) {
+    return 'Project $project';
+  }
+
+  @override
+  String get wslcService => 'service';
+
+  @override
+  String get wslcServices => 'services';
+
+  @override
+  String get wslcServicesComposeDialog => 'services';
+
+  @override
+  String get wslcDifferencesFromDocker => 'Differences from Docker';
+
+  @override
+  String get wslcServicesInStartupOrder => 'Services in startup order';
+
+  @override
+  String get wslcNetworksAndVolumes => 'Networks and volumes';
+
+  @override
+  String get wslcExternal => ' · external';
+
+  @override
+  String get wslcExternalComposeDialog => ' · external';
+
+  @override
+  String wslcWSLcCommands(Object length) {
+    return 'WSLc commands ($length)';
+  }
+
+  @override
+  String wslcBuild(Object image) {
+    return 'build → $image';
+  }
+
+  @override
+  String wslcVariables(Object length) {
+    return 'variables: $length';
+  }
+
+  @override
+  String wslcAfter(Object service, Object value2) {
+    return 'after $service$value2';
+  }
+
+  @override
+  String get wslcHealthy => ' (healthy)';
+
+  @override
+  String get wslcCompleted => ' (completed)';
+
+  @override
+  String wslcProjectReady(Object project) {
+    return 'Project ready: $project';
+  }
+
+  @override
+  String wslcStopAndRemoveComposeDialog(Object project) {
+    return 'Stop and remove $project?';
+  }
+
+  @override
+  String get wslcAsWithDockerComposeDownThisStopsAnd =>
+      'As with docker compose down, this stops and removes the project containers and removes the networks it created. Images are kept.';
+
+  @override
+  String wslcAlsoRemoveProjectVolumes(Object ownVolumes) {
+    return 'Also remove project volumes ($ownVolumes)';
+  }
+
+  @override
+  String get wslcDataInTheseVolumesWillBeLostV => 'Data in these volumes will be lost (-v)';
+
+  @override
+  String get wslcCancelled => 'cancelled';
+
+  @override
+  String get wslcStoppedOnRequest => 'Stopped on request';
+
+  @override
+  String get wslcDirectoriesForMounts => 'Directories for mounts';
+
+  @override
+  String wslcNetwork(Object name) {
+    return 'Network $name';
+  }
+
+  @override
+  String get wslcExternalNetworkFound => 'external network found';
+
+  @override
+  String get wslcAlreadyExists => 'already exists';
+
+  @override
+  String wslcExternalNetworkNotFound(Object name) {
+    return 'External network $name not found';
+  }
+
+  @override
+  String get wslcNetworkCreated => 'network created';
+
+  @override
+  String wslcVolume(Object name) {
+    return 'Volume $name';
+  }
+
+  @override
+  String get wslcExternalVolumeFound => 'external volume found';
+
+  @override
+  String wslcExternalVolumeNotFound(Object name) {
+    return 'External volume $name not found';
+  }
+
+  @override
+  String get wslcVolumeCreated => 'volume created';
+
+  @override
+  String wslcBuilding(Object image) {
+    return 'Building $image';
+  }
+
+  @override
+  String get wslcImageAlreadyBuilt => 'image already built';
+
+  @override
+  String get wslcBuilt => 'built';
+
+  @override
+  String wslcImage(Object image) {
+    return 'Image $image';
+  }
+
+  @override
+  String get wslcAlreadyDownloaded => 'already downloaded';
+
+  @override
+  String get wslcDownloaded => 'downloaded';
+
+  @override
+  String get wslcWindowsFolder => 'Windows folder';
+
+  @override
+  String get wslcUnknownType => 'unknown type';
+
+  @override
+  String get wslcShowInFileExplorer => 'Show in File Explorer';
+
+  @override
+  String get wslcThisVolumeIsStoredInsideTheWSLcVM =>
+      'This volume is stored inside the WSLc VM. To browse its contents, open the container files.';
+
+  @override
+  String get wslcShowFiles => 'Show files';
+
+  @override
+  String get wslcCopyWindowsPath => 'Copy Windows path';
+
+  @override
+  String get wslcCopyVolumeName => 'Copy volume name';
+
+  @override
+  String get wslcCopyPathInsideContainer => 'Copy path inside container';
+
+  @override
+  String get wslcShowFilesInContainer => 'Show files in container';
+
+  @override
+  String get wslcOpenTerminalHere => 'Open terminal here';
+
+  @override
+  String get wslcReadingEnvironment => 'Reading environment…';
+
+  @override
+  String get wslcCouldNotReadTheEnvironment => 'Could not read the environment';
+
+  @override
+  String get wslcSearchByVariableName => 'Search by variable name';
+
+  @override
+  String wslcHideVariablesFromTheImage(Object inherited) {
+    return 'Hide variables from the image ($inherited)';
+  }
+
+  @override
+  String get wslcHideValues => 'Hide values';
+
+  @override
+  String get wslcShowAll => 'Show all';
+
+  @override
+  String get wslcCopyAsEnv => 'Copy as .env';
+
+  @override
+  String get wslcNoEnvironmentVariables => 'No environment variables';
+
+  @override
+  String get wslcEmpty => '(empty)';
+
+  @override
+  String get wslcFromImage => 'from image';
+
+  @override
+  String get wslcCopyValue => 'Copy value';
+
+  @override
+  String wslcValueOf(Object key) {
+    return 'value of $key';
+  }
+
+  @override
+  String get wslcValuesAreReadWhenYouOpenThisTab =>
+      'Values are read when you open this tab and are never saved. A lock marks variables that may contain secrets.';
+
+  @override
+  String get wslcUploadFileToContainer => 'Upload file to container';
+
+  @override
+  String get wslcReplaceFile => 'Replace file?';
+
+  @override
+  String wslcAlreadyExistsAndWillBeOverwritten(Object target) {
+    return '$target already exists and will be overwritten.';
+  }
+
+  @override
+  String wslcUploaded(Object target) {
+    return 'Uploaded: $target';
+  }
+
+  @override
+  String get wslcFilesAreAvailableWhileTheContainerIsRunning => 'Files are available while the container is running';
+
+  @override
+  String get wslcStartTheContainerToBrowseItsFilesystem => 'Start the container to browse its filesystem';
+
+  @override
+  String get wslcCopyPath => 'Copy path';
+
+  @override
+  String get wslcUploadAFileFromThisComputer => 'Upload a file from this computer';
+
+  @override
+  String get wslcOpenTerminalInThisDirectory => 'Open terminal in this directory';
+
+  @override
+  String get wslcReadingDirectory => 'Reading directory…';
+
+  @override
+  String get wslcCouldNotReadDirectory => 'Could not read directory';
+
+  @override
+  String get wslcLink => 'link';
+
+  @override
+  String get wslcDownloadToComputer => 'Download to computer';
+
+  @override
+  String get wslcCloseWithoutSaving => 'Close without saving?';
+
+  @override
+  String get wslcChangesToThisFileWillBeLost => 'Changes to this file will be lost.';
+
+  @override
+  String get wslcGoBack => 'Go back';
+
+  @override
+  String get wslcEdit => 'Edit';
+
+  @override
+  String get wslcDiscardEdits => 'Discard edits';
+
+  @override
+  String get wslcReadingFile => 'Reading file…';
+
+  @override
+  String get wslcCannotOpenThisFileAsText => 'Cannot open this file as text';
+
+  @override
+  String get wslcUTFTextFilesUpToMB => 'UTF-8 text files up to 2 MB';
+
+  @override
+  String get wslcLine => 'line';
+
+  @override
+  String get wslcLines => 'lines';
+
+  @override
+  String get wslcLinesFileEditor => 'lines';
+
+  @override
+  String get wslcEditing => ' · editing';
+
+  @override
+  String get wslcReadOnly => ' · read-only';
+
+  @override
+  String get wslcUnsavedChanges => ' · unsaved changes';
+
+  @override
+  String get wslcPowerShellCommandSettingsThatMatchTheImageCMD =>
+      'PowerShell command. Settings that match the image (CMD, PATH, working directory) are omitted.';
+
+  @override
+  String wslcIncludeEnvironmentVariableValues(Object envCount) {
+    return 'Include environment variable values ($envCount)';
+  }
+
+  @override
+  String get wslcValuesMayContainPasswordsAndTokens => 'Values may contain passwords and tokens';
+
+  @override
+  String get wslcCloneInWizard => 'Clone in wizard';
+
+  @override
+  String get wslcCopy => 'Copy';
+
+  @override
+  String wslcCommand(Object message) {
+    return 'Command: $message';
+  }
+
+  @override
+  String get wslcDirectoryToMount => 'Directory to mount';
+
+  @override
+  String get wslcFromCompose => 'From Compose…';
+
+  @override
+  String get wslcNameOptional => 'Name (optional)';
+
+  @override
+  String get wslcTheImageIsNotAvailableLocallyWSLcWill =>
+      'The image is not available locally. WSLc will pull it when creating the container.';
+
+  @override
+  String get wslcThisComputerOnlyTheWholeNetwork => '127.0.0.1: this computer only. 0.0.0.0: the whole network.';
+
+  @override
+  String get wslcHostPort => 'host port';
+
+  @override
+  String get wslcContainerPort => 'container port';
+
+  @override
+  String get wslcDirectoriesAndVolumes => 'Directories and volumes';
+
+  @override
+  String get wslcWindowsDirectoryOrNamedVolumePathInContainer =>
+      'Windows directory or named volume → path in container';
+
+  @override
+  String get wslcVolumeRunWizard => 'Volume';
+
+  @override
+  String get wslcVolumeNameCreatedIfNeeded => 'volume name (created if needed)';
+
+  @override
+  String get wslcCPathToFolder => 'C:\\path\\to\\folder';
+
+  @override
+  String get wslcPathInContainer => '/path/in/container';
+
+  @override
+  String get wslcPassedThroughATemporaryFileRatherThanThe =>
+      'Passed through a temporary file rather than the command line';
+
+  @override
+  String get wslcVariable => 'Variable';
+
+  @override
+  String get wslcNAME => 'NAME';
+
+  @override
+  String get wslcAdvanced => 'Advanced';
+
+  @override
+  String get wslcCommandOverridesTheImageCMD => 'Command (overrides the image CMD)';
+
+  @override
+  String get wslcWorkingDirectory => 'Working directory';
+
+  @override
+  String get wslcRemoveAfterStoppingRm => 'Remove after stopping (--rm)';
+
+  @override
+  String get wslcCreateWithoutStarting => 'Create without starting';
+
+  @override
+  String get wslcCreatingPullingTheImageIfItIsMissing => 'Creating… Pulling the image if it is missing locally.';
+
+  @override
+  String get wslcCreateAndStart => 'Create and start';
+
+  @override
+  String get wslcRemove => 'Remove';
+
+  @override
+  String wslcTemplateSaved(Object name) {
+    return 'Template “$name” saved';
+  }
+
+  @override
+  String get wslcSaveAsTemplate => 'Save as template';
+
+  @override
+  String get wslcATemplateWithThisNameWillBeReplaced => 'A template with this name will be replaced';
+
+  @override
+  String get wslcSaveEnvironmentVariableValues => 'Save environment variable values';
+
+  @override
+  String get wslcOtherwiseOnlyNamesAreSavedEnterTheValues =>
+      'Otherwise only names are saved. Enter the values when creating the container.';
+
+  @override
+  String get wslcTheTemplateExcludesTheContainerNameTemplatesAre =>
+      'The template excludes the container name. Templates are encrypted in the current profile on this device and are not sent to the server.';
+
+  @override
+  String get wslcTemplates => 'Templates';
+
+  @override
+  String get wslcSaveAsTemplateTemplates => 'Save as template…';
+
+  @override
+  String get wslcTheTerminalIsAvailableWhileTheContainerIs =>
+      'The terminal is available while the container is running';
+
+  @override
+  String get wslcSessionEnded => 'Session ended';
+
+  @override
+  String wslcWslcExecItBashOrSh(Object cols, Object rows) {
+    return 'wslc exec -it · bash or sh · $cols×$rows';
+  }
+
+  @override
+  String get wslcReconnect => 'Reconnect';
+
+  @override
+  String get wslcNewSession => 'New session';
+
+  @override
+  String get wslcOpenInSeparateWindow => 'Open in separate window';
+
+  @override
+  String get wslcCopyTheSelectionWithCtrlShiftCAnd =>
+      'Copy the selection with Ctrl+Shift+C and paste with Ctrl+Shift+V. Closing the tab ends this session. The container keeps running.';
+
+  @override
+  String wslcPulling(Object image) {
+    return 'Pulling $image';
+  }
+
+  @override
+  String get wslcImageDownloaded => 'Image downloaded';
+
+  @override
+  String get wslcPullImage => 'Pull image';
+
+  @override
+  String get wslcDownload => 'Download';
+
+  @override
+  String get wslcImageImageDialogs => 'image';
+
+  @override
+  String get wslcImageBuilt => 'Image built';
+
+  @override
+  String get wslcBuildContextDirectory => 'Build context directory';
+
+  @override
+  String wslcBuildArgumentMustUseKEYVALUE(Object t) {
+    return 'Build argument “$t” must use KEY=VALUE';
+  }
+
+  @override
+  String get wslcChooseTheBuildContextDirectory => 'Choose the build context directory';
+
+  @override
+  String get wslcBuildImage => 'Build image';
+
+  @override
+  String get wslcDockerfileOptionalDefaultsToTheOneInThe =>
+      'Dockerfile (optional, defaults to the one in the build context)';
+
+  @override
+  String get wslcCommaSeparatedTags => 'Comma-separated tags';
+
+  @override
+  String get wslcBuildArgumentsOneKEYVALUEPerLine => 'Build arguments, one KEY=VALUE per line';
+
+  @override
+  String get wslcTargetStageOptional => 'Target stage (optional)';
+
+  @override
+  String get wslcDisableCache => 'Disable cache';
+
+  @override
+  String get wslcPullUpdatedBaseImages => 'Pull updated base images';
+
+  @override
+  String get wslcBuildImageDialogs => 'Build';
+
+  @override
+  String get wslcCreateContainer => 'Create container…';
+
+  @override
+  String get wslcAddTag => 'Add tag…';
+
+  @override
+  String get wslcPushToRegistry => 'Push to registry…';
+
+  @override
+  String get wslcSaveAsTar => 'Save as tar…';
+
+  @override
+  String wslcNewTagFor(Object source) {
+    return 'New tag for $source';
+  }
+
+  @override
+  String wslcAddedTag(Object target) {
+    return 'Added tag $target';
+  }
+
+  @override
+  String get wslcPushImage => 'Push image?';
+
+  @override
+  String wslcTheImageWillBePushedToTheRegistry(Object image) {
+    return '$image\n\nThe image will be pushed to the registry specified in its name. If authentication is required, sign in under Registries first.';
+  }
+
+  @override
+  String wslcPushing(Object image) {
+    return 'Pushing $image';
+  }
+
+  @override
+  String get wslcImagePushed => 'Image pushed';
+
+  @override
+  String get wslcSignedIn => 'Signed in';
+
+  @override
+  String wslcSignedOutOf(Object name) {
+    return 'Signed out of $name';
+  }
+
+  @override
+  String get wslcRegistries => 'Registries';
+
+  @override
+  String get wslcServerEGGhcrIoLeaveBlankFor => 'Server, e.g. ghcr.io (leave blank for the default)';
+
+  @override
+  String get wslcPasswordOrAccessToken => 'Password or access token';
+
+  @override
+  String get wslcThePasswordIsPassedToWSLcThroughStdin =>
+      'The password is passed to WSLc through stdin. The app does not store it.';
+
+  @override
+  String get wslcSignedInDuringThisSession => 'Signed in during this session';
+
+  @override
+  String get wslcSaveImageAsTar => 'Save image as tar';
+
+  @override
+  String wslcSaving(Object ref) {
+    return 'Saving $ref';
+  }
+
+  @override
+  String get wslcImageTarArchiveWslcSaveDockerSave => 'Image tar archive (wslc save / docker save)';
+
+  @override
+  String wslcLoadingImagesFrom(Object value) {
+    return 'Loading images from $value';
+  }
+
+  @override
+  String get wslcImagesLoaded => 'Images loaded';
+
+  @override
+  String get wslcFilesystemTarArchiveWslcExport => 'Filesystem tar archive (wslc export)';
+
+  @override
+  String get wslcNewImageName => 'New image name';
+
+  @override
+  String get wslcMyImportedOptional => 'my/imported:1 (optional)';
+
+  @override
+  String wslcImporting(Object value) {
+    return 'Importing $value';
+  }
+
+  @override
+  String get wslcImageCreated => 'Image created';
+
+  @override
+  String get wslcImportFromArchives => 'Import from archives';
+
+  @override
+  String get wslcLoadImagesFromTarLoad => 'Load images from tar (load)…';
+
+  @override
+  String get wslcImportFilesystemFromTarImport => 'Import filesystem from tar (import)…';
+
+  @override
+  String get wslcSearchByRepositoryTagOrID => 'Search by repository, tag or ID';
+
+  @override
+  String get wslcNoImagesYet => 'No images yet';
+
+  @override
+  String get wslcUntagged => 'untagged';
+
+  @override
+  String wslcContainers(Object containers) {
+    return 'containers: $containers';
+  }
+
+  @override
+  String get wslcSizeUnknown => 'size unknown';
+
+  @override
+  String wslcImageInventoryPages(Object value, Object value2) {
+    return 'Image $value$value2';
+  }
+
+  @override
+  String get wslcDeleteImage => 'Delete image';
+
+  @override
+  String get wslcDeleteImageInventoryPages => 'Delete image?';
+
+  @override
+  String get wslcRemoveImageTag => 'Remove image tag?';
+
+  @override
+  String get wslcUnnamed => 'unnamed';
+
+  @override
+  String wslcTheImageIsUsedByContainerSThe(Object containers) {
+    return 'The image is used by $containers container(s). The runtime will refuse to delete it while they exist. ';
+  }
+
+  @override
+  String get wslcThisCannotBeUndoneYouWillNeedTo => 'This cannot be undone. You will need to pull the image again.';
+
+  @override
+  String wslcOnlyTheTagWillBeRemovedTheLayers(Object value) {
+    return 'Only the $value tag will be removed. The layers are removed when the image has no tags left.';
+  }
+
+  @override
+  String get wslcImageDeleted => 'Image deleted';
+
+  @override
+  String get wslcSearchByVolumeName => 'Search by volume name';
+
+  @override
+  String get wslcNoVolumesYet => 'No volumes yet';
+
+  @override
+  String get wslcCreateVolume => 'Create volume';
+
+  @override
+  String wslcDriver(Object value) {
+    return 'driver $value';
+  }
+
+  @override
+  String get wslcSizeUnavailable => 'size unavailable';
+
+  @override
+  String get wslcDeleteVolume => 'Delete volume';
+
+  @override
+  String get wslcDeleteVolumeInventoryPages => 'Delete volume?';
+
+  @override
+  String wslcAllDataInThisVolumeWillBePermanently(Object name) {
+    return '$name\n\nAll data in this volume will be permanently deleted. The runtime will refuse to delete a volume attached to a container.';
+  }
+
+  @override
+  String wslcVolumeDeleted(Object name) {
+    return 'Volume $name deleted';
+  }
+
+  @override
+  String get wslcYes => 'yes';
+
+  @override
+  String get wslcNo => 'no';
+
+  @override
+  String get wslcSearchByNameIDOrDriver => 'Search by name, ID or driver';
+
+  @override
+  String get wslcNoNetworksFound => 'No networks found';
+
+  @override
+  String get wslcCreateNetwork => 'Create network';
+
+  @override
+  String get wslcInternal => 'internal';
+
+  @override
+  String get wslcConnectContainer => 'Connect container';
+
+  @override
+  String get wslcDeleteNetwork => 'Delete network';
+
+  @override
+  String get wslcDeleteNetworkInventoryPages => 'Delete network?';
+
+  @override
+  String wslcTheRuntimeWillRefuseToDeleteThisNetwork(Object name) {
+    return '$name\n\nThe runtime will refuse to delete this network if any containers are connected to it.';
+  }
+
+  @override
+  String wslcNetworkDeleted(Object name) {
+    return 'Network $name deleted';
+  }
+
+  @override
+  String wslcVolumeCreatedResourceDialogs(Object name) {
+    return 'Volume $name created';
+  }
+
+  @override
+  String get wslcNewVolume => 'New volume';
+
+  @override
+  String get wslcEnterAVolumeName => 'Enter a volume name';
+
+  @override
+  String get wslcOptionsOneKEYVALUEPerLine => 'Options, one KEY=VALUE per line';
+
+  @override
+  String get wslcVolumeNameEGAppData => 'Volume name, e.g. app-data';
+
+  @override
+  String get wslcGuestInTheVMFilesystemDefault => 'guest — in the VM filesystem (default)';
+
+  @override
+  String get wslcVhdSeparateVirtualDisk => 'vhd — separate virtual disk';
+
+  @override
+  String get wslcDriverOptionsKEYVALUEOptional => 'Driver options KEY=VALUE (optional)';
+
+  @override
+  String wslcNetworkCreatedResourceDialogs(Object name) {
+    return 'Network $name created';
+  }
+
+  @override
+  String get wslcNewNetwork => 'New network';
+
+  @override
+  String get wslcEnterANetworkName => 'Enter a network name';
+
+  @override
+  String get wslcNetworkNameEGBackend => 'Network name, e.g. backend';
+
+  @override
+  String get wslcSubnetCIDREGOptional => 'Subnet CIDR, e.g. 10.231.0.0/24 (optional)';
+
+  @override
+  String get wslcGatewayEG => 'Gateway, e.g. 10.231.0.1';
+
+  @override
+  String get wslcContainerAddressRangeInCIDRNotationOptional => 'Container address range in CIDR notation (optional)';
+
+  @override
+  String get wslcInternalNetworkWithoutExternalAccess => 'Internal network without external access';
+
+  @override
+  String wslcContainerConnectedToNetwork(Object net) {
+    return 'Container connected to network $net';
+  }
+
+  @override
+  String get wslcConnect => 'Connect';
+
+  @override
+  String get wslcSelectANetworkAndAContainer => 'Select a network and a container';
+
+  @override
+  String get wslcNetworkAliasOptional => 'Network alias (optional)';
+
+  @override
+  String get wslcStaticIPvAddressFromTheSubnetOptional => 'Static IPv4 address from the subnet (optional)';
+
+  @override
+  String wslcContainerDisconnectedFromNetwork(Object network) {
+    return 'Container disconnected from network $network';
+  }
+
+  @override
+  String wslcBackingUpVolume(Object volume) {
+    return 'Backing up volume $volume';
+  }
+
+  @override
+  String wslcBackupSavedTo(Object path) {
+    return 'Backup saved to $path';
+  }
+
+  @override
+  String get wslcVolumeArchiveTarGz => 'Volume archive (.tar.gz)';
+
+  @override
+  String wslcRestoringVolume(Object target) {
+    return 'Restoring volume $target';
+  }
+
+  @override
+  String wslcVolumeRestored(Object target) {
+    return 'Volume $target restored';
+  }
+
+  @override
+  String get wslcRestoreToANewVolume => 'Restore to a new volume';
+
+  @override
+  String get wslcRestoreVolume => 'Restore volume';
+
+  @override
+  String get wslcVolumeNameCreatedIfItDoesNotExist => 'Volume name (created if it does not exist)';
+
+  @override
+  String get wslcClearVolumeBeforeRestoring => 'Clear volume before restoring';
+
+  @override
+  String get wslcOtherwiseArchiveFilesAreMergedIntoTheExisting =>
+      'Otherwise, archive files are merged into the existing volume';
+
+  @override
+  String get wslcBackUpToArchive => 'Back up to archive…';
+
+  @override
+  String get wslcRestoreFromArchive => 'Restore from archive…';
+
+  @override
+  String get wslcSearchLoadedLogs => 'Search loaded logs';
+
+  @override
+  String get wslcPauseAutoscroll => 'Pause autoscroll';
+
+  @override
+  String get wslcEnableAutoscroll => 'Enable autoscroll';
+
+  @override
+  String get wslcClearView => 'Clear view';
+
+  @override
+  String get wslcCopyLoadedLogs => 'Copy loaded logs';
+
+  @override
+  String get wslcSaveLoadedLogs => 'Save loaded logs';
+
+  @override
+  String get wslcLinesLogPanel => '1,000 lines';
+
+  @override
+  String get wslcMin => '5 min';
+
+  @override
+  String get wslcHour => '1 hour';
+
+  @override
+  String get wslcHours => '24 hours';
+
+  @override
+  String get wslcAll => 'All';
+
+  @override
+  String get wslcAllStreams => 'All streams';
+
+  @override
+  String get wslcShowRuntimeTimestampsInLocalTime => 'Show runtime timestamps in local time';
+
+  @override
+  String get wslcFormatLinesContainingJSONObjects => 'Format lines containing JSON objects';
+
+  @override
+  String get wslcNoMatches => 'No matches';
+
+  @override
+  String get wslcTruncated => ' … [truncated]';
+
+  @override
+  String wslcShown(Object length) {
+    return 'shown: $length';
+  }
+
+  @override
+  String wslcEvicted(Object value) {
+    return 'evicted: $value';
+  }
+
+  @override
+  String wslcTruncatedLogPanel(Object truncated) {
+    return 'truncated: $truncated';
+  }
+
+  @override
+  String get wslcLogsMayContainSecrets => 'Logs may contain secrets';
+
+  @override
+  String get wslcEnterHexDigitsEGBFF => 'Enter 6 hex digits, e.g. #4B89FF';
+
+  @override
+  String wslcColorSpectrum(Object value) {
+    return 'Color spectrum — $value';
+  }
+
+  @override
+  String wslcHueDegrees(Object value) {
+    return 'Hue: $value degrees';
+  }
+
+  @override
+  String wslcSaturationPercent(Object value) {
+    return 'Saturation: $value percent';
+  }
+
+  @override
+  String wslcBrightnessPercent(Object value) {
+    return 'Brightness: $value percent';
+  }
+
+  @override
+  String get wslcSelect => 'Select';
+
+  @override
+  String get wslcWSLcConnection => 'WSLc connection';
+
+  @override
+  String get wslcEnterThePathToTheInstalledWslcExe =>
+      'Enter the path to the installed wslc.exe, or leave it blank to use the standard WSL directory.';
+
+  @override
+  String get wslcPathToWslcExe => 'Path to wslc.exe';
+
+  @override
+  String get wslcAvailable => 'available';
+
+  @override
+  String get wslcUnavailable => 'unavailable';
+
+  @override
+  String get wslcRefreshData => 'Refresh data';
+
+  @override
+  String wslcEveryS(Object seconds) {
+    return 'Every $seconds s';
+  }
+
+  @override
+  String wslcSavedRunTemplates(Object length) {
+    return 'Saved run templates: $length';
+  }
+
+  @override
+  String get wslcTemplatesAreStoredInThisProfileSEncrypted =>
+      'Templates are stored in this profile’s encrypted database on this device. Adjust appearance and clipboard clearing in ConsoleCrypt’s general settings.';
+
+  @override
+  String get wslcBuildingMap => 'Building map…';
+
+  @override
+  String get wslcCouldNotBuildMap => 'Could not build map';
+
+  @override
+  String get wslcWindowsFolderTopologyPage => 'Windows folder';
+
+  @override
+  String get wslcOpenCleanup => 'Open cleanup';
+
+  @override
+  String wslcUnused(Object length) {
+    return 'unused: $length';
+  }
+
+  @override
+  String get wslcNoConnectionsYet => 'No connections yet';
+
+  @override
+  String get wslcVolumesFoldersAndNetworks => 'Volumes, folders and networks';
+
+  @override
+  String get wslcRunning => 'Running…';
+
+  @override
+  String wslcErrorExitCode(Object exitCode) {
+    return 'Error, exit code $exitCode';
+  }
+
+  @override
+  String get wslcWaitingForOutput => 'Waiting for output…';
+
+  @override
+  String wslcPortIsNotPublishedOnThisComputer(Object containerPort) {
+    return '$containerPort: port is not published on this computer';
+  }
+
+  @override
+  String get wslcOpenOrCopyPortAddress => 'Open or copy port address';
+
+  @override
+  String wslcCopyPorts(Object value) {
+    return 'Copy $value';
+  }
+
+  @override
+  String wslcCopyLocalhost(Object hostPort) {
+    return 'Copy localhost:$hostPort';
+  }
+
+  @override
+  String wslcCopyPortsOther(Object address, Object hostPort) {
+    return 'Copy $address:$hostPort';
+  }
+
+  @override
+  String wslcThisPortIsPublishedOnlyOnAndCannot(Object hostIp, Object hostPort, Object value3) {
+    return 'This port is published only on $hostIp and cannot be reached via the computer’s IP address. To allow access from the network, publish it as 0.0.0.0:$hostPort:$value3.';
+  }
+
+  @override
+  String get wslcUnclosedQuote => 'Unclosed quote';
+
+  @override
+  String get wslcKB => 'KB';
+
+  @override
+  String get wslcMB => 'MB';
+
+  @override
+  String get wslcGB => 'GB';
+
+  @override
+  String get wslcTB => 'TB';
+
+  @override
+  String get wslcS => '/s';
+
+  @override
+  String get wslcCollectingData => 'Collecting data…';
+
+  @override
+  String get wslcCopyFullID => 'Copy full ID';
+
+  @override
+  String get wslcWSLcSessionClosed => 'WSLc session closed';
+
+  @override
+  String get wslcShowContainerData => 'Show container data';
+
+  @override
+  String get wslcConfirmAccessToTheHiddenWSLcEnvironmentVariables =>
+      'Confirm access to the hidden WSLc environment variables.';
+
+  @override
+  String get wslcContainerEngines => 'Container engines';
+
+  @override
+  String get wslcConnections => 'Connections';
+
+  @override
+  String get wslcCleanup => 'Cleanup';
+
+  @override
+  String get wslcOrphanedProjectContainers => 'Orphaned project containers';
+
+  @override
+  String wslcTheirServicesAreAbsentFromTheFileSo(Object value) {
+    return '$value: their services are absent from the file, so these containers were kept';
+  }
+
+  @override
+  String get wslcUnchangedAlreadyRunning => 'unchanged, already running';
+
+  @override
+  String get wslcStarting => 'starting…';
+
+  @override
+  String get wslcUnchangedStarted => 'unchanged, started';
+
+  @override
+  String get wslcConfigurationChangedRecreating => 'configuration changed, recreating…';
+
+  @override
+  String wslcTheNameIsInUseByAContainer(Object containerName) {
+    return 'The name $containerName is in use by a container outside this project';
+  }
+
+  @override
+  String get wslcCreating => 'creating…';
+
+  @override
+  String wslcConnectingTo(Object network) {
+    return 'connecting to $network…';
+  }
+
+  @override
+  String get wslcCreatedAndStarted => 'created and started';
+
+  @override
+  String get wslcRecreatedAndStarted => 'recreated and started';
+
+  @override
+  String wslcWaitingForToBecomeHealthy(Object service) {
+    return 'waiting for $service to become healthy…';
+  }
+
+  @override
+  String wslcWaitingForToFinish(Object service) {
+    return 'waiting for $service to finish…';
+  }
+
+  @override
+  String wslcIsUnhealthyDependentServicesDidNotStart(Object service) {
+    return '$service is unhealthy. Dependent services did not start.';
+  }
+
+  @override
+  String wslcStoppedBeforeBecomingHealthy(Object service) {
+    return '$service stopped before becoming healthy';
+  }
+
+  @override
+  String wslcHasNoHealthCheckAndCannotSatisfyService(Object service) {
+    return '$service has no health check and cannot satisfy service_healthy';
+  }
+
+  @override
+  String wslcExitedWithCode(Object service, Object exitCode) {
+    return '$service exited with code $exitCode';
+  }
+
+  @override
+  String wslcTimedOutAfterMin(Object service, Object inMinutes) {
+    return '$service: timed out after $inMinutes min';
+  }
+
+  @override
+  String wslcExitedWithCodeComposeRunner(Object value, Object value2) {
+    return 'Exited with code $value$value2';
+  }
+
+  @override
+  String get wslcProjectContainers => 'Project containers';
+
+  @override
+  String get wslcNoneFound => 'none found';
+
+  @override
+  String wslcRemoving(Object name) {
+    return 'Removing $name';
+  }
+
+  @override
+  String get wslcStoppedAndRemoved => 'stopped and removed';
+
+  @override
+  String get wslcAlreadyGone => 'already gone';
+
+  @override
+  String get wslcRemovedComposeRunner => 'removed';
+
+  @override
+  String get wslcRemovedComposeRunnerOther => 'removed';
+
+  @override
+  String wslcStopTheSelectedContainers(Object length) {
+    return 'Stop the selected containers ($length)?';
+  }
+
+  @override
+  String wslcRestartTheSelectedContainers(Object length) {
+    return 'Restart the selected containers ($length)?';
+  }
+
+  @override
+  String wslcRemoveTheSelectedContainers(Object length) {
+    return 'Remove the selected containers ($length)?';
+  }
+
+  @override
+  String wslcRemovalCannotBeUndoneNamedVolumesWillBe(Object value) {
+    return '${value}Removal cannot be undone. Named volumes will be kept.';
+  }
+
+  @override
+  String get wslcRunningContainersWillBeForciblyStopped => 'Running containers will be forcibly stopped. ';
+
+  @override
+  String get wslcTheRuntimeMayRemoveContainersWithAutoRemove =>
+      'The runtime may remove containers with auto-remove enabled after they stop.';
+
+  @override
+  String wslcDoneOf(Object done, Object length, Object value3) {
+    return 'Done: $done of $length$value3';
+  }
+
+  @override
+  String get wslcRunningContainersPage => 'Running';
+
+  @override
+  String get wslcSearchByNameIDImageOrPort => 'Search by name, ID, image or port';
+
+  @override
+  String get wslcRunningContainersPageOther => 'Running';
+
+  @override
+  String get wslcStopped => 'Stopped';
+
+  @override
+  String get wslcNewContainer => 'New container';
+
+  @override
+  String get wslcDockerComposeStartFromYAML => 'Docker Compose: start from YAML';
+
+  @override
+  String get wslcBulkActions => 'Bulk actions';
+
+  @override
+  String wslcStopAllRunningContainers(Object running) {
+    return 'Stop all running containers ($running)';
+  }
+
+  @override
+  String wslcStartAllStoppedContainers(Object stopped) {
+    return 'Start all stopped containers ($stopped)';
+  }
+
+  @override
+  String get wslcNotConnectedToWSLc => 'Not connected to WSLc';
+
+  @override
+  String get wslcNoContainersYet => 'No containers yet';
+
+  @override
+  String get wslcCheckTheConnectionInSettings => 'Check the connection in Settings';
+
+  @override
+  String get wslcSelectNewToCreateYourFirstContainer => 'Select New to create your first container';
+
+  @override
+  String get wslcChangeTheSearchTermOrFilter => 'Change the search term or filter';
+
+  @override
+  String wslcSelected(Object count) {
+    return 'Selected: $count';
+  }
+
+  @override
+  String wslcUnknown(Object value) {
+    return 'Unknown ($value)';
+  }
+
+  @override
+  String get wslcStopThisContainer => 'Stop this container?';
+
+  @override
+  String get wslcRestartThisContainer => 'Restart this container?';
+
+  @override
+  String get wslcAutoRemoveIsEnabledTheRuntimeMayRemove =>
+      'Auto-remove is enabled. The runtime may remove the container when it stops.';
+
+  @override
+  String get wslcAutoRemoveIsDisabled => 'Auto-remove is disabled.';
+
+  @override
+  String get wslcTheAutoRemoveSettingIsUnknownTheRuntime =>
+      'The auto-remove setting is unknown. The runtime may remove the container when it stops.';
+
+  @override
+  String get wslcRemoveThisContainer => 'Remove this container?';
+
+  @override
+  String wslcRemovalCannotBeUndoneNamedVolumesWillBeContainerActions(Object name, Object id, Object value3) {
+    return '$name\n$id\n\n${value3}Removal cannot be undone. Named volumes will be kept.';
+  }
+
+  @override
+  String get wslcTheContainerIsRunningItWillBeForcibly =>
+      'The container is running. It will be forcibly stopped and removed. ';
+
+  @override
+  String wslcContainerRemoved(Object name) {
+    return 'Container $name removed';
+  }
+
+  @override
+  String get wslcMoreActions => 'More actions';
+
+  @override
+  String get wslcOpenInBrowser => 'Open in browser';
+
+  @override
+  String wslcOpen(Object value) {
+    return 'Open $value';
+  }
+
+  @override
+  String get wslcDetails => 'Details';
+
+  @override
+  String get wslcStartupCommand => 'Startup command…';
+
+  @override
+  String get wslcExportFilesystemAsTar => 'Export filesystem as tar…';
+
+  @override
+  String get wslcCopyID => 'Copy ID';
+
+  @override
+  String get wslcCopyName => 'Copy name';
+
+  @override
+  String get wslcExportContainerFilesystem => 'Export container filesystem';
+
+  @override
+  String wslcExporting(Object name) {
+    return 'Exporting $name';
+  }
+
+  @override
+  String wslcSaved(Object path) {
+    return 'Saved: $path';
+  }
+
+  @override
+  String get wslcBackToList => 'Back to list';
+
+  @override
+  String get wslcStartupCommandContainerDetailsPage => 'Startup command';
+
+  @override
+  String get wslcRemoveContainer => 'Remove container';
+
+  @override
+  String get wslcContainerNoLongerFound => 'Container no longer found';
+
+  @override
+  String get wslcTheRuntimeMayHaveRemovedItWhenIt => 'The runtime may have removed it when it stopped';
+
+  @override
+  String get wslcLoadingInspectData => 'Loading inspect data…';
+
+  @override
+  String get wslcCouldNotLoadInspectData => 'Could not load inspect data';
+
+  @override
+  String get wslcExitCode => 'Exit code';
+
+  @override
+  String get wslcFinished => 'Finished';
+
+  @override
+  String get wslcUnknownContainerDetailsPage => 'unknown';
+
+  @override
+  String get wslcEnabled => 'enabled';
+
+  @override
+  String get wslcDisabled => 'disabled';
+
+  @override
+  String get wslcStopTimeout => 'Stop timeout';
+
+  @override
+  String wslcSContainerDetailsPage(Object stopTimeoutSeconds) {
+    return '$stopTimeoutSeconds s';
+  }
+
+  @override
+  String get wslcReceiveInBlueSendInYellow => 'receive in blue, send in yellow';
+
+  @override
+  String get wslcDiskReadWrite => 'Disk read / write';
+
+  @override
+  String get wslcProcesses => 'Processes';
+
+  @override
+  String get wslcNoPublishedPorts => 'No published ports';
+
+  @override
+  String get wslcSelectAPortToOpenItInA => 'Select a port to open it in a browser or copy its address.';
+
+  @override
+  String get wslcStartup => 'Startup';
+
+  @override
+  String get wslcImageID => 'Image ID';
+
+  @override
+  String get wslcConnectToNetwork => 'Connect to network';
+
+  @override
+  String get wslcTheRuntimeReturnedNoNetworkInformation => 'The runtime returned no network information';
+
+  @override
+  String get wslcDisconnectFromNetwork => 'Disconnect from network';
+
+  @override
+  String wslcGateway(Object gateway) {
+    return 'gateway $gateway';
+  }
+
+  @override
+  String get wslcTheRuntimeReturnedNoMountInformation => 'The runtime returned no mount information';
+
+  @override
+  String get wslcNoMountedVolumesOrDirectories => 'No mounted volumes or directories';
 }

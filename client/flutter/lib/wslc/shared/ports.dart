@@ -1,12 +1,12 @@
 import 'dart:io';
 
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
 import 'package:consolecrypt/wslc/wslc_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
-
 
 /// A container port as shown by `container list` or Inspect.
 @immutable
@@ -114,21 +114,25 @@ int addressRank(HostAddress a) {
   return RegExp(r'Ethernet|LAN|локальн', caseSensitive: false).hasMatch(a.interface) ? 1 : 2;
 }
 
-/// Copies [text]; the confirmation shows [label] instead when the text is sensitive.
+/// Reports the type of content copied without exposing its value in the toast.
 Future<void> copyText(BuildContext context, String text, {String? label}) async {
-  await WslcApiScope.copy(context, ClipboardData(text: text));
-  if (context.mounted) {
-    ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(SnackBar(content: Text('Скопировано: ${label ?? text}'), duration: const Duration(seconds: 2)));
+  final notify = WslcApiScope.notifierOf(context);
+  final l = context.l10n;
+  try {
+    await WslcApiScope.copy(context, ClipboardData(text: text));
+  } catch (_) {
+    notify(l.clipboardSecureCopyFailed, error: true);
+    return;
   }
+  notify(l.copiedNotice(label ?? l.copyWhatText));
 }
 
 Future<void> openPort(BuildContext context, PublishedPort port, String host) async {
-  final messenger = ScaffoldMessenger.maybeOf(context);
+  final notify = WslcApiScope.notifierOf(context);
   try {
     await WslcApiScope.of(context).openPortUrl(host: host, port: port.hostPort!, https: port.https);
   } catch (e) {
-    messenger?.showSnackBar(SnackBar(content: Text(errorText(e))));
+    notify(errorText(e), error: true);
   }
 }
 
@@ -142,7 +146,8 @@ class PortChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = DeskPalette.of(context);
-    final active = port.published;
+    final hostPort = port.hostPort;
+    final active = hostPort != null && hostPort > 0;
     final chip = Container(
       padding: EdgeInsets.symmetric(horizontal: dense ? 7 : 10, vertical: 3),
       decoration: BoxDecoration(
@@ -174,38 +179,46 @@ class PortChip extends StatelessWidget {
         ],
       ),
     );
-    if (!active) {
-      return Tooltip(message: '${port.containerPort}: порт не опубликован на компьютере', child: chip);
+    if (hostPort == null || hostPort <= 0) {
+      return Tooltip(message: context.l10n.wslcPortIsNotPublishedOnThisComputer(port.containerPort), child: chip);
     }
     const local = 'localhost';
     final reachableByIp = !port.loopbackOnly;
     return PopupMenuButton<VoidCallback>(
-      tooltip: 'Открыть или скопировать адрес порта',
+      tooltip: context.l10n.wslcOpenOrCopyPortAddress,
       position: PopupMenuPosition.under,
       onSelected: (action) => action(),
       itemBuilder: (context) => [
         if (port.tcp)
-          _item(Icons.open_in_browser_rounded, 'Открыть ${port.url(local)}', () => openPort(context, port, local)),
+          _item(
+            Icons.open_in_browser_rounded,
+            context.l10n.wslcOpen(port.url(local)),
+            () => openPort(context, port, local),
+          ),
         if (port.tcp && reachableByIp)
           for (final a in addresses)
             _item(
               Icons.lan_outlined,
-              'Открыть ${port.url(a.address)}',
+              context.l10n.wslcOpen(port.url(a.address)),
               () => openPort(context, port, a.address),
               hint: a.interface,
             ),
         if (port.tcp) const PopupMenuDivider(),
-        _item(Icons.content_copy_rounded, 'Копировать ${port.url(local)}', () => copyText(context, port.url(local))),
         _item(
           Icons.content_copy_rounded,
-          'Копировать localhost:${port.hostPort}',
+          context.l10n.wslcCopyPorts(port.url(local)),
+          () => copyText(context, port.url(local)),
+        ),
+        _item(
+          Icons.content_copy_rounded,
+          context.l10n.wslcCopyLocalhost(hostPort),
           () => copyText(context, 'localhost:${port.hostPort}'),
         ),
         if (reachableByIp)
           for (final a in addresses)
             _item(
               Icons.content_copy_rounded,
-              'Копировать ${a.address}:${port.hostPort}',
+              context.l10n.wslcCopyPortsOther(a.address, hostPort),
               () => copyText(context, '${a.address}:${port.hostPort}'),
               hint: a.interface,
             )
@@ -216,8 +229,11 @@ class PortChip extends StatelessWidget {
             child: SizedBox(
               width: 300,
               child: Text(
-                'Порт опубликован только на ${port.hostIp}: по IP компьютера он недоступен. '
-                'Для доступа из сети публикуйте его как 0.0.0.0:${port.hostPort}:${port.containerPort.split('/').first}.',
+                context.l10n.wslcThisPortIsPublishedOnlyOnAndCannot(
+                  port.hostIp ?? local,
+                  hostPort,
+                  port.containerPort.split('/').first,
+                ),
                 style: TextStyle(fontSize: 12, color: p.muted),
               ),
             ),

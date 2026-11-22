@@ -548,9 +548,9 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
                 GlassSelect<bool>(
                   value: _versioned,
                   expand: true,
-                  items: const [
-                    GlassSelectItem(value: true, label: 'KV v2'),
-                    GlassSelectItem(value: false, label: 'KV v1'),
+                  items: [
+                    GlassSelectItem(value: true, label: l.externalVaultKvVersion(2)),
+                    GlassSelectItem(value: false, label: l.externalVaultKvVersion(1)),
                   ],
                   onChanged: _busy ? null : (value) => setState(() => _versioned = value),
                 ),

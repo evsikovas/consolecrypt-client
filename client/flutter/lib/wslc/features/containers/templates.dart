@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/shared/widgets.dart';
@@ -36,9 +37,10 @@ Future<void> saveTemplateFlow(BuildContext context, DeskController c, RunSpec sp
   );
   if (result == null || !context.mounted) return;
   final (name, withEnv) = result;
-  final messenger = ScaffoldMessenger.of(context);
+  final notify = WslcApiScope.notifierOf(context);
+  final l10n = context.l10n;
   final error = await c.saveTemplate(name, templateSpec(spec, withEnvValues: withEnv));
-  messenger.showSnackBar(SnackBar(content: Text(error ?? 'Шаблон «$name» сохранён')));
+  notify(error ?? l10n.wslcTemplateSaved(name), error: error != null);
 }
 
 class _SaveTemplateDialog extends StatefulWidget {
@@ -71,7 +73,7 @@ class _SaveTemplateDialogState extends State<_SaveTemplateDialog> {
     final text = name.text.trim();
     return AlertDialog(
       icon: GradientIcon(Icons.bookmark_add_outlined, color: p.accent),
-      title: const Text('Сохранить как шаблон'),
+      title: Text(context.l10n.wslcSaveAsTemplate),
       content: SizedBox(
         width: 440,
         child: Column(
@@ -84,8 +86,8 @@ class _SaveTemplateDialogState extends State<_SaveTemplateDialog> {
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _save(),
               decoration: InputDecoration(
-                labelText: 'Название',
-                helperText: widget.taken.contains(text) ? 'Шаблон с таким названием будет заменён' : null,
+                labelText: context.l10n.settingsVaultNameLabel,
+                helperText: widget.taken.contains(text) ? context.l10n.wslcATemplateWithThisNameWillBeReplaced : null,
               ),
             ),
             if (widget.hasEnv)
@@ -96,22 +98,21 @@ class _SaveTemplateDialogState extends State<_SaveTemplateDialog> {
                   controlAffinity: ListTileControlAffinity.leading,
                   value: withEnv,
                   onChanged: (v) => setState(() => withEnv = v ?? false),
-                  title: const Text('Сохранить значения переменных окружения'),
-                  subtitle: const Text('Иначе сохраняются только имена — значения вводятся при создании'),
+                  title: Text(context.l10n.wslcSaveEnvironmentVariableValues),
+                  subtitle: Text(context.l10n.wslcOtherwiseOnlyNamesAreSavedEnterTheValues),
                 ),
               ),
             const SizedBox(height: 8),
             Text(
-              'Имя контейнера в шаблон не входит. Шаблоны зашифрованы в текущем '
-              'профиле на этом устройстве и не отправляются на сервер.',
+              context.l10n.wslcTheTemplateExcludesTheContainerNameTemplatesAre,
               style: TextStyle(color: p.faint, fontSize: 12),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
-        FilledButton(onPressed: text.isEmpty ? null : _save, child: const Text('Сохранить')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonCancel)),
+        FilledButton(onPressed: text.isEmpty ? null : _save, child: Text(context.l10n.commonSave)),
       ],
     );
   }
@@ -152,7 +153,7 @@ class TemplateMenu extends StatelessWidget {
       ],
     );
     return PopupMenuButton<VoidCallback>(
-      tooltip: 'Шаблоны',
+      tooltip: context.l10n.wslcTemplates,
       icon: const Icon(Icons.bookmarks_outlined),
       constraints: const BoxConstraints(minWidth: 260, maxWidth: 360),
       onSelected: (action) => action(),
@@ -163,7 +164,7 @@ class TemplateMenu extends StatelessWidget {
         PopupMenuItem(
           enabled: spec != null && spec.image.isNotEmpty,
           value: () => saveTemplateFlow(context, controller, spec!),
-          child: item(Icons.bookmark_add_outlined, 'Сохранить как шаблон…'),
+          child: item(Icons.bookmark_add_outlined, context.l10n.wslcSaveAsTemplateTemplates),
         ),
       ],
     );

@@ -1,11 +1,11 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
 import 'package:consolecrypt/wslc/shared/widgets.dart';
 import 'package:consolecrypt/wslc/wslc_scope.dart';
 import 'package:material_ui/material_ui.dart';
-
 
 /// Runs a long CLI job (pull, build, push, save…) and shows its live output.
 /// Returns true when the job finished successfully.
@@ -14,12 +14,13 @@ Future<bool> showJobDialog(
   required String title,
   required IconData icon,
   required Future<BigInt> Function() start,
-  String successText = 'Готово',
+  String? successText,
 }) async {
   final ok = await showWslcDialog<bool>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _JobDialog(title: title, icon: icon, start: start, successText: successText),
+    builder: (_) =>
+        _JobDialog(title: title, icon: icon, start: start, successText: successText ?? context.l10n.commonDone),
   );
   return ok == true;
 }
@@ -141,10 +142,14 @@ class _JobDialogState extends State<_JobDialog> {
   Widget build(BuildContext context) {
     final p = DeskPalette.of(context);
     final (color, status) = !finished
-        ? (p.accentEnd, 'Выполняется…')
+        ? (p.accentEnd, context.l10n.wslcRunning)
         : success
         ? (p.success, widget.successText)
-        : (p.danger, error ?? (exitCode == null ? 'Отменено' : 'Ошибка, код выхода $exitCode'));
+        : (
+            p.danger,
+            error ??
+                (exitCode == null ? context.l10n.sftpTransferCancelled : context.l10n.wslcErrorExitCode(exitCode!)),
+          );
     return Dialog(
       insetPadding: const EdgeInsets.all(40),
       child: ConstrainedBox(
@@ -178,7 +183,10 @@ class _JobDialogState extends State<_JobDialog> {
                   ),
                   child: lines.isEmpty
                       ? Center(
-                          child: Text(finished ? '' : 'Ожидание вывода…', style: TextStyle(color: p.faint)),
+                          child: Text(
+                            finished ? '' : context.l10n.wslcWaitingForOutput,
+                            style: TextStyle(color: p.faint),
+                          ),
                         )
                       : SelectionArea(
                           child: ListView.builder(
@@ -216,9 +224,9 @@ class _JobDialogState extends State<_JobDialog> {
                     ),
                   ),
                   if (!finished)
-                    TextButton(onPressed: close, child: const Text('Отменить'))
+                    TextButton(onPressed: close, child: Text(context.l10n.commonCancel))
                   else
-                    FilledButton(onPressed: close, child: const Text('Закрыть')),
+                    FilledButton(onPressed: close, child: Text(context.l10n.commonClose)),
                 ],
               ),
             ],

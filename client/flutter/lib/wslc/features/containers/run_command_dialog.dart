@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/features/containers/run_wizard.dart';
@@ -28,12 +29,12 @@ RunSpec respec(RunSpec s, {String? name, List<EnvVar>? env}) => RunSpec(
 
 /// Shows `wslc run …` for an existing container and offers to clone it in the wizard.
 Future<void> showRunCommand(BuildContext context, DeskController controller, String containerId) async {
-  final messenger = ScaffoldMessenger.of(context);
+  final notify = WslcApiScope.notifierOf(context);
   final RunSpec spec;
   try {
     spec = await WslcApiScope.of(context).containerRunSpec(containerId: containerId, includeEnv: true);
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+    notify(errorText(e), error: true);
     return;
   }
   if (!context.mounted) return;
@@ -84,11 +85,14 @@ class _RunCommandDialogState extends State<_RunCommandDialog> {
                 children: [
                   const GradientIcon(Icons.code_rounded, size: 36),
                   const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text('Команда запуска', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                  Expanded(
+                    child: Text(
+                      context.l10n.wslcStartupCommandContainerDetailsPage,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
                   ),
                   IconButton(
-                    tooltip: 'Закрыть',
+                    tooltip: context.l10n.commonClose,
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -96,8 +100,7 @@ class _RunCommandDialogState extends State<_RunCommandDialog> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Команда для PowerShell. Настройки, совпадающие с образом (CMD, PATH, '
-                'рабочий каталог), опущены.',
+                context.l10n.wslcPowerShellCommandSettingsThatMatchTheImageCMD,
                 style: TextStyle(color: p.muted, fontSize: 12.5),
               ),
               const SizedBox(height: 14),
@@ -111,9 +114,9 @@ class _RunCommandDialogState extends State<_RunCommandDialog> {
                   contentPadding: EdgeInsets.zero,
                   value: withEnv,
                   onChanged: (v) => setState(() => withEnv = v),
-                  title: Text('Включить значения переменных окружения ($envCount)'),
+                  title: Text(context.l10n.wslcIncludeEnvironmentVariableValues(envCount)),
                   subtitle: Text(
-                    'Значения могут содержать пароли и токены',
+                    context.l10n.wslcValuesMayContainPasswordsAndTokens,
                     style: TextStyle(color: p.warning, fontSize: 12),
                   ),
                 ),
@@ -127,13 +130,13 @@ class _RunCommandDialogState extends State<_RunCommandDialog> {
                       respec(shown, name: widget.spec.name == null ? null : '${widget.spec.name}-copy'),
                     ),
                     icon: const Icon(Icons.copy_all_rounded, size: 18),
-                    label: const Text('Клонировать в мастере'),
+                    label: Text(context.l10n.wslcCloneInWizard),
                   ),
                   const Spacer(),
                   FilledButton.icon(
                     onPressed: () => copyText(context, command),
                     icon: const Icon(Icons.content_copy_rounded, size: 18),
-                    label: const Text('Скопировать'),
+                    label: Text(context.l10n.wslcCopy),
                   ),
                 ],
               ),

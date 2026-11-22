@@ -1,7 +1,28 @@
+import 'package:consolecrypt/l10n/app_localizations_en.dart';
+import 'package:consolecrypt/l10n/app_localizations_zh.dart';
 import 'package:consolecrypt/wslc/features/logs/log_format.dart';
+import 'package:consolecrypt/wslc/shared/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('line count follows the current language', () {
+    String lines(int n, String locale) => plural(n, 'one', 'few', 'many', locale: locale);
+    expect(lines(21, 'en'), '21 many');
+    expect(lines(21, 'es'), '21 many');
+    expect(lines(21, 'ru'), '21 one');
+    expect(lines(22, 'ru'), '22 few');
+    expect(lines(11, 'ru'), '11 many');
+    expect(lines(1, 'zh'), '1 many');
+  });
+  test('native reader statuses are localized without changing their polling token', () {
+    final en = AppLocalizationsEn();
+    final zh = AppLocalizationsZh();
+    expect(readingLogStatus, 'Чтение');
+    expect(logStatusLabel(readingLogStatus, en), en.wslcLogStreamReading);
+    expect(logStatusLabel(readingLogStatus, zh), zh.wslcLogStreamReading);
+    expect(logStatusLabel('Ошибка CLI (код 17)', en), en.wslcErrorExitCode('17'));
+    expect(logStatusLabel('unrecognized runtime detail', en), 'unrecognized runtime detail');
+  });
   test('levels come from JSON fields or the first level word', () {
     expect(detectLevel('2026-10-29 ERROR db timeout'), LogLevel.error);
     expect(detectLevel('[warn] disk 91%'), LogLevel.warn);

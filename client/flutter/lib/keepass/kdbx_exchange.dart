@@ -25,13 +25,13 @@ class ExchangeEntry {
 }
 
 const _format = 'consolecrypt-passwords';
-const _groupHeader = 'consolecrypt group path';
+const _groupHeader = 'consolecrypt group path'; // l10n-ignore: stable CSV column used for export and import
 const _csvHeaders = ['title', 'username', 'password', 'url', 'notes', _groupHeader];
 const _aliases = [
   ['title', 'name', 'account'],
-  ['username', 'user name', 'login name', 'login_username', 'login', 'user'],
+  ['username', 'user name', 'login name', 'login_username', 'login', 'user'], // l10n-ignore: CSV import header aliases
   ['password', 'login_password'],
-  ['url', 'website', 'web site', 'login_uri', 'origin'],
+  ['url', 'website', 'web site', 'login_uri', 'origin'], // l10n-ignore: CSV import header aliases
   ['notes', 'note', 'comments', 'comment'],
   [_groupHeader, 'group', 'folder', 'category'],
 ];

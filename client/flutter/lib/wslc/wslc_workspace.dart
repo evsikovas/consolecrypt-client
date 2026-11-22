@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/common.dart' show InfoBanner, BannerTone;
+import 'package:consolecrypt/core/widgets/dialogs.dart' show showSnack;
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/docker/docker_container_details.dart' show showDockerSecretRead;
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
@@ -17,7 +19,6 @@ import 'package:consolecrypt/wslc/src/rust/api/desk.dart';
 import 'package:consolecrypt/wslc/wslc_scope.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
 
 typedef WslcApiFactory = WslcApi Function({required String profileId, required WslcReveal reveal});
 final wslcApiFactoryProvider = Provider<WslcApiFactory>((ref) => WslcApi.new);
@@ -35,6 +36,7 @@ class WslcWorkspace extends ConsumerStatefulWidget {
 class _WslcWorkspaceState extends ConsumerState<WslcWorkspace> {
   late final WslcApi _api;
   late final DeskController _controller;
+  bool _started = false;
   bool _revealed = false;
   bool get _active =>
       mounted &&
@@ -50,8 +52,8 @@ class _WslcWorkspaceState extends ConsumerState<WslcWorkspace> {
         final result = await showDockerSecretRead<dynamic>(
           context,
           object: object,
-          title: 'Показать данные контейнера',
-          help: 'Подтвердите доступ к скрытому окружению WSLc.',
+          title: context.l10n.wslcShowContainerData,
+          help: context.l10n.wslcConfirmAccessToTheHiddenWSLcEnvironmentVariables,
           read: read,
         );
         if (!_active) return null;
@@ -59,7 +61,19 @@ class _WslcWorkspaceState extends ConsumerState<WslcWorkspace> {
         return result;
       },
     );
-    _controller = DeskController(api: _api);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final l10n = context.l10n;
+    _api.messages = l10n;
+    if (_started) {
+      _controller.l10n = l10n;
+      return;
+    }
+    _controller = DeskController(api: _api, l10n: l10n);
+    _started = true;
     unawaited(_controller.start());
   }
 
@@ -79,6 +93,9 @@ class _WslcWorkspaceState extends ConsumerState<WslcWorkspace> {
   Widget build(BuildContext context) => WslcApiScope(
     api: _api,
     copySecret: _copy,
+    notify: (message, {error = false}) {
+      if (_active) showSnack(context, message, error: error);
+    },
     child: RevealedSecret(
       visible: _revealed,
       child: ListenableBuilder(
@@ -112,18 +129,18 @@ class _WslcWorkspaceState extends ConsumerState<WslcWorkspace> {
                     GlassIconButton(
                       key: const ValueKey('wslc-back'),
                       icon: Icons.arrow_back_rounded,
-                      tooltip: 'Движки контейнеров',
+                      tooltip: context.l10n.wslcContainerEngines,
                       onPressed: widget.onBack,
                     ),
-                    const Text('WSLc'),
-                    for (final item in const [
-                      (DeskSection.containers, 'Контейнеры'),
-                      (DeskSection.images, 'Образы'),
-                      (DeskSection.storage, 'Тома'),
-                      (DeskSection.networks, 'Сети'),
-                      (DeskSection.topology, 'Связи'),
-                      (DeskSection.cleanup, 'Очистка'),
-                      (DeskSection.settings, 'Подключение'),
+                    const Text('WSLc'), // l10n-ignore: runtime product name.
+                    for (final item in [
+                      (DeskSection.containers, context.l10n.kubeContainers),
+                      (DeskSection.images, context.l10n.kubeImages),
+                      (DeskSection.storage, context.l10n.kubeVolumes),
+                      (DeskSection.networks, context.l10n.dockerNetworks),
+                      (DeskSection.topology, context.l10n.wslcConnections),
+                      (DeskSection.cleanup, context.l10n.wslcCleanup),
+                      (DeskSection.settings, context.l10n.hostEditorConnectionSection),
                     ])
                       GlassButton(
                         key: ValueKey('wslc-section-${item.$1.name}'),

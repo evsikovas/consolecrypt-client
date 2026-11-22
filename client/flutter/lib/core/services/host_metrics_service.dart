@@ -38,7 +38,7 @@ final class TerminalHostMetrics extends ValueNotifier<HostMetricsHistory> {
       value = const HostMetricsHistory(
         error: AppException(
           AppErrorCode.unsupported,
-          'SSH backend',
+          'SSH backend', // l10n-ignore: diagnostic detail; host_metrics_ssh_backend selects the localized UI message
           args: {'field': 'host_metrics', 'rule': 'host_metrics_ssh_backend'},
         ),
       );

@@ -137,21 +137,23 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
   }
 
   Future<void> _open() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final path = await api.pickFile(title: 'Файл Docker Compose');
+    final notify = WslcApiScope.notifierOf(context);
+    final path = await api.pickFile(title: context.l10n.wslcDockerComposeFile);
     if (path == null || !mounted) return;
     try {
-      yaml.text = await api.readComposeFile(path: path);
+      final document = await api.readComposeFile(path: path);
+      if (!mounted) return;
+      yaml.text = document;
       final slash = path.lastIndexOf('\\');
       if (slash > 0) folder.text = path.substring(0, slash);
       await _parse();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+      notify(errorText(e), error: true);
     }
   }
 
   Future<void> _pickFolder() async {
-    final dir = await api.pickFolder(title: 'Папка проекта Compose');
+    final dir = await api.pickFolder(title: context.l10n.wslcComposeProjectDirectory);
     if (dir == null || !mounted) return;
     folder.text = dir;
     await _parse();
@@ -201,16 +203,19 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
                     children: [
                       const GradientIcon(Icons.dynamic_feed_rounded, size: 38),
                       const SizedBox(width: 14),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Docker Compose', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
                             Text(
-                              'Вставьте docker-compose.yml — сервисы запустятся, как при docker compose up -d',
+                              context.l10n.wslcDockerComposeFile,
+                              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              context.l10n.wslcPasteDockerComposeYmlToStartTheServices,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 12.5),
+                              style: const TextStyle(fontSize: 12.5),
                             ),
                           ],
                         ),
@@ -225,11 +230,11 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
                         TextButton.icon(
                           onPressed: _open,
                           icon: const Icon(Icons.file_open_outlined, size: 18),
-                          label: const Text('Открыть файл…'),
+                          label: Text(context.l10n.wslcOpenFile),
                         ),
                       ],
                       IconButton(
-                        tooltip: 'Закрыть',
+                        tooltip: context.l10n.commonClose,
                         onPressed: busy ? null : () => Navigator.pop(context),
                         icon: const Icon(Icons.close_rounded),
                       ),
@@ -262,17 +267,17 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
                 setState(() => runner = null);
               },
               icon: const Icon(Icons.arrow_back_rounded, size: 18),
-              label: const Text('К файлу'),
+              label: Text(context.l10n.wslcBackToFile),
             ),
           const Spacer(),
           if (busy)
             OutlinedButton.icon(
               onPressed: r.cancelled ? null : r.cancel,
               icon: const Icon(Icons.stop_rounded, size: 18),
-              label: Text(r.cancelled ? 'Останавливаем…' : 'Остановить'),
+              label: Text(r.cancelled ? context.l10n.wslcStopping : context.l10n.aiChatStop),
             )
           else
-            FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Готово')),
+            FilledButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonDone)),
         ],
       );
     }
@@ -288,7 +293,7 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
               child: Row(
                 children: [
                   Checkbox(value: rebuild, onChanged: (v) => setState(() => rebuild = v ?? false)),
-                  const Text('Пересобрать образы (--build)'),
+                  Text(context.l10n.wslcRebuildImagesBuild),
                   const SizedBox(width: 8),
                 ],
               ),
@@ -299,13 +304,13 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
           style: OutlinedButton.styleFrom(foregroundColor: p.danger),
           onPressed: canRun ? _down : null,
           icon: const Icon(Icons.delete_sweep_outlined, size: 18),
-          label: const Text('Остановить и удалить'),
+          label: Text(context.l10n.wslcStopAndRemove),
         ),
         const SizedBox(width: 10),
         FilledButton.icon(
           onPressed: canRun ? _up : null,
           icon: const Icon(Icons.play_arrow_rounded, size: 18),
-          label: const Text('Запустить'),
+          label: Text(context.l10n.localAiStart),
         ),
       ],
     );
@@ -343,7 +348,10 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
                     child: TextField(
                       controller: project,
                       onChanged: _changed,
-                      decoration: const InputDecoration(labelText: 'Проект', hintText: 'из name: или папки'),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.automationProjectMenu,
+                        hintText: context.l10n.wslcFromNameOrTheDirectory,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -353,10 +361,10 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
                       controller: folder,
                       onChanged: _changed,
                       decoration: InputDecoration(
-                        labelText: 'Папка проекта',
-                        hintText: './пути, .env, env_file и build',
+                        labelText: context.l10n.wslcProjectDirectory,
+                        hintText: context.l10n.wslcRelativePathsEnvEnvFileAndBuild,
                         suffixIcon: IconButton(
-                          tooltip: 'Выбрать папку',
+                          tooltip: context.l10n.wslcChooseDirectory,
                           onPressed: _pickFolder,
                           icon: const Icon(Icons.folder_open_rounded, size: 20),
                         ),
@@ -377,10 +385,10 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
   Widget _preview(DeskPalette p) {
     final plan = this.plan;
     if (yaml.text.trim().isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.dynamic_feed_rounded,
-        title: 'Вставьте docker-compose.yml',
-        hint: 'или откройте файл — здесь появится план до запуска',
+        title: context.l10n.wslcPasteDockerComposeYml,
+        hint: context.l10n.wslcOrOpenAFileToPreviewThePlan,
       );
     }
     if (parseError != null) {
@@ -390,7 +398,7 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
       );
     }
     if (plan == null) {
-      return const EmptyState(icon: Icons.dynamic_feed_rounded, title: 'Разбираем файл…', loading: true);
+      return EmptyState(icon: Icons.dynamic_feed_rounded, title: context.l10n.wslcParsingFile, loading: true);
     }
     final commands = [...plan.commands, for (final s in plan.services) ...s.commands];
     return ListView(
@@ -398,9 +406,21 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
       children: [
         Row(
           children: [
-            Text('Проект ${plan.project}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            Text(
+              context.l10n.wslcProject(plan.project),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(width: 10),
-            Pill(plural(plan.services.length, 'сервис', 'сервиса', 'сервисов'), color: p.accent),
+            Pill(
+              plural(
+                plan.services.length,
+                context.l10n.wslcService,
+                context.l10n.wslcServices,
+                context.l10n.wslcServicesComposeDialog,
+                locale: context.l10n.localeName,
+              ),
+              color: p.accent,
+            ),
             if (parsing) ...[
               const SizedBox(width: 10),
               const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -409,22 +429,31 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
         ),
         if (plan.warnings.isNotEmpty) ...[
           const SizedBox(height: 12),
-          _Notice(color: p.warning, icon: Icons.info_outline_rounded, title: 'Отличия от Docker', lines: plan.warnings),
+          _Notice(
+            color: p.warning,
+            icon: Icons.info_outline_rounded,
+            title: context.l10n.wslcDifferencesFromDocker,
+            lines: plan.warnings,
+          ),
         ],
         const SizedBox(height: 14),
-        _caption(p, 'Сервисы — в порядке запуска'),
+        _caption(p, context.l10n.wslcServicesInStartupOrder),
         for (final s in plan.services) _ServiceTile(service: s),
         if (plan.networks.isNotEmpty || plan.volumes.isNotEmpty) ...[
           const SizedBox(height: 10),
-          _caption(p, 'Сети и тома'),
+          _caption(p, context.l10n.wslcNetworksAndVolumes),
           Wrap(
             spacing: 6,
             runSpacing: 6,
             children: [
               for (final n in plan.networks)
-                _chip(p, Icons.hub_rounded, '${n.spec.name}${n.isExternal ? ' · внешняя' : ''}'),
+                _chip(p, Icons.hub_rounded, n.isExternal ? '${n.spec.name}${context.l10n.wslcExternal}' : n.spec.name),
               for (final v in plan.volumes)
-                _chip(p, Icons.storage_rounded, '${v.spec.name}${v.isExternal ? ' · внешний' : ''}'),
+                _chip(
+                  p,
+                  Icons.storage_rounded,
+                  v.isExternal ? '${v.spec.name}${context.l10n.wslcExternalComposeDialog}' : v.spec.name,
+                ),
             ],
           ),
         ],
@@ -434,7 +463,7 @@ class _ComposeDialogState extends ConsumerState<ComposeDialog> {
           child: ExpansionTile(
             tilePadding: EdgeInsets.zero,
             title: Text(
-              'Команды WSLc (${commands.length})',
+              context.l10n.wslcWSLcCommands(commands.length),
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
             children: [
@@ -533,7 +562,7 @@ class _ServiceTile extends StatelessWidget {
               _chip(
                 p,
                 s.build != null ? Icons.construction_rounded : Icons.layers_rounded,
-                s.build != null ? 'сборка → ${s.image}' : s.image,
+                s.build != null ? context.l10n.wslcBuild(s.image) : s.image,
                 color: p.accentEnd,
               ),
               for (final x in spec.ports) _chip(p, Icons.lan_outlined, port(x)),
@@ -544,16 +573,16 @@ class _ServiceTile extends StatelessWidget {
                   '${m.volume ? m.source : m.source.split('\\').last}:${m.target}'
                   '${m.readOnly ? ' (ro)' : ''}',
                 ),
-              if (spec.env.isNotEmpty) _chip(p, Icons.key_rounded, 'переменных: ${spec.env.length}'),
+              if (spec.env.isNotEmpty) _chip(p, Icons.key_rounded, context.l10n.wslcVariables(spec.env.length)),
               for (final d in s.dependsOn)
                 _chip(
                   p,
                   Icons.subdirectory_arrow_right_rounded,
-                  'после ${d.service}${switch (d.condition) {
-                    'healthy' => ' (здоров)',
-                    'completed' => ' (завершён)',
+                  context.l10n.wslcAfter(d.service, switch (d.condition) {
+                    'healthy' => context.l10n.wslcHealthy,
+                    'completed' => context.l10n.wslcCompleted,
                     _ => '',
-                  }}',
+                  }),
                   color: p.warning,
                 ),
             ],
@@ -632,9 +661,14 @@ class _Progress extends StatelessWidget {
                 ? _Notice(
                     color: p.success,
                     icon: Icons.check_circle_outline_rounded,
-                    lines: ['Готово: проект ${r.plan.project}'],
+                    lines: [context.l10n.wslcProjectReady(r.plan.project)],
                   )
-                : _Notice(color: p.danger, icon: Icons.error_outline_rounded, title: 'Остановлено', lines: [r.error!]),
+                : _Notice(
+                    color: p.danger,
+                    icon: Icons.error_outline_rounded,
+                    title: context.l10n.noticesRuntimeStopped,
+                    lines: [r.error!],
+                  ),
           ),
         for (final s in r.steps) _StepTile(step: s),
       ],
@@ -717,17 +751,14 @@ class _DownDialogState extends State<_DownDialog> {
     final ownVolumes = plan.volumes.where((v) => !v.isExternal).length;
     return AlertDialog(
       icon: GradientIcon(Icons.delete_sweep_outlined, color: p.danger, size: 44),
-      title: Text('Остановить и удалить ${plan.project}?'),
+      title: Text(context.l10n.wslcStopAndRemoveComposeDialog(plan.project)),
       content: SizedBox(
         width: 440,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Как docker compose down: контейнеры проекта останавливаются и удаляются, '
-              'созданные им сети — тоже. Образы остаются.',
-            ),
+            Text(context.l10n.wslcAsWithDockerComposeDownThisStopsAnd),
             if (ownVolumes > 0)
               Material(
                 type: MaterialType.transparency,
@@ -736,19 +767,19 @@ class _DownDialogState extends State<_DownDialog> {
                   controlAffinity: ListTileControlAffinity.leading,
                   value: volumes,
                   onChanged: (v) => setState(() => volumes = v ?? false),
-                  title: Text('Удалить и тома проекта ($ownVolumes)'),
-                  subtitle: Text('Данные в них будут потеряны (-v)', style: TextStyle(color: p.danger)),
+                  title: Text(context.l10n.wslcAlsoRemoveProjectVolumes(ownVolumes)),
+                  subtitle: Text(context.l10n.wslcDataInTheseVolumesWillBeLostV, style: TextStyle(color: p.danger)),
                 ),
               ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonCancel)),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: p.danger),
           onPressed: () => Navigator.pop(context, volumes),
-          child: const Text('Удалить'),
+          child: Text(context.l10n.commonDelete),
         ),
       ],
     );

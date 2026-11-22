@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/features/containers/container_actions.dart';
@@ -116,7 +117,7 @@ class _ContainerDetailsPageState extends State<ContainerDetailsPage> {
         Row(
           children: [
             IconButton(
-              tooltip: 'Назад к списку',
+              tooltip: context.l10n.wslcBackToList,
               onPressed: c.closeContainer,
               icon: const Icon(Icons.arrow_back_rounded),
             ),
@@ -138,7 +139,7 @@ class _ContainerDetailsPageState extends State<ContainerDetailsPage> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Pill(stateText(state, row?.rawState ?? d?.rawState), color: color),
+                      Pill(stateText(context.l10n, state, row?.rawState ?? d?.rawState), color: color),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -178,19 +179,19 @@ class _ContainerDetailsPageState extends State<ContainerDetailsPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: 'Запустить',
+                          tooltip: context.l10n.dockerActionStart,
                           color: p.success,
                           onPressed: enabled && canStart(state) ? () => act(row, 'start') : null,
                           icon: const Icon(Icons.play_arrow_rounded),
                         ),
                         IconButton(
-                          tooltip: 'Остановить',
+                          tooltip: context.l10n.dockerActionStop,
                           color: p.danger,
                           onPressed: enabled && canStop(state) ? () => act(row, 'stop') : null,
                           icon: const Icon(Icons.stop_rounded),
                         ),
                         IconButton(
-                          tooltip: 'Перезапустить',
+                          tooltip: context.l10n.dockerActionRestart,
                           onPressed: enabled && canStop(state) ? () => act(row, 'restart') : null,
                           icon: const Icon(Icons.restart_alt_rounded),
                         ),
@@ -201,17 +202,17 @@ class _ContainerDetailsPageState extends State<ContainerDetailsPage> {
                           color: p.border,
                         ),
                         IconButton(
-                          tooltip: 'Команда запуска',
+                          tooltip: context.l10n.wslcStartupCommandContainerDetailsPage,
                           onPressed: () => showRunCommand(context, c, widget.containerId),
                           icon: const Icon(Icons.code_rounded),
                         ),
                         IconButton(
-                          tooltip: 'Открыть терминал',
+                          tooltip: context.l10n.terminalLocalOpen,
                           onPressed: running ? () => openContainerTerminal(context, widget.containerId) : null,
                           icon: const Icon(Icons.terminal_rounded),
                         ),
                         IconButton(
-                          tooltip: 'Удалить контейнер',
+                          tooltip: context.l10n.wslcRemoveContainer,
                           color: p.danger,
                           onPressed: enabled ? () => removeContainerFlow(context, c, row) : null,
                           icon: const Icon(Icons.delete_outline_rounded),
@@ -228,12 +229,12 @@ class _ContainerDetailsPageState extends State<ContainerDetailsPage> {
             value: tab,
             onChanged: (v) => setState(() => tab = v),
             items: [
-              (_overview, 'Обзор', null),
-              (_logs, 'Логи', null),
-              (_terminal, 'Терминал', null),
-              (_files, 'Файлы', null),
-              (_mounts, 'Подключения', d?.mounts?.length),
-              (_env, 'Окружение', null),
+              (_overview, context.l10n.kubeOverview, null),
+              (_logs, context.l10n.kubeLogs, null),
+              (_terminal, context.l10n.navTerminal, null),
+              (_files, context.l10n.dockerComposeFiles, null),
+              (_mounts, context.l10n.snippetDbMongodbConnections, d?.mounts?.length),
+              (_env, context.l10n.kubeExecEnvironment, null),
               (_inspect, 'Inspect', null),
             ],
           ),
@@ -241,11 +242,11 @@ class _ContainerDetailsPageState extends State<ContainerDetailsPage> {
         const SizedBox(height: 14),
         Expanded(
           child: row == null && c.loaded.contains(DeskSection.containers)
-              ? const Panel(
+              ? Panel(
                   child: EmptyState(
                     icon: Icons.search_off_rounded,
-                    title: 'Контейнер больше не найден',
-                    hint: 'Возможно, runtime удалил его после остановки',
+                    title: context.l10n.wslcContainerNoLongerFound,
+                    hint: context.l10n.wslcTheRuntimeMayHaveRemovedItWhenIt,
                   ),
                 )
               : tab == _logs
@@ -270,7 +271,9 @@ class _ContainerDetailsPageState extends State<ContainerDetailsPage> {
                   child: EmptyState(
                     icon: Icons.error_outline_rounded,
                     loading: error == null,
-                    title: error == null ? 'Загрузка Inspect…' : 'Не удалось получить Inspect',
+                    title: error == null
+                        ? context.l10n.wslcLoadingInspectData
+                        : context.l10n.wslcCouldNotLoadInspectData,
                     hint: error,
                   ),
                 )
@@ -315,36 +318,51 @@ class _Overview extends StatelessWidget {
     final ports = d.ports.isNotEmpty
         ? d.ports.map(PublishedPort.fromBinding).toList()
         : parsePorts(summary?.portsDisplay);
-    String or(Object? v) => v?.toString() ?? 'нет данных';
+    String or(Object? v) => v?.toString() ?? context.l10n.automationResultMissing;
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: [
-        const _SectionTitle('Состояние'),
+        _SectionTitle(context.l10n.syncScreenState),
         TileGrid(
           minTileWidth: 180,
           children: [
-            InfoTile(label: 'Состояние', value: summary?.statusDisplay ?? stateText(d.state, d.rawState)),
-            InfoTile(label: 'Код выхода', value: or(d.exitCode)),
-            InfoTile(label: 'Health', value: or(d.healthStatus)),
-            InfoTile(label: 'Создан', value: formatTimestamp(d.createdAt)),
-            InfoTile(label: 'Запущен', value: formatTimestamp(d.startedAt)),
-            if (!running) InfoTile(label: 'Завершён', value: formatTimestamp(d.finishedAt)),
             InfoTile(
-              label: 'Auto-remove',
-              value: d.autoRemove == null
-                  ? 'неизвестно'
-                  : d.autoRemove!
-                  ? 'включён'
-                  : 'выключен',
+              label: context.l10n.syncScreenState,
+              value: summary?.statusDisplay ?? stateText(context.l10n, d.state, d.rawState),
+            ),
+            InfoTile(label: context.l10n.wslcExitCode, value: or(d.exitCode)),
+            InfoTile(label: context.l10n.dockerHealth, value: or(d.healthStatus)),
+            InfoTile(
+              label: context.l10n.dockerCreated,
+              value: formatTimestamp(d.createdAt, l10n: context.l10n),
             ),
             InfoTile(
-              label: 'Таймаут остановки',
-              value: d.stopTimeoutSeconds == null ? 'по умолчанию' : '${d.stopTimeoutSeconds} с',
+              label: context.l10n.dockerStarted,
+              value: formatTimestamp(d.startedAt, l10n: context.l10n),
+            ),
+            if (!running)
+              InfoTile(
+                label: context.l10n.wslcFinished,
+                value: formatTimestamp(d.finishedAt, l10n: context.l10n),
+              ),
+            InfoTile(
+              label: context.l10n.wslcRemoveAfterStoppingRm,
+              value: d.autoRemove == null
+                  ? context.l10n.wslcUnknownContainerDetailsPage
+                  : d.autoRemove!
+                  ? context.l10n.wslcEnabled
+                  : context.l10n.wslcDisabled,
+            ),
+            InfoTile(
+              label: context.l10n.wslcStopTimeout,
+              value: d.stopTimeoutSeconds == null
+                  ? context.l10n.dbDesignDefault
+                  : context.l10n.wslcSContainerDetailsPage(d.stopTimeoutSeconds!),
             ),
           ],
         ),
         if (running) ...[
-          const _SectionTitle('Ресурсы'),
+          _SectionTitle(context.l10n.kubeResources),
           ValueListenableBuilder(
             valueListenable: controller.stats,
             builder: (context, stats, _) {
@@ -360,13 +378,13 @@ class _Overview extends StatelessWidget {
                     minTileWidth: 300,
                     children: [
                       UsageChart(
-                        title: 'CPU',
+                        title: context.l10n.kubeOverviewCpu,
                         value: s?.cpuPercent == null ? '…' : '${s!.cpuPercent!.toStringAsFixed(2)}%',
                         values: h?.cpu.toList() ?? const [],
                         color: p.success,
                       ),
                       UsageChart(
-                        title: 'Память',
+                        title: context.l10n.kubeOverviewMemory,
                         value: s?.memoryUsage == null
                             ? '…'
                             : '${s!.memoryUsage}'
@@ -375,15 +393,15 @@ class _Overview extends StatelessWidget {
                         color: p.accent,
                       ),
                       UsageChart(
-                        title: 'Сеть',
+                        title: context.l10n.hostMetricsNetwork,
                         value: rx == null || tx == null
                             ? v(s?.netIo)
-                            : '↓ ${formatBytes(rx, perSecond: true)}  ↑ ${formatBytes(tx, perSecond: true)}',
+                            : '↓ ${formatBytes(rx, l10n: context.l10n, perSecond: true)}  ↑ ${formatBytes(tx, l10n: context.l10n, perSecond: true)}',
                         values: h?.rx.toList() ?? const [],
                         second: h?.tx.toList(),
                         color: p.accentEnd,
                         secondColor: p.warning,
-                        legend: 'приём — голубой, отправка — жёлтый',
+                        legend: context.l10n.wslcReceiveInBlueSendInYellow,
                       ),
                     ],
                   ),
@@ -391,8 +409,8 @@ class _Overview extends StatelessWidget {
                   TileGrid(
                     minTileWidth: 300,
                     children: [
-                      InfoTile(label: 'Диск read / write', value: v(s?.blockIo)),
-                      InfoTile(label: 'Процессы', value: v(s?.pids)),
+                      InfoTile(label: context.l10n.wslcDiskReadWrite, value: v(s?.blockIo)),
+                      InfoTile(label: context.l10n.wslcProcesses, value: v(s?.pids)),
                     ],
                   ),
                 ],
@@ -400,9 +418,9 @@ class _Overview extends StatelessWidget {
             },
           ),
         ],
-        const _SectionTitle('Порты'),
+        _SectionTitle(context.l10n.kubePorts),
         if (ports.isEmpty)
-          Text('Порты не опубликованы', style: TextStyle(color: p.muted))
+          Text(context.l10n.wslcNoPublishedPorts, style: TextStyle(color: p.muted))
         else
           Wrap(
             spacing: 8,
@@ -412,42 +430,39 @@ class _Overview extends StatelessWidget {
         if (ports.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              'Нажмите на порт, чтобы открыть его в браузере или скопировать адрес.',
-              style: TextStyle(color: p.faint, fontSize: 12),
-            ),
+            child: Text(context.l10n.wslcSelectAPortToOpenItInA, style: TextStyle(color: p.faint, fontSize: 12)),
           ),
-        const _SectionTitle('Запуск'),
+        _SectionTitle(context.l10n.wslcStartup),
         TileGrid(
           minTileWidth: 380,
           children: [
-            InfoTile(label: 'Образ', value: or(d.imageName)),
-            InfoTile(label: 'ID образа', value: or(d.imageId), mono: true),
+            InfoTile(label: context.l10n.dockerImage, value: or(d.imageName)),
+            InfoTile(label: context.l10n.wslcImageID, value: or(d.imageId), mono: true),
           ],
         ),
         const SizedBox(height: 10),
-        InfoTile(label: 'Команда', value: or(d.command), mono: true),
+        InfoTile(label: context.l10n.sharingCommand, value: or(d.command), mono: true),
         Row(
           children: [
-            const Expanded(child: _SectionTitle('Сеть')),
+            Expanded(child: _SectionTitle(context.l10n.hostMetricsNetwork)),
             TextButton.icon(
               onPressed: controller.canMutate ? () => connectToNetwork(context, controller, containerId: d.id) : null,
               icon: const Icon(Icons.add_link_rounded, size: 18),
-              label: const Text('Подключить к сети'),
+              label: Text(context.l10n.wslcConnectToNetwork),
             ),
           ],
         ),
         if (d.networks.isEmpty)
-          Text('Runtime не сообщил сетевых данных', style: TextStyle(color: p.muted))
+          Text(context.l10n.wslcTheRuntimeReturnedNoNetworkInformation, style: TextStyle(color: p.muted))
         else
           TileGrid(
             minTileWidth: 240,
             children: [
               for (final n in d.networks)
                 InfoTile(
-                  label: 'Сеть ${n.name}',
+                  label: context.l10n.wslcNetwork(n.name),
                   trailing: IconButton(
-                    tooltip: 'Отключить от сети',
+                    tooltip: context.l10n.wslcDisconnectFromNetwork,
                     onPressed: controller.canMutate
                         ? () => disconnectFromNetwork(context, controller, n.name, d.id)
                         : null,
@@ -455,7 +470,7 @@ class _Overview extends StatelessWidget {
                   ),
                   value: [
                     'IP ${n.ipAddress ?? '—'}',
-                    if (n.gateway != null) 'шлюз ${n.gateway}',
+                    if (n.gateway != null) context.l10n.wslcGateway(n.gateway!),
                     if (n.macAddress != null) 'MAC ${n.macAddress}',
                   ].join('\n'),
                 ),
@@ -474,11 +489,11 @@ class _Mounts extends StatelessWidget {
   final ValueChanged<String> onBrowse;
 
   Future<void> openFolder(BuildContext context, String path) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final notify = WslcApiScope.notifierOf(context);
     try {
       await WslcApiScope.of(context).openHostFolder(path: path);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+      notify(errorText(e), error: true);
     }
   }
 
@@ -490,7 +505,9 @@ class _Mounts extends StatelessWidget {
       return Panel(
         child: EmptyState(
           icon: Icons.folder_off_outlined,
-          title: items == null ? 'Runtime не сообщил данных о подключениях' : 'Нет подключённых томов и каталогов',
+          title: items == null
+              ? context.l10n.wslcTheRuntimeReturnedNoMountInformation
+              : context.l10n.wslcNoMountedVolumesOrDirectories,
         ),
       );
     }
@@ -521,7 +538,7 @@ class _Mounts extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            destination ?? 'нет данных',
+                            destination ?? context.l10n.automationResultMissing,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -532,11 +549,14 @@ class _Mounts extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Pill(bind ? 'папка Windows' : (m.kind ?? 'тип ?'), color: bind ? p.warning : p.accent),
+                        Pill(
+                          bind ? context.l10n.wslcWindowsFolder : (m.kind ?? context.l10n.wslcUnknownType),
+                          color: bind ? p.warning : p.accent,
+                        ),
                         const SizedBox(width: 6),
                         Pill(
                           rw == null
-                              ? 'нет данных'
+                              ? context.l10n.automationResultMissing
                               : rw
                               ? 'RW'
                               : 'RO',
@@ -546,7 +566,7 @@ class _Mounts extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     WslcSelectableText(
-                      '← ${source ?? 'нет данных'}',
+                      '← ${source ?? context.l10n.automationResultMissing}',
                       maxLines: 2,
                       minLines: 1,
                       style: TextStyle(
@@ -564,21 +584,19 @@ class _Mounts extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: () => openFolder(context, source),
                   icon: const Icon(Icons.folder_open_rounded, size: 18),
-                  label: const Text('В проводнике'),
+                  label: Text(context.l10n.wslcShowInFileExplorer),
                 ),
               if (!bind && destination != null)
                 Tooltip(
-                  message:
-                      'Том хранится внутри ВМ WSLc и недоступен проводнику. '
-                      'Его содержимое видно через файлы контейнера.',
+                  message: context.l10n.wslcThisVolumeIsStoredInsideTheWSLcVM,
                   child: OutlinedButton.icon(
                     onPressed: running ? () => onBrowse(destination) : null,
                     icon: const Icon(Icons.folder_copy_outlined, size: 18),
-                    label: const Text('Показать файлы'),
+                    label: Text(context.l10n.wslcShowFiles),
                   ),
                 ),
               PopupMenuButton<VoidCallback>(
-                tooltip: 'Ещё',
+                tooltip: context.l10n.glassMoreActions,
                 icon: const Icon(Icons.more_vert_rounded),
                 position: PopupMenuPosition.under,
                 onSelected: (action) => action(),
@@ -586,24 +604,24 @@ class _Mounts extends StatelessWidget {
                   if (source != null)
                     PopupMenuItem(
                       value: () => copyText(context, source),
-                      child: Text(bind ? 'Копировать путь Windows' : 'Копировать имя тома'),
+                      child: Text(bind ? context.l10n.wslcCopyWindowsPath : context.l10n.wslcCopyVolumeName),
                     ),
                   if (destination != null)
                     PopupMenuItem(
                       value: () => copyText(context, destination),
-                      child: const Text('Копировать путь в контейнере'),
+                      child: Text(context.l10n.wslcCopyPathInsideContainer),
                     ),
                   if (destination != null)
                     PopupMenuItem(
                       enabled: running,
                       value: () => onBrowse(destination),
-                      child: const Text('Показать файлы в контейнере'),
+                      child: Text(context.l10n.wslcShowFilesInContainer),
                     ),
                   if (destination != null)
                     PopupMenuItem(
                       enabled: running,
                       value: () => openContainerTerminal(context, containerId, workdir: destination),
-                      child: const Text('Открыть терминал здесь'),
+                      child: Text(context.l10n.wslcOpenTerminalHere),
                     ),
                 ],
               ),

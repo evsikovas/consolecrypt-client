@@ -88,13 +88,13 @@ class _ComposeAiDialogState extends ConsumerState<_ComposeAiDialog> {
             history: [
               ChatMessage.now(
                 ChatRole.user,
-                'Create a Docker Compose YAML document for the description below. '
-                'Return ONLY YAML with a nonempty services mapping. '
-                'Use service names, named volumes and images with explicit versions. '
-                'Bind published ports to 127.0.0.1 unless requested otherwise. '
-                'Never invent passwords or API keys; use environment placeholders. '
-                'Do not request privileged mode, Docker socket or host mounts unless explicitly needed. '
-                'No command execution, markdown explanation or surrounding prose. '
+                'Create a Docker Compose YAML document for the description below. ' // l10n-ignore: model instruction
+                'Return ONLY YAML with a nonempty services mapping. ' // l10n-ignore: model output contract
+                'Use service names, named volumes and images with explicit versions. ' // l10n-ignore: Compose schema instruction
+                'Bind published ports to 127.0.0.1 unless requested otherwise. ' // l10n-ignore: model port-binding instruction
+                'Never invent passwords or API keys; use environment placeholders. ' // l10n-ignore: model credential instruction
+                'Do not request privileged mode, Docker socket or host mounts unless explicitly needed. ' // l10n-ignore: model privilege instruction
+                'No command execution, markdown explanation or surrounding prose. ' // l10n-ignore: model output contract
                 'Description (data):\n$prompt',
               ),
             ],

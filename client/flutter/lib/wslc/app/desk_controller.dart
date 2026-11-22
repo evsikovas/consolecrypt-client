@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
 import 'package:consolecrypt/wslc/shared/ports.dart';
@@ -10,13 +11,13 @@ import 'package:consolecrypt/wslc/src/rust/models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart' show Color, ThemeMode;
 
-
 enum DeskSection { containers, images, storage, networks, topology, cleanup, settings }
 
 const inventorySections = [DeskSection.containers, DeskSection.images, DeskSection.storage, DeskSection.networks];
 
 class DeskController extends ChangeNotifier {
-  DeskController({required this.api});
+  DeskController({required this.api, required this.l10n});
+  AppLocalizations l10n;
   final WslcApi api;
   RuntimeInfo? runtime;
   List<ContainerSummary> containers = const [];
@@ -187,7 +188,7 @@ class DeskController extends ChangeNotifier {
   List<HostAddress> hostAddresses = const [];
 
   /// Registries logged into from this app in this run (the CLI cannot list them).
-  final Set<String> registries = {};
+  final Set<String?> registries = {};
   bool _statsBusy = false;
 
   /// Recent samples per container for charts; updated right before [stats].
@@ -232,7 +233,7 @@ class DeskController extends ChangeNotifier {
         _saveQuietly();
       }
       if (!info.readable) {
-        error = info.error == null ? 'Runtime недоступен' : errorText(info.error!);
+        error = info.error == null ? l10n.wslcRuntimeUnavailable : errorText(info.error!);
         stale = loaded.isNotEmpty;
       }
     } catch (e) {
@@ -483,14 +484,15 @@ class DeskController extends ChangeNotifier {
         'start' => api.startContainer(containerId: id),
         'stop' => api.stopContainer(containerId: id, confirmed: true),
         'restart' => api.restartContainer(containerId: id, confirmed: true),
-        _ => throw ArgumentError('Неизвестное действие'),
+        _ => throw ArgumentError(l10n.wslcUnknownAction),
       };
       await refresh();
       if (result.uncertain) {
         // Keep mutations disabled until the next successful read; never retry automatically.
-        error =
-            'Результат ${actionLabel(action)} требует проверки. Команда не будет повторена автоматически. '
-            '${result.commandError?.message ?? result.verificationError?.message ?? ''}';
+        error = l10n.wslcCheckTheResultOfTheCommandWillNot(
+          _actionLabel(l10n, action),
+          result.commandError?.message ?? result.verificationError?.message ?? '',
+        );
         stale = true;
       }
     } catch (e) {
@@ -527,11 +529,11 @@ class DeskController extends ChangeNotifier {
               'start' => api.startContainer(containerId: r.id),
               'stop' => api.stopContainer(containerId: r.id, confirmed: true),
               'restart' => api.restartContainer(containerId: r.id, confirmed: true),
-              _ => throw ArgumentError('Неизвестное действие'),
+              _ => throw ArgumentError(l10n.wslcUnknownAction),
             };
             if (result.uncertain) {
               uncertain = true;
-              failures.add('$label: результат требует проверки');
+              failures.add(l10n.wslcCheckTheResult(label));
               continue;
             }
           }
@@ -548,7 +550,7 @@ class DeskController extends ChangeNotifier {
     if (_disposed) return (done, failures);
     await refresh();
     if (uncertain) {
-      error = 'Часть операций требует проверки. Команды не будут повторены автоматически.';
+      error = l10n.wslcCheckTheResultsOfSomeOperationsCommandsWill;
       stale = true;
     }
     if (action == 'remove' && openedContainerId != null && !containers.any((c) => c.id == openedContainerId)) {
@@ -561,7 +563,7 @@ class DeskController extends ChangeNotifier {
   /// Runs a removal and re-reads [target]. Returns an error text or null on success.
   Future<String?> _remove(String key, DeskSection target, Future<void> Function() action) async {
     if (!canMutate || busyIds.contains(key)) {
-      return 'Действие сейчас недоступно';
+      return l10n.wslcActionCurrentlyUnavailable;
     }
     busyIds.add(key);
     notifyListeners();
@@ -617,9 +619,9 @@ class DeskController extends ChangeNotifier {
   }
 }
 
-String actionLabel(String action) => switch (action) {
-  'start' => 'запуска',
-  'stop' => 'остановки',
-  'restart' => 'перезапуска',
+String _actionLabel(AppLocalizations l10n, String action) => switch (action) {
+  'start' => l10n.wslcStart,
+  'stop' => l10n.wslcStop,
+  'restart' => l10n.wslcRestart,
   _ => action,
 };

@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
 import 'package:consolecrypt/wslc/shared/widgets.dart';
@@ -51,7 +52,7 @@ class _FileEditorState extends State<_FileEditor> {
 
   Future<void> save() async {
     setState(() => saving = true);
-    final messenger = ScaffoldMessenger.of(context);
+    final notify = WslcApiScope.notifierOf(context);
     try {
       await api.writeContainerText(containerId: widget.containerId, path: widget.path, content: text.text);
       if (!mounted) return;
@@ -60,10 +61,10 @@ class _FileEditorState extends State<_FileEditor> {
         editing = false;
         saving = false;
       });
-      messenger.showSnackBar(SnackBar(content: Text('Сохранено: ${widget.path}')));
+      notify(context.l10n.wslcSaved(widget.path));
     } catch (e) {
       if (mounted) setState(() => saving = false);
-      messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+      notify(errorText(e), error: true);
     }
   }
 
@@ -72,11 +73,11 @@ class _FileEditorState extends State<_FileEditor> {
       final discard = await showWslcDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Закрыть без сохранения?'),
-          content: const Text('Изменения в файле будут потеряны.'),
+          title: Text(context.l10n.wslcCloseWithoutSaving),
+          content: Text(context.l10n.wslcChangesToThisFileWillBeLost),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Вернуться')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Закрыть')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.wslcGoBack)),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(context.l10n.commonClose)),
           ],
         ),
       );
@@ -124,7 +125,7 @@ class _FileEditorState extends State<_FileEditor> {
                     OutlinedButton.icon(
                       onPressed: () => setState(() => editing = true),
                       icon: const Icon(Icons.edit_rounded, size: 18),
-                      label: const Text('Редактировать'),
+                      label: Text(context.l10n.wslcEdit),
                     ),
                   if (editing) ...[
                     TextButton(
@@ -134,7 +135,7 @@ class _FileEditorState extends State<_FileEditor> {
                               text.text = original!;
                               editing = false;
                             }),
-                      child: const Text('Отменить правки'),
+                      child: Text(context.l10n.wslcDiscardEdits),
                     ),
                     const SizedBox(width: 6),
                     FilledButton.icon(
@@ -142,12 +143,12 @@ class _FileEditorState extends State<_FileEditor> {
                       icon: saving
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.save_rounded, size: 18),
-                      label: const Text('Сохранить'),
+                      label: Text(context.l10n.commonSave),
                     ),
                   ],
                   const SizedBox(width: 6),
                   IconButton(
-                    tooltip: 'Закрыть',
+                    tooltip: context.l10n.commonClose,
                     onPressed: saving ? null : close,
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -160,7 +161,9 @@ class _FileEditorState extends State<_FileEditor> {
                         child: EmptyState(
                           icon: Icons.error_outline_rounded,
                           loading: error == null,
-                          title: error == null ? 'Чтение файла…' : 'Файл нельзя открыть как текст',
+                          title: error == null
+                              ? context.l10n.wslcReadingFile
+                              : context.l10n.wslcCannotOpenThisFileAsText,
                           hint: error,
                         ),
                       )
@@ -196,10 +199,18 @@ class _FileEditorState extends State<_FileEditor> {
               const SizedBox(height: 8),
               Text(
                 original == null
-                    ? 'Текстовые файлы UTF-8 до 2 МБ'
-                    : '${plural(lines, 'строка', 'строки', 'строк')}'
-                          '${editing ? ' · режим правки' : ' · только просмотр'}'
-                          '${dirty ? ' · есть несохранённые изменения' : ''}',
+                    ? context.l10n.wslcUTFTextFilesUpToMB
+                    : [
+                        plural(
+                          lines,
+                          context.l10n.wslcLine,
+                          context.l10n.wslcLines,
+                          context.l10n.wslcLinesFileEditor,
+                          locale: context.l10n.localeName,
+                        ),
+                        editing ? context.l10n.wslcEditing : context.l10n.wslcReadOnly,
+                        if (dirty) context.l10n.wslcUnsavedChanges,
+                      ].join(),
                 style: TextStyle(color: dirty ? p.warning : p.faint, fontSize: 12),
               ),
             ],

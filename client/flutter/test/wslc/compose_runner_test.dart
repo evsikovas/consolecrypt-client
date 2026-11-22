@@ -1,3 +1,4 @@
+import 'package:consolecrypt/l10n/app_localizations_ru.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/features/compose/compose_runner.dart';
 import 'package:consolecrypt/wslc/src/rust/api/desk.dart';
@@ -106,7 +107,7 @@ class _Api implements WslcApi {
 }
 
 class _Controller extends DeskController {
-  _Controller(WslcApi api) : super(api: api);
+  _Controller(WslcApi api) : super(api: api, l10n: AppLocalizationsRu());
   @override
   Future<void> refreshSections(Iterable<DeskSection> targets) async {}
 }

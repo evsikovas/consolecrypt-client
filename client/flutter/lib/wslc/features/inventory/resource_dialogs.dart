@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
@@ -17,14 +18,14 @@ Future<bool> runAndRefresh(
   String done,
   Set<DeskSection> sections,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
+  final notify = WslcApiScope.notifierOf(context);
   try {
     await action();
-    messenger.showSnackBar(SnackBar(content: Text(done)));
+    notify(done);
     await controller.refreshSections(sections);
     return true;
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+    notify(errorText(e), error: true);
     return false;
   }
 }
@@ -77,7 +78,7 @@ class _Form extends StatelessWidget {
       ),
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+      TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonCancel)),
       FilledButton(onPressed: onSubmit, child: Text(action)),
     ],
   );
@@ -86,9 +87,13 @@ class _Form extends StatelessWidget {
 Future<void> createVolume(BuildContext context, DeskController c) async {
   final spec = await showWslcDialog<VolumeSpec>(context: context, builder: (_) => const _VolumeForm());
   if (spec == null || !context.mounted) return;
-  await runAndRefresh(context, c, () => WslcApiScope.of(context).createVolume(spec: spec), 'Том ${spec.name} создан', {
-    DeskSection.storage,
-  });
+  await runAndRefresh(
+    context,
+    c,
+    () => WslcApiScope.of(context).createVolume(spec: spec),
+    context.l10n.wslcVolumeCreatedResourceDialogs(spec.name),
+    {DeskSection.storage},
+  );
 }
 
 class _VolumeForm extends StatefulWidget {
@@ -113,14 +118,16 @@ class _VolumeFormState extends State<_VolumeForm> {
   @override
   Widget build(BuildContext context) => _Form(
     icon: Icons.storage_rounded,
-    title: 'Новый том',
-    action: 'Создать',
+    title: context.l10n.wslcNewVolume,
+    action: context.l10n.commonCreate,
     error: error,
     onSubmit: () {
       final options = _pairs(opts.text);
       if (name.text.trim().isEmpty || options == null) {
         setState(
-          () => error = name.text.trim().isEmpty ? 'Укажите имя тома' : 'Параметры — по одному KEY=VALUE в строке',
+          () => error = name.text.trim().isEmpty
+              ? context.l10n.wslcEnterAVolumeName
+              : context.l10n.wslcOptionsOneKEYVALUEPerLine,
         );
         return;
       }
@@ -138,14 +145,14 @@ class _VolumeFormState extends State<_VolumeForm> {
       TextField(
         controller: name,
         autofocus: true,
-        decoration: const InputDecoration(hintText: 'Имя тома, например app-data'),
+        decoration: InputDecoration(hintText: context.l10n.wslcVolumeNameEGAppData),
       ),
       DropdownButtonFormField<String>(
         initialValue: driver,
         isExpanded: true,
-        items: const [
-          DropdownMenuItem(value: 'guest', child: Text('guest — в файловой системе ВМ (по умолчанию)')),
-          DropdownMenuItem(value: 'vhd', child: Text('vhd — отдельный виртуальный диск')),
+        items: [
+          DropdownMenuItem(value: 'guest', child: Text(context.l10n.wslcGuestInTheVMFilesystemDefault)),
+          DropdownMenuItem(value: 'vhd', child: Text(context.l10n.wslcVhdSeparateVirtualDisk)),
         ],
         onChanged: (v) => setState(() => driver = v ?? 'guest'),
       ),
@@ -153,7 +160,7 @@ class _VolumeFormState extends State<_VolumeForm> {
         controller: opts,
         minLines: 1,
         maxLines: 3,
-        decoration: const InputDecoration(hintText: 'Параметры драйвера KEY=VALUE (необязательно)'),
+        decoration: InputDecoration(hintText: context.l10n.wslcDriverOptionsKEYVALUEOptional),
       ),
     ],
   );
@@ -166,7 +173,7 @@ Future<void> createNetwork(BuildContext context, DeskController c) async {
     context,
     c,
     () => WslcApiScope.of(context).createNetwork(spec: spec),
-    'Сеть ${spec.name} создана',
+    context.l10n.wslcNetworkCreatedResourceDialogs(spec.name),
     {DeskSection.networks},
   );
 }
@@ -196,12 +203,12 @@ class _NetworkFormState extends State<_NetworkForm> {
   @override
   Widget build(BuildContext context) => _Form(
     icon: Icons.hub_rounded,
-    title: 'Новая сеть',
-    action: 'Создать',
+    title: context.l10n.wslcNewNetwork,
+    action: context.l10n.commonCreate,
     error: error,
     onSubmit: () {
       if (name.text.trim().isEmpty) {
-        setState(() => error = 'Укажите имя сети');
+        setState(() => error = context.l10n.wslcEnterANetworkName);
         return;
       }
       Navigator.pop(
@@ -220,25 +227,25 @@ class _NetworkFormState extends State<_NetworkForm> {
       TextField(
         controller: name,
         autofocus: true,
-        decoration: const InputDecoration(hintText: 'Имя сети, например backend'),
+        decoration: InputDecoration(hintText: context.l10n.wslcNetworkNameEGBackend),
       ),
       TextField(
         controller: subnet,
-        decoration: const InputDecoration(hintText: 'Подсеть CIDR, например 10.231.0.0/24 (необязательно)'),
+        decoration: InputDecoration(hintText: context.l10n.wslcSubnetCIDREGOptional),
       ),
       TextField(
         controller: gateway,
-        decoration: const InputDecoration(hintText: 'Шлюз, например 10.231.0.1'),
+        decoration: InputDecoration(hintText: context.l10n.wslcGatewayEG),
       ),
       TextField(
         controller: range,
-        decoration: const InputDecoration(hintText: 'Диапазон адресов контейнеров CIDR (необязательно)'),
+        decoration: InputDecoration(hintText: context.l10n.wslcContainerAddressRangeInCIDRNotationOptional),
       ),
       CheckboxListTile(
         contentPadding: EdgeInsets.zero,
         value: internal,
         onChanged: (v) => setState(() => internal = v ?? false),
-        title: const Text('Внутренняя сеть без выхода наружу'),
+        title: Text(context.l10n.wslcInternalNetworkWithoutExternalAccess),
       ),
     ],
   );
@@ -256,7 +263,7 @@ Future<void> connectToNetwork(BuildContext context, DeskController c, {String? n
     context,
     c,
     () => WslcApiScope.of(context).connectNetwork(networkName: net, containerId: id, alias: alias, ip: ip),
-    'Контейнер подключён к сети $net',
+    context.l10n.wslcContainerConnectedToNetwork(net),
     {DeskSection.containers, DeskSection.networks},
   );
 }
@@ -289,12 +296,12 @@ class _ConnectFormState extends State<_ConnectForm> {
     final c = widget.controller;
     return _Form(
       icon: Icons.settings_ethernet_rounded,
-      title: 'Подключить к сети',
-      action: 'Подключить',
+      title: context.l10n.wslcConnectToNetwork,
+      action: context.l10n.wslcConnect,
       error: error,
       onSubmit: () {
         if (network == null || container == null) {
-          setState(() => error = 'Выберите сеть и контейнер');
+          setState(() => error = context.l10n.wslcSelectANetworkAndAContainer);
           return;
         }
         Navigator.pop(context, (network!, container!, _text(alias), _text(ip)));
@@ -303,7 +310,7 @@ class _ConnectFormState extends State<_ConnectForm> {
         DropdownButtonFormField<String>(
           initialValue: network,
           isExpanded: true,
-          hint: const Text('Сеть'),
+          hint: Text(context.l10n.hostMetricsNetwork),
           items: [
             for (final n in c.networks)
               if (n.name != null && n.name != 'host' && n.name != 'none')
@@ -314,7 +321,7 @@ class _ConnectFormState extends State<_ConnectForm> {
         DropdownButtonFormField<String>(
           initialValue: container,
           isExpanded: true,
-          hint: const Text('Контейнер'),
+          hint: Text(context.l10n.kubeContainer),
           items: [
             for (final r in c.containers)
               DropdownMenuItem(
@@ -326,11 +333,11 @@ class _ConnectFormState extends State<_ConnectForm> {
         ),
         TextField(
           controller: alias,
-          decoration: const InputDecoration(hintText: 'Псевдоним в сети (необязательно)'),
+          decoration: InputDecoration(hintText: context.l10n.wslcNetworkAliasOptional),
         ),
         TextField(
           controller: ip,
-          decoration: const InputDecoration(hintText: 'Фиксированный IPv4 из подсети (необязательно)'),
+          decoration: InputDecoration(hintText: context.l10n.wslcStaticIPvAddressFromTheSubnetOptional),
         ),
       ],
     );
@@ -342,7 +349,7 @@ Future<void> disconnectFromNetwork(BuildContext context, DeskController c, Strin
       context,
       c,
       () => WslcApiScope.of(context).disconnectNetwork(networkName: network, containerId: containerId),
-      'Контейнер отключён от сети $network',
+      context.l10n.wslcContainerDisconnectedFromNetwork(network),
       {DeskSection.containers, DeskSection.networks},
     );
 
@@ -354,22 +361,24 @@ String _stamp() {
 
 /// Packs a named volume into a .tar.gz on the Windows disk via a helper container.
 Future<void> backupVolume(BuildContext context, String volume) async {
-  final path = await WslcApiScope.of(
-    context,
-  ).pickSaveFile(title: 'Бэкап тома $volume', fileName: '$volume-${_stamp()}.tar.gz', extensions: const ['gz', 'tgz']);
+  final path = await WslcApiScope.of(context).pickSaveFile(
+    title: context.l10n.wslcBackingUpVolume(volume),
+    fileName: '$volume-${_stamp()}.tar.gz',
+    extensions: const ['gz', 'tgz'],
+  );
   if (path == null || !context.mounted) return;
   await showJobDialog(
     context,
-    title: 'Бэкап тома $volume',
+    title: context.l10n.wslcBackingUpVolume(volume),
     icon: Icons.backup_outlined,
     start: () => WslcApiScope.of(context).startVolumeBackup(volumeName: volume, output: path),
-    successText: 'Бэкап сохранён: $path',
+    successText: context.l10n.wslcBackupSavedTo(path),
   );
 }
 
 /// Restores a .tar.gz into [volume]; asks for a new volume name when none is given.
 Future<void> restoreVolume(BuildContext context, DeskController c, {String? volume}) async {
-  final path = await WslcApiScope.of(context).pickFile(title: 'Архив тома (.tar.gz)');
+  final path = await WslcApiScope.of(context).pickFile(title: context.l10n.wslcVolumeArchiveTarGz);
   if (path == null || !context.mounted) return;
   final choice = await showWslcDialog<(String, bool)>(
     context: context,
@@ -379,10 +388,10 @@ Future<void> restoreVolume(BuildContext context, DeskController c, {String? volu
   final (target, clear) = choice;
   final ok = await showJobDialog(
     context,
-    title: 'Восстановление тома $target',
+    title: context.l10n.wslcRestoringVolume(target),
     icon: Icons.settings_backup_restore_rounded,
     start: () => WslcApiScope.of(context).startVolumeRestore(volumeName: target, input: path, clear: clear),
-    successText: 'Том $target восстановлен',
+    successText: context.l10n.wslcVolumeRestored(target),
   );
   if (ok) await c.refreshSections({DeskSection.storage});
 }
@@ -408,12 +417,12 @@ class _RestoreFormState extends State<_RestoreForm> {
   @override
   Widget build(BuildContext context) => _Form(
     icon: Icons.settings_backup_restore_rounded,
-    title: widget.volume == null ? 'Восстановить в новый том' : 'Восстановить том',
-    action: 'Восстановить',
+    title: widget.volume == null ? context.l10n.wslcRestoreToANewVolume : context.l10n.wslcRestoreVolume,
+    action: context.l10n.sharingRestore,
     error: error,
     onSubmit: () {
       if (name.text.trim().isEmpty) {
-        setState(() => error = 'Укажите имя тома');
+        setState(() => error = context.l10n.wslcEnterAVolumeName);
         return;
       }
       Navigator.pop(context, (name.text.trim(), clear));
@@ -422,14 +431,14 @@ class _RestoreFormState extends State<_RestoreForm> {
       TextField(
         controller: name,
         readOnly: widget.volume != null,
-        decoration: const InputDecoration(hintText: 'Имя тома (несуществующий будет создан)'),
+        decoration: InputDecoration(hintText: context.l10n.wslcVolumeNameCreatedIfItDoesNotExist),
       ),
       CheckboxListTile(
         contentPadding: EdgeInsets.zero,
         value: clear,
         onChanged: (v) => setState(() => clear = v ?? false),
-        title: const Text('Очистить том перед восстановлением'),
-        subtitle: const Text('Иначе файлы из архива добавятся поверх текущих'),
+        title: Text(context.l10n.wslcClearVolumeBeforeRestoring),
+        subtitle: Text(context.l10n.wslcOtherwiseArchiveFilesAreMergedIntoTheExisting),
       ),
     ],
   );
@@ -442,16 +451,16 @@ class VolumeMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<VoidCallback>(
-    tooltip: 'Ещё действия',
+    tooltip: context.l10n.wslcMoreActions,
     icon: const Icon(Icons.more_vert_rounded),
     enabled: controller.canMutate,
     position: PopupMenuPosition.under,
     onSelected: (action) => action(),
     itemBuilder: (_) => [
-      PopupMenuItem(value: () => backupVolume(context, volume), child: const Text('Бэкап в архив…')),
+      PopupMenuItem(value: () => backupVolume(context, volume), child: Text(context.l10n.wslcBackUpToArchive)),
       PopupMenuItem(
         value: () => restoreVolume(context, controller, volume: volume),
-        child: const Text('Восстановить из архива…'),
+        child: Text(context.l10n.wslcRestoreFromArchive),
       ),
     ],
   );

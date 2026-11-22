@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/features/compose/compose_dialog.dart';
@@ -7,6 +8,7 @@ import 'package:consolecrypt/wslc/shared/ports.dart';
 import 'package:consolecrypt/wslc/shared/usage.dart';
 import 'package:consolecrypt/wslc/shared/widgets.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
+import 'package:consolecrypt/wslc/wslc_scope.dart';
 import 'package:material_ui/material_ui.dart';
 
 enum ContainerFilter { all, running, stopped }
@@ -54,8 +56,14 @@ class _ContainersPageState extends State<ContainersPage> {
     final targets = rows.where((r) => eligible(r, action)).toList();
     if (targets.isEmpty) return;
     final names = targets.map((r) => '• ${r.name ?? r.id.substring(0, 12)}');
+    final l10n = context.l10n;
     if (action != 'start') {
       final running = targets.any((r) => r.state == ContainerState.running);
+      final warning = action == 'remove'
+          ? l10n.wslcRemovalCannotBeUndoneNamedVolumesWillBe(
+              running ? l10n.wslcRunningContainersWillBeForciblyStopped : '',
+            )
+          : l10n.wslcTheRuntimeMayRemoveContainersWithAutoRemove;
       final ok = await confirmDanger(
         context,
         icon: switch (action) {
@@ -64,32 +72,25 @@ class _ContainersPageState extends State<ContainersPage> {
           _ => Icons.delete_outline_rounded,
         },
         title: switch (action) {
-          'stop' => 'Остановить контейнеры (${targets.length})?',
-          'restart' => 'Перезапустить контейнеры (${targets.length})?',
-          _ => 'Удалить контейнеры (${targets.length})?',
+          'stop' => context.l10n.wslcStopTheSelectedContainers(targets.length),
+          'restart' => context.l10n.wslcRestartTheSelectedContainers(targets.length),
+          _ => context.l10n.wslcRemoveTheSelectedContainers(targets.length),
         },
-        message:
-            '${names.join('\n')}\n\n'
-            '${action == 'remove' ? '${running ? 'Запущенные будут остановлены принудительно. ' : ''}Удаление нельзя отменить; именованные тома сохранятся.' : 'Runtime может удалить контейнеры с auto-remove после остановки.'}',
+        message: [...names, '', warning].join('\n'),
         action: switch (action) {
-          'stop' => 'Остановить',
-          'restart' => 'Перезапустить',
-          _ => 'Удалить',
+          'stop' => context.l10n.dockerActionStop,
+          'restart' => context.l10n.dockerActionRestart,
+          _ => context.l10n.commonDelete,
         },
       );
       if (!ok || !context.mounted) return;
     }
-    final messenger = ScaffoldMessenger.of(context);
+    final notify = WslcApiScope.notifierOf(context);
     final (done, failures) = await widget.controller.bulk(targets, action);
     if (mounted) setState(() => selected.clear());
-    messenger.showSnackBar(
-      SnackBar(
-        duration: Duration(seconds: failures.isEmpty ? 3 : 8),
-        content: Text(
-          'Готово: $done из ${targets.length}'
-          '${failures.isEmpty ? '' : '\n${failures.join('\n')}'}',
-        ),
-      ),
+    notify(
+      l10n.wslcDoneOf(done, targets.length, failures.isEmpty ? '' : '\n${failures.join('\n')}'),
+      error: failures.isNotEmpty,
     );
   }
 
@@ -123,7 +124,7 @@ class _ContainersPageState extends State<ContainersPage> {
           children: [
             Expanded(
               child: StatCard(
-                label: 'Все контейнеры',
+                label: context.l10n.snippetCatalogContainers,
                 value: count(all.length),
                 icon: Icons.view_in_ar_rounded,
                 color: p.accent,
@@ -132,7 +133,7 @@ class _ContainersPageState extends State<ContainersPage> {
             const SizedBox(width: 12),
             Expanded(
               child: StatCard(
-                label: 'Запущено',
+                label: context.l10n.wslcRunningContainersPage,
                 value: count(running),
                 icon: Icons.play_arrow_rounded,
                 color: p.success,
@@ -140,12 +141,17 @@ class _ContainersPageState extends State<ContainersPage> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: StatCard(label: 'Остановлено', value: count(stopped), icon: Icons.pause_rounded, color: p.warning),
+              child: StatCard(
+                label: context.l10n.noticesRuntimeStopped,
+                value: count(stopped),
+                icon: Icons.pause_rounded,
+                color: p.warning,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: StatCard(
-                label: 'Образы',
+                label: context.l10n.kubeImages,
                 value: count(c.images.length),
                 icon: Icons.layers_rounded,
                 color: p.accentEnd,
@@ -159,7 +165,7 @@ class _ContainersPageState extends State<ContainersPage> {
             Expanded(
               child: SearchField(
                 controller: search,
-                hint: 'Поиск по имени, ID, образу или порту',
+                hint: context.l10n.wslcSearchByNameIDImageOrPort,
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -171,9 +177,9 @@ class _ContainersPageState extends State<ContainersPage> {
                   value: filter,
                   onChanged: (v) => setState(() => filter = v),
                   items: [
-                    (ContainerFilter.all, 'Все', all.length),
-                    (ContainerFilter.running, 'Запущенные', running),
-                    (ContainerFilter.stopped, 'Остановленные', stopped),
+                    (ContainerFilter.all, context.l10n.notesAll, all.length),
+                    (ContainerFilter.running, context.l10n.wslcRunningContainersPageOther, running),
+                    (ContainerFilter.stopped, context.l10n.wslcStopped, stopped),
                   ],
                 ),
               ),
@@ -185,33 +191,37 @@ class _ContainersPageState extends State<ContainersPage> {
                     key: const ValueKey('wslc-new-container'),
                     onPressed: c.canMutate ? () => createContainer(context) : null,
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Новый'),
+                    label: Text(context.l10n.dbDesignNew),
                   )
                 : IconButton.filled(
                     key: const ValueKey('wslc-new-container'),
-                    tooltip: 'Новый контейнер',
+                    tooltip: context.l10n.wslcNewContainer,
                     onPressed: c.canMutate ? () => createContainer(context) : null,
                     icon: const Icon(Icons.add_rounded),
                   ),
             const SizedBox(width: 8),
             IconButton.outlined(
               key: const ValueKey('wslc-open-compose'),
-              tooltip: 'Docker Compose: запустить из YAML',
+              tooltip: context.l10n.wslcDockerComposeStartFromYAML,
               onPressed: c.canMutate ? () => showComposeDialog(context, c) : null,
               icon: const Icon(Icons.dynamic_feed_rounded),
             ),
             PopupMenuButton<String>(
-              tooltip: 'Действия со всеми',
+              tooltip: context.l10n.wslcBulkActions,
               icon: const Icon(Icons.more_horiz_rounded),
               enabled: c.canMutate,
               position: PopupMenuPosition.under,
               onSelected: (action) => runBulk(context, all, action),
               itemBuilder: (_) => [
-                PopupMenuItem(value: 'stop', enabled: running > 0, child: Text('Остановить все запущенные ($running)')),
+                PopupMenuItem(
+                  value: 'stop',
+                  enabled: running > 0,
+                  child: Text(context.l10n.wslcStopAllRunningContainers(running)),
+                ),
                 PopupMenuItem(
                   value: 'start',
                   enabled: stopped > 0,
-                  child: Text('Запустить все остановленные ($stopped)'),
+                  child: Text(context.l10n.wslcStartAllStoppedContainers(stopped)),
                 ),
               ],
             ),
@@ -237,15 +247,15 @@ class _ContainersPageState extends State<ContainersPage> {
                     icon: Icons.view_in_ar_rounded,
                     loading: c.ready && !c.loaded.contains(DeskSection.containers) && c.error == null,
                     title: !c.ready
-                        ? 'Нет подключения к WSLc'
+                        ? context.l10n.wslcNotConnectedToWSLc
                         : all.isEmpty
-                        ? 'Контейнеров пока нет'
-                        : 'Ничего не найдено',
+                        ? context.l10n.wslcNoContainersYet
+                        : context.l10n.notesNothingFound,
                     hint: !c.ready
-                        ? 'Проверьте подключение в настройках'
+                        ? context.l10n.wslcCheckTheConnectionInSettings
                         : all.isEmpty
-                        ? 'Нажмите «Новый», чтобы создать первый контейнер'
-                        : 'Измените запрос или фильтр',
+                        ? context.l10n.wslcSelectNewToCreateYourFirstContainer
+                        : context.l10n.wslcChangeTheSearchTermOrFilter,
                   )
                 : LayoutBuilder(
                     builder: (context, constraints) {
@@ -330,22 +340,26 @@ class _BulkBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text('Выбрано: $count', style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text(context.l10n.wslcSelected(count), style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(width: 12),
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  button('start', Icons.play_arrow_rounded, 'Запустить', p.success),
-                  button('stop', Icons.stop_rounded, 'Остановить', p.danger),
-                  button('restart', Icons.restart_alt_rounded, 'Перезапустить', p.text),
-                  button('remove', Icons.delete_outline_rounded, 'Удалить', p.danger),
+                  button('start', Icons.play_arrow_rounded, context.l10n.dockerActionStart, p.success),
+                  button('stop', Icons.stop_rounded, context.l10n.dockerActionStop, p.danger),
+                  button('restart', Icons.restart_alt_rounded, context.l10n.dockerActionRestart, p.text),
+                  button('remove', Icons.delete_outline_rounded, context.l10n.commonDelete, p.danger),
                 ],
               ),
             ),
           ),
-          IconButton(tooltip: 'Снять выделение', onPressed: onClear, icon: const Icon(Icons.close_rounded)),
+          IconButton(
+            tooltip: context.l10n.terminalClearSelection,
+            onPressed: onClear,
+            icon: const Icon(Icons.close_rounded),
+          ),
         ],
       ),
     );
@@ -379,10 +393,10 @@ class _HeaderRow extends StatelessWidget {
             child: Checkbox(tristate: true, value: checked, onChanged: (_) => onChecked(checked != true)),
           ),
           const SizedBox(width: 26),
-          label('Контейнер', 3),
-          label('Образ', 3),
-          label('Состояние', 2),
-          label('Порты', 2),
+          label(context.l10n.kubeContainer, 3),
+          label(context.l10n.dockerImage, 3),
+          label(context.l10n.syncScreenState, 2),
+          label(context.l10n.kubePorts, 2),
           if (showStats) label('CPU · RAM', 2),
           const SizedBox(width: _actionsWidth),
         ],
@@ -435,7 +449,7 @@ class _ContainerRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      row.name ?? 'нет данных',
+                      row.name ?? context.l10n.automationResultMissing,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -450,9 +464,9 @@ class _ContainerRow extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: Tooltip(
-                    message: row.image ?? 'нет данных',
+                    message: row.image ?? context.l10n.automationResultMissing,
                     child: Text(
-                      row.image ?? 'нет данных',
+                      row.image ?? context.l10n.automationResultMissing,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: p.muted, fontSize: 13),
@@ -465,7 +479,7 @@ class _ContainerRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Pill(stateText(row.state, row.rawState), color: color),
+                    Pill(stateText(context.l10n, row.state, row.rawState), color: color),
                     if (row.statusDisplay != null) ...[
                       const SizedBox(height: 3),
                       Text(
@@ -485,7 +499,7 @@ class _ContainerRow extends StatelessWidget {
                   child: ports.isNotEmpty
                       ? PortChips(ports: ports, addresses: controller.hostAddresses)
                       : Text(
-                          row.portsDisplay == null ? 'нет данных' : '—',
+                          row.portsDisplay == null ? context.l10n.automationResultMissing : '—',
                           style: TextStyle(color: p.faint, fontSize: 12),
                         ),
                 ),
@@ -509,7 +523,7 @@ class _ContainerRow extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           IconButton(
-                            tooltip: 'Запустить',
+                            tooltip: context.l10n.dockerActionStart,
                             color: p.success,
                             onPressed: enabled && canStart(row.state)
                                 ? () => runContainerAction(context, controller, row, 'start')
@@ -517,7 +531,7 @@ class _ContainerRow extends StatelessWidget {
                             icon: const Icon(Icons.play_arrow_rounded),
                           ),
                           IconButton(
-                            tooltip: 'Остановить',
+                            tooltip: context.l10n.dockerActionStop,
                             color: p.danger,
                             onPressed: enabled && canStop(row.state)
                                 ? () => runContainerAction(context, controller, row, 'stop')
@@ -525,7 +539,7 @@ class _ContainerRow extends StatelessWidget {
                             icon: const Icon(Icons.stop_rounded),
                           ),
                           IconButton(
-                            tooltip: 'Перезапустить',
+                            tooltip: context.l10n.dockerActionRestart,
                             onPressed: enabled && canStop(row.state)
                                 ? () => runContainerAction(context, controller, row, 'restart')
                                 : null,

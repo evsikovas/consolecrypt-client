@@ -7,9 +7,10 @@ import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/docker/docker_service.dart' show DockerWrongPassphrase;
+import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/src/rust/api/wslc.dart' as native;
-
 import 'package:consolecrypt/wslc/src/rust/models.dart';
+import 'package:flutter/widgets.dart' show Locale;
 
 typedef WslcReveal = Future<dynamic> Function(String object, Future<dynamic> Function(StepUpProof proof) read);
 
@@ -19,11 +20,12 @@ class WslcTransport {
   WslcTransport({required this.profileId, required this.reveal});
   final String profileId;
   final WslcReveal reveal;
+  AppLocalizations messages = lookupAppLocalizations(const Locale('en'));
   Future<String>? _opening;
   bool _closed = false;
 
   AppError get expired =>
-      const AppError(code: 'session_expired', operation: 'workspace', message: 'Сессия WSLc закрыта');
+      AppError(code: 'session_expired', operation: 'workspace', message: messages.wslcWSLcSessionClosed);
   Future<String> _session() async {
     if (_closed) throw expired;
     final id = await (_opening ??= () async {
@@ -73,7 +75,7 @@ class WslcTransport {
     if (!sensitive) return call();
     final object = 'wslc:$id/${args['container_id'] ?? args['image_id'] ?? 'environment'}';
     final value = await reveal(object, (proof) => call(proof));
-    if (value == null) throw const AppError(code: 'cancelled', operation: 'reveal', message: 'Отменено');
+    if (value == null) throw AppError(code: 'cancelled', operation: 'reveal', message: messages.wslcCancelled);
     return value;
   }
 

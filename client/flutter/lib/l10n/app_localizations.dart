@@ -376,6 +376,12 @@ abstract class AppLocalizations {
   /// **'Vault settings'**
   String get externalVaultApiSettings;
 
+  /// Version of the Vault KV secrets engine selected for this connection
+  ///
+  /// In en, this message translates to:
+  /// **'KV version {version}'**
+  String externalVaultKvVersion(int version);
+
   /// Vault and OpenBao connection
   ///
   /// In en, this message translates to:
@@ -31287,6 +31293,2769 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No saved connections yet'**
   String get externalVaultNoConnections;
+
+  /// WSLc desk controller. Runtime unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime unavailable'**
+  String get wslcRuntimeUnavailable;
+
+  /// WSLc desk controller. Unknown action
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown action'**
+  String get wslcUnknownAction;
+
+  /// WSLc desk controller. Check the result of {p1}. The command will not be retried automatically. {p2}
+  ///
+  /// In en, this message translates to:
+  /// **'Check the result of {value}. The command will not be retried automatically. {value2}'**
+  String wslcCheckTheResultOfTheCommandWillNot(Object value, Object value2);
+
+  /// WSLc desk controller. {p1}: check the result
+  ///
+  /// In en, this message translates to:
+  /// **'{label}: check the result'**
+  String wslcCheckTheResult(Object label);
+
+  /// WSLc desk controller. Check the results of some operations. Commands will not be retried automatically.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the results of some operations. Commands will not be retried automatically.'**
+  String get wslcCheckTheResultsOfSomeOperationsCommandsWill;
+
+  /// WSLc desk controller. Action currently unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Action currently unavailable'**
+  String get wslcActionCurrentlyUnavailable;
+
+  /// WSLc desk controller. start
+  ///
+  /// In en, this message translates to:
+  /// **'start'**
+  String get wslcStart;
+
+  /// WSLc desk controller. stop
+  ///
+  /// In en, this message translates to:
+  /// **'stop'**
+  String get wslcStop;
+
+  /// WSLc desk controller. restart
+  ///
+  /// In en, this message translates to:
+  /// **'restart'**
+  String get wslcRestart;
+
+  /// WSLc cleanup page. created {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'created {value}'**
+  String wslcCreated(Object value);
+
+  /// WSLc cleanup page. Remove selected items ({p1})?
+  ///
+  /// In en, this message translates to:
+  /// **'Remove selected items ({length})?'**
+  String wslcRemoveSelectedItems(Object length);
+
+  /// WSLc cleanup page. Data in the selected volumes will be lost.
+  ///
+  /// In en, this message translates to:
+  /// **'Data in the selected volumes will be lost.'**
+  String get wslcDataInTheSelectedVolumesWillBeLost;
+
+  /// WSLc cleanup page. Removal cannot be undone.
+  ///
+  /// In en, this message translates to:
+  /// **'Removal cannot be undone.'**
+  String get wslcRemovalCannotBeUndone;
+
+  /// WSLc cleanup page. Removed: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Removed: {removed}'**
+  String wslcRemoved(Object removed);
+
+  /// WSLc cleanup page. Removed {p1} of {p2}
+  ///
+  /// In en, this message translates to:
+  /// **'Removed {removed} of {length}'**
+  String wslcRemovedOf(Object removed, Object length);
+
+  /// WSLc cleanup page. Looking for items to remove…
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for items to remove…'**
+  String get wslcLookingForItemsToRemove;
+
+  /// WSLc cleanup page. Could not load the list
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the list'**
+  String get wslcCouldNotLoadTheList;
+
+  /// WSLc cleanup page. Everything is clean
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is clean'**
+  String get wslcEverythingIsClean;
+
+  /// WSLc cleanup page. Up to {p1} can be freed
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {value} can be freed'**
+  String wslcUpToCanBeFreed(Object value);
+
+  /// WSLc cleanup page. Found: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Found: {length}'**
+  String wslcFound(Object length);
+
+  /// WSLc cleanup page. {p1} of {p2}
+  ///
+  /// In en, this message translates to:
+  /// **'{value} of {value2}'**
+  String wslcOf(Object value, Object value2);
+
+  /// WSLc cleanup page. Clean up selected items
+  ///
+  /// In en, this message translates to:
+  /// **'Clean up selected items'**
+  String get wslcCleanUpSelectedItems;
+
+  /// WSLc cleanup page. Clean up selected items ({p1}{p2})
+  ///
+  /// In en, this message translates to:
+  /// **'Clean up selected items ({length}{value2})'**
+  String wslcCleanUpSelectedItemsCleanupPage(Object length, Object value2);
+
+  /// WSLc cleanup page. Nothing to clean up
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to clean up'**
+  String get wslcNothingToCleanUp;
+
+  /// WSLc cleanup page. There are no stopped containers. All images, volumes and networks are in use.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no stopped containers. All images, volumes and networks are in use.'**
+  String get wslcThereAreNoStoppedContainersAllImagesVolumes;
+
+  /// Live status of a WSLc container log subscription
+  ///
+  /// In en, this message translates to:
+  /// **'Reading logs'**
+  String get wslcLogStreamReading;
+
+  /// The WSLc log reader did not finish draining the stream in time
+  ///
+  /// In en, this message translates to:
+  /// **'The log stream timed out'**
+  String get wslcLogStreamTimedOut;
+
+  /// WSLc cleanup page. Stopped containers
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped containers'**
+  String get wslcStoppedContainers;
+
+  /// WSLc cleanup page. Unused images
+  ///
+  /// In en, this message translates to:
+  /// **'Unused images'**
+  String get wslcUnusedImages;
+
+  /// WSLc cleanup page. Unused volumes
+  ///
+  /// In en, this message translates to:
+  /// **'Unused volumes'**
+  String get wslcUnusedVolumes;
+
+  /// WSLc cleanup page. Empty networks
+  ///
+  /// In en, this message translates to:
+  /// **'Empty networks'**
+  String get wslcEmptyNetworks;
+
+  /// WSLc cleanup page. Removes the container filesystem. Named volumes are kept.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes the container filesystem. Named volumes are kept.'**
+  String get wslcRemovesTheContainerFilesystemNamedVolumesAreKept;
+
+  /// WSLc cleanup page. No containers use these images. You can download them again.
+  ///
+  /// In en, this message translates to:
+  /// **'No containers use these images. You can download them again.'**
+  String get wslcNoContainersUseTheseImagesYouCanDownload;
+
+  /// WSLc cleanup page. These volumes are not attached to any container. Removing them erases their data. Back up anything you need.
+  ///
+  /// In en, this message translates to:
+  /// **'These volumes are not attached to any container. Removing them erases their data. Back up anything you need.'**
+  String get wslcTheseVolumesAreNotAttachedToAnyContainer;
+
+  /// WSLc cleanup page. User-defined networks with no attached containers.
+  ///
+  /// In en, this message translates to:
+  /// **'User-defined networks with no attached containers.'**
+  String get wslcUserDefinedNetworksWithNoAttachedContainers;
+
+  /// WSLc compose dialog. Docker Compose file
+  ///
+  /// In en, this message translates to:
+  /// **'Docker Compose file'**
+  String get wslcDockerComposeFile;
+
+  /// WSLc compose dialog. Compose project directory
+  ///
+  /// In en, this message translates to:
+  /// **'Compose project directory'**
+  String get wslcComposeProjectDirectory;
+
+  /// WSLc compose dialog. Paste docker-compose.yml to start the services as with docker compose up -d
+  ///
+  /// In en, this message translates to:
+  /// **'Paste docker-compose.yml to start the services as with docker compose up -d'**
+  String get wslcPasteDockerComposeYmlToStartTheServices;
+
+  /// WSLc compose dialog. Open file…
+  ///
+  /// In en, this message translates to:
+  /// **'Open file…'**
+  String get wslcOpenFile;
+
+  /// WSLc compose dialog. Back to file
+  ///
+  /// In en, this message translates to:
+  /// **'Back to file'**
+  String get wslcBackToFile;
+
+  /// WSLc compose dialog. Stopping…
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping…'**
+  String get wslcStopping;
+
+  /// WSLc compose dialog. Rebuild images (--build)
+  ///
+  /// In en, this message translates to:
+  /// **'Rebuild images (--build)'**
+  String get wslcRebuildImagesBuild;
+
+  /// WSLc compose dialog. Stop and remove
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and remove'**
+  String get wslcStopAndRemove;
+
+  /// WSLc compose dialog. from name: or the directory
+  ///
+  /// In en, this message translates to:
+  /// **'from name: or the directory'**
+  String get wslcFromNameOrTheDirectory;
+
+  /// WSLc compose dialog. Project directory
+  ///
+  /// In en, this message translates to:
+  /// **'Project directory'**
+  String get wslcProjectDirectory;
+
+  /// WSLc compose dialog. Relative paths, .env, env_file and build
+  ///
+  /// In en, this message translates to:
+  /// **'Relative paths, .env, env_file and build'**
+  String get wslcRelativePathsEnvEnvFileAndBuild;
+
+  /// WSLc compose dialog. Choose directory
+  ///
+  /// In en, this message translates to:
+  /// **'Choose directory'**
+  String get wslcChooseDirectory;
+
+  /// WSLc compose dialog. Paste docker-compose.yml
+  ///
+  /// In en, this message translates to:
+  /// **'Paste docker-compose.yml'**
+  String get wslcPasteDockerComposeYml;
+
+  /// WSLc compose dialog. or open a file to preview the plan before starting
+  ///
+  /// In en, this message translates to:
+  /// **'or open a file to preview the plan before starting'**
+  String get wslcOrOpenAFileToPreviewThePlan;
+
+  /// WSLc compose dialog. Parsing file…
+  ///
+  /// In en, this message translates to:
+  /// **'Parsing file…'**
+  String get wslcParsingFile;
+
+  /// WSLc compose dialog. Project {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Project {project}'**
+  String wslcProject(Object project);
+
+  /// WSLc compose dialog. service
+  ///
+  /// In en, this message translates to:
+  /// **'service'**
+  String get wslcService;
+
+  /// WSLc compose dialog. services
+  ///
+  /// In en, this message translates to:
+  /// **'services'**
+  String get wslcServices;
+
+  /// WSLc compose dialog. services
+  ///
+  /// In en, this message translates to:
+  /// **'services'**
+  String get wslcServicesComposeDialog;
+
+  /// WSLc compose dialog. Differences from Docker
+  ///
+  /// In en, this message translates to:
+  /// **'Differences from Docker'**
+  String get wslcDifferencesFromDocker;
+
+  /// WSLc compose dialog. Services in startup order
+  ///
+  /// In en, this message translates to:
+  /// **'Services in startup order'**
+  String get wslcServicesInStartupOrder;
+
+  /// WSLc compose dialog. Networks and volumes
+  ///
+  /// In en, this message translates to:
+  /// **'Networks and volumes'**
+  String get wslcNetworksAndVolumes;
+
+  /// WSLc compose dialog. · external
+  ///
+  /// In en, this message translates to:
+  /// **' · external'**
+  String get wslcExternal;
+
+  /// WSLc compose dialog. · external
+  ///
+  /// In en, this message translates to:
+  /// **' · external'**
+  String get wslcExternalComposeDialog;
+
+  /// WSLc compose dialog. WSLc commands ({p1})
+  ///
+  /// In en, this message translates to:
+  /// **'WSLc commands ({length})'**
+  String wslcWSLcCommands(Object length);
+
+  /// WSLc compose dialog. build → {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'build → {image}'**
+  String wslcBuild(Object image);
+
+  /// WSLc compose dialog. variables: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'variables: {length}'**
+  String wslcVariables(Object length);
+
+  /// WSLc compose dialog. after {p1}{p2}
+  ///
+  /// In en, this message translates to:
+  /// **'after {service}{value2}'**
+  String wslcAfter(Object service, Object value2);
+
+  /// WSLc compose dialog. (healthy)
+  ///
+  /// In en, this message translates to:
+  /// **' (healthy)'**
+  String get wslcHealthy;
+
+  /// WSLc compose dialog. (completed)
+  ///
+  /// In en, this message translates to:
+  /// **' (completed)'**
+  String get wslcCompleted;
+
+  /// WSLc compose dialog. Project ready: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Project ready: {project}'**
+  String wslcProjectReady(Object project);
+
+  /// WSLc compose dialog. Stop and remove {p1}?
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and remove {project}?'**
+  String wslcStopAndRemoveComposeDialog(Object project);
+
+  /// WSLc compose dialog. As with docker compose down, this stops and removes the project containers and removes the networks it created. Images are kept.
+  ///
+  /// In en, this message translates to:
+  /// **'As with docker compose down, this stops and removes the project containers and removes the networks it created. Images are kept.'**
+  String get wslcAsWithDockerComposeDownThisStopsAnd;
+
+  /// WSLc compose dialog. Also remove project volumes ({p1})
+  ///
+  /// In en, this message translates to:
+  /// **'Also remove project volumes ({ownVolumes})'**
+  String wslcAlsoRemoveProjectVolumes(Object ownVolumes);
+
+  /// WSLc compose dialog. Data in these volumes will be lost (-v)
+  ///
+  /// In en, this message translates to:
+  /// **'Data in these volumes will be lost (-v)'**
+  String get wslcDataInTheseVolumesWillBeLostV;
+
+  /// WSLc compose runner. cancelled
+  ///
+  /// In en, this message translates to:
+  /// **'cancelled'**
+  String get wslcCancelled;
+
+  /// WSLc compose runner. Stopped on request
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped on request'**
+  String get wslcStoppedOnRequest;
+
+  /// WSLc compose runner. Directories for mounts
+  ///
+  /// In en, this message translates to:
+  /// **'Directories for mounts'**
+  String get wslcDirectoriesForMounts;
+
+  /// WSLc compose runner. Network {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Network {name}'**
+  String wslcNetwork(Object name);
+
+  /// WSLc compose runner. external network found
+  ///
+  /// In en, this message translates to:
+  /// **'external network found'**
+  String get wslcExternalNetworkFound;
+
+  /// WSLc compose runner. already exists
+  ///
+  /// In en, this message translates to:
+  /// **'already exists'**
+  String get wslcAlreadyExists;
+
+  /// WSLc compose runner. External network {p1} not found
+  ///
+  /// In en, this message translates to:
+  /// **'External network {name} not found'**
+  String wslcExternalNetworkNotFound(Object name);
+
+  /// WSLc compose runner. network created
+  ///
+  /// In en, this message translates to:
+  /// **'network created'**
+  String get wslcNetworkCreated;
+
+  /// WSLc compose runner. Volume {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Volume {name}'**
+  String wslcVolume(Object name);
+
+  /// WSLc compose runner. external volume found
+  ///
+  /// In en, this message translates to:
+  /// **'external volume found'**
+  String get wslcExternalVolumeFound;
+
+  /// WSLc compose runner. External volume {p1} not found
+  ///
+  /// In en, this message translates to:
+  /// **'External volume {name} not found'**
+  String wslcExternalVolumeNotFound(Object name);
+
+  /// WSLc compose runner. volume created
+  ///
+  /// In en, this message translates to:
+  /// **'volume created'**
+  String get wslcVolumeCreated;
+
+  /// WSLc compose runner. Building {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Building {image}'**
+  String wslcBuilding(Object image);
+
+  /// WSLc compose runner. image already built
+  ///
+  /// In en, this message translates to:
+  /// **'image already built'**
+  String get wslcImageAlreadyBuilt;
+
+  /// WSLc compose runner. built
+  ///
+  /// In en, this message translates to:
+  /// **'built'**
+  String get wslcBuilt;
+
+  /// WSLc compose runner. Image {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Image {image}'**
+  String wslcImage(Object image);
+
+  /// WSLc compose runner. already downloaded
+  ///
+  /// In en, this message translates to:
+  /// **'already downloaded'**
+  String get wslcAlreadyDownloaded;
+
+  /// WSLc compose runner. downloaded
+  ///
+  /// In en, this message translates to:
+  /// **'downloaded'**
+  String get wslcDownloaded;
+
+  /// WSLc container details page. Windows folder
+  ///
+  /// In en, this message translates to:
+  /// **'Windows folder'**
+  String get wslcWindowsFolder;
+
+  /// WSLc container details page. unknown type
+  ///
+  /// In en, this message translates to:
+  /// **'unknown type'**
+  String get wslcUnknownType;
+
+  /// WSLc container details page. Show in File Explorer
+  ///
+  /// In en, this message translates to:
+  /// **'Show in File Explorer'**
+  String get wslcShowInFileExplorer;
+
+  /// WSLc container details page. This volume is stored inside the WSLc VM. To browse its contents, open the container files.
+  ///
+  /// In en, this message translates to:
+  /// **'This volume is stored inside the WSLc VM. To browse its contents, open the container files.'**
+  String get wslcThisVolumeIsStoredInsideTheWSLcVM;
+
+  /// WSLc container details page. Show files
+  ///
+  /// In en, this message translates to:
+  /// **'Show files'**
+  String get wslcShowFiles;
+
+  /// WSLc container details page. Copy Windows path
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Windows path'**
+  String get wslcCopyWindowsPath;
+
+  /// WSLc container details page. Copy volume name
+  ///
+  /// In en, this message translates to:
+  /// **'Copy volume name'**
+  String get wslcCopyVolumeName;
+
+  /// WSLc container details page. Copy path inside container
+  ///
+  /// In en, this message translates to:
+  /// **'Copy path inside container'**
+  String get wslcCopyPathInsideContainer;
+
+  /// WSLc container details page. Show files in container
+  ///
+  /// In en, this message translates to:
+  /// **'Show files in container'**
+  String get wslcShowFilesInContainer;
+
+  /// WSLc container details page. Open terminal here
+  ///
+  /// In en, this message translates to:
+  /// **'Open terminal here'**
+  String get wslcOpenTerminalHere;
+
+  /// WSLc env panel. Reading environment…
+  ///
+  /// In en, this message translates to:
+  /// **'Reading environment…'**
+  String get wslcReadingEnvironment;
+
+  /// WSLc env panel. Could not read the environment
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the environment'**
+  String get wslcCouldNotReadTheEnvironment;
+
+  /// WSLc env panel. Search by variable name
+  ///
+  /// In en, this message translates to:
+  /// **'Search by variable name'**
+  String get wslcSearchByVariableName;
+
+  /// WSLc env panel. Hide variables from the image ({p1})
+  ///
+  /// In en, this message translates to:
+  /// **'Hide variables from the image ({inherited})'**
+  String wslcHideVariablesFromTheImage(Object inherited);
+
+  /// WSLc env panel. Hide values
+  ///
+  /// In en, this message translates to:
+  /// **'Hide values'**
+  String get wslcHideValues;
+
+  /// WSLc env panel. Show all
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get wslcShowAll;
+
+  /// WSLc env panel. Copy as .env
+  ///
+  /// In en, this message translates to:
+  /// **'Copy as .env'**
+  String get wslcCopyAsEnv;
+
+  /// WSLc env panel. No environment variables
+  ///
+  /// In en, this message translates to:
+  /// **'No environment variables'**
+  String get wslcNoEnvironmentVariables;
+
+  /// WSLc env panel. (empty)
+  ///
+  /// In en, this message translates to:
+  /// **'(empty)'**
+  String get wslcEmpty;
+
+  /// WSLc env panel. from image
+  ///
+  /// In en, this message translates to:
+  /// **'from image'**
+  String get wslcFromImage;
+
+  /// WSLc env panel. Copy value
+  ///
+  /// In en, this message translates to:
+  /// **'Copy value'**
+  String get wslcCopyValue;
+
+  /// WSLc env panel. value of {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'value of {key}'**
+  String wslcValueOf(Object key);
+
+  /// WSLc env panel. Values are read when you open this tab and are never saved. A lock marks variables that may contain secrets.
+  ///
+  /// In en, this message translates to:
+  /// **'Values are read when you open this tab and are never saved. A lock marks variables that may contain secrets.'**
+  String get wslcValuesAreReadWhenYouOpenThisTab;
+
+  /// WSLc files panel. Upload file to container
+  ///
+  /// In en, this message translates to:
+  /// **'Upload file to container'**
+  String get wslcUploadFileToContainer;
+
+  /// WSLc files panel. Replace file?
+  ///
+  /// In en, this message translates to:
+  /// **'Replace file?'**
+  String get wslcReplaceFile;
+
+  /// WSLc files panel. {p1} already exists and will be overwritten.
+  ///
+  /// In en, this message translates to:
+  /// **'{target} already exists and will be overwritten.'**
+  String wslcAlreadyExistsAndWillBeOverwritten(Object target);
+
+  /// WSLc files panel. Uploaded: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded: {target}'**
+  String wslcUploaded(Object target);
+
+  /// WSLc files panel. Files are available while the container is running
+  ///
+  /// In en, this message translates to:
+  /// **'Files are available while the container is running'**
+  String get wslcFilesAreAvailableWhileTheContainerIsRunning;
+
+  /// WSLc files panel. Start the container to browse its filesystem
+  ///
+  /// In en, this message translates to:
+  /// **'Start the container to browse its filesystem'**
+  String get wslcStartTheContainerToBrowseItsFilesystem;
+
+  /// WSLc files panel. Copy path
+  ///
+  /// In en, this message translates to:
+  /// **'Copy path'**
+  String get wslcCopyPath;
+
+  /// WSLc files panel. Upload a file from this computer
+  ///
+  /// In en, this message translates to:
+  /// **'Upload a file from this computer'**
+  String get wslcUploadAFileFromThisComputer;
+
+  /// WSLc files panel. Open terminal in this directory
+  ///
+  /// In en, this message translates to:
+  /// **'Open terminal in this directory'**
+  String get wslcOpenTerminalInThisDirectory;
+
+  /// WSLc files panel. Reading directory…
+  ///
+  /// In en, this message translates to:
+  /// **'Reading directory…'**
+  String get wslcReadingDirectory;
+
+  /// WSLc files panel. Could not read directory
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read directory'**
+  String get wslcCouldNotReadDirectory;
+
+  /// WSLc files panel. link
+  ///
+  /// In en, this message translates to:
+  /// **'link'**
+  String get wslcLink;
+
+  /// WSLc files panel. Download to computer
+  ///
+  /// In en, this message translates to:
+  /// **'Download to computer'**
+  String get wslcDownloadToComputer;
+
+  /// WSLc file editor. Close without saving?
+  ///
+  /// In en, this message translates to:
+  /// **'Close without saving?'**
+  String get wslcCloseWithoutSaving;
+
+  /// WSLc file editor. Changes to this file will be lost.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes to this file will be lost.'**
+  String get wslcChangesToThisFileWillBeLost;
+
+  /// WSLc file editor. Go back
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get wslcGoBack;
+
+  /// WSLc file editor. Edit
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get wslcEdit;
+
+  /// WSLc file editor. Discard edits
+  ///
+  /// In en, this message translates to:
+  /// **'Discard edits'**
+  String get wslcDiscardEdits;
+
+  /// WSLc file editor. Reading file…
+  ///
+  /// In en, this message translates to:
+  /// **'Reading file…'**
+  String get wslcReadingFile;
+
+  /// WSLc file editor. Cannot open this file as text
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot open this file as text'**
+  String get wslcCannotOpenThisFileAsText;
+
+  /// WSLc file editor. UTF-8 text files up to 2 MB
+  ///
+  /// In en, this message translates to:
+  /// **'UTF-8 text files up to 2 MB'**
+  String get wslcUTFTextFilesUpToMB;
+
+  /// WSLc file editor. line
+  ///
+  /// In en, this message translates to:
+  /// **'line'**
+  String get wslcLine;
+
+  /// WSLc file editor. lines
+  ///
+  /// In en, this message translates to:
+  /// **'lines'**
+  String get wslcLines;
+
+  /// WSLc file editor. lines
+  ///
+  /// In en, this message translates to:
+  /// **'lines'**
+  String get wslcLinesFileEditor;
+
+  /// WSLc file editor. · editing
+  ///
+  /// In en, this message translates to:
+  /// **' · editing'**
+  String get wslcEditing;
+
+  /// WSLc file editor. · read-only
+  ///
+  /// In en, this message translates to:
+  /// **' · read-only'**
+  String get wslcReadOnly;
+
+  /// WSLc file editor. · unsaved changes
+  ///
+  /// In en, this message translates to:
+  /// **' · unsaved changes'**
+  String get wslcUnsavedChanges;
+
+  /// WSLc run command dialog. PowerShell command. Settings that match the image (CMD, PATH, working directory) are omitted.
+  ///
+  /// In en, this message translates to:
+  /// **'PowerShell command. Settings that match the image (CMD, PATH, working directory) are omitted.'**
+  String get wslcPowerShellCommandSettingsThatMatchTheImageCMD;
+
+  /// WSLc run command dialog. Include environment variable values ({p1})
+  ///
+  /// In en, this message translates to:
+  /// **'Include environment variable values ({envCount})'**
+  String wslcIncludeEnvironmentVariableValues(Object envCount);
+
+  /// WSLc run command dialog. Values may contain passwords and tokens
+  ///
+  /// In en, this message translates to:
+  /// **'Values may contain passwords and tokens'**
+  String get wslcValuesMayContainPasswordsAndTokens;
+
+  /// WSLc run command dialog. Clone in wizard
+  ///
+  /// In en, this message translates to:
+  /// **'Clone in wizard'**
+  String get wslcCloneInWizard;
+
+  /// WSLc run command dialog. Copy
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get wslcCopy;
+
+  /// WSLc run wizard. Command: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Command: {message}'**
+  String wslcCommand(Object message);
+
+  /// WSLc run wizard. Directory to mount
+  ///
+  /// In en, this message translates to:
+  /// **'Directory to mount'**
+  String get wslcDirectoryToMount;
+
+  /// WSLc run wizard. From Compose…
+  ///
+  /// In en, this message translates to:
+  /// **'From Compose…'**
+  String get wslcFromCompose;
+
+  /// WSLc run wizard. Name (optional)
+  ///
+  /// In en, this message translates to:
+  /// **'Name (optional)'**
+  String get wslcNameOptional;
+
+  /// WSLc run wizard. The image is not available locally. WSLc will pull it when creating the container.
+  ///
+  /// In en, this message translates to:
+  /// **'The image is not available locally. WSLc will pull it when creating the container.'**
+  String get wslcTheImageIsNotAvailableLocallyWSLcWill;
+
+  /// WSLc run wizard. 127.0.0.1: this computer only. 0.0.0.0: the whole network.
+  ///
+  /// In en, this message translates to:
+  /// **'127.0.0.1: this computer only. 0.0.0.0: the whole network.'**
+  String get wslcThisComputerOnlyTheWholeNetwork;
+
+  /// WSLc run wizard. host port
+  ///
+  /// In en, this message translates to:
+  /// **'host port'**
+  String get wslcHostPort;
+
+  /// WSLc run wizard. container port
+  ///
+  /// In en, this message translates to:
+  /// **'container port'**
+  String get wslcContainerPort;
+
+  /// WSLc run wizard. Directories and volumes
+  ///
+  /// In en, this message translates to:
+  /// **'Directories and volumes'**
+  String get wslcDirectoriesAndVolumes;
+
+  /// WSLc run wizard. Windows directory or named volume → path in container
+  ///
+  /// In en, this message translates to:
+  /// **'Windows directory or named volume → path in container'**
+  String get wslcWindowsDirectoryOrNamedVolumePathInContainer;
+
+  /// WSLc run wizard. Volume
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get wslcVolumeRunWizard;
+
+  /// WSLc run wizard. volume name (created if needed)
+  ///
+  /// In en, this message translates to:
+  /// **'volume name (created if needed)'**
+  String get wslcVolumeNameCreatedIfNeeded;
+
+  /// WSLc run wizard. C:\path\to\folder
+  ///
+  /// In en, this message translates to:
+  /// **'C:\\path\\to\\folder'**
+  String get wslcCPathToFolder;
+
+  /// WSLc run wizard. /path/in/container
+  ///
+  /// In en, this message translates to:
+  /// **'/path/in/container'**
+  String get wslcPathInContainer;
+
+  /// WSLc run wizard. Passed through a temporary file rather than the command line
+  ///
+  /// In en, this message translates to:
+  /// **'Passed through a temporary file rather than the command line'**
+  String get wslcPassedThroughATemporaryFileRatherThanThe;
+
+  /// WSLc run wizard. Variable
+  ///
+  /// In en, this message translates to:
+  /// **'Variable'**
+  String get wslcVariable;
+
+  /// WSLc run wizard. NAME
+  ///
+  /// In en, this message translates to:
+  /// **'NAME'**
+  String get wslcNAME;
+
+  /// WSLc run wizard. Advanced
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get wslcAdvanced;
+
+  /// WSLc run wizard. Command (overrides the image CMD)
+  ///
+  /// In en, this message translates to:
+  /// **'Command (overrides the image CMD)'**
+  String get wslcCommandOverridesTheImageCMD;
+
+  /// WSLc run wizard. Working directory
+  ///
+  /// In en, this message translates to:
+  /// **'Working directory'**
+  String get wslcWorkingDirectory;
+
+  /// WSLc run wizard. Remove after stopping (--rm)
+  ///
+  /// In en, this message translates to:
+  /// **'Remove after stopping (--rm)'**
+  String get wslcRemoveAfterStoppingRm;
+
+  /// WSLc run wizard. Create without starting
+  ///
+  /// In en, this message translates to:
+  /// **'Create without starting'**
+  String get wslcCreateWithoutStarting;
+
+  /// WSLc run wizard. Creating… Pulling the image if it is missing locally.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating… Pulling the image if it is missing locally.'**
+  String get wslcCreatingPullingTheImageIfItIsMissing;
+
+  /// WSLc run wizard. Create and start
+  ///
+  /// In en, this message translates to:
+  /// **'Create and start'**
+  String get wslcCreateAndStart;
+
+  /// WSLc run wizard. Remove
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get wslcRemove;
+
+  /// WSLc templates. Template “{p1}” saved
+  ///
+  /// In en, this message translates to:
+  /// **'Template “{name}” saved'**
+  String wslcTemplateSaved(Object name);
+
+  /// WSLc templates. Save as template
+  ///
+  /// In en, this message translates to:
+  /// **'Save as template'**
+  String get wslcSaveAsTemplate;
+
+  /// WSLc templates. A template with this name will be replaced
+  ///
+  /// In en, this message translates to:
+  /// **'A template with this name will be replaced'**
+  String get wslcATemplateWithThisNameWillBeReplaced;
+
+  /// WSLc templates. Save environment variable values
+  ///
+  /// In en, this message translates to:
+  /// **'Save environment variable values'**
+  String get wslcSaveEnvironmentVariableValues;
+
+  /// WSLc templates. Otherwise only names are saved. Enter the values when creating the container.
+  ///
+  /// In en, this message translates to:
+  /// **'Otherwise only names are saved. Enter the values when creating the container.'**
+  String get wslcOtherwiseOnlyNamesAreSavedEnterTheValues;
+
+  /// WSLc templates. The template excludes the container name. Templates are encrypted in the current profile on this device and are not sent to the server.
+  ///
+  /// In en, this message translates to:
+  /// **'The template excludes the container name. Templates are encrypted in the current profile on this device and are not sent to the server.'**
+  String get wslcTheTemplateExcludesTheContainerNameTemplatesAre;
+
+  /// WSLc templates. Templates
+  ///
+  /// In en, this message translates to:
+  /// **'Templates'**
+  String get wslcTemplates;
+
+  /// WSLc templates. Save as template…
+  ///
+  /// In en, this message translates to:
+  /// **'Save as template…'**
+  String get wslcSaveAsTemplateTemplates;
+
+  /// WSLc terminal panel. The terminal is available while the container is running
+  ///
+  /// In en, this message translates to:
+  /// **'The terminal is available while the container is running'**
+  String get wslcTheTerminalIsAvailableWhileTheContainerIs;
+
+  /// WSLc terminal panel. Session ended
+  ///
+  /// In en, this message translates to:
+  /// **'Session ended'**
+  String get wslcSessionEnded;
+
+  /// WSLc terminal panel. wslc exec -it · bash or sh · {p1}×{p2}
+  ///
+  /// In en, this message translates to:
+  /// **'wslc exec -it · bash or sh · {cols}×{rows}'**
+  String wslcWslcExecItBashOrSh(Object cols, Object rows);
+
+  /// WSLc terminal panel. Reconnect
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get wslcReconnect;
+
+  /// WSLc terminal panel. New session
+  ///
+  /// In en, this message translates to:
+  /// **'New session'**
+  String get wslcNewSession;
+
+  /// WSLc terminal panel. Open in separate window
+  ///
+  /// In en, this message translates to:
+  /// **'Open in separate window'**
+  String get wslcOpenInSeparateWindow;
+
+  /// WSLc terminal panel. Copy the selection with Ctrl+Shift+C and paste with Ctrl+Shift+V. Closing the tab ends this session. The container keeps running.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the selection with Ctrl+Shift+C and paste with Ctrl+Shift+V. Closing the tab ends this session. The container keeps running.'**
+  String get wslcCopyTheSelectionWithCtrlShiftCAnd;
+
+  /// WSLc image dialogs. Pulling {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Pulling {image}'**
+  String wslcPulling(Object image);
+
+  /// WSLc image dialogs. Image downloaded
+  ///
+  /// In en, this message translates to:
+  /// **'Image downloaded'**
+  String get wslcImageDownloaded;
+
+  /// WSLc image dialogs. Pull image
+  ///
+  /// In en, this message translates to:
+  /// **'Pull image'**
+  String get wslcPullImage;
+
+  /// WSLc image dialogs. Download
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get wslcDownload;
+
+  /// WSLc image dialogs. image
+  ///
+  /// In en, this message translates to:
+  /// **'image'**
+  String get wslcImageImageDialogs;
+
+  /// WSLc image dialogs. Image built
+  ///
+  /// In en, this message translates to:
+  /// **'Image built'**
+  String get wslcImageBuilt;
+
+  /// WSLc image dialogs. Build context directory
+  ///
+  /// In en, this message translates to:
+  /// **'Build context directory'**
+  String get wslcBuildContextDirectory;
+
+  /// WSLc image dialogs. Build argument “{p1}” must use KEY=VALUE
+  ///
+  /// In en, this message translates to:
+  /// **'Build argument “{t}” must use KEY=VALUE'**
+  String wslcBuildArgumentMustUseKEYVALUE(Object t);
+
+  /// WSLc image dialogs. Choose the build context directory
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the build context directory'**
+  String get wslcChooseTheBuildContextDirectory;
+
+  /// WSLc image dialogs. Build image
+  ///
+  /// In en, this message translates to:
+  /// **'Build image'**
+  String get wslcBuildImage;
+
+  /// WSLc image dialogs. Dockerfile (optional, defaults to the one in the build context)
+  ///
+  /// In en, this message translates to:
+  /// **'Dockerfile (optional, defaults to the one in the build context)'**
+  String get wslcDockerfileOptionalDefaultsToTheOneInThe;
+
+  /// WSLc image dialogs. Comma-separated tags
+  ///
+  /// In en, this message translates to:
+  /// **'Comma-separated tags'**
+  String get wslcCommaSeparatedTags;
+
+  /// WSLc image dialogs. Build arguments, one KEY=VALUE per line
+  ///
+  /// In en, this message translates to:
+  /// **'Build arguments, one KEY=VALUE per line'**
+  String get wslcBuildArgumentsOneKEYVALUEPerLine;
+
+  /// WSLc image dialogs. Target stage (optional)
+  ///
+  /// In en, this message translates to:
+  /// **'Target stage (optional)'**
+  String get wslcTargetStageOptional;
+
+  /// WSLc image dialogs. Disable cache
+  ///
+  /// In en, this message translates to:
+  /// **'Disable cache'**
+  String get wslcDisableCache;
+
+  /// WSLc image dialogs. Pull updated base images
+  ///
+  /// In en, this message translates to:
+  /// **'Pull updated base images'**
+  String get wslcPullUpdatedBaseImages;
+
+  /// WSLc image dialogs. Build
+  ///
+  /// In en, this message translates to:
+  /// **'Build'**
+  String get wslcBuildImageDialogs;
+
+  /// WSLc image dialogs. Create container…
+  ///
+  /// In en, this message translates to:
+  /// **'Create container…'**
+  String get wslcCreateContainer;
+
+  /// WSLc image dialogs. Add tag…
+  ///
+  /// In en, this message translates to:
+  /// **'Add tag…'**
+  String get wslcAddTag;
+
+  /// WSLc image dialogs. Push to registry…
+  ///
+  /// In en, this message translates to:
+  /// **'Push to registry…'**
+  String get wslcPushToRegistry;
+
+  /// WSLc image dialogs. Save as tar…
+  ///
+  /// In en, this message translates to:
+  /// **'Save as tar…'**
+  String get wslcSaveAsTar;
+
+  /// WSLc image dialogs. New tag for {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'New tag for {source}'**
+  String wslcNewTagFor(Object source);
+
+  /// WSLc image dialogs. Added tag {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Added tag {target}'**
+  String wslcAddedTag(Object target);
+
+  /// WSLc image dialogs. Push image?
+  ///
+  /// In en, this message translates to:
+  /// **'Push image?'**
+  String get wslcPushImage;
+
+  /// WSLc image dialogs. {p1}
+  ///
+  /// The image will be pushed to the registry specified in its name. If authentication is required, sign in under Registries first.
+  ///
+  /// In en, this message translates to:
+  /// **'{image}\n\nThe image will be pushed to the registry specified in its name. If authentication is required, sign in under Registries first.'**
+  String wslcTheImageWillBePushedToTheRegistry(Object image);
+
+  /// WSLc image dialogs. Pushing {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Pushing {image}'**
+  String wslcPushing(Object image);
+
+  /// WSLc image dialogs. Image pushed
+  ///
+  /// In en, this message translates to:
+  /// **'Image pushed'**
+  String get wslcImagePushed;
+
+  /// WSLc image dialogs. Signed in
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get wslcSignedIn;
+
+  /// WSLc image dialogs. Signed out of {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out of {name}'**
+  String wslcSignedOutOf(Object name);
+
+  /// WSLc image dialogs. Registries
+  ///
+  /// In en, this message translates to:
+  /// **'Registries'**
+  String get wslcRegistries;
+
+  /// WSLc image dialogs. Server, e.g. ghcr.io (leave blank for the default)
+  ///
+  /// In en, this message translates to:
+  /// **'Server, e.g. ghcr.io (leave blank for the default)'**
+  String get wslcServerEGGhcrIoLeaveBlankFor;
+
+  /// WSLc image dialogs. Password or access token
+  ///
+  /// In en, this message translates to:
+  /// **'Password or access token'**
+  String get wslcPasswordOrAccessToken;
+
+  /// WSLc image dialogs. The password is passed to WSLc through stdin. The app does not store it.
+  ///
+  /// In en, this message translates to:
+  /// **'The password is passed to WSLc through stdin. The app does not store it.'**
+  String get wslcThePasswordIsPassedToWSLcThroughStdin;
+
+  /// WSLc image dialogs. Signed in during this session
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in during this session'**
+  String get wslcSignedInDuringThisSession;
+
+  /// WSLc image dialogs. Save image as tar
+  ///
+  /// In en, this message translates to:
+  /// **'Save image as tar'**
+  String get wslcSaveImageAsTar;
+
+  /// WSLc image dialogs. Saving {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Saving {ref}'**
+  String wslcSaving(Object ref);
+
+  /// WSLc image dialogs. Image tar archive (wslc save / docker save)
+  ///
+  /// In en, this message translates to:
+  /// **'Image tar archive (wslc save / docker save)'**
+  String get wslcImageTarArchiveWslcSaveDockerSave;
+
+  /// WSLc image dialogs. Loading images from {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Loading images from {value}'**
+  String wslcLoadingImagesFrom(Object value);
+
+  /// WSLc image dialogs. Images loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Images loaded'**
+  String get wslcImagesLoaded;
+
+  /// WSLc image dialogs. Filesystem tar archive (wslc export)
+  ///
+  /// In en, this message translates to:
+  /// **'Filesystem tar archive (wslc export)'**
+  String get wslcFilesystemTarArchiveWslcExport;
+
+  /// WSLc image dialogs. New image name
+  ///
+  /// In en, this message translates to:
+  /// **'New image name'**
+  String get wslcNewImageName;
+
+  /// WSLc image dialogs. my/imported:1 (optional)
+  ///
+  /// In en, this message translates to:
+  /// **'my/imported:1 (optional)'**
+  String get wslcMyImportedOptional;
+
+  /// WSLc image dialogs. Importing {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Importing {value}'**
+  String wslcImporting(Object value);
+
+  /// WSLc image dialogs. Image created
+  ///
+  /// In en, this message translates to:
+  /// **'Image created'**
+  String get wslcImageCreated;
+
+  /// WSLc image dialogs. Import from archives
+  ///
+  /// In en, this message translates to:
+  /// **'Import from archives'**
+  String get wslcImportFromArchives;
+
+  /// WSLc image dialogs. Load images from tar (load)…
+  ///
+  /// In en, this message translates to:
+  /// **'Load images from tar (load)…'**
+  String get wslcLoadImagesFromTarLoad;
+
+  /// WSLc image dialogs. Import filesystem from tar (import)…
+  ///
+  /// In en, this message translates to:
+  /// **'Import filesystem from tar (import)…'**
+  String get wslcImportFilesystemFromTarImport;
+
+  /// WSLc inventory pages. Search by repository, tag or ID
+  ///
+  /// In en, this message translates to:
+  /// **'Search by repository, tag or ID'**
+  String get wslcSearchByRepositoryTagOrID;
+
+  /// WSLc inventory pages. No images yet
+  ///
+  /// In en, this message translates to:
+  /// **'No images yet'**
+  String get wslcNoImagesYet;
+
+  /// WSLc inventory pages. untagged
+  ///
+  /// In en, this message translates to:
+  /// **'untagged'**
+  String get wslcUntagged;
+
+  /// WSLc inventory pages. containers: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'containers: {containers}'**
+  String wslcContainers(Object containers);
+
+  /// WSLc inventory pages. size unknown
+  ///
+  /// In en, this message translates to:
+  /// **'size unknown'**
+  String get wslcSizeUnknown;
+
+  /// WSLc inventory pages. Image {p1}{p2}
+  ///
+  /// In en, this message translates to:
+  /// **'Image {value}{value2}'**
+  String wslcImageInventoryPages(Object value, Object value2);
+
+  /// WSLc inventory pages. Delete image
+  ///
+  /// In en, this message translates to:
+  /// **'Delete image'**
+  String get wslcDeleteImage;
+
+  /// WSLc inventory pages. Delete image?
+  ///
+  /// In en, this message translates to:
+  /// **'Delete image?'**
+  String get wslcDeleteImageInventoryPages;
+
+  /// WSLc inventory pages. Remove image tag?
+  ///
+  /// In en, this message translates to:
+  /// **'Remove image tag?'**
+  String get wslcRemoveImageTag;
+
+  /// WSLc inventory pages. unnamed
+  ///
+  /// In en, this message translates to:
+  /// **'unnamed'**
+  String get wslcUnnamed;
+
+  /// WSLc inventory pages. The image is used by {p1} container(s). The runtime will refuse to delete it while they exist.
+  ///
+  /// In en, this message translates to:
+  /// **'The image is used by {containers} container(s). The runtime will refuse to delete it while they exist. '**
+  String wslcTheImageIsUsedByContainerSThe(Object containers);
+
+  /// WSLc inventory pages. This cannot be undone. You will need to pull the image again.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone. You will need to pull the image again.'**
+  String get wslcThisCannotBeUndoneYouWillNeedTo;
+
+  /// WSLc inventory pages. Only the {p1} tag will be removed. The layers are removed when the image has no tags left.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the {value} tag will be removed. The layers are removed when the image has no tags left.'**
+  String wslcOnlyTheTagWillBeRemovedTheLayers(Object value);
+
+  /// WSLc inventory pages. Image deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Image deleted'**
+  String get wslcImageDeleted;
+
+  /// WSLc inventory pages. Search by volume name
+  ///
+  /// In en, this message translates to:
+  /// **'Search by volume name'**
+  String get wslcSearchByVolumeName;
+
+  /// WSLc inventory pages. No volumes yet
+  ///
+  /// In en, this message translates to:
+  /// **'No volumes yet'**
+  String get wslcNoVolumesYet;
+
+  /// WSLc inventory pages. Create volume
+  ///
+  /// In en, this message translates to:
+  /// **'Create volume'**
+  String get wslcCreateVolume;
+
+  /// WSLc inventory pages. driver {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'driver {value}'**
+  String wslcDriver(Object value);
+
+  /// WSLc inventory pages. size unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'size unavailable'**
+  String get wslcSizeUnavailable;
+
+  /// WSLc inventory pages. Delete volume
+  ///
+  /// In en, this message translates to:
+  /// **'Delete volume'**
+  String get wslcDeleteVolume;
+
+  /// WSLc inventory pages. Delete volume?
+  ///
+  /// In en, this message translates to:
+  /// **'Delete volume?'**
+  String get wslcDeleteVolumeInventoryPages;
+
+  /// WSLc inventory pages. {p1}
+  ///
+  /// All data in this volume will be permanently deleted. The runtime will refuse to delete a volume attached to a container.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\n\nAll data in this volume will be permanently deleted. The runtime will refuse to delete a volume attached to a container.'**
+  String wslcAllDataInThisVolumeWillBePermanently(Object name);
+
+  /// WSLc inventory pages. Volume {p1} deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Volume {name} deleted'**
+  String wslcVolumeDeleted(Object name);
+
+  /// WSLc inventory pages. yes
+  ///
+  /// In en, this message translates to:
+  /// **'yes'**
+  String get wslcYes;
+
+  /// WSLc inventory pages. no
+  ///
+  /// In en, this message translates to:
+  /// **'no'**
+  String get wslcNo;
+
+  /// WSLc inventory pages. Search by name, ID or driver
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name, ID or driver'**
+  String get wslcSearchByNameIDOrDriver;
+
+  /// WSLc inventory pages. No networks found
+  ///
+  /// In en, this message translates to:
+  /// **'No networks found'**
+  String get wslcNoNetworksFound;
+
+  /// WSLc inventory pages. Create network
+  ///
+  /// In en, this message translates to:
+  /// **'Create network'**
+  String get wslcCreateNetwork;
+
+  /// WSLc inventory pages. internal
+  ///
+  /// In en, this message translates to:
+  /// **'internal'**
+  String get wslcInternal;
+
+  /// WSLc inventory pages. Connect container
+  ///
+  /// In en, this message translates to:
+  /// **'Connect container'**
+  String get wslcConnectContainer;
+
+  /// WSLc inventory pages. Delete network
+  ///
+  /// In en, this message translates to:
+  /// **'Delete network'**
+  String get wslcDeleteNetwork;
+
+  /// WSLc inventory pages. Delete network?
+  ///
+  /// In en, this message translates to:
+  /// **'Delete network?'**
+  String get wslcDeleteNetworkInventoryPages;
+
+  /// WSLc inventory pages. {p1}
+  ///
+  /// The runtime will refuse to delete this network if any containers are connected to it.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\n\nThe runtime will refuse to delete this network if any containers are connected to it.'**
+  String wslcTheRuntimeWillRefuseToDeleteThisNetwork(Object name);
+
+  /// WSLc inventory pages. Network {p1} deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Network {name} deleted'**
+  String wslcNetworkDeleted(Object name);
+
+  /// WSLc resource dialogs. Volume {p1} created
+  ///
+  /// In en, this message translates to:
+  /// **'Volume {name} created'**
+  String wslcVolumeCreatedResourceDialogs(Object name);
+
+  /// WSLc resource dialogs. New volume
+  ///
+  /// In en, this message translates to:
+  /// **'New volume'**
+  String get wslcNewVolume;
+
+  /// WSLc resource dialogs. Enter a volume name
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a volume name'**
+  String get wslcEnterAVolumeName;
+
+  /// WSLc resource dialogs. Options, one KEY=VALUE per line
+  ///
+  /// In en, this message translates to:
+  /// **'Options, one KEY=VALUE per line'**
+  String get wslcOptionsOneKEYVALUEPerLine;
+
+  /// WSLc resource dialogs. Volume name, e.g. app-data
+  ///
+  /// In en, this message translates to:
+  /// **'Volume name, e.g. app-data'**
+  String get wslcVolumeNameEGAppData;
+
+  /// WSLc resource dialogs. guest — in the VM filesystem (default)
+  ///
+  /// In en, this message translates to:
+  /// **'guest — in the VM filesystem (default)'**
+  String get wslcGuestInTheVMFilesystemDefault;
+
+  /// WSLc resource dialogs. vhd — separate virtual disk
+  ///
+  /// In en, this message translates to:
+  /// **'vhd — separate virtual disk'**
+  String get wslcVhdSeparateVirtualDisk;
+
+  /// WSLc resource dialogs. Driver options KEY=VALUE (optional)
+  ///
+  /// In en, this message translates to:
+  /// **'Driver options KEY=VALUE (optional)'**
+  String get wslcDriverOptionsKEYVALUEOptional;
+
+  /// WSLc resource dialogs. Network {p1} created
+  ///
+  /// In en, this message translates to:
+  /// **'Network {name} created'**
+  String wslcNetworkCreatedResourceDialogs(Object name);
+
+  /// WSLc resource dialogs. New network
+  ///
+  /// In en, this message translates to:
+  /// **'New network'**
+  String get wslcNewNetwork;
+
+  /// WSLc resource dialogs. Enter a network name
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a network name'**
+  String get wslcEnterANetworkName;
+
+  /// WSLc resource dialogs. Network name, e.g. backend
+  ///
+  /// In en, this message translates to:
+  /// **'Network name, e.g. backend'**
+  String get wslcNetworkNameEGBackend;
+
+  /// WSLc resource dialogs. Subnet CIDR, e.g. 10.231.0.0/24 (optional)
+  ///
+  /// In en, this message translates to:
+  /// **'Subnet CIDR, e.g. 10.231.0.0/24 (optional)'**
+  String get wslcSubnetCIDREGOptional;
+
+  /// WSLc resource dialogs. Gateway, e.g. 10.231.0.1
+  ///
+  /// In en, this message translates to:
+  /// **'Gateway, e.g. 10.231.0.1'**
+  String get wslcGatewayEG;
+
+  /// WSLc resource dialogs. Container address range in CIDR notation (optional)
+  ///
+  /// In en, this message translates to:
+  /// **'Container address range in CIDR notation (optional)'**
+  String get wslcContainerAddressRangeInCIDRNotationOptional;
+
+  /// WSLc resource dialogs. Internal network without external access
+  ///
+  /// In en, this message translates to:
+  /// **'Internal network without external access'**
+  String get wslcInternalNetworkWithoutExternalAccess;
+
+  /// WSLc resource dialogs. Container connected to network {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Container connected to network {net}'**
+  String wslcContainerConnectedToNetwork(Object net);
+
+  /// WSLc resource dialogs. Connect
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get wslcConnect;
+
+  /// WSLc resource dialogs. Select a network and a container
+  ///
+  /// In en, this message translates to:
+  /// **'Select a network and a container'**
+  String get wslcSelectANetworkAndAContainer;
+
+  /// WSLc resource dialogs. Network alias (optional)
+  ///
+  /// In en, this message translates to:
+  /// **'Network alias (optional)'**
+  String get wslcNetworkAliasOptional;
+
+  /// WSLc resource dialogs. Static IPv4 address from the subnet (optional)
+  ///
+  /// In en, this message translates to:
+  /// **'Static IPv4 address from the subnet (optional)'**
+  String get wslcStaticIPvAddressFromTheSubnetOptional;
+
+  /// WSLc resource dialogs. Container disconnected from network {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Container disconnected from network {network}'**
+  String wslcContainerDisconnectedFromNetwork(Object network);
+
+  /// WSLc resource dialogs. Backing up volume {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Backing up volume {volume}'**
+  String wslcBackingUpVolume(Object volume);
+
+  /// WSLc resource dialogs. Backup saved to {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Backup saved to {path}'**
+  String wslcBackupSavedTo(Object path);
+
+  /// WSLc resource dialogs. Volume archive (.tar.gz)
+  ///
+  /// In en, this message translates to:
+  /// **'Volume archive (.tar.gz)'**
+  String get wslcVolumeArchiveTarGz;
+
+  /// WSLc resource dialogs. Restoring volume {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring volume {target}'**
+  String wslcRestoringVolume(Object target);
+
+  /// WSLc resource dialogs. Volume {p1} restored
+  ///
+  /// In en, this message translates to:
+  /// **'Volume {target} restored'**
+  String wslcVolumeRestored(Object target);
+
+  /// WSLc resource dialogs. Restore to a new volume
+  ///
+  /// In en, this message translates to:
+  /// **'Restore to a new volume'**
+  String get wslcRestoreToANewVolume;
+
+  /// WSLc resource dialogs. Restore volume
+  ///
+  /// In en, this message translates to:
+  /// **'Restore volume'**
+  String get wslcRestoreVolume;
+
+  /// WSLc resource dialogs. Volume name (created if it does not exist)
+  ///
+  /// In en, this message translates to:
+  /// **'Volume name (created if it does not exist)'**
+  String get wslcVolumeNameCreatedIfItDoesNotExist;
+
+  /// WSLc resource dialogs. Clear volume before restoring
+  ///
+  /// In en, this message translates to:
+  /// **'Clear volume before restoring'**
+  String get wslcClearVolumeBeforeRestoring;
+
+  /// WSLc resource dialogs. Otherwise, archive files are merged into the existing volume
+  ///
+  /// In en, this message translates to:
+  /// **'Otherwise, archive files are merged into the existing volume'**
+  String get wslcOtherwiseArchiveFilesAreMergedIntoTheExisting;
+
+  /// WSLc resource dialogs. Back up to archive…
+  ///
+  /// In en, this message translates to:
+  /// **'Back up to archive…'**
+  String get wslcBackUpToArchive;
+
+  /// WSLc resource dialogs. Restore from archive…
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from archive…'**
+  String get wslcRestoreFromArchive;
+
+  /// WSLc log panel. Search loaded logs
+  ///
+  /// In en, this message translates to:
+  /// **'Search loaded logs'**
+  String get wslcSearchLoadedLogs;
+
+  /// WSLc log panel. Pause autoscroll
+  ///
+  /// In en, this message translates to:
+  /// **'Pause autoscroll'**
+  String get wslcPauseAutoscroll;
+
+  /// WSLc log panel. Enable autoscroll
+  ///
+  /// In en, this message translates to:
+  /// **'Enable autoscroll'**
+  String get wslcEnableAutoscroll;
+
+  /// WSLc log panel. Clear view
+  ///
+  /// In en, this message translates to:
+  /// **'Clear view'**
+  String get wslcClearView;
+
+  /// WSLc log panel. Copy loaded logs
+  ///
+  /// In en, this message translates to:
+  /// **'Copy loaded logs'**
+  String get wslcCopyLoadedLogs;
+
+  /// WSLc log panel. Save loaded logs
+  ///
+  /// In en, this message translates to:
+  /// **'Save loaded logs'**
+  String get wslcSaveLoadedLogs;
+
+  /// WSLc log panel. 1,000 lines
+  ///
+  /// In en, this message translates to:
+  /// **'1,000 lines'**
+  String get wslcLinesLogPanel;
+
+  /// WSLc log panel. 5 min
+  ///
+  /// In en, this message translates to:
+  /// **'5 min'**
+  String get wslcMin;
+
+  /// WSLc log panel. 1 hour
+  ///
+  /// In en, this message translates to:
+  /// **'1 hour'**
+  String get wslcHour;
+
+  /// WSLc log panel. 24 hours
+  ///
+  /// In en, this message translates to:
+  /// **'24 hours'**
+  String get wslcHours;
+
+  /// WSLc log panel. All
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get wslcAll;
+
+  /// WSLc log panel. All streams
+  ///
+  /// In en, this message translates to:
+  /// **'All streams'**
+  String get wslcAllStreams;
+
+  /// WSLc log panel. Show runtime timestamps in local time
+  ///
+  /// In en, this message translates to:
+  /// **'Show runtime timestamps in local time'**
+  String get wslcShowRuntimeTimestampsInLocalTime;
+
+  /// WSLc log panel. Format lines containing JSON objects
+  ///
+  /// In en, this message translates to:
+  /// **'Format lines containing JSON objects'**
+  String get wslcFormatLinesContainingJSONObjects;
+
+  /// WSLc log panel. No matches
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get wslcNoMatches;
+
+  /// WSLc log panel. … [truncated]
+  ///
+  /// In en, this message translates to:
+  /// **' … [truncated]'**
+  String get wslcTruncated;
+
+  /// WSLc log panel. shown: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'shown: {length}'**
+  String wslcShown(Object length);
+
+  /// WSLc log panel. evicted: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'evicted: {value}'**
+  String wslcEvicted(Object value);
+
+  /// WSLc log panel. truncated: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'truncated: {truncated}'**
+  String wslcTruncatedLogPanel(Object truncated);
+
+  /// WSLc log panel. Logs may contain secrets
+  ///
+  /// In en, this message translates to:
+  /// **'Logs may contain secrets'**
+  String get wslcLogsMayContainSecrets;
+
+  /// WSLc appearance colors. Enter 6 hex digits, e.g. #4B89FF
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 6 hex digits, e.g. #4B89FF'**
+  String get wslcEnterHexDigitsEGBFF;
+
+  /// WSLc appearance colors. Color spectrum — {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Color spectrum — {value}'**
+  String wslcColorSpectrum(Object value);
+
+  /// WSLc appearance colors. Hue: {p1} degrees
+  ///
+  /// In en, this message translates to:
+  /// **'Hue: {value} degrees'**
+  String wslcHueDegrees(Object value);
+
+  /// WSLc appearance colors. Saturation: {p1} percent
+  ///
+  /// In en, this message translates to:
+  /// **'Saturation: {value} percent'**
+  String wslcSaturationPercent(Object value);
+
+  /// WSLc appearance colors. Brightness: {p1} percent
+  ///
+  /// In en, this message translates to:
+  /// **'Brightness: {value} percent'**
+  String wslcBrightnessPercent(Object value);
+
+  /// WSLc appearance colors. Select
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get wslcSelect;
+
+  /// WSLc settings page. WSLc connection
+  ///
+  /// In en, this message translates to:
+  /// **'WSLc connection'**
+  String get wslcWSLcConnection;
+
+  /// WSLc settings page. Enter the path to the installed wslc.exe, or leave it blank to use the standard WSL directory.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the path to the installed wslc.exe, or leave it blank to use the standard WSL directory.'**
+  String get wslcEnterThePathToTheInstalledWslcExe;
+
+  /// WSLc settings page. Path to wslc.exe
+  ///
+  /// In en, this message translates to:
+  /// **'Path to wslc.exe'**
+  String get wslcPathToWslcExe;
+
+  /// WSLc settings page. available
+  ///
+  /// In en, this message translates to:
+  /// **'available'**
+  String get wslcAvailable;
+
+  /// WSLc settings page. unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'unavailable'**
+  String get wslcUnavailable;
+
+  /// WSLc settings page. Refresh data
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh data'**
+  String get wslcRefreshData;
+
+  /// WSLc settings page. Every {p1} s
+  ///
+  /// In en, this message translates to:
+  /// **'Every {seconds} s'**
+  String wslcEveryS(Object seconds);
+
+  /// WSLc settings page. Saved run templates: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Saved run templates: {length}'**
+  String wslcSavedRunTemplates(Object length);
+
+  /// WSLc settings page. Templates are stored in this profile’s encrypted database on this device. Adjust appearance and clipboard clearing in ConsoleCrypt’s general settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Templates are stored in this profile’s encrypted database on this device. Adjust appearance and clipboard clearing in ConsoleCrypt’s general settings.'**
+  String get wslcTemplatesAreStoredInThisProfileSEncrypted;
+
+  /// WSLc topology page. Building map…
+  ///
+  /// In en, this message translates to:
+  /// **'Building map…'**
+  String get wslcBuildingMap;
+
+  /// WSLc topology page. Could not build map
+  ///
+  /// In en, this message translates to:
+  /// **'Could not build map'**
+  String get wslcCouldNotBuildMap;
+
+  /// WSLc topology page. Windows folder
+  ///
+  /// In en, this message translates to:
+  /// **'Windows folder'**
+  String get wslcWindowsFolderTopologyPage;
+
+  /// WSLc topology page. Open cleanup
+  ///
+  /// In en, this message translates to:
+  /// **'Open cleanup'**
+  String get wslcOpenCleanup;
+
+  /// WSLc topology page. unused: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'unused: {length}'**
+  String wslcUnused(Object length);
+
+  /// WSLc topology page. No connections yet
+  ///
+  /// In en, this message translates to:
+  /// **'No connections yet'**
+  String get wslcNoConnectionsYet;
+
+  /// WSLc topology page. Volumes, folders and networks
+  ///
+  /// In en, this message translates to:
+  /// **'Volumes, folders and networks'**
+  String get wslcVolumesFoldersAndNetworks;
+
+  /// WSLc job dialog. Running…
+  ///
+  /// In en, this message translates to:
+  /// **'Running…'**
+  String get wslcRunning;
+
+  /// WSLc job dialog. Error, exit code {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Error, exit code {exitCode}'**
+  String wslcErrorExitCode(Object exitCode);
+
+  /// WSLc job dialog. Waiting for output…
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for output…'**
+  String get wslcWaitingForOutput;
+
+  /// WSLc ports. {p1}: port is not published on this computer
+  ///
+  /// In en, this message translates to:
+  /// **'{containerPort}: port is not published on this computer'**
+  String wslcPortIsNotPublishedOnThisComputer(Object containerPort);
+
+  /// WSLc ports. Open or copy port address
+  ///
+  /// In en, this message translates to:
+  /// **'Open or copy port address'**
+  String get wslcOpenOrCopyPortAddress;
+
+  /// WSLc ports. Copy {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Copy {value}'**
+  String wslcCopyPorts(Object value);
+
+  /// WSLc ports. Copy localhost:{p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Copy localhost:{hostPort}'**
+  String wslcCopyLocalhost(Object hostPort);
+
+  /// WSLc ports. Copy {p1}:{p2}
+  ///
+  /// In en, this message translates to:
+  /// **'Copy {address}:{hostPort}'**
+  String wslcCopyPortsOther(Object address, Object hostPort);
+
+  /// WSLc ports. This port is published only on {p1} and cannot be reached via the computer’s IP address. To allow access from the network, publish it as 0.0.0.0:{p2}:{p3}.
+  ///
+  /// In en, this message translates to:
+  /// **'This port is published only on {hostIp} and cannot be reached via the computer’s IP address. To allow access from the network, publish it as 0.0.0.0:{hostPort}:{value3}.'**
+  String wslcThisPortIsPublishedOnlyOnAndCannot(Object hostIp, Object hostPort, Object value3);
+
+  /// WSLc shell words. Unclosed quote
+  ///
+  /// In en, this message translates to:
+  /// **'Unclosed quote'**
+  String get wslcUnclosedQuote;
+
+  /// WSLc usage. KB
+  ///
+  /// In en, this message translates to:
+  /// **'KB'**
+  String get wslcKB;
+
+  /// WSLc usage. MB
+  ///
+  /// In en, this message translates to:
+  /// **'MB'**
+  String get wslcMB;
+
+  /// WSLc usage. GB
+  ///
+  /// In en, this message translates to:
+  /// **'GB'**
+  String get wslcGB;
+
+  /// WSLc usage. TB
+  ///
+  /// In en, this message translates to:
+  /// **'TB'**
+  String get wslcTB;
+
+  /// WSLc usage. /s
+  ///
+  /// In en, this message translates to:
+  /// **'/s'**
+  String get wslcS;
+
+  /// WSLc usage. Collecting data…
+  ///
+  /// In en, this message translates to:
+  /// **'Collecting data…'**
+  String get wslcCollectingData;
+
+  /// WSLc widgets. Copy full ID
+  ///
+  /// In en, this message translates to:
+  /// **'Copy full ID'**
+  String get wslcCopyFullID;
+
+  /// WSLc transport. WSLc session closed
+  ///
+  /// In en, this message translates to:
+  /// **'WSLc session closed'**
+  String get wslcWSLcSessionClosed;
+
+  /// WSLc wslc workspace. Show container data
+  ///
+  /// In en, this message translates to:
+  /// **'Show container data'**
+  String get wslcShowContainerData;
+
+  /// WSLc wslc workspace. Confirm access to the hidden WSLc environment variables.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm access to the hidden WSLc environment variables.'**
+  String get wslcConfirmAccessToTheHiddenWSLcEnvironmentVariables;
+
+  /// WSLc wslc workspace. Container engines
+  ///
+  /// In en, this message translates to:
+  /// **'Container engines'**
+  String get wslcContainerEngines;
+
+  /// WSLc wslc workspace. Connections
+  ///
+  /// In en, this message translates to:
+  /// **'Connections'**
+  String get wslcConnections;
+
+  /// WSLc wslc workspace. Cleanup
+  ///
+  /// In en, this message translates to:
+  /// **'Cleanup'**
+  String get wslcCleanup;
+
+  /// WSLc compose runner. Orphaned project containers
+  ///
+  /// In en, this message translates to:
+  /// **'Orphaned project containers'**
+  String get wslcOrphanedProjectContainers;
+
+  /// WSLc compose runner. {p1}: their services are absent from the file, so these containers were kept
+  ///
+  /// In en, this message translates to:
+  /// **'{value}: their services are absent from the file, so these containers were kept'**
+  String wslcTheirServicesAreAbsentFromTheFileSo(Object value);
+
+  /// WSLc compose runner. unchanged, already running
+  ///
+  /// In en, this message translates to:
+  /// **'unchanged, already running'**
+  String get wslcUnchangedAlreadyRunning;
+
+  /// WSLc compose runner. starting…
+  ///
+  /// In en, this message translates to:
+  /// **'starting…'**
+  String get wslcStarting;
+
+  /// WSLc compose runner. unchanged, started
+  ///
+  /// In en, this message translates to:
+  /// **'unchanged, started'**
+  String get wslcUnchangedStarted;
+
+  /// WSLc compose runner. configuration changed, recreating…
+  ///
+  /// In en, this message translates to:
+  /// **'configuration changed, recreating…'**
+  String get wslcConfigurationChangedRecreating;
+
+  /// WSLc compose runner. The name {p1} is in use by a container outside this project
+  ///
+  /// In en, this message translates to:
+  /// **'The name {containerName} is in use by a container outside this project'**
+  String wslcTheNameIsInUseByAContainer(Object containerName);
+
+  /// WSLc compose runner. creating…
+  ///
+  /// In en, this message translates to:
+  /// **'creating…'**
+  String get wslcCreating;
+
+  /// WSLc compose runner. connecting to {p1}…
+  ///
+  /// In en, this message translates to:
+  /// **'connecting to {network}…'**
+  String wslcConnectingTo(Object network);
+
+  /// WSLc compose runner. created and started
+  ///
+  /// In en, this message translates to:
+  /// **'created and started'**
+  String get wslcCreatedAndStarted;
+
+  /// WSLc compose runner. recreated and started
+  ///
+  /// In en, this message translates to:
+  /// **'recreated and started'**
+  String get wslcRecreatedAndStarted;
+
+  /// WSLc compose runner. waiting for {p1} to become healthy…
+  ///
+  /// In en, this message translates to:
+  /// **'waiting for {service} to become healthy…'**
+  String wslcWaitingForToBecomeHealthy(Object service);
+
+  /// WSLc compose runner. waiting for {p1} to finish…
+  ///
+  /// In en, this message translates to:
+  /// **'waiting for {service} to finish…'**
+  String wslcWaitingForToFinish(Object service);
+
+  /// WSLc compose runner. {p1} is unhealthy. Dependent services did not start.
+  ///
+  /// In en, this message translates to:
+  /// **'{service} is unhealthy. Dependent services did not start.'**
+  String wslcIsUnhealthyDependentServicesDidNotStart(Object service);
+
+  /// WSLc compose runner. {p1} stopped before becoming healthy
+  ///
+  /// In en, this message translates to:
+  /// **'{service} stopped before becoming healthy'**
+  String wslcStoppedBeforeBecomingHealthy(Object service);
+
+  /// WSLc compose runner. {p1} has no health check and cannot satisfy service_healthy
+  ///
+  /// In en, this message translates to:
+  /// **'{service} has no health check and cannot satisfy service_healthy'**
+  String wslcHasNoHealthCheckAndCannotSatisfyService(Object service);
+
+  /// WSLc compose runner. {p1} exited with code {p2}
+  ///
+  /// In en, this message translates to:
+  /// **'{service} exited with code {exitCode}'**
+  String wslcExitedWithCode(Object service, Object exitCode);
+
+  /// WSLc compose runner. {p1}: timed out after {p2} min
+  ///
+  /// In en, this message translates to:
+  /// **'{service}: timed out after {inMinutes} min'**
+  String wslcTimedOutAfterMin(Object service, Object inMinutes);
+
+  /// WSLc compose runner. Exited with code {p1}{p2}
+  ///
+  /// In en, this message translates to:
+  /// **'Exited with code {value}{value2}'**
+  String wslcExitedWithCodeComposeRunner(Object value, Object value2);
+
+  /// WSLc compose runner. Project containers
+  ///
+  /// In en, this message translates to:
+  /// **'Project containers'**
+  String get wslcProjectContainers;
+
+  /// WSLc compose runner. none found
+  ///
+  /// In en, this message translates to:
+  /// **'none found'**
+  String get wslcNoneFound;
+
+  /// WSLc compose runner. Removing {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Removing {name}'**
+  String wslcRemoving(Object name);
+
+  /// WSLc compose runner. stopped and removed
+  ///
+  /// In en, this message translates to:
+  /// **'stopped and removed'**
+  String get wslcStoppedAndRemoved;
+
+  /// WSLc compose runner. already gone
+  ///
+  /// In en, this message translates to:
+  /// **'already gone'**
+  String get wslcAlreadyGone;
+
+  /// WSLc compose runner. removed
+  ///
+  /// In en, this message translates to:
+  /// **'removed'**
+  String get wslcRemovedComposeRunner;
+
+  /// WSLc compose runner. removed
+  ///
+  /// In en, this message translates to:
+  /// **'removed'**
+  String get wslcRemovedComposeRunnerOther;
+
+  /// WSLc containers page. Stop the selected containers ({p1})?
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the selected containers ({length})?'**
+  String wslcStopTheSelectedContainers(Object length);
+
+  /// WSLc containers page. Restart the selected containers ({p1})?
+  ///
+  /// In en, this message translates to:
+  /// **'Restart the selected containers ({length})?'**
+  String wslcRestartTheSelectedContainers(Object length);
+
+  /// WSLc containers page. Remove the selected containers ({p1})?
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the selected containers ({length})?'**
+  String wslcRemoveTheSelectedContainers(Object length);
+
+  /// WSLc containers page. {p1}Removal cannot be undone. Named volumes will be kept.
+  ///
+  /// In en, this message translates to:
+  /// **'{value}Removal cannot be undone. Named volumes will be kept.'**
+  String wslcRemovalCannotBeUndoneNamedVolumesWillBe(Object value);
+
+  /// WSLc containers page. Running containers will be forcibly stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Running containers will be forcibly stopped. '**
+  String get wslcRunningContainersWillBeForciblyStopped;
+
+  /// WSLc containers page. The runtime may remove containers with auto-remove enabled after they stop.
+  ///
+  /// In en, this message translates to:
+  /// **'The runtime may remove containers with auto-remove enabled after they stop.'**
+  String get wslcTheRuntimeMayRemoveContainersWithAutoRemove;
+
+  /// WSLc containers page. Done: {p1} of {p2}{p3}
+  ///
+  /// In en, this message translates to:
+  /// **'Done: {done} of {length}{value3}'**
+  String wslcDoneOf(Object done, Object length, Object value3);
+
+  /// WSLc containers page. Running
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get wslcRunningContainersPage;
+
+  /// WSLc containers page. Search by name, ID, image or port
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name, ID, image or port'**
+  String get wslcSearchByNameIDImageOrPort;
+
+  /// WSLc containers page. Running
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get wslcRunningContainersPageOther;
+
+  /// WSLc containers page. Stopped
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get wslcStopped;
+
+  /// WSLc containers page. New container
+  ///
+  /// In en, this message translates to:
+  /// **'New container'**
+  String get wslcNewContainer;
+
+  /// WSLc containers page. Docker Compose: start from YAML
+  ///
+  /// In en, this message translates to:
+  /// **'Docker Compose: start from YAML'**
+  String get wslcDockerComposeStartFromYAML;
+
+  /// WSLc containers page. Bulk actions
+  ///
+  /// In en, this message translates to:
+  /// **'Bulk actions'**
+  String get wslcBulkActions;
+
+  /// WSLc containers page. Stop all running containers ({p1})
+  ///
+  /// In en, this message translates to:
+  /// **'Stop all running containers ({running})'**
+  String wslcStopAllRunningContainers(Object running);
+
+  /// WSLc containers page. Start all stopped containers ({p1})
+  ///
+  /// In en, this message translates to:
+  /// **'Start all stopped containers ({stopped})'**
+  String wslcStartAllStoppedContainers(Object stopped);
+
+  /// WSLc containers page. Not connected to WSLc
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected to WSLc'**
+  String get wslcNotConnectedToWSLc;
+
+  /// WSLc containers page. No containers yet
+  ///
+  /// In en, this message translates to:
+  /// **'No containers yet'**
+  String get wslcNoContainersYet;
+
+  /// WSLc containers page. Check the connection in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Check the connection in Settings'**
+  String get wslcCheckTheConnectionInSettings;
+
+  /// WSLc containers page. Select New to create your first container
+  ///
+  /// In en, this message translates to:
+  /// **'Select New to create your first container'**
+  String get wslcSelectNewToCreateYourFirstContainer;
+
+  /// WSLc containers page. Change the search term or filter
+  ///
+  /// In en, this message translates to:
+  /// **'Change the search term or filter'**
+  String get wslcChangeTheSearchTermOrFilter;
+
+  /// WSLc containers page. Selected: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Selected: {count}'**
+  String wslcSelected(Object count);
+
+  /// WSLc container actions. Unknown ({p1})
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown ({value})'**
+  String wslcUnknown(Object value);
+
+  /// WSLc container actions. Stop this container?
+  ///
+  /// In en, this message translates to:
+  /// **'Stop this container?'**
+  String get wslcStopThisContainer;
+
+  /// WSLc container actions. Restart this container?
+  ///
+  /// In en, this message translates to:
+  /// **'Restart this container?'**
+  String get wslcRestartThisContainer;
+
+  /// WSLc container actions. Auto-remove is enabled. The runtime may remove the container when it stops.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-remove is enabled. The runtime may remove the container when it stops.'**
+  String get wslcAutoRemoveIsEnabledTheRuntimeMayRemove;
+
+  /// WSLc container actions. Auto-remove is disabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-remove is disabled.'**
+  String get wslcAutoRemoveIsDisabled;
+
+  /// WSLc container actions. The auto-remove setting is unknown. The runtime may remove the container when it stops.
+  ///
+  /// In en, this message translates to:
+  /// **'The auto-remove setting is unknown. The runtime may remove the container when it stops.'**
+  String get wslcTheAutoRemoveSettingIsUnknownTheRuntime;
+
+  /// WSLc container actions. Remove this container?
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this container?'**
+  String get wslcRemoveThisContainer;
+
+  /// WSLc container actions. {p1}
+  /// {p2}
+  ///
+  /// {p3}Removal cannot be undone. Named volumes will be kept.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\n{id}\n\n{value3}Removal cannot be undone. Named volumes will be kept.'**
+  String wslcRemovalCannotBeUndoneNamedVolumesWillBeContainerActions(Object name, Object id, Object value3);
+
+  /// WSLc container actions. The container is running. It will be forcibly stopped and removed.
+  ///
+  /// In en, this message translates to:
+  /// **'The container is running. It will be forcibly stopped and removed. '**
+  String get wslcTheContainerIsRunningItWillBeForcibly;
+
+  /// WSLc container actions. Container {p1} removed
+  ///
+  /// In en, this message translates to:
+  /// **'Container {name} removed'**
+  String wslcContainerRemoved(Object name);
+
+  /// WSLc container actions. More actions
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get wslcMoreActions;
+
+  /// WSLc container actions. Open in browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open in browser'**
+  String get wslcOpenInBrowser;
+
+  /// WSLc container actions. Open {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Open {value}'**
+  String wslcOpen(Object value);
+
+  /// WSLc container actions. Details
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get wslcDetails;
+
+  /// WSLc container actions. Startup command…
+  ///
+  /// In en, this message translates to:
+  /// **'Startup command…'**
+  String get wslcStartupCommand;
+
+  /// WSLc container actions. Export filesystem as tar…
+  ///
+  /// In en, this message translates to:
+  /// **'Export filesystem as tar…'**
+  String get wslcExportFilesystemAsTar;
+
+  /// WSLc container actions. Copy ID
+  ///
+  /// In en, this message translates to:
+  /// **'Copy ID'**
+  String get wslcCopyID;
+
+  /// WSLc container actions. Copy name
+  ///
+  /// In en, this message translates to:
+  /// **'Copy name'**
+  String get wslcCopyName;
+
+  /// WSLc container actions. Export container filesystem
+  ///
+  /// In en, this message translates to:
+  /// **'Export container filesystem'**
+  String get wslcExportContainerFilesystem;
+
+  /// WSLc container actions. Exporting {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting {name}'**
+  String wslcExporting(Object name);
+
+  /// WSLc container actions. Saved: {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'Saved: {path}'**
+  String wslcSaved(Object path);
+
+  /// WSLc container details page. Back to list
+  ///
+  /// In en, this message translates to:
+  /// **'Back to list'**
+  String get wslcBackToList;
+
+  /// WSLc container details page. Startup command
+  ///
+  /// In en, this message translates to:
+  /// **'Startup command'**
+  String get wslcStartupCommandContainerDetailsPage;
+
+  /// WSLc container details page. Remove container
+  ///
+  /// In en, this message translates to:
+  /// **'Remove container'**
+  String get wslcRemoveContainer;
+
+  /// WSLc container details page. Container no longer found
+  ///
+  /// In en, this message translates to:
+  /// **'Container no longer found'**
+  String get wslcContainerNoLongerFound;
+
+  /// WSLc container details page. The runtime may have removed it when it stopped
+  ///
+  /// In en, this message translates to:
+  /// **'The runtime may have removed it when it stopped'**
+  String get wslcTheRuntimeMayHaveRemovedItWhenIt;
+
+  /// WSLc container details page. Loading inspect data…
+  ///
+  /// In en, this message translates to:
+  /// **'Loading inspect data…'**
+  String get wslcLoadingInspectData;
+
+  /// WSLc container details page. Could not load inspect data
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load inspect data'**
+  String get wslcCouldNotLoadInspectData;
+
+  /// WSLc container details page. Exit code
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code'**
+  String get wslcExitCode;
+
+  /// WSLc container details page. Finished
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get wslcFinished;
+
+  /// WSLc container details page. unknown
+  ///
+  /// In en, this message translates to:
+  /// **'unknown'**
+  String get wslcUnknownContainerDetailsPage;
+
+  /// WSLc container details page. enabled
+  ///
+  /// In en, this message translates to:
+  /// **'enabled'**
+  String get wslcEnabled;
+
+  /// WSLc container details page. disabled
+  ///
+  /// In en, this message translates to:
+  /// **'disabled'**
+  String get wslcDisabled;
+
+  /// WSLc container details page. Stop timeout
+  ///
+  /// In en, this message translates to:
+  /// **'Stop timeout'**
+  String get wslcStopTimeout;
+
+  /// WSLc container details page. {p1} s
+  ///
+  /// In en, this message translates to:
+  /// **'{stopTimeoutSeconds} s'**
+  String wslcSContainerDetailsPage(Object stopTimeoutSeconds);
+
+  /// WSLc container details page. receive in blue, send in yellow
+  ///
+  /// In en, this message translates to:
+  /// **'receive in blue, send in yellow'**
+  String get wslcReceiveInBlueSendInYellow;
+
+  /// WSLc container details page. Disk read / write
+  ///
+  /// In en, this message translates to:
+  /// **'Disk read / write'**
+  String get wslcDiskReadWrite;
+
+  /// WSLc container details page. Processes
+  ///
+  /// In en, this message translates to:
+  /// **'Processes'**
+  String get wslcProcesses;
+
+  /// WSLc container details page. No published ports
+  ///
+  /// In en, this message translates to:
+  /// **'No published ports'**
+  String get wslcNoPublishedPorts;
+
+  /// WSLc container details page. Select a port to open it in a browser or copy its address.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a port to open it in a browser or copy its address.'**
+  String get wslcSelectAPortToOpenItInA;
+
+  /// WSLc container details page. Startup
+  ///
+  /// In en, this message translates to:
+  /// **'Startup'**
+  String get wslcStartup;
+
+  /// WSLc container details page. Image ID
+  ///
+  /// In en, this message translates to:
+  /// **'Image ID'**
+  String get wslcImageID;
+
+  /// WSLc container details page. Connect to network
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to network'**
+  String get wslcConnectToNetwork;
+
+  /// WSLc container details page. The runtime returned no network information
+  ///
+  /// In en, this message translates to:
+  /// **'The runtime returned no network information'**
+  String get wslcTheRuntimeReturnedNoNetworkInformation;
+
+  /// WSLc container details page. Disconnect from network
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect from network'**
+  String get wslcDisconnectFromNetwork;
+
+  /// WSLc container details page. gateway {p1}
+  ///
+  /// In en, this message translates to:
+  /// **'gateway {gateway}'**
+  String wslcGateway(Object gateway);
+
+  /// WSLc container details page. The runtime returned no mount information
+  ///
+  /// In en, this message translates to:
+  /// **'The runtime returned no mount information'**
+  String get wslcTheRuntimeReturnedNoMountInformation;
+
+  /// WSLc container details page. No mounted volumes or directories
+  ///
+  /// In en, this message translates to:
+  /// **'No mounted volumes or directories'**
+  String get wslcNoMountedVolumesOrDirectories;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

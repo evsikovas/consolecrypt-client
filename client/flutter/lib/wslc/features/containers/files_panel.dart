@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/features/containers/container_actions.dart';
 import 'package:consolecrypt/wslc/features/containers/file_editor.dart';
@@ -67,21 +68,23 @@ class _FilesPanelState extends State<FilesPanel> {
   }
 
   Future<void> download(BuildContext context, String file) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final notify = WslcApiScope.notifierOf(context);
     try {
       final saved = await api.downloadContainerFile(containerId: widget.containerId, path: file);
       if (saved != null) {
-        messenger.showSnackBar(SnackBar(content: Text('Сохранено: $saved')));
+        notify(l10n.wslcSaved(saved));
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+      notify(errorText(e), error: true);
     }
   }
 
   Future<void> upload(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final notify = WslcApiScope.notifierOf(context);
     try {
-      final local = await api.pickFile(title: 'Загрузить файл в контейнер');
+      final local = await api.pickFile(title: context.l10n.wslcUploadFileToContainer);
       if (local == null || !context.mounted) return;
       final name = local.split(RegExp(r'[\\/]')).last;
       final target = joinPath(path, name);
@@ -89,17 +92,17 @@ class _FilesPanelState extends State<FilesPanel> {
         final ok = await confirmDanger(
           context,
           icon: Icons.upload_file_rounded,
-          title: 'Заменить файл?',
-          message: '$target уже существует и будет перезаписан.',
-          action: 'Заменить',
+          title: context.l10n.wslcReplaceFile,
+          message: context.l10n.wslcAlreadyExistsAndWillBeOverwritten(target),
+          action: context.l10n.dbReplace,
         );
-        if (!ok) return;
+        if (!ok || !mounted) return;
       }
       await api.uploadContainerFile(containerId: widget.containerId, localPath: local, targetPath: target);
-      messenger.showSnackBar(SnackBar(content: Text('Загружено: $target')));
-      await open(path);
+      notify(l10n.wslcUploaded(target));
+      if (mounted) await open(path);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+      notify(errorText(e), error: true);
     }
   }
 
@@ -107,11 +110,11 @@ class _FilesPanelState extends State<FilesPanel> {
   Widget build(BuildContext context) {
     final p = DeskPalette.of(context);
     if (!widget.running) {
-      return const Panel(
+      return Panel(
         child: EmptyState(
           icon: Icons.folder_off_outlined,
-          title: 'Файлы доступны у запущенного контейнера',
-          hint: 'Запустите контейнер, чтобы просмотреть его файловую систему',
+          title: context.l10n.wslcFilesAreAvailableWhileTheContainerIsRunning,
+          hint: context.l10n.wslcStartTheContainerToBrowseItsFilesystem,
         ),
       );
     }
@@ -123,7 +126,7 @@ class _FilesPanelState extends State<FilesPanel> {
         Row(
           children: [
             IconButton(
-              tooltip: 'На уровень выше',
+              tooltip: context.l10n.sftpUp,
               onPressed: path == '/' ? null : () => open(parentPath(path)),
               icon: const Icon(Icons.arrow_upward_rounded),
             ),
@@ -157,19 +160,23 @@ class _FilesPanelState extends State<FilesPanel> {
               ),
             ),
             const SizedBox(width: 6),
-            IconButton(tooltip: 'Обновить', onPressed: () => open(path), icon: const Icon(Icons.refresh_rounded)),
             IconButton(
-              tooltip: 'Копировать путь',
+              tooltip: context.l10n.devicesRefresh,
+              onPressed: () => open(path),
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+            IconButton(
+              tooltip: context.l10n.wslcCopyPath,
               onPressed: () => copyText(context, path),
               icon: const Icon(Icons.content_copy_rounded, size: 20),
             ),
             IconButton(
-              tooltip: 'Загрузить файл с компьютера сюда',
+              tooltip: context.l10n.wslcUploadAFileFromThisComputer,
               onPressed: () => upload(context),
               icon: const Icon(Icons.upload_file_rounded),
             ),
             IconButton(
-              tooltip: 'Открыть терминал в этом каталоге',
+              tooltip: context.l10n.wslcOpenTerminalInThisDirectory,
               onPressed: () => openContainerTerminal(context, widget.containerId, workdir: path),
               icon: const Icon(Icons.terminal_rounded),
             ),
@@ -182,11 +189,11 @@ class _FilesPanelState extends State<FilesPanel> {
                 ? EmptyState(
                     icon: Icons.error_outline_rounded,
                     loading: error == null,
-                    title: error == null ? 'Чтение каталога…' : 'Не удалось прочитать каталог',
+                    title: error == null ? context.l10n.wslcReadingDirectory : context.l10n.wslcCouldNotReadDirectory,
                     hint: error,
                   )
                 : list.isEmpty
-                ? const EmptyState(icon: Icons.folder_open_rounded, title: 'Каталог пуст')
+                ? EmptyState(icon: Icons.folder_open_rounded, title: context.l10n.sftpEmptyFolder)
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     itemCount: list.length,
@@ -221,16 +228,16 @@ class _FilesPanelState extends State<FilesPanel> {
                                     ),
                                   ),
                                 ),
-                                if (e.isLink) Pill('ссылка', color: p.accentEnd),
+                                if (e.isLink) Pill(context.l10n.wslcLink, color: p.accentEnd),
                                 if (!e.isDir)
                                   IconButton(
-                                    tooltip: 'Скачать на компьютер',
+                                    tooltip: context.l10n.wslcDownloadToComputer,
                                     visualDensity: VisualDensity.compact,
                                     onPressed: () => download(context, full),
                                     icon: const Icon(Icons.download_rounded, size: 17),
                                   ),
                                 IconButton(
-                                  tooltip: 'Копировать путь',
+                                  tooltip: context.l10n.wslcCopyPath,
                                   visualDensity: VisualDensity.compact,
                                   onPressed: () => copyText(context, full),
                                   icon: const Icon(Icons.content_copy_rounded, size: 16),

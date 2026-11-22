@@ -1,16 +1,22 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
+import 'package:consolecrypt/wslc/shared/ports.dart' show copyText;
 import 'package:consolecrypt/wslc/wslc_scope.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
-String plural(int n, String one, String few, String many) {
-  final mod10 = n % 10, mod100 = n % 100;
-  final word = mod10 == 1 && mod100 != 11
-      ? one
-      : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
-      ? few
-      : many;
+String plural(int n, String one, String few, String many, {required String locale}) {
+  final word = Intl.pluralLogic(
+    n,
+    one: one,
+    few: few,
+    many: many,
+    other: many,
+    locale: locale,
+    useExplicitNumberCases: false,
+  );
   return '$n $word';
 }
 
@@ -19,8 +25,8 @@ String two(int v) => v.toString().padLeft(2, '0');
 String clock(DateTime t) => '${two(t.hour)}:${two(t.minute)}:${two(t.second)}';
 
 /// RFC 3339 runtime timestamps in local time; anything else is shown verbatim.
-String formatTimestamp(String? raw) {
-  if (raw == null || raw.isEmpty) return 'нет данных';
+String formatTimestamp(String? raw, {required AppLocalizations l10n}) {
+  if (raw == null || raw.isEmpty) return l10n.automationResultMissing;
   final t = DateTime.tryParse(raw)?.toLocal();
   if (t == null) return raw;
   return '${two(t.day)}.${two(t.month)}.${t.year} ${clock(t)}';
@@ -221,14 +227,10 @@ class CopyId extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = DeskPalette.of(context);
     return Tooltip(
-      message: 'Скопировать полный ID',
+      message: context.l10n.wslcCopyFullID,
       child: InkWell(
         borderRadius: BorderRadius.circular(4),
-        onTap: () {
-          WslcApiScope.copy(context, ClipboardData(text: id));
-          ScaffoldMessenger.maybeOf(context)
-              ?.showSnackBar(const SnackBar(content: Text('ID скопирован'), duration: Duration(seconds: 1)));
-        },
+        onTap: () => copyText(context, id, label: 'ID'), // l10n-ignore: identifier abbreviation
         child: Text(
           label ?? shortId(id),
           maxLines: 1,
@@ -256,7 +258,7 @@ class SearchField extends StatelessWidget {
       suffixIcon: controller.text.isEmpty
           ? null
           : IconButton(
-              tooltip: 'Очистить поиск',
+              tooltip: context.l10n.sftpSearchClear,
               icon: const Icon(Icons.close_rounded, size: 18),
               onPressed: () {
                 controller.clear();
@@ -446,7 +448,7 @@ class CodeView extends StatelessWidget {
             top: 8,
             right: 8,
             child: IconButton(
-              tooltip: 'Скопировать',
+              tooltip: context.l10n.wslcCopy,
               style: IconButton.styleFrom(
                 foregroundColor: p.terminalText,
                 backgroundColor: Colors.white.withValues(alpha: .06),
@@ -463,12 +465,12 @@ class CodeView extends StatelessWidget {
 
 /// Read-only JSON viewer for inspect documents.
 Future<void> showInspectDialog(BuildContext context, String title, Future<String> Function() load) async {
-  final messenger = ScaffoldMessenger.of(context);
+  final notify = WslcApiScope.notifierOf(context);
   final String text;
   try {
     text = await load();
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+    notify(errorText(e), error: true);
     return;
   }
   if (!context.mounted) return;
@@ -496,7 +498,7 @@ Future<void> showInspectDialog(BuildContext context, String title, Future<String
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Закрыть',
+                    tooltip: context.l10n.commonClose,
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close_rounded),
                   ),

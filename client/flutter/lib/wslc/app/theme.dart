@@ -2,7 +2,7 @@ import 'package:consolecrypt/app/theme/glass_tokens.dart';
 import 'package:material_ui/material_ui.dart';
 
 const monoFont = 'Cascadia Mono';
-const monoFallback = ['Consolas', 'Courier New'];
+const monoFallback = ['Consolas', 'Courier New']; // l10n-ignore: Windows fallback font families.
 
 /// Settings accept opaque RGB only; malformed saved values fall back to defaults.
 Color? parseHexColor(String? value) {

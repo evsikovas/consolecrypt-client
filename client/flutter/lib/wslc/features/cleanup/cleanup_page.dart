@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/features/containers/container_actions.dart' show confirmDanger;
@@ -11,7 +12,6 @@ import 'package:consolecrypt/wslc/shared/widgets.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
 import 'package:consolecrypt/wslc/wslc_scope.dart';
 import 'package:material_ui/material_ui.dart';
-
 
 /// Removal order: containers first, so their images and volumes become free.
 enum CleanupKind { container, image, volume, network }
@@ -36,6 +36,7 @@ class CleanupItem {
 
 /// Stopped containers and images, volumes and user networks nothing uses.
 List<CleanupItem> cleanupCandidates({
+  required AppLocalizations l10n,
   required List<ContainerSummary> containers,
   required List<ContainerLinks> links,
   required List<ImageSummary> images,
@@ -64,7 +65,7 @@ List<CleanupItem> cleanupCandidates({
           CleanupKind.image,
           imageRef(i),
           i.repository == null ? shortId(i.id) : '${i.repository}:${i.tag ?? '<none>'}',
-          detail: i.createdAt == null ? null : 'создан ${i.createdAt!.split(' ').first}',
+          detail: i.createdAt == null ? null : l10n.wslcCreated(i.createdAt!.split(' ').first),
           bytes: parseSize(i.sizeDisplay),
           sizeKey: i.id,
         ),
@@ -151,15 +152,15 @@ class _CleanupPageState extends State<CleanupPage> {
     final ok = await confirmDanger(
       context,
       icon: Icons.cleaning_services_rounded,
-      title: 'Удалить выбранное (${chosen.length})?',
+      title: context.l10n.wslcRemoveSelectedItems(chosen.length),
       message: [
         for (final MapEntry(key: k, value: n) in count.entries)
-          if (n > 0) '${_titles[k]}: $n',
+          if (n > 0) '${_title(k, context.l10n)}: $n',
         '',
-        if (count[CleanupKind.volume]! > 0) 'Данные выбранных томов будут потеряны.',
-        'Удаление нельзя отменить.',
+        if (count[CleanupKind.volume]! > 0) context.l10n.wslcDataInTheSelectedVolumesWillBeLost,
+        context.l10n.wslcRemovalCannotBeUndone,
       ].join('\n'),
-      action: 'Удалить',
+      action: context.l10n.commonDelete,
     );
     if (!ok || !mounted) return;
     final failures = <String>[];
@@ -179,18 +180,18 @@ class _CleanupPageState extends State<CleanupPage> {
     unawaited(load());
     final removed = chosen.length - failures.length;
     if (failures.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Удалено: $removed')));
+      WslcApiScope.notifierOf(context)(context.l10n.wslcRemoved(removed));
       return;
     }
     await showWslcDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Удалено $removed из ${chosen.length}'),
+        title: Text(context.l10n.wslcRemovedOf(removed, chosen.length)),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480, maxHeight: 320),
           child: SingleChildScrollView(child: WslcSelectableText(failures.join('\n\n'), minLines: 1)),
         ),
-        actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Закрыть'))],
+        actions: [FilledButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonClose))],
       ),
     );
   }
@@ -205,12 +206,13 @@ class _CleanupPageState extends State<CleanupPage> {
         child: EmptyState(
           icon: Icons.cleaning_services_outlined,
           loading: error == null,
-          title: error == null ? 'Ищем, что можно удалить…' : 'Не удалось собрать список',
+          title: error == null ? context.l10n.wslcLookingForItemsToRemove : context.l10n.wslcCouldNotLoadTheList,
           hint: error,
         ),
       );
     }
     final items = cleanupCandidates(
+      l10n: context.l10n,
       containers: c.containers,
       links: data,
       images: c.images,
@@ -230,10 +232,10 @@ class _CleanupPageState extends State<CleanupPage> {
           children: [
             Pill(
               items.isEmpty
-                  ? 'Всё чисто'
+                  ? context.l10n.wslcEverythingIsClean
                   : total > 0
-                  ? 'Можно освободить до ${formatBytes(total, decimal: true)}'
-                  : 'Найдено: ${items.length}',
+                  ? context.l10n.wslcUpToCanBeFreed(formatBytes(total, l10n: context.l10n, decimal: true))
+                  : context.l10n.wslcFound(items.length),
               color: items.isEmpty ? p.success : p.accent,
               icon: Icons.savings_outlined,
             ),
@@ -244,7 +246,7 @@ class _CleanupPageState extends State<CleanupPage> {
                 child: LinearProgressIndicator(value: running.$1 / running.$2, borderRadius: BorderRadius.circular(4)),
               ),
               const SizedBox(width: 10),
-              Text('${running.$1} из ${running.$2}', style: TextStyle(color: p.muted, fontSize: 12.5)),
+              Text(context.l10n.wslcOf(running.$1, running.$2), style: TextStyle(color: p.muted, fontSize: 12.5)),
               const SizedBox(width: 14),
             ],
             FilledButton.icon(
@@ -252,9 +254,11 @@ class _CleanupPageState extends State<CleanupPage> {
               icon: const Icon(Icons.cleaning_services_rounded, size: 18),
               label: Text(
                 chosen.isEmpty
-                    ? 'Очистить выбранное'
-                    : 'Очистить выбранное (${chosen.length}'
-                          '${size > 0 ? ' · ${formatBytes(size, decimal: true)}' : ''})',
+                    ? context.l10n.wslcCleanUpSelectedItems
+                    : context.l10n.wslcCleanUpSelectedItemsCleanupPage(
+                        chosen.length,
+                        size > 0 ? ' · ${formatBytes(size, l10n: context.l10n, decimal: true)}' : '',
+                      ),
               ),
             ),
           ],
@@ -263,10 +267,10 @@ class _CleanupPageState extends State<CleanupPage> {
         Expanded(
           child: Panel(
             child: items.isEmpty
-                ? const EmptyState(
+                ? EmptyState(
                     icon: Icons.task_alt_rounded,
-                    title: 'Чистить нечего',
-                    hint: 'Нет остановленных контейнеров, а образы, тома и сети используются',
+                    title: context.l10n.wslcNothingToCleanUp,
+                    hint: context.l10n.wslcThereAreNoStoppedContainersAllImagesVolumes,
                   )
                 : ListView(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -293,19 +297,18 @@ class _CleanupPageState extends State<CleanupPage> {
   }
 }
 
-const _titles = {
-  CleanupKind.container: 'Остановленные контейнеры',
-  CleanupKind.image: 'Неиспользуемые образы',
-  CleanupKind.volume: 'Неиспользуемые тома',
-  CleanupKind.network: 'Пустые сети',
+String _title(CleanupKind kind, AppLocalizations l10n) => switch (kind) {
+  CleanupKind.container => l10n.wslcStoppedContainers,
+  CleanupKind.image => l10n.wslcUnusedImages,
+  CleanupKind.volume => l10n.wslcUnusedVolumes,
+  CleanupKind.network => l10n.wslcEmptyNetworks,
 };
 
-const _hints = {
-  CleanupKind.container: 'Удаляется файловая система контейнера; именованные тома остаются.',
-  CleanupKind.image: 'Ни один контейнер не создан из этих образов; их можно загрузить заново.',
-  CleanupKind.volume:
-      'Не подключены ни к одному контейнеру. Данные будут потеряны — сделайте бэкап, если сомневаетесь.',
-  CleanupKind.network: 'Пользовательские сети без подключённых контейнеров.',
+String _hint(CleanupKind kind, AppLocalizations l10n) => switch (kind) {
+  CleanupKind.container => l10n.wslcRemovesTheContainerFilesystemNamedVolumesAreKept,
+  CleanupKind.image => l10n.wslcNoContainersUseTheseImagesYouCanDownload,
+  CleanupKind.volume => l10n.wslcTheseVolumesAreNotAttachedToAnyContainer,
+  CleanupKind.network => l10n.wslcUserDefinedNetworksWithNoAttachedContainers,
 };
 
 IconData _icon(CleanupKind k) => switch (k) {
@@ -354,16 +357,20 @@ class _Group extends StatelessWidget {
               Icon(_icon(kind), size: 18, color: p.accent),
               const SizedBox(width: 8),
               Text(
-                '${_titles[kind]} · ${items.length}',
+                '${_title(kind, context.l10n)} · ${items.length}',
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               const Spacer(),
-              if (size > 0) Text(formatBytes(size, decimal: true), style: TextStyle(color: p.muted, fontSize: 12.5)),
+              if (size > 0)
+                Text(
+                  formatBytes(size, l10n: context.l10n, decimal: true),
+                  style: TextStyle(color: p.muted, fontSize: 12.5),
+                ),
             ],
           ),
           Padding(
             padding: const EdgeInsets.only(left: 40, bottom: 4),
-            child: Text(_hints[kind]!, style: TextStyle(color: p.faint, fontSize: 12)),
+            child: Text(_hint(kind, context.l10n), style: TextStyle(color: p.faint, fontSize: 12)),
           ),
           for (final i in items)
             Material(
@@ -400,7 +407,10 @@ class _Group extends StatelessWidget {
                         ),
                       ),
                       if (i.bytes != null && i.bytes! > 0)
-                        Text(formatBytes(i.bytes!, decimal: true), style: TextStyle(color: p.muted, fontSize: 12.5)),
+                        Text(
+                          formatBytes(i.bytes!, l10n: context.l10n, decimal: true),
+                          style: TextStyle(color: p.muted, fontSize: 12.5),
+                        ),
                     ],
                   ),
                 ),

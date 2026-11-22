@@ -40,7 +40,7 @@ final windowsScreenSnipProvider = Provider<Future<bool> Function()>(
     final local = Platform.environment['LOCALAPPDATA'];
     final windows = Platform.environment['SystemRoot'];
     final paths = [
-      if (local != null) '$local\\Microsoft\\WindowsApps\\SnippingTool.exe',
+      if (local != null) '$local\\Microsoft\\WindowsApps\\SnippingTool.exe', // l10n-ignore: Windows executable path
       if (windows != null) '$windows\\System32\\SnippingTool.exe',
     ];
     for (final path in paths) {
@@ -363,7 +363,8 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
       router.go(AppRoutes.externalVault);
     }
 
-    if (saved.isEmpty && matches('$title HashiCorp Vault OpenBao')) {
+    final productNames = '$title HashiCorp Vault OpenBao'; // l10n-ignore: search index of product names
+    if (saved.isEmpty && matches(productNames)) {
       yield _Item(
         group: _Group.passwords,
         key: const ValueKey('palette-external-vault'),

@@ -1,3 +1,4 @@
+import 'package:consolecrypt/l10n/app_localizations_en.dart';
 import 'package:consolecrypt/wslc/features/cleanup/cleanup_page.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +18,7 @@ void main() {
 
   test('offers stopped containers and resources nothing uses', () {
     final items = cleanupCandidates(
+      l10n: AppLocalizationsEn(),
       containers: [
         row('1', 'web', ContainerState.running),
         row('2', 'old', ContainerState.exited),

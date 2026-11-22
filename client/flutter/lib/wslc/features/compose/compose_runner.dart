@@ -1,11 +1,11 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
 import 'package:consolecrypt/wslc/src/rust/api/desk.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
 import 'package:flutter/foundation.dart';
-
 
 enum StepStatus { pending, running, done, skipped, failed }
 
@@ -55,6 +55,7 @@ class ComposeRunner extends ChangeNotifier {
   final ComposePlan plan;
   final DeskController controller;
   WslcApi get api => controller.api;
+  AppLocalizations get l10n => controller.l10n;
   final steps = <ComposeStep>[];
   bool busy = false;
   bool cancelled = false;
@@ -102,7 +103,7 @@ class ComposeRunner extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       step.status = StepStatus.failed;
-      step.note = e is _Cancelled ? 'отменено' : errorText(e);
+      step.note = e is _Cancelled ? l10n.wslcCancelled : errorText(e);
       notifyListeners();
       rethrow;
     }
@@ -122,7 +123,7 @@ class ComposeRunner extends ChangeNotifier {
       await body();
       return true;
     } catch (e) {
-      error = e is _Cancelled ? 'Остановлено по запросу' : errorText(e);
+      error = e is _Cancelled ? l10n.wslcStoppedOnRequest : errorText(e);
       return false;
     } finally {
       busy = false;
@@ -134,31 +135,31 @@ class ComposeRunner extends ChangeNotifier {
   Future<void> _up(bool rebuild) async {
     if (plan.hostFolders.isNotEmpty) {
       await _run(
-        _add('Папки для подключений'),
+        _add(l10n.wslcDirectoriesForMounts),
         () => api.createHostFolders(paths: plan.hostFolders),
         done: plan.hostFolders.join('\n'),
       );
     }
     final networks = {for (final n in await api.listNetworks()) n.name};
     for (final n in plan.networks) {
-      final step = _add('Сеть ${n.spec.name}');
+      final step = _add(l10n.wslcNetwork(n.spec.name));
       if (networks.contains(n.spec.name)) {
-        _skip(step, n.isExternal ? 'внешняя, найдена' : 'уже есть');
+        _skip(step, n.isExternal ? l10n.wslcExternalNetworkFound : l10n.wslcAlreadyExists);
       } else if (n.isExternal) {
-        await _run(step, () async => throw _Failure('Внешняя сеть ${n.spec.name} не найдена'));
+        await _run(step, () async => throw _Failure(l10n.wslcExternalNetworkNotFound(n.spec.name)));
       } else {
-        await _run(step, () => api.createNetwork(spec: n.spec), done: 'создана');
+        await _run(step, () => api.createNetwork(spec: n.spec), done: l10n.wslcNetworkCreated);
       }
     }
     final volumes = {for (final v in await api.listVolumes()) v.name};
     for (final v in plan.volumes) {
-      final step = _add('Том ${v.spec.name}');
+      final step = _add(l10n.wslcVolume(v.spec.name));
       if (volumes.contains(v.spec.name)) {
-        _skip(step, v.isExternal ? 'внешний, найден' : 'уже есть');
+        _skip(step, v.isExternal ? l10n.wslcExternalVolumeFound : l10n.wslcAlreadyExists);
       } else if (v.isExternal) {
-        await _run(step, () async => throw _Failure('Внешний том ${v.spec.name} не найден'));
+        await _run(step, () async => throw _Failure(l10n.wslcExternalVolumeNotFound(v.spec.name)));
       } else {
-        await _run(step, () => api.createVolume(spec: v.spec), done: 'создан');
+        await _run(step, () => api.createVolume(spec: v.spec), done: l10n.wslcVolumeCreated);
       }
     }
 
@@ -168,24 +169,24 @@ class ComposeRunner extends ChangeNotifier {
       if (!seen.add(svc.image)) continue;
       final build = svc.build;
       if (build != null) {
-        final step = _add('Сборка ${svc.image}');
+        final step = _add(l10n.wslcBuilding(svc.image));
         if (!rebuild && svc.pullPolicy != 'build' && hasImage(images, svc.image)) {
-          _skip(step, 'образ уже собран');
+          _skip(step, l10n.wslcImageAlreadyBuilt);
           continue;
         }
-        await _run(step, () => _job(step, () => api.startBuild(spec: build)), done: 'собран');
+        await _run(step, () => _job(step, () => api.startBuild(spec: build)), done: l10n.wslcBuilt);
       } else {
-        final step = _add('Образ ${svc.image}');
+        final step = _add(l10n.wslcImage(svc.image));
         final need = switch (svc.pullPolicy) {
           'always' => true,
           'never' => false,
           _ => !hasImage(images, svc.image),
         };
         if (!need) {
-          _skip(step, svc.pullPolicy == 'never' ? 'pull_policy: never' : 'уже загружен');
+          _skip(step, svc.pullPolicy == 'never' ? 'pull_policy: ${svc.pullPolicy}' : l10n.wslcAlreadyDownloaded);
           continue;
         }
-        await _run(step, () => _job(step, () => api.startPull(image: svc.image)), done: 'загружен');
+        await _run(step, () => _job(step, () => api.startPull(image: svc.image)), done: l10n.wslcDownloaded);
       }
     }
 
@@ -200,7 +201,7 @@ class ComposeRunner extends ChangeNotifier {
         if (!wanted.contains(c.name)) c.name,
     ];
     if (orphans.isNotEmpty) {
-      _skip(_add('Лишние контейнеры проекта'), '${orphans.join(', ')} — их сервисов нет в файле, оставлены как есть');
+      _skip(_add(l10n.wslcOrphanedProjectContainers), l10n.wslcTheirServicesAreAbsentFromTheFileSo(orphans.join(', ')));
     }
   }
 
@@ -211,36 +212,36 @@ class ComposeRunner extends ChangeNotifier {
     final old = existing[svc.containerName];
     if (old != null && old.configHash == svc.configHash) {
       if (old.state == ContainerState.running) {
-        _skip(step, 'без изменений, уже запущен');
+        _skip(step, l10n.wslcUnchangedAlreadyRunning);
         return;
       }
-      _note(step, 'запуск…');
+      _note(step, l10n.wslcStarting);
       await api.startContainer(containerId: old.id);
-      step.note = 'без изменений, запущен';
+      step.note = l10n.wslcUnchangedStarted;
       return;
     }
     if (old != null) {
-      _note(step, 'конфигурация изменилась — пересоздание…');
+      _note(step, l10n.wslcConfigurationChangedRecreating);
       await api.removeContainer(containerId: old.id, force: true);
     } else if (controller.containers.any((c) => c.name == svc.containerName)) {
-      throw _Failure('Имя ${svc.containerName} занято контейнером не из этого проекта');
+      throw _Failure(l10n.wslcTheNameIsInUseByAContainer(svc.containerName));
     }
-    _note(step, 'создание…');
+    _note(step, l10n.wslcCreating);
     final id = await api.runContainer(spec: svc.spec);
     for (final n in svc.extraNetworks) {
-      _note(step, 'подключение к ${n.network}…');
+      _note(step, l10n.wslcConnectingTo(n.network));
       await api.composeConnect(networkName: n.network, containerId: id, aliases: n.aliases, ip: n.ip);
     }
-    _note(step, 'запуск…');
+    _note(step, l10n.wslcStarting);
     await api.startContainer(containerId: id);
-    step.note = old == null ? 'создан и запущен' : 'пересоздан и запущен';
+    step.note = old == null ? l10n.wslcCreatedAndStarted : l10n.wslcRecreatedAndStarted;
   }
 
   /// `service_healthy` and `service_completed_successfully`.
   Future<void> _wait(ComposeStep step, ComposeDependency d) async {
     final name = plan.services.firstWhere((s) => s.service == d.service).containerName;
     final healthy = d.condition == 'healthy';
-    _note(step, healthy ? 'ждём, пока ${d.service} станет здоровым…' : 'ждём, пока ${d.service} завершится…');
+    _note(step, healthy ? l10n.wslcWaitingForToBecomeHealthy(d.service) : l10n.wslcWaitingForToFinish(d.service));
     final until = DateTime.now().add(waitLimit);
     DateTime? runningWithoutHealth;
     while (true) {
@@ -249,23 +250,23 @@ class ComposeRunner extends ChangeNotifier {
       if (c != null && healthy) {
         if (c.health == 'healthy') return;
         if (c.health == 'unhealthy') {
-          throw _Failure('${d.service} нездоров — зависимые сервисы не запущены');
+          throw _Failure(l10n.wslcIsUnhealthyDependentServicesDidNotStart(d.service));
         }
         if (c.state == ContainerState.exited) {
-          throw _Failure('${d.service} остановился, не став здоровым');
+          throw _Failure(l10n.wslcStoppedBeforeBecomingHealthy(d.service));
         }
         if (c.health == null && c.state == ContainerState.running) {
           runningWithoutHealth ??= DateTime.now();
           if (DateTime.now().difference(runningWithoutHealth).inSeconds > 10) {
-            throw _Failure('У ${d.service} нет проверки здоровья — условие service_healthy не выполнить');
+            throw _Failure(l10n.wslcHasNoHealthCheckAndCannotSatisfyService(d.service));
           }
         }
       } else if (c != null && c.state == ContainerState.exited) {
         if ((c.exitCode ?? 1) == 0) return;
-        throw _Failure('${d.service} завершился с кодом ${c.exitCode}');
+        throw _Failure(l10n.wslcExitedWithCode(d.service, c.exitCode ?? '?'));
       }
       if (DateTime.now().isAfter(until)) {
-        throw _Failure('${d.service}: не дождались за ${waitLimit.inMinutes} мин');
+        throw _Failure(l10n.wslcTimedOutAfterMin(d.service, waitLimit.inMinutes));
       }
       await Future<void>.delayed(pollEvery);
     }
@@ -289,8 +290,7 @@ class ComposeRunner extends ChangeNotifier {
         if (batch.finished) {
           if (!batch.success) {
             throw _Failure(
-              'Завершилось с кодом ${batch.exitCode ?? '?'}'
-              '${step.log.isEmpty ? '' : ': ${step.log.last}'}',
+              l10n.wslcExitedWithCodeComposeRunner(batch.exitCode ?? '?', step.log.isEmpty ? '' : ': ${step.log.last}'),
             );
           }
           return;
@@ -308,32 +308,32 @@ class ComposeRunner extends ChangeNotifier {
 
   Future<void> _down(bool withVolumes) async {
     final containers = await api.composeContainers(project: plan.project);
-    if (containers.isEmpty) _skip(_add('Контейнеры проекта'), 'не найдены');
+    if (containers.isEmpty) _skip(_add(l10n.wslcProjectContainers), l10n.wslcNoneFound);
     for (final c in containers.reversed) {
       await _run(
-        _add('Удаление ${c.name}'),
+        _add(l10n.wslcRemoving(c.name)),
         () => api.removeContainer(containerId: c.id, force: true),
-        done: 'остановлен и удалён',
+        done: l10n.wslcStoppedAndRemoved,
       );
     }
     final networks = {for (final n in await api.listNetworks()) n.name};
     for (final n in plan.networks.where((n) => !n.isExternal)) {
-      final step = _add('Сеть ${n.spec.name}');
+      final step = _add(l10n.wslcNetwork(n.spec.name));
       if (!networks.contains(n.spec.name)) {
-        _skip(step, 'уже нет');
+        _skip(step, l10n.wslcAlreadyGone);
         continue;
       }
-      await _run(step, () => api.removeNetwork(networkName: n.spec.name), done: 'удалена');
+      await _run(step, () => api.removeNetwork(networkName: n.spec.name), done: l10n.wslcRemovedComposeRunner);
     }
     if (!withVolumes) return;
     final volumes = {for (final v in await api.listVolumes()) v.name};
     for (final v in plan.volumes.where((v) => !v.isExternal)) {
-      final step = _add('Том ${v.spec.name}');
+      final step = _add(l10n.wslcVolume(v.spec.name));
       if (!volumes.contains(v.spec.name)) {
-        _skip(step, 'уже нет');
+        _skip(step, l10n.wslcAlreadyGone);
         continue;
       }
-      await _run(step, () => api.removeVolume(volumeName: v.spec.name), done: 'удалён');
+      await _run(step, () => api.removeVolume(volumeName: v.spec.name), done: l10n.wslcRemovedComposeRunnerOther);
     }
   }
 }

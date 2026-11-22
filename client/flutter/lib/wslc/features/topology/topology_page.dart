@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
@@ -7,7 +8,6 @@ import 'package:consolecrypt/wslc/shared/widgets.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
 import 'package:consolecrypt/wslc/wslc_scope.dart';
 import 'package:material_ui/material_ui.dart';
-
 
 enum NodeKind { image, container, volume, folder, network }
 
@@ -167,7 +167,7 @@ class _TopologyPageState extends State<TopologyPage> {
         child: EmptyState(
           icon: Icons.account_tree_outlined,
           loading: error == null,
-          title: error == null ? 'Строим карту…' : 'Не удалось построить карту',
+          title: error == null ? context.l10n.wslcBuildingMap : context.l10n.wslcCouldNotBuildMap,
           hint: error,
         ),
       );
@@ -184,12 +184,12 @@ class _TopologyPageState extends State<TopologyPage> {
       children: [
         Row(
           children: [
-            for (final (kind, label) in const [
-              (NodeKind.image, 'Образ'),
-              (NodeKind.container, 'Контейнер'),
-              (NodeKind.volume, 'Том'),
-              (NodeKind.folder, 'Папка Windows'),
-              (NodeKind.network, 'Сеть'),
+            for (final (kind, label) in [
+              (NodeKind.image, context.l10n.dockerImage),
+              (NodeKind.container, context.l10n.kubeContainer),
+              (NodeKind.volume, context.l10n.wslcVolumeRunWizard),
+              (NodeKind.folder, context.l10n.wslcWindowsFolderTopologyPage),
+              (NodeKind.network, context.l10n.hostMetricsNetwork),
             ]) ...[
               Icon(_icon(kind), size: 16, color: _color(p, kind)),
               const SizedBox(width: 4),
@@ -199,12 +199,12 @@ class _TopologyPageState extends State<TopologyPage> {
             const Spacer(),
             if (unused.isNotEmpty)
               Tooltip(
-                message: 'Открыть очистку',
+                message: context.l10n.wslcOpenCleanup,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(20),
                   onTap: () => c.selectSection(DeskSection.cleanup),
                   child: Pill(
-                    'не используется: ${unused.length}',
+                    context.l10n.wslcUnused(unused.length),
                     color: p.warning,
                     icon: Icons.cleaning_services_outlined,
                   ),
@@ -216,7 +216,7 @@ class _TopologyPageState extends State<TopologyPage> {
         Expanded(
           child: Panel(
             child: data.isEmpty && unused.isEmpty
-                ? const EmptyState(icon: Icons.account_tree_outlined, title: 'Связей пока нет')
+                ? EmptyState(icon: Icons.account_tree_outlined, title: context.l10n.wslcNoConnectionsYet)
                 : LayoutBuilder(
                     builder: (context, box) => _MapCanvas(
                       model: model,
@@ -294,7 +294,7 @@ class _MapCanvas extends StatelessWidget {
         if (a.key == hovered || b.key == hovered) focus.addAll([a, b]);
       }
     }
-    const titles = ['Образы', 'Контейнеры', 'Тома, папки и сети'];
+    final titles = [context.l10n.kubeImages, context.l10n.kubeContainers, context.l10n.wslcVolumesFoldersAndNetworks];
     return SingleChildScrollView(
       child: SizedBox(
         height: height,
@@ -391,7 +391,7 @@ class _NodeCard extends StatelessWidget {
           child: Tooltip(
             message: [
               node.key.startsWith('name:') ? node.key.substring(5) : node.key,
-              if (node.unused) 'не используется',
+              if (node.unused) context.l10n.dockerVolumeUnused,
             ].join('\n'),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -417,7 +417,7 @@ class _NodeCard extends StatelessWidget {
                         ),
                         if (node.detail != null || node.unused)
                           Text(
-                            node.unused ? 'не используется' : node.detail!,
+                            node.unused ? context.l10n.dockerVolumeUnused : node.detail!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 11, color: node.unused ? p.warning : p.faint),

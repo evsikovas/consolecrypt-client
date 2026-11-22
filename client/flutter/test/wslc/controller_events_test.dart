@@ -1,3 +1,4 @@
+import 'package:consolecrypt/l10n/app_localizations_ru.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/src/rust/api/desk.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
@@ -65,7 +66,7 @@ void main() {
   final api = EventsApi();
 
   test('an event re-reads only the affected section and goes live', () async {
-    final controller = DeskController(api: api);
+    final controller = DeskController(api: api, l10n: AppLocalizationsRu());
     final received = <DeskEvent>[];
     controller.events.listen(received.add);
     await controller.connect(null);

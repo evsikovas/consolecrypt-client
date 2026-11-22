@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/shared/error_text.dart';
 import 'package:consolecrypt/wslc/shared/ports.dart';
@@ -58,7 +59,7 @@ class _EnvPanelState extends State<EnvPanel> {
         child: EmptyState(
           icon: Icons.error_outline_rounded,
           loading: error == null,
-          title: error == null ? 'Чтение окружения…' : 'Не удалось прочитать окружение',
+          title: error == null ? context.l10n.wslcReadingEnvironment : context.l10n.wslcCouldNotReadTheEnvironment,
           hint: error,
         ),
       );
@@ -82,20 +83,20 @@ class _EnvPanelState extends State<EnvPanel> {
             Expanded(
               child: SearchField(
                 controller: search,
-                hint: 'Поиск по имени переменной',
+                hint: context.l10n.wslcSearchByVariableName,
                 onChanged: (_) => setState(() {}),
               ),
             ),
             const SizedBox(width: 10),
             FilterChip(
-              label: Text('Скрыть из образа ($inherited)'),
+              label: Text(context.l10n.wslcHideVariablesFromTheImage(inherited)),
               selected: hideInherited,
               onSelected: (v) => setState(() => hideInherited = v),
             ),
             const SizedBox(width: 8),
             FilterChip(
               avatar: Icon(showAll ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 16),
-              label: Text(showAll ? 'Скрыть значения' : 'Показать все'),
+              label: Text(showAll ? context.l10n.wslcHideValues : context.l10n.wslcShowAll),
               selected: showAll,
               onSelected: (v) => setState(() {
                 showAll = v;
@@ -103,13 +104,13 @@ class _EnvPanelState extends State<EnvPanel> {
               }),
             ),
             IconButton(
-              tooltip: 'Скопировать как .env',
+              tooltip: context.l10n.wslcCopyAsEnv,
               onPressed: rows.isEmpty
                   ? null
                   : () => copyText(
                       context,
                       rows.map((e) => '${e.key}=${e.value}').join('\n'),
-                      label: '.env (${rows.length})',
+                      label: '.env (${rows.length})', // l10n-ignore: dotenv file format and selected row count.
                     ),
               icon: const Icon(Icons.content_copy_rounded, size: 20),
             ),
@@ -121,7 +122,7 @@ class _EnvPanelState extends State<EnvPanel> {
             child: rows.isEmpty
                 ? EmptyState(
                     icon: Icons.tune_rounded,
-                    title: all.isEmpty ? 'Переменных окружения нет' : 'Ничего не найдено',
+                    title: all.isEmpty ? context.l10n.wslcNoEnvironmentVariables : context.l10n.notesNothingFound,
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 4),
@@ -162,7 +163,7 @@ class _EnvPanelState extends State<EnvPanel> {
                             Expanded(
                               child: visible
                                   ? WslcSelectableText(
-                                      e.value.isEmpty ? '(пусто)' : e.value,
+                                      e.value.isEmpty ? context.l10n.wslcEmpty : e.value,
                                       maxLines: 3,
                                       minLines: 1,
                                       style: TextStyle(
@@ -177,18 +178,18 @@ class _EnvPanelState extends State<EnvPanel> {
                             if (e.fromImage)
                               Padding(
                                 padding: const EdgeInsets.only(right: 4),
-                                child: Pill('из образа', color: p.muted),
+                                child: Pill(context.l10n.wslcFromImage, color: p.muted),
                               ),
                             IconButton(
-                              tooltip: visible ? 'Скрыть' : 'Показать',
+                              tooltip: visible ? context.l10n.commonHide : context.l10n.commonShow,
                               onPressed: showAll
                                   ? null
                                   : () => setState(() => visible ? shown.remove(e.key) : shown.add(e.key)),
                               icon: Icon(visible ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18),
                             ),
                             IconButton(
-                              tooltip: 'Скопировать значение',
-                              onPressed: () => copyText(context, e.value, label: 'значение ${e.key}'),
+                              tooltip: context.l10n.wslcCopyValue,
+                              onPressed: () => copyText(context, e.value, label: context.l10n.wslcValueOf(e.key)),
                               icon: const Icon(Icons.content_copy_rounded, size: 17),
                             ),
                           ],
@@ -205,8 +206,7 @@ class _EnvPanelState extends State<EnvPanel> {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'Значения читаются только при открытии вкладки и не сохраняются. '
-                'Переменные с замком похожи на секреты.',
+                context.l10n.wslcValuesAreReadWhenYouOpenThisTab,
                 style: TextStyle(color: p.faint, fontSize: 12),
               ),
             ),

@@ -1,3 +1,4 @@
+import 'package:consolecrypt/l10n/app_localizations_ru.dart';
 import 'package:consolecrypt/wslc/shared/usage.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,8 +16,8 @@ void main() {
     expect(parseSize('n/a'), isNull);
     expect(parsePair('1.2MB / 340kB'), (1.2e6, 340000.0));
     expect(parsePair('broken'), isNull);
-    expect(formatBytes(1536), '1.5 КБ');
-    expect(formatBytes(2 * 1024 * 1024, perSecond: true), '2.0 МБ/с');
+    expect(formatBytes(1536, l10n: AppLocalizationsRu()), '1.5 КБ');
+    expect(formatBytes(2 * 1024 * 1024, l10n: AppLocalizationsRu(), perSecond: true), '2.0 МБ/с');
   });
 
   test('history keeps a bounded window and turns counters into rates', () {

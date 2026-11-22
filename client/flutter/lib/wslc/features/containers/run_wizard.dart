@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
@@ -154,9 +155,9 @@ class _RunWizardState extends State<RunWizard> {
   (RunSpec?, String?) buildSpec() {
     final List<String> args;
     try {
-      args = shellWords(command.text);
+      args = shellWords(command.text, l10n: context.l10n);
     } on FormatException catch (e) {
-      return (null, 'Команда: ${e.message}');
+      return (null, context.l10n.wslcCommand(e.message));
     }
     return (
       RunSpec(
@@ -203,7 +204,7 @@ class _RunWizardState extends State<RunWizard> {
   }
 
   Future<void> pickFolder(_MountRow row) async {
-    final path = await WslcApiScope.of(context).pickFolder(title: 'Папка для подключения');
+    final path = await WslcApiScope.of(context).pickFolder(title: context.l10n.wslcDirectoryToMount);
     if (path != null && mounted) setState(() => row.source.text = path);
   }
 
@@ -259,20 +260,23 @@ class _RunWizardState extends State<RunWizard> {
                 children: [
                   const GradientIcon(Icons.add_box_rounded, size: 38),
                   const SizedBox(width: 14),
-                  const Expanded(
-                    child: Text('Новый контейнер', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
+                  Expanded(
+                    child: Text(
+                      context.l10n.wslcNewContainer,
+                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+                    ),
                   ),
                   if (!busy)
                     TextButton.icon(
                       key: const ValueKey('wslc-wizard-compose'),
                       onPressed: () => Navigator.of(context).pop(_WizardAction.compose),
                       icon: const Icon(Icons.dynamic_feed_rounded, size: 18),
-                      label: const Text('Из Compose…'),
+                      label: Text(context.l10n.wslcFromCompose),
                     ),
                   if (widget.onTemplate != null && !busy)
                     TemplateMenu(controller: c, current: spec, onLoad: widget.onTemplate!),
                   IconButton(
-                    tooltip: 'Закрыть',
+                    tooltip: context.l10n.commonClose,
                     onPressed: busy ? null : () => Navigator.pop(context),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -290,7 +294,7 @@ class _RunWizardState extends State<RunWizard> {
                       Expanded(
                         flex: 3,
                         child: _Labeled(
-                          'Образ',
+                          context.l10n.dockerImage,
                           Autocomplete<String>(
                             initialValue: image.value,
                             optionsBuilder: (v) => images.where((i) => i.toLowerCase().contains(v.text.toLowerCase())),
@@ -306,7 +310,7 @@ class _RunWizardState extends State<RunWizard> {
                                 controller: field,
                                 focusNode: focus,
                                 decoration: const InputDecoration(
-                                  hintText: 'mcr.microsoft.com/…:tag',
+                                  hintText: 'mcr.microsoft.com/…:tag', // l10n-ignore: registry image reference example.
                                   prefixIcon: Icon(Icons.layers_rounded, size: 18),
                                 ),
                               );
@@ -318,7 +322,7 @@ class _RunWizardState extends State<RunWizard> {
                       Expanded(
                         flex: 2,
                         child: _Labeled(
-                          'Имя (необязательно)',
+                          context.l10n.wslcNameOptional,
                           TextField(
                             controller: name,
                             onChanged: (_) => setState(() {}),
@@ -332,15 +336,15 @@ class _RunWizardState extends State<RunWizard> {
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        'Образа нет локально — WSLc загрузит его при создании.',
+                        context.l10n.wslcTheImageIsNotAvailableLocallyWSLcWill,
                         style: TextStyle(color: p.warning, fontSize: 12),
                       ),
                     ),
                   _Section(
-                    title: 'Порты',
-                    hint: '127.0.0.1 — только этот компьютер, 0.0.0.0 — вся сеть',
+                    title: context.l10n.kubePorts,
+                    hint: context.l10n.wslcThisComputerOnlyTheWholeNetwork,
                     onAdd: () => setState(() => ports.add(_PortRow())),
-                    addLabel: 'Порт',
+                    addLabel: context.l10n.validationFieldPort,
                     children: [
                       for (final row in ports)
                         Row(
@@ -365,12 +369,20 @@ class _RunWizardState extends State<RunWizard> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Expanded(child: _Field(row.host, 'порт компьютера', onChanged: () => setState(() {}))),
+                            Expanded(
+                              child: _Field(row.host, context.l10n.wslcHostPort, onChanged: () => setState(() {})),
+                            ),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 8),
                               child: Icon(Icons.arrow_forward_rounded, size: 16),
                             ),
-                            Expanded(child: _Field(row.container, 'порт контейнера', onChanged: () => setState(() {}))),
+                            Expanded(
+                              child: _Field(
+                                row.container,
+                                context.l10n.wslcContainerPort,
+                                onChanged: () => setState(() {}),
+                              ),
+                            ),
                             const SizedBox(width: 8),
                             SizedBox(
                               width: 92,
@@ -378,9 +390,12 @@ class _RunWizardState extends State<RunWizard> {
                                 initialValue: row.udp,
                                 isDense: true,
                                 isExpanded: true,
-                                items: const [
-                                  DropdownMenuItem(value: false, child: Text('TCP', overflow: TextOverflow.ellipsis)),
-                                  DropdownMenuItem(value: true, child: Text('UDP', overflow: TextOverflow.ellipsis)),
+                                items: [
+                                  for (final protocol in const ['TCP', 'UDP'])
+                                    DropdownMenuItem(
+                                      value: protocol == 'UDP',
+                                      child: Text(protocol, overflow: TextOverflow.ellipsis),
+                                    ),
                                 ],
                                 onChanged: (v) => setState(() => row.udp = v ?? false),
                               ),
@@ -391,10 +406,10 @@ class _RunWizardState extends State<RunWizard> {
                     ],
                   ),
                   _Section(
-                    title: 'Папки и тома',
-                    hint: 'Папка Windows или именованный том → путь в контейнере',
+                    title: context.l10n.wslcDirectoriesAndVolumes,
+                    hint: context.l10n.wslcWindowsDirectoryOrNamedVolumePathInContainer,
                     onAdd: () => setState(() => mounts.add(_MountRow())),
-                    addLabel: 'Подключение',
+                    addLabel: context.l10n.commonAdd,
                     children: [
                       for (final row in mounts)
                         Row(
@@ -405,9 +420,15 @@ class _RunWizardState extends State<RunWizard> {
                                 initialValue: row.volume,
                                 isDense: true,
                                 isExpanded: true,
-                                items: const [
-                                  DropdownMenuItem(value: false, child: Text('Папка', overflow: TextOverflow.ellipsis)),
-                                  DropdownMenuItem(value: true, child: Text('Том', overflow: TextOverflow.ellipsis)),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: false,
+                                    child: Text(context.l10n.backupsFolderLabel, overflow: TextOverflow.ellipsis),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: true,
+                                    child: Text(context.l10n.wslcVolumeRunWizard, overflow: TextOverflow.ellipsis),
+                                  ),
                                 ],
                                 onChanged: (v) => setState(() => row.volume = v ?? false),
                               ),
@@ -430,16 +451,18 @@ class _RunWizardState extends State<RunWizard> {
                                         return TextField(
                                           controller: f,
                                           focusNode: focus,
-                                          decoration: const InputDecoration(hintText: 'имя тома (новый создастся)'),
+                                          decoration: InputDecoration(
+                                            hintText: context.l10n.wslcVolumeNameCreatedIfNeeded,
+                                          ),
                                         );
                                       },
                                     )
                                   : _Field(
                                       row.source,
-                                      r'C:\путь\к\папке',
+                                      context.l10n.wslcCPathToFolder,
                                       onChanged: () => setState(() {}),
                                       suffix: IconButton(
-                                        tooltip: 'Выбрать папку',
+                                        tooltip: context.l10n.wslcChooseDirectory,
                                         onPressed: () => pickFolder(row),
                                         icon: const Icon(Icons.folder_open_rounded, size: 18),
                                       ),
@@ -451,13 +474,17 @@ class _RunWizardState extends State<RunWizard> {
                             ),
                             Expanded(
                               flex: 2,
-                              child: _Field(row.target, '/путь/в/контейнере', onChanged: () => setState(() {})),
+                              child: _Field(
+                                row.target,
+                                context.l10n.wslcPathInContainer,
+                                onChanged: () => setState(() {}),
+                              ),
                             ),
                             const SizedBox(width: 4),
                             Tooltip(
-                              message: 'Только чтение',
+                              message: context.l10n.riskReadOnly,
                               child: FilterChip(
-                                label: const Text('RO'),
+                                label: Text(context.l10n.riskReadOnly),
                                 selected: row.readOnly,
                                 onSelected: (v) => setState(() => row.readOnly = v),
                               ),
@@ -468,15 +495,18 @@ class _RunWizardState extends State<RunWizard> {
                     ],
                   ),
                   _Section(
-                    title: 'Переменные окружения',
-                    hint: 'Передаются через временный файл, а не в командной строке',
+                    title: context.l10n.dockerEnvironment,
+                    hint: context.l10n.wslcPassedThroughATemporaryFileRatherThanThe,
                     onAdd: () => setState(() => env.add(_EnvRow())),
-                    addLabel: 'Переменная',
+                    addLabel: context.l10n.wslcVariable,
                     children: [
                       for (final row in env)
                         Row(
                           children: [
-                            Expanded(flex: 2, child: _Field(row.key, 'ИМЯ', onChanged: () => setState(() {}))),
+                            Expanded(
+                              flex: 2,
+                              child: _Field(row.key, context.l10n.wslcNAME, onChanged: () => setState(() {})),
+                            ),
                             const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('=')),
                             Expanded(
                               flex: 3,
@@ -484,11 +514,11 @@ class _RunWizardState extends State<RunWizard> {
                                 visible: row.visible && row.value.text.isNotEmpty,
                                 child: _Field(
                                   row.value,
-                                  'значение',
+                                  context.l10n.copyWhatValue,
                                   obscure: !row.visible,
                                   onChanged: () => setState(() {}),
                                   suffix: IconButton(
-                                    tooltip: row.visible ? 'Скрыть' : 'Показать',
+                                    tooltip: row.visible ? context.l10n.commonHide : context.l10n.commonShow,
                                     onPressed: () => setState(() => row.visible = !row.visible),
                                     icon: Icon(
                                       row.visible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
@@ -513,15 +543,20 @@ class _RunWizardState extends State<RunWizard> {
                         children: [
                           Icon(advanced ? Icons.expand_less_rounded : Icons.expand_more_rounded),
                           const SizedBox(width: 6),
-                          const Text('Дополнительно', style: TextStyle(fontWeight: FontWeight.w700)),
+                          Text(context.l10n.wslcAdvanced, style: const TextStyle(fontWeight: FontWeight.w700)),
                         ],
                       ),
                     ),
                   ),
                   if (advanced) ...[
                     _Labeled(
-                      'Команда (вместо CMD образа)',
-                      _Field(command, "sh -c 'echo hello'", mono: true, onChanged: () => setState(() {})),
+                      context.l10n.wslcCommandOverridesTheImageCMD,
+                      _Field(
+                        command,
+                        "sh -c 'echo hello'", // l10n-ignore: literal shell command example.
+                        mono: true,
+                        onChanged: () => setState(() {}),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -531,11 +566,17 @@ class _RunWizardState extends State<RunWizard> {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: _Labeled('Рабочий каталог', _Field(workdir, '/app', onChanged: () => setState(() {}))),
+                          child: _Labeled(
+                            context.l10n.wslcWorkingDirectory,
+                            _Field(workdir, '/app', onChanged: () => setState(() {})),
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: _Labeled('Пользователь', _Field(user, 'uid:gid', onChanged: () => setState(() {}))),
+                          child: _Labeled(
+                            context.l10n.snippetSourceUser,
+                            _Field(user, '1000:1000', onChanged: () => setState(() {})),
+                          ),
                         ),
                       ],
                     ),
@@ -544,15 +585,15 @@ class _RunWizardState extends State<RunWizard> {
                       children: [
                         Expanded(
                           child: _Labeled(
-                            'Сеть',
+                            context.l10n.hostMetricsNetwork,
                             DropdownButtonFormField<String?>(
                               initialValue: network,
                               isDense: true,
                               isExpanded: true,
                               items: [
-                                const DropdownMenuItem(
+                                DropdownMenuItem(
                                   value: null,
-                                  child: Text('по умолчанию', overflow: TextOverflow.ellipsis),
+                                  child: Text(context.l10n.dbDesignDefault, overflow: TextOverflow.ellipsis),
                                 ),
                                 for (final n in c.networks)
                                   if (n.name != null)
@@ -568,15 +609,24 @@ class _RunWizardState extends State<RunWizard> {
                         const SizedBox(width: 10),
                         Expanded(child: _Labeled('CPU', _Field(cpus, '1.5', onChanged: () => setState(() {})))),
                         const SizedBox(width: 10),
-                        Expanded(child: _Labeled('Память', _Field(memory, '512m', onChanged: () => setState(() {})))),
+                        Expanded(
+                          child: _Labeled(
+                            context.l10n.kubeOverviewMemory,
+                            _Field(memory, '512m', onChanged: () => setState(() {})),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 18,
                       children: [
-                        _Check('Удалить после остановки (--rm)', autoRemove, (v) => setState(() => autoRemove = v)),
-                        _Check('Только создать, не запускать', !start, (v) => setState(() => start = !v)),
+                        _Check(
+                          context.l10n.wslcRemoveAfterStoppingRm,
+                          autoRemove,
+                          (v) => setState(() => autoRemove = v),
+                        ),
+                        _Check(context.l10n.wslcCreateWithoutStarting, !start, (v) => setState(() => start = !v)),
                       ],
                     ),
                   ],
@@ -612,7 +662,7 @@ class _RunWizardState extends State<RunWizard> {
                           ),
                         ),
                         IconButton(
-                          tooltip: 'Скопировать команду',
+                          tooltip: context.l10n.dockerCopyCommand,
                           style: IconButton.styleFrom(foregroundColor: p.terminalText),
                           onPressed: previewError == null ? () => copyText(context, preview) : null,
                           icon: const Icon(Icons.copy_rounded, size: 17),
@@ -637,18 +687,21 @@ class _RunWizardState extends State<RunWizard> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Создание… если образа нет локально, он загружается',
+                            context.l10n.wslcCreatingPullingTheImageIfItIsMissing,
                             style: TextStyle(color: p.muted, fontSize: 12.5),
                           ),
                         ),
                       ] else
                         const Spacer(),
-                      TextButton(onPressed: busy ? null : () => Navigator.pop(context), child: const Text('Отмена')),
+                      TextButton(
+                        onPressed: busy ? null : () => Navigator.pop(context),
+                        child: Text(context.l10n.commonCancel),
+                      ),
                       const SizedBox(width: 8),
                       FilledButton.icon(
                         onPressed: busy || previewError != null || spec == null ? null : () => submit(spec),
                         icon: Icon(start ? Icons.play_arrow_rounded : Icons.add_box_outlined, size: 18),
-                        label: Text(start ? 'Создать и запустить' : 'Создать'),
+                        label: Text(start ? context.l10n.wslcCreateAndStart : context.l10n.commonCreate),
                       ),
                     ],
                   ),
@@ -713,7 +766,7 @@ class _Remove extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButton(
-    tooltip: 'Убрать',
+    tooltip: context.l10n.wslcRemove,
     onPressed: onPressed,
     icon: const Icon(Icons.remove_circle_outline_rounded, size: 20),
   );

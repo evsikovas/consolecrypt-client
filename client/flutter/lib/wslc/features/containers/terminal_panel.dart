@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:consolecrypt/app/commands.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
@@ -14,7 +15,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:xterm/xterm.dart';
-
 
 /// Feeds decoded text into the terminal; multi-byte characters split across reads survive.
 class _TerminalSink implements Sink<String> {
@@ -227,8 +227,11 @@ class _TerminalPanelState extends ConsumerState<TerminalPanel> {
   Widget build(BuildContext context) {
     final p = DeskPalette.of(context);
     if (!widget.running) {
-      return const Panel(
-        child: EmptyState(icon: Icons.terminal_rounded, title: 'Терминал доступен у запущенного контейнера'),
+      return Panel(
+        child: EmptyState(
+          icon: Icons.terminal_rounded,
+          title: context.l10n.wslcTheTerminalIsAvailableWhileTheContainerIs,
+        ),
       );
     }
     return Column(
@@ -242,10 +245,10 @@ class _TerminalPanelState extends ConsumerState<TerminalPanel> {
               child: Text(
                 error ??
                     (ended
-                        ? 'Сессия завершена'
+                        ? context.l10n.wslcSessionEnded
                         : session == null
-                        ? 'Подключение…'
-                        : 'wslc exec -it · bash или sh · $cols×$rows'),
+                        ? context.l10n.rdpConnecting
+                        : context.l10n.wslcWslcExecItBashOrSh(cols, rows)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: error == null ? p.muted : p.danger, fontSize: 12.5),
@@ -254,10 +257,10 @@ class _TerminalPanelState extends ConsumerState<TerminalPanel> {
             TextButton.icon(
               onPressed: reconnect,
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: Text(ended || error != null ? 'Подключить снова' : 'Новая сессия'),
+              label: Text(ended || error != null ? context.l10n.wslcReconnect : context.l10n.wslcNewSession),
             ),
             IconButton(
-              tooltip: 'Открыть в отдельном окне',
+              tooltip: context.l10n.wslcOpenInSeparateWindow,
               onPressed: () => openContainerTerminal(context, widget.containerId),
               icon: const Icon(Icons.open_in_new_rounded, size: 19),
             ),
@@ -285,11 +288,7 @@ class _TerminalPanelState extends ConsumerState<TerminalPanel> {
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          'Выделение копируется Ctrl+Shift+C, вставка — Ctrl+Shift+V. '
-          'Закрытие вкладки завершает только эту сессию, контейнер продолжает работать.',
-          style: TextStyle(color: p.faint, fontSize: 12),
-        ),
+        Text(context.l10n.wslcCopyTheSelectionWithCtrlShiftCAnd, style: TextStyle(color: p.faint, fontSize: 12)),
       ],
     );
   }

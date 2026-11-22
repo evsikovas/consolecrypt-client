@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/features/containers/run_wizard.dart';
@@ -14,10 +15,10 @@ Future<void> pullImage(BuildContext context, DeskController controller) async {
   if (image == null || image.isEmpty || !context.mounted) return;
   final ok = await showJobDialog(
     context,
-    title: 'Загрузка $image',
+    title: context.l10n.wslcPulling(image),
     icon: Icons.cloud_download_rounded,
     start: () => WslcApiScope.of(context).startPull(image: image),
-    successText: 'Образ загружен',
+    successText: context.l10n.wslcImageDownloaded,
   );
   if (ok) await controller.refreshSections({DeskSection.images});
 }
@@ -40,7 +41,7 @@ class _PullFormState extends State<_PullForm> {
   @override
   Widget build(BuildContext context) => AlertDialog(
     icon: const GradientIcon(Icons.cloud_download_rounded, size: 44),
-    title: const Text('Загрузить образ'),
+    title: Text(context.l10n.wslcPullImage),
     content: SizedBox(
       width: 460,
       child: TextField(
@@ -54,8 +55,8 @@ class _PullFormState extends State<_PullForm> {
       ),
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
-      FilledButton(onPressed: () => Navigator.pop(context, field.text.trim()), child: const Text('Загрузить')),
+      TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonCancel)),
+      FilledButton(onPressed: () => Navigator.pop(context, field.text.trim()), child: Text(context.l10n.wslcDownload)),
     ],
   );
 }
@@ -66,10 +67,10 @@ Future<void> buildImage(BuildContext context, DeskController controller) async {
   if (spec == null || !context.mounted) return;
   final ok = await showJobDialog(
     context,
-    title: 'Сборка ${spec.tags.isEmpty ? 'образа' : spec.tags.join(', ')}',
+    title: context.l10n.wslcBuilding(spec.tags.isEmpty ? context.l10n.wslcImageImageDialogs : spec.tags.join(', ')),
     icon: Icons.construction_rounded,
     start: () => WslcApiScope.of(context).startBuild(spec: spec),
-    successText: 'Образ собран',
+    successText: context.l10n.wslcImageBuilt,
   );
   if (ok) await controller.refreshSections({DeskSection.images});
 }
@@ -101,12 +102,12 @@ class _BuildFormState extends State<_BuildForm> {
   }
 
   Future<void> pickContext() async {
-    final path = await api.pickFolder(title: 'Папка с контекстом сборки');
+    final path = await api.pickFolder(title: context.l10n.wslcBuildContextDirectory);
     if (path != null && mounted) setState(() => context_.text = path);
   }
 
   Future<void> pickDockerfile() async {
-    final path = await api.pickFile(title: 'Dockerfile');
+    final path = await api.pickFile(title: 'Dockerfile'); // l10n-ignore: standard build file name
     if (path != null && mounted) setState(() => dockerfile.text = path);
   }
 
@@ -117,13 +118,13 @@ class _BuildFormState extends State<_BuildForm> {
       if (t.isEmpty) continue;
       final i = t.indexOf('=');
       if (i <= 0) {
-        setState(() => error = 'Аргумент сборки «$t» должен быть в виде KEY=VALUE');
+        setState(() => error = context.l10n.wslcBuildArgumentMustUseKEYVALUE(t));
         return;
       }
       args.add(EnvVar(key: t.substring(0, i), value: t.substring(i + 1)));
     }
     if (context_.text.trim().isEmpty) {
-      setState(() => error = 'Выберите папку с контекстом сборки');
+      setState(() => error = context.l10n.wslcChooseTheBuildContextDirectory);
       return;
     }
     Navigator.pop(
@@ -155,7 +156,7 @@ class _BuildFormState extends State<_BuildForm> {
     );
     return AlertDialog(
       icon: const GradientIcon(Icons.construction_rounded, size: 44),
-      title: const Text('Собрать образ'),
+      title: Text(context.l10n.wslcBuildImage),
       content: SizedBox(
         width: 560,
         child: SingleChildScrollView(
@@ -163,44 +164,46 @@ class _BuildFormState extends State<_BuildForm> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              label('Папка с контекстом сборки'),
+              label(context.l10n.wslcBuildContextDirectory),
               TextField(
                 controller: context_,
                 decoration: InputDecoration(
-                  hintText: r'C:\projects\app',
+                  hintText: r'C:\projects\app', // l10n-ignore: Windows directory path example
                   suffixIcon: IconButton(
-                    tooltip: 'Выбрать папку',
+                    tooltip: context.l10n.wslcChooseDirectory,
                     onPressed: pickContext,
                     icon: const Icon(Icons.folder_open_rounded, size: 18),
                   ),
                 ),
               ),
-              label('Dockerfile (необязательно, по умолчанию из контекста)'),
+              label(context.l10n.wslcDockerfileOptionalDefaultsToTheOneInThe),
               TextField(
                 controller: dockerfile,
                 decoration: InputDecoration(
-                  hintText: r'C:\projects\app\Dockerfile',
+                  hintText: r'C:\projects\app\Dockerfile', // l10n-ignore: Windows file path example
                   suffixIcon: IconButton(
-                    tooltip: 'Выбрать файл',
+                    tooltip: context.l10n.kubeChooseFile,
                     onPressed: pickDockerfile,
                     icon: const Icon(Icons.description_outlined, size: 18),
                   ),
                 ),
               ),
-              label('Теги через запятую'),
+              label(context.l10n.wslcCommaSeparatedTags),
               TextField(
                 controller: tags,
-                decoration: const InputDecoration(hintText: 'my/app:1.0, my/app:latest'),
+                decoration: const InputDecoration(
+                  hintText: 'my/app:1.0, my/app:latest', // l10n-ignore: image tag examples
+                ),
               ),
-              label('Аргументы сборки, по одному KEY=VALUE в строке'),
+              label(context.l10n.wslcBuildArgumentsOneKEYVALUEPerLine),
               TextField(
                 controller: buildArgs,
                 minLines: 2,
                 maxLines: 4,
                 style: const TextStyle(fontFamily: monoFont, fontFamilyFallback: monoFallback),
-                decoration: const InputDecoration(hintText: 'VERSION=1.0'),
+                decoration: const InputDecoration(hintText: 'VERSION=1.0'), // l10n-ignore: build argument example
               ),
-              label('Целевая стадия (необязательно)'),
+              label(context.l10n.wslcTargetStageOptional),
               TextField(
                 controller: target,
                 decoration: const InputDecoration(hintText: 'runtime'),
@@ -210,12 +213,12 @@ class _BuildFormState extends State<_BuildForm> {
                 spacing: 16,
                 children: [
                   FilterChip(
-                    label: const Text('Без кэша'),
+                    label: Text(context.l10n.wslcDisableCache),
                     selected: noCache,
                     onSelected: (v) => setState(() => noCache = v),
                   ),
                   FilterChip(
-                    label: const Text('Обновить базовые образы'),
+                    label: Text(context.l10n.wslcPullUpdatedBaseImages),
                     selected: pull,
                     onSelected: (v) => setState(() => pull = v),
                   ),
@@ -230,8 +233,8 @@ class _BuildFormState extends State<_BuildForm> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
-        FilledButton(onPressed: submit, child: const Text('Собрать')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonCancel)),
+        FilledButton(onPressed: submit, child: Text(context.l10n.wslcBuildImageDialogs)),
       ],
     );
   }
@@ -251,7 +254,7 @@ class ImageMenu extends StatelessWidget {
     final ref = imageRef(image);
     final named = image.repository != null && image.tag != null;
     return PopupMenuButton<VoidCallback>(
-      tooltip: 'Ещё действия',
+      tooltip: context.l10n.wslcMoreActions,
       icon: const Icon(Icons.more_vert_rounded),
       position: PopupMenuPosition.under,
       enabled: controller.canMutate,
@@ -274,11 +277,15 @@ class ImageMenu extends StatelessWidget {
             );
             if (id != null) controller.openContainer(id);
           },
-          child: const Text('Создать контейнер…'),
+          child: Text(context.l10n.wslcCreateContainer),
         ),
-        PopupMenuItem(value: () => tagImage(context, controller, ref), child: const Text('Добавить тег…')),
-        PopupMenuItem(enabled: named, value: () => pushImage(context, ref), child: const Text('Отправить в реестр…')),
-        PopupMenuItem(value: () => saveImage(context, ref), child: const Text('Сохранить в tar…')),
+        PopupMenuItem(value: () => tagImage(context, controller, ref), child: Text(context.l10n.wslcAddTag)),
+        PopupMenuItem(
+          enabled: named,
+          value: () => pushImage(context, ref),
+          child: Text(context.l10n.wslcPushToRegistry),
+        ),
+        PopupMenuItem(value: () => saveImage(context, ref), child: Text(context.l10n.wslcSaveAsTar)),
       ],
     );
   }
@@ -289,20 +296,21 @@ Future<void> tagImage(BuildContext context, DeskController controller, String so
     context: context,
     builder: (_) => _TextPrompt(
       icon: Icons.sell_outlined,
-      title: 'Новый тег для $source',
+      title: context.l10n.wslcNewTagFor(source),
       hint: 'registry.example.com/team/app:1.0',
       initial: source.startsWith('sha256:') ? '' : '${source.split(':').first}:',
-      action: 'Добавить тег',
+      action: context.l10n.tagsAdd,
     ),
   );
   if (target == null || target.isEmpty || !context.mounted) return;
-  final messenger = ScaffoldMessenger.of(context);
+  final notify = WslcApiScope.notifierOf(context);
+  final l10n = context.l10n;
   try {
     await WslcApiScope.of(context).tagImage(source: source, target: target);
-    messenger.showSnackBar(SnackBar(content: Text('Добавлен тег $target')));
+    notify(l10n.wslcAddedTag(target));
     await controller.refreshSections({DeskSection.images});
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(errorText(e))));
+    notify(errorText(e), error: true);
   }
 }
 
@@ -311,24 +319,21 @@ Future<void> pushImage(BuildContext context, String image) async {
     context: context,
     builder: (context) => AlertDialog(
       icon: const GradientIcon(Icons.cloud_upload_rounded, size: 44),
-      title: const Text('Отправить образ?'),
-      content: Text(
-        '$image\n\nОбраз будет отправлен в реестр из его имени. Если нужна авторизация, '
-        'сначала войдите через «Реестры».',
-      ),
+      title: Text(context.l10n.wslcPushImage),
+      content: Text(context.l10n.wslcTheImageWillBePushedToTheRegistry(image)),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Отправить')),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.l10n.commonCancel)),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(context.l10n.aiChatSend)),
       ],
     ),
   );
   if (ok != true || !context.mounted) return;
   await showJobDialog(
     context,
-    title: 'Отправка $image',
+    title: context.l10n.wslcPushing(image),
     icon: Icons.cloud_upload_rounded,
     start: () => WslcApiScope.of(context).startPush(image: image),
-    successText: 'Образ отправлен',
+    successText: context.l10n.wslcImagePushed,
   );
 }
 
@@ -372,7 +377,7 @@ class _TextPromptState extends State<_TextPrompt> {
       ),
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+      TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonCancel)),
       FilledButton(onPressed: () => Navigator.pop(context, field.text.trim()), child: Text(widget.action)),
     ],
   );
@@ -410,21 +415,26 @@ class _RegistriesDialogState extends State<_RegistriesDialog> {
   }
 
   String? get serverOrNull => server.text.trim().isEmpty ? null : server.text.trim();
+  bool get canSignIn => !busy && user.text.trim().isNotEmpty && password.text.isNotEmpty;
 
   Future<void> login() async {
+    final registry = serverOrNull;
+    final controller = widget.controller;
     setState(() {
       busy = true;
       message = null;
     });
     try {
-      await api.registryLogin(server: serverOrNull, username: user.text.trim(), password: password.text);
-      widget.controller.registries.add(serverOrNull ?? 'по умолчанию');
+      await api.registryLogin(server: registry, username: user.text.trim(), password: password.text);
+      controller.registries.add(registry);
+      if (!mounted) return;
       password.clear();
       setState(() {
         failed = false;
-        message = 'Вход выполнен';
+        message = context.l10n.wslcSignedIn;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         failed = true;
         message = errorText(e);
@@ -434,16 +444,19 @@ class _RegistriesDialogState extends State<_RegistriesDialog> {
     }
   }
 
-  Future<void> logout(String name) async {
+  Future<void> logout(String? registry) async {
+    final controller = widget.controller;
     setState(() => busy = true);
     try {
-      await api.registryLogout(server: name == 'по умолчанию' ? null : name);
-      widget.controller.registries.remove(name);
+      await api.registryLogout(server: registry);
+      controller.registries.remove(registry);
+      if (!mounted) return;
       setState(() {
         failed = false;
-        message = 'Выход из $name выполнен';
+        message = context.l10n.wslcSignedOutOf(registry ?? context.l10n.glassModeStandard);
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         failed = true;
         message = errorText(e);
@@ -456,10 +469,10 @@ class _RegistriesDialogState extends State<_RegistriesDialog> {
   @override
   Widget build(BuildContext context) {
     final p = DeskPalette.of(context);
-    final known = widget.controller.registries.toList()..sort();
+    final known = widget.controller.registries.toList()..sort((a, b) => (a ?? '').compareTo(b ?? ''));
     return AlertDialog(
       icon: const GradientIcon(Icons.vpn_key_outlined, size: 44),
-      title: const Text('Реестры'),
+      title: Text(context.l10n.wslcRegistries),
       content: SizedBox(
         width: 480,
         child: Column(
@@ -468,32 +481,34 @@ class _RegistriesDialogState extends State<_RegistriesDialog> {
           children: [
             TextField(
               controller: server,
-              decoration: const InputDecoration(
-                hintText: 'Сервер, например ghcr.io (пусто — по умолчанию)',
-                prefixIcon: Icon(Icons.dns_outlined, size: 18),
+              decoration: InputDecoration(
+                hintText: context.l10n.wslcServerEGGhcrIoLeaveBlankFor,
+                prefixIcon: const Icon(Icons.dns_outlined, size: 18),
               ),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: user,
-              decoration: const InputDecoration(
-                hintText: 'Имя пользователя',
-                prefixIcon: Icon(Icons.person_outline_rounded, size: 18),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: context.l10n.credentialsDetailsUsername,
+                prefixIcon: const Icon(Icons.person_outline_rounded, size: 18),
               ),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: password,
+              onChanged: (_) => setState(() {}),
               obscureText: true,
-              decoration: const InputDecoration(
-                hintText: 'Пароль или токен доступа',
-                prefixIcon: Icon(Icons.password_rounded, size: 18),
+              decoration: InputDecoration(
+                hintText: context.l10n.wslcPasswordOrAccessToken,
+                prefixIcon: const Icon(Icons.password_rounded, size: 18),
               ),
-              onSubmitted: (_) => busy ? null : login(),
+              onSubmitted: (_) => canSignIn ? login() : null,
             ),
             const SizedBox(height: 8),
             Text(
-              'Пароль передаётся WSLc через stdin и нигде не сохраняется приложением.',
+              context.l10n.wslcThePasswordIsPassedToWSLcThroughStdin,
               style: TextStyle(color: p.faint, fontSize: 12),
             ),
             if (message != null) ...[
@@ -507,14 +522,14 @@ class _RegistriesDialogState extends State<_RegistriesDialog> {
             if (known.isNotEmpty) ...[
               const SizedBox(height: 14),
               Text(
-                'Вход в этом запуске',
+                context.l10n.wslcSignedInDuringThisSession,
                 style: TextStyle(color: p.muted, fontWeight: FontWeight.w600),
               ),
               for (final name in known)
                 Row(
                   children: [
-                    Expanded(child: Text(name)),
-                    TextButton(onPressed: busy ? null : () => logout(name), child: const Text('Выйти')),
+                    Expanded(child: Text(name ?? context.l10n.glassModeStandard)),
+                    TextButton(onPressed: busy ? null : () => logout(name), child: Text(context.l10n.settingsSignOut)),
                   ],
                 ),
             ],
@@ -522,12 +537,12 @@ class _RegistriesDialogState extends State<_RegistriesDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Закрыть')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(context.l10n.commonClose)),
         FilledButton(
-          onPressed: busy || user.text.trim().isEmpty && password.text.isEmpty ? null : login,
+          onPressed: canSignIn ? login : null,
           child: busy
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Войти'),
+              : Text(context.l10n.loginSubmitSignIn),
         ),
       ],
     );
@@ -542,52 +557,52 @@ String _tarName(String ref) {
 /// `wslc save` of one image into a tar chosen in a save dialog.
 Future<void> saveImage(BuildContext context, String ref) async {
   final path = await WslcApiScope.of(context)
-      .pickSaveFile(title: 'Сохранить образ в tar', fileName: _tarName(ref), extensions: const ['tar']);
+      .pickSaveFile(title: context.l10n.wslcSaveImageAsTar, fileName: _tarName(ref), extensions: const ['tar']);
   if (path == null || !context.mounted) return;
   await showJobDialog(
     context,
-    title: 'Сохранение $ref',
+    title: context.l10n.wslcSaving(ref),
     icon: Icons.archive_outlined,
     start: () => WslcApiScope.of(context).startSave(images: [ref], output: path),
-    successText: 'Сохранено: $path',
+    successText: context.l10n.wslcSaved(path),
   );
 }
 
 /// `wslc load` of images from a tar made by save.
 Future<void> loadImages(BuildContext context, DeskController controller) async {
-  final path = await WslcApiScope.of(context).pickFile(title: 'Tar-архив с образами (wslc save / docker save)');
+  final path = await WslcApiScope.of(context).pickFile(title: context.l10n.wslcImageTarArchiveWslcSaveDockerSave);
   if (path == null || !context.mounted) return;
   final ok = await showJobDialog(
     context,
-    title: 'Загрузка образов из ${path.split(RegExp(r'[\\/]')).last}',
+    title: context.l10n.wslcLoadingImagesFrom(path.split(RegExp(r'[\\/]')).last),
     icon: Icons.unarchive_outlined,
     start: () => WslcApiScope.of(context).startLoad(input: path),
-    successText: 'Образы загружены',
+    successText: context.l10n.wslcImagesLoaded,
   );
   if (ok) await controller.refreshSections({DeskSection.images});
 }
 
 /// `wslc import` of a filesystem tar (from export) as a new image.
 Future<void> importFilesystem(BuildContext context, DeskController controller) async {
-  final path = await WslcApiScope.of(context).pickFile(title: 'Tar-архив файловой системы (wslc export)');
+  final path = await WslcApiScope.of(context).pickFile(title: context.l10n.wslcFilesystemTarArchiveWslcExport);
   if (path == null || !context.mounted) return;
   final name = await showWslcDialog<String>(
     context: context,
-    builder: (_) => const _TextPrompt(
+    builder: (_) => _TextPrompt(
       icon: Icons.drive_folder_upload_outlined,
-      title: 'Имя нового образа',
-      hint: 'my/imported:1 (необязательно)',
+      title: context.l10n.wslcNewImageName,
+      hint: context.l10n.wslcMyImportedOptional,
       initial: '',
-      action: 'Импортировать',
+      action: context.l10n.credentialImportAction,
     ),
   );
   if (name == null || !context.mounted) return;
   final ok = await showJobDialog(
     context,
-    title: 'Импорт ${path.split(RegExp(r'[\\/]')).last}',
+    title: context.l10n.wslcImporting(path.split(RegExp(r'[\\/]')).last),
     icon: Icons.drive_folder_upload_outlined,
     start: () => WslcApiScope.of(context).startImport(input: path, image: name.isEmpty ? null : name),
-    successText: 'Образ создан',
+    successText: context.l10n.wslcImageCreated,
   );
   if (ok) await controller.refreshSections({DeskSection.images});
 }
@@ -599,16 +614,16 @@ class ImageArchiveMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<VoidCallback>(
-    tooltip: 'Импорт из архивов',
+    tooltip: context.l10n.wslcImportFromArchives,
     icon: const Icon(Icons.more_horiz_rounded),
     enabled: controller.canMutate,
     position: PopupMenuPosition.under,
     onSelected: (action) => action(),
     itemBuilder: (_) => [
-      PopupMenuItem(value: () => loadImages(context, controller), child: const Text('Загрузить образы из tar (load)…')),
+      PopupMenuItem(value: () => loadImages(context, controller), child: Text(context.l10n.wslcLoadImagesFromTarLoad)),
       PopupMenuItem(
         value: () => importFilesystem(context, controller),
-        child: const Text('Импорт файловой системы из tar (import)…'),
+        child: Text(context.l10n.wslcImportFilesystemFromTarImport),
       ),
     ],
   );

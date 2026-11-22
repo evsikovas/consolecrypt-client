@@ -1,5 +1,31 @@
 import 'dart:convert';
 
+import 'package:consolecrypt/l10n/app_localizations.dart';
+
+// These statuses come from wslc-core's log_readers.rs and also govern polling.
+const readingLogStatus = 'Чтение'; // l10n-ignore: native reader status
+final _cliExit = RegExp(r'^Ошибка CLI \(код (-?\d+)\)$'); // l10n-ignore: native reader status with an exit code
+
+String logStatusLabel(String? status, AppLocalizations l) {
+  switch (status) {
+    case null:
+      return l.dockerConnecting;
+    case readingLogStatus:
+      return l.wslcLogStreamReading;
+    case 'Чтение отменено': // l10n-ignore: native reader status
+      return l.sftpTransferCancelled;
+    case 'Поток завершён': // l10n-ignore: native reader status
+      return l.noticesLegacyCompleted;
+    case 'Ошибка чтения CLI' || 'Ошибка чтения потока': // l10n-ignore: native reader errors
+      return l.dockerLogsFailed;
+    case 'Поток чтения не завершился вовремя': // l10n-ignore: native reader timeout
+      return l.wslcLogStreamTimedOut;
+    default:
+      final code = _cliExit.firstMatch(status)?.group(1);
+      return code == null ? status : l.wslcErrorExitCode(code);
+  }
+}
+
 enum LogLevel { error, warn, info, debug }
 
 final _levelWord = RegExp(

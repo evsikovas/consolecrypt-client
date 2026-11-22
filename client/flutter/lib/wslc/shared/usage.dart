@@ -1,10 +1,10 @@
 import 'dart:collection';
 import 'dart:math' as math;
 
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/src/rust/models.dart';
 import 'package:material_ui/material_ui.dart';
-
 
 final _size = RegExp(r'^\s*([\d.]+)\s*([a-zA-Z]*)\s*$');
 
@@ -39,8 +39,8 @@ double? parseSize(String? text) {
 }
 
 /// [decimal] matches sizes the runtime prints for images (`108MB` = 108 000 000 bytes).
-String formatBytes(double bytes, {bool perSecond = false, bool decimal = false}) {
-  const units = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ'];
+String formatBytes(double bytes, {required AppLocalizations l10n, bool perSecond = false, bool decimal = false}) {
+  final units = [l10n.unitBytes, l10n.wslcKB, l10n.wslcMB, l10n.wslcGB, l10n.wslcTB];
   final base = decimal ? 1000 : 1024;
   var v = bytes;
   var i = 0;
@@ -49,7 +49,7 @@ String formatBytes(double bytes, {bool perSecond = false, bool decimal = false})
     i++;
   }
   final text = v >= 100 || i == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
-  return '$text ${units[i]}${perSecond ? '/с' : ''}';
+  return '$text ${units[i]}${perSecond ? l10n.wslcS : ''}';
 }
 
 /// Rolling samples of one container; network counters become per-second rates.
@@ -225,7 +225,7 @@ class UsageChart extends StatelessWidget {
             height: 64,
             child: values.length < 2
                 ? Center(
-                    child: Text('Сбор данных…', style: TextStyle(color: p.faint, fontSize: 12)),
+                    child: Text(context.l10n.wslcCollectingData, style: TextStyle(color: p.faint, fontSize: 12)),
                   )
                 : Sparkline(
                     values: values,

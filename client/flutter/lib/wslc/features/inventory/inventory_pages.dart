@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/wslc/app/desk_controller.dart';
 import 'package:consolecrypt/wslc/app/theme.dart';
 import 'package:consolecrypt/wslc/features/containers/container_actions.dart' show confirmDanger;
@@ -60,11 +61,11 @@ class _InventoryPageState<T> extends State<_InventoryPage<T>> {
       icon: widget.icon,
       loading: c.ready && !c.loaded.contains(widget.section) && c.error == null,
       title: !c.ready
-          ? 'Нет подключения к WSLc'
+          ? context.l10n.wslcNotConnectedToWSLc
           : widget.items.isEmpty
           ? widget.emptyTitle
-          : 'Ничего не найдено',
-      hint: !c.ready ? 'Проверьте подключение в настройках' : null,
+          : context.l10n.notesNothingFound,
+      hint: !c.ready ? context.l10n.wslcCheckTheConnectionInSettings : null,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -119,7 +120,7 @@ class _Row extends StatelessWidget {
     this.onInspect,
     this.onDelete,
     this.menu,
-    this.deleteTooltip = 'Удалить',
+    this.deleteTooltip,
     this.busy = false,
   });
   final IconData icon;
@@ -133,7 +134,7 @@ class _Row extends StatelessWidget {
 
   /// Extra actions shown after delete.
   final Widget? menu;
-  final String deleteTooltip;
+  final String? deleteTooltip;
   final bool busy;
 
   @override
@@ -181,7 +182,11 @@ class _Row extends StatelessWidget {
             ),
           const SizedBox(width: 12),
           if (onInspect != null)
-            IconButton(tooltip: 'Inspect', onPressed: onInspect, icon: const Icon(Icons.data_object_rounded, size: 20)),
+            IconButton(
+              tooltip: context.l10n.dockerDetails,
+              onPressed: onInspect,
+              icon: const Icon(Icons.data_object_rounded, size: 20),
+            ),
           if (busy)
             const Padding(
               padding: EdgeInsets.all(11),
@@ -189,7 +194,7 @@ class _Row extends StatelessWidget {
             )
           else
             IconButton(
-              tooltip: deleteTooltip,
+              tooltip: deleteTooltip ?? context.l10n.commonDelete,
               color: p.danger,
               onPressed: onDelete,
               icon: const Icon(Icons.delete_outline_rounded, size: 20),
@@ -208,11 +213,11 @@ Future<void> _confirmAndRemove(
   required Future<String?> Function() remove,
   required String done,
 }) async {
-  final ok = await confirmDanger(context, title: title, message: message, action: 'Удалить');
+  final ok = await confirmDanger(context, title: title, message: message, action: context.l10n.commonDelete);
   if (!ok || !context.mounted) return;
-  final messenger = ScaffoldMessenger.of(context);
+  final notify = WslcApiScope.notifierOf(context);
   final error = await remove();
-  messenger.showSnackBar(SnackBar(content: Text(error ?? done)));
+  notify(error ?? done, error: error != null);
 }
 
 class ImagesPage extends StatelessWidget {
@@ -227,56 +232,61 @@ class ImagesPage extends StatelessWidget {
       section: DeskSection.images,
       items: controller.images,
       searchText: (r) => '${r.repository} ${r.tag} ${r.id}',
-      hint: 'Поиск по репозиторию, тегу или ID',
+      hint: context.l10n.wslcSearchByRepositoryTagOrID,
       icon: Icons.layers_rounded,
-      emptyTitle: 'Образов пока нет',
+      emptyTitle: context.l10n.wslcNoImagesYet,
       actions: [
         OutlinedButton.icon(
           onPressed: controller.ready ? () => manageRegistries(context, controller) : null,
           icon: const Icon(Icons.vpn_key_outlined, size: 18),
-          label: const Text('Реестры'),
+          label: Text(context.l10n.wslcRegistries),
         ),
         OutlinedButton.icon(
           onPressed: controller.canMutate ? () => buildImage(context, controller) : null,
           icon: const Icon(Icons.construction_rounded, size: 18),
-          label: const Text('Собрать'),
+          label: Text(context.l10n.wslcBuildImageDialogs),
         ),
         FilledButton.icon(
           onPressed: controller.canMutate ? () => pullImage(context, controller) : null,
           icon: const Icon(Icons.cloud_download_rounded, size: 18),
-          label: const Text('Загрузить'),
+          label: Text(context.l10n.wslcDownload),
         ),
         ImageArchiveMenu(controller: controller),
       ],
       itemBuilder: (context, r) => _Row(
         icon: Icons.layers_rounded,
         color: p.accentEnd,
-        title: r.repository ?? 'нет данных',
+        title: r.repository ?? context.l10n.automationResultMissing,
         badges: [
-          Pill(r.tag ?? 'без тега', color: p.accent),
+          Pill(r.tag ?? context.l10n.wslcUntagged, color: p.accent),
           if ((r.containers ?? 0) > 0)
-            Pill('контейнеров: ${r.containers}', color: p.success, icon: Icons.view_in_ar_rounded),
+            Pill(context.l10n.wslcContainers(r.containers!), color: p.success, icon: Icons.view_in_ar_rounded),
         ],
         subtitle: CopyId(r.id),
-        meta: [r.sizeDisplay ?? 'размер ?', if (r.createdAt != null) r.createdAt!.split(' ').first].join('\n'),
+        meta: [
+          r.sizeDisplay ?? context.l10n.wslcSizeUnknown,
+          if (r.createdAt != null) r.createdAt!.split(' ').first,
+        ].join('\n'),
         onInspect: () => showInspectDialog(
           context,
-          'Образ ${r.repository ?? shortId(r.id)}${r.tag == null ? '' : ':${r.tag}'}',
+          context.l10n.wslcImageInventoryPages(r.repository ?? shortId(r.id), r.tag == null ? '' : ':${r.tag}'),
           () => WslcApiScope.of(context).inspectImage(imageId: r.id, revealEnvironment: false),
         ),
-        deleteTooltip: 'Удалить образ',
+        deleteTooltip: context.l10n.wslcDeleteImage,
         busy: controller.busyIds.contains(imageRef(r)),
         menu: ImageMenu(image: r, controller: controller),
         onDelete: controller.canMutate
             ? () => _confirmAndRemove(
                 context,
-                title: r.repository == null ? 'Удалить образ?' : 'Удалить тег образа?',
+                title: r.repository == null
+                    ? context.l10n.wslcDeleteImageInventoryPages
+                    : context.l10n.wslcRemoveImageTag,
                 message:
-                    '${r.repository ?? 'без имени'}:${r.tag ?? 'без тега'}\n${r.id}\n\n'
-                    '${(r.containers ?? 0) > 0 ? 'Образ используется контейнерами (${r.containers}) — runtime откажет, пока они существуют. ' : ''}'
-                    '${r.repository == null ? 'Удаление нельзя отменить; образ придётся загрузить заново.' : 'Снимается только тег ${imageRef(r)}; слои удаляются, когда на образ не остаётся тегов.'}',
+                    '${r.repository ?? context.l10n.wslcUnnamed}:${r.tag ?? context.l10n.wslcUntagged}\n${r.id}\n\n'
+                    '${(r.containers ?? 0) > 0 ? context.l10n.wslcTheImageIsUsedByContainerSThe(r.containers!) : ''}'
+                    '${r.repository == null ? context.l10n.wslcThisCannotBeUndoneYouWillNeedTo : context.l10n.wslcOnlyTheTagWillBeRemovedTheLayers(imageRef(r))}',
                 remove: () => controller.removeImage(imageRef(r)),
-                done: 'Образ удалён',
+                done: context.l10n.wslcImageDeleted,
               )
             : null,
       ),
@@ -296,44 +306,45 @@ class VolumesPage extends StatelessWidget {
       section: DeskSection.storage,
       items: controller.volumes,
       searchText: (r) => '${r.name} ${r.driver}',
-      hint: 'Поиск по имени тома',
+      hint: context.l10n.wslcSearchByVolumeName,
       icon: Icons.storage_rounded,
-      emptyTitle: 'Томов пока нет',
+      emptyTitle: context.l10n.wslcNoVolumesYet,
       actions: [
         FilledButton.icon(
           onPressed: controller.canMutate ? () => createVolume(context, controller) : null,
           icon: const Icon(Icons.add_rounded, size: 18),
-          label: const Text('Создать том'),
+          label: Text(context.l10n.wslcCreateVolume),
         ),
         OutlinedButton.icon(
           onPressed: controller.canMutate ? () => restoreVolume(context, controller) : null,
           icon: const Icon(Icons.settings_backup_restore_rounded, size: 18),
-          label: const Text('Восстановить'),
+          label: Text(context.l10n.sharingRestore),
         ),
       ],
       itemBuilder: (context, r) => _Row(
         icon: Icons.storage_rounded,
         color: p.warning,
         title: r.name,
-        subtitle: Text('драйвер ${r.driver ?? 'нет данных'}', style: TextStyle(color: p.muted, fontSize: 12)),
-        meta: r.sizeDisplay ?? 'размер недоступен',
+        subtitle: Text(
+          context.l10n.wslcDriver(r.driver ?? context.l10n.automationResultMissing),
+          style: TextStyle(color: p.muted, fontSize: 12),
+        ),
+        meta: r.sizeDisplay ?? context.l10n.wslcSizeUnavailable,
         onInspect: () => showInspectDialog(
           context,
-          'Том ${r.name}',
+          context.l10n.wslcVolume(r.name),
           () => WslcApiScope.of(context).inspectVolume(volumeName: r.name),
         ),
-        deleteTooltip: 'Удалить том',
+        deleteTooltip: context.l10n.wslcDeleteVolume,
         menu: VolumeMenu(volume: r.name, controller: controller),
         busy: controller.busyIds.contains('volume:${r.name}'),
         onDelete: controller.canMutate
             ? () => _confirmAndRemove(
                 context,
-                title: 'Удалить том?',
-                message:
-                    '${r.name}\n\nВсе данные тома будут удалены без возможности восстановления. '
-                    'Runtime откажет, если том подключён к контейнеру.',
+                title: context.l10n.wslcDeleteVolumeInventoryPages,
+                message: context.l10n.wslcAllDataInThisVolumeWillBePermanently(r.name),
                 remove: () => controller.removeVolume(r.name),
-                done: 'Том ${r.name} удалён',
+                done: context.l10n.wslcVolumeDeleted(r.name),
               )
             : null,
       ),
@@ -349,23 +360,23 @@ class NetworksPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = DeskPalette.of(context);
     String flag(bool? v) => v == null
-        ? 'нет данных'
+        ? context.l10n.automationResultMissing
         : v
-        ? 'да'
-        : 'нет';
+        ? context.l10n.wslcYes
+        : context.l10n.wslcNo;
     return _InventoryPage<NetworkSummary>(
       controller: controller,
       section: DeskSection.networks,
       items: controller.networks,
       searchText: (n) => '${n.name} ${n.id} ${n.driver}',
-      hint: 'Поиск по имени, ID или драйверу',
+      hint: context.l10n.wslcSearchByNameIDOrDriver,
       icon: Icons.hub_rounded,
-      emptyTitle: 'Сетей не найдено',
+      emptyTitle: context.l10n.wslcNoNetworksFound,
       actions: [
         FilledButton.icon(
           onPressed: controller.canMutate ? () => createNetwork(context, controller) : null,
           icon: const Icon(Icons.add_rounded, size: 18),
-          label: const Text('Создать сеть'),
+          label: Text(context.l10n.wslcCreateNetwork),
         ),
       ],
       spacing: 10,
@@ -379,20 +390,23 @@ class NetworksPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(n.name ?? 'нет данных', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  Text(
+                    n.name ?? context.l10n.automationResultMissing,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
                     children: [
                       Pill(
-                        '${n.driver ?? 'нет данных'} · ${n.scope ?? 'нет данных'}',
+                        '${n.driver ?? context.l10n.automationResultMissing} · ${n.scope ?? context.l10n.automationResultMissing}',
                         color: p.accentEnd,
                         icon: Icons.settings_ethernet_rounded,
                       ),
                       Pill('IPv4: ${flag(n.ipv4)}', color: p.success),
                       Pill('IPv6: ${flag(n.ipv6)}', color: n.ipv6 == true ? p.success : p.muted),
-                      if (n.internal == true) Pill('внутренняя', color: p.warning),
+                      if (n.internal == true) Pill(context.l10n.wslcInternal, color: p.warning),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -406,29 +420,29 @@ class NetworksPage extends StatelessWidget {
                   ? null
                   : () => showInspectDialog(
                       context,
-                      'Сеть ${n.name}',
+                      context.l10n.wslcNetwork(n.name!),
                       () => WslcApiScope.of(context).inspectNetwork(networkName: n.name!),
                     ),
               icon: const Icon(Icons.manage_search_rounded, size: 18),
-              label: const Text('Подробности'),
+              label: Text(context.l10n.wslcDetails),
             ),
             if (n.name != null && n.name != 'host' && n.name != 'none')
               IconButton(
-                tooltip: 'Подключить контейнер',
+                tooltip: context.l10n.wslcConnectContainer,
                 onPressed: controller.canMutate ? () => connectToNetwork(context, controller, network: n.name) : null,
                 icon: const Icon(Icons.add_link_rounded),
               ),
             if (n.name != null && !builtinNetworks.contains(n.name))
               IconButton(
-                tooltip: 'Удалить сеть',
+                tooltip: context.l10n.wslcDeleteNetwork,
                 color: p.danger,
                 onPressed: controller.canMutate
                     ? () => _confirmAndRemove(
                         context,
-                        title: 'Удалить сеть?',
-                        message: '${n.name}\n\nRuntime откажет, если к сети подключены контейнеры.',
+                        title: context.l10n.wslcDeleteNetworkInventoryPages,
+                        message: context.l10n.wslcTheRuntimeWillRefuseToDeleteThisNetwork(n.name!),
                         remove: () => controller.removeNetwork(n.name!),
-                        done: 'Сеть ${n.name} удалена',
+                        done: context.l10n.wslcNetworkDeleted(n.name!),
                       )
                     : null,
                 icon: const Icon(Icons.delete_outline_rounded),

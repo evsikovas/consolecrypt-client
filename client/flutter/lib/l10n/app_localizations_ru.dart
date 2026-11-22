@@ -169,6 +169,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get externalVaultApiSettings => 'Настройки Vault';
 
   @override
+  String externalVaultKvVersion(int version) {
+    return 'KV версии $version';
+  }
+
+  @override
   String get externalVaultMount => 'Путь хранилища секретов';
 
   @override
@@ -18074,4 +18079,1609 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get externalVaultNoConnections => 'Пока нет сохранённых подключений';
+
+  @override
+  String get wslcRuntimeUnavailable => 'Runtime недоступен';
+
+  @override
+  String get wslcUnknownAction => 'Неизвестное действие';
+
+  @override
+  String wslcCheckTheResultOfTheCommandWillNot(Object value, Object value2) {
+    return 'Результат $value требует проверки. Команда не будет повторена автоматически. $value2';
+  }
+
+  @override
+  String wslcCheckTheResult(Object label) {
+    return '$label: результат требует проверки';
+  }
+
+  @override
+  String get wslcCheckTheResultsOfSomeOperationsCommandsWill =>
+      'Часть операций требует проверки. Команды не будут повторены автоматически.';
+
+  @override
+  String get wslcActionCurrentlyUnavailable => 'Действие сейчас недоступно';
+
+  @override
+  String get wslcStart => 'запуска';
+
+  @override
+  String get wslcStop => 'остановки';
+
+  @override
+  String get wslcRestart => 'перезапуска';
+
+  @override
+  String wslcCreated(Object value) {
+    return 'создан $value';
+  }
+
+  @override
+  String wslcRemoveSelectedItems(Object length) {
+    return 'Удалить выбранное ($length)?';
+  }
+
+  @override
+  String get wslcDataInTheSelectedVolumesWillBeLost => 'Данные выбранных томов будут потеряны.';
+
+  @override
+  String get wslcRemovalCannotBeUndone => 'Удаление нельзя отменить.';
+
+  @override
+  String wslcRemoved(Object removed) {
+    return 'Удалено: $removed';
+  }
+
+  @override
+  String wslcRemovedOf(Object removed, Object length) {
+    return 'Удалено $removed из $length';
+  }
+
+  @override
+  String get wslcLookingForItemsToRemove => 'Ищем, что можно удалить…';
+
+  @override
+  String get wslcCouldNotLoadTheList => 'Не удалось собрать список';
+
+  @override
+  String get wslcEverythingIsClean => 'Всё чисто';
+
+  @override
+  String wslcUpToCanBeFreed(Object value) {
+    return 'Можно освободить до $value';
+  }
+
+  @override
+  String wslcFound(Object length) {
+    return 'Найдено: $length';
+  }
+
+  @override
+  String wslcOf(Object value, Object value2) {
+    return '$value из $value2';
+  }
+
+  @override
+  String get wslcCleanUpSelectedItems => 'Очистить выбранное';
+
+  @override
+  String wslcCleanUpSelectedItemsCleanupPage(Object length, Object value2) {
+    return 'Очистить выбранное ($length$value2)';
+  }
+
+  @override
+  String get wslcNothingToCleanUp => 'Чистить нечего';
+
+  @override
+  String get wslcThereAreNoStoppedContainersAllImagesVolumes =>
+      'Нет остановленных контейнеров, а образы, тома и сети используются';
+
+  @override
+  String get wslcLogStreamReading => 'Чтение логов';
+
+  @override
+  String get wslcLogStreamTimedOut => 'Истекло время ожидания потока логов';
+
+  @override
+  String get wslcStoppedContainers => 'Остановленные контейнеры';
+
+  @override
+  String get wslcUnusedImages => 'Неиспользуемые образы';
+
+  @override
+  String get wslcUnusedVolumes => 'Неиспользуемые тома';
+
+  @override
+  String get wslcEmptyNetworks => 'Пустые сети';
+
+  @override
+  String get wslcRemovesTheContainerFilesystemNamedVolumesAreKept =>
+      'Удаляется файловая система контейнера; именованные тома остаются.';
+
+  @override
+  String get wslcNoContainersUseTheseImagesYouCanDownload =>
+      'Ни один контейнер не создан из этих образов; их можно загрузить заново.';
+
+  @override
+  String get wslcTheseVolumesAreNotAttachedToAnyContainer =>
+      'Не подключены ни к одному контейнеру. Данные будут потеряны — сделайте бэкап, если сомневаетесь.';
+
+  @override
+  String get wslcUserDefinedNetworksWithNoAttachedContainers => 'Пользовательские сети без подключённых контейнеров.';
+
+  @override
+  String get wslcDockerComposeFile => 'Файл Docker Compose';
+
+  @override
+  String get wslcComposeProjectDirectory => 'Папка проекта Compose';
+
+  @override
+  String get wslcPasteDockerComposeYmlToStartTheServices =>
+      'Вставьте docker-compose.yml — сервисы запустятся, как при docker compose up -d';
+
+  @override
+  String get wslcOpenFile => 'Открыть файл…';
+
+  @override
+  String get wslcBackToFile => 'К файлу';
+
+  @override
+  String get wslcStopping => 'Останавливаем…';
+
+  @override
+  String get wslcRebuildImagesBuild => 'Пересобрать образы (--build)';
+
+  @override
+  String get wslcStopAndRemove => 'Остановить и удалить';
+
+  @override
+  String get wslcFromNameOrTheDirectory => 'из name: или папки';
+
+  @override
+  String get wslcProjectDirectory => 'Папка проекта';
+
+  @override
+  String get wslcRelativePathsEnvEnvFileAndBuild => './пути, .env, env_file и build';
+
+  @override
+  String get wslcChooseDirectory => 'Выбрать папку';
+
+  @override
+  String get wslcPasteDockerComposeYml => 'Вставьте docker-compose.yml';
+
+  @override
+  String get wslcOrOpenAFileToPreviewThePlan => 'или откройте файл — здесь появится план до запуска';
+
+  @override
+  String get wslcParsingFile => 'Разбираем файл…';
+
+  @override
+  String wslcProject(Object project) {
+    return 'Проект $project';
+  }
+
+  @override
+  String get wslcService => 'сервис';
+
+  @override
+  String get wslcServices => 'сервиса';
+
+  @override
+  String get wslcServicesComposeDialog => 'сервисов';
+
+  @override
+  String get wslcDifferencesFromDocker => 'Отличия от Docker';
+
+  @override
+  String get wslcServicesInStartupOrder => 'Сервисы — в порядке запуска';
+
+  @override
+  String get wslcNetworksAndVolumes => 'Сети и тома';
+
+  @override
+  String get wslcExternal => ' · внешняя';
+
+  @override
+  String get wslcExternalComposeDialog => ' · внешний';
+
+  @override
+  String wslcWSLcCommands(Object length) {
+    return 'Команды WSLc ($length)';
+  }
+
+  @override
+  String wslcBuild(Object image) {
+    return 'сборка → $image';
+  }
+
+  @override
+  String wslcVariables(Object length) {
+    return 'переменных: $length';
+  }
+
+  @override
+  String wslcAfter(Object service, Object value2) {
+    return 'после $service$value2';
+  }
+
+  @override
+  String get wslcHealthy => ' (здоров)';
+
+  @override
+  String get wslcCompleted => ' (завершён)';
+
+  @override
+  String wslcProjectReady(Object project) {
+    return 'Готово: проект $project';
+  }
+
+  @override
+  String wslcStopAndRemoveComposeDialog(Object project) {
+    return 'Остановить и удалить $project?';
+  }
+
+  @override
+  String get wslcAsWithDockerComposeDownThisStopsAnd =>
+      'Как docker compose down: контейнеры проекта останавливаются и удаляются, созданные им сети — тоже. Образы остаются.';
+
+  @override
+  String wslcAlsoRemoveProjectVolumes(Object ownVolumes) {
+    return 'Удалить и тома проекта ($ownVolumes)';
+  }
+
+  @override
+  String get wslcDataInTheseVolumesWillBeLostV => 'Данные в них будут потеряны (-v)';
+
+  @override
+  String get wslcCancelled => 'отменено';
+
+  @override
+  String get wslcStoppedOnRequest => 'Остановлено по запросу';
+
+  @override
+  String get wslcDirectoriesForMounts => 'Папки для подключений';
+
+  @override
+  String wslcNetwork(Object name) {
+    return 'Сеть $name';
+  }
+
+  @override
+  String get wslcExternalNetworkFound => 'внешняя, найдена';
+
+  @override
+  String get wslcAlreadyExists => 'уже есть';
+
+  @override
+  String wslcExternalNetworkNotFound(Object name) {
+    return 'Внешняя сеть $name не найдена';
+  }
+
+  @override
+  String get wslcNetworkCreated => 'создана';
+
+  @override
+  String wslcVolume(Object name) {
+    return 'Том $name';
+  }
+
+  @override
+  String get wslcExternalVolumeFound => 'внешний, найден';
+
+  @override
+  String wslcExternalVolumeNotFound(Object name) {
+    return 'Внешний том $name не найден';
+  }
+
+  @override
+  String get wslcVolumeCreated => 'создан';
+
+  @override
+  String wslcBuilding(Object image) {
+    return 'Сборка $image';
+  }
+
+  @override
+  String get wslcImageAlreadyBuilt => 'образ уже собран';
+
+  @override
+  String get wslcBuilt => 'собран';
+
+  @override
+  String wslcImage(Object image) {
+    return 'Образ $image';
+  }
+
+  @override
+  String get wslcAlreadyDownloaded => 'уже загружен';
+
+  @override
+  String get wslcDownloaded => 'загружен';
+
+  @override
+  String get wslcWindowsFolder => 'папка Windows';
+
+  @override
+  String get wslcUnknownType => 'тип ?';
+
+  @override
+  String get wslcShowInFileExplorer => 'В проводнике';
+
+  @override
+  String get wslcThisVolumeIsStoredInsideTheWSLcVM =>
+      'Том хранится внутри ВМ WSLc и недоступен проводнику. Его содержимое видно через файлы контейнера.';
+
+  @override
+  String get wslcShowFiles => 'Показать файлы';
+
+  @override
+  String get wslcCopyWindowsPath => 'Копировать путь Windows';
+
+  @override
+  String get wslcCopyVolumeName => 'Копировать имя тома';
+
+  @override
+  String get wslcCopyPathInsideContainer => 'Копировать путь в контейнере';
+
+  @override
+  String get wslcShowFilesInContainer => 'Показать файлы в контейнере';
+
+  @override
+  String get wslcOpenTerminalHere => 'Открыть терминал здесь';
+
+  @override
+  String get wslcReadingEnvironment => 'Чтение окружения…';
+
+  @override
+  String get wslcCouldNotReadTheEnvironment => 'Не удалось прочитать окружение';
+
+  @override
+  String get wslcSearchByVariableName => 'Поиск по имени переменной';
+
+  @override
+  String wslcHideVariablesFromTheImage(Object inherited) {
+    return 'Скрыть из образа ($inherited)';
+  }
+
+  @override
+  String get wslcHideValues => 'Скрыть значения';
+
+  @override
+  String get wslcShowAll => 'Показать все';
+
+  @override
+  String get wslcCopyAsEnv => 'Скопировать как .env';
+
+  @override
+  String get wslcNoEnvironmentVariables => 'Переменных окружения нет';
+
+  @override
+  String get wslcEmpty => '(пусто)';
+
+  @override
+  String get wslcFromImage => 'из образа';
+
+  @override
+  String get wslcCopyValue => 'Скопировать значение';
+
+  @override
+  String wslcValueOf(Object key) {
+    return 'значение $key';
+  }
+
+  @override
+  String get wslcValuesAreReadWhenYouOpenThisTab =>
+      'Значения читаются только при открытии вкладки и не сохраняются. Переменные с замком похожи на секреты.';
+
+  @override
+  String get wslcUploadFileToContainer => 'Загрузить файл в контейнер';
+
+  @override
+  String get wslcReplaceFile => 'Заменить файл?';
+
+  @override
+  String wslcAlreadyExistsAndWillBeOverwritten(Object target) {
+    return '$target уже существует и будет перезаписан.';
+  }
+
+  @override
+  String wslcUploaded(Object target) {
+    return 'Загружено: $target';
+  }
+
+  @override
+  String get wslcFilesAreAvailableWhileTheContainerIsRunning => 'Файлы доступны у запущенного контейнера';
+
+  @override
+  String get wslcStartTheContainerToBrowseItsFilesystem =>
+      'Запустите контейнер, чтобы просмотреть его файловую систему';
+
+  @override
+  String get wslcCopyPath => 'Копировать путь';
+
+  @override
+  String get wslcUploadAFileFromThisComputer => 'Загрузить файл с компьютера сюда';
+
+  @override
+  String get wslcOpenTerminalInThisDirectory => 'Открыть терминал в этом каталоге';
+
+  @override
+  String get wslcReadingDirectory => 'Чтение каталога…';
+
+  @override
+  String get wslcCouldNotReadDirectory => 'Не удалось прочитать каталог';
+
+  @override
+  String get wslcLink => 'ссылка';
+
+  @override
+  String get wslcDownloadToComputer => 'Скачать на компьютер';
+
+  @override
+  String get wslcCloseWithoutSaving => 'Закрыть без сохранения?';
+
+  @override
+  String get wslcChangesToThisFileWillBeLost => 'Изменения в файле будут потеряны.';
+
+  @override
+  String get wslcGoBack => 'Вернуться';
+
+  @override
+  String get wslcEdit => 'Редактировать';
+
+  @override
+  String get wslcDiscardEdits => 'Отменить правки';
+
+  @override
+  String get wslcReadingFile => 'Чтение файла…';
+
+  @override
+  String get wslcCannotOpenThisFileAsText => 'Файл нельзя открыть как текст';
+
+  @override
+  String get wslcUTFTextFilesUpToMB => 'Текстовые файлы UTF-8 до 2 МБ';
+
+  @override
+  String get wslcLine => 'строка';
+
+  @override
+  String get wslcLines => 'строки';
+
+  @override
+  String get wslcLinesFileEditor => 'строк';
+
+  @override
+  String get wslcEditing => ' · режим правки';
+
+  @override
+  String get wslcReadOnly => ' · только просмотр';
+
+  @override
+  String get wslcUnsavedChanges => ' · есть несохранённые изменения';
+
+  @override
+  String get wslcPowerShellCommandSettingsThatMatchTheImageCMD =>
+      'Команда для PowerShell. Настройки, совпадающие с образом (CMD, PATH, рабочий каталог), опущены.';
+
+  @override
+  String wslcIncludeEnvironmentVariableValues(Object envCount) {
+    return 'Включить значения переменных окружения ($envCount)';
+  }
+
+  @override
+  String get wslcValuesMayContainPasswordsAndTokens => 'Значения могут содержать пароли и токены';
+
+  @override
+  String get wslcCloneInWizard => 'Клонировать в мастере';
+
+  @override
+  String get wslcCopy => 'Скопировать';
+
+  @override
+  String wslcCommand(Object message) {
+    return 'Команда: $message';
+  }
+
+  @override
+  String get wslcDirectoryToMount => 'Папка для подключения';
+
+  @override
+  String get wslcFromCompose => 'Из Compose…';
+
+  @override
+  String get wslcNameOptional => 'Имя (необязательно)';
+
+  @override
+  String get wslcTheImageIsNotAvailableLocallyWSLcWill => 'Образа нет локально — WSLc загрузит его при создании.';
+
+  @override
+  String get wslcThisComputerOnlyTheWholeNetwork => '127.0.0.1 — только этот компьютер, 0.0.0.0 — вся сеть';
+
+  @override
+  String get wslcHostPort => 'порт компьютера';
+
+  @override
+  String get wslcContainerPort => 'порт контейнера';
+
+  @override
+  String get wslcDirectoriesAndVolumes => 'Папки и тома';
+
+  @override
+  String get wslcWindowsDirectoryOrNamedVolumePathInContainer =>
+      'Папка Windows или именованный том → путь в контейнере';
+
+  @override
+  String get wslcVolumeRunWizard => 'Том';
+
+  @override
+  String get wslcVolumeNameCreatedIfNeeded => 'имя тома (новый создастся)';
+
+  @override
+  String get wslcCPathToFolder => 'C:\\путь\\к\\папке';
+
+  @override
+  String get wslcPathInContainer => '/путь/в/контейнере';
+
+  @override
+  String get wslcPassedThroughATemporaryFileRatherThanThe => 'Передаются через временный файл, а не в командной строке';
+
+  @override
+  String get wslcVariable => 'Переменная';
+
+  @override
+  String get wslcNAME => 'ИМЯ';
+
+  @override
+  String get wslcAdvanced => 'Дополнительно';
+
+  @override
+  String get wslcCommandOverridesTheImageCMD => 'Команда (вместо CMD образа)';
+
+  @override
+  String get wslcWorkingDirectory => 'Рабочий каталог';
+
+  @override
+  String get wslcRemoveAfterStoppingRm => 'Удалить после остановки (--rm)';
+
+  @override
+  String get wslcCreateWithoutStarting => 'Только создать, не запускать';
+
+  @override
+  String get wslcCreatingPullingTheImageIfItIsMissing => 'Создание… если образа нет локально, он загружается';
+
+  @override
+  String get wslcCreateAndStart => 'Создать и запустить';
+
+  @override
+  String get wslcRemove => 'Убрать';
+
+  @override
+  String wslcTemplateSaved(Object name) {
+    return 'Шаблон «$name» сохранён';
+  }
+
+  @override
+  String get wslcSaveAsTemplate => 'Сохранить как шаблон';
+
+  @override
+  String get wslcATemplateWithThisNameWillBeReplaced => 'Шаблон с таким названием будет заменён';
+
+  @override
+  String get wslcSaveEnvironmentVariableValues => 'Сохранить значения переменных окружения';
+
+  @override
+  String get wslcOtherwiseOnlyNamesAreSavedEnterTheValues =>
+      'Иначе сохраняются только имена — значения вводятся при создании';
+
+  @override
+  String get wslcTheTemplateExcludesTheContainerNameTemplatesAre =>
+      'Имя контейнера в шаблон не входит. Шаблоны зашифрованы в текущем профиле на этом устройстве и не отправляются на сервер.';
+
+  @override
+  String get wslcTemplates => 'Шаблоны';
+
+  @override
+  String get wslcSaveAsTemplateTemplates => 'Сохранить как шаблон…';
+
+  @override
+  String get wslcTheTerminalIsAvailableWhileTheContainerIs => 'Терминал доступен у запущенного контейнера';
+
+  @override
+  String get wslcSessionEnded => 'Сессия завершена';
+
+  @override
+  String wslcWslcExecItBashOrSh(Object cols, Object rows) {
+    return 'wslc exec -it · bash или sh · $cols×$rows';
+  }
+
+  @override
+  String get wslcReconnect => 'Подключить снова';
+
+  @override
+  String get wslcNewSession => 'Новая сессия';
+
+  @override
+  String get wslcOpenInSeparateWindow => 'Открыть в отдельном окне';
+
+  @override
+  String get wslcCopyTheSelectionWithCtrlShiftCAnd =>
+      'Выделение копируется Ctrl+Shift+C, вставка — Ctrl+Shift+V. Закрытие вкладки завершает только эту сессию, контейнер продолжает работать.';
+
+  @override
+  String wslcPulling(Object image) {
+    return 'Загрузка $image';
+  }
+
+  @override
+  String get wslcImageDownloaded => 'Образ загружен';
+
+  @override
+  String get wslcPullImage => 'Загрузить образ';
+
+  @override
+  String get wslcDownload => 'Загрузить';
+
+  @override
+  String get wslcImageImageDialogs => 'образа';
+
+  @override
+  String get wslcImageBuilt => 'Образ собран';
+
+  @override
+  String get wslcBuildContextDirectory => 'Папка с контекстом сборки';
+
+  @override
+  String wslcBuildArgumentMustUseKEYVALUE(Object t) {
+    return 'Аргумент сборки «$t» должен быть в виде KEY=VALUE';
+  }
+
+  @override
+  String get wslcChooseTheBuildContextDirectory => 'Выберите папку с контекстом сборки';
+
+  @override
+  String get wslcBuildImage => 'Собрать образ';
+
+  @override
+  String get wslcDockerfileOptionalDefaultsToTheOneInThe => 'Dockerfile (необязательно, по умолчанию из контекста)';
+
+  @override
+  String get wslcCommaSeparatedTags => 'Теги через запятую';
+
+  @override
+  String get wslcBuildArgumentsOneKEYVALUEPerLine => 'Аргументы сборки, по одному KEY=VALUE в строке';
+
+  @override
+  String get wslcTargetStageOptional => 'Целевая стадия (необязательно)';
+
+  @override
+  String get wslcDisableCache => 'Без кэша';
+
+  @override
+  String get wslcPullUpdatedBaseImages => 'Обновить базовые образы';
+
+  @override
+  String get wslcBuildImageDialogs => 'Собрать';
+
+  @override
+  String get wslcCreateContainer => 'Создать контейнер…';
+
+  @override
+  String get wslcAddTag => 'Добавить тег…';
+
+  @override
+  String get wslcPushToRegistry => 'Отправить в реестр…';
+
+  @override
+  String get wslcSaveAsTar => 'Сохранить в tar…';
+
+  @override
+  String wslcNewTagFor(Object source) {
+    return 'Новый тег для $source';
+  }
+
+  @override
+  String wslcAddedTag(Object target) {
+    return 'Добавлен тег $target';
+  }
+
+  @override
+  String get wslcPushImage => 'Отправить образ?';
+
+  @override
+  String wslcTheImageWillBePushedToTheRegistry(Object image) {
+    return '$image\n\nОбраз будет отправлен в реестр из его имени. Если нужна авторизация, сначала войдите через «Реестры».';
+  }
+
+  @override
+  String wslcPushing(Object image) {
+    return 'Отправка $image';
+  }
+
+  @override
+  String get wslcImagePushed => 'Образ отправлен';
+
+  @override
+  String get wslcSignedIn => 'Вход выполнен';
+
+  @override
+  String wslcSignedOutOf(Object name) {
+    return 'Выход из $name выполнен';
+  }
+
+  @override
+  String get wslcRegistries => 'Реестры';
+
+  @override
+  String get wslcServerEGGhcrIoLeaveBlankFor => 'Сервер, например ghcr.io (пусто — по умолчанию)';
+
+  @override
+  String get wslcPasswordOrAccessToken => 'Пароль или токен доступа';
+
+  @override
+  String get wslcThePasswordIsPassedToWSLcThroughStdin =>
+      'Пароль передаётся WSLc через stdin и нигде не сохраняется приложением.';
+
+  @override
+  String get wslcSignedInDuringThisSession => 'Вход в этом запуске';
+
+  @override
+  String get wslcSaveImageAsTar => 'Сохранить образ в tar';
+
+  @override
+  String wslcSaving(Object ref) {
+    return 'Сохранение $ref';
+  }
+
+  @override
+  String get wslcImageTarArchiveWslcSaveDockerSave => 'Tar-архив с образами (wslc save / docker save)';
+
+  @override
+  String wslcLoadingImagesFrom(Object value) {
+    return 'Загрузка образов из $value';
+  }
+
+  @override
+  String get wslcImagesLoaded => 'Образы загружены';
+
+  @override
+  String get wslcFilesystemTarArchiveWslcExport => 'Tar-архив файловой системы (wslc export)';
+
+  @override
+  String get wslcNewImageName => 'Имя нового образа';
+
+  @override
+  String get wslcMyImportedOptional => 'my/imported:1 (необязательно)';
+
+  @override
+  String wslcImporting(Object value) {
+    return 'Импорт $value';
+  }
+
+  @override
+  String get wslcImageCreated => 'Образ создан';
+
+  @override
+  String get wslcImportFromArchives => 'Импорт из архивов';
+
+  @override
+  String get wslcLoadImagesFromTarLoad => 'Загрузить образы из tar (load)…';
+
+  @override
+  String get wslcImportFilesystemFromTarImport => 'Импорт файловой системы из tar (import)…';
+
+  @override
+  String get wslcSearchByRepositoryTagOrID => 'Поиск по репозиторию, тегу или ID';
+
+  @override
+  String get wslcNoImagesYet => 'Образов пока нет';
+
+  @override
+  String get wslcUntagged => 'без тега';
+
+  @override
+  String wslcContainers(Object containers) {
+    return 'контейнеров: $containers';
+  }
+
+  @override
+  String get wslcSizeUnknown => 'размер ?';
+
+  @override
+  String wslcImageInventoryPages(Object value, Object value2) {
+    return 'Образ $value$value2';
+  }
+
+  @override
+  String get wslcDeleteImage => 'Удалить образ';
+
+  @override
+  String get wslcDeleteImageInventoryPages => 'Удалить образ?';
+
+  @override
+  String get wslcRemoveImageTag => 'Удалить тег образа?';
+
+  @override
+  String get wslcUnnamed => 'без имени';
+
+  @override
+  String wslcTheImageIsUsedByContainerSThe(Object containers) {
+    return 'Образ используется контейнерами ($containers) — runtime откажет, пока они существуют. ';
+  }
+
+  @override
+  String get wslcThisCannotBeUndoneYouWillNeedTo => 'Удаление нельзя отменить; образ придётся загрузить заново.';
+
+  @override
+  String wslcOnlyTheTagWillBeRemovedTheLayers(Object value) {
+    return 'Снимается только тег $value; слои удаляются, когда на образ не остаётся тегов.';
+  }
+
+  @override
+  String get wslcImageDeleted => 'Образ удалён';
+
+  @override
+  String get wslcSearchByVolumeName => 'Поиск по имени тома';
+
+  @override
+  String get wslcNoVolumesYet => 'Томов пока нет';
+
+  @override
+  String get wslcCreateVolume => 'Создать том';
+
+  @override
+  String wslcDriver(Object value) {
+    return 'драйвер $value';
+  }
+
+  @override
+  String get wslcSizeUnavailable => 'размер недоступен';
+
+  @override
+  String get wslcDeleteVolume => 'Удалить том';
+
+  @override
+  String get wslcDeleteVolumeInventoryPages => 'Удалить том?';
+
+  @override
+  String wslcAllDataInThisVolumeWillBePermanently(Object name) {
+    return '$name\n\nВсе данные тома будут удалены без возможности восстановления. Runtime откажет, если том подключён к контейнеру.';
+  }
+
+  @override
+  String wslcVolumeDeleted(Object name) {
+    return 'Том $name удалён';
+  }
+
+  @override
+  String get wslcYes => 'да';
+
+  @override
+  String get wslcNo => 'нет';
+
+  @override
+  String get wslcSearchByNameIDOrDriver => 'Поиск по имени, ID или драйверу';
+
+  @override
+  String get wslcNoNetworksFound => 'Сетей не найдено';
+
+  @override
+  String get wslcCreateNetwork => 'Создать сеть';
+
+  @override
+  String get wslcInternal => 'внутренняя';
+
+  @override
+  String get wslcConnectContainer => 'Подключить контейнер';
+
+  @override
+  String get wslcDeleteNetwork => 'Удалить сеть';
+
+  @override
+  String get wslcDeleteNetworkInventoryPages => 'Удалить сеть?';
+
+  @override
+  String wslcTheRuntimeWillRefuseToDeleteThisNetwork(Object name) {
+    return '$name\n\nRuntime откажет, если к сети подключены контейнеры.';
+  }
+
+  @override
+  String wslcNetworkDeleted(Object name) {
+    return 'Сеть $name удалена';
+  }
+
+  @override
+  String wslcVolumeCreatedResourceDialogs(Object name) {
+    return 'Том $name создан';
+  }
+
+  @override
+  String get wslcNewVolume => 'Новый том';
+
+  @override
+  String get wslcEnterAVolumeName => 'Укажите имя тома';
+
+  @override
+  String get wslcOptionsOneKEYVALUEPerLine => 'Параметры — по одному KEY=VALUE в строке';
+
+  @override
+  String get wslcVolumeNameEGAppData => 'Имя тома, например app-data';
+
+  @override
+  String get wslcGuestInTheVMFilesystemDefault => 'guest — в файловой системе ВМ (по умолчанию)';
+
+  @override
+  String get wslcVhdSeparateVirtualDisk => 'vhd — отдельный виртуальный диск';
+
+  @override
+  String get wslcDriverOptionsKEYVALUEOptional => 'Параметры драйвера KEY=VALUE (необязательно)';
+
+  @override
+  String wslcNetworkCreatedResourceDialogs(Object name) {
+    return 'Сеть $name создана';
+  }
+
+  @override
+  String get wslcNewNetwork => 'Новая сеть';
+
+  @override
+  String get wslcEnterANetworkName => 'Укажите имя сети';
+
+  @override
+  String get wslcNetworkNameEGBackend => 'Имя сети, например backend';
+
+  @override
+  String get wslcSubnetCIDREGOptional => 'Подсеть CIDR, например 10.231.0.0/24 (необязательно)';
+
+  @override
+  String get wslcGatewayEG => 'Шлюз, например 10.231.0.1';
+
+  @override
+  String get wslcContainerAddressRangeInCIDRNotationOptional => 'Диапазон адресов контейнеров CIDR (необязательно)';
+
+  @override
+  String get wslcInternalNetworkWithoutExternalAccess => 'Внутренняя сеть без выхода наружу';
+
+  @override
+  String wslcContainerConnectedToNetwork(Object net) {
+    return 'Контейнер подключён к сети $net';
+  }
+
+  @override
+  String get wslcConnect => 'Подключить';
+
+  @override
+  String get wslcSelectANetworkAndAContainer => 'Выберите сеть и контейнер';
+
+  @override
+  String get wslcNetworkAliasOptional => 'Псевдоним в сети (необязательно)';
+
+  @override
+  String get wslcStaticIPvAddressFromTheSubnetOptional => 'Фиксированный IPv4 из подсети (необязательно)';
+
+  @override
+  String wslcContainerDisconnectedFromNetwork(Object network) {
+    return 'Контейнер отключён от сети $network';
+  }
+
+  @override
+  String wslcBackingUpVolume(Object volume) {
+    return 'Бэкап тома $volume';
+  }
+
+  @override
+  String wslcBackupSavedTo(Object path) {
+    return 'Бэкап сохранён: $path';
+  }
+
+  @override
+  String get wslcVolumeArchiveTarGz => 'Архив тома (.tar.gz)';
+
+  @override
+  String wslcRestoringVolume(Object target) {
+    return 'Восстановление тома $target';
+  }
+
+  @override
+  String wslcVolumeRestored(Object target) {
+    return 'Том $target восстановлен';
+  }
+
+  @override
+  String get wslcRestoreToANewVolume => 'Восстановить в новый том';
+
+  @override
+  String get wslcRestoreVolume => 'Восстановить том';
+
+  @override
+  String get wslcVolumeNameCreatedIfItDoesNotExist => 'Имя тома (несуществующий будет создан)';
+
+  @override
+  String get wslcClearVolumeBeforeRestoring => 'Очистить том перед восстановлением';
+
+  @override
+  String get wslcOtherwiseArchiveFilesAreMergedIntoTheExisting => 'Иначе файлы из архива добавятся поверх текущих';
+
+  @override
+  String get wslcBackUpToArchive => 'Бэкап в архив…';
+
+  @override
+  String get wslcRestoreFromArchive => 'Восстановить из архива…';
+
+  @override
+  String get wslcSearchLoadedLogs => 'Поиск в загруженных логах';
+
+  @override
+  String get wslcPauseAutoscroll => 'Приостановить автопрокрутку';
+
+  @override
+  String get wslcEnableAutoscroll => 'Включить автопрокрутку';
+
+  @override
+  String get wslcClearView => 'Очистить отображение';
+
+  @override
+  String get wslcCopyLoadedLogs => 'Скопировать загруженные логи';
+
+  @override
+  String get wslcSaveLoadedLogs => 'Сохранить загруженные логи';
+
+  @override
+  String get wslcLinesLogPanel => '1000 строк';
+
+  @override
+  String get wslcMin => '5 мин';
+
+  @override
+  String get wslcHour => '1 час';
+
+  @override
+  String get wslcHours => '24 часа';
+
+  @override
+  String get wslcAll => 'Всё';
+
+  @override
+  String get wslcAllStreams => 'Все потоки';
+
+  @override
+  String get wslcShowRuntimeTimestampsInLocalTime => 'Метки времени runtime в локальном времени';
+
+  @override
+  String get wslcFormatLinesContainingJSONObjects => 'Форматировать строки-объекты JSON';
+
+  @override
+  String get wslcNoMatches => 'Совпадений нет';
+
+  @override
+  String get wslcTruncated => ' … [усечено]';
+
+  @override
+  String wslcShown(Object length) {
+    return 'показано: $length';
+  }
+
+  @override
+  String wslcEvicted(Object value) {
+    return 'вытеснено: $value';
+  }
+
+  @override
+  String wslcTruncatedLogPanel(Object truncated) {
+    return 'усечено: $truncated';
+  }
+
+  @override
+  String get wslcLogsMayContainSecrets => 'Логи могут содержать секреты';
+
+  @override
+  String get wslcEnterHexDigitsEGBFF => 'Введите 6 HEX-цифр, например #4B89FF';
+
+  @override
+  String wslcColorSpectrum(Object value) {
+    return 'Спектр цветов — $value';
+  }
+
+  @override
+  String wslcHueDegrees(Object value) {
+    return 'Оттенок $value градусов';
+  }
+
+  @override
+  String wslcSaturationPercent(Object value) {
+    return 'Насыщенность $value процентов';
+  }
+
+  @override
+  String wslcBrightnessPercent(Object value) {
+    return 'Яркость $value процентов';
+  }
+
+  @override
+  String get wslcSelect => 'Выбрать';
+
+  @override
+  String get wslcWSLcConnection => 'Подключение к WSLc';
+
+  @override
+  String get wslcEnterThePathToTheInstalledWslcExe =>
+      'Укажите установленный wslc.exe или оставьте поле пустым для стандартного каталога WSL.';
+
+  @override
+  String get wslcPathToWslcExe => 'Путь к wslc.exe';
+
+  @override
+  String get wslcAvailable => 'доступен';
+
+  @override
+  String get wslcUnavailable => 'недоступен';
+
+  @override
+  String get wslcRefreshData => 'Обновлять данные';
+
+  @override
+  String wslcEveryS(Object seconds) {
+    return 'Каждые $seconds сек.';
+  }
+
+  @override
+  String wslcSavedRunTemplates(Object length) {
+    return 'Сохранённых шаблонов запуска: $length';
+  }
+
+  @override
+  String get wslcTemplatesAreStoredInThisProfileSEncrypted =>
+      'Шаблоны хранятся в зашифрованной базе текущего профиля на этом устройстве. Оформление и очистка буфера задаются в общих настройках ConsoleCrypt.';
+
+  @override
+  String get wslcBuildingMap => 'Строим карту…';
+
+  @override
+  String get wslcCouldNotBuildMap => 'Не удалось построить карту';
+
+  @override
+  String get wslcWindowsFolderTopologyPage => 'Папка Windows';
+
+  @override
+  String get wslcOpenCleanup => 'Открыть очистку';
+
+  @override
+  String wslcUnused(Object length) {
+    return 'не используется: $length';
+  }
+
+  @override
+  String get wslcNoConnectionsYet => 'Связей пока нет';
+
+  @override
+  String get wslcVolumesFoldersAndNetworks => 'Тома, папки и сети';
+
+  @override
+  String get wslcRunning => 'Выполняется…';
+
+  @override
+  String wslcErrorExitCode(Object exitCode) {
+    return 'Ошибка, код выхода $exitCode';
+  }
+
+  @override
+  String get wslcWaitingForOutput => 'Ожидание вывода…';
+
+  @override
+  String wslcPortIsNotPublishedOnThisComputer(Object containerPort) {
+    return '$containerPort: порт не опубликован на компьютере';
+  }
+
+  @override
+  String get wslcOpenOrCopyPortAddress => 'Открыть или скопировать адрес порта';
+
+  @override
+  String wslcCopyPorts(Object value) {
+    return 'Копировать $value';
+  }
+
+  @override
+  String wslcCopyLocalhost(Object hostPort) {
+    return 'Копировать localhost:$hostPort';
+  }
+
+  @override
+  String wslcCopyPortsOther(Object address, Object hostPort) {
+    return 'Копировать $address:$hostPort';
+  }
+
+  @override
+  String wslcThisPortIsPublishedOnlyOnAndCannot(Object hostIp, Object hostPort, Object value3) {
+    return 'Порт опубликован только на $hostIp: по IP компьютера он недоступен. Для доступа из сети публикуйте его как 0.0.0.0:$hostPort:$value3.';
+  }
+
+  @override
+  String get wslcUnclosedQuote => 'Незакрытая кавычка';
+
+  @override
+  String get wslcKB => 'КБ';
+
+  @override
+  String get wslcMB => 'МБ';
+
+  @override
+  String get wslcGB => 'ГБ';
+
+  @override
+  String get wslcTB => 'ТБ';
+
+  @override
+  String get wslcS => '/с';
+
+  @override
+  String get wslcCollectingData => 'Сбор данных…';
+
+  @override
+  String get wslcCopyFullID => 'Скопировать полный ID';
+
+  @override
+  String get wslcWSLcSessionClosed => 'Сессия WSLc закрыта';
+
+  @override
+  String get wslcShowContainerData => 'Показать данные контейнера';
+
+  @override
+  String get wslcConfirmAccessToTheHiddenWSLcEnvironmentVariables => 'Подтвердите доступ к скрытому окружению WSLc.';
+
+  @override
+  String get wslcContainerEngines => 'Движки контейнеров';
+
+  @override
+  String get wslcConnections => 'Связи';
+
+  @override
+  String get wslcCleanup => 'Очистка';
+
+  @override
+  String get wslcOrphanedProjectContainers => 'Лишние контейнеры проекта';
+
+  @override
+  String wslcTheirServicesAreAbsentFromTheFileSo(Object value) {
+    return '$value — их сервисов нет в файле, оставлены как есть';
+  }
+
+  @override
+  String get wslcUnchangedAlreadyRunning => 'без изменений, уже запущен';
+
+  @override
+  String get wslcStarting => 'запуск…';
+
+  @override
+  String get wslcUnchangedStarted => 'без изменений, запущен';
+
+  @override
+  String get wslcConfigurationChangedRecreating => 'конфигурация изменилась — пересоздание…';
+
+  @override
+  String wslcTheNameIsInUseByAContainer(Object containerName) {
+    return 'Имя $containerName занято контейнером не из этого проекта';
+  }
+
+  @override
+  String get wslcCreating => 'создание…';
+
+  @override
+  String wslcConnectingTo(Object network) {
+    return 'подключение к $network…';
+  }
+
+  @override
+  String get wslcCreatedAndStarted => 'создан и запущен';
+
+  @override
+  String get wslcRecreatedAndStarted => 'пересоздан и запущен';
+
+  @override
+  String wslcWaitingForToBecomeHealthy(Object service) {
+    return 'ждём, пока $service станет здоровым…';
+  }
+
+  @override
+  String wslcWaitingForToFinish(Object service) {
+    return 'ждём, пока $service завершится…';
+  }
+
+  @override
+  String wslcIsUnhealthyDependentServicesDidNotStart(Object service) {
+    return '$service нездоров — зависимые сервисы не запущены';
+  }
+
+  @override
+  String wslcStoppedBeforeBecomingHealthy(Object service) {
+    return '$service остановился, не став здоровым';
+  }
+
+  @override
+  String wslcHasNoHealthCheckAndCannotSatisfyService(Object service) {
+    return 'У $service нет проверки здоровья — условие service_healthy не выполнить';
+  }
+
+  @override
+  String wslcExitedWithCode(Object service, Object exitCode) {
+    return '$service завершился с кодом $exitCode';
+  }
+
+  @override
+  String wslcTimedOutAfterMin(Object service, Object inMinutes) {
+    return '$service: не дождались за $inMinutes мин';
+  }
+
+  @override
+  String wslcExitedWithCodeComposeRunner(Object value, Object value2) {
+    return 'Завершилось с кодом $value$value2';
+  }
+
+  @override
+  String get wslcProjectContainers => 'Контейнеры проекта';
+
+  @override
+  String get wslcNoneFound => 'не найдены';
+
+  @override
+  String wslcRemoving(Object name) {
+    return 'Удаление $name';
+  }
+
+  @override
+  String get wslcStoppedAndRemoved => 'остановлен и удалён';
+
+  @override
+  String get wslcAlreadyGone => 'уже нет';
+
+  @override
+  String get wslcRemovedComposeRunner => 'удалена';
+
+  @override
+  String get wslcRemovedComposeRunnerOther => 'удалён';
+
+  @override
+  String wslcStopTheSelectedContainers(Object length) {
+    return 'Остановить контейнеры ($length)?';
+  }
+
+  @override
+  String wslcRestartTheSelectedContainers(Object length) {
+    return 'Перезапустить контейнеры ($length)?';
+  }
+
+  @override
+  String wslcRemoveTheSelectedContainers(Object length) {
+    return 'Удалить контейнеры ($length)?';
+  }
+
+  @override
+  String wslcRemovalCannotBeUndoneNamedVolumesWillBe(Object value) {
+    return '$valueУдаление нельзя отменить; именованные тома сохранятся.';
+  }
+
+  @override
+  String get wslcRunningContainersWillBeForciblyStopped => 'Запущенные будут остановлены принудительно. ';
+
+  @override
+  String get wslcTheRuntimeMayRemoveContainersWithAutoRemove =>
+      'Runtime может удалить контейнеры с auto-remove после остановки.';
+
+  @override
+  String wslcDoneOf(Object done, Object length, Object value3) {
+    return 'Готово: $done из $length$value3';
+  }
+
+  @override
+  String get wslcRunningContainersPage => 'Запущено';
+
+  @override
+  String get wslcSearchByNameIDImageOrPort => 'Поиск по имени, ID, образу или порту';
+
+  @override
+  String get wslcRunningContainersPageOther => 'Запущенные';
+
+  @override
+  String get wslcStopped => 'Остановленные';
+
+  @override
+  String get wslcNewContainer => 'Новый контейнер';
+
+  @override
+  String get wslcDockerComposeStartFromYAML => 'Docker Compose: запустить из YAML';
+
+  @override
+  String get wslcBulkActions => 'Действия со всеми';
+
+  @override
+  String wslcStopAllRunningContainers(Object running) {
+    return 'Остановить все запущенные ($running)';
+  }
+
+  @override
+  String wslcStartAllStoppedContainers(Object stopped) {
+    return 'Запустить все остановленные ($stopped)';
+  }
+
+  @override
+  String get wslcNotConnectedToWSLc => 'Нет подключения к WSLc';
+
+  @override
+  String get wslcNoContainersYet => 'Контейнеров пока нет';
+
+  @override
+  String get wslcCheckTheConnectionInSettings => 'Проверьте подключение в настройках';
+
+  @override
+  String get wslcSelectNewToCreateYourFirstContainer => 'Нажмите «Новый», чтобы создать первый контейнер';
+
+  @override
+  String get wslcChangeTheSearchTermOrFilter => 'Измените запрос или фильтр';
+
+  @override
+  String wslcSelected(Object count) {
+    return 'Выбрано: $count';
+  }
+
+  @override
+  String wslcUnknown(Object value) {
+    return 'Неизвестно ($value)';
+  }
+
+  @override
+  String get wslcStopThisContainer => 'Остановить контейнер?';
+
+  @override
+  String get wslcRestartThisContainer => 'Перезапустить контейнер?';
+
+  @override
+  String get wslcAutoRemoveIsEnabledTheRuntimeMayRemove =>
+      'Auto-remove включён: runtime может удалить контейнер после остановки.';
+
+  @override
+  String get wslcAutoRemoveIsDisabled => 'Auto-remove выключен.';
+
+  @override
+  String get wslcTheAutoRemoveSettingIsUnknownTheRuntime =>
+      'Флаг auto-remove неизвестен. После остановки runtime может удалить контейнер.';
+
+  @override
+  String get wslcRemoveThisContainer => 'Удалить контейнер?';
+
+  @override
+  String wslcRemovalCannotBeUndoneNamedVolumesWillBeContainerActions(Object name, Object id, Object value3) {
+    return '$name\n$id\n\n$value3Удаление нельзя отменить. Именованные тома сохранятся.';
+  }
+
+  @override
+  String get wslcTheContainerIsRunningItWillBeForcibly =>
+      'Контейнер запущен: он будет принудительно остановлен и удалён. ';
+
+  @override
+  String wslcContainerRemoved(Object name) {
+    return 'Контейнер $name удалён';
+  }
+
+  @override
+  String get wslcMoreActions => 'Ещё действия';
+
+  @override
+  String get wslcOpenInBrowser => 'Открыть в браузере';
+
+  @override
+  String wslcOpen(Object value) {
+    return 'Открыть $value';
+  }
+
+  @override
+  String get wslcDetails => 'Подробности';
+
+  @override
+  String get wslcStartupCommand => 'Команда запуска…';
+
+  @override
+  String get wslcExportFilesystemAsTar => 'Экспорт файловой системы в tar…';
+
+  @override
+  String get wslcCopyID => 'Копировать ID';
+
+  @override
+  String get wslcCopyName => 'Копировать имя';
+
+  @override
+  String get wslcExportContainerFilesystem => 'Экспорт файловой системы контейнера';
+
+  @override
+  String wslcExporting(Object name) {
+    return 'Экспорт $name';
+  }
+
+  @override
+  String wslcSaved(Object path) {
+    return 'Сохранено: $path';
+  }
+
+  @override
+  String get wslcBackToList => 'Назад к списку';
+
+  @override
+  String get wslcStartupCommandContainerDetailsPage => 'Команда запуска';
+
+  @override
+  String get wslcRemoveContainer => 'Удалить контейнер';
+
+  @override
+  String get wslcContainerNoLongerFound => 'Контейнер больше не найден';
+
+  @override
+  String get wslcTheRuntimeMayHaveRemovedItWhenIt => 'Возможно, runtime удалил его после остановки';
+
+  @override
+  String get wslcLoadingInspectData => 'Загрузка Inspect…';
+
+  @override
+  String get wslcCouldNotLoadInspectData => 'Не удалось получить Inspect';
+
+  @override
+  String get wslcExitCode => 'Код выхода';
+
+  @override
+  String get wslcFinished => 'Завершён';
+
+  @override
+  String get wslcUnknownContainerDetailsPage => 'неизвестно';
+
+  @override
+  String get wslcEnabled => 'включён';
+
+  @override
+  String get wslcDisabled => 'выключен';
+
+  @override
+  String get wslcStopTimeout => 'Таймаут остановки';
+
+  @override
+  String wslcSContainerDetailsPage(Object stopTimeoutSeconds) {
+    return '$stopTimeoutSeconds с';
+  }
+
+  @override
+  String get wslcReceiveInBlueSendInYellow => 'приём — голубой, отправка — жёлтый';
+
+  @override
+  String get wslcDiskReadWrite => 'Диск read / write';
+
+  @override
+  String get wslcProcesses => 'Процессы';
+
+  @override
+  String get wslcNoPublishedPorts => 'Порты не опубликованы';
+
+  @override
+  String get wslcSelectAPortToOpenItInA => 'Нажмите на порт, чтобы открыть его в браузере или скопировать адрес.';
+
+  @override
+  String get wslcStartup => 'Запуск';
+
+  @override
+  String get wslcImageID => 'ID образа';
+
+  @override
+  String get wslcConnectToNetwork => 'Подключить к сети';
+
+  @override
+  String get wslcTheRuntimeReturnedNoNetworkInformation => 'Runtime не сообщил сетевых данных';
+
+  @override
+  String get wslcDisconnectFromNetwork => 'Отключить от сети';
+
+  @override
+  String wslcGateway(Object gateway) {
+    return 'шлюз $gateway';
+  }
+
+  @override
+  String get wslcTheRuntimeReturnedNoMountInformation => 'Runtime не сообщил данных о подключениях';
+
+  @override
+  String get wslcNoMountedVolumesOrDirectories => 'Нет подключённых томов и каталогов';
 }
