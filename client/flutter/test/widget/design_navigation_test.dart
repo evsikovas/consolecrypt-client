@@ -24,14 +24,14 @@ void main() {
     await tapKey(tester, 'inspect-prod-web-1');
     expect(find.descendant(of: inspector, matching: find.text('prod-web-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('connect-prod-web-1')), findsOneWidget);
-    expect(tester.getRect(inspector).left, greaterThan(tester.getRect(select).right));
+    expect(tester.getRect(inspector).top, greaterThan(tester.getRect(select).bottom));
     final connect = tester.getRect(find.byKey(const ValueKey('host-inspector-connect')));
     final sftp = tester.getRect(find.byKey(const ValueKey('host-inspector-sftp')));
     final edit = tester.getRect(find.byKey(const ValueKey('host-inspector-edit')));
-    expect(connect.left, sftp.left);
-    expect(connect.right, edit.right);
+    expect(connect.right, lessThanOrEqualTo(sftp.left));
+    expect(sftp.right, lessThanOrEqualTo(edit.left));
     expect(sftp.top, edit.top);
-    expect(sftp.width, closeTo(edit.width, 0.01));
+    expect(connect.top, sftp.top);
     await captureAutomationWorkspace(tester, 'design-host-inspector-windows');
     await tapKey(tester, 'host-inspector-close');
     expect(inspector, findsNothing);
@@ -39,6 +39,33 @@ void main() {
     expect(find.byKey(const ValueKey('keepass-open')), findsOneWidget);
     await captureAutomationWorkspace(tester, 'design-passwords-windows');
     expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
+  testWidgets('operational sections fit in desktop and narrow windows', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    tester.binding.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.binding.platformDispatcher.clearPlatformBrightnessTestValue);
+    await loadAutomationProofFonts(tester);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, locale: AppLocale.ru, captureBoundary: true);
+    for (final page in ['tunnels', 'devices', 'sync']) {
+      await tapKey(tester, 'nav-$page');
+      if (page == 'tunnels') {
+        final item = find.byWidgetPredicate(
+          (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('tunnel-') && w is InkWell,
+        );
+        await tester.tap(item.first);
+        await settle(tester);
+        expect(find.byType(SelectableText), findsWidgets);
+      }
+      await captureAutomationWorkspace(tester, 'design-$page-windows');
+      tester.view.physicalSize = const Size(950, 710);
+      await settle(tester);
+      expect(tester.takeException(), isNull, reason: page);
+      tester.view.physicalSize = const Size(1600, 1000);
+      await settle(tester);
+    }
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('settings index brings the selected section into view', (tester) async {

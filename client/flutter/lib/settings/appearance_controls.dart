@@ -17,7 +17,9 @@ import 'package:material_ui/material_ui.dart';
 const _terminalExample = (user: 'user@host', directory: ' ~/projects', command: ' % ls\n', file: 'README.md  ');
 
 class InterfaceAppearanceControls extends ConsumerWidget {
-  const InterfaceAppearanceControls({super.key});
+  const InterfaceAppearanceControls({this.showProfilePreference = true, super.key});
+
+  final bool showProfilePreference;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,15 +83,16 @@ class InterfaceAppearanceControls extends ConsumerWidget {
             onPressed: () => save(settings.currentLocal.copyWith(uiFontScale: 1, resetUiColors: true)),
           ),
         ),
-        CheckboxListTile(
-          key: const ValueKey('settings-reopen-last-profile'),
-          contentPadding: EdgeInsets.zero,
-          value: local.reopenLastProfile,
-          controlAffinity: ListTileControlAffinity.leading,
-          title: Text(l.reopenLastProfile),
-          subtitle: Text(l.reopenLastProfileHelp),
-          onChanged: (value) => save(settings.currentLocal.copyWith(reopenLastProfile: value ?? false)),
-        ),
+        if (showProfilePreference)
+          CheckboxListTile(
+            key: const ValueKey('settings-reopen-last-profile'),
+            contentPadding: EdgeInsets.zero,
+            value: local.reopenLastProfile,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: Text(l.reopenLastProfile),
+            subtitle: Text(l.reopenLastProfileHelp),
+            onChanged: (value) => save(settings.currentLocal.copyWith(reopenLastProfile: value ?? false)),
+          ),
         Text(l.settingsAppearanceLocalHint, style: help),
         const SizedBox(height: 12),
       ],
@@ -409,6 +412,227 @@ class TerminalAppearanceControls extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
+      ],
+    );
+  }
+}
+
+class TerminalDeviceControls extends ConsumerWidget {
+  const TerminalDeviceControls({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final settings = ref.watch(settingsServiceProvider);
+    final local = ref.watch(localSettingsProvider).value ?? settings.currentLocal;
+    final terminalFont = ref.watch(terminalFontProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LabeledValue(
+          label: l10n.settingsFontSizeLabel,
+          value: Slider(
+            key: const ValueKey('terminal-font-size'),
+            value: local.terminalFontSize.clamp(10, 22),
+            min: 10,
+            max: 22,
+            divisions: 12,
+            label: local.terminalFontSize.toStringAsFixed(0),
+            onChanged: (v) => settings.updateLocal(local.copyWith(terminalFontSize: v)),
+          ),
+        ),
+        LabeledValue(
+          label: l10n.settingsTerminalFontLabel,
+          value: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GlassSelect<String>(
+                key: const ValueKey('terminal-font-family'),
+                value: local.terminalFontFamily ?? '',
+                semanticLabel: l10n.settingsTerminalFontLabel,
+                items: [
+                  GlassSelectItem(value: '', label: l10n.settingsTerminalFontSystem),
+                  for (final family in {
+                    ...ref.watch(terminalFontCatalogProvider).value?.offered ?? AppPlatform.terminalFontChoices,
+                    ?local.terminalFontFamily,
+                  })
+                    GlassSelectItem(key: ValueKey('terminal-font-$family'), value: family, label: family),
+                  GlassSelectItem(
+                    key: const ValueKey('terminal-font-custom'),
+                    value: '\u0000custom',
+                    label: l10n.settingsTerminalFontCustom,
+                    icon: Icons.edit_outlined,
+                  ),
+                ],
+                onChanged: (value) async {
+                  if (value == '\u0000custom') {
+                    final family = await showTextInputDialog(
+                      context,
+                      title: l10n.settingsTerminalFontCustomTitle,
+                      initial: local.terminalFontFamily ?? '',
+                      label: l10n.settingsTerminalFontCustomHint,
+                    );
+                    final name = family?.trim() ?? '';
+                    if (name.isEmpty || name.length > 80) return;
+                    await settings.updateLocal(settings.currentLocal.copyWith(terminalFontFamily: name));
+                    return;
+                  }
+                  await settings.updateLocal(
+                    value.isEmpty
+                        ? settings.currentLocal.copyWith(resetTerminalFontFamily: true)
+                        : settings.currentLocal.copyWith(terminalFontFamily: value),
+                  );
+                },
+              ),
+              if (terminalFont.missing) ...[
+                const SizedBox(height: GlassSpacing.s4),
+                Text(
+                  l10n.settingsTerminalFontMissing(terminalFont.requested ?? '', terminalFont.fallbackFamily),
+                  key: const ValueKey('terminal-font-missing'),
+                  style: GlassTokens.of(context).typography.callout
+                      .copyWith(color: GlassTokens.of(context).secondaryLabel),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const TerminalAppearanceControls(),
+        const TerminalTabPlacementSetting(id: 'terminal-tab-placement'),
+        LabeledValue(
+          label: l10n.settingsTerminalTabSubtitle,
+          value: Align(
+            alignment: Alignment.centerLeft,
+            child: GlassSelect<TerminalTabSubtitle>(
+              key: const ValueKey('terminal-tab-subtitle'),
+              value: local.terminalTabSubtitle,
+              semanticLabel: l10n.settingsTerminalTabSubtitle,
+              items: [
+                GlassSelectItem(value: TerminalTabSubtitle.name, label: l10n.settingsTerminalTabSubtitleName),
+                GlassSelectItem(value: TerminalTabSubtitle.address, label: l10n.settingsTerminalTabSubtitleAddress),
+                GlassSelectItem(value: TerminalTabSubtitle.off, label: l10n.settingsTerminalTabSubtitleOff),
+              ],
+              onChanged: (v) => settings.updateLocal(settings.currentLocal.copyWith(terminalTabSubtitle: v)),
+            ),
+          ),
+        ),
+        LabeledValue(
+          label: l10n.settingsScrollbackLabel,
+          value: Align(
+            alignment: Alignment.centerLeft,
+            child: GlassSelect<int>(
+              key: const ValueKey('scrollback'),
+              value: const [1000, 5000, 10000, 50000].contains(local.terminalScrollback)
+                  ? local.terminalScrollback
+                  : 5000,
+              items: [
+                for (final n in const [1000, 5000, 10000, 50000])
+                  GlassSelectItem(value: n, label: l10n.settingsScrollbackLines(n)),
+              ],
+              onChanged: (v) => settings.updateLocal(local.copyWith(terminalScrollback: v)),
+            ),
+          ),
+        ),
+        Text(
+          l10n.settingsTerminalBuffersNote,
+          style: GlassTokens.of(context).typography.callout.copyWith(color: GlassTokens.of(context).secondaryLabel),
+        ),
+      ],
+    );
+  }
+}
+
+class ThemeAndGlassControls extends ConsumerWidget {
+  const ThemeAndGlassControls({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final settings = ref.watch(settingsServiceProvider);
+    final local = ref.watch(localSettingsProvider).value ?? settings.currentLocal;
+    final tokens = GlassTokens.of(context);
+    final strings = GlassStrings.of(context);
+    final glass = GlassScope.of(context);
+    final solidReason = glass.solidReason;
+    final help = tokens.typography.callout.copyWith(color: tokens.secondaryLabel);
+    // Why glass renders solid although another option is picked (OS setting,
+    // remote session, battery saver, frame guard); nothing when it is the
+    // user's own choice.
+    final solidNote = switch (solidReason) {
+      GlassSolidReason.reduceTransparency => l10n.settingsGlassSolidReduceTransparency,
+      GlassSolidReason.remoteSession => l10n.settingsGlassSolidRemote,
+      GlassSolidReason.batterySaver => l10n.settingsGlassSolidBattery,
+      GlassSolidReason.performance => l10n.settingsGlassSolidPerformance,
+      GlassSolidReason.setting || null => null,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LabeledValue(
+          label: l10n.settingsThemeLabel,
+          value: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: GlassSegmented<AppThemeMode>(
+              key: const ValueKey('theme-mode'),
+              inChrome: false,
+              segments: [
+                GlassSegment(value: AppThemeMode.system, label: l10n.settingsThemeSystem),
+                GlassSegment(value: AppThemeMode.light, label: l10n.settingsThemeLight),
+                GlassSegment(value: AppThemeMode.dark, label: l10n.settingsThemeDark),
+              ],
+              selected: local.themeMode,
+              onChanged: (m) => settings.updateLocal(local.copyWith(themeMode: m)),
+            ),
+          ),
+        ),
+        LabeledValue(
+          label: strings.glassSetting,
+          value: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GlassSegmented<GlassMode>(
+                key: const ValueKey('glass-mode'),
+                inChrome: false,
+                segments: [
+                  for (final m in GlassMode.values)
+                    GlassSegment(key: ValueKey('glass-mode-${m.wireName}'), value: m, label: strings.glassMode(m)),
+                ],
+                selected: local.glassMode,
+                onChanged: (m) {
+                  // Re-selecting the checked segment is also an explicit
+                  // retry after automatic performance reduction.
+                  glass.retryEffects?.call();
+                  runWithFeedback(context, () => settings.updateLocal(settings.currentLocal.copyWith(glassMode: m)));
+                },
+              ),
+              const SizedBox(height: GlassSpacing.s4),
+              Text(l10n.settingsGlassHelp, style: help),
+              if (solidNote != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: GlassSpacing.s4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_rounded, size: 14, color: tokens.palette.info),
+                      const SizedBox(width: GlassSpacing.s4),
+                      Expanded(
+                        child: Text(
+                          solidNote,
+                          key: const ValueKey('glass-solid-reason'),
+                          style: help.copyWith(color: tokens.palette.info),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (solidReason == GlassSolidReason.performance && glass.retryEffects != null)
+                GlassButton(
+                  key: const ValueKey('glass-retry-effects'),
+                  label: l10n.settingsGlassRetryEffects,
+                  icon: Icons.refresh_rounded,
+                  onPressed: glass.retryEffects,
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }

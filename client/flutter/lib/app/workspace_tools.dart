@@ -269,7 +269,11 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                     ),
                                   ),
                                   Expanded(
-                                    child: HostMetricsPanel(key: ValueKey(tab.sessionId), history: tab.hostMetrics),
+                                    child: HostMetricsPanel(
+                                      key: ValueKey(tab.sessionId),
+                                      hostName: tab.host?.name,
+                                      history: tab.hostMetrics,
+                                    ),
                                   ),
                                 ],
                               ),

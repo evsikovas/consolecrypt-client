@@ -13,7 +13,7 @@ String _resourceKind(AppLocalizations l, DockerRemovalKind kind) => switch (kind
   DockerRemovalKind.bind => l.dockerRemovalBindMounts,
 };
 
-String _removalReason(AppLocalizations l, String reason) => switch (reason) {
+String dockerRemovalReason(AppLocalizations l, String reason) => switch (reason) {
   'shared' => l.dockerRemovalShared,
   'external' => l.dockerRemovalExternal,
   'default' => l.dockerRemovalDefaultNetwork,
@@ -55,6 +55,81 @@ Future<T?> _removalDialog<T>(BuildContext context, {required WidgetBuilder build
     },
   ),
 );
+
+/// Null cancels, false removes the containers while keeping their volumes.
+Future<bool?> confirmDockerProjectRemoval(
+  BuildContext context,
+  String host,
+  String project,
+  List<DockerContainer> targets,
+) {
+  var volumes = false;
+  return _removalDialog<bool>(
+    context,
+    builder: (context) {
+      final l = context.l10n;
+      return StatefulBuilder(
+        builder: (context, update) => GlassDialog(
+          width: 560,
+          title: l.dockerComposeRemoveTitle(project),
+          icon: Icons.delete_outline_rounded,
+          iconTone: GlassTone.danger,
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: GlassSpacing.s8,
+              children: [
+                Text(host, style: Theme.of(context).textTheme.titleSmall),
+                Text(l.dockerComposeBulkHelp(targets.length)),
+                for (final target in targets) Text(target.name),
+                Text(l.dockerComposeRemoveHelp),
+                CheckboxListTile(
+                  key: const ValueKey('docker-compose-remove-volumes'),
+                  value: volumes,
+                  onChanged: (value) => update(() => volumes = value == true),
+                  title: Text(l.dockerComposeRemoveVolumes),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                if (volumes) InfoBanner(tone: BannerTone.danger, message: l.dockerRemovalVolumeWarning),
+              ],
+            ),
+          ),
+          primaryAction: GlassButton.destructive(
+            key: const ValueKey('confirm-ok'),
+            label: l.commonDelete,
+            onPressed: () => closeDialog(context, volumes),
+          ),
+          secondaryActions: [
+            GlassButton(
+              key: const ValueKey('confirm-cancel'),
+              label: l.commonCancel,
+              autofocus: true,
+              onPressed: () => closeDialog<bool>(context),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Future<void> showDockerProjectRemovalIssues(BuildContext context, String summary, List<String> issues) =>
+    _removalDialog<void>(
+      context,
+      builder: (context) => GlassDialog(
+        width: 560,
+        title: context.l10n.dockerRemovalResult,
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: GlassSpacing.s8,
+            children: [Text(summary), for (final issue in issues) Text(issue)],
+          ),
+        ),
+        primaryAction: GlassButton(label: context.l10n.commonClose, onPressed: () => closeDialog<void>(context)),
+      ),
+    );
 
 class _DockerRemovalDialog extends StatefulWidget {
   const _DockerRemovalDialog({required this.plan, required this.host});
@@ -114,7 +189,7 @@ class _DockerRemovalDialogState extends State<_DockerRemovalDialog> {
                       leading: const Icon(Icons.lock_outline_rounded, size: 18),
                       title: Text(resource.name),
                       subtitle: Text(
-                        _removalReason(l, resource.kind == DockerRemovalKind.bind ? 'bind' : resource.reason),
+                        dockerRemovalReason(l, resource.kind == DockerRemovalKind.bind ? 'bind' : resource.reason),
                       ),
                     ),
               ],
@@ -193,7 +268,7 @@ Future<void> showDockerRemovalResult(BuildContext context, DockerRemovalResult r
                   ? l.dockerRemovalStopped
                   : l.dockerRemovalKept,
             ),
-            if (result.error != null) Text(_removalReason(l, result.error!)),
+            if (result.error != null) Text(dockerRemovalReason(l, result.error!)),
             for (final row in result.resources)
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -209,8 +284,8 @@ Future<void> showDockerRemovalResult(BuildContext context, DockerRemovalResult r
                 ),
                 subtitle: Text(switch (row.status) {
                   DockerRemovalStatus.removed => l.dockerRemovalResourceRemoved,
-                  DockerRemovalStatus.skipped => l.dockerRemovalResourceSkipped(_removalReason(l, row.reason)),
-                  DockerRemovalStatus.failed => l.dockerRemovalResourceFailed(_removalReason(l, row.reason)),
+                  DockerRemovalStatus.skipped => l.dockerRemovalResourceSkipped(dockerRemovalReason(l, row.reason)),
+                  DockerRemovalStatus.failed => l.dockerRemovalResourceFailed(dockerRemovalReason(l, row.reason)),
                 }),
               ),
           ],

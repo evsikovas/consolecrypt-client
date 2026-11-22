@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/view_mode_toggle.dart';
+import 'package:consolecrypt/core/widgets/workspace_sections.dart';
 import 'package:consolecrypt/groups/group_dialogs.dart';
 import 'package:consolecrypt/groups/group_tree.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
@@ -95,6 +96,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
   late String _location = widget.initialGroups ? inventoryGroups : inventoryAll;
   late bool _cards = AppPlatform.isMobile;
   ObjectId? _inspectedHost;
+  bool _descending = false;
 
   @override
   void dispose() {
@@ -221,6 +223,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
         .toList();
     final allTags = {for (final h in scoped) ...h.tags}.toList()..sort();
     final hosts = filterHosts(scoped, query: _search.text, tags: _tags, groups: groups);
+    if (_descending) hosts.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
     final searching = _search.text.trim().isNotEmpty || _tags.isNotEmpty;
     final query = _search.text.trim().toLowerCase();
     final visibleGroups = groups.values.where((g) {
@@ -302,6 +305,12 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  GlassIconButton(
+                    icon: _descending ? Icons.arrow_upward : Icons.arrow_downward,
+                    tooltip: l.commonName,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: () => setState(() => _descending = !_descending),
+                  ),
                   ViewModeToggle(
                     keyPrefix: 'inventory-view',
                     cards: _cards,
@@ -438,7 +447,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                             child: CustomScrollView(
                               controller: listController,
                               slivers: [
-                                if (visibleGroups.isNotEmpty)
+                                if (visibleGroups.isNotEmpty && (!inspect || group != null || searching))
                                   SliverToBoxAdapter(
                                     child: Padding(
                                       padding: const EdgeInsets.only(bottom: 20),
@@ -468,6 +477,19 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                                         l.groupsHostCount(hosts.length),
                                         style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
                                       ),
+                                    ),
+                                  ),
+                                if (inspect)
+                                  SliverToBoxAdapter(
+                                    child: WorkspaceColumns(
+                                      actionWidth: 172,
+                                      flex: const [3, 4, 2, 2],
+                                      cells: [
+                                        Text(l.uiHost),
+                                        Text(l.hostEditorAddressLabel),
+                                        Text(l.navGroups),
+                                        Text(l.syncScreenState),
+                                      ],
                                     ),
                                   ),
                                 if (showHosts && hosts.isEmpty)
@@ -530,19 +552,26 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
             children: [
               if (wide) ...[SizedBox(width: 184, child: navigation), const SizedBox(width: GlassSpacing.s12)],
               Expanded(
-                child: ContentSurface(padding: const EdgeInsets.all(GlassSpacing.s12), child: content),
-              ),
-              if (inspected != null) ...[
-                const SizedBox(width: GlassSpacing.s12),
-                SizedBox(
-                  width: 272,
-                  child: _HostInspector(
-                    host: inspected,
-                    groupName: groupPathName(groups, inspected.groupId),
-                    onClose: () => setState(() => _inspectedHost = null),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: ContentSurface(padding: const EdgeInsets.all(GlassSpacing.s12), child: content),
+                    ),
+                    if (inspected != null) ...[
+                      const SizedBox(width: GlassSpacing.s12),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: constraints.maxHeight * .46),
+                        child: _HostInspector(
+                          host: inspected,
+                          groupName: groupPathName(groups, inspected.groupId),
+                          onClose: () => setState(() => _inspectedHost = null),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
+              ),
             ],
           );
         },
@@ -692,7 +721,7 @@ class _HostInspector extends ConsumerWidget {
       if (!host.isRdp)
         GlassButton(
           key: const ValueKey('host-inspector-sftp'),
-          expand: true,
+
           label: l.navSftp,
           icon: Icons.folder_copy_rounded,
           onPressed: () async {
@@ -702,7 +731,6 @@ class _HostInspector extends ConsumerWidget {
         ),
       GlassButton(
         key: const ValueKey('host-inspector-edit'),
-        expand: true,
         label: l.commonEdit,
         icon: Icons.edit_outlined,
         onPressed: () => context.go(AppRoutes.editHost(host.id)),
@@ -730,6 +758,13 @@ class _HostInspector extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  GlassButton.prominent(
+                    key: const ValueKey('host-inspector-connect'),
+                    label: l.commonConnect,
+                    icon: icon,
+                    onPressed: () => connectToHost(context, ref, host),
+                  ),
+                  ...secondary,
                   GlassIconButton(
                     key: const ValueKey('host-inspector-close'),
                     icon: Icons.close_rounded,
@@ -743,38 +778,17 @@ class _HostInspector extends ConsumerWidget {
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.all(GlassSpacing.s12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: Wrap(
+                spacing: 20,
+                runSpacing: 8,
                 children: [
-                  LabeledValue(
-                    label: l.hostEditorAddressLabel,
-                    labelWidth: 92,
-                    value: SelectableText(host.address, style: tokens.typography.mono),
-                  ),
-                  if (host.username case final username?)
-                    LabeledValue(label: l.hostEditorUsernameLabel, labelWidth: 92, value: SelectableText(username)),
-                  LabeledValue(label: l.hostEditorPortLabel, labelWidth: 92, value: Text('$port')),
-                  if (groupName.isNotEmpty) LabeledValue(label: l.navGroups, labelWidth: 92, value: Text(groupName)),
-                  const SizedBox(height: GlassSpacing.s12),
-                  GlassButton.prominent(
-                    key: const ValueKey('host-inspector-connect'),
-                    expand: true,
-                    label: l.commonConnect,
-                    icon: icon,
-                    onPressed: () => connectToHost(context, ref, host),
-                  ),
-                  const SizedBox(height: GlassSpacing.s8),
-                  if (MediaQuery.textScalerOf(context).scale(14) > 18)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      spacing: GlassSpacing.s8,
-                      children: secondary,
-                    )
-                  else
-                    Row(
-                      spacing: GlassSpacing.s8,
-                      children: [for (final button in secondary) Expanded(child: button)],
-                    ),
+                  for (final (name, value) in [
+                    (l.hostEditorAddressLabel, host.address),
+                    if (host.username case final name?) (l.hostEditorUsernameLabel, name),
+                    (l.hostEditorPortLabel, '$port'),
+                    if (groupName.isNotEmpty) (l.navGroups, groupName),
+                  ])
+                    SelectableText('$name  ·  $value', style: tokens.typography.callout),
                 ],
               ),
             ),
@@ -1047,6 +1061,43 @@ class _HostTile extends ConsumerWidget {
     );
     final endpoint = '$userPart${host.address}$portPart';
     final detail = groupName.isEmpty ? l10n.inventoryUngrouped : groupName;
+    if (!cards && onInspect != null) {
+      return Material(
+        color: inspected ? tokens.sidebarSelection : Colors.transparent,
+        child: InkWell(
+          key: ValueKey('host-${host.name}'),
+          onTap: () => connectToHost(context, ref, host),
+          child: WorkspaceColumns(
+            actionWidth: 172,
+            actions: Align(alignment: Alignment.centerRight, child: actions),
+            flex: const [3, 4, 2, 2],
+            cells: [
+              Row(
+                children: [
+                  Icon(host.isRdp ? Icons.desktop_windows_outlined : Icons.dns_outlined, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(child: heading),
+                ],
+              ),
+              Text(
+                endpoint,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: t.mono.copyWith(fontSize: t.callout.fontSize),
+              ),
+              Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(
+                connected
+                    ? l10n.inventoryConnected
+                    : host.isRdp
+                    ? 'RDP'
+                    : 'SSH',
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (!cards) {
       return ContentSurface(
         padding: EdgeInsets.zero,

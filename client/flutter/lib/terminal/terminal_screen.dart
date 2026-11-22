@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:consolecrypt/ai/terminal_attachment.dart';
 import 'package:consolecrypt/app/commands.dart';
@@ -22,6 +21,7 @@ import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
+import 'package:consolecrypt/terminal/terminal_tab_subtitle.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter/services.dart';
@@ -267,7 +267,7 @@ class _TerminalTabs extends ConsumerWidget {
             null => null,
           },
           attention: tab.anyAttention,
-          subtitle: _tabSubtitle(context, tab, subtitleMode),
+          subtitle: terminalTabSubtitle(context, tab, subtitleMode),
           state: _state(tab),
           tooltip: switch (_state(tab)) {
             GlassTabState.connected => strings.tabConnected,
@@ -339,21 +339,6 @@ class _TerminalTabs extends ConsumerWidget {
   }
 }
 
-/// Second line of a terminal tab: the host's list name (or its address when
-/// it has none), its address / this computer's network name, or nothing.
-String? _tabSubtitle(BuildContext context, TerminalTab tab, TerminalTabSubtitle mode) {
-  final host = tab.host;
-  String? text = switch (mode) {
-    TerminalTabSubtitle.off => null,
-    TerminalTabSubtitle.name when tab.isLocal => context.l10n.terminalLocalComputer,
-    TerminalTabSubtitle.address when tab.isLocal => Platform.localHostname,
-    TerminalTabSubtitle.name => host == null ? null : (host.name.trim().isEmpty ? host.address : host.name),
-    TerminalTabSubtitle.address => host?.address,
-  };
-  text = text?.trim();
-  return text == null || text.isEmpty || text == tab.displayTitle ? null : text;
-}
-
 /// Thin bar above the terminal next to the tab column: the active tab's
 /// title and subtitle (also while the column is folded to icons) and the
 /// session tools of the tab-strip row.
@@ -379,7 +364,7 @@ class _SessionBar extends ConsumerWidget {
     final tokens = GlassTokens.of(context);
     final subtitleMode =
         ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabSubtitle)) ?? TerminalTabSubtitle.name;
-    final subtitle = _tabSubtitle(context, tab, subtitleMode);
+    final subtitle = terminalTabSubtitle(context, tab, subtitleMode);
     return SizedBox(
       key: const ValueKey('terminal-session-bar'),
       height: GlassSizes.tabTrack,

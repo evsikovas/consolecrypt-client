@@ -6,11 +6,13 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/settings_service.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
-import 'package:consolecrypt/terminal/terminal_fonts.dart';
+import 'package:consolecrypt/settings/appearance_controls.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
+import 'package:consolecrypt/terminal/terminal_tab_subtitle.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,11 +22,13 @@ class TerminalOnlyApp extends StatelessWidget {
   const TerminalOnlyApp({
     super.key,
     required this.service,
+    required this.settings,
     required this.initialShell,
     this.openWindow = openTerminalOnlyWindow,
   });
 
   final TerminalService service;
+  final SettingsService settings;
   final LocalShellProfile? initialShell;
   final Future<void> Function() openWindow;
 
@@ -33,23 +37,33 @@ class TerminalOnlyApp extends StatelessWidget {
     overrides: [
       terminalOnlyModeProvider.overrideWithValue(true),
       terminalServiceProvider.overrideWithValue(service),
-      localSettingsProvider.overrideWith((ref) => Stream.value(const LocalSettings())),
-      terminalFontProvider.overrideWithValue(resolveTerminalFont(null, null)),
+      settingsServiceProvider.overrideWithValue(settings),
     ],
-    child: MaterialApp(
-      title: 'ConsoleCrypt',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      supportedLocales: AppLocalizations.supportedLocales,
-      // material_ui widgets look up their own Material and Cupertino delegates.
-      localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
-      localeListResolutionCallback: resolveSystemLocale,
-      builder: (_, child) => GlassAppScope(unifiedTitlebar: AppPlatform.isMacOS, child: child!),
-      home: _TerminalOnlyScreen(initialShell: initialShell, openWindow: openWindow),
+    child: Consumer(
+      builder: (context, ref, _) {
+        final local = ref.watch(localSettingsProvider).value ?? settings.currentLocal;
+        final contrast = ref.watch(osIncreaseContrastProvider);
+        return MaterialApp(
+          title: 'ConsoleCrypt',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(preferences: local, highContrast: contrast),
+          darkTheme: AppTheme.dark(preferences: local, highContrast: contrast),
+          highContrastTheme: AppTheme.light(preferences: local, highContrast: true),
+          highContrastDarkTheme: AppTheme.dark(preferences: local, highContrast: true),
+          themeMode: AppTheme.mode(local.themeMode),
+          supportedLocales: AppLocalizations.supportedLocales,
+          // material_ui widgets look up their own Material and Cupertino delegates.
+          localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+          localeListResolutionCallback: resolveSystemLocale,
+          builder: (_, child) => GlassAppScope(unifiedTitlebar: AppPlatform.isMacOS, child: child!),
+          home: _TerminalOnlyScreen(initialShell: initialShell, openWindow: openWindow),
+        );
+      },
     ),
   );
 }
+
+enum _TerminalOption { top, left, settings }
 
 class _TerminalOnlyScreen extends ConsumerStatefulWidget {
   const _TerminalOnlyScreen({required this.initialShell, required this.openWindow});
@@ -65,10 +79,6 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
   bool _opening = false;
   bool _paletteOpen = false;
   String? _error;
-  TerminalTabPlacement _placement = TerminalTabPlacement.left;
-  bool _tabsCollapsed = true;
-  double _tabWidth = GlassTabColumn.defaultWidth;
-
   @override
   void initState() {
     super.initState();
@@ -129,7 +139,9 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     final primary = AppPlatform.usesMeta
         ? keys.isMetaPressed && !keys.isControlPressed
         : keys.isControlPressed && !keys.isMetaPressed;
-    if (event is KeyUpEvent || !primary || keys.isAltPressed) return KeyEventResult.ignored;
+    if (ModalRoute.of(context)?.isCurrent != true || event is KeyUpEvent || !primary || keys.isAltPressed) {
+      return KeyEventResult.ignored;
+    }
 
     final physical = event.physicalKey;
     final logical = event.logicalKey;
@@ -146,28 +158,96 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     return KeyEventResult.ignored;
   }
 
-  Widget _toolbar() {
+  Future<void> _settings() => showAppDialog<void>(
+    context,
+    builder: (context) {
+      final l = context.l10n;
+      return GlassDialog(
+        width: 840,
+        title: l.navSettings,
+        content: DefaultTabController(
+          length: 2,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TabBar(
+                tabs: [
+                  Tab(text: l.settingsAppearanceTitle),
+                  Tab(text: l.settingsTerminalTitle),
+                ],
+              ),
+              const SizedBox(height: GlassSpacing.s12),
+              const Flexible(
+                child: TabBarView(
+                  children: [
+                    SingleChildScrollView(
+                      child: Column(
+                        children: [ThemeAndGlassControls(), InterfaceAppearanceControls(showProfilePreference: false)],
+                      ),
+                    ),
+                    SingleChildScrollView(child: TerminalDeviceControls()),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        primaryAction: GlassButton(label: l.commonDone, onPressed: () => closeDialog<void>(context)),
+      );
+    },
+  );
+
+  Widget _toolbar(TerminalTabPlacement placement) {
     final l = context.l10n;
     return GlassToolbarGroup(
       key: const ValueKey('terminal-only-toolbar'),
       children: [
-        GlassMenuButton<TerminalTabPlacement>(
+        GlassIconButton(
+          key: const ValueKey('glass-tab-add'),
+          icon: Icons.add_rounded,
+          tooltip: GlassStrings.of(context).newTab,
+          size: GlassSizes.tab,
+          iconSize: GlassSizes.iconRow,
+          onPressed: () => unawaited(_palette()),
+        ),
+        GlassMenuButton<_TerminalOption>(
           entries: [
             GlassMenuItem(
               key: const ValueKey('terminal-only-tabs-top'),
-              value: TerminalTabPlacement.top,
-              checked: _placement == TerminalTabPlacement.top,
+              value: _TerminalOption.top,
+              checked: placement == TerminalTabPlacement.top,
               label: l.terminalMinimalTabsTop,
             ),
             GlassMenuItem(
               key: const ValueKey('terminal-only-tabs-left'),
-              value: TerminalTabPlacement.left,
-              checked: _placement == TerminalTabPlacement.left,
+              value: _TerminalOption.left,
+              checked: placement == TerminalTabPlacement.left,
               label: l.terminalMinimalTabsLeft,
+            ),
+            const GlassMenuDivider(),
+            GlassMenuItem(
+              key: const ValueKey('terminal-only-settings'),
+              value: _TerminalOption.settings,
+              label: l.navSettings,
+              icon: Icons.settings_outlined,
             ),
           ],
           onSelected: (value) {
-            if (mounted) setState(() => _placement = value);
+            if (!mounted) return;
+            if (value == _TerminalOption.settings) {
+              unawaited(_settings());
+              return;
+            }
+            final settings = ref.read(settingsServiceProvider);
+            unawaited(
+              settings.updateLocal(
+                settings.currentLocal.copyWith(
+                  terminalTabPlacement: value == _TerminalOption.top
+                      ? TerminalTabPlacement.top
+                      : TerminalTabPlacement.left,
+                ),
+              ),
+            );
           },
           builder: (_, open) => GlassIconButton(
             key: const ValueKey('terminal-only-tab-placement'),
@@ -207,16 +287,23 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     final controller = ref.read(terminalTabsProvider.notifier);
     final active = tabs.active;
     final l = context.l10n;
-    final left = _placement == TerminalTabPlacement.left;
-    final toolbar = _toolbar();
+    final settings = ref.watch(settingsServiceProvider);
+    final local = ref.watch(localSettingsProvider).value ?? settings.currentLocal;
+    final left = local.terminalTabPlacement == TerminalTabPlacement.left;
+    final toolbar = _toolbar(local.terminalTabPlacement);
     final chrome = GlassScope.of(context);
-    final header = left || chrome.unifiedTitlebar;
-    final background = AppTheme.terminalTheme(Theme.of(context).brightness).background;
+    final terminalColors = AppTheme.terminalTheme(
+      Theme.of(context).brightness,
+      scheme: local.terminalColorScheme,
+      custom: local.customTerminalColors,
+    );
+    final background = terminalColors.background;
     final items = [
       for (final tab in tabs.tabs)
         GlassTab(
           key: ValueKey(tab.sessionId),
           title: tab.displayTitle,
+          subtitle: terminalTabSubtitle(context, tab, local.terminalTabSubtitle),
           state: switch (tab.state) {
             SessionConnectionState.connected => GlassTabState.connected,
             SessionConnectionState.disconnected => GlassTabState.disconnected,
@@ -228,6 +315,27 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     void newTab() => unawaited(_palette());
     void closeTab(int i) => unawaited(controller.closeTab(tabs.tabs[i]));
     void menu(int i, Offset anchor) => unawaited(_tabMenu(tabs.tabs[i], anchor, controller));
+    final headerContent = left
+        ? Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s8),
+              child: Text(
+                active?.displayTitle ?? '',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: terminalColors.foreground),
+              ),
+            ),
+          )
+        : GlassTabStrip(
+            key: const ValueKey('terminal-only-tab-strip'),
+            tabs: items,
+            activeIndex: selected,
+            onSelect: controller.activate,
+            onClose: closeTab,
+            onContextMenu: menu,
+            onReorder: controller.moveTab,
+          );
     final screen = Scaffold(
       backgroundColor: background,
       body: GlassBlurSuppressor(
@@ -240,22 +348,23 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
               builder: (context, bounds) => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (header)
+                  if (chrome.unifiedTitlebar)
                     GlassToolbar(
-                      leadingInset: chrome.unifiedTitlebar ? chrome.trafficLightsLeading : 0,
+                      leadingInset: chrome.trafficLightsLeading,
+                      leadingMaxWidth: 0,
+                      center: headerContent,
                       trailing: [toolbar],
-                    ),
-                  if (!left)
-                    GlassTabStrip(
-                      key: const ValueKey('terminal-only-tab-strip'),
-                      tabs: items,
-                      activeIndex: selected,
-                      onSelect: controller.activate,
-                      onClose: closeTab,
-                      onContextMenu: menu,
-                      onAdd: newTab,
-                      onReorder: controller.moveTab,
-                      trailing: header ? null : toolbar,
+                    )
+                  else
+                    SizedBox(
+                      height: GlassSizes.tabTrack,
+                      child: Row(
+                        children: [
+                          Expanded(child: headerContent),
+                          const SizedBox(width: GlassSpacing.s6),
+                          toolbar,
+                        ],
+                      ),
                     ),
                   const SizedBox(height: GlassSpacing.s4),
                   Expanded(
@@ -267,19 +376,20 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
                             key: const ValueKey('terminal-only-tab-column'),
                             tabs: items,
                             activeIndex: selected,
-                            width: _tabWidth,
+                            width: local.terminalTabColumnWidth,
                             maxWidth: (bounds.maxWidth - 360 - GlassTabColumn.handleWidth).clamp(
                               0.0,
                               GlassTabColumn.defaultMaxWidth,
                             ),
-                            collapsed: _tabsCollapsed,
+                            collapsed: local.terminalTabColumnCollapsed,
                             onSelect: controller.activate,
                             onClose: closeTab,
                             onContextMenu: menu,
-                            onAdd: newTab,
                             onReorder: controller.moveTab,
-                            onResize: (width) => setState(() => _tabWidth = width),
-                            onCollapsedChanged: (value) => setState(() => _tabsCollapsed = value),
+                            onResize: (width) =>
+                                settings.updateLocal(settings.currentLocal.copyWith(terminalTabColumnWidth: width)),
+                            onCollapsedChanged: (value) =>
+                                settings.updateLocal(settings.currentLocal.copyWith(terminalTabColumnCollapsed: value)),
                           ),
                         Expanded(
                           key: const ValueKey('terminal-only-viewport'),

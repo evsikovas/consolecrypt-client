@@ -576,6 +576,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Docker details resize in both directions and keep the list usable', (tester) async {
+    await _pump(tester);
+    await _connectLocal(tester);
+    await tapKey(tester, 'docker-menu-button-${_id(tester, 'shop-postgres-1')}');
+    await tapKey(tester, 'docker-menu-details');
+    final divider = find.byKey(const ValueKey('docker-details-divider'));
+    final details = find.byKey(const ValueKey('docker-container-details'));
+    final list = find.byKey(const ValueKey('docker-containers'));
+    double width() => tester.getSize(details).width;
+    final initial = width();
+    await tester.drag(divider, const Offset(-120, 0));
+    await settle(tester);
+    expect(width(), closeTo(initial + 120, 1));
+    await tester.drag(divider, const Offset(2000, 0));
+    await settle(tester);
+    expect(width(), 360);
+    await tester.drag(divider, const Offset(-2000, 0));
+    await settle(tester);
+    expect(tester.getSize(list).width, greaterThanOrEqualTo(400));
+    expect(tester.getRect(list).right, lessThan(tester.getRect(details).left));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('details show inspect data, logs with stderr in its own colour, and JSON', (tester) async {
     await _pump(tester);
     await _connectLocal(tester);
@@ -736,13 +759,15 @@ void main() {
     await tapKey(tester, 'docker-logs-$api');
     // Logs are shown as they are.
     expect(find.textContaining('postgres://shop:demo-postgres-pass@'), findsOneWidget);
-    await tapKey(tester, 'docker-log-copy');
+    await tester.tap(find.byKey(const ValueKey('docker-log-copy')));
+    await settle(tester);
     expect(clipboard.secrets.single, contains('demo-postgres-pass'));
     expect(clipboard.plain, isEmpty);
 
     await tester.enterText(find.byKey(const ValueKey('docker-log-find-input')), 'GET /api');
     await tester.pump();
-    await tapKey(tester, 'docker-log-copy');
+    await tester.tap(find.byKey(const ValueKey('docker-log-copy')));
+    await settle(tester);
     // Ordinary log text stays out of clipboard history but is not cleared.
     expect(clipboard.private.single, startsWith('GET /api/orders/'));
     expect(clipboard.plain, isEmpty);

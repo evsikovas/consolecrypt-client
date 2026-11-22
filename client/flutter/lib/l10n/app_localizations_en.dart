@@ -10,6 +10,66 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get uiOtherDevices => 'Other devices';
+
+  @override
+  String get uiTrustedDevices => 'Trusted devices';
+
+  @override
+  String get uiPlatform => 'Platform';
+
+  @override
+  String get uiLastActive => 'Last active';
+
+  @override
+  String get uiTrust => 'Trust';
+
+  @override
+  String get uiDevice => 'Device';
+
+  @override
+  String get uiPendingRequests => 'Pending requests';
+
+  @override
+  String get uiVault => 'Vault';
+
+  @override
+  String get uiProfile => 'Profile';
+
+  @override
+  String get uiProtocol => 'Server protocol';
+
+  @override
+  String get uiOpen => 'Unlocked';
+
+  @override
+  String get uiLocked => 'Locked';
+
+  @override
+  String get uiForward => 'Forward';
+
+  @override
+  String get uiTunnel => 'Tunnel';
+
+  @override
+  String get uiHost => 'Host';
+
+  @override
+  String get uiSshTunnels => 'SSH tunnels';
+
+  @override
+  String get uiSavedForwards => 'Docker and Kubernetes';
+
+  @override
+  String get uiLocalForwards => 'Port forwarding on this device';
+
+  @override
+  String get uiFiveMinutes => 'Last 5 min';
+
+  @override
+  String get uiFieldNavigation => 'Select field';
+
+  @override
   String get dockerKubeRegistryDenied =>
       'The registry denied access. Check the repository name and that the image was published there. For a private repository, verify the cluster credentials or the imagePullSecret in this namespace.';
 
@@ -196,7 +256,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'After syncing, you can use this password or token on any device where you unlock your personal vault.';
 
   @override
-  String get externalVaultUseSynced => 'Sign in with the synced credential';
+  String get externalVaultSyncedHint => 'Leave this field empty to use the synced credential.';
 
   @override
   String get externalVaultForgetSynced => 'Remove synced sign-in';
@@ -10110,6 +10170,26 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String dockerComposeRestartAllTitle(String project) {
     return 'Restart all containers of $project?';
+  }
+
+  @override
+  String get dockerComposeRemove => 'Remove Compose project…';
+
+  @override
+  String dockerComposeRemoveTitle(String project) {
+    return 'Remove project $project?';
+  }
+
+  @override
+  String get dockerComposeRemoveHelp =>
+      'Running containers in this list will be stopped. Their unused project networks will also be removed. Compose files and bind mounts stay on the host.';
+
+  @override
+  String get dockerComposeRemoveVolumes => 'Also remove unused volumes attached to these containers';
+
+  @override
+  String dockerComposeRemoveSummary(String project, int removed, int total) {
+    return 'Containers removed from $project: $removed of $total.';
   }
 
   @override

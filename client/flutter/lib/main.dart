@@ -11,6 +11,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/src/rust/api/ssh.dart' as rs_ssh;
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_only_app.dart';
+import 'package:consolecrypt/terminal/terminal_only_settings.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,13 +31,25 @@ Future<void> main([List<String> arguments = const []]) async {
       final profile = jsonDecode(await rs_ssh.terminalOnlyStart()) as Map<String, dynamic>?;
       final initialShell = profile == null ? null : LocalShellProfile.fromJson(profile);
       final service = RustTerminalService.localOnly(initialShell);
+      final settings = await TerminalOnlySettings.open();
       AppLifecycleListener(
         onExitRequested: () async {
+          await settings.flush();
           await rs_ssh.terminalOnlyShutdown();
           return AppExitResponse.exit;
         },
       );
-      runApp(TerminalOnlyApp(service: service, initialShell: initialShell));
+      runApp(
+        TerminalOnlyApp(
+          service: service,
+          settings: settings,
+          initialShell: initialShell,
+          openWindow: () async {
+            await settings.flush();
+            await openTerminalOnlyWindow();
+          },
+        ),
+      );
     } on Object catch (error) {
       runApp(StartupErrorApp(error: error));
     }

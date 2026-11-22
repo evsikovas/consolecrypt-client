@@ -94,6 +94,126 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Devices table heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Other devices'**
+  String get uiOtherDevices;
+
+  /// Devices table heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Trusted devices'**
+  String get uiTrustedDevices;
+
+  /// Workspace label: Platform
+  ///
+  /// In en, this message translates to:
+  /// **'Platform'**
+  String get uiPlatform;
+
+  /// Workspace label: Last active
+  ///
+  /// In en, this message translates to:
+  /// **'Last active'**
+  String get uiLastActive;
+
+  /// Workspace label: Trust
+  ///
+  /// In en, this message translates to:
+  /// **'Trust'**
+  String get uiTrust;
+
+  /// Workspace label: Device
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get uiDevice;
+
+  /// Workspace label: Pending requests
+  ///
+  /// In en, this message translates to:
+  /// **'Pending requests'**
+  String get uiPendingRequests;
+
+  /// Workspace label: Vault
+  ///
+  /// In en, this message translates to:
+  /// **'Vault'**
+  String get uiVault;
+
+  /// Workspace label: Profile
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get uiProfile;
+
+  /// Workspace label: Server protocol
+  ///
+  /// In en, this message translates to:
+  /// **'Server protocol'**
+  String get uiProtocol;
+
+  /// Workspace label: Unlocked
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked'**
+  String get uiOpen;
+
+  /// Workspace label: Locked
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get uiLocked;
+
+  /// Workspace label: Forward
+  ///
+  /// In en, this message translates to:
+  /// **'Forward'**
+  String get uiForward;
+
+  /// Workspace label: Tunnel
+  ///
+  /// In en, this message translates to:
+  /// **'Tunnel'**
+  String get uiTunnel;
+
+  /// Workspace label: Host
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get uiHost;
+
+  /// Workspace label: SSH tunnels
+  ///
+  /// In en, this message translates to:
+  /// **'SSH tunnels'**
+  String get uiSshTunnels;
+
+  /// Workspace label: Docker and Kubernetes
+  ///
+  /// In en, this message translates to:
+  /// **'Docker and Kubernetes'**
+  String get uiSavedForwards;
+
+  /// Workspace label: Port forwarding on this device
+  ///
+  /// In en, this message translates to:
+  /// **'Port forwarding on this device'**
+  String get uiLocalForwards;
+
+  /// Workspace label: Last 5 min
+  ///
+  /// In en, this message translates to:
+  /// **'Last 5 min'**
+  String get uiFiveMinutes;
+
+  /// Workspace label: Select field
+  ///
+  /// In en, this message translates to:
+  /// **'Select field'**
+  String get uiFieldNavigation;
+
   /// Advice when the registry explicitly denies an image pull
   ///
   /// In en, this message translates to:
@@ -424,11 +544,11 @@ abstract class AppLocalizations {
   /// **'After syncing, you can use this password or token on any device where you unlock your personal vault.'**
   String get externalVaultSyncLoginHelp;
 
-  /// Sign in by explicitly retrieving the synced Vault or OpenBao credential
+  /// Explains the saved sign-in source when the Vault password or token field is empty
   ///
   /// In en, this message translates to:
-  /// **'Sign in with the synced credential'**
-  String get externalVaultUseSynced;
+  /// **'Leave this field empty to use the synced credential.'**
+  String get externalVaultSyncedHint;
 
   /// Remove the shared password or token while keeping the connection
   ///
@@ -18219,6 +18339,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restart all containers of {project}?'**
   String dockerComposeRestartAllTitle(String project);
+
+  /// Compose project removal dialog: Remove Compose project…
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Compose project…'**
+  String get dockerComposeRemove;
+
+  /// Compose project removal dialog: Remove project {project}?
+  ///
+  /// In en, this message translates to:
+  /// **'Remove project {project}?'**
+  String dockerComposeRemoveTitle(String project);
+
+  /// Compose project removal dialog: Running containers in this list will be stopped. Their unused project networks will also be removed. Compose files and bind mounts stay on the host.
+  ///
+  /// In en, this message translates to:
+  /// **'Running containers in this list will be stopped. Their unused project networks will also be removed. Compose files and bind mounts stay on the host.'**
+  String get dockerComposeRemoveHelp;
+
+  /// Compose project removal dialog: Also remove unused volumes attached to these containers
+  ///
+  /// In en, this message translates to:
+  /// **'Also remove unused volumes attached to these containers'**
+  String get dockerComposeRemoveVolumes;
+
+  /// Compose project removal dialog: Containers removed from {project}: {removed} of {total}.
+  ///
+  /// In en, this message translates to:
+  /// **'Containers removed from {project}: {removed} of {total}.'**
+  String dockerComposeRemoveSummary(String project, int removed, int total);
 
   /// Confirmation body for a project-wide stop/restart: how many containers.
   ///

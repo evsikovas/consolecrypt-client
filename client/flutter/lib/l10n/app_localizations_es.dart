@@ -10,6 +10,66 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get uiOtherDevices => 'Otros dispositivos';
+
+  @override
+  String get uiTrustedDevices => 'Dispositivos de confianza';
+
+  @override
+  String get uiPlatform => 'Plataforma';
+
+  @override
+  String get uiLastActive => 'Última actividad';
+
+  @override
+  String get uiTrust => 'Confianza';
+
+  @override
+  String get uiDevice => 'Dispositivo';
+
+  @override
+  String get uiPendingRequests => 'Solicitudes pendientes';
+
+  @override
+  String get uiVault => 'Bóveda';
+
+  @override
+  String get uiProfile => 'Perfil';
+
+  @override
+  String get uiProtocol => 'Protocolo del servidor';
+
+  @override
+  String get uiOpen => 'Abierta';
+
+  @override
+  String get uiLocked => 'Bloqueada';
+
+  @override
+  String get uiForward => 'Reenvío';
+
+  @override
+  String get uiTunnel => 'Túnel';
+
+  @override
+  String get uiHost => 'Host';
+
+  @override
+  String get uiSshTunnels => 'Túneles SSH';
+
+  @override
+  String get uiSavedForwards => 'Docker y Kubernetes';
+
+  @override
+  String get uiLocalForwards => 'Reenvío de puertos en este dispositivo';
+
+  @override
+  String get uiFiveMinutes => 'Últimos 5 min';
+
+  @override
+  String get uiFieldNavigation => 'Seleccionar campo';
+
+  @override
   String get dockerKubeRegistryDenied =>
       'El registro ha denegado el acceso. Comprueba el nombre del repositorio y si la imagen se ha publicado allí. Si es privado, revisa las credenciales del clúster o el imagePullSecret del namespace.';
 
@@ -198,7 +258,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Tras la sincronización, podrás usar esta contraseña o token en cualquier dispositivo donde desbloquees tu bóveda personal.';
 
   @override
-  String get externalVaultUseSynced => 'Acceder con la credencial sincronizada';
+  String get externalVaultSyncedHint => 'Deja este campo vacío para usar la credencial sincronizada.';
 
   @override
   String get externalVaultForgetSynced => 'Eliminar la credencial sincronizada';
@@ -10196,6 +10256,26 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String dockerComposeRestartAllTitle(String project) {
     return 'reiniciar todos los contenedores de $project ?';
+  }
+
+  @override
+  String get dockerComposeRemove => 'Eliminar proyecto Compose…';
+
+  @override
+  String dockerComposeRemoveTitle(String project) {
+    return '¿Eliminar el proyecto $project?';
+  }
+
+  @override
+  String get dockerComposeRemoveHelp =>
+      'Los contenedores en ejecución de esta lista se detendrán. También se eliminarán sus redes de proyecto que queden libres. Los archivos Compose y los montajes del host se conservarán.';
+
+  @override
+  String get dockerComposeRemoveVolumes => 'Eliminar también los volúmenes de estos contenedores que queden libres';
+
+  @override
+  String dockerComposeRemoveSummary(String project, int removed, int total) {
+    return 'Contenedores eliminados de $project: $removed de $total.';
   }
 
   @override

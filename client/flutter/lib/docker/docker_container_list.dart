@@ -138,7 +138,7 @@ void runDockerMenuValue(
 }
 
 /// What the menu of a compose project header does.
-enum DockerComposeCommand { startAll, stopAll, restartAll, viewYaml, editYaml }
+enum DockerComposeCommand { startAll, stopAll, restartAll, viewYaml, editYaml, removeProject }
 
 /// The compose project header menu (right click, long press or "…").
 List<GlassMenuEntry<DockerComposeCommand>> dockerComposeMenu(AppLocalizations l, DockerContainerGroup group) {
@@ -170,6 +170,14 @@ List<GlassMenuEntry<DockerComposeCommand>> dockerComposeMenu(AppLocalizations l,
       l.dockerComposeRestartAll,
       Icons.restart_alt_rounded,
       enabled: group.total > 0,
+    ),
+    const GlassMenuDivider(),
+    GlassMenuItem(
+      key: const ValueKey('docker-compose-menu-removeProject'),
+      value: DockerComposeCommand.removeProject,
+      label: l.dockerComposeRemove,
+      icon: Icons.delete_outline_rounded,
+      destructive: true,
     ),
   ];
 }

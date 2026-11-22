@@ -23,14 +23,15 @@ import 'package:consolecrypt/docker/docker_volume_list.dart';
 import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Content width from which details and forwards sit beside the list.
 const _sideBySide = 860.0;
 
-/// Content width from which details and forwards fit next to each other.
-const _bothPanels = 1240.0;
+const _minDetailsWidth = 360.0;
+const _minListWidth = 400.0;
 
 /// One connected engine: header, grouped containers, the container drawer
 /// and the Docker forwards panel. Refreshes every 5 s while visible and the
@@ -60,6 +61,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   final _containers = ValueNotifier<List<DockerContainer>>(const []);
   final _collapsed = <String>{};
   final _busy = <String>{};
+  final _removingProjects = <String>{};
   Timer? _timer;
   bool _foreground = true, _loading = false, _loaded = false;
   DockerStateFilter _filter = DockerStateFilter.all;
@@ -68,6 +70,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   Object? _error;
   String _query = '';
   String? _selected;
+  double _detailsFraction = .43;
   DockerDetailsTab _tab = DockerDetailsTab.overview;
   int _tabRequest = 0, _generation = 0;
 
@@ -182,12 +185,12 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     terminal: _terminal,
     forward: _forward,
     copyId: (c) => copyPlainWithNotice(context, ref, c.id, what: context.l10n.dockerContainerId),
-    busy: (c) => _busy.contains(c.id),
+    busy: (c) => _busy.contains(c.id) || _removingProjects.contains(c.composeProject),
     database: databasesEnabled && ref.read(dbServiceProvider) != null ? _database : null,
   );
 
   Future<void> _act(DockerContainer container, DockerAction action) async {
-    if (_busy.contains(container.id)) return;
+    if (_busy.contains(container.id) || _removingProjects.contains(container.composeProject)) return;
     final l = context.l10n;
     if (action == DockerAction.kill) {
       final approved = await showConfirmDialog(
@@ -235,15 +238,107 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     }
   }
 
+  Future<void> _removeProject(String project) async {
+    final session = widget.session;
+    final scope = ref.read(dockerScopeProvider);
+    bool current() =>
+        mounted &&
+        widget.session.id == session.id &&
+        ref.read(dockerScopeProvider).unlocked &&
+        ref.read(dockerScopeProvider).profileId == scope.profileId;
+    if (!current() || !_removingProjects.add(project)) return;
+    setState(() {});
+    final l = context.l10n;
+    try {
+      final all = await widget.service.containers(session.id);
+      if (!mounted || !current()) return;
+      final targets = all.where((c) => c.composeProject == project).toList();
+      if (targets.isEmpty) {
+        await _refresh();
+        return;
+      }
+      final local = widget.host?.kind == DockerHostKind.local || DockerHost.isLocalId(session.hostId);
+      final volumes = await confirmDockerProjectRemoval(
+        context,
+        local ? l.dockerLocalHost : _hostName,
+        project,
+        targets,
+      );
+      if (volumes == null || !current()) return;
+      final issues = <String>[];
+      var removed = 0;
+      for (final target in targets) {
+        if (!mounted || !current()) return;
+        try {
+          // Replan after each removal. A network shared within this project
+          // becomes eligible only when its last confirmed container is removed.
+          final plan = await widget.service.removalPlan(session.id, target.id);
+          if (!mounted || !current()) return;
+          if (plan.containerId != target.id || plan.name != target.name) {
+            issues.add('${target.name} — ${l.dockerRemovalChanged}');
+            continue;
+          }
+          final result = await widget.service.removeWithCleanup(
+            session.id,
+            target.id,
+            DockerRemovalSelection(
+              planId: plan.planId,
+              confirmName: target.name,
+              stopRunning: true,
+              networks: [
+                for (final r in plan.resources)
+                  if (r.kind == DockerRemovalKind.network && r.eligible) r.id,
+              ],
+              volumes: [
+                if (volumes)
+                  for (final r in plan.resources)
+                    if (r.kind == DockerRemovalKind.volume && r.eligible) r.id,
+              ],
+            ),
+          );
+          if (result.containerRemoved) removed++;
+          if (!result.containerRemoved || result.error != null) {
+            issues.add('${target.name} — ${dockerRemovalReason(l, result.error ?? 'unknown')}');
+          }
+          for (final r in result.resources) {
+            if (r.status != DockerRemovalStatus.removed) issues.add('${r.name} — ${dockerRemovalReason(l, r.reason)}');
+          }
+        } catch (error) {
+          issues.add('${target.name} — ${dockerErrorText(l, error)}');
+        }
+      }
+      if (!mounted || !current()) return;
+      await _refresh();
+      if (!mounted || !current()) return;
+      unawaited(_volumeList.currentState?.refresh());
+      ref.invalidate(dockerForwardsProvider);
+      final summary = l.dockerComposeRemoveSummary(project, removed, targets.length);
+      if (issues.isEmpty) {
+        showSnack(context, summary);
+      } else {
+        await showDockerProjectRemovalIssues(context, summary, issues);
+      }
+    } catch (error) {
+      if (mounted && current()) showSnack(context, dockerErrorText(l, error), error: true);
+    } finally {
+      if (mounted) setState(() => _removingProjects.remove(project));
+    }
+  }
+
   /// Project-wide engine actions and the compose files dialog.
   Future<void> _compose(DockerContainerGroup group, DockerComposeCommand command) async {
     final project = group.project;
-    if (project == null) return;
+    if (project == null || _removingProjects.contains(project)) return;
+    if (command == DockerComposeCommand.removeProject) {
+      if (_containers.value.any((c) => c.composeProject == project && _busy.contains(c.id))) return;
+      await _removeProject(project);
+      return;
+    }
     final action = switch (command) {
       DockerComposeCommand.startAll => DockerAction.start,
       DockerComposeCommand.stopAll => DockerAction.stop,
       DockerComposeCommand.restartAll => DockerAction.restart,
-      DockerComposeCommand.viewYaml || DockerComposeCommand.editYaml => null,
+      DockerComposeCommand.viewYaml || DockerComposeCommand.editYaml || DockerComposeCommand.removeProject => null,
     };
     if (action == null) {
       await showDockerComposeDialog(
@@ -271,7 +366,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
         confirmLabel: stop ? l.dockerComposeStopAll : l.dockerComposeRestartAll,
         destructive: stop,
       );
-      if (!approved || !mounted) return;
+      if (!approved || !mounted || _removingProjects.contains(project)) return;
     }
     setState(() => _busy.addAll(targets.map((c) => c.id)));
     var failed = 0;
@@ -378,7 +473,13 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
         child: LayoutBuilder(
           builder: (context, constraints) {
             final wide = _wide = constraints.maxWidth >= _sideBySide;
-            final both = constraints.maxWidth >= _bothPanels;
+            final paneSpace = constraints.maxWidth - GlassSpacing.s12;
+            final maxDetailsWidth = wide ? paneSpace - _minListWidth : _minDetailsWidth;
+            final detailsWidth = (paneSpace * _detailsFraction).clamp(_minDetailsWidth, maxDetailsWidth);
+            void resizeBy(double delta) => setState(() {
+              final currentWidth = (_detailsFraction * paneSpace).clamp(_minDetailsWidth, maxDetailsWidth);
+              _detailsFraction = (currentWidth + delta).clamp(_minDetailsWidth, maxDetailsWidth) / paneSpace;
+            });
             final showDetails = wide && selected != null;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -478,9 +579,27 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                     children: [
                       Expanded(child: list),
                       if (showDetails) ...[
-                        const SizedBox(width: GlassSpacing.s12),
+                        Semantics(
+                          label: l.workspaceToolsResize,
+                          onIncrease: () => resizeBy(24),
+                          onDecrease: () => resizeBy(-24),
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.resizeColumn,
+                            child: GestureDetector(
+                              key: const ValueKey('docker-details-divider'),
+                              behavior: HitTestBehavior.opaque,
+                              dragStartBehavior: DragStartBehavior.down,
+                              onHorizontalDragUpdate: (event) => resizeBy(-event.delta.dx),
+                              child: VerticalDivider(
+                                width: GlassSpacing.s12,
+                                thickness: 1,
+                                color: GlassTokens.of(context).surfaces.separator,
+                              ),
+                            ),
+                          ),
+                        ),
                         SizedBox(
-                          width: both ? 520 : 480,
+                          width: detailsWidth,
                           child: DockerContainerDetails(
                             key: ValueKey(('docker-details', selected.id)),
                             service: widget.service,

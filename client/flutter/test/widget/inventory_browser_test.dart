@@ -30,7 +30,7 @@ void main() {
     expect(find.byKey(const ValueKey('host-prod-db-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('host-prod-db-2')), findsNothing);
     await tapKey(tester, 'inventory-view-list');
-    expect(tester.widget(find.byKey(const ValueKey('host-prod-db-1'))), isA<ListTile>());
+    expect(find.byKey(const ValueKey('inspect-prod-db-1')).hitTestable(), findsOneWidget);
     await tapKey(tester, 'host-menu-prod-db-1');
     expect(find.text('Open SFTP'), findsOneWidget);
     expect(find.byKey(const ValueKey('host-group-menu-prod-db-1')), findsOneWidget);

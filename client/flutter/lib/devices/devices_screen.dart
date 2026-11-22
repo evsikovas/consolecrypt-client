@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/workspace_sections.dart';
 import 'package:consolecrypt/devices/approve_device_dialog.dart';
 import 'package:consolecrypt/vault/vault_key_trust.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,8 +23,14 @@ IconData platformIcon(DevicePlatform p) => switch (p) {
   DevicePlatform.cli => Icons.terminal_rounded,
 };
 
-class DevicesScreen extends ConsumerWidget {
+class DevicesScreen extends ConsumerStatefulWidget {
   const DevicesScreen({super.key});
+  @override
+  ConsumerState<DevicesScreen> createState() => _DevicesState();
+}
+
+class _DevicesState extends ConsumerState<DevicesScreen> {
+  DeviceRequestId? selectedRequest;
 
   Future<void> _revoke(BuildContext context, WidgetRef ref, DeviceInfo d) async {
     final l10n = context.l10n;
@@ -51,7 +58,7 @@ class DevicesScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final profile = ref.watch(activeProfileProvider);
     final l10n = context.l10n;
     if (profile != null && profile.isLocal) {
@@ -87,39 +94,29 @@ class DevicesScreen extends ConsumerWidget {
       ],
       body: AsyncValueView(
         value: snapshotAsync,
-        data: (snapshot) => ListView(
-          children: [
-            if (signIn != null && signIn.method.isCorporate) ...[
-              InfoBanner(
-                key: const ValueKey('devices-auth-notice'),
-                icon: Icons.apartment_rounded,
-                message: l10n.devicesAuthCorporate(
-                  corporateAuthName(l10n, displayName: signIn.displayName, method: signIn.method),
-                ),
-              ),
-              const SizedBox(height: GlassSpacing.s12),
-            ],
-            const VaultKeyUnconfirmedBanner(),
-            VaultKeyConflictBanners(snapshot: snapshot, onRevoke: (d) => _revoke(context, ref, d)),
-            for (final r in snapshot.pendingRequests) ...[
-              _PendingRequestCard(request: r),
-              const SizedBox(height: GlassSpacing.s12),
-            ],
-            ContentSurface(
-              padding: const EdgeInsets.all(GlassSpacing.s4),
-              child: Column(
+        data: (snapshot) {
+          final requests = snapshot.pendingRequests;
+          final selected = requests.where((r) => r.requestId == selectedRequest).firstOrNull ?? requests.firstOrNull;
+          final trusted = snapshot.devices.where((d) => !d.isRevoked && d.isTrustedFor(vaultId)).toList();
+          final remaining = snapshot.devices.where((d) => !trusted.contains(d)).toList();
+          Widget table(String title, List<DeviceInfo> devices) => WorkspaceSection(
+            title: title,
+            trailing: Text(devices.length.toString()),
+            child: LayoutBuilder(
+              builder: (context, bounds) => Column(
                 children: [
-                  for (final (i, d) in snapshot.devices.indexed) ...[
-                    if (i > 0)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s12),
-                        child: Divider(height: 1, color: GlassTokens.of(context).surfaces.separator),
-                      ),
+                  if (bounds.maxWidth >= 640)
+                    WorkspaceColumns(
+                      actionWidth: 34,
+                      cells: [Text(l10n.uiDevice), Text(l10n.uiPlatform), Text(l10n.uiLastActive), Text(l10n.uiTrust)],
+                    ),
+                  for (final d in devices) ...[
+                    const Divider(height: 1),
                     _DeviceTile(
                       device: d,
                       vaultId: vaultId,
                       protection: snapshot.deviceProtection,
-                      pending: snapshot.pendingRequests.any((r) => r.device.deviceId == d.deviceId),
+                      pending: requests.any((r) => r.device.deviceId == d.deviceId),
                       onRevoke: () => _revoke(context, ref, d),
                       onRename: () => _rename(context, ref, d),
                     ),
@@ -127,15 +124,71 @@ class DevicesScreen extends ConsumerWidget {
                 ],
               ),
             ),
-          ],
-        ),
+          );
+          final inventory = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 12,
+            children: [
+              table(l10n.uiTrustedDevices, trusted),
+              if (remaining.isNotEmpty) table(l10n.uiOtherDevices, remaining),
+            ],
+          );
+          return ListView(
+            children: [
+              if (signIn != null && signIn.method.isCorporate) ...[
+                InfoBanner(
+                  key: const ValueKey('devices-auth-notice'),
+                  icon: Icons.apartment_rounded,
+                  message: l10n.devicesAuthCorporate(
+                    corporateAuthName(l10n, displayName: signIn.displayName, method: signIn.method),
+                  ),
+                ),
+                const SizedBox(height: GlassSpacing.s12),
+              ],
+              const VaultKeyUnconfirmedBanner(),
+              VaultKeyConflictBanners(snapshot: snapshot, onRevoke: (d) => _revoke(context, ref, d)),
+              if (selected == null)
+                inventory
+              else
+                WorkspaceColumnsLayout(
+                  main: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 12,
+                    children: [
+                      inventory,
+                      WorkspaceSection(
+                        title: l10n.uiPendingRequests,
+                        trailing: Text(requests.length.toString()),
+                        child: Column(
+                          children: [
+                            for (final r in requests)
+                              ListTile(
+                                dense: true,
+                                selected: r.requestId == selected.requestId,
+                                selectedTileColor: GlassTokens.of(context).sidebarSelection,
+                                title: Text(r.device.name),
+                                subtitle: Text(r.device.platform.localized(l10n)),
+                                leading: Icon(platformIcon(r.device.platform)),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => setState(() => selectedRequest = r.requestId),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  side: _PendingRequestCard(key: ValueKey(selected.requestId), request: selected),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 class _PendingRequestCard extends ConsumerWidget {
-  const _PendingRequestCard({required this.request});
+  const _PendingRequestCard({super.key, required this.request});
 
   final DeviceTrustRequest request;
 
@@ -166,6 +219,8 @@ class _PendingRequestCard extends ConsumerWidget {
                 style: t.callout.copyWith(color: tokens.secondaryLabel),
               ),
               Text(l10n.devicesPendingHint),
+              if (ref.watch(activeProfileProvider) case final profile?)
+                Text([l10n.uiProfile, profile.name].join(' · '), style: t.caption),
             ],
           ),
         ),
@@ -278,73 +333,87 @@ class _DeviceTile extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 640;
+        final menu = GlassMenuButton<_DeviceAction>(
+          entries: [
+            GlassMenuItem(value: _DeviceAction.rename, label: l10n.commonRename, icon: Icons.edit_rounded),
+            if (!device.isCurrent)
+              GlassMenuItem(
+                key: ValueKey('revoke-${device.name}'),
+                value: _DeviceAction.revoke,
+                label: l10n.devicesRevokeMenu,
+                icon: Icons.block_rounded,
+                destructive: true,
+              ),
+          ],
+          onSelected: (v) => v == _DeviceAction.rename ? onRename() : onRevoke(),
+          builder: (context, open) => GlassIconButton(
+            key: ValueKey('device-menu-${device.name}'),
+            icon: Icons.more_horiz_rounded,
+            tooltip: GlassStrings.of(context).moreActions,
+            style: GlassIconButtonStyle.plain,
+            onPressed: device.isRevoked ? null : open,
+          ),
+        );
+        if (!compact) {
+          return DecoratedBox(
+            key: ValueKey('device-${device.name}'),
+            decoration: BoxDecoration(color: device.isCurrent ? tokens.sidebarSelection : null),
+            child: WorkspaceColumns(
+              actionWidth: 34,
+              actions: menu,
+              cells: [
+                Row(
+                  children: [
+                    Icon(platformIcon(device.platform), size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          name,
+                          if (device.isCurrent) Text(l10n.devicesThisDevice, style: tokens.typography.caption),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                Text(device.platform.localized(l10n)),
+                Tooltip(
+                  message: metadata,
+                  child: Text(device.lastSeenAt == null ? '—' : formatDateTime(l10n, device.lastSeenAt!)),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: TextStyle(color: p.tone(tone))),
+                    if (quarantineLabel != null) Text(quarantineLabel, key: ValueKey('quarantine-${device.name}')),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
         return ListTile(
           key: ValueKey('device-${device.name}'),
           leading: Icon(platformIcon(device.platform)),
-          title: compact
-              ? name
-              : Row(
-                  spacing: GlassSpacing.s8,
-                  children: [
-                    Flexible(child: name),
-                    if (device.isCurrent)
-                      GlassBadge(label: l10n.devicesThisDevice, tone: GlassTone.accent, dense: true),
-                    if (quarantineLabel != null)
-                      GlassBadge(
-                        key: ValueKey('quarantine-${device.name}'),
-                        label: quarantineLabel,
-                        tone: GlassTone.warning,
-                        icon: Icons.schedule_rounded,
-                        dense: true,
-                      ),
-                  ],
-                ),
-          subtitle: compact
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: GlassSpacing.s4,
-                  children: [
-                    Text(metadata),
-                    Row(
-                      spacing: GlassSpacing.s4,
-                      children: [
-                        Icon(icon, size: 14, color: p.tone(tone)),
-                        Flexible(child: Text(label)),
-                      ],
-                    ),
-                    if (device.isCurrent) Text(l10n.devicesThisDevice),
-                    if (quarantineLabel != null) Text(quarantineLabel, key: ValueKey('quarantine-${device.name}')),
-                  ],
-                )
-              : Text(metadata),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
+          title: name,
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             spacing: GlassSpacing.s4,
             children: [
-              if (!compact) GlassBadge(label: label, tone: tone, icon: icon),
-              GlassMenuButton<_DeviceAction>(
-                entries: [
-                  GlassMenuItem(value: _DeviceAction.rename, label: l10n.commonRename, icon: Icons.edit_rounded),
-                  if (!device.isCurrent)
-                    GlassMenuItem(
-                      key: ValueKey('revoke-${device.name}'),
-                      value: _DeviceAction.revoke,
-                      label: l10n.devicesRevokeMenu,
-                      icon: Icons.block_rounded,
-                      destructive: true,
-                    ),
+              Text(metadata),
+              Row(
+                spacing: GlassSpacing.s4,
+                children: [
+                  Icon(icon, size: 14, color: p.tone(tone)),
+                  Flexible(child: Text(label)),
                 ],
-                onSelected: (v) => v == _DeviceAction.rename ? onRename() : onRevoke(),
-                builder: (context, open) => GlassIconButton(
-                  key: ValueKey('device-menu-${device.name}'),
-                  icon: Icons.more_horiz_rounded,
-                  tooltip: GlassStrings.of(context).moreActions,
-                  style: GlassIconButtonStyle.plain,
-                  onPressed: device.isRevoked ? null : open,
-                ),
               ),
+              if (device.isCurrent) Text(l10n.devicesThisDevice),
+              if (quarantineLabel != null) Text(quarantineLabel, key: ValueKey('quarantine-${device.name}')),
             ],
           ),
+          trailing: menu,
         );
       },
     );

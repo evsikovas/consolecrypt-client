@@ -14,6 +14,7 @@ import 'package:consolecrypt/keepass/external_vault.dart';
 import 'package:consolecrypt/keepass/external_vault_store.dart';
 import 'package:consolecrypt/keepass/password_field_row.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
+import 'package:consolecrypt/keepass/secret_field_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -240,7 +241,7 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     }
   }
 
-  Future<void> _connect([_VaultSignIn method = _VaultSignIn.manual]) => _run(() async {
+  Future<void> _connect({_VaultSignIn? signIn}) => _run(() async {
     final vault = ref.read(vaultStatusProvider).value?.vaultId?.value;
     if (vault == null || !_current) throw const ExternalVaultFailure('closed');
     final random = Random.secure();
@@ -249,6 +250,8 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     FocusScope.of(context).unfocus();
     final previous = _selected;
     final saved = _matchingSavedConnection();
+    final method =
+        signIn ?? (_credential.text.isEmpty && saved?.credentialId != null ? _VaultSignIn.synced : _VaultSignIn.manual);
     final previousWrapper = saved?.wrapped;
     final SecretText secret;
     switch (method) {
@@ -565,6 +568,8 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
 
   Widget _signInSettings(AppLocalizations l) {
     final saved = _matchingSavedConnection();
+    final useSynced = saved?.credentialId != null && _credential.text.isEmpty;
+    final canConnect = !_busy && (_credential.text.isNotEmpty || useSynced);
     return SectionCard(
       key: const ValueKey('external-vault-sign-in'),
       title: l.loginModeSignIn,
@@ -593,8 +598,11 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
             controller: _credential,
             enabled: !_busy,
             allowReveal: false,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: canConnect ? (_) => _connect() : null,
             label: _auth == ExternalVaultAuth.userpass ? l.keepassEntryPassword : l.externalVaultToken,
           ),
+          if (useSynced) Text(l.externalVaultSyncedHint, style: Theme.of(context).textTheme.bodySmall),
           CheckboxListTile(
             key: const ValueKey('external-vault-remember-device'),
             value: _rememberCredential,
@@ -616,20 +624,17 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
             spacing: GlassSpacing.toolbarItemGap,
             runSpacing: GlassSpacing.s8,
             children: [
-              GlassButton.prominent(label: l.commonConnect, onPressed: _busy ? null : _connect),
+              GlassButton.prominent(
+                key: const ValueKey('external-vault-connect'),
+                label: l.commonConnect,
+                onPressed: canConnect ? () => _connect() : null,
+              ),
               if (saved?.wrapped != null)
                 GlassButton(
                   label: l.externalVaultUseSaved,
                   tooltip: l.externalVaultUseSaved,
                   icon: Icons.fingerprint,
-                  onPressed: _busy ? null : () => _connect(_VaultSignIn.device),
-                ),
-              if (saved?.credentialId != null)
-                GlassButton(
-                  key: const ValueKey('external-vault-use-synced'),
-                  label: l.externalVaultUseSynced,
-                  icon: Icons.cloud_outlined,
-                  onPressed: _busy ? null : () => _connect(_VaultSignIn.synced),
+                  onPressed: _busy ? null : () => _connect(signIn: _VaultSignIn.device),
                 ),
             ],
           ),
@@ -1008,6 +1013,22 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
     final split = path.lastIndexOf('/') + 1;
     final fields = _data!.values;
     final keys = fields.keys.toList(growable: false);
+    if (_picking) {
+      return Align(
+        alignment: Alignment.topCenter,
+        heightFactor: 1,
+        child: SecretFieldPicker(
+          key: ValueKey((_client!.connection.id, _activeMount.path, path)),
+          path: [_client!.connection.name, _activeMount.path, ...path.split('/')].join('  →  '),
+          engine: _activeMount.versioned ? 'KV v2' : 'KV v1',
+          fields: [
+            for (final key in keys)
+              (key: ValueKey('external-vault-field-$key'), label: key, copy: _busy ? null : () => _copyField(key)),
+          ],
+          onBack: () => setState(_clearDetail),
+        ),
+      );
+    }
     final header = Padding(
       padding: const EdgeInsets.all(GlassSpacing.s16),
       child: Column(
@@ -1358,6 +1379,18 @@ class _VaultConnectionsState extends ConsumerState<ExternalVaultWorkspace> {
         Expanded(child: child),
       ],
     );
+    if (_picking && _data != null && _current) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_busy) const LinearProgressIndicator(),
+          if (_error case final error?)
+            Text(_errorText(l, error), style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          Flexible(child: _detail(l)),
+        ],
+      );
+    }
     if (widget.onClose case final onClose?) {
       final connection = _client?.connection;
       return Padding(

@@ -1,6 +1,7 @@
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/models/terminal.dart';
 import 'package:consolecrypt/terminal/terminal_only_app.dart';
+import 'package:consolecrypt/terminal/terminal_only_settings.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
@@ -21,10 +22,12 @@ void main() {
     const bash = LocalShellProfile(id: 'macos:bash', kind: 'bash', label: 'bash', shell: 'bash');
     final backend = testBackend(seed: false);
     addTearDown(backend.dispose);
+    await backend.settings.updateLocal(TerminalOnlySettings.defaults);
     final service = backend.terminal..localShellProfiles = const LocalShellProfiles(profiles: [defaultShell, bash]);
     var windows = 0;
     await tester.pumpWidget(
       TerminalOnlyApp(
+        settings: backend.settings,
         service: service,
         initialShell: defaultShell,
         openWindow: () async {
@@ -73,8 +76,9 @@ void main() {
     const cmd = LocalShellProfile(id: 'windows:cmd', kind: 'cmd', label: 'Command Prompt', shell: 'cmd');
     final backend = testBackend(seed: false);
     addTearDown(backend.dispose);
+    await backend.settings.updateLocal(TerminalOnlySettings.defaults);
     final service = backend.terminal..localShellProfiles = const LocalShellProfiles(profiles: [powershell, cmd]);
-    await tester.pumpWidget(TerminalOnlyApp(service: service, initialShell: powershell));
+    await tester.pumpWidget(TerminalOnlyApp(settings: backend.settings, service: service, initialShell: powershell));
     await tester.pumpAndSettle();
     TerminalTab activeTab() => tester.widget<TerminalPane>(find.byType(TerminalPane)).tab;
     final sessionIds = {activeTab().sessionId};
@@ -96,17 +100,36 @@ void main() {
     expect(tester.widget<GlassTabColumn>(column).collapsed, isTrue);
     expect(tester.getSize(column).width, GlassTabColumn.collapsedWidth + GlassTabColumn.handleWidth);
     expect(find.byKey(const ValueKey('terminal-only-toolbar')), findsOneWidget);
+    Rect rect(String key) => tester.getRect(find.byKey(ValueKey(key)));
+    final initialViewportTop = rect('terminal-only-viewport').top;
+    final addButton = rect('glass-tab-add');
+    final tools = rect('terminal-only-toolbar');
     await tapKey(tester, 'glass-tab-column-toggle');
     expect(tester.getSize(column).width, greaterThan(GlassTabColumn.collapsedWidth + GlassTabColumn.handleWidth));
     await tapKey(tester, 'terminal-only-tab-placement');
     await tapKey(tester, 'terminal-only-tabs-top');
     expect(strip, findsOneWidget);
     expect(column, findsNothing);
+    expect(rect('terminal-only-viewport').top, initialViewportTop);
+    expect(rect('glass-tab-add'), addButton);
+    expect(rect('terminal-only-toolbar'), tools);
     expect(activeTab(), same(tab));
     await tapKey(tester, 'terminal-only-tab-placement');
     await tapKey(tester, 'terminal-only-tabs-left');
     expect(strip, findsNothing);
     expect(tester.widget<GlassTabColumn>(column).collapsed, isFalse);
+    expect(activeTab(), same(tab));
+    await tapKey(tester, 'terminal-only-tab-placement');
+    await tapKey(tester, 'terminal-only-settings');
+    expect(find.byKey(const ValueKey('theme-mode')), findsOneWidget);
+    expect(find.byKey(const ValueKey('settings-reopen-last-profile')), findsNothing);
+    await tapKey(tester, 'ui-accent-swatch-2275501');
+    expect(backend.settings.currentLocal.uiAccentColor, 0x22b8ad);
+    await tester.tap(find.byType(Tab).last);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('terminal-color-scheme')), findsOneWidget);
+    await tester.tap(find.text('Готово'));
+    await tester.pumpAndSettle();
     expect(activeTab(), same(tab));
     await tapKey(tester, 'glass-tab-add');
     expect(find.byKey(const ValueKey('terminal-only-search')), findsOneWidget);

@@ -94,7 +94,7 @@ class KdbxWorkspace extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         dragStartBehavior: DragStartBehavior.down,
         onHorizontalDragUpdate: (details) => onDelta(details.delta.dx),
-        child: VerticalDivider(width: GlassSpacing.s8, thickness: 1, color: GlassTokens.of(context).surfaces.separator),
+        child: const SizedBox(width: GlassSpacing.s12, height: double.infinity),
       ),
     ),
   );
@@ -799,6 +799,22 @@ class KdbxWorkspace extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                session!.rows('groups').where((g) => g['id'] == group).firstOrNull?['label'] as String? ??
+                    context.l10n.keepassAllGroups,
+                style: GlassTokens.of(context).typography.bodyEmph,
+              ),
+            ),
+            Text(entries.length.toString(), style: GlassTokens.of(context).typography.caption),
+          ],
+        ),
+      ),
+      const Divider(height: 1),
+      Padding(
         padding: const EdgeInsets.all(GlassSpacing.s8),
         child: GlassField(
           fieldKey: const ValueKey('keepass-search'),
@@ -999,10 +1015,11 @@ class KdbxWorkspace extends StatelessWidget {
         Expanded(
           child: ListView.separated(
             primary: false,
-            padding: EdgeInsets.zero,
+            padding: const EdgeInsets.all(10),
             itemCount: fields.length,
-            itemBuilder: (_, index) => fields[index],
-            separatorBuilder: (_, _) => const Divider(height: 1, indent: GlassSpacing.s12, endIndent: GlassSpacing.s12),
+            itemBuilder: (_, index) =>
+                ContentSurface(color: tokens.surfaces.inset, padding: EdgeInsets.zero, child: fields[index]),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
           ),
         ),
         const Divider(height: 1),
@@ -1200,18 +1217,16 @@ class KdbxWorkspace extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   spacing: GlassSpacing.s2,
                   children: [
+                    Text(l.navPasswords, style: tokens.typography.title3, maxLines: 1, overflow: TextOverflow.ellipsis),
                     Text(
-                      opened.source.name,
-                      style: tokens.typography.title3,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      opened.busy
-                          ? l.keepassAutosaving
-                          : opened.data['dirty'] == true
-                          ? l.keepassDirty
-                          : l.keepassAutosaved,
+                      [
+                        opened.source.name,
+                        opened.busy
+                            ? l.keepassAutosaving
+                            : opened.data['dirty'] == true
+                            ? l.keepassDirty
+                            : l.keepassAutosaved,
+                      ].join(' · '),
                       style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
                     ),
                   ],
@@ -1286,38 +1301,40 @@ class KdbxWorkspace extends StatelessWidget {
                         : (constraints.maxWidth - 250).clamp(170.0, 300.0);
                     final side = sidebarWidth.clamp(170.0, sideLimit);
                     final detail = detailsWidth.clamp(300.0, (constraints.maxWidth - side - 280).clamp(300.0, 720.0));
-                    return ContentSurface(
-                      kind: ContentSurfaceKind.solid,
-                      padding: EdgeInsets.zero,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(width: side, child: _sidebar(context)),
-                          _splitter(
-                            context,
-                            'keepass-sidebar-resize',
-                            l.keepassResizeGroups,
-                            (delta) => onSidebarResize(delta, 170, sideLimit),
-                          ),
-                          Expanded(
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          width: side,
+                          child: ContentSurface(padding: EdgeInsets.zero, child: _sidebar(context)),
+                        ),
+                        _splitter(
+                          context,
+                          'keepass-sidebar-resize',
+                          l.keepassResizeGroups,
+                          (delta) => onSidebarResize(delta, 170, sideLimit),
+                        ),
+                        Expanded(
+                          child: ContentSurface(
+                            padding: EdgeInsets.zero,
                             child: !wide && selected != null ? _details(context, compact: true) : _entryList(context),
                           ),
-                          if (wide) ...[
-                            _splitter(
-                              context,
-                              'keepass-details-resize',
-                              l.keepassResizeCard,
-                              (delta) =>
-                                  onDetailsResize(delta, 300, (constraints.maxWidth - side - 280).clamp(300.0, 720.0)),
-                            ),
-                            SizedBox(
-                              key: const ValueKey('keepass-details-pane'),
-                              width: detail,
-                              child: _details(context),
-                            ),
-                          ],
+                        ),
+                        if (wide) ...[
+                          _splitter(
+                            context,
+                            'keepass-details-resize',
+                            l.keepassResizeCard,
+                            (delta) =>
+                                onDetailsResize(delta, 300, (constraints.maxWidth - side - 280).clamp(300.0, 720.0)),
+                          ),
+                          SizedBox(
+                            key: const ValueKey('keepass-details-pane'),
+                            width: detail,
+                            child: ContentSurface(padding: EdgeInsets.zero, child: _details(context)),
+                          ),
                         ],
-                      ),
+                      ],
                     );
                   },
                 ),

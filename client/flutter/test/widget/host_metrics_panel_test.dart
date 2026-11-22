@@ -50,13 +50,13 @@ void main() {
     expect(find.text('21.5%'), findsOneWidget);
     expect(find.text('50.0%'), findsOneWidget);
     expect(find.text('25.0%'), findsOneWidget);
-    expect(find.text('Received 512 B/s'), findsOneWidget);
-    expect(find.text('Sent 128 B/s'), findsOneWidget);
+    expect(find.text('512 B/s'), findsOneWidget);
+    expect(find.text('128 B/s'), findsOneWidget);
     expect(find.text('A64 · arm64 · 8 logical CPUs'), findsOneWidget);
     expect(find.text('1 d 1 h 1 min'), findsOneWidget);
     expect(find.text('Updated at 12:34:15'), findsOneWidget);
     final cpu = find.text('CPU usage'), ram = find.text('Memory used');
-    expect(tester.getTopLeft(cpu).dy, tester.getTopLeft(ram).dy);
+    expect(tester.getTopLeft(ram).dy, greaterThan(tester.getBottomLeft(cpu).dy));
     tester.view.physicalSize = const Size(265, 390);
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(ram).dy, greaterThan(tester.getBottomLeft(cpu).dy));

@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/models/saved_forward.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/workspace_sections.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_auth_dialog.dart';
@@ -48,8 +49,10 @@ String savedForwardErrorText(AppLocalizations l, SavedForward plan, Object error
 }
 
 class SavedForwardTile extends ConsumerWidget {
-  const SavedForwardTile(this.plan, {super.key});
+  const SavedForwardTile(this.plan, {super.key, this.wide = false, this.selected = false, this.onSelect});
   final SavedForward plan;
+  final bool wide, selected;
+  final VoidCallback? onSelect;
 
   Future<void> _toggle(BuildContext context, WidgetRef ref, SavedForwardManager manager) async {
     try {
@@ -113,8 +116,79 @@ class SavedForwardTile extends ConsumerWidget {
               plan.connectionId;
     final address = handle?.address ?? '${plan.localAddress}:${plan.localPort == 0 ? '0' : plan.localPort}';
     final product = plan.kind == SavedForwardKind.docker ? 'Docker' : 'Kubernetes';
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (handle != null)
+          GlassIconButton(
+            icon: Icons.content_copy_rounded,
+            tooltip: l.dockerForwardCopyAddress,
+            style: GlassIconButtonStyle.plain,
+            onPressed: () => ref.read(secureClipboardProvider).copyPlain(handle.address),
+          ),
+        GlassIconButton(
+          key: ValueKey('saved-forward-toggle-${plan.id}'),
+          icon: handle == null ? Icons.play_arrow_rounded : Icons.stop_rounded,
+          tooltip: handle == null ? l.tunnelsStartSaved : l.tunnelsStopSaved,
+          onPressed: busy ? null : () => _toggle(context, ref, manager),
+        ),
+        GlassIconButton(
+          key: ValueKey('saved-forward-remove-${plan.id}'),
+          icon: Icons.delete_outline_rounded,
+          tooltip: l.commonDelete,
+          style: GlassIconButtonStyle.plain,
+          onPressed: busy
+              ? null
+              : () async {
+                  final ok = await showConfirmDialog(
+                    context,
+                    title: l.tunnelsDeleteTitle(plan.name),
+                    message: l.tunnelsRemoveSavedMessage,
+                    confirmLabel: l.commonDelete,
+                    destructive: true,
+                  );
+                  if (ok && context.mounted && manager.valid) {
+                    await runWithFeedback(context, () => manager.remove(plan));
+                  }
+                },
+        ),
+      ],
+    );
+    final state = busy
+        ? l.tunnelsStatusStarting
+        : handle == null
+        ? l.tunnelsStatusStopped
+        : l.dockerForwardRunning;
+    if (wide) {
+      return Material(
+        color: selected ? GlassTokens.of(context).sidebarSelection : Colors.transparent,
+        child: InkWell(
+          key: ValueKey('saved-forward-${plan.id}'),
+          onTap: onSelect,
+          child: WorkspaceColumns(
+            flex: const [3, 2, 4, 3],
+            actionWidth: 152,
+            actions: actions,
+            cells: [
+              Row(
+                children: [
+                  Icon(plan.kind == SavedForwardKind.docker ? Icons.view_in_ar_outlined : Icons.hub_outlined, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(plan.name)),
+                ],
+              ),
+              Text('$product · $host'),
+              Text('$address → ${plan.remotePort}/tcp', style: GlassTokens.of(context).typography.mono),
+              Text(state),
+            ],
+          ),
+        ),
+      );
+    }
     return ListTile(
       key: ValueKey('saved-forward-${plan.id}'),
+      selected: selected,
+      onTap: onSelect,
       leading: Icon(plan.kind == SavedForwardKind.docker ? Icons.view_in_ar_outlined : Icons.hub_outlined),
       title: Text('${plan.name}:${plan.remotePort}', maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
@@ -125,44 +199,7 @@ class SavedForwardTile extends ConsumerWidget {
             ? l.tunnelsStatusStopped
             : l.dockerForwardRunning}',
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (handle != null)
-            GlassIconButton(
-              icon: Icons.content_copy_rounded,
-              tooltip: l.dockerForwardCopyAddress,
-              style: GlassIconButtonStyle.plain,
-              onPressed: () => ref.read(secureClipboardProvider).copyPlain(handle.address),
-            ),
-          GlassIconButton(
-            key: ValueKey('saved-forward-toggle-${plan.id}'),
-            icon: handle == null ? Icons.play_arrow_rounded : Icons.stop_rounded,
-            tooltip: handle == null ? l.tunnelsStartSaved : l.tunnelsStopSaved,
-            onPressed: busy ? null : () => _toggle(context, ref, manager),
-          ),
-          GlassIconButton(
-            key: ValueKey('saved-forward-remove-${plan.id}'),
-            icon: Icons.delete_outline_rounded,
-            tooltip: l.commonDelete,
-            style: GlassIconButtonStyle.plain,
-            onPressed: busy
-                ? null
-                : () async {
-                    final ok = await showConfirmDialog(
-                      context,
-                      title: l.tunnelsDeleteTitle(plan.name),
-                      message: l.tunnelsRemoveSavedMessage,
-                      confirmLabel: l.commonDelete,
-                      destructive: true,
-                    );
-                    if (ok && context.mounted && manager.valid) {
-                      await runWithFeedback(context, () => manager.remove(plan));
-                    }
-                  },
-          ),
-        ],
-      ),
+      trailing: actions,
     );
   }
 }

@@ -3,16 +3,24 @@ import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/shell.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/l10n/labels.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/sync_service.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/workspace_sections.dart';
+import 'package:consolecrypt/devices/devices_screen.dart';
 import 'package:consolecrypt/sync/enable_sync_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
+
+final _syncServerInfo = FutureProvider.autoDispose.family<ServerInfo, Uri>(
+  (ref, url) => ref.watch(authServiceProvider).probeServer(url),
+);
 
 class SyncScreen extends ConsumerWidget {
   const SyncScreen({super.key});
@@ -72,9 +80,19 @@ class SyncScreen extends ConsumerWidget {
       );
     }
 
+    final devices = ref.watch(devicesProvider);
+    final current = devices.value?.devices.where((d) => d.isCurrent).firstOrNull;
+    final vault = ref.watch(vaultStatusProvider).value;
+    final server = profile?.serverUrl;
+    final info = server == null || status.isOffline ? null : ref.watch(_syncServerInfo(server)).value;
+
     return PageScaffold(
       title: l10n.syncScreenTitle,
-      subtitle: profile?.serverUrl == null ? null : l10n.syncScreenServer('${profile!.serverUrl}'),
+      subtitle: [
+        l10n.devicesThisDevice,
+        if (server != null) server.authority,
+        if (profile != null) profile.name,
+      ].join('  →  '),
       scrollable: true,
       actions: [
         GlassButton.prominent(
@@ -88,132 +106,205 @@ class SyncScreen extends ConsumerWidget {
           busyLabel: l10n.syncStateSyncing,
         ),
       ],
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SectionCard(
-            title: label,
-            icon: icon,
-            child: Column(
-              children: [
-                LabeledValue(
-                  label: l10n.syncScreenState,
-                  value: Row(
-                    children: [
-                      Icon(icon, color: color, size: 18),
-                      const SizedBox(width: GlassSpacing.s6),
-                      Text(switch (status.state) {
-                        SyncState.idle => l10n.syncScreenStateIdle,
-                        SyncState.syncing => l10n.syncScreenStateSyncing,
-                        SyncState.offline => l10n.syncScreenStateOffline,
-                        SyncState.error => l10n.syncScreenStateError,
-                        SyncState.throttled => l10n.syncScreenStateThrottled,
-                        SyncState.paused => l10n.syncScreenStatePaused,
-                        SyncState.localOnly => l10n.syncStateLocalOnly,
-                      }),
-                    ],
-                  ),
+      body: WorkspaceColumnsLayout(
+        side: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
+          children: [
+            WorkspaceSection(
+              title: l10n.devicesTitle,
+              trailing: GlassIconButton(
+                tooltip: l10n.devicesTitle,
+                icon: Icons.arrow_forward_rounded,
+                onPressed: () => context.go(AppRoutes.devices),
+              ),
+              child: AsyncValueView(
+                value: devices,
+                data: (v) => Column(
+                  children: [
+                    for (final d in v.devices.where((d) => !d.isRevoked))
+                      ListTile(
+                        dense: true,
+                        leading: Icon(platformIcon(d.platform)),
+                        title: Text(d.name),
+                        subtitle: Text(
+                          [
+                            d.platform.localized(l10n),
+                            if (d.isCurrent)
+                              l10n.devicesThisDevice
+                            else if (d.lastSeenAt != null)
+                              formatRelative(l10n, d.lastSeenAt!),
+                          ].join(' · '),
+                        ),
+                        onTap: () => context.go(AppRoutes.devices),
+                      ),
+                  ],
                 ),
-                if (profile != null)
-                  LabeledValue(
-                    key: const ValueKey('sync-auth-row'),
-                    label: l10n.settingsAuthLabel,
-                    value: AuthorizationSummary(profile: profile, showHelp: false),
-                  ),
-                LabeledValue(
-                  label: l10n.syncScreenLastSync,
-                  value: Text(
-                    status.lastSyncAt == null
-                        ? l10n.commonNever
-                        : '${formatDateTime(l10n, status.lastSyncAt!)} (${formatRelative(l10n, status.lastSyncAt!)})',
-                  ),
-                ),
-                LabeledValue(
-                  label: l10n.syncScreenPendingChanges,
-                  value: Text('${status.pendingChanges}', key: const ValueKey('pending-changes')),
-                ),
-                if (status.lastServerSequence != null)
-                  LabeledValue(label: l10n.syncScreenServerSequence, value: Text('${status.lastServerSequence}')),
-                if (status.nextRetryAt != null)
-                  LabeledValue(
-                    label: l10n.syncScreenNextRetry,
-                    value: Text(formatRemaining(l10n, status.nextRetryAt!)),
-                  ),
-              ],
+              ),
             ),
-          ),
-          if (status.isOffline) ...[
-            const SizedBox(height: GlassSpacing.s16),
-            InfoBanner(tone: BannerTone.warning, title: l10n.syncStateOffline, message: l10n.syncScreenOfflineMessage),
-          ],
-          if (status.state == SyncState.throttled) ...[
-            const SizedBox(height: GlassSpacing.s16),
-            InfoBanner(
-              key: const ValueKey('sync-throttled'),
-              tone: BannerTone.info,
-              title: label,
-              message: l10n.syncScreenThrottledBody,
+            WorkspaceSection(
+              title: l10n.uiVault,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    if (profile != null) LabeledValue(label: l10n.uiProfile, value: Text(profile.name)),
+                    if (profile?.accountEmail case final email?)
+                      LabeledValue(label: l10n.settingsAccountLabel, value: Text(email)),
+                    if (info != null) LabeledValue(label: l10n.uiProtocol, value: Text(info.protocolVersion)),
+                    if (profile != null)
+                      LabeledValue(
+                        key: const ValueKey('sync-auth-row'),
+                        label: l10n.settingsAuthLabel,
+                        value: AuthorizationSummary(profile: profile, showHelp: false),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ],
-          if (ref.watch(vaultDeletionProvider).value case final DateTime at) ...[
-            const SizedBox(height: GlassSpacing.s16),
-            _PendingDeletionCard(at: at),
-          ],
-          if (status.failedChanges > 0) ...[
-            const SizedBox(height: GlassSpacing.s16),
-            _RejectedChangesCard(status: status),
-          ],
-          if (status.issues.isNotEmpty) ...[
-            const SizedBox(height: GlassSpacing.s16),
+        ),
+        main: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             SectionCard(
-              title: l10n.syncScreenProblems,
-              icon: Icons.report_problem_rounded,
+              title: label,
+              icon: icon,
               child: Column(
                 children: [
-                  for (final issue in status.issues)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.error_rounded, color: tokens.palette.danger),
-                      // The issue text is an English diagnostic: shown as secondary detail only.
-                      title: Text(issue.retryable ? l10n.syncScreenIssueRetryable : l10n.syncScreenIssue),
-                      subtitle: Text('${formatDateTime(l10n, issue.at)} · ${issue.message}'),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l10n.syncScreenLastSync, style: tokens.typography.caption),
+                        Tooltip(
+                          message: status.lastSyncAt == null
+                              ? l10n.commonNever
+                              : formatDateTime(l10n, status.lastSyncAt!),
+                          child: Text(
+                            status.lastSyncAt == null
+                                ? l10n.commonNever
+                                : DateFormat.Hms(l10n.localeName).format(status.lastSyncAt!.toLocal()),
+                            style: tokens.typography.title1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  LabeledValue(
+                    label: l10n.syncScreenState,
+                    value: Row(
+                      children: [
+                        Icon(icon, color: color, size: 18),
+                        const SizedBox(width: GlassSpacing.s6),
+                        Text(switch (status.state) {
+                          SyncState.idle => l10n.syncScreenStateIdle,
+                          SyncState.syncing => l10n.syncScreenStateSyncing,
+                          SyncState.offline => l10n.syncScreenStateOffline,
+                          SyncState.error => l10n.syncScreenStateError,
+                          SyncState.throttled => l10n.syncScreenStateThrottled,
+                          SyncState.paused => l10n.syncScreenStatePaused,
+                          SyncState.localOnly => l10n.syncStateLocalOnly,
+                        }),
+                      ],
+                    ),
+                  ),
+                  if (server != null) LabeledValue(label: l10n.settingsServerLabel, value: Text(server.authority)),
+                  if (current != null) LabeledValue(label: l10n.uiDevice, value: Text(current.name)),
+                  if (vault != null)
+                    LabeledValue(label: l10n.uiVault, value: Text(vault.isUnlocked ? l10n.uiOpen : l10n.uiLocked)),
+                  LabeledValue(
+                    label: l10n.syncScreenPendingChanges,
+                    value: Text('${status.pendingChanges}', key: const ValueKey('pending-changes')),
+                  ),
+                  if (status.lastServerSequence != null)
+                    LabeledValue(label: l10n.syncScreenServerSequence, value: Text('${status.lastServerSequence}')),
+                  if (status.nextRetryAt != null)
+                    LabeledValue(
+                      label: l10n.syncScreenNextRetry,
+                      value: Text(formatRemaining(l10n, status.nextRetryAt!)),
                     ),
                 ],
               ),
             ),
-          ],
-          const SizedBox(height: GlassSpacing.s16),
-          SectionCard(
-            title: l10n.syncScreenDisconnectTitle,
-            icon: Icons.link_off_rounded,
-            child: Row(
-              children: [
-                Expanded(child: Text(l10n.syncScreenDisconnectBody)),
-                const SizedBox(width: GlassSpacing.s12),
-                GlassButton(
-                  key: const ValueKey('disconnect-sync'),
-                  style: GlassButtonStyle.destructiveQuiet,
-                  onPressed: () => showDisconnectDialog(context, ref),
-                  label: l10n.syncScreenDisconnect,
+            if (status.isOffline) ...[
+              const SizedBox(height: GlassSpacing.s16),
+              InfoBanner(
+                tone: BannerTone.warning,
+                title: l10n.syncStateOffline,
+                message: l10n.syncScreenOfflineMessage,
+              ),
+            ],
+            if (status.state == SyncState.throttled) ...[
+              const SizedBox(height: GlassSpacing.s16),
+              InfoBanner(
+                key: const ValueKey('sync-throttled'),
+                tone: BannerTone.info,
+                title: label,
+                message: l10n.syncScreenThrottledBody,
+              ),
+            ],
+            if (ref.watch(vaultDeletionProvider).value case final DateTime at) ...[
+              const SizedBox(height: GlassSpacing.s16),
+              _PendingDeletionCard(at: at),
+            ],
+            if (status.failedChanges > 0) ...[
+              const SizedBox(height: GlassSpacing.s16),
+              _RejectedChangesCard(status: status),
+            ],
+            if (status.issues.isNotEmpty) ...[
+              const SizedBox(height: GlassSpacing.s16),
+              SectionCard(
+                title: l10n.syncScreenProblems,
+                icon: Icons.report_problem_rounded,
+                child: Column(
+                  children: [
+                    for (final issue in status.issues)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.error_rounded, color: tokens.palette.danger),
+                        // The issue text is an English diagnostic: shown as secondary detail only.
+                        title: Text(issue.retryable ? l10n.syncScreenIssueRetryable : l10n.syncScreenIssue),
+                        subtitle: Text('${formatDateTime(l10n, issue.at)} · ${issue.message}'),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          if (dev != null) ...[
+              ),
+            ],
             const SizedBox(height: GlassSpacing.s16),
             SectionCard(
-              title: l10n.syncScreenDeveloper,
-              icon: Icons.developer_mode_rounded,
-              child: SwitchListTile.adaptive(
-                key: const ValueKey('simulate-offline'),
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.syncScreenSimulateOutage),
-                value: dev.simulatedOffline,
-                onChanged: dev.setSimulatedOffline,
+              title: l10n.syncScreenDisconnectTitle,
+              icon: Icons.link_off_rounded,
+              child: Row(
+                children: [
+                  Expanded(child: Text(l10n.syncScreenDisconnectBody)),
+                  const SizedBox(width: GlassSpacing.s12),
+                  GlassButton(
+                    key: const ValueKey('disconnect-sync'),
+                    style: GlassButtonStyle.destructiveQuiet,
+                    onPressed: () => showDisconnectDialog(context, ref),
+                    label: l10n.syncScreenDisconnect,
+                  ),
+                ],
               ),
             ),
+            if (dev != null) ...[
+              const SizedBox(height: GlassSpacing.s16),
+              SectionCard(
+                title: l10n.syncScreenDeveloper,
+                icon: Icons.developer_mode_rounded,
+                child: SwitchListTile.adaptive(
+                  key: const ValueKey('simulate-offline'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.syncScreenSimulateOutage),
+                  value: dev.simulatedOffline,
+                  onChanged: dev.setSimulatedOffline,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

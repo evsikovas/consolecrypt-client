@@ -20,6 +20,7 @@ import 'package:consolecrypt/core/widgets/risk_badge.dart';
 import 'package:consolecrypt/keepass/external_vault_store.dart';
 import 'package:consolecrypt/keepass/kdbx_dialog.dart';
 import 'package:consolecrypt/keepass/password_manager.dart';
+import 'package:consolecrypt/keepass/secret_field_picker.dart';
 import 'package:consolecrypt/keepass/vault_connection_dialog.dart';
 import 'package:consolecrypt/kubernetes/kube_navigation.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
@@ -1056,12 +1057,11 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final tokens = GlassTokens.of(context);
     final l10n = context.l10n;
     if (_vaultPickerId case final id?) {
-      return GlassDialog(
+      return _PasswordPaletteSurface(
         key: const ValueKey('command-palette'),
-        title: l10n.commandPalette,
-        width: 660,
-        content: SizedBox(
-          height: MediaQuery.sizeOf(context).height * .6,
+        onClose: _close,
+        content: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .6),
           child: ExternalVaultWorkspace(
             key: ValueKey(id),
             id: id,
@@ -1069,11 +1069,40 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
             onClose: () => setState(() => _vaultPickerId = null),
           ),
         ),
-        leadingAction: AppPlatform.isWindows ? _snipButton(l10n) : null,
-        primaryAction: GlassButton(label: l10n.commonClose, onPressed: _close),
+        snip: AppPlatform.isWindows ? _snipButton(l10n) : null,
       );
     }
     final items = _items();
+    if (_passwordCard case final card?) {
+      final entry = card.session.rows('entries').firstWhere((e) => e['id'] == card.entry);
+      return _PasswordPaletteSurface(
+        key: const ValueKey('command-palette'),
+        onClose: _close,
+        snip: AppPlatform.isWindows ? _snipButton(l10n) : null,
+        content: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .52),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.keepassChooseField, style: tokens.typography.caption),
+              Flexible(
+                child: SecretFieldPicker(
+                  path: [card.session.source.name, entry['title']].join('  →  '),
+                  engine: 'KDBX',
+                  fields: [
+                    for (final item in items)
+                      if (item.key != const ValueKey('palette-password-back-entries'))
+                        (key: item.key, label: item.title, copy: item.enabled ? item.onSelect : null),
+                  ],
+                  onBack: _backPasswordEntries,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final showAi = _generating || _command != null || _aiError != null || _streamed.isNotEmpty;
     final selected = _selected.clamp(0, items.isEmpty ? 0 : items.length - 1);
     // Rows grouped under caption headers, in item order.
@@ -1256,6 +1285,53 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
             if (_report != null) Text(describeSanitization(l10n, _report!), style: secondary),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _PasswordPaletteSurface extends StatelessWidget {
+  const _PasswordPaletteSurface({super.key, required this.content, required this.onClose, this.snip});
+  final Widget content;
+  final VoidCallback onClose;
+  final Widget? snip;
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n, tokens = GlassTokens.of(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 660),
+      child: SecureSurface(
+        padding: EdgeInsets.zero,
+        opaque: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    const Icon(Icons.search, size: 17),
+                    Expanded(child: Text(l.commandPalette, style: tokens.typography.bodyEmph)),
+                    ?snip,
+                    const Text('Esc'),
+                    GlassIconButton(
+                      icon: Icons.close,
+                      tooltip: l.commonClose,
+                      style: GlassIconButtonStyle.plain,
+                      onPressed: onClose,
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Flexible(child: content),
+            ],
+          ),
+        ),
       ),
     );
   }

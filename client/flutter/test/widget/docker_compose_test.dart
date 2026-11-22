@@ -21,6 +21,22 @@ class _Docker extends MockDockerService {
   DockerComposeSaveResult? nextResult;
   Exception? projectError;
 
+  final removed = <DockerRemovalSelection>[];
+  String? failName;
+
+  @override
+  Future<DockerRemovalResult> removeWithCleanup(
+    String sessionId,
+    String containerId,
+    DockerRemovalSelection selection,
+  ) async {
+    if (selection.confirmName == failName) {
+      return const DockerRemovalResult(containerRemoved: false, containerStopped: false, error: 'in_use');
+    }
+    removed.add(selection);
+    return super.removeWithCleanup(sessionId, containerId, selection);
+  }
+
   @override
   Future<DockerComposeProject> composeProject(String sessionId, String project) {
     final error = projectError;
@@ -144,6 +160,61 @@ void main() {
 
     // Standalone containers have no project menu.
     expect(find.byKey(const ValueKey('docker-compose-menu-button-')), findsNothing);
+  });
+
+  testWidgets('removing a filtered Compose project confirms all its members and preserves volumes by default', (
+    tester,
+  ) async {
+    final docker = await _pump(tester);
+    await enterKey(tester, 'docker-filter-input', 'shop-api');
+    Future<void> review() async {
+      await tapKey(tester, 'docker-compose-menu-button-shop');
+      await tapKey(tester, 'docker-compose-menu-removeProject');
+    }
+
+    await review();
+    final dialog = find.byType(GlassDialog);
+    expect(find.descendant(of: dialog, matching: find.text('shop-postgres-1')), findsOneWidget);
+    expect(find.descendant(of: dialog, matching: find.text('4 containers are affected.')), findsOneWidget);
+    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('docker-compose-remove-volumes'))).value, isFalse);
+    await tapKey(tester, 'confirm-cancel');
+    expect(docker.actions, isEmpty);
+    await review();
+    await tapKey(tester, 'confirm-ok');
+    expect(docker.removed.map((s) => s.confirmName).toSet(), {
+      'shop-web-1',
+      'shop-api-1',
+      'shop-postgres-1',
+      'shop-redis-1',
+    });
+    expect(docker.removed.every((s) => s.volumes.isEmpty), isTrue);
+    expect(docker.removed.expand((s) => s.networks), isNotEmpty);
+    await enterKey(tester, 'docker-filter-input', '');
+    expect(find.byKey(const ValueKey('docker-group-title-shop')), findsNothing);
+    expect(find.byKey(const ValueKey('docker-group-title-proxy')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Compose cleanup reports partial failure, retries remaining members and honors volume opt-in', (
+    tester,
+  ) async {
+    final docker = await _pump(tester);
+    docker.failName = 'shop-web-1';
+    await tapKey(tester, 'docker-compose-menu-button-shop');
+    await tapKey(tester, 'docker-compose-menu-removeProject');
+    await tapKey(tester, 'docker-compose-remove-volumes');
+    await tapKey(tester, 'confirm-ok');
+    expect(find.text('Containers removed from shop: 3 of 4.'), findsOneWidget);
+    expect(docker.removed.expand((s) => s.volumes), isNotEmpty);
+    await tester.tap(find.text('Close'));
+    await settle(tester);
+    docker.failName = null;
+    await tapKey(tester, 'docker-compose-menu-button-shop');
+    await tapKey(tester, 'docker-compose-menu-removeProject');
+    expect(find.text('1 container is affected.'), findsOneWidget);
+    await tapKey(tester, 'confirm-ok');
+    expect(docker.removed, hasLength(4));
+    expect(find.byKey(const ValueKey('docker-group-title-shop')), findsNothing);
   });
 
   testWidgets('view YAML shows files as tabs with line numbers and file errors', (tester) async {

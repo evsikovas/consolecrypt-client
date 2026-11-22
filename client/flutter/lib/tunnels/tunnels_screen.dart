@@ -12,6 +12,7 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
+import 'package:consolecrypt/core/widgets/workspace_sections.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
 import 'package:consolecrypt/tunnels/saved_forward_tile.dart';
 import 'package:consolecrypt/tunnels/saved_forwards.dart';
@@ -26,6 +27,7 @@ class TunnelsScreen extends ConsumerStatefulWidget {
 }
 
 class _TunnelsScreenState extends ConsumerState<TunnelsScreen> {
+  String? _selection;
   Timer? _timer;
   bool _refreshing = false;
   @override
@@ -58,12 +60,13 @@ class _TunnelsScreenState extends ConsumerState<TunnelsScreen> {
   Widget build(BuildContext context) {
     final tunnelsAsync = ref.watch(tunnelsProvider);
     final saved = ref.watch(savedForwardsProvider);
+    ref.watch(savedForwardChangesProvider);
     final runtime = ref.watch(tunnelRuntimeProvider).value ?? const {};
     final hosts = ref.watch(hostByIdProvider);
     final l10n = context.l10n;
     return PageScaffold(
       title: l10n.tunnelsTitle,
-      subtitle: l10n.tunnelsSubtitle,
+      subtitle: l10n.uiLocalForwards,
       actions: [
         GlassButton(
           key: const ValueKey('add-tunnel'),
@@ -76,31 +79,121 @@ class _TunnelsScreenState extends ConsumerState<TunnelsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (kubernetesEnabled) const KubeForwardsPanel(),
-          if (saved.isNotEmpty)
-            Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(l10n.tunnelsSavedForwardHelp)),
           Expanded(
             child: AsyncValueView(
               value: tunnelsAsync,
-              data: (tunnels) => tunnels.isEmpty && saved.isEmpty
-                  ? EmptyState(
-                      icon: Icons.swap_horiz_rounded,
-                      title: l10n.tunnelsEmptyTitle,
-                      message: l10n.tunnelsEmptyMessage,
-                    )
-                  : ContentList(
-                      itemCount: saved.length + tunnels.length,
-                      itemBuilder: (context, i) {
-                        if (i < saved.length) return SavedForwardTile(saved[i]);
-                        final t = tunnels[i - saved.length];
-                        final rt = runtime[t.id] ?? TunnelRuntime.stopped;
-                        return _TunnelTile(
-                          tunnel: t,
-                          runtime: rt,
-                          hostName: hosts[t.hostId]?.name ?? l10n.tunnelsDeletedHost,
-                          onEdit: () => _edit(context, tunnel: t),
-                        );
-                      },
-                    ),
+              data: (tunnels) {
+                if (tunnels.isEmpty && saved.isEmpty) {
+                  return EmptyState(
+                    icon: Icons.swap_horiz_rounded,
+                    title: l10n.tunnelsEmptyTitle,
+                    message: l10n.tunnelsEmptyMessage,
+                  );
+                }
+                final selectedSaved = saved.where((f) => 'forward/${f.id}' == _selection).firstOrNull;
+                final selectedSsh = tunnels.where((t) => 'ssh/${t.id}' == _selection).firstOrNull;
+                return LayoutBuilder(
+                  builder: (context, bounds) {
+                    final wide = bounds.maxWidth >= 740 * MediaQuery.textScalerOf(context).scale(12) / 12;
+                    Widget header(String source) => WorkspaceColumns(
+                      actionWidth: 152,
+                      flex: const [3, 2, 4, 3],
+                      cells: [Text(l10n.uiTunnel), Text(source), Text(l10n.uiForward), Text(l10n.syncScreenState)],
+                    );
+                    return ListView(
+                      children: [
+                        WorkspaceSection(
+                          title: l10n.uiSavedForwards,
+                          trailing: Text(saved.length.toString()),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (wide) header(l10n.kubeGitOpsSource),
+                              for (final f in saved) ...[
+                                const Divider(height: 1),
+                                SavedForwardTile(
+                                  f,
+                                  wide: wide,
+                                  selected: f == selectedSaved,
+                                  onSelect: () => setState(() => _selection = 'forward/${f.id}'),
+                                ),
+                              ],
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Text(
+                                  l10n.tunnelsSavedForwardHelp,
+                                  style: GlassTokens.of(context).typography.caption,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        WorkspaceSection(
+                          title: l10n.uiSshTunnels,
+                          trailing: Text(tunnels.length.toString()),
+                          child: Column(
+                            children: [
+                              if (wide) header(l10n.uiHost),
+                              for (final t in tunnels) ...[
+                                const Divider(height: 1),
+                                _TunnelTile(
+                                  tunnel: t,
+                                  runtime: runtime[t.id] ?? TunnelRuntime.stopped,
+                                  hostName: hosts[t.hostId]?.name ?? l10n.tunnelsDeletedHost,
+                                  wide: wide,
+                                  selected: t == selectedSsh,
+                                  onSelect: () => setState(() => _selection = 'ssh/${t.id}'),
+                                  onEdit: () => _edit(context, tunnel: t),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (selectedSaved != null || selectedSsh != null) ...[
+                          const SizedBox(height: 12),
+                          WorkspaceSection(
+                            title: selectedSaved?.name ?? selectedSsh!.name,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                children: [
+                                  if (selectedSaved case final f?) ...[
+                                    LabeledValue(
+                                      label: l10n.tunnelsBindAddressLocal,
+                                      value: SelectableText(
+                                        ref.watch(savedForwardManagerProvider).handles[f.id]?.address ??
+                                            '${f.localAddress}:${f.localPort}',
+                                      ),
+                                    ),
+                                    LabeledValue(
+                                      label: l10n.uiForward,
+                                      value: SelectableText('${f.name}:${f.remotePort}/tcp'),
+                                    ),
+                                    LabeledValue(
+                                      label: l10n.kubeForwardNetwork,
+                                      value: Text(f.network ? l10n.wslcEnabled : l10n.wslcDisabled),
+                                    ),
+                                  ] else if (selectedSsh case final t?) ...[
+                                    LabeledValue(
+                                      label: l10n.uiHost,
+                                      value: Text(hosts[t.hostId]?.name ?? l10n.tunnelsDeletedHost),
+                                    ),
+                                    LabeledValue(
+                                      label: l10n.uiForward,
+                                      value: SelectableText(_TunnelTile._summary(l10n, t)),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
@@ -110,8 +203,18 @@ class _TunnelsScreenState extends ConsumerState<TunnelsScreen> {
 }
 
 class _TunnelTile extends ConsumerWidget {
-  const _TunnelTile({required this.tunnel, required this.runtime, required this.hostName, required this.onEdit});
+  const _TunnelTile({
+    required this.tunnel,
+    required this.runtime,
+    required this.hostName,
+    required this.onEdit,
+    required this.wide,
+    required this.selected,
+    required this.onSelect,
+  });
 
+  final bool wide, selected;
+  final VoidCallback onSelect;
   final Tunnel tunnel;
   final TunnelRuntime runtime;
   final String hostName;
@@ -149,6 +252,64 @@ class _TunnelTile extends ConsumerWidget {
       TunnelRunState.stopped => (p.tertiary, l10n.tunnelsStatusStopped),
     };
     final running = runtime.state == TunnelRunState.running || runtime.state == TunnelRunState.starting;
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: GlassSpacing.toolbarItemGap,
+      children: [
+        GlassIconButton(
+          tooltip: l10n.commonEdit,
+          icon: Icons.edit_outlined,
+          style: GlassIconButtonStyle.plain,
+          onPressed: onEdit,
+        ),
+        Switch.adaptive(
+          key: ValueKey('tunnel-switch-${tunnel.name}'),
+          value: running,
+          onChanged: (v) => runWithFeedback(context, () => v ? service.start(tunnel.id) : service.stop(tunnel.id)),
+        ),
+        GlassIconButton(
+          tooltip: l10n.commonDelete,
+          icon: Icons.delete_rounded,
+          style: GlassIconButtonStyle.plain,
+          onPressed: () async {
+            final ok = await showConfirmDialog(
+              context,
+              title: l10n.tunnelsDeleteTitle(tunnel.name),
+              message: l10n.tunnelsDeleteMessage,
+              confirmLabel: l10n.commonDelete,
+              destructive: true,
+            );
+            if (ok && context.mounted) await runWithFeedback(context, () => service.deleteTunnel(tunnel.id));
+          },
+        ),
+      ],
+    );
+    if (wide) {
+      return Material(
+        color: selected ? tokens.sidebarSelection : Colors.transparent,
+        child: InkWell(
+          key: ValueKey('tunnel-${tunnel.name}'),
+          onTap: onSelect,
+          child: WorkspaceColumns(
+            flex: const [3, 2, 4, 3],
+            actionWidth: 152,
+            actions: actions,
+            cells: [
+              Row(
+                children: [
+                  Icon(Icons.terminal, size: 16, color: tunnel.bindsPublicly ? p.danger : null),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(tunnel.name)),
+                ],
+              ),
+              Text(hostName),
+              Text(_summary(l10n, tunnel), style: t.mono),
+              Text(label, style: t.callout.copyWith(color: color)),
+            ],
+          ),
+        ),
+      );
+    }
     return ListTile(
       key: ValueKey('tunnel-${tunnel.name}'),
       leading: Icon(switch (tunnel.kind) {
@@ -191,33 +352,9 @@ class _TunnelTile extends ConsumerWidget {
           ),
         ],
       ),
-      onTap: onEdit,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: GlassSpacing.toolbarItemGap,
-        children: [
-          Switch.adaptive(
-            key: ValueKey('tunnel-switch-${tunnel.name}'),
-            value: running,
-            onChanged: (v) => runWithFeedback(context, () => v ? service.start(tunnel.id) : service.stop(tunnel.id)),
-          ),
-          GlassIconButton(
-            tooltip: l10n.commonDelete,
-            icon: Icons.delete_rounded,
-            style: GlassIconButtonStyle.plain,
-            onPressed: () async {
-              final ok = await showConfirmDialog(
-                context,
-                title: l10n.tunnelsDeleteTitle(tunnel.name),
-                message: l10n.tunnelsDeleteMessage,
-                confirmLabel: l10n.commonDelete,
-                destructive: true,
-              );
-              if (ok && context.mounted) await runWithFeedback(context, () => service.deleteTunnel(tunnel.id));
-            },
-          ),
-        ],
-      ),
+      selected: selected,
+      onTap: onSelect,
+      trailing: actions,
     );
   }
 }

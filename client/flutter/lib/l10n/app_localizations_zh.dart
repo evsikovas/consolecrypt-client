@@ -10,6 +10,66 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get uiOtherDevices => '其他设备';
+
+  @override
+  String get uiTrustedDevices => '受信任设备';
+
+  @override
+  String get uiPlatform => '平台';
+
+  @override
+  String get uiLastActive => '最近活动';
+
+  @override
+  String get uiTrust => '信任';
+
+  @override
+  String get uiDevice => '设备';
+
+  @override
+  String get uiPendingRequests => '待确认请求';
+
+  @override
+  String get uiVault => '保险库';
+
+  @override
+  String get uiProfile => '配置文件';
+
+  @override
+  String get uiProtocol => '服务器协议';
+
+  @override
+  String get uiOpen => '已解锁';
+
+  @override
+  String get uiLocked => '已锁定';
+
+  @override
+  String get uiForward => '转发';
+
+  @override
+  String get uiTunnel => '隧道';
+
+  @override
+  String get uiHost => '主机';
+
+  @override
+  String get uiSshTunnels => 'SSH 隧道';
+
+  @override
+  String get uiSavedForwards => 'Docker 和 Kubernetes';
+
+  @override
+  String get uiLocalForwards => '本机端口转发';
+
+  @override
+  String get uiFiveMinutes => '最近 5 分钟';
+
+  @override
+  String get uiFieldNavigation => '选择字段';
+
+  @override
   String get dockerKubeRegistryDenied => '镜像仓库拒绝访问。请检查仓库名称，并确认镜像已发布到该仓库。对于私有仓库，请检查集群凭据或此命名空间中的 imagePullSecret。';
 
   @override
@@ -187,7 +247,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get externalVaultSyncLoginHelp => '同步后，你可以在任何已解锁个人保管库的设备上使用此密码或令牌。';
 
   @override
-  String get externalVaultUseSynced => '使用已同步的凭据登录';
+  String get externalVaultSyncedHint => '留空即可使用已同步的登录凭据。';
 
   @override
   String get externalVaultForgetSynced => '移除已同步的登录凭据';
@@ -9745,6 +9805,25 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String dockerComposeRestartAllTitle(String project) {
     return '重开所有$project的容器?';
+  }
+
+  @override
+  String get dockerComposeRemove => '移除 Compose 项目…';
+
+  @override
+  String dockerComposeRemoveTitle(String project) {
+    return '移除项目 $project？';
+  }
+
+  @override
+  String get dockerComposeRemoveHelp => '将停止列表中正在运行的容器，并移除其不再使用的项目网络。主机上的 Compose 文件和绑定挂载会保留。';
+
+  @override
+  String get dockerComposeRemoveVolumes => '同时移除这些容器不再使用的卷';
+
+  @override
+  String dockerComposeRemoveSummary(String project, int removed, int total) {
+    return '已移除项目 $project 的容器：$removed/$total。';
   }
 
   @override

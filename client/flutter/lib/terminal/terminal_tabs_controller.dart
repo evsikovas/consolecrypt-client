@@ -269,9 +269,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   /// A tab for an opened [handle]: terminal, output and events bound.
   TerminalTab _adopt(TerminalTarget target, TerminalSessionHandle handle) {
     final service = ref.read(terminalServiceProvider);
-    final scrollback = ref.read(terminalOnlyModeProvider)
-        ? const LocalSettings().terminalScrollback
-        : ref.read(settingsServiceProvider).currentLocal.terminalScrollback;
+    final scrollback = ref.read(settingsServiceProvider).currentLocal.terminalScrollback;
     final terminal = Terminal(maxLines: scrollback, platform: _platform);
     final tab = TerminalTab(sessionId: handle.id, target: target, terminal: terminal, controller: TerminalController());
     _bindTerminal(tab, service);

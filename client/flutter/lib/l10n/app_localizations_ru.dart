@@ -10,6 +10,66 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get uiOtherDevices => 'Другие устройства';
+
+  @override
+  String get uiTrustedDevices => 'Доверенные устройства';
+
+  @override
+  String get uiPlatform => 'Платформа';
+
+  @override
+  String get uiLastActive => 'Последняя активность';
+
+  @override
+  String get uiTrust => 'Доверие';
+
+  @override
+  String get uiDevice => 'Устройство';
+
+  @override
+  String get uiPendingRequests => 'Ожидают подтверждения';
+
+  @override
+  String get uiVault => 'Хранилище';
+
+  @override
+  String get uiProfile => 'Профиль';
+
+  @override
+  String get uiProtocol => 'Серверный протокол';
+
+  @override
+  String get uiOpen => 'Открыто';
+
+  @override
+  String get uiLocked => 'Заблокировано';
+
+  @override
+  String get uiForward => 'Проброс';
+
+  @override
+  String get uiTunnel => 'Туннель';
+
+  @override
+  String get uiHost => 'Хост';
+
+  @override
+  String get uiSshTunnels => 'SSH-туннели';
+
+  @override
+  String get uiSavedForwards => 'Docker и Kubernetes';
+
+  @override
+  String get uiLocalForwards => 'Пробросы портов на этом устройстве';
+
+  @override
+  String get uiFiveMinutes => 'Последние 5 мин';
+
+  @override
+  String get uiFieldNavigation => 'Выбрать поле';
+
+  @override
   String get dockerKubeRegistryDenied =>
       'Реестр отказал в доступе. Проверьте имя репозитория и убедитесь, что образ в нём опубликован. Для закрытого репозитория проверьте учётные данные кластера или imagePullSecret в этом namespace.';
 
@@ -196,7 +256,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'После синхронизации вы сможете войти с этим паролем или токеном на любом устройстве, где разблокируете своё личное хранилище.';
 
   @override
-  String get externalVaultUseSynced => 'Войти с синхронизированными данными';
+  String get externalVaultSyncedHint => 'Оставьте поле пустым, чтобы использовать синхронизированные данные входа.';
 
   @override
   String get externalVaultForgetSynced => 'Удалить синхронизированные данные входа';
@@ -10332,6 +10392,26 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String dockerComposeRestartAllTitle(String project) {
     return 'Перезапустить все контейнеры проекта $project?';
+  }
+
+  @override
+  String get dockerComposeRemove => 'Удалить проект Compose…';
+
+  @override
+  String dockerComposeRemoveTitle(String project) {
+    return 'Удалить проект $project?';
+  }
+
+  @override
+  String get dockerComposeRemoveHelp =>
+      'Запущенные контейнеры из списка будут остановлены. Их освободившиеся сети проекта также будут удалены. Файлы Compose и каталоги хоста сохранятся.';
+
+  @override
+  String get dockerComposeRemoveVolumes => 'Также удалить освободившиеся тома этих контейнеров';
+
+  @override
+  String dockerComposeRemoveSummary(String project, int removed, int total) {
+    return 'Удалено контейнеров проекта $project: $removed из $total.';
   }
 
   @override

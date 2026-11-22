@@ -593,8 +593,8 @@ void main() {
     await settle(tester);
     expect(clipboard.copied, isEmpty);
     expect(find.text('Choose what to copy'), findsOneWidget);
-    tester.widget<TextField>(find.byKey(const ValueKey('palette-input'))).onSubmitted!('Passwords: ');
-    for (var i = 0; i < 80 && find.byKey(const ValueKey('palette-input')).evaluate().isNotEmpty; i++) {
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    for (var i = 0; i < 80 && clipboard.copied.isEmpty; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 25)));
       await settle(tester, steps: 1);
     }
@@ -800,7 +800,8 @@ void main() {
     expect(clipboard.copied, ['copy-this-note']);
     await settle(tester);
     await openCard();
-    await tapKey(tester, 'palette-password-${session.source.id}-${entry['id']}-UserName');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     for (var i = 0; i < 100 && clipboard.copied.length < 2; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 25)));
       await settle(tester, steps: 1);
