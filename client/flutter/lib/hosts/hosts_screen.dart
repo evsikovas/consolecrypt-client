@@ -862,6 +862,7 @@ class _HostTile extends ConsumerWidget {
     final t = tokens.typography;
     final l10n = context.l10n;
     final hasGroups = ref.watch(groupByIdProvider).isNotEmpty;
+    Future<void> connect() => connectToHost(context, ref, host);
     final userPart = host.username == null ? '' : '${host.username}@';
     final portPart = host.port == null || host.port == (host.isRdp ? defaultRdpPort : defaultSshPort)
         ? ''
@@ -929,7 +930,7 @@ class _HostTile extends ConsumerWidget {
         ],
         GlassIconButton(
           key: ValueKey('connect-${host.name}'),
-          onPressed: () => connectToHost(context, ref, host),
+          onPressed: connect,
           icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
           tooltip: l10n.commonConnect,
           style: GlassIconButtonStyle.plain,
@@ -1017,7 +1018,7 @@ class _HostTile extends ConsumerWidget {
             if (!context.mounted) return;
             switch (v) {
               case _HostAction.connect:
-                await connectToHost(context, ref, host);
+                await connect();
               case _HostAction.notes:
                 showHostNotes(ref, host);
               case _HostAction.share:
@@ -1089,7 +1090,7 @@ class _HostTile extends ConsumerWidget {
         color: inspected ? tokens.sidebarSelection : Colors.transparent,
         child: InkWell(
           key: ValueKey('host-${host.name}'),
-          onTap: () => connectToHost(context, ref, host),
+          onTap: connect,
           child: WorkspaceColumns(
             actionWidth: 172,
             actions: Align(alignment: Alignment.centerRight, child: actions),
@@ -1105,6 +1106,7 @@ class _HostTile extends ConsumerWidget {
               SelectableText(
                 endpoint,
                 maxLines: 2,
+                onTap: connect,
                 style: t.mono.copyWith(fontSize: t.callout.fontSize),
               ),
               Text(detail, maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -1136,6 +1138,7 @@ class _HostTile extends ConsumerWidget {
               SelectableText(
                 endpoint,
                 maxLines: 1,
+                onTap: connect,
                 style: t.mono.copyWith(fontSize: t.callout.fontSize, color: tokens.secondaryLabel),
               ),
               Text(
@@ -1147,7 +1150,7 @@ class _HostTile extends ConsumerWidget {
             ],
           ),
           trailing: actions,
-          onTap: () => connectToHost(context, ref, host),
+          onTap: connect,
         ),
       );
     }
@@ -1155,7 +1158,7 @@ class _HostTile extends ConsumerWidget {
       key: ValueKey('host-${host.name}'),
       descendantsAreFocusable: true,
       semanticLabel: '${host.name}, $endpoint, ${l10n.commonConnect}',
-      onPressed: () => connectToHost(context, ref, host),
+      onPressed: connect,
       builder: (context, state) => GlassFocusRing(
         visible: state.focusVisible,
         shape: GlassRadii.shape(tokens.radii.card),
@@ -1183,6 +1186,7 @@ class _HostTile extends ConsumerWidget {
               SelectableText(
                 endpoint,
                 maxLines: 1,
+                onTap: connect,
                 style: t.mono.copyWith(fontSize: t.callout.fontSize, color: tokens.palette.label),
               ),
               const SizedBox(height: 6),
