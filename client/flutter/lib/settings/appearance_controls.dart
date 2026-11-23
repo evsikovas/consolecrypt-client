@@ -295,6 +295,19 @@ class TerminalTabPlacementSetting extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: GlassSpacing.s4),
+          if (placement == TerminalTabPlacement.left)
+            CheckboxListTile(
+              key: ValueKey('$id-grouped'),
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(l.sessionGroupTabs),
+              value: ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabGrouped)) ?? false,
+              onChanged: (value) => runWithFeedback(
+                context,
+                () => settings.updateLocal(settings.currentLocal.copyWith(terminalTabGrouped: value ?? false)),
+              ),
+            ),
           Text(
             l.settingsTerminalTabPlacementHelp,
             style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),

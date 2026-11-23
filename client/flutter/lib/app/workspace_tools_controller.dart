@@ -1,8 +1,10 @@
+import 'dart:async';
+
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum WorkspaceTool { snippets, notes, ai, forwards, server }
+enum WorkspaceTool { snippets, notes, ai, forwards, server, docker, history }
 
 final activeSshTerminalProvider = Provider<TerminalTab?>(
   (ref) => ref.watch(
@@ -12,6 +14,18 @@ final activeSshTerminalProvider = Provider<TerminalTab?>(
     }),
   ),
 );
+
+final sessionHasDockerProvider = StreamProvider.autoDispose.family<bool, TerminalTab>((ref, tab) {
+  final controller = StreamController<bool>();
+  void emit() => controller.add(tab.hostMetrics.value.error == null && tab.hostMetrics.value.latest?.docker == true);
+  tab.hostMetrics.addListener(emit);
+  emit();
+  ref.onDispose(() {
+    tab.hostMetrics.removeListener(emit);
+    unawaited(controller.close());
+  });
+  return controller.stream.distinct();
+});
 
 final class WorkspaceToolsState {
   const WorkspaceToolsState({this.selected, this.width = 420});

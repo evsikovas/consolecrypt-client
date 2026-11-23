@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -582,12 +583,12 @@ class _SharingTile extends ConsumerWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(switch (item.kind) {
-              SharingKind.host when item.isRdp => Icons.desktop_windows_rounded,
+              SharingKind.host when item.isRdp => ToolIcons.rdp,
               SharingKind.host => Icons.dns_outlined,
               SharingKind.snippet => Icons.code_rounded,
               SharingKind.group => Icons.folder_shared_outlined,
               SharingKind.secret => Icons.key_outlined,
-              SharingKind.kubeContext => Icons.hub_outlined,
+              SharingKind.kubeContext => ToolIcons.kubernetes,
               SharingKind.dbConnection => Icons.storage_rounded,
             }),
             title: Text(item.name ?? l.sharingInvitation),

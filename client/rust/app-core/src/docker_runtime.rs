@@ -18,8 +18,8 @@ use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     sync::{
-        atomic::{AtomicU64, Ordering},
         Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
     },
     time::Duration,
 };
@@ -578,7 +578,7 @@ impl AppCore {
         let info = match tokio::time::timeout(Duration::from_secs(15), client.info()).await {
             Ok(Ok(info)) => info,
             Ok(Err(DockerError::PermissionDenied)) => {
-                return failed("permission_denied", String::new())
+                return failed("permission_denied", String::new());
             }
             Ok(Err(DockerError::NotRunning)) => return failed("not_running", String::new()),
             _ => return failed("connection_failed", String::new()),
@@ -687,6 +687,22 @@ impl AppCore {
         }
     }
 
+    pub async fn docker_image_names(&self, session_id: String) -> AppResult<Vec<String>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! { biased; _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+        result = live.client.image_names() => result.map_err(docker_error) }
+    }
+    pub async fn docker_telemetry(
+        &self,
+        session_id: String,
+        container: String,
+    ) -> AppResult<serde_json::Value> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! { biased; _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+        result = live.client.telemetry(&container) => result.map_err(docker_error) }
+    }
     pub async fn docker_volumes(
         &self,
         session_id: String,

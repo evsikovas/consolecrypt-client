@@ -171,6 +171,16 @@ pub async fn docker_forward_stop(forward_id: String) -> Result<(), BridgeError> 
     with_core(move |c| async move { Ok(c.docker_forward_stop(forward_id).await?) }).await
 }
 
+pub async fn docker_telemetry(
+    session_id: String,
+    container: String,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_telemetry(session_id, container).await?) })
+        .await
+}
+pub async fn docker_image_names(session_id: String) -> Result<Vec<String>, BridgeError> {
+    with_core(move |c| async move { Ok(c.docker_image_names(session_id).await?) }).await
+}
 pub async fn docker_volumes(session_id: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.docker_volumes(session_id).await?) }).await
 }

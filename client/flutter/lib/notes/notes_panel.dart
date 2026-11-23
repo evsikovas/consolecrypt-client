@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/ai/markdown_text.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -590,7 +591,7 @@ class _Fact extends StatelessWidget {
   NoteDockerTarget(:final hostId, :final name) => () {
     final hosts = ref.watch(hostsProvider);
     final gone = hostId != null && hosts.hasValue && !hosts.value!.any((h) => h.id.value == hostId);
-    return (gone ? null : name, Icons.view_in_ar_outlined);
+    return (gone ? null : name, ToolIcons.docker);
   }(),
   NoteUnknownTarget() => (null, Icons.link_off_rounded),
 };

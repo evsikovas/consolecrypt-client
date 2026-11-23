@@ -1,6 +1,7 @@
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/symbols.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -715,7 +716,7 @@ class _HostInspector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
-    final icon = host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded;
+    final icon = host.isRdp ? ToolIcons.rdp : Icons.terminal_rounded;
     final port = host.port ?? (host.isRdp ? defaultRdpPort : defaultSshPort);
     final details = [
       (l.hostEditorAddressLabel, host.address),
@@ -931,7 +932,7 @@ class _HostTile extends ConsumerWidget {
         GlassIconButton(
           key: ValueKey('connect-${host.name}'),
           onPressed: connect,
-          icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
+          icon: host.isRdp ? ToolIcons.rdp : Icons.terminal_rounded,
           tooltip: l10n.commonConnect,
           style: GlassIconButtonStyle.plain,
         ),
@@ -942,7 +943,7 @@ class _HostTile extends ConsumerWidget {
               key: ValueKey('host-connect-menu-${host.name}'),
               value: _HostAction.connect,
               label: l10n.commonConnect,
-              icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
+              icon: host.isRdp ? ToolIcons.rdp : Icons.terminal_rounded,
             ),
             GlassMenuItem(
               key: ValueKey('host-notes-menu-${host.name}'),
@@ -1098,7 +1099,7 @@ class _HostTile extends ConsumerWidget {
             cells: [
               Row(
                 children: [
-                  Icon(host.isRdp ? Icons.desktop_windows_outlined : Icons.dns_outlined, size: 16),
+                  Icon(host.isRdp ? ToolIcons.rdp : Icons.dns_outlined, size: 16),
                   const SizedBox(width: 6),
                   Expanded(child: heading),
                 ],

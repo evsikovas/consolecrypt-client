@@ -94,6 +94,114 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Disk bytes read and written by a container.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk read / write'**
+  String get sessionDiskIO;
+
+  /// Terminal workspace and device settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Group sessions by host folder'**
+  String get sessionGroupTabs;
+
+  /// Terminal workspace and device settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh trust. Showing the last device list.'**
+  String get sessionDevicesStale;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get sessionRemote;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Local'**
+  String get sessionLocal;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Responding'**
+  String get sessionResponding;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Select provider'**
+  String get sessionNoProvider;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get sessionHidden;
+
+  /// Session history loading error.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read command history'**
+  String get sessionHistoryUnavailable;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands from this session will appear here'**
+  String get sessionHistoryEmpty;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource usage'**
+  String get sessionUsage;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Metrics unavailable'**
+  String get sessionUsageUnavailable;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap'**
+  String get sessionSwap;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Login sessions'**
+  String get sessionLogins;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a snippet'**
+  String get sessionSnippetSearch;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about this host'**
+  String get sessionAsk;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a question'**
+  String get sessionAskGeneral;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as snippet'**
+  String get sessionSnip;
+
   /// Devices table heading.
   ///
   /// In en, this message translates to:

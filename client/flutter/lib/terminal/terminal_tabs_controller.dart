@@ -79,6 +79,7 @@ final class TerminalTab {
   StreamSubscription<TerminalEvent>? _events;
 
   bool get isConnected => state == SessionConnectionState.connected;
+  bool get hasCommandHistory => isConnected && !exited && (isLocal || host != null);
 
   /// Sends clipboard text after the paste confirmation and session check.
   void pasteText(String text) {

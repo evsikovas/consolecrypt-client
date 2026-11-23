@@ -178,14 +178,16 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
     final running = container.state == DockerContainerState.running;
     final busy = widget.actions.busy(container);
     final database = widget.actions.databaseTarget(container, _detail?.inspect);
-    Widget action(String key, String label, IconData icon, VoidCallback? onPressed, {String? tooltip}) => GlassButton(
-      key: ValueKey('docker-details-$key'),
-      label: label,
-      icon: icon,
-      tooltip: tooltip,
-      size: GlassControlSize.sm,
-      onPressed: busy ? null : onPressed,
-    );
+    Widget action(String key, String label, IconData icon, VoidCallback? onPressed, {String? tooltip}) =>
+        GlassIconButton(
+          key: ValueKey('docker-details-$key'),
+          icon: icon,
+          tooltip: tooltip ?? label,
+          style: GlassIconButtonStyle.plain,
+          size: 28,
+          iconSize: 16,
+          onPressed: busy ? null : onPressed,
+        );
     final full = _fullInspect;
     final shown = full ?? _detail?.inspect;
     final jsonTab = shown != null && _tabs.index == DockerDetailsTab.json.index;
@@ -245,7 +247,15 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                 GlassMenuButton<Object>(
                   key: const ValueKey('docker-details-menu'),
                   entries: dockerContainerMenu(l, container, database: database),
-                  onSelected: (value) => runDockerMenuValue(widget.actions, container, value, database: database),
+                  onSelected: (value) {
+                    if (value == DockerMenuCommand.logs || value == DockerMenuCommand.details) {
+                      _tabs.animateTo(
+                        (value == DockerMenuCommand.logs ? DockerDetailsTab.logs : DockerDetailsTab.overview).index,
+                      );
+                    } else {
+                      runDockerMenuValue(widget.actions, container, value, database: database);
+                    }
+                  },
                   builder: (context, open) => GlassIconButton(
                     icon: Icons.more_horiz_rounded,
                     tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
@@ -293,12 +303,14 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                       ? () => unawaited(widget.actions.run(container, DockerAction.restart))
                       : null,
                 ),
-                GlassButton(
+                GlassIconButton(
                   key: const ValueKey('docker-details-remove'),
-                  style: GlassButtonStyle.destructiveQuiet,
-                  label: l.dockerRemoveContainer,
+                  style: GlassIconButtonStyle.plain,
+                  tooltip: l.dockerRemoveContainer,
+                  color: p.danger,
                   icon: Icons.delete_outline_rounded,
-                  size: GlassControlSize.sm,
+                  size: 28,
+                  iconSize: 16,
                   onPressed: busy || !dockerActionAllowed(DockerAction.remove, container.state)
                       ? null
                       : () => unawaited(widget.actions.run(container, DockerAction.remove)),
@@ -367,6 +379,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
               controller: _tabs,
               children: [
                 _DockerOverview(
+                  active: _tabs.index == DockerDetailsTab.overview.index,
                   container: container,
                   detail: _detail,
                   service: widget.service,
@@ -456,7 +469,14 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
 }
 
 class _DockerOverview extends StatelessWidget {
-  const _DockerOverview({required this.container, required this.detail, required this.service, required this.session});
+  final bool active;
+  const _DockerOverview({
+    required this.active,
+    required this.container,
+    required this.detail,
+    required this.service,
+    required this.session,
+  });
   final DockerContainer container;
   final DockerContainerDetail? detail;
   final DockerService service;
@@ -512,6 +532,14 @@ class _DockerOverview extends StatelessWidget {
       key: const ValueKey('docker-overview'),
       padding: const EdgeInsets.all(GlassSpacing.s16),
       children: [
+        if (active && dockerIsActive(container.state) && service is DockerObservationService)
+          _ContainerUsage(
+            key: ValueKey((session.id, container.id)),
+            service: service as DockerObservationService,
+            session: session.id,
+            container: container.id,
+            mainPid: state['Pid'] as int?,
+          ),
         _Section(
           title: l.dockerDetails,
           child: Column(
@@ -887,6 +915,137 @@ class _RevealDialogState<T> extends ConsumerState<_RevealDialog<T>> with VaultPa
         busy: _busy || stepUpBusy,
         onPressed: _busy || stepUpBusy ? null : () => unawaited(_submit()),
       ),
+    );
+  }
+}
+
+class _ContainerUsage extends StatefulWidget {
+  const _ContainerUsage({
+    super.key,
+    required this.service,
+    required this.session,
+    required this.container,
+    this.mainPid,
+  });
+  final DockerObservationService service;
+  final String session, container;
+  final int? mainPid;
+  @override
+  State<_ContainerUsage> createState() => _ContainerUsageState();
+}
+
+class _ContainerUsageState extends State<_ContainerUsage> with WidgetsBindingObserver {
+  DockerJson? _sample;
+  bool _failed = false, _loading = false, _foreground = true;
+  Timer? _timer;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_read());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _timer?.cancel();
+    if (_foreground) unawaited(_read());
+  }
+
+  Future<void> _read() async {
+    if (_loading || !_foreground) return;
+    _loading = true;
+    try {
+      final sample = await widget.service.telemetry(widget.session, widget.container);
+      if (mounted) {
+        setState(() {
+          _sample = sample;
+          _failed = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _sample = null;
+          _failed = true;
+        });
+      }
+    } finally {
+      _loading = false;
+      if (mounted && _foreground) _timer = Timer(const Duration(seconds: 5), _read);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n, t = GlassTokens.of(context);
+    final s = _sample;
+    String bytes(String key) => s?[key] is int ? formatBytes(l, s![key] as int) : '—';
+    final cpu = s?['cpu'] as num?, memory = s?['memory'] as num?, limit = s?['limit'] as num?;
+    final rows = (s?['processes'] as List?)?.whereType<List<Object?>>().where((r) => r.length == 6);
+    Widget meter(String label, String value, double? fraction) => Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Fact(label: label, value: value),
+          if (fraction != null) LinearProgressIndicator(value: fraction.clamp(0, 1), minHeight: 3),
+        ],
+      ),
+    );
+    return _Section(
+      title: l.sessionUsage,
+      child: s == null
+          ? (_failed ? Text(l.sessionUsageUnavailable) : const LinearProgressIndicator())
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                meter(
+                  l.hostMetricsCpu,
+                  cpu == null ? '—' : '${cpu.toStringAsFixed(1)}%',
+                  cpu == null ? null : cpu / 100,
+                ),
+                meter(
+                  l.hostMetricsRam,
+                  '${bytes('memory')} / ${bytes('limit')}',
+                  memory != null && limit != null && limit > 0 ? memory / limit : null,
+                ),
+                _Fact(label: l.hostMetricsNetwork, value: '↓ ${bytes('rx')}   ↑ ${bytes('tx')}'),
+                _Fact(label: l.sessionDiskIO, value: '${bytes('read')} / ${bytes('write')}'),
+                _Fact(label: l.wslcProcesses, value: s['pids']?.toString() ?? '—'),
+                if (widget.mainPid != null && widget.mainPid! > 0)
+                  _Fact(label: 'PID', value: widget.mainPid.toString()),
+                if (rows != null && rows.isNotEmpty)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Table(
+                      defaultColumnWidth: const IntrinsicColumnWidth(),
+                      children: [
+                        for (final row in [
+                          ['PID', 'USER', '%CPU', '%MEM', 'TIME', 'COMMAND'],
+                          ...rows,
+                        ])
+                          TableRow(
+                            children: [
+                              for (final value in row)
+                                Padding(
+                                  padding: const EdgeInsetsDirectional.only(end: 12, top: 5),
+                                  child: Text(value.toString(), style: t.typography.mono.copyWith(fontSize: 11)),
+                                ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }

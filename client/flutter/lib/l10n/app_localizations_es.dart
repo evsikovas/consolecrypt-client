@@ -10,6 +10,60 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get sessionDiskIO => 'Disco · lectura / escritura';
+
+  @override
+  String get sessionGroupTabs => 'Agrupar sesiones por carpeta de hosts';
+
+  @override
+  String get sessionDevicesStale => 'No se pudo verificar la confianza. Se muestra la última lista.';
+
+  @override
+  String get sessionRemote => 'Remoto';
+
+  @override
+  String get sessionLocal => 'Local';
+
+  @override
+  String get sessionResponding => 'Respondiendo';
+
+  @override
+  String get sessionNoProvider => 'Elegir proveedor';
+
+  @override
+  String get sessionHidden => 'Ocultos';
+
+  @override
+  String get sessionHistoryUnavailable => 'No se pudo cargar el historial';
+
+  @override
+  String get sessionHistoryEmpty => 'Aquí aparecerán los comandos de esta sesión';
+
+  @override
+  String get sessionUsage => 'Uso de recursos';
+
+  @override
+  String get sessionUsageUnavailable => 'Métricas no disponibles';
+
+  @override
+  String get sessionSwap => 'Intercambio';
+
+  @override
+  String get sessionLogins => 'Sesiones de usuario';
+
+  @override
+  String get sessionSnippetSearch => 'Buscar fragmento';
+
+  @override
+  String get sessionAsk => 'Pregunta sobre este host';
+
+  @override
+  String get sessionAskGeneral => 'Haz una pregunta';
+
+  @override
+  String get sessionSnip => 'Guardar fragmento';
+
+  @override
   String get uiOtherDevices => 'Otros dispositivos';
 
   @override

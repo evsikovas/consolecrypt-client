@@ -10,6 +10,60 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get sessionDiskIO => 'Disk read / write';
+
+  @override
+  String get sessionGroupTabs => 'Group sessions by host folder';
+
+  @override
+  String get sessionDevicesStale => 'Could not refresh trust. Showing the last device list.';
+
+  @override
+  String get sessionRemote => 'Remote';
+
+  @override
+  String get sessionLocal => 'Local';
+
+  @override
+  String get sessionResponding => 'Responding';
+
+  @override
+  String get sessionNoProvider => 'Select provider';
+
+  @override
+  String get sessionHidden => 'Hidden';
+
+  @override
+  String get sessionHistoryUnavailable => 'Could not read command history';
+
+  @override
+  String get sessionHistoryEmpty => 'Commands from this session will appear here';
+
+  @override
+  String get sessionUsage => 'Resource usage';
+
+  @override
+  String get sessionUsageUnavailable => 'Metrics unavailable';
+
+  @override
+  String get sessionSwap => 'Swap';
+
+  @override
+  String get sessionLogins => 'Login sessions';
+
+  @override
+  String get sessionSnippetSearch => 'Find a snippet';
+
+  @override
+  String get sessionAsk => 'Ask about this host';
+
+  @override
+  String get sessionAskGeneral => 'Ask a question';
+
+  @override
+  String get sessionSnip => 'Save as snippet';
+
+  @override
   String get uiOtherDevices => 'Other devices';
 
   @override

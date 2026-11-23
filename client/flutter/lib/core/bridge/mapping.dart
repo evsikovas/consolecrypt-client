@@ -867,6 +867,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'terminal_font_size': s.terminalFontSize,
   'terminal_font_family': s.terminalFontFamily,
   'terminal_tab_subtitle': s.terminalTabSubtitle.name,
+  'terminal_tab_grouped': s.terminalTabGrouped,
   'terminal_tab_placement': s.terminalTabPlacement.name,
   'terminal_tab_column_width': s.terminalTabColumnWidth,
   'terminal_tab_column_collapsed': s.terminalTabColumnCollapsed,
@@ -958,6 +959,7 @@ LocalSettings localSettingsFromJson(Json j) {
       j['terminal_tab_subtitle'],
       d.terminalTabSubtitle,
     ),
+    terminalTabGrouped: j['terminal_tab_grouped'] == true,
     terminalTabPlacement: _byWire(
       TerminalTabPlacement.values,
       (e) => e.name,

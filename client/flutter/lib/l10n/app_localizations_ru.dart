@@ -10,6 +10,60 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get sessionDiskIO => 'Диск · чтение / запись';
+
+  @override
+  String get sessionGroupTabs => 'Группировать сеансы по папкам хостов';
+
+  @override
+  String get sessionDevicesStale => 'Не удалось проверить доверие. Показан последний список устройств.';
+
+  @override
+  String get sessionRemote => 'Удалённый';
+
+  @override
+  String get sessionLocal => 'Локальный';
+
+  @override
+  String get sessionResponding => 'Отвечает';
+
+  @override
+  String get sessionNoProvider => 'Выбрать провайдера';
+
+  @override
+  String get sessionHidden => 'Скрыто';
+
+  @override
+  String get sessionHistoryUnavailable => 'Не удалось загрузить историю команд';
+
+  @override
+  String get sessionHistoryEmpty => 'Здесь появятся команды этого сеанса';
+
+  @override
+  String get sessionUsage => 'Ресурсы';
+
+  @override
+  String get sessionUsageUnavailable => 'Метрики недоступны';
+
+  @override
+  String get sessionSwap => 'Подкачка';
+
+  @override
+  String get sessionLogins => 'Сеансы входа';
+
+  @override
+  String get sessionSnippetSearch => 'Найти сниппет';
+
+  @override
+  String get sessionAsk => 'Вопрос по хосту';
+
+  @override
+  String get sessionAskGeneral => 'Задать вопрос';
+
+  @override
+  String get sessionSnip => 'В сниппеты';
+
+  @override
   String get uiOtherDevices => 'Другие устройства';
 
   @override

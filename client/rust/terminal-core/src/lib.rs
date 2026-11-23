@@ -865,6 +865,31 @@ impl TerminalManager {
         Ok(())
     }
 
+    pub fn set_history_filter(
+        &self,
+        id: TerminalId,
+        filter: Option<fn(&str) -> bool>,
+    ) -> Result<(), TerminalError> {
+        let s = self.get(id)?;
+        let mut inner = s.lock();
+        if !inner.tracking_suppressed
+            && matches!(
+                &s.target,
+                TerminalTarget::Ssh { .. } | TerminalTarget::Local { .. }
+            )
+        {
+            inner.tracker.set_history_filter(filter);
+        }
+        Ok(())
+    }
+    pub fn session_commands(&self, id: TerminalId) -> Result<Vec<String>, TerminalError> {
+        Ok(self.get(id)?.lock().tracker.history())
+    }
+    pub fn clear_command_histories(&self) {
+        for s in self.map().values() {
+            s.lock().tracker.set_history_filter(None);
+        }
+    }
     /// Last command typed in this session (best effort; AI hook).
     pub fn last_command(&self, id: TerminalId) -> Option<String> {
         let s = self.get(id).ok()?;

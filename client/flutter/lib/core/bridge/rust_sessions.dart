@@ -65,6 +65,7 @@ final class RustTerminalService
         LocalTerminalService,
         KubernetesTerminalService,
         DockerTerminalService,
+        TerminalHistoryReader,
         HostMetricsReader,
         RuntimeTerminalService {
   RustTerminalService(RustBackend hub) : _hub = hub {
@@ -434,6 +435,13 @@ final class RustTerminalService
           );
     }
     return true;
+  }
+
+  @override
+  Future<List<String>> commands(TerminalSessionId id) async {
+    final nativeId = _sessions[id]?.rustId;
+    if (nativeId == null) return const [];
+    return guard(() => rs_ssh.terminalCommandHistory(terminalId: nativeId));
   }
 
   @override

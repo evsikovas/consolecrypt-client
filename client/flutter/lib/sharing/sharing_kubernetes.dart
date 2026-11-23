@@ -1,3 +1,4 @@
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -227,7 +228,7 @@ class _SharingKubeCopyDialogState extends ConsumerState<SharingKubeCopyDialog> {
       profile: _scope,
       child: GlassDialog(
         title: l.sharingCopyPersonal,
-        icon: Icons.hub_outlined,
+        icon: ToolIcons.kubernetes,
         content: SizedBox(
           width: 560,
           child: ConstrainedBox(

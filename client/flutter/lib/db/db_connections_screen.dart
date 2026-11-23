@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -17,7 +18,6 @@ import 'package:consolecrypt/db/db_transport_badge.dart';
 import 'package:consolecrypt/sharing/sharing_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
 
 class DbConnectionsScreen extends ConsumerStatefulWidget {
   const DbConnectionsScreen({required this.onOpen, this.onShare, this.shared = const [], this.onOpenShared, super.key});
@@ -381,7 +381,7 @@ class _DbConnectionEntry extends StatelessWidget {
       DbRouteKind.proxy => (Icons.hub_outlined, l.dbProxy),
       DbRouteKind.kubernetes => (Icons.anchor_rounded, l.dbRouteKubeHint),
       DbRouteKind.tunnel => (Icons.swap_horiz_rounded, l.dbRouteTunnelHint),
-      DbRouteKind.docker => (Icons.view_in_ar_outlined, l.dbRouteDockerHint),
+      DbRouteKind.docker => (ToolIcons.docker, l.dbRouteDockerHint),
     };
     if (hint == null) return null;
     return Tooltip(

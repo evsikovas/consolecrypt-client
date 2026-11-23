@@ -434,6 +434,11 @@ final class DockerException implements Exception {
   String toString() => 'DockerException(${failure.name})';
 }
 
+abstract interface class DockerObservationService {
+  Future<DockerJson> telemetry(String sessionId, String containerId);
+  Future<List<String>> imageNames(String sessionId);
+}
+
 abstract interface class DockerService {
   /// This computer (when a local socket exists) followed by saved SSH hosts.
   Future<List<DockerHost>> hosts();

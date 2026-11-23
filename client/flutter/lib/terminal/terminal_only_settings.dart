@@ -29,6 +29,7 @@ final class TerminalOnlySettings implements SettingsService {
     'terminal_color_scheme',
     'custom_terminal_colors',
     'terminal_tab_placement',
+    'terminal_tab_grouped',
     'terminal_tab_subtitle',
     'terminal_tab_column_width',
     'terminal_tab_column_collapsed',

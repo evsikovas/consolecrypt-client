@@ -294,10 +294,15 @@ impl AppCore {
     /// Send keyboard input.
     pub async fn terminal_write(&self, terminal_id: String, data: Vec<u8>) -> AppResult<()> {
         let (_, u) = self.unlocked().await?;
-        Ok(u.ssh
-            .terminals
-            .write(parse_terminal_id(&terminal_id)?, &data)
-            .await?)
+        let id = parse_terminal_id(&terminal_id)?;
+        if data.iter().any(|b| matches!(b, b'\n' | b'\r')) {
+            let enabled = crate::ai::history_enabled(u.working());
+            u.ssh.terminals.set_history_filter(
+                id,
+                enabled.then_some(|cmd| !cc_docker_core::contains_secret(cmd)),
+            )?;
+        }
+        Ok(u.ssh.terminals.write(id, &data).await?)
     }
 
     pub async fn terminal_resize(
@@ -352,6 +357,16 @@ impl AppCore {
         Ok(u.ssh.terminals.remove(tid).await?)
     }
 
+    pub async fn terminal_command_history(&self, terminal_id: String) -> AppResult<Vec<String>> {
+        let (_, u) = self.unlocked().await?;
+        if !crate::ai::history_enabled(u.working()) {
+            u.ssh.terminals.clear_command_histories();
+            return Ok(Vec::new());
+        }
+        Ok(u.ssh
+            .terminals
+            .session_commands(parse_terminal_id(&terminal_id)?)?)
+    }
     /// Best-effort last command / error of a terminal (AI context hooks).
     pub async fn terminal_last_command(&self, terminal_id: String) -> AppResult<Option<String>> {
         let (_, u) = self.unlocked().await?;

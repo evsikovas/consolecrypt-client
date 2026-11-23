@@ -10,6 +10,60 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get sessionDiskIO => '磁盘读 / 写';
+
+  @override
+  String get sessionGroupTabs => '按主机文件夹分组会话';
+
+  @override
+  String get sessionDevicesStale => '无法刷新信任状态，当前显示上次的设备列表。';
+
+  @override
+  String get sessionRemote => '远程';
+
+  @override
+  String get sessionLocal => '本地';
+
+  @override
+  String get sessionResponding => '正在回复';
+
+  @override
+  String get sessionNoProvider => '选择提供方';
+
+  @override
+  String get sessionHidden => '已隐藏';
+
+  @override
+  String get sessionHistoryUnavailable => '无法读取命令历史记录';
+
+  @override
+  String get sessionHistoryEmpty => '此会话的命令将显示在这里';
+
+  @override
+  String get sessionUsage => '资源使用量';
+
+  @override
+  String get sessionUsageUnavailable => '指标不可用';
+
+  @override
+  String get sessionSwap => '交换空间';
+
+  @override
+  String get sessionLogins => '登录会话';
+
+  @override
+  String get sessionSnippetSearch => '搜索代码片段';
+
+  @override
+  String get sessionAsk => '询问此主机';
+
+  @override
+  String get sessionAskGeneral => '提个问题';
+
+  @override
+  String get sessionSnip => '存为代码片段';
+
+  @override
   String get uiOtherDevices => '其他设备';
 
   @override

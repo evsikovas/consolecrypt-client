@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -168,7 +169,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
               : NoteContext(
                   target: NoteObjectTarget(NoteObjectKind.rdpHost, active!.hostId!),
                   label: active.title,
-                  icon: Icons.desktop_windows_outlined,
+                  icon: ToolIcons.rdp,
                 ),
         );
         final body = Column(
@@ -206,7 +207,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
             if (active == null)
               Expanded(
                 child: EmptyState(
-                  icon: Icons.desktop_windows_outlined,
+                  icon: ToolIcons.rdp,
                   title: l.rdpEmptyTitle,
                   message: l.rdpEmptyHelp,
                   action: GlassButton.prominent(

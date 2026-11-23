@@ -363,6 +363,35 @@ void main() {
     expect(collapsed(), isFalse, reason: 'the choice made beside the tab column is kept for it');
   });
 
+  testWidgets('folder folding and regrouping preserve the original session indices', (tester) async {
+    final selected = <int>[], closed = <int>[];
+    await pumpGlass(
+      tester,
+      GlassTabColumn(
+        tabs: [
+          for (final name in ['web', 'stage', 'db']) GlassTab(title: name),
+        ],
+        groups: const [(id: 'a', label: 'Production'), (id: 'b', label: 'Lab'), (id: 'a', label: 'Production')],
+        activeIndex: 0,
+        onSelect: selected.add,
+        onClose: closed.add,
+      ),
+    );
+    await settle(tester);
+    expect(tester.getTopLeft(find.text('db')).dy, lessThan(tester.getTopLeft(find.text('stage')).dy));
+    await tester.tap(find.text('Production'));
+    await settle(tester);
+    expect(find.text('db'), findsNothing);
+    await tester.tap(find.text('stage'));
+    expect(selected, [1]);
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    expect(closed, [1]);
+    await tester.tap(find.text('Production'));
+    await settle(tester);
+    await tester.tap(find.text('db'));
+    expect(selected, [1, 2]);
+  }, variant: _desktop);
+
   group('tab column keyboard', () {
     Future<(List<int>, List<int>)> pumpColumn(
       WidgetTester tester, {

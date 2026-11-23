@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -132,7 +133,7 @@ final noteContextProvider = Provider.family<NoteContext?, ShellBranch>((ref, bra
         name: containerName,
       ), // l10n-ignore: Docker host id
       label: containerName,
-      icon: Icons.view_in_ar_outlined,
+      icon: ToolIcons.docker,
     ),
     KubernetesTerminalTarget(:final contextId?, :final namespace, :final pod) => NoteContext(
       target: NoteKubeTarget(contextId: contextId, resource: 'pods', kind: 'Pod', namespace: namespace, name: pod),
@@ -148,7 +149,7 @@ NoteContext hostNoteContext(Host host) => host.isRdp
     ? NoteContext(
         target: NoteObjectTarget(NoteObjectKind.rdpHost, host.id.value),
         label: host.name,
-        icon: Icons.desktop_windows_outlined,
+        icon: ToolIcons.rdp,
       )
     : NoteContext(target: NoteObjectTarget(NoteObjectKind.host, host.id.value), label: host.name);
 

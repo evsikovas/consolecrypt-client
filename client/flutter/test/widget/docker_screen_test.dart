@@ -530,7 +530,7 @@ void main() {
     await tester.ensureVisible(name);
     await tester.tap(name);
     await settle(tester);
-    expect(find.text('Remove container…'), findsOneWidget);
+    expect(find.byTooltip('Remove container…'), findsOneWidget);
     await tapKey(tester, 'docker-details-remove');
     Finder key(String id) => find.byKey(ValueKey(id));
     expect(find.text('Host files are kept'), findsOneWidget);

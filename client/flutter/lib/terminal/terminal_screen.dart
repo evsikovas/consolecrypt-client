@@ -257,17 +257,29 @@ class _TerminalTabs extends ConsumerWidget {
     final controller = ref.read(terminalTabsProvider.notifier);
     final subtitleMode =
         ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabSubtitle)) ?? TerminalTabSubtitle.name;
+    final grouped =
+        placement == TerminalTabPlacement.left &&
+        (ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabGrouped)) ?? false);
+    String titleFor(TerminalTab tab) =>
+        grouped && tab.customTitle == null && (tab.host?.name.trim().isNotEmpty ?? false)
+        ? tab.host!.name
+        : tab.displayTitle;
+    String? subtitleFor(TerminalTab tab) {
+      final subtitle = terminalTabSubtitle(context, tab, subtitleMode);
+      return subtitle == titleFor(tab) ? null : subtitle;
+    }
+
     final tabs = [
       for (final (i, tab) in state.tabs.indexed)
         GlassTab(
           key: ValueKey('tab-${tab.target.label}-$i'),
-          title: tab.displayTitle,
+          title: titleFor(tab),
           teamColor: switch (tab.host) {
             final host? => teamColor(teamOf(ref, host.id)?.color),
             null => null,
           },
           attention: tab.anyAttention,
-          subtitle: terminalTabSubtitle(context, tab, subtitleMode),
+          subtitle: subtitleFor(tab),
           state: _state(tab),
           tooltip: switch (_state(tab)) {
             GlassTabState.connected => strings.tabConnected,
@@ -284,7 +296,19 @@ class _TerminalTabs extends ConsumerWidget {
         localSettingsProvider.select((s) => (s.value?.terminalTabColumnWidth, s.value?.terminalTabColumnCollapsed)),
       );
       final settings = ref.read(settingsServiceProvider);
+      final folders = grouped ? ref.watch(groupByIdProvider) : null;
+      final hosts = grouped ? ref.watch(hostByIdProvider) : null;
+      ({String id, String label}) groupOf(TerminalTab tab) {
+        if (tab.isLocal) return (id: 'local', label: context.l10n.terminalLocalComputer);
+        final host = hosts?[tab.host?.id] ?? tab.host;
+        final folder = folders?[host?.groupId];
+        return folder == null
+            ? (id: 'ungrouped', label: context.l10n.inventoryUngrouped)
+            : (id: folder.id.value, label: folder.name);
+      }
+
       return GlassTabColumn(
+        groups: grouped ? state.tabs.map(groupOf).toList() : null,
         key: const ValueKey('terminal-tab-column'),
         tabs: tabs,
         activeIndex: activeIndex,

@@ -127,22 +127,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
       child: PageScaffold(
         embedded: widget.embedded,
         title: l10n.navAiChat,
-        subtitle: keyboardOpen ? null : l10n.aiChatSubtitle,
+        subtitle: null,
         actions: [
-          if (providers.isNotEmpty && providerId != null)
-            GlassSelect<ObjectId>(
-              key: const ValueKey('ai-provider'),
-              value: providerId,
-              semanticLabel: l10n.aiChatProviderLabel,
-              items: [
-                for (final p in providers)
-                  GlassSelectItem(
-                    value: p.id,
-                    label: '${p.id == deviceLocalAiProviderId ? l10n.localAiTitle : p.name} · ${p.chatModel}',
-                  ),
-              ],
-              onChanged: controller.selectProvider,
-            ),
           if (ref.watch(aiServiceProvider) case final AiConversationHistory history)
             GlassIconButton(
               key: const ValueKey('ai-history'),
@@ -163,48 +149,16 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (provider != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
-                child: Row(
-                  children: [
-                    Icon(
-                      provider.isRemote ? Icons.public_rounded : Icons.computer_rounded,
-                      size: 16,
-                      color: tokens.secondaryLabel,
-                    ),
-                    const SizedBox(width: GlassSpacing.s6),
-                    Expanded(
-                      child: Text(
-                        provider.isRemote
-                            ? l10n.aiChatRemoteProviderNotice(
-                                provider.privacyProfile.localized(l10n),
-                                provider.privacyProfile.localizedDescription(l10n),
-                              )
-                            : l10n.aiChatLocalModelNotice,
-                        style: t.callout.copyWith(color: tokens.secondaryLabel),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
-                child: InfoBanner(
-                  tone: BannerTone.warning,
-                  message: l10n.aiChatNoProviderBanner,
-                  action: TextButton(onPressed: () => context.go(AppRoutes.settings), child: Text(l10n.navSettings)),
-                ),
-              ),
             Expanded(
               child: ContentSurface(
                 padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s12),
                 child: state.messages.isEmpty && !state.isStreaming
-                    ? EmptyState(
-                        icon: Icons.auto_awesome_rounded,
-                        title: l10n.aiChatEmptyTitle,
-                        message: l10n.aiChatEmptyMessage,
+                    ? Center(
+                        child: Text(
+                          activeTab == null ? l10n.sessionAskGeneral : l10n.sessionAsk,
+                          textAlign: TextAlign.center,
+                          style: t.bodyEmph.copyWith(color: tokens.secondaryLabel),
+                        ),
                       )
                     : RepaintBoundary(
                         child: ScrollEdgeEffect(
@@ -238,50 +192,104 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
             if (state.lastReport != null && !state.isStreaming)
               Padding(
                 padding: const EdgeInsets.only(top: GlassSpacing.s6),
-                child: Text(
-                  describeSanitization(l10n, state.lastReport!),
-                  style: t.callout.copyWith(color: tokens.secondaryLabel),
+                child: Tooltip(
+                  message: describeSanitization(l10n, state.lastReport!),
+                  child: Text(
+                    state.lastReport!.remote
+                        ? '${l10n.sessionHidden} · ${state.lastReport!.redactions}'
+                        : l10n.sessionLocal,
+                    style: t.caption.copyWith(color: tokens.secondaryLabel),
+                  ),
                 ),
               ),
             const SizedBox(height: GlassSpacing.s8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: CallbackShortcuts(
+            ContentSurface(
+              kind: ContentSurfaceKind.inset,
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  CallbackShortcuts(
                     bindings: {const SingleActivator(LogicalKeyboardKey.enter): _send},
                     child: TextField(
                       key: const ValueKey('ai-input'),
                       controller: _input,
                       focusNode: _inputFocus,
-                      minLines: 1,
-                      maxLines: 6,
-                      decoration: InputDecoration(
-                        hintText: MediaQuery.sizeOf(context).width < 600
-                            ? l10n.mobileMessageHint
-                            : l10n.aiChatInputHint,
-                      ),
+                      minLines: compactKeyboard ? 1 : 2,
+                      maxLines: compactKeyboard ? 2 : 5,
+                      decoration: InputDecoration.collapsed(hintText: l10n.mobileMessageHint),
                     ),
                   ),
-                ),
-                const SizedBox(width: GlassSpacing.s8),
-                if (state.isStreaming)
-                  GlassButton(
-                    key: const ValueKey('ai-stop'),
-                    size: GlassControlSize.lg,
-                    onPressed: controller.stop,
-                    icon: Icons.stop_rounded,
-                    label: l10n.aiChatStop,
-                  )
-                else
-                  GlassButton.prominent(
-                    key: const ValueKey('ai-send'),
-                    size: GlassControlSize.lg,
-                    onPressed: _send,
-                    icon: Icons.send_rounded,
-                    label: l10n.aiChatSend,
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Tooltip(
+                        message: provider == null
+                            ? l10n.sessionNoProvider
+                            : (provider.isRemote
+                                  ? l10n.aiChatRemoteProviderNotice(
+                                      provider.privacyProfile.localized(l10n),
+                                      provider.privacyProfile.localizedDescription(l10n),
+                                    )
+                                  : l10n.aiChatLocalModelNotice),
+                        child: Icon(
+                          provider?.isRemote == true ? Icons.public_rounded : Icons.computer_rounded,
+                          size: 16,
+                          color: provider == null
+                              ? tokens.palette.warning
+                              : state.isStreaming
+                              ? tokens.palette.success
+                              : tokens.secondaryLabel,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: provider != null && providerId != null
+                            ? GlassSelect<ObjectId>(
+                                key: const ValueKey('ai-provider'),
+                                value: providerId,
+                                semanticLabel: l10n.aiChatProviderLabel,
+                                items: [
+                                  for (final p in providers)
+                                    GlassSelectItem(
+                                      value: p.id,
+                                      label:
+                                          '${p.id == deviceLocalAiProviderId ? l10n.localAiTitle : p.name} · ${p.chatModel}',
+                                    ),
+                                ],
+                                onChanged: controller.selectProvider,
+                              )
+                            : TextButton(
+                                onPressed: () => context.go(AppRoutes.settings),
+                                child: Text(l10n.sessionNoProvider),
+                              ),
+                      ),
+                      GlassIconButton(
+                        key: ValueKey(state.isStreaming ? 'ai-stop' : 'ai-send'),
+                        tooltip: state.isStreaming ? l10n.aiChatStop : l10n.aiChatSend,
+                        icon: state.isStreaming ? Icons.stop_rounded : Icons.arrow_upward_rounded,
+                        size: 32,
+                        iconSize: 18,
+                        style: GlassIconButtonStyle.plain,
+                        onPressed: state.isStreaming
+                            ? controller.stop
+                            : provider == null
+                            ? null
+                            : _send,
+                      ),
+                    ],
                   ),
-              ],
+                  if (provider != null && !compactKeyboard)
+                    Text(
+                      [
+                        if (state.isStreaming) l10n.sessionResponding,
+                        provider.isRemote ? l10n.sessionRemote : l10n.sessionLocal,
+                        if (provider.isRemote) provider.privacyProfile.localized(l10n),
+                      ].join(' · '),
+                      style: t.caption.copyWith(color: tokens.secondaryLabel),
+                    ),
+                ],
+              ),
             ),
             if (attachment != null)
               Padding(

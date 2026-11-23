@@ -12,7 +12,13 @@ import 'package:consolecrypt/src/rust/api/docker.dart' as native;
 
 /// Docker engines through the native core: the local socket or a saved SSH
 /// host's engine socket. Logs are polled in batches.
-final class RustDockerService implements DockerService {
+final class RustDockerService implements DockerService, DockerObservationService {
+  @override
+  Future<DockerJson> telemetry(String sessionId, String containerId) async =>
+      _decodeInspect(await guard(() => native.dockerTelemetry(sessionId: sessionId, container: containerId)));
+  @override
+  Future<List<String>> imageNames(String sessionId) => guard(() => native.dockerImageNames(sessionId: sessionId));
+
   @override
   Future<List<DockerHost>> hosts() async => [
     for (final host in (jsonDecode(await guard(native.dockerHosts)) as List).cast<DockerJson>())

@@ -1,0 +1,57 @@
+name: Session tools macOS test build
+
+on:
+  push:
+    branches: ['preview/session-tools']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consolecrypt-session-tools-preview
+  cancel-in-progress: true
+
+env:
+  CC_BUILD_NUMBER: '90024'
+
+jobs:
+  macos:
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 180
+    env:
+      CARGO_BUILD_JOBS: '3'
+      CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          clean: false
+          persist-credentials: false
+      - name: Native toolchain
+        run: source client/scripts/ci-macos-tools.sh --xcode
+      - name: Package universal macOS preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          git restore --source=HEAD -- client/flutter/pubspec.yaml client/flutter/lib/app/app_info.dart
+          caffeinate -i bash client/scripts/build-macos.sh
+          cd dist/macos
+          version=$(cat ConsoleCrypt.version)
+          [[ "$version" == "1.2.3+$CC_BUILD_NUMBER" ]]
+          codesign --verify --deep --strict ConsoleCrypt.app
+          archs=" $(lipo -archs ConsoleCrypt.app/Contents/MacOS/ConsoleCrypt) "
+          [[ "$archs" == *' arm64 '* && "$archs" == *' x86_64 '* ]]
+          hdiutil verify ConsoleCrypt.dmg
+          package="ConsoleCrypt-$version-session-tools-macos-universal.dmg"
+          mv ConsoleCrypt.dmg "$package"
+          shasum -a 256 "$package" > SHA256SUMS-macos.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: session-tools-macos
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+          path: |
+            dist/macos/ConsoleCrypt-1.2.3+${{ env.CC_BUILD_NUMBER }}-session-tools-macos-universal.dmg
+            dist/macos/SHA256SUMS-macos.txt
+            dist/macos/ConsoleCrypt.version

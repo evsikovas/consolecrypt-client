@@ -1,3 +1,4 @@
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -174,13 +175,16 @@ class SavedForwardTile extends ConsumerWidget {
             cells: [
               Row(
                 children: [
-                  Icon(plan.kind == SavedForwardKind.docker ? Icons.view_in_ar_outlined : Icons.hub_outlined, size: 16),
+                  Icon(plan.kind == SavedForwardKind.docker ? ToolIcons.docker : ToolIcons.kubernetes, size: 16),
                   const SizedBox(width: 6),
                   Expanded(child: Text(plan.name)),
                 ],
               ),
               Text('$product · $host'),
-              Text('$address → ${plan.remotePort}/tcp', style: GlassTokens.of(context).typography.mono), // l10n-ignore: TCP port notation.
+              Text(
+                '$address → ${plan.remotePort}/tcp',
+                style: GlassTokens.of(context).typography.mono,
+              ), // l10n-ignore: TCP port notation.
               Text(state),
             ],
           ),
@@ -191,7 +195,7 @@ class SavedForwardTile extends ConsumerWidget {
       key: ValueKey('saved-forward-${plan.id}'),
       selected: selected,
       onTap: onSelect,
-      leading: Icon(plan.kind == SavedForwardKind.docker ? Icons.view_in_ar_outlined : Icons.hub_outlined),
+      leading: Icon(plan.kind == SavedForwardKind.docker ? ToolIcons.docker : ToolIcons.kubernetes),
       title: Text('${plan.name}:${plan.remotePort}', maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         '$product · $host\n$address · '

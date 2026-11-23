@@ -36,6 +36,9 @@ Stream<TerminalFrame> terminalAttach({required String terminalId}) =>
 Future<void> terminalWrite({required String terminalId, required List<int> data}) =>
     RustLib.instance.api.crateApiSshTerminalWrite(terminalId: terminalId, data: data);
 
+Future<List<String>> terminalCommandHistory({required String terminalId}) =>
+    RustLib.instance.api.crateApiSshTerminalCommandHistory(terminalId: terminalId);
+
 Future<void> terminalResize({required String terminalId, required int cols, required int rows}) =>
     RustLib.instance.api.crateApiSshTerminalResize(terminalId: terminalId, cols: cols, rows: rows);
 

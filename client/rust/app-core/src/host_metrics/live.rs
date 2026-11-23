@@ -16,7 +16,7 @@ use uuid::Uuid;
 const READ: &str = r#"export LC_ALL=C
 [ "$(uname -s)" = Linux ] && [ -r /proc/stat ] || exit 42
 awk 'NR == 1 && $1 == "cpu" { print "cpu", $2, $3, $4, $5, $6, $7, $8, $9 }
-     /^cpu[0-9]+ / { n++ }
+     /^cpu[0-9]+ / { n++; if (n<=128) print "core", $1, $2, $3, $4, $5, $6, $7, $8, $9 }
      END { if (n) print "cores", n }' /proc/stat
 printf 'kernel %s\narch %s\n' "$(uname -r)" "$(uname -m)"
 if [ -r /etc/os-release ]; then
@@ -29,6 +29,9 @@ if [ -r /proc/cpuinfo ]; then
 fi
 awk 'NR == 1 && NF >= 3 { print "load", $1, $2, $3; exit }' /proc/loadavg
 awk '/^MemTotal:/ { t=$2 } /^MemAvailable:/ { a=$2 } END { if (t!="" && a!="") print "mem", t, a }' /proc/meminfo
+awk '/^SwapTotal:/ { t=$2 } /^SwapFree:/ { f=$2 } END { if (t!="" && f!="") print "swap",t,f }' /proc/meminfo
+if [ -S /var/run/docker.sock ] && [ -w /var/run/docker.sock ]; then echo 'docker 1'; fi
+if command -v who >/dev/null 2>&1; then who 2>/dev/null | awk 'END { print "logins",NR }'; fi
 df -Pk / | awk 'NR == 2 && NF >= 6 { print "disk", $(NF-4), $(NF-3) }'
 awk 'NR == 1 { print "uptime", $1; exit }' /proc/uptime
 awk -F: 'NR > 2 { n=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", n); if (n != "lo") { s=$2; sub(/^[[:space:]]+/, "", s); c=split(s, v, /[[:space:]]+/); if (c >= 16) print "net", n, v[1], v[9] } }' /proc/net/dev
@@ -49,6 +52,10 @@ struct Request {
 struct Snapshot {
     cpu: Option<[u64; 8]>,
     memory: Option<(u64, u64)>,
+    cores: BTreeMap<String, [u64; 8]>,
+    swap: Option<(u64, u64)>,
+    logins: Option<u32>,
+    docker: bool,
     disk: Option<(u64, u64)>,
     uptime: Option<f64>,
     os: Option<String>,
@@ -101,6 +108,33 @@ impl Snapshot {
                         number(h)?,
                     ]);
                 }
+                ["core", name, a, b, c, d, e, f, g, h]
+                    if sample.cores.len() < 128
+                        && name
+                            .strip_prefix("cpu")
+                            .and_then(|v| v.parse::<u32>().ok())
+                            .is_some() =>
+                {
+                    sample.cores.insert(
+                        name.to_string(),
+                        [
+                            number(a)?,
+                            number(b)?,
+                            number(c)?,
+                            number(d)?,
+                            number(e)?,
+                            number(f)?,
+                            number(g)?,
+                            number(h)?,
+                        ],
+                    );
+                }
+                ["swap", total, free] => {
+                    let total = bytes(total)?;
+                    sample.swap = Some((total, total.checked_sub(bytes(free)?).ok_or_else(bad)?));
+                }
+                ["docker", "1"] => sample.docker = true,
+                ["logins", n] => sample.logins = Some(n.parse().map_err(|_| bad())?),
                 ["mem", total, available] if sample.memory.is_none() => {
                     let (total, available) = (bytes(total)?, bytes(available)?);
                     if total == 0 || available > total {
@@ -154,7 +188,10 @@ impl Snapshot {
     }
 
     fn cpu_percent(&self, previous: &Self) -> Option<f64> {
-        let (current, previous) = (self.cpu?, previous.cpu?);
+        Self::cpu_delta(self.cpu?, previous.cpu?)
+    }
+
+    fn cpu_delta(current: [u64; 8], previous: [u64; 8]) -> Option<f64> {
         let mut ticks = [0u64; 8];
         for (i, tick) in ticks.iter_mut().enumerate() {
             *tick = current[i].checked_sub(previous[i])?;
@@ -253,7 +290,7 @@ impl AppCore {
                 slot = permits.acquire() => slot.map_err(|_| AppError::Cancelled)?,
             };
             let output = session
-                .exec_bounded(READ, 16 * 1024, async {
+                .exec_bounded(READ, 64 * 1024, async {
                     tokio::select! { biased;
                         _ = cancel.cancelled() => {},
                         _ = shutdown.changed() => {},
@@ -302,7 +339,37 @@ impl AppCore {
             {
                 return Err(AppError::Cancelled);
             }
+            let core_usage = sample
+                .cores
+                .iter()
+                .map(|(name, current)| {
+                    let value = last
+                        .as_ref()
+                        .and_then(|(_, old)| Snapshot::cpu_delta(*current, *old.cores.get(name)?));
+                    (name, value)
+                })
+                .collect::<BTreeMap<_, _>>();
+            let interfaces = sample
+                .network
+                .iter()
+                .map(|(name, (rx, tx))| {
+                    let rate = last.as_ref().and_then(|(time, old)| {
+                        let (old_rx, old_tx) = old.network.get(name)?;
+                        let seconds = now.duration_since(*time).as_secs_f64();
+                        if seconds <= 0.0 {
+                            return None;
+                        }
+                        Some((
+                            rx.checked_sub(*old_rx)? as f64 / seconds,
+                            tx.checked_sub(*old_tx)? as f64 / seconds,
+                        ))
+                    });
+                    json!({"name":name,"rx":rate.map(|v|v.0),"tx":rate.map(|v|v.1)})
+                })
+                .collect::<Vec<_>>();
             if !emit(json!({
+                "cores":core_usage,"interfaces":interfaces,"docker":sample.docker,"logins":sample.logins,
+                "swapUsed":sample.swap.map(|v|v.1),"swapTotal":sample.swap.map(|v|v.0),
                 "timestampMs": SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis(),
                 "cpuPercent": cpu,
                 "memoryTotal": sample.memory.map(|v| v.0), "memoryUsed": sample.memory.map(|v| v.1),

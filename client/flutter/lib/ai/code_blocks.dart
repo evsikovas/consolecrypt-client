@@ -89,69 +89,92 @@ class CommandActionsCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SelectableText(command, style: tokens.typography.mono.copyWith(color: tokens.palette.label)),
-          const SizedBox(height: GlassSpacing.s6),
           Wrap(
-            spacing: GlassSpacing.s2,
-            runSpacing: GlassSpacing.s2,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              GlassButton.plain(
-                size: GlassControlSize.sm,
-                onPressed: () => copyPlainWithNotice(context, ref, command, what: l10n.copyWhatCommand),
-                icon: Icons.copy_rounded,
-                label: l10n.commonCopy,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.terminal_rounded, size: 16, color: tokens.secondaryLabel),
+                  const SizedBox(width: 6),
+                  Text(l10n.dockerCommand, style: tokens.typography.caption),
+                ],
               ),
-              GlassButton.plain(
-                key: const ValueKey('ai-insert'),
-                size: GlassControlSize.sm,
-                onPressed: hasTab
-                    ? () {
-                        ref.read(terminalTabsProvider.notifier).insertIntoActive(command);
-                        onDone?.call();
+              Wrap(
+                spacing: 2,
+                children: [
+                  GlassIconButton(
+                    size: 28,
+                    iconSize: 16,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: () => copyPlainWithNotice(context, ref, command, what: l10n.copyWhatCommand),
+                    icon: Icons.copy_rounded,
+                    tooltip: l10n.commonCopy,
+                  ),
+                  GlassIconButton(
+                    key: const ValueKey('ai-insert'),
+                    size: 28,
+                    iconSize: 16,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: hasTab
+                        ? () {
+                            ref.read(terminalTabsProvider.notifier).insertIntoActive(command);
+                            onDone?.call();
+                          }
+                        : null,
+                    icon: Icons.keyboard_return_rounded,
+                    tooltip: l10n.codeBlocksInsert,
+                  ),
+                  GlassIconButton(
+                    key: const ValueKey('ai-run'),
+                    size: 28,
+                    iconSize: 16,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: active?.isLocal == true
+                        ? null
+                        : () async {
+                            // Run on top of the overlay, then close it (its context
+                            // must stay alive while the confirmation is shown).
+                            final ran = await runCommandFlow(
+                              context,
+                              ref,
+                              command: command,
+                              declared: suggestedRisk,
+                              source: SnippetSource.ai,
+                            );
+                            if (ran) onDone?.call();
+                          },
+                    icon: Icons.play_arrow_rounded,
+                    tooltip: active?.isLocal == true ? l10n.terminalLocalInsertOnly : l10n.codeBlocksRun,
+                  ),
+                  GlassIconButton(
+                    key: const ValueKey('ai-save-snippet'),
+                    size: 28,
+                    iconSize: 16,
+                    style: GlassIconButtonStyle.plain,
+                    onPressed: () async {
+                      final draft = await runWithFeedback(
+                        context,
+                        () => ref.read(aiServiceProvider).draftSnippet(command: command),
+                      );
+                      if (draft == null || !context.mounted) return;
+                      final saved = await showSnippetEditor(context, draft: draft);
+                      if (saved != null && context.mounted) {
+                        showSnack(context, context.l10n.codeBlocksSnippetSaved(saved.name), tone: GlassTone.success);
                       }
-                    : null,
-                icon: Icons.keyboard_return_rounded,
-                label: l10n.codeBlocksInsert,
-              ),
-              GlassButton.plain(
-                key: const ValueKey('ai-run'),
-                size: GlassControlSize.sm,
-                onPressed: active?.isLocal == true
-                    ? null
-                    : () async {
-                        // Run on top of the overlay, then close it (its context
-                        // must stay alive while the confirmation is shown).
-                        final ran = await runCommandFlow(
-                          context,
-                          ref,
-                          command: command,
-                          declared: suggestedRisk,
-                          source: SnippetSource.ai,
-                        );
-                        if (ran) onDone?.call();
-                      },
-                icon: Icons.play_arrow_rounded,
-                label: l10n.codeBlocksRun,
-              ),
-              if (active?.isLocal == true) Text(l10n.terminalLocalInsertOnly),
-              GlassButton.plain(
-                key: const ValueKey('ai-save-snippet'),
-                size: GlassControlSize.sm,
-                onPressed: () async {
-                  final draft = await runWithFeedback(
-                    context,
-                    () => ref.read(aiServiceProvider).draftSnippet(command: command),
-                  );
-                  if (draft == null || !context.mounted) return;
-                  final saved = await showSnippetEditor(context, draft: draft);
-                  if (saved != null && context.mounted) {
-                    showSnack(context, context.l10n.codeBlocksSnippetSaved(saved.name), tone: GlassTone.success);
-                  }
-                },
-                icon: Icons.bookmark_add_rounded,
-                label: l10n.codeBlocksSaveAsSnippet,
+                    },
+                    icon: Icons.bookmark_add_rounded,
+                    tooltip: l10n.sessionSnip,
+                  ),
+                ],
               ),
             ],
+          ),
+          const Divider(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: SelectableText(command, style: tokens.typography.mono.copyWith(color: tokens.palette.label)),
           ),
         ],
       ),

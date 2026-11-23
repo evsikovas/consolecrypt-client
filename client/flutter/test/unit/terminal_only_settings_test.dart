@@ -18,6 +18,7 @@ void main() {
         terminalTabPlacement: TerminalTabPlacement.top,
         terminalTabColumnCollapsed: false,
         terminalTabColumnWidth: 228,
+        terminalTabGrouped: true,
         uiAccentColor: 0x22B8AD,
         themeMode: AppThemeMode.dark,
         terminalFontFamily: 'Consolas',
@@ -30,6 +31,7 @@ void main() {
     final reopened = (await TerminalOnlySettings.open(file: file)).currentLocal;
     expect(reopened.terminalTabPlacement, TerminalTabPlacement.top);
     expect(reopened.terminalTabColumnCollapsed, isFalse);
+    expect(reopened.terminalTabGrouped, isTrue);
     expect(reopened.terminalTabColumnWidth, 228);
     expect(reopened.uiAccentColor, 0x22B8AD);
     expect(reopened.themeMode, AppThemeMode.dark);

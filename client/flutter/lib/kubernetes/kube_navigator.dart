@@ -1,3 +1,4 @@
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -199,7 +200,7 @@ class _KubeNavigatorState extends ConsumerState<KubeNavigator> {
       KubeNavSection.config => Icons.tune_rounded,
       KubeNavSection.storage => Icons.storage_rounded,
       KubeNavSection.access => Icons.admin_panel_settings_outlined,
-      KubeNavSection.cluster => Icons.hub_outlined,
+      KubeNavSection.cluster => ToolIcons.kubernetes,
       KubeNavSection.gitops => Icons.account_tree_outlined,
       KubeNavSection.custom => Icons.extension_outlined,
     };

@@ -34,6 +34,10 @@ abstract interface class TerminalService {
 
 /// Optional desktop capability. SSH-only adapters and mobile keep the same
 /// service contract; unsupported platforms expose no local profiles.
+abstract interface class TerminalHistoryReader {
+  Future<List<String>> commands(TerminalSessionId id);
+}
+
 abstract interface class LocalTerminalService {
   Future<LocalShellProfiles> listLocalProfiles();
   Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size});

@@ -55,11 +55,11 @@ final class DeviceInfo {
   /// then the device cannot revoke or sign out trusted devices.
   final DateTime? quarantineUntil;
 
-  bool get isRevoked => status == DeviceStatus.revoked;
+  bool get isRevoked => status == DeviceStatus.revoked || revokedAt != null;
 
   bool get inQuarantine => !isRevoked && quarantineUntil != null && quarantineUntil!.isAfter(DateTime.now());
 
-  bool isTrustedFor(VaultId? vault) => !isRevoked && vault != null && trustedVaults.contains(vault);
+  bool isTrustedFor(VaultId? vault) => !isRevoked && trusted != false && vault != null && trustedVaults.contains(vault);
 }
 
 /// Mirrors `cc_protocol::devices::DeviceRequestStatus`.
@@ -113,6 +113,31 @@ final class DevicesSnapshot {
 
   /// Devices that reported a different vault key (signed records).
   final List<DeviceId> vaultKeyConflicts;
+
+  DevicesSnapshot withRevocation(String id) => DevicesSnapshot(
+    devices: [
+      for (final d in devices)
+        if (d.deviceId.value != id)
+          d
+        else
+          DeviceInfo(
+            deviceId: d.deviceId,
+            name: d.name,
+            platform: d.platform,
+            status: DeviceStatus.revoked,
+            trustedVaults: const [],
+            createdAt: d.createdAt,
+            lastSeenAt: d.lastSeenAt,
+            revokedAt: d.revokedAt,
+            isCurrent: d.isCurrent,
+            trusted: false,
+          ),
+    ],
+    pendingRequests: pendingRequests.where((r) => r.device.deviceId.value != id).toList(),
+    deviceProtection: deviceProtection,
+    vaultKeyUnconfirmed: vaultKeyUnconfirmed,
+    vaultKeyConflicts: vaultKeyConflicts,
+  );
 
   DeviceInfo? get current => devices.where((d) => d.isCurrent).firstOrNull;
 }

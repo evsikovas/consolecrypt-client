@@ -261,6 +261,8 @@ final class RustBackend {
       draftProfile = null;
     }
     if (active?['id'] != previousActive) {
+      _deviceRequest++;
+      devices.value = DevicesSnapshot.empty;
       awaitingApproval = false;
       remoteVaults = const [];
       _stopApprovalPoll();
@@ -555,13 +557,26 @@ final class RustBackend {
   }
 
   /// Devices + pending requests (synced profiles only).
+  int _deviceRequest = 0;
   Future<void> refreshDevices() async {
+    final request = ++_deviceRequest;
+    final vault = activeVaultId;
     final a = activeInfo;
     if (draftProfile != null || a == null || a['kind'] != 'synced') {
       devices.value = DevicesSnapshot.empty;
       return;
     }
-    devices.value = devicesFromJson(decodeObject(await guard(rs_sync.devicesList)), vaultId: activeVaultId);
+    try {
+      final result = decodeObject(await guard(rs_sync.devicesList));
+      if (request == _deviceRequest && a['id'] == activeInfo?['id'] && vault == activeVaultId && draftProfile == null) {
+        devices.value = devicesFromJson(result, vaultId: vault);
+      }
+    } on AppException catch (error) {
+      if (request == _deviceRequest && error.code == AppErrorCode.deviceRevoked) {
+        devices.value = DevicesSnapshot.empty;
+      }
+      rethrow;
+    }
   }
 
   // ---- device approval (new device) -------------------------------------------------
@@ -669,6 +684,10 @@ final class RustBackend {
           await markAccountDisabled();
         case 'device_revoked':
           final revoked = e['device_id'];
+          if (revoked is String) {
+            _deviceRequest++;
+            devices.value = devices.value.withRevocation(revoked);
+          }
           newDevices.value = ([...newDevices.value.where((n) => n.deviceId.value != revoked)]);
           await refreshState();
           await _refreshDevicesQuietly();

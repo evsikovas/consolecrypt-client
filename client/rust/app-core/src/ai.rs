@@ -24,7 +24,7 @@ mod session;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use index::index_key_name;
+pub(crate) use index::{history_enabled, index_key_name};
 pub(crate) use session::AiSession;
 pub(crate) use session::DEVICE_LOCAL_PROVIDER_ID;
 

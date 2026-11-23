@@ -168,6 +168,8 @@ pub struct CommandTracker {
     captured: usize,
     echo_skipped: bool,
     current_errors: Vec<String>,
+    history_filter: Option<fn(&str) -> bool>,
+    history: std::collections::VecDeque<String>,
     last_command: Option<String>,
     last_error: Option<String>,
 }
@@ -189,6 +191,39 @@ impl CommandTracker {
         self.last_command.as_deref()
     }
 
+    pub fn set_history_filter(&mut self, filter: Option<fn(&str) -> bool>) {
+        self.history_filter = filter;
+        if filter.is_none() {
+            self.history.iter_mut().for_each(Zeroize::zeroize);
+            self.history.clear();
+        }
+    }
+    pub fn history(&self) -> Vec<String> {
+        self.history.iter().rev().cloned().collect()
+    }
+
+    // Only retain an actual echoed shell prompt followed by the submitted text.
+    // Hidden input, terminal applications and private preparation shells do not qualify.
+    fn record_echo(&mut self, echo: &str, command: &str) {
+        if command.is_empty() || command.len() > 2048 || command.chars().any(char::is_control) {
+            return;
+        }
+        let Some(prompt) = echo.trim_end().strip_suffix(command) else {
+            return;
+        };
+        if !["$ ", "# ", "> ", "% ", "❯ ", "➜ "]
+            .iter()
+            .any(|p| prompt.ends_with(p))
+            || self.history.back().is_some_and(|s| s == command)
+            || !self.history_filter.is_some_and(|f| f(command))
+        {
+            return;
+        }
+        if self.history.len() == 100 {
+            if let Some(mut old) = self.history.pop_front() {old.zeroize();}
+        }
+        self.history.push_back(command.to_owned());
+    }
     pub fn last_error(&self) -> Option<&str> {
         self.last_error.as_deref()
     }
@@ -265,16 +300,15 @@ impl CommandTracker {
         let typed = String::from_utf8_lossy(&self.line).trim().to_string();
         let cmd = if self.uncertain {
             let echoed = strip_prompt(&self.output_line).to_string();
-            if echoed.is_empty() {
-                typed
-            } else {
-                echoed
-            }
+            if echoed.is_empty() { typed } else { echoed }
         } else {
             typed
         };
         self.clear_line();
         if !cmd.is_empty() {
+            if self.history_filter.is_some() {
+                self.record_echo(&self.output_line.clone(), &cmd);
+            }
             self.last_command = Some(cmd);
             self.capturing = true;
             self.captured = 0;
@@ -320,6 +354,7 @@ impl CommandTracker {
         if !self.echo_skipped {
             self.echo_skipped = true;
             if !cmd.is_empty() && l.ends_with(cmd.as_str()) {
+                self.record_echo(line, &cmd);
                 return; // echo of the command line itself
             }
         }
@@ -340,6 +375,7 @@ impl CommandTracker {
     /// Forget everything (e.g. when the session is closed).
     pub fn clear(&mut self) {
         self.clear_line();
+        self.set_history_filter(None);
         self.output_line.zeroize();
         self.capturing = false;
         self.current_errors.clear();
@@ -413,6 +449,21 @@ mod tests {
         t.on_output(b" nginx");
         // echo arrives after Enter in reality; we used the echo seen so far
         assert!(t.last_command().unwrap().starts_with("systemctl status"));
+    }
+
+    #[test]
+    fn session_history_requires_an_echo_and_clears_when_disabled() {
+        let mut t = CommandTracker::new();
+        t.set_history_filter(Some(|s| !s.contains("token")));
+        t.on_output(b"user@host:~$ docker ps");
+        t.on_input(b"docker ps\r");
+        t.on_output(b"\r\nuser@host:~$ echo token");
+        t.on_input(b"echo token\r");
+        t.on_output(b"\r\nPassword: ");
+        t.on_input(b"private\r");
+        assert_eq!(t.history(), vec!["docker ps"]);
+        t.set_history_filter(None);
+        assert!(t.history().is_empty());
     }
 
     #[test]

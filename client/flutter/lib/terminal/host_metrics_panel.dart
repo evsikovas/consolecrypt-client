@@ -11,8 +11,8 @@ import 'package:material_ui/material_ui.dart';
 
 /// Displays the active SSH tab's in-memory measurements. The tab owns collection.
 class HostMetricsPanel extends StatelessWidget {
-  const HostMetricsPanel({super.key, required this.history, this.hostName});
-  final String? hostName;
+  const HostMetricsPanel({super.key, required this.history, this.hostName, this.address, this.description});
+  final String? hostName, address, description;
   final ValueListenable<HostMetricsHistory> history;
 
   @override
@@ -30,15 +30,16 @@ class HostMetricsPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: GlassSpacing.s12,
           children: [
+            if (sample == null && hostName != null) Text(hostName!, style: tokens.typography.bodyEmph),
             if (error != null) InfoBanner(message: _readError(l, error), tone: BannerTone.warning),
             if (sample == null && error == null) ...[const LinearProgressIndicator(), Text(l.hostMetricsConnecting)],
             if (sample != null) ...[
+              _systemDetails(context, l, sample),
               Text(
                 '${l.hostMetricsLastSample} ${DateFormat.Hms(l.localeName).format(sample.time.toLocal())}',
                 style: tokens.typography.caption.copyWith(color: tokens.palette.secondary),
               ),
               _charts(context, l, snapshot.samples, sample),
-              _systemDetails(context, l, sample),
             ],
           ],
         ),
@@ -69,15 +70,29 @@ class HostMetricsPanel extends StatelessWidget {
     final end = latest.time, start = end.subtract(const Duration(minutes: 5));
     final points = history.where((sample) => !sample.time.isBefore(start)).toList();
     final time = DateFormat.Hm(l.localeName);
-    final stats = [
-      (l.hostMetricsRam, bytes(latest.memoryUsed), percentage(latest.memoryPercent)),
-      (
-        l.hostMetricsDisk,
-        percentage(latest.diskPercent),
-        [bytes(latest.diskUsed), bytes(latest.diskTotal)].join(' / '),
-      ),
-      (l.hostMetricsReceived, speed(latest.received), l.hostMetricsNetwork),
-    ];
+    Widget meter(String label, int? used, int? total) {
+      final pct = used == null || total == null || total == 0 ? null : 100 * used / total;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(label, style: tokens.typography.bodyEmph)),
+              Text(percentage(pct)),
+            ],
+          ),
+          if (pct != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: LinearProgressIndicator(value: (pct / 100).clamp(0, 1), minHeight: 3),
+            ),
+          Text([bytes(used), bytes(total)].join(' / '), style: tokens.typography.caption),
+        ],
+      );
+    }
+
+    final cores = latest.cores.keys.toList()
+      ..sort((a, b) => int.parse(a.substring(3)).compareTo(int.parse(b.substring(3))));
     return ContentSurface(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -105,29 +120,51 @@ class HostMetricsPanel extends StatelessWidget {
             ],
           ),
           const Divider(height: 1),
-          LayoutBuilder(
-            builder: (context, bounds) {
-              final columns = bounds.maxWidth >= 300 * MediaQuery.textScalerOf(context).scale(12) / 12 ? 3 : 1;
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final (label, value, detail) in stats)
-                    SizedBox(
-                      width: (bounds.maxWidth - 8 * (columns - 1)) / columns,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(label, style: tokens.typography.caption),
-                          Text(value, style: tokens.typography.bodyEmph),
-                          Text(detail, style: tokens.typography.caption),
-                        ],
+          if (cores.isNotEmpty)
+            Wrap(
+              spacing: 3,
+              runSpacing: 3,
+              children: [
+                for (final name in cores)
+                  Tooltip(
+                    message: '$name · ${percentage((latest.cores[name] as num?)?.toDouble())}',
+                    child: SizedBox(
+                      width: 16,
+                      height: 12,
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: LinearProgressIndicator(
+                          minHeight: 6,
+                          value: ((latest.cores[name] as num?)?.toDouble() ?? 0) / 100,
+                        ),
                       ),
                     ),
-                ],
-              );
-            },
+                  ),
+              ],
+            ),
+          meter(l.hostMetricsRam, latest.memoryUsed, latest.memoryTotal),
+          if ((latest.swapTotal ?? 0) > 0) meter(l.sessionSwap, latest.swapUsed, latest.swapTotal),
+          meter(l.hostMetricsDisk, latest.diskUsed, latest.diskTotal),
+          Text(l.hostMetricsNetwork, style: tokens.typography.bodyEmph),
+          Wrap(
+            spacing: 12,
+            children: [
+              Text('${l.hostMetricsReceived} ↓ ${speed(latest.received)}'),
+              Text('${l.hostMetricsSent} ↑ ${speed(latest.sent)}'),
+            ],
           ),
+          for (final nic in latest.interfaces)
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              spacing: 8,
+              children: [
+                Text(nic['name'] as String, style: tokens.typography.callout),
+                Text(
+                  '↓ ${speed((nic['rx'] as num?)?.toDouble())}   ↑ ${speed((nic['tx'] as num?)?.toDouble())}',
+                  style: tokens.typography.caption,
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -141,9 +178,9 @@ class HostMetricsPanel extends StatelessWidget {
       if (sample.logicalCpus case final count?) l.hostMetricsLogicalCpus(count),
     ];
     final rows = [
-      if (sample.sent case final rate? when rate.isFinite)
-        (l.hostMetricsSent, l.sftpTransferSpeed(formatBytes(l, rate.round()))),
+      if (address?.isNotEmpty == true) (l.hostEditorAddressLabel, address!),
       if (sample.os case final os?) (l.hostMetricsOs, os),
+      if (sample.logins case final count?) (l.sessionLogins, count.toString()),
       if (sample.kernel case final kernel?) (l.hostMetricsKernel, kernel),
       if (cpu.isNotEmpty) (l.hostMetricsProcessor, cpu.join(' · ')),
       if (sample.loadAverage case final load?) (l.hostMetricsLoadAverage, load),
@@ -159,6 +196,8 @@ class HostMetricsPanel extends StatelessWidget {
         spacing: GlassSpacing.s6,
         children: [
           if (hostName != null) Text(hostName!, style: tokens.typography.bodyEmph),
+          if (description?.trim().isNotEmpty == true)
+            Text(description!, maxLines: 3, overflow: TextOverflow.ellipsis, style: tokens.typography.caption),
           for (final (label, value) in rows) ...[
             const Divider(height: 1),
             Row(

@@ -189,20 +189,22 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
     return PageScaffold(
       embedded: widget.embedded,
       title: l10n.navSnippets,
-      subtitle: l10n.snippetSyncHint,
+      subtitle: widget.embedded ? null : l10n.snippetSyncHint,
       actions: [
-        GlassButton(
-          key: const ValueKey('add-snippet'),
-          onPressed: () => showSnippetEditor(context, packageName: _package),
-          icon: Icons.add_rounded,
-          label: l10n.snippetsNewButton,
-        ),
-        GlassButton(
-          key: const ValueKey('snippet-starters'),
-          onPressed: () => showStarterCatalog(context),
-          icon: Icons.inventory_2_outlined,
-          label: l10n.snippetStarterCatalog,
-        ),
+        if (!widget.embedded) ...[
+          GlassButton(
+            key: const ValueKey('add-snippet'),
+            onPressed: () => showSnippetEditor(context, packageName: _package),
+            icon: Icons.add_rounded,
+            label: l10n.snippetsNewButton,
+          ),
+          GlassButton(
+            key: const ValueKey('snippet-starters'),
+            onPressed: () => showStarterCatalog(context),
+            icon: Icons.inventory_2_outlined,
+            label: l10n.snippetStarterCatalog,
+          ),
+        ],
       ],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -231,6 +233,26 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
                   }),
                 ),
               ),
+              if (widget.embedded) ...[
+                GlassIconButton(
+                  size: 28,
+                  iconSize: 16,
+                  style: GlassIconButtonStyle.plain,
+                  key: const ValueKey('add-snippet'),
+                  onPressed: () => showSnippetEditor(context, packageName: _package),
+                  icon: Icons.add_rounded,
+                  tooltip: l10n.snippetsNewButton,
+                ),
+                GlassIconButton(
+                  size: 28,
+                  iconSize: 16,
+                  style: GlassIconButtonStyle.plain,
+                  key: const ValueKey('snippet-starters'),
+                  onPressed: () => showStarterCatalog(context),
+                  icon: Icons.inventory_2_outlined,
+                  tooltip: l10n.snippetStarterCatalog,
+                ),
+              ],
               if (_package != null && _package!.isNotEmpty)
                 GlassMenuButton<bool>(
                   entries: [
@@ -253,34 +275,39 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
             ],
           ),
           const SizedBox(height: GlassSpacing.s8),
-          Flex(
-            direction: widget.embedded ? Axis.vertical : Axis.horizontal,
-            crossAxisAlignment: widget.embedded ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                flex: widget.embedded ? 0 : 1,
-                child: GlassField(
-                  key: const ValueKey('snippet-search'),
-                  search: true,
-                  size: GlassFieldSize.lg,
-                  leadingIcon: Icons.search_rounded,
-                  placeholder: l10n.snippetsSearchHint,
-                  onChanged: _search,
-                ),
-              ),
-              SizedBox(width: widget.embedded ? 0 : 12, height: widget.embedded ? 8 : 0),
-              GlassSelect<SnippetType?>(
-                key: const ValueKey('snippet-type'),
-                value: _type,
-                semanticLabel: l10n.snippetsTypeLabel,
-                items: [
-                  GlassSelectItem(value: null, label: l10n.snippetsAllTypes),
-                  for (final type in SnippetType.values) GlassSelectItem(value: type, label: type.localized(l10n)),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 260 * MediaQuery.textScalerOf(context).scale(12) / 12;
+              return Flex(
+                direction: stacked ? Axis.vertical : Axis.horizontal,
+                crossAxisAlignment: stacked ? CrossAxisAlignment.stretch : CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    flex: stacked ? 0 : 1,
+                    child: GlassField(
+                      key: const ValueKey('snippet-search'),
+                      search: true,
+                      size: widget.embedded ? GlassFieldSize.md : GlassFieldSize.lg,
+                      leadingIcon: Icons.search_rounded,
+                      placeholder: widget.embedded ? l10n.sessionSnippetSearch : l10n.snippetsSearchHint,
+                      onChanged: _search,
+                    ),
+                  ),
+                  SizedBox(width: stacked ? 0 : 12, height: stacked ? 8 : 0),
+                  GlassSelect<SnippetType?>(
+                    key: const ValueKey('snippet-type'),
+                    value: _type,
+                    semanticLabel: l10n.snippetsTypeLabel,
+                    items: [
+                      GlassSelectItem(value: null, label: l10n.snippetsAllTypes),
+                      for (final type in SnippetType.values) GlassSelectItem(value: type, label: type.localized(l10n)),
+                    ],
+                    onChanged: (v) => setState(() => _type = v),
+                  ),
                 ],
-                onChanged: (v) => setState(() => _type = v),
-              ),
-            ],
+              );
+            },
           ),
           if (allTags.isNotEmpty) ...[
             const SizedBox(height: GlassSpacing.s8),
@@ -319,7 +346,8 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
                             ),
                           ),
                           const SizedBox(width: GlassSpacing.s8),
-                          RiskBadge(risk: s.riskLevel, dense: true),
+                          if (!widget.embedded || s.riskLevel != RiskLevel.readOnly)
+                            RiskBadge(risk: s.riskLevel, dense: true),
                           if (s.source == SnippetSource.ai) ...[
                             const SizedBox(width: GlassSpacing.s6),
                             Tooltip(
@@ -385,25 +413,31 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
                         ],
                       );
                       final actionButtons = <Widget>[
-                        GlassButton(
+                        GlassIconButton(
+                          size: 28,
+                          iconSize: 16,
+                          style: GlassIconButtonStyle.plain,
                           key: ValueKey('paste-${s.name}'),
-                          label: l10n.snippetPaste,
+                          tooltip: l10n.snippetPaste,
                           icon: Icons.keyboard_return_rounded,
                           onPressed: () => insertSnippetFlow(context, ref, s),
                         ),
-                        const SizedBox(width: GlassSpacing.s4),
-                        GlassButton(
+                        GlassIconButton(
+                          size: 28,
+                          iconSize: 16,
+                          style: GlassIconButtonStyle.plain,
                           key: ValueKey('run-${s.name}'),
                           onPressed: () => runSnippetFlow(context, ref, s),
                           icon: Icons.play_arrow_rounded,
-                          label: l10n.snippetsRun,
+                          tooltip: l10n.snippetsRun,
                         ),
-                        const SizedBox(width: GlassSpacing.s4),
                         GlassMenuButton<_SnippetAction>(
                           entries: _entries(s),
                           onSelected: (action) => _action(action, s),
                           builder: (context, open) => GlassIconButton(
                             key: ValueKey('snippet-menu-${s.name}'),
+                            size: 28,
+                            iconSize: 16,
                             tooltip: l10n.hostsMoreTooltip,
                             icon: Icons.more_horiz_rounded,
                             style: GlassIconButtonStyle.plain,
@@ -411,41 +445,34 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
                           ),
                         ),
                       ];
-                      final actions = widget.embedded
-                          ? Wrap(
-                              alignment: WrapAlignment.end,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 4,
-                              runSpacing: 4,
-                              children: actionButtons,
-                            )
-                          : Row(mainAxisSize: MainAxisSize.min, children: actionButtons);
+                      final actions = Row(mainAxisSize: MainAxisSize.min, children: actionButtons);
                       if (widget.embedded) {
-                        return Padding(
+                        return InkWell(
                           key: ValueKey('snippet-${s.name}'),
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              InkWell(
-                                onTap: () => showSnippetEditor(context, snippet: s),
-                                onDoubleTap: () => runSnippetFlow(context, ref, s),
-                                onSecondaryTapDown: (details) async {
-                                  final action = await showGlassMenu(
-                                    context: context,
-                                    anchor: Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1),
-                                    entries: _entries(s),
-                                  );
-                                  if (action != null && mounted) await _action(action, s);
-                                },
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [title, const SizedBox(height: 6), subtitle],
+                          onTap: () => showSnippetEditor(context, snippet: s),
+                          onDoubleTap: () => runSnippetFlow(context, ref, s),
+                          onSecondaryTapDown: (details) async {
+                            final action = await showGlassMenu(
+                              context: context,
+                              anchor: Rect.fromLTWH(details.globalPosition.dx, details.globalPosition.dy, 1, 1),
+                              entries: _entries(s),
+                            );
+                            if (action != null && mounted) await _action(action, s);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(child: title),
+                                    actions,
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              Align(alignment: Alignment.centerRight, child: actions),
-                            ],
+                                subtitle,
+                              ],
+                            ),
                           ),
                         );
                       }

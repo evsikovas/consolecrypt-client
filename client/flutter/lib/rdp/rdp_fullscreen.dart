@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/rdp/rdp_clipboard.dart';
 import 'package:consolecrypt/rdp/rdp_controller.dart';
@@ -150,11 +151,7 @@ class _RdpFullscreenState extends ConsumerState<RdpFullscreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.desktop_windows_outlined,
-                                size: 18,
-                                color: connected ? const Color(0xff78d9b6) : Colors.grey,
-                              ),
+                              Icon(ToolIcons.rdp, size: 18, color: connected ? const Color(0xff78d9b6) : Colors.grey),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(

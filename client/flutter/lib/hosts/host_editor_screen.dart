@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -256,11 +257,7 @@ class _HostEditorScreenState extends ConsumerState<HostEditorScreen> {
     final wide = MediaQuery.sizeOf(context).width > 1250;
     final form = _buildForm(context, hosts, groups, groupsById, profiles);
     final effective = _protocol == HostProtocol.rdp
-        ? SectionCard(
-            title: _protocol.name.toUpperCase(),
-            icon: Icons.desktop_windows_rounded,
-            child: Text(l10n.hostRdpConnectionHelp),
-          )
+        ? SectionCard(title: _protocol.name.toUpperCase(), icon: ToolIcons.rdp, child: Text(l10n.hostRdpConnectionHelp))
         : _EffectivePanel(future: _effective, credentialOverride: _auth?.previewLabel(l10n, credentialsById));
     final originalName = _original?.name;
     return PageScaffold(

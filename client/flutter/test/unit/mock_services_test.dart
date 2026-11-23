@@ -264,6 +264,23 @@ void main() {
       expect(after.devices.firstWhere((d) => d.name == 'MacBook Air').trustedVaults, isNotEmpty);
     });
 
+    test('a remote revocation identifies the device even if two names match', () {
+      const vault = VaultId('vault');
+      DeviceInfo device(String id) => DeviceInfo(
+        deviceId: DeviceId(id),
+        name: 'Workstation',
+        platform: DevicePlatform.windows,
+        status: DeviceStatus.active,
+        trustedVaults: const [vault],
+        createdAt: DateTime.utc(2026),
+      );
+      final before = DevicesSnapshot(devices: [device('first'), device('second')], pendingRequests: const []);
+      final after = before.withRevocation('second').withRevocation('second');
+      expect(after.devices.first.isTrustedFor(vault), isTrue);
+      expect(after.devices.last.isTrustedFor(vault), isFalse);
+      expect(after.devices.last.isRevoked, isTrue);
+    });
+
     test('the current device cannot revoke itself; others can be revoked', () async {
       final b = newBackend();
       await b.debugSignInDemoAndUnlock();

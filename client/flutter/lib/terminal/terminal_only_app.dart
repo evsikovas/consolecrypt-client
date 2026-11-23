@@ -375,6 +375,9 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
                           GlassTabColumn(
                             key: const ValueKey('terminal-only-tab-column'),
                             tabs: items,
+                            groups: local.terminalTabGrouped
+                                ? [for (final _ in items) (id: 'local', label: l.terminalLocalComputer)]
+                                : null,
                             activeIndex: selected,
                             width: local.terminalTabColumnWidth,
                             maxWidth: (bounds.maxWidth - 360 - GlassTabColumn.handleWidth).clamp(

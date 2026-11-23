@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -58,7 +59,7 @@ class _DockerScreenState extends ConsumerState<DockerScreen> {
         subtitle: l.dockerSubtitle,
         body: EmptyState(
           key: const ValueKey('docker-unavailable'),
-          icon: Icons.view_in_ar_outlined,
+          icon: ToolIcons.docker,
           title: l.dockerUnavailable,
           message: l.dockerUnavailableHelp,
         ),

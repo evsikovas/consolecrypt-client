@@ -107,6 +107,9 @@ flutter:
     - assets/nerd-fonts/LICENSE
     - assets/nerd-fonts/NOTICE.md
   fonts:
+    - family: ConsoleCryptTools
+      fonts:
+        - asset: assets/fonts/ConsoleCryptTools.ttf
     - family: ConsoleCryptSymbols
       fonts:
         - asset: assets/nerd-fonts/ConsoleCryptSymbols.ttf

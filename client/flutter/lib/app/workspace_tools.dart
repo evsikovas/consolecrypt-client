@@ -3,6 +3,7 @@ import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/symbols.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/app/workspace_forwards.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -17,13 +18,17 @@ import 'package:consolecrypt/notes/notes_panel.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/snippets/snippets_screen.dart';
 import 'package:consolecrypt/terminal/host_metrics_panel.dart';
+import 'package:consolecrypt/terminal/session_tools.dart';
+import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 List<WorkspaceTool> get _generalTools => [
   for (final tool in WorkspaceTool.values)
-    if (tool != WorkspaceTool.server && (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled)) tool,
+    if (!const {WorkspaceTool.server, WorkspaceTool.docker, WorkspaceTool.history}.contains(tool) &&
+        (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled))
+      tool,
 ];
 
 String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (tool) {
@@ -32,6 +37,8 @@ String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (too
   WorkspaceTool.ai => l.navAiChat,
   WorkspaceTool.forwards => l.navPortForwards,
   WorkspaceTool.server => l.hostMetricsTitle,
+  WorkspaceTool.history => l.settingsCommandHistoryLabel,
+  WorkspaceTool.docker => l.dockerTitle,
 };
 
 Widget _toolIcon(WorkspaceTool tool) => switch (tool) {
@@ -39,6 +46,8 @@ Widget _toolIcon(WorkspaceTool tool) => switch (tool) {
   WorkspaceTool.notes => const AppSymbolIcon(AppSymbol.notes),
   WorkspaceTool.ai => const AppSymbolIcon(AppSymbol.ai),
   WorkspaceTool.forwards => const AppSymbolIcon(AppSymbol.tunnels),
+  WorkspaceTool.history => const Icon(Icons.history_rounded, size: 18),
+  WorkspaceTool.docker => const Icon(ToolIcons.docker, size: 18),
   WorkspaceTool.server => const Icon(Icons.show_chart_rounded, size: GlassSizes.iconToolbar),
 };
 
@@ -64,7 +73,9 @@ class WorkspaceToolRail extends ConsumerWidget {
             ? (ref.watch(kubeForwardsProvider(scope)).value ?? const []).where((f) => f.state == 'running').length
             : 0);
     final notes = ref.watch(notesAttentionProvider);
-    final showServer = branch == ShellBranch.terminal && ref.watch(activeSshTerminalProvider) != null;
+    final tab = branch == ShellBranch.terminal ? ref.watch(activeSshTerminalProvider) : null;
+    final history = branch == ShellBranch.terminal && ref.watch(terminalTabsProvider).active?.hasCommandHistory == true;
+    final dockerHere = tab != null && dockerEnabled && ref.watch(sessionHasDockerProvider(tab)).value == true;
     return Padding(
       padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(4, 8, 0, 8),
       child: GlassSurface(
@@ -75,7 +86,12 @@ class WorkspaceToolRail extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s2, vertical: GlassSpacing.s8),
         child: Column(
           children: [
-            for (final tool in [..._generalTools, if (showServer) WorkspaceTool.server]) ...[
+            for (final tool in [
+              ..._generalTools,
+              if (history) WorkspaceTool.history,
+              if (dockerHere) WorkspaceTool.docker,
+              if (tab != null) WorkspaceTool.server,
+            ]) ...[
               GlassSidebarItem(
                 key: ValueKey('nav-${tool.name}'),
                 icon: Icons.code_rounded,
@@ -136,15 +152,17 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
         });
       }
     });
-    if (selected != null && selected != WorkspaceTool.server) _visited.add(selected);
+    if (selected != null && _generalTools.contains(selected)) _visited.add(selected);
     final tab = widget.branch == ShellBranch.terminal ? ref.watch(activeSshTerminalProvider) : null;
-    if (selected == WorkspaceTool.server && tab == null) {
+    final active = widget.branch == ShellBranch.terminal ? ref.watch(terminalTabsProvider).active : null;
+    final tools = [
+      if (active?.hasCommandHistory == true) WorkspaceTool.history,
+      if (tab != null && dockerEnabled && ref.watch(sessionHasDockerProvider(tab)).value == true) WorkspaceTool.docker,
+      if (tab != null) WorkspaceTool.server,
+    ];
+    if (selected != null && !_generalTools.contains(selected) && !tools.contains(selected)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted &&
-            ref.read(workspaceToolsProvider).selected == WorkspaceTool.server &&
-            (widget.branch != ShellBranch.terminal || ref.read(activeSshTerminalProvider) == null)) {
-          _close();
-        }
+        if (mounted && ref.read(workspaceToolsProvider).selected == selected) _close();
       });
     }
     final l = context.l10n;
@@ -200,15 +218,22 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                               ),
                             ),
                           ],
-                          if (widget.integrated && tab != null)
-                            GlassIconButton(
-                              key: const ValueKey('nav-server'),
-                              selected: selected == WorkspaceTool.server,
-                              icon: Icons.show_chart_rounded,
-                              tooltip: l.hostMetricsTitle,
-                              style: GlassIconButtonStyle.plain,
-                              onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.server),
-                            ),
+                          if (widget.integrated)
+                            for (final tool in tools)
+                              GlassIconButton(
+                                key: ValueKey('nav-${tool.name}'),
+                                selected: selected == tool,
+                                icon: switch (tool) {
+                                  WorkspaceTool.docker => ToolIcons.docker,
+                                  WorkspaceTool.history => Icons.history_rounded,
+                                  _ => Icons.show_chart_rounded,
+                                },
+                                tooltip: workspaceToolLabel(l, tool),
+                                size: 28,
+                                iconSize: 16,
+                                style: GlassIconButtonStyle.plain,
+                                onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(tool),
+                              ),
                           GlassIconButton(
                             key: const ValueKey('workspace-tools-close'),
                             icon: widget.integrated && !AppPlatform.isMobile
@@ -241,42 +266,25 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                             WorkspaceTool.snippets => const SnippetsScreen(embedded: true),
                                             WorkspaceTool.notes => NotesPanel(branch: widget.branch),
                                             WorkspaceTool.forwards => const WorkspaceForwardsPanel(),
-                                            WorkspaceTool.server => const SizedBox.shrink(),
+                                            WorkspaceTool.server ||
+                                            WorkspaceTool.history ||
+                                            WorkspaceTool.docker => const SizedBox.shrink(),
                                           },
                                   ),
                                 ),
                               ),
                             if (selected == WorkspaceTool.server && tab != null)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      GlassSpacing.s16,
-                                      GlassSpacing.s12,
-                                      GlassSpacing.s16,
-                                      0,
-                                    ),
-                                    child: Text(
-                                      [
-                                        if (tab.target.label.isNotEmpty) tab.target.label,
-                                        if (tab.target.detail.isNotEmpty && tab.target.detail != tab.target.label)
-                                          tab.target.detail,
-                                      ].join(' · '),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: tokens.typography.title3,
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: HostMetricsPanel(
-                                      key: ValueKey(tab.sessionId),
-                                      hostName: tab.host?.name,
-                                      history: tab.hostMetrics,
-                                    ),
-                                  ),
-                                ],
+                              HostMetricsPanel(
+                                key: ValueKey(tab.sessionId),
+                                hostName: tab.host?.name,
+                                address: tab.host?.address,
+                                description: tab.host?.notes,
+                                history: tab.hostMetrics,
                               ),
+                            if (selected == WorkspaceTool.history && active != null && tools.contains(selected))
+                              SessionHistoryPanel(key: ValueKey(active.sessionId), tab: active),
+                            if (selected == WorkspaceTool.docker && tab != null && tools.contains(selected))
+                              SessionDockerPanel(key: ValueKey(tab.sessionId), tab: tab),
                           ],
                         ),
                       ),

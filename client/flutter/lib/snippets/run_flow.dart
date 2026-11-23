@@ -290,10 +290,12 @@ Future<bool> runCommandFlow(
   SnippetSource source = SnippetSource.user,
   SnippetType? dialect,
   bool clientInput = false,
+  TerminalTab? expectedTab,
 }) async {
   final tabs = ref.read(terminalTabsProvider.notifier);
   final profile = ref.read(activeProfileProvider)?.id;
   var target = ref.read(terminalTabsProvider).active;
+  if (expectedTab != null && !identical(target, expectedTab)) return false;
   if (target?.isLocal == true) {
     showSnack(context, context.l10n.terminalLocalInsertOnly);
     return false;
@@ -326,7 +328,8 @@ Future<bool> runCommandFlow(
   );
   if (!ok || !context.mounted) return false;
   if (profile != ref.read(activeProfileProvider)?.id ||
-      (target != null && !ref.read(terminalTabsProvider).tabs.contains(target))) {
+      (expectedTab != null && !identical(ref.read(terminalTabsProvider).active, expectedTab)) ||
+      (target != null && !ref.read(terminalTabsProvider).tabs.expand((t) => t.allPanes).contains(target))) {
     showSnack(context, context.l10n.snippetTargetsChanged);
     return false;
   }

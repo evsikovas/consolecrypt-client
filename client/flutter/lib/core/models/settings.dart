@@ -215,6 +215,7 @@ final class LocalSettings {
     this.terminalFontSize = 13,
     this.terminalFontFamily,
     this.terminalTabSubtitle = TerminalTabSubtitle.name,
+    this.terminalTabGrouped = false,
     this.terminalTabPlacement = TerminalTabPlacement.top,
     this.terminalTabColumnWidth = terminalTabColumnDefault,
     this.terminalTabColumnCollapsed = false,
@@ -277,6 +278,7 @@ final class LocalSettings {
   final TerminalTabSubtitle terminalTabSubtitle;
 
   /// Row above the terminal or column at its left edge (desktop only).
+  final bool terminalTabGrouped;
   final TerminalTabPlacement terminalTabPlacement;
 
   /// Width of the expanded tab column, resized by dragging its edge.
@@ -369,6 +371,7 @@ final class LocalSettings {
     String? terminalFontFamily,
     bool resetTerminalFontFamily = false,
     TerminalTabSubtitle? terminalTabSubtitle,
+    bool? terminalTabGrouped,
     TerminalTabPlacement? terminalTabPlacement,
     double? terminalTabColumnWidth,
     bool? terminalTabColumnCollapsed,
@@ -409,6 +412,7 @@ final class LocalSettings {
     terminalFontSize: terminalFontSize ?? this.terminalFontSize,
     terminalFontFamily: resetTerminalFontFamily ? null : (terminalFontFamily ?? this.terminalFontFamily),
     terminalTabSubtitle: terminalTabSubtitle ?? this.terminalTabSubtitle,
+    terminalTabGrouped: terminalTabGrouped ?? this.terminalTabGrouped,
     terminalTabPlacement: terminalTabPlacement ?? this.terminalTabPlacement,
     terminalTabColumnWidth: terminalTabColumnWidth ?? this.terminalTabColumnWidth,
     terminalTabColumnCollapsed: terminalTabColumnCollapsed ?? this.terminalTabColumnCollapsed,

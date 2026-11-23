@@ -102,7 +102,9 @@ fn parse_request_id(s: &str) -> AppResult<DeviceRequestId> {
         .map_err(|_| AppError::invalid("request_id", "not a valid id"))
 }
 
-fn device_dto(d: &DeviceInfo, vault: Option<VaultId>) -> DeviceDto {
+fn device_dto(d: &DeviceInfo, vault: Option<VaultId>, legacy_trust: bool) -> DeviceDto {
+    let active = d.status == DeviceStatus::Active && d.revoked_at.is_none();
+    let trusted = active && (d.trusted || (legacy_trust && !d.trusted_vaults.is_empty()));
     DeviceDto {
         device_id: d.device_id.to_string(),
         name: d.name.clone(),
@@ -111,13 +113,12 @@ fn device_dto(d: &DeviceInfo, vault: Option<VaultId>) -> DeviceDto {
             DeviceStatus::Active => "active".into(),
             DeviceStatus::Revoked => "revoked".into(),
         },
-        trusted_for_vault: vault.is_some_and(|v| d.trusted_vaults.contains(&v)),
+        trusted_for_vault: trusted && vault.is_some_and(|v| d.trusted_vaults.contains(&v)),
         is_current: d.is_current,
         created_at_ms: ms(&d.created_at),
         last_seen_at_ms: opt_ms(&d.last_seen_at),
         revoked_at_ms: opt_ms(&d.revoked_at),
-        // Servers before 1.7 omit `trusted` (false): derive it.
-        trusted: d.trusted || !d.trusted_vaults.is_empty(),
+        trusted,
         quarantine_until_ms: opt_ms(&d.quarantine_until),
     }
 }
@@ -155,7 +156,9 @@ impl AppCore {
             None => Vec::new(),
         };
         Ok(DeviceListDto {
-            devices: r.devices.iter().map(|d| device_dto(d, vault)).collect(),
+            devices: r.devices.iter().map(|d| {
+                device_dto(d, vault, meta.as_ref().is_some_and(|m| !m.capabilities.device_protection))
+            }).collect(),
             pending_requests: r.pending_requests.iter().map(request_dto).collect(),
             device_protection,
             vrk_commitment,
@@ -641,11 +644,12 @@ impl AppCore {
     pub async fn rename_device(&self, device_id: String, name: String) -> AppResult<DeviceDto> {
         let s = self.session().await?;
         let name = crate::validate::display_name("name", &name)?;
-        let d = s
-            .api()?
+        let api = s.api()?;
+        let d = api
             .update_device(parse_device_id(&device_id)?, &UpdateDeviceRequest { name })
             .await?;
-        Ok(device_dto(&d, s.vault_id()))
+        let legacy = api.meta().await.is_ok_and(|m| !m.capabilities.device_protection);
+        Ok(device_dto(&d, s.vault_id(), legacy))
     }
 }
 
@@ -658,4 +662,37 @@ fn unhex32(s: &str) -> Option<[u8; 32]> {
         *b = u8::from_str_radix(s.get(2 * i..2 * i + 2)?, 16).ok()?;
     }
     Some(out)
+}
+
+#[cfg(test)]
+mod device_list_tests {
+    use super::*;
+    #[test]
+    fn current_server_trust_wins_over_old_envelope_membership() {
+        let vault = VaultId::new();
+        let mut d = DeviceInfo {
+            device_id: DeviceId::new(),
+            name: "Workstation".into(),
+            platform: cc_protocol::version::Platform::Windows,
+            encryption_public_key: Bytes::new(vec![1;32]),
+            signing_public_key: Bytes::new(vec![2;32]),
+            status: DeviceStatus::Active,
+            trusted_vaults: vec![vault],
+            created_at: chrono::Utc::now(),
+            last_seen_at: None,
+            revoked_at: None,
+            is_current: false,
+            trusted: false,
+            quarantine_until: None,
+            client_version: None,
+        };
+        assert!(!device_dto(&d,Some(vault),false).trusted_for_vault);
+        assert!(device_dto(&d,Some(vault),true).trusted_for_vault);
+        d.trusted=true;
+        d.revoked_at=Some(chrono::Utc::now());
+        for legacy in [true,false] {
+            let dto=device_dto(&d,Some(vault),legacy);
+            assert!(!dto.trusted && !dto.trusted_for_vault);
+        }
+    }
 }
