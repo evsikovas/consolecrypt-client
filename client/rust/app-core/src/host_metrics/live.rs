@@ -30,7 +30,6 @@ fi
 awk 'NR == 1 && NF >= 3 { print "load", $1, $2, $3; exit }' /proc/loadavg
 awk '/^MemTotal:/ { t=$2 } /^MemAvailable:/ { a=$2 } END { if (t!="" && a!="") print "mem", t, a }' /proc/meminfo
 awk '/^SwapTotal:/ { t=$2 } /^SwapFree:/ { f=$2 } END { if (t!="" && f!="") print "swap",t,f }' /proc/meminfo
-if [ -S /var/run/docker.sock ] && [ -w /var/run/docker.sock ]; then echo 'docker 1'; fi
 if command -v who >/dev/null 2>&1; then who 2>/dev/null | awk 'END { print "logins",NR }'; fi
 df -Pk / | awk 'NR == 2 && NF >= 6 { print "disk", $(NF-4), $(NF-3) }'
 awk 'NR == 1 { print "uptime", $1; exit }' /proc/uptime
@@ -278,6 +277,9 @@ impl AppCore {
         };
         drop(unlock);
         drop(owner);
+        // Use the same socket and permission rules as the Docker workspace, including rootless engines.
+        let read = format!("{READ}\ncase \"$({})\" in 'ok '*) echo 'docker 1';; esac\n",
+            crate::docker_runtime::SOCKET_PROBE);
         let mut last: Option<(Instant, Snapshot)> = None;
         let closed = terminals.wait_closed(request.terminal_id);
         tokio::pin!(closed);
@@ -290,7 +292,7 @@ impl AppCore {
                 slot = permits.acquire() => slot.map_err(|_| AppError::Cancelled)?,
             };
             let output = session
-                .exec_bounded(READ, 64 * 1024, async {
+                .exec_bounded(&read, 64 * 1024, async {
                     tokio::select! { biased;
                         _ = cancel.cancelled() => {},
                         _ = shutdown.changed() => {},

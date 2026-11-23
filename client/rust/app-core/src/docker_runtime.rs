@@ -133,7 +133,7 @@ mod local_engine_tests {
 }
 
 /// Finds the engine socket the SSH user can use and reports why not.
-const SOCKET_PROBE: &str = "for s in /var/run/docker.sock /run/docker.sock \"/run/user/$(id -u)/docker.sock\"; do \
+pub(crate) const SOCKET_PROBE: &str = "for s in /var/run/docker.sock /run/docker.sock \"/run/user/$(id -u)/docker.sock\"; do \
     if [ -S \"$s\" ]; then if [ -r \"$s\" ] && [ -w \"$s\" ]; then echo \"ok $s\"; else \
     echo \"denied $s $(stat -c %G \"$s\" 2>/dev/null || stat -f %Sg \"$s\" 2>/dev/null)\"; fi; exit 0; fi; done; echo missing";
 
