@@ -37,6 +37,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryUnavailable => '无法读取命令历史记录';
 
   @override
+  String get serverShellHistory => '服务器命令历史';
+
+  @override
+  String get serverHistoryEmpty => 'Shell 历史文件中暂无已保存的命令';
+
+  @override
+  String get dockerMainPid => '主进程 PID';
+
+  @override
+  String get dockerProcessElapsed => '运行时间';
+
+  @override
+  String get dockerProcessUser => '用户';
+
+  @override
   String get sessionHistoryEmpty => '此会话的命令将显示在这里';
 
   @override

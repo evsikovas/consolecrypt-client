@@ -45,6 +45,21 @@ class _Docker extends MockDockerService {
   }
 }
 
+class _ObservedDocker extends _Docker implements DockerObservationService {
+  @override
+  Future<List<String>> imageNames(String sessionId) async => [];
+  @override
+  Future<DockerJson> telemetry(String sessionId, String containerId) async => {
+    'cpu': 22.0,
+    'memory': 512,
+    'limit': 4096,
+    'pids': 17,
+    'processes': [
+      ['42', 'app', '2.0', '0.4', '3:08', 'worker'],
+    ],
+  };
+}
+
 class _PortRangeDocker extends _Docker {
   final large = DockerContainer(
     id: 'many-ports',
@@ -302,6 +317,19 @@ String _id(WidgetTester tester, String name) => tester
     .id;
 
 void main() {
+  testWidgets('resource and process cards show the sample and removal is last', (tester) async {
+    await _pump(tester, service: _ObservedDocker());
+    await _connectLocal(tester);
+    await tapKey(tester, 'docker-menu-button-${_id(tester, 'shop-postgres-1')}');
+    await tapKey(tester, 'docker-menu-details');
+    final resourceCard = find.ancestor(of: find.text('Resource usage'), matching: find.byType(ContentSurface)).first;
+    final processCard = find.ancestor(of: find.text('worker'), matching: find.byType(ContentSurface)).first;
+    expect(tester.getRect(resourceCard).bottom, lessThan(tester.getRect(processCard).top));
+    final remove = tester.getRect(find.byKey(const ValueKey('docker-details-remove')));
+    final deploy = tester.getRect(find.byKey(const ValueKey('docker-details-kubernetes')));
+    expect(remove.top > deploy.top || remove.left >= deploy.right, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('16,384 ports are bounded in the row and paginated in overview and forwarding', (tester) async {
     await _pump(tester, service: _PortRangeDocker());
     await _connectLocal(tester);

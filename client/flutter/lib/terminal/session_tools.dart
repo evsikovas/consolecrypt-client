@@ -70,6 +70,7 @@ final _commands = StreamProvider.autoDispose.family<List<String>, TerminalTab>((
     final rows = await (svc as TerminalHistoryReader).commands(tab.sessionId);
     if (closed) return;
     yield rows;
+    if (!tab.isLocal) return;
     await Future<void>.delayed(const Duration(seconds: 2));
   }
 });
@@ -83,66 +84,82 @@ class SessionHistoryPanel extends ConsumerWidget {
     if (ref.watch(vaultSettingsProvider).value?.terminalHistoryMode == TerminalHistoryMode.disabled) {
       return Center(child: Text(l.dbHistoryDisabled));
     }
-    return ref
-        .watch(_commands(tab))
-        .when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text(l.sessionHistoryUnavailable)),
-          data: (rows) => rows.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(l.sessionHistoryEmpty, textAlign: TextAlign.center),
+    final commands = ref.watch(_commands(tab));
+    final list = commands.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text(l.sessionHistoryUnavailable)),
+      data: (rows) => rows.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(tab.isLocal ? l.sessionHistoryEmpty : l.serverHistoryEmpty, textAlign: TextAlign.center),
+              ),
+            )
+          : ListView.separated(
+              itemCount: rows.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final command = rows[i];
+                return ListTile(
+                  dense: true,
+                  title: SelectableText(command, style: t.typography.mono.copyWith(fontSize: 12)),
+                  trailing: GlassMenuButton<String>(
+                    entries: [
+                      if (!tab.isLocal)
+                        GlassMenuItem(value: 'run', label: l.codeBlocksRun, icon: Icons.play_arrow_rounded),
+                      GlassMenuItem(value: 'insert', label: l.codeBlocksInsert, icon: Icons.keyboard_return_rounded),
+                      GlassMenuItem(value: 'copy', label: l.commonCopy, icon: Icons.copy_rounded),
+                      GlassMenuItem(value: 'snippet', label: l.sessionSnip, icon: Icons.bookmark_add_outlined),
+                    ],
+                    onSelected: (action) async {
+                      if (!identical(tab, ref.read(terminalTabsProvider).active) || !tab.isConnected || tab.exited) {
+                        return;
+                      }
+                      switch (action) {
+                        case 'run':
+                          await runCommandFlow(context, ref, command: command, expectedTab: tab);
+                        case 'insert':
+                          ref.read(terminalTabsProvider.notifier).insertIntoActive(command);
+                        case 'copy':
+                          await copyPlainWithNotice(context, ref, command, what: l.copyWhatCommand);
+                        case 'snippet':
+                          await showSnippetEditor(context, initialTemplate: command);
+                      }
+                    },
+                    builder: (context, open) => GlassIconButton(
+                      icon: Icons.more_horiz_rounded,
+                      tooltip: l.hostsMoreTooltip,
+                      style: GlassIconButtonStyle.plain,
+                      size: 28,
+                      onPressed: open,
+                    ),
                   ),
-                )
-              : ListView.separated(
-                  itemCount: rows.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final command = rows[i];
-                    return ListTile(
-                      dense: true,
-                      title: SelectableText(command, style: t.typography.mono.copyWith(fontSize: 12)),
-                      trailing: GlassMenuButton<String>(
-                        entries: [
-                          if (!tab.isLocal)
-                            GlassMenuItem(value: 'run', label: l.codeBlocksRun, icon: Icons.play_arrow_rounded),
-                          GlassMenuItem(
-                            value: 'insert',
-                            label: l.codeBlocksInsert,
-                            icon: Icons.keyboard_return_rounded,
-                          ),
-                          GlassMenuItem(value: 'copy', label: l.commonCopy, icon: Icons.copy_rounded),
-                          GlassMenuItem(value: 'snippet', label: l.sessionSnip, icon: Icons.bookmark_add_outlined),
-                        ],
-                        onSelected: (action) async {
-                          if (!identical(tab, ref.read(terminalTabsProvider).active) ||
-                              !tab.isConnected ||
-                              tab.exited) {
-                            return;
-                          }
-                          switch (action) {
-                            case 'run':
-                              await runCommandFlow(context, ref, command: command, expectedTab: tab);
-                            case 'insert':
-                              ref.read(terminalTabsProvider.notifier).insertIntoActive(command);
-                            case 'copy':
-                              await copyPlainWithNotice(context, ref, command, what: l.copyWhatCommand);
-                            case 'snippet':
-                              await showSnippetEditor(context, initialTemplate: command);
-                          }
-                        },
-                        builder: (context, open) => GlassIconButton(
-                          icon: Icons.more_horiz_rounded,
-                          tooltip: l.hostsMoreTooltip,
-                          style: GlassIconButtonStyle.plain,
-                          size: 28,
-                          onPressed: open,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        );
+                );
+              },
+            ),
+    );
+    if (tab.isLocal) return list;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 8, 4),
+          child: Row(
+            children: [
+              Expanded(child: Text(l.serverShellHistory, style: t.typography.bodyEmph)),
+              GlassIconButton(
+                tooltip: l.dockerRefresh,
+                icon: Icons.refresh_rounded,
+                size: 28,
+                style: GlassIconButtonStyle.plain,
+                onPressed: commands.isLoading ? null : () => ref.invalidate(_commands(tab)),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(child: list),
+      ],
+    );
   }
 }

@@ -25,6 +25,7 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
 enum DockerDetailsTab { overview, logs, json }
@@ -229,7 +230,11 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                               container.shortId,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: tokens.typography.mono.copyWith(fontSize: 12, color: tokens.secondaryLabel),
+                              style: tokens.typography.mono.copyWith(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: tokens.secondaryLabel,
+                              ),
                             ),
                           ),
                         ],
@@ -303,18 +308,6 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                       ? () => unawaited(widget.actions.run(container, DockerAction.restart))
                       : null,
                 ),
-                GlassIconButton(
-                  key: const ValueKey('docker-details-remove'),
-                  style: GlassIconButtonStyle.plain,
-                  tooltip: l.dockerRemoveContainer,
-                  color: p.danger,
-                  icon: Icons.delete_outline_rounded,
-                  size: 28,
-                  iconSize: 16,
-                  onPressed: busy || !dockerActionAllowed(DockerAction.remove, container.state)
-                      ? null
-                      : () => unawaited(widget.actions.run(container, DockerAction.remove)),
-                ),
                 action(
                   'terminal',
                   l.dockerTerminal,
@@ -340,6 +333,18 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                   l.dockerKubeDeploy,
                   Icons.cloud_upload_outlined,
                   _detail == null || _loading ? null : _openKubernetes,
+                ),
+                GlassIconButton(
+                  key: const ValueKey('docker-details-remove'),
+                  style: GlassIconButtonStyle.plain,
+                  tooltip: l.dockerRemoveContainer,
+                  color: p.danger,
+                  icon: Icons.delete_outline_rounded,
+                  size: 28,
+                  iconSize: 16,
+                  onPressed: busy || !dockerActionAllowed(DockerAction.remove, container.state)
+                      ? null
+                      : () => unawaited(widget.actions.run(container, DockerAction.remove)),
                 ),
               ],
             ),
@@ -526,7 +531,11 @@ class _DockerOverview extends StatelessWidget {
     ];
     Widget mono(String value, {Color? color}) => SelectableText(
       value,
-      style: tokens.typography.mono.copyWith(fontSize: 12, color: color ?? tokens.palette.label),
+      style: tokens.typography.mono.copyWith(
+        fontSize: 11,
+        fontWeight: FontWeight.w400,
+        color: color ?? tokens.palette.label,
+      ),
     );
     return ListView(
       key: const ValueKey('docker-overview'),
@@ -632,7 +641,11 @@ class _MountsTable extends StatelessWidget {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final head = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
-    final mono = tokens.typography.mono.copyWith(fontSize: 12, color: tokens.palette.label);
+    final mono = tokens.typography.mono.copyWith(
+      fontSize: 11,
+      fontWeight: FontWeight.w400,
+      color: tokens.palette.label,
+    );
     TableRow row(List<Widget> cells) => TableRow(
       children: [
         for (final cell in cells) Padding(padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6), child: cell),
@@ -733,7 +746,11 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final entries = _revealed ?? widget.env;
-    final mono = tokens.typography.mono.copyWith(fontSize: 12, color: tokens.palette.label);
+    final mono = tokens.typography.mono.copyWith(
+      fontSize: 11,
+      fontWeight: FontWeight.w400,
+      color: tokens.palette.label,
+    );
     return _Section(
       title: l.dockerEnvironment,
       trailing: _revealed != null
@@ -990,62 +1007,125 @@ class _ContainerUsageState extends State<_ContainerUsage> with WidgetsBindingObs
     String bytes(String key) => s?[key] is int ? formatBytes(l, s![key] as int) : '—';
     final cpu = s?['cpu'] as num?, memory = s?['memory'] as num?, limit = s?['limit'] as num?;
     final rows = (s?['processes'] as List?)?.whereType<List<Object?>>().where((r) => r.length == 6);
-    Widget meter(String label, String value, double? fraction) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+    final valueStyle = t.typography.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w400);
+    final caption = t.typography.caption.copyWith(color: t.secondaryLabel);
+    Widget metric(String label, String value, {double? fraction}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: caption),
+        Text(value, style: t.typography.callout),
+        if (fraction != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: LinearProgressIndicator(value: fraction.clamp(0, 1), minHeight: 3),
+          ),
+      ],
+    );
+    Widget section(String title, Widget child) => ContentSurface(
+      kind: ContentSurfaceKind.inset,
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Fact(label: label, value: value),
-          if (fraction != null) LinearProgressIndicator(value: fraction.clamp(0, 1), minHeight: 3),
+          Text(title, style: t.typography.bodyEmph),
+          const SizedBox(height: 8),
+          child,
         ],
       ),
     );
-    return _Section(
-      title: l.sessionUsage,
-      child: s == null
-          ? (_failed ? Text(l.sessionUsageUnavailable) : const LinearProgressIndicator())
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                meter(
-                  l.hostMetricsCpu,
-                  cpu == null ? '—' : '${cpu.toStringAsFixed(1)}%',
-                  cpu == null ? null : cpu / 100,
-                ),
-                meter(
-                  l.hostMetricsRam,
-                  '${bytes('memory')} / ${bytes('limit')}',
-                  memory != null && limit != null && limit > 0 ? memory / limit : null,
-                ),
-                _Fact(label: l.hostMetricsNetwork, value: '↓ ${bytes('rx')}   ↑ ${bytes('tx')}'),
-                _Fact(label: l.sessionDiskIO, value: '${bytes('read')} / ${bytes('write')}'),
-                _Fact(label: l.wslcProcesses, value: s['pids']?.toString() ?? '—'),
-                if (widget.mainPid != null && widget.mainPid! > 0)
-                  _Fact(label: 'PID', value: widget.mainPid.toString()),
-                if (rows != null && rows.isNotEmpty)
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Table(
-                      defaultColumnWidth: const IntrinsicColumnWidth(),
-                      children: [
-                        for (final row in [
-                          ['PID', 'USER', '%CPU', '%MEM', 'TIME', 'COMMAND'],
-                          ...rows,
-                        ])
-                          TableRow(
+    final memoryText = "${bytes('memory')} / ${bytes('limit')}";
+    final percent = NumberFormat.decimalPercentPattern(locale: l.localeName, decimalDigits: 1);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 8,
+        children: [
+          section(
+            l.sessionUsage,
+            s == null
+                ? (_failed ? Text(l.sessionUsageUnavailable) : const LinearProgressIndicator())
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final twoColumns = constraints.maxWidth >= MediaQuery.textScalerOf(context).scale(264);
+                      final width = twoColumns ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+                      final cells = [
+                        metric(
+                          l.hostMetricsCpu,
+                          cpu == null ? '—' : percent.format(cpu / 100),
+                          fraction: cpu == null ? null : cpu / 100,
+                        ),
+                        metric(
+                          l.hostMetricsRam,
+                          memoryText,
+                          fraction: memory != null && limit != null && limit > 0 ? memory / limit : null,
+                        ),
+                        metric(l.hostMetricsNetwork, "↓ ${bytes('rx')}   ↑ ${bytes('tx')}"),
+                        metric(l.sessionDiskIO, "${bytes('read')} / ${bytes('write')}"),
+                      ];
+                      return Wrap(
+                        spacing: 16,
+                        runSpacing: 12,
+                        children: [for (final cell in cells) SizedBox(width: width, child: cell)],
+                      );
+                    },
+                  ),
+          ),
+          if (s != null)
+            section(
+              l.wslcProcesses,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 4,
+                    children: [
+                      if (widget.mainPid != null && widget.mainPid! > 0)
+                        Text('${l.dockerMainPid}  ${widget.mainPid}', style: t.typography.caption),
+                      if (s['pids'] != null) Text("PIDs  ${s['pids']}", style: t.typography.caption),
+                    ],
+                  ),
+                  if (rows != null && rows.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                          child: Table(
+                            defaultColumnWidth: const IntrinsicColumnWidth(),
+                            border: TableBorder(horizontalInside: BorderSide(color: t.surfaces.separator)),
                             children: [
-                              for (final value in row)
-                                Padding(
-                                  padding: const EdgeInsetsDirectional.only(end: 12, top: 5),
-                                  child: Text(value.toString(), style: t.typography.mono.copyWith(fontSize: 11)),
+                              for (final (i, row) in [
+                                ['PID', l.dockerCommand, l.dockerProcessUser, 'CPU %', 'RAM %', l.dockerProcessElapsed],
+                                for (final row in rows) [row[0], row[5], row[1], row[2], row[3], row[4]],
+                              ].indexed)
+                                TableRow(
+                                  children: [
+                                    for (final (column, value) in row.indexed)
+                                      Padding(
+                                        padding: EdgeInsetsDirectional.fromSTEB(0, 4, column == 5 ? 0 : 12, 4),
+                                        child: Text(
+                                          value.toString(),
+                                          textAlign: column == 3 || column == 4 ? TextAlign.end : TextAlign.start,
+                                          style: i == 0 ? caption : valueStyle.copyWith(fontSize: 10.5, height: 1.35),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                             ],
                           ),
-                      ],
+                        ),
+                      ),
                     ),
-                  ),
-              ],
+                  ],
+                ],
+              ),
             ),
+        ],
+      ),
     );
   }
 }
@@ -1088,9 +1168,9 @@ class _Fact extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
-    final style = (mono ? tokens.typography.mono.copyWith(fontSize: 12) : tokens.typography.callout).copyWith(
-      color: tokens.palette.label,
-    );
+    final style =
+        (mono ? tokens.typography.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w400) : tokens.typography.callout)
+            .copyWith(color: tokens.palette.label);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: LayoutBuilder(

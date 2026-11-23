@@ -37,6 +37,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionHistoryUnavailable => 'Could not read command history';
 
   @override
+  String get serverShellHistory => 'Server shell history';
+
+  @override
+  String get serverHistoryEmpty => 'The shell history file has no saved commands';
+
+  @override
+  String get dockerMainPid => 'Main PID';
+
+  @override
+  String get dockerProcessElapsed => 'Elapsed';
+
+  @override
+  String get dockerProcessUser => 'User';
+
+  @override
   String get sessionHistoryEmpty => 'Commands from this session will appear here';
 
   @override

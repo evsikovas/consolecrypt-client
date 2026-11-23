@@ -37,6 +37,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sessionHistoryUnavailable => 'Не удалось загрузить историю команд';
 
   @override
+  String get serverShellHistory => 'История команд сервера';
+
+  @override
+  String get serverHistoryEmpty => 'В файле истории оболочки пока нет сохранённых команд';
+
+  @override
+  String get dockerMainPid => 'Основной PID';
+
+  @override
+  String get dockerProcessElapsed => 'Время работы';
+
+  @override
+  String get dockerProcessUser => 'Пользователь';
+
+  @override
   String get sessionHistoryEmpty => 'Здесь появятся команды этого сеанса';
 
   @override

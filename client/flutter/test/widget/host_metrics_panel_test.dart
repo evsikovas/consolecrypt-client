@@ -23,6 +23,10 @@ void main() {
     _sample(10, {'memoryTotal': 4096, 'memoryUsed': 1024, 'diskTotal': 8192, 'diskUsed': 2048}),
     _sample(15, {
       'cpuPercent': 21.5,
+      'cores': {for (var i = 0; i < 12; i++) 'cpu$i': 50.0},
+      'interfaces': [
+        {'name': 'eth0', 'rx': 1024.0, 'tx': 2048.0},
+      ],
       'memoryTotal': 4096,
       'memoryUsed': 2048,
       'diskTotal': 8192,
@@ -55,12 +59,20 @@ void main() {
     expect(find.text('A64 · arm64 · 8 logical CPUs'), findsOneWidget);
     expect(find.text('1 d 1 h 1 min'), findsOneWidget);
     expect(find.text('Updated at 12:34:15'), findsOneWidget);
+    final core = find.byTooltip('cpu0 · 50.0%');
+    final fill = find.descendant(of: core, matching: find.byType(FractionallySizedBox));
+    expect(tester.widget<FractionallySizedBox>(fill).heightFactor, .5);
+    final wideWidth = tester.getSize(core).width;
+    expect(tester.getTopLeft(find.byTooltip('cpu11 · 50.0%')).dy, tester.getTopLeft(core).dy);
+    expect(find.text('eth0'), findsOneWidget);
     final cpu = find.text('CPU usage'), ram = find.text('Memory used');
     expect(tester.getTopLeft(ram).dy, greaterThan(tester.getBottomLeft(cpu).dy));
     tester.view.physicalSize = const Size(265, 390);
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(ram).dy, greaterThan(tester.getBottomLeft(cpu).dy));
     expect(tester.getTopLeft(cpu).dx, tester.getTopLeft(ram).dx);
+    expect(tester.getSize(core).width, lessThan(wideWidth));
+    expect(tester.getTopLeft(find.byTooltip('cpu11 · 50.0%')).dy, greaterThan(tester.getTopLeft(core).dy));
     await tester.ensureVisible(find.text('Test Linux'));
     expect(tester.takeException(), isNull);
   });

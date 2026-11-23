@@ -148,6 +148,36 @@ abstract class AppLocalizations {
   /// **'Could not read command history'**
   String get sessionHistoryUnavailable;
 
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'Server shell history'**
+  String get serverShellHistory;
+
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'The shell history file has no saved commands'**
+  String get serverHistoryEmpty;
+
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'Main PID'**
+  String get dockerMainPid;
+
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'Elapsed'**
+  String get dockerProcessElapsed;
+
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get dockerProcessUser;
+
   /// Compact terminal workspace label.
   ///
   /// In en, this message translates to:

@@ -121,26 +121,42 @@ class HostMetricsPanel extends StatelessWidget {
           ),
           const Divider(height: 1),
           if (cores.isNotEmpty)
-            Wrap(
-              spacing: 3,
-              runSpacing: 3,
-              children: [
-                for (final name in cores)
-                  Tooltip(
-                    message: '$name · ${percentage((latest.cores[name] as num?)?.toDouble())}',
-                    child: SizedBox(
-                      width: 16,
-                      height: 12,
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: LinearProgressIndicator(
-                          minHeight: 6,
-                          value: ((latest.cores[name] as num?)?.toDouble() ?? 0) / 100,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const gap = 4.0;
+                final maxColumns = ((constraints.maxWidth + gap) / 24).floor().clamp(1, cores.length);
+                final rows = (cores.length / maxColumns).ceil();
+                final columns = (cores.length / rows).ceil();
+                final width = ((constraints.maxWidth - gap * (columns - 1)) / columns).floorToDouble();
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: [
+                    for (final name in cores)
+                      Tooltip(
+                        message: '$name · ${percentage((latest.cores[name] as num?)?.toDouble())}',
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: SizedBox(
+                            width: width,
+                            height: 28,
+                            child: ColoredBox(
+                              color: tokens.surfaces.inset,
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: FractionallySizedBox(
+                                  widthFactor: 1,
+                                  heightFactor: (((latest.cores[name] as num?)?.toDouble() ?? 0) / 100).clamp(0, 1),
+                                  child: ColoredBox(color: colors.primary),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
+                  ],
+                );
+              },
             ),
           meter(l.hostMetricsRam, latest.memoryUsed, latest.memoryTotal),
           if ((latest.swapTotal ?? 0) > 0) meter(l.sessionSwap, latest.swapUsed, latest.swapTotal),
@@ -154,16 +170,37 @@ class HostMetricsPanel extends StatelessWidget {
             ],
           ),
           for (final nic in latest.interfaces)
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              spacing: 8,
-              children: [
-                Text(nic['name'] as String, style: tokens.typography.callout),
-                Text(
-                  '↓ ${speed((nic['rx'] as num?)?.toDouble())}   ↑ ${speed((nic['tx'] as num?)?.toDouble())}',
-                  style: tokens.typography.caption,
-                ),
-              ],
+            ContentSurface(
+              kind: ContentSurfaceKind.inset,
+              radius: 6,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  Text(nic['name'] as String, style: tokens.typography.mono.copyWith(fontSize: 11)),
+                  Wrap(
+                    spacing: 12,
+                    children: [
+                      for (final (arrow, key, label) in [
+                        ('↓', 'rx', l.hostMetricsReceived),
+                        ('↑', 'tx', l.hostMetricsSent),
+                      ])
+                        Tooltip(
+                          message: label,
+                          child: Text(
+                            '$arrow ${speed((nic[key] as num?)?.toDouble())}',
+                            style: tokens.typography.caption.copyWith(
+                              color: ((nic[key] as num?) ?? 0) > 0 ? tokens.palette.label : tokens.secondaryLabel,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
         ],
       ),

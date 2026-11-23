@@ -194,7 +194,9 @@ class _AppShellState extends ConsumerState<AppShell> {
             final railSpace = minimal || integratedTools && panelOpen ? 0.0 : railWidth;
             final available = (w - sidebarWidth - railSpace - rightInset).clamp(0.0, double.infinity);
             final docked = available >= (integratedTools ? 960 : 1000);
-            final panelWidth = docked ? tools.width.clamp(360.0, available - 600.0) : 420.0.clamp(0.0, available);
+            final panelWidth = docked
+                ? tools.width.clamp(360.0, available - 600.0)
+                : (tools.selected == WorkspaceTool.ai ? tools.chatWidth : 420.0).clamp(0.0, available);
             final panelRight = minimal || integratedTools ? 0.0 : railWidth + inset;
             final panelSpace = docked && panelOpen ? panelWidth + 8 : 0.0;
             final contentWidth = available - panelSpace;

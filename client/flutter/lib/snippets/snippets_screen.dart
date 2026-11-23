@@ -336,27 +336,25 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
                     itemCount: visible.length,
                     itemBuilder: (context, i) {
                       final (s, kind) = visible[i];
-                      final title = Row(
+                      final title = Wrap(
+                        spacing: 6,
+                        runSpacing: 2,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Flexible(
-                            child: Text(
-                              s.name,
-                              overflow: TextOverflow.ellipsis,
-                              style: t.bodyEmph.copyWith(color: tokens.palette.label),
-                            ),
+                          Text(
+                            s.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodyEmph.copyWith(color: tokens.palette.label),
                           ),
-                          const SizedBox(width: GlassSpacing.s8),
                           if (!widget.embedded || s.riskLevel != RiskLevel.readOnly)
                             RiskBadge(risk: s.riskLevel, dense: true),
                           if (s.source == SnippetSource.ai) ...[
-                            const SizedBox(width: GlassSpacing.s6),
                             Tooltip(
                               message: l10n.snippetsDraftedByAi,
                               child: Icon(Icons.auto_awesome_rounded, size: 14, color: tokens.secondaryLabel),
                             ),
                           ],
                           if (kind == SearchMatchKind.semantic) ...[
-                            const SizedBox(width: GlassSpacing.s6),
                             Tooltip(
                               message: l10n.snippetsSemanticMatch,
                               child: Icon(Icons.psychology_rounded, size: 14, color: tokens.secondaryLabel),
@@ -461,17 +459,26 @@ class _SnippetsScreenState extends ConsumerState<SnippetsScreen> {
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Row(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final compact = constraints.maxWidth < MediaQuery.textScalerOf(context).scale(320);
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    Expanded(child: title),
-                                    actions,
+                                    if (compact)
+                                      title
+                                    else
+                                      Row(
+                                        children: [
+                                          Expanded(child: title),
+                                          actions,
+                                        ],
+                                      ),
+                                    subtitle,
+                                    if (compact) Align(alignment: AlignmentDirectional.centerEnd, child: actions),
                                   ],
-                                ),
-                                subtitle,
-                              ],
+                                );
+                              },
                             ),
                           ),
                         );

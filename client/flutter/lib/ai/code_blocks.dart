@@ -85,7 +85,7 @@ class CommandActionsCard extends ConsumerWidget {
     // never glass on glass); actions are plain buttons.
     return ContentSurface(
       kind: ContentSurfaceKind.inset,
-      padding: const EdgeInsets.fromLTRB(GlassSpacing.s12, GlassSpacing.s12, GlassSpacing.s8, GlassSpacing.s6),
+      padding: const EdgeInsets.fromLTRB(GlassSpacing.s8, 2, GlassSpacing.s8, GlassSpacing.s4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -171,9 +171,9 @@ class CommandActionsCard extends ConsumerWidget {
               ),
             ],
           ),
-          const Divider(height: 8),
+          const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.only(top: 4),
             child: SelectableText(command, style: tokens.typography.mono.copyWith(color: tokens.palette.label)),
           ),
         ],

@@ -215,8 +215,17 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
                       key: const ValueKey('ai-input'),
                       controller: _input,
                       focusNode: _inputFocus,
-                      minLines: compactKeyboard ? 1 : 2,
-                      maxLines: compactKeyboard ? 2 : 5,
+                      minLines: compactKeyboard
+                          ? 1
+                          : MediaQuery.sizeOf(context).height < 600
+                          ? 2
+                          : 4,
+                      maxLines: compactKeyboard
+                          ? 2
+                          : MediaQuery.sizeOf(context).height < 600
+                          ? 4
+                          : 8,
+                      keyboardType: TextInputType.multiline,
                       decoration: InputDecoration.collapsed(hintText: l10n.mobileMessageHint),
                     ),
                   ),

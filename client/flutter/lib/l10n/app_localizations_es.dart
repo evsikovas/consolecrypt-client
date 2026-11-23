@@ -37,6 +37,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sessionHistoryUnavailable => 'No se pudo cargar el historial';
 
   @override
+  String get serverShellHistory => 'Historial del servidor';
+
+  @override
+  String get serverHistoryEmpty => 'El archivo de historial del shell no contiene comandos guardados';
+
+  @override
+  String get dockerMainPid => 'PID principal';
+
+  @override
+  String get dockerProcessElapsed => 'Tiempo activo';
+
+  @override
+  String get dockerProcessUser => 'Usuario';
+
+  @override
   String get sessionHistoryEmpty => 'Aquí aparecerán los comandos de esta sesión';
 
   @override
