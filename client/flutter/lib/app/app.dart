@@ -23,7 +23,6 @@ import 'package:consolecrypt/vault/vault_key_mismatch.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-
 class ConsoleCryptApp extends ConsumerWidget {
   const ConsoleCryptApp({super.key});
 
@@ -58,27 +57,33 @@ class ConsoleCryptApp extends ConsumerWidget {
       // on macOS, the unified transparent title bar — the shell and the gate
       // screens reserve the traffic-light area and route toolbar clicks
       // through `MacosToolbarPassthrough` (ADR-0101 §11).
-      builder: (context, child) => CaptureProtectionScope(
-        child: AutoLockScope(
-          child: GlassAppScope(
-            ambient: !AppPlatform.isMobile,
-            unifiedTitlebar: AppPlatform.isMacOS,
-            localProfileCue: localProfile,
-            child: ColoredBox(
-              color: AppPlatform.isMobile ? GlassTokens.of(context).ambient.base : Colors.transparent,
-              child: UpdateNoticeScope(
-                navigatorKey: rootNavigatorKey,
-                child: VaultKeyAlarmScope(
-                  navigatorKey: rootNavigatorKey,
-                  child: EnrollmentAutomationScope(
-                    child: DesignGalleryShortcut(child: AppCommandsScope(child: child ?? const SizedBox.shrink())),
+      builder: (context, child) {
+        final phone = AppWindowLayout.phoneFor(MediaQuery.sizeOf(context));
+        return AppWindowLayout(
+          phone: phone,
+          child: CaptureProtectionScope(
+            child: AutoLockScope(
+              child: GlassAppScope(
+                ambient: !phone,
+                unifiedTitlebar: AppPlatform.isMacOS,
+                localProfileCue: localProfile,
+                child: ColoredBox(
+                  color: phone ? GlassTokens.of(context).ambient.base : Colors.transparent,
+                  child: UpdateNoticeScope(
+                    navigatorKey: rootNavigatorKey,
+                    child: VaultKeyAlarmScope(
+                      navigatorKey: rootNavigatorKey,
+                      child: EnrollmentAutomationScope(
+                        child: DesignGalleryShortcut(child: AppCommandsScope(child: child ?? const SizedBox.shrink())),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

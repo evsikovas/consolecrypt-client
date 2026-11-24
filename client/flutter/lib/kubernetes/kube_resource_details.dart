@@ -639,7 +639,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                 ),
               if (_loading)
                 const Padding(padding: EdgeInsets.only(top: 6), child: LinearProgressIndicator(minHeight: 2)),
-              if (!AppPlatform.isMobile && _gitOpsResource != null)
+              if (!AppWindowLayout.isPhone(context) && _gitOpsResource != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(GlassSpacing.s16, GlassSpacing.s8, GlassSpacing.s16, 0),
                   child: _gitOpsActionBar(canWrite),
@@ -726,7 +726,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                   ),
                 ),
               ],
-              if (AppPlatform.isMobile && _gitOpsResource != null) _gitOpsActionBar(canWrite),
+              if (AppWindowLayout.isPhone(context) && _gitOpsResource != null) _gitOpsActionBar(canWrite),
             ],
           );
     final shortcuts = <ShortcutActivator, VoidCallback>{
@@ -780,7 +780,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
           width: 980,
           title: '${widget.resource.api.kind} · ${widget.resource.name}',
           content: SizedBox(
-            height: AppPlatform.isMobile && MediaQuery.sizeOf(context).width < 720 ? double.infinity : 600,
+            height: AppWindowLayout.isPhone(context) && MediaQuery.sizeOf(context).width < 720 ? double.infinity : 600,
             child: body,
           ),
           primaryAction: GlassButton(label: l.commonClose, onPressed: _mutating ? null : () => _close()),
@@ -961,7 +961,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
   Widget _gitOpsActionBar(bool canWrite) {
     final l = context.l10n, resource = _gitOpsResource!;
     return Wrap(
-      key: ValueKey(AppPlatform.isMobile ? 'kube-gitops-bottom-actions' : 'kube-gitops-top-actions'),
+      key: ValueKey(AppWindowLayout.isPhone(context) ? 'kube-gitops-bottom-actions' : 'kube-gitops-top-actions'),
       spacing: GlassSpacing.s6,
       runSpacing: GlassSpacing.s6,
       children: [

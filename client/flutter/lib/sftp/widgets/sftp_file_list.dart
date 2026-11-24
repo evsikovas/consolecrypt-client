@@ -730,6 +730,7 @@ class _RowItem extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onDoubleTap: renaming ? null : onDoubleTap,
+        onLongPressStart: AppPlatform.isAndroid && !renaming ? (d) => onSecondaryTap(d.globalPosition) : null,
         onSecondaryTapUp: (d) => onSecondaryTap(d.globalPosition),
         child: e.isDirectory
             ? AppDropTarget<SftpDragData>(

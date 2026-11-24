@@ -82,8 +82,8 @@ class _SessionToolButton extends ConsumerWidget {
       _ => Icons.show_chart_rounded,
     },
     tooltip: workspaceToolLabel(context.l10n, tool),
-    size: AppPlatform.isMobile ? 44 : 28,
-    iconSize: AppPlatform.isMobile ? 18 : 16,
+    size: AppWindowLayout.isPhone(context) ? 44 : 28,
+    iconSize: AppWindowLayout.isPhone(context) ? 18 : 16,
     style: GlassIconButtonStyle.plain,
     onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(tool),
   );
@@ -197,7 +197,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
     final tab = widget.branch == ShellBranch.terminal ? ref.watch(activeSshTerminalProvider) : null;
     final active = widget.branch == ShellBranch.terminal ? ref.watch(terminalTabsProvider).active : null;
     final tools = widget.branch == ShellBranch.terminal ? _sessionTools(ref) : const <WorkspaceTool>[];
-    final mobileTools = widget.integrated && AppPlatform.isMobile && tools.isNotEmpty;
+    final mobileTools = widget.integrated && AppWindowLayout.isPhone(context) && tools.isNotEmpty;
     if (selected != null && !_generalTools.contains(selected) && !tools.contains(selected)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && ref.read(workspaceToolsProvider).selected == selected) _close();
@@ -260,7 +260,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                             for (final tool in tools) _SessionToolButton(tool: tool),
                           GlassIconButton(
                             key: const ValueKey('workspace-tools-close'),
-                            icon: widget.integrated && !AppPlatform.isMobile
+                            icon: widget.integrated && !AppWindowLayout.isPhone(context)
                                 ? Icons.chevron_right_rounded
                                 : Icons.close_rounded,
                             tooltip: widget.integrated ? l.workspaceToolsCollapse : l.workspaceToolsClose,

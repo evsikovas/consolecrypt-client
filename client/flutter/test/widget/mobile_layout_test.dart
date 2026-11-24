@@ -15,6 +15,53 @@ void phoneTest(String name, WidgetTesterCallback body) =>
     testWidgets(name, body, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
 void main() {
+  phoneTest('Android: resizing a connected terminal switches chrome and keeps the session', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(390, 844));
+    final c = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final session = await c.read(terminalTabsProvider.notifier).open(backend.inventory.currentHosts.first);
+    final router = c.read(routerProvider);
+    router.go(AppRoutes.terminal);
+    await settle(tester);
+    final phoneNav = find.byKey(const ValueKey('mobile-navigation'));
+    final toolRail = find.byKey(const ValueKey('workspace-tools-rail'));
+    final keyboard = find.byKey(const ValueKey('terminal-keyboard'));
+    expect(phoneNav, findsOneWidget);
+    session.terminal.write('resize-marker');
+    expect(session.terminal.buffer.getText(), contains('resize-marker'));
+    for (final size in [const Size(600, 900), const Size(1440, 900), const Size(390, 844)]) {
+      tester.view.physicalSize = size * tester.view.devicePixelRatio;
+      await settle(tester);
+      final compact = size.width == 390;
+      expect(phoneNav, compact ? findsOneWidget : findsNothing);
+      expect(toolRail, compact ? findsNothing : findsOneWidget);
+      expect(keyboard, findsOneWidget);
+      expect(c.read(terminalTabsProvider).active, same(session));
+      expect(session.terminal.buffer.getText(), contains('resize-marker'));
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  phoneTest('Android: a draft stays editable across tablet and phone layouts', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(768, 1024));
+    final c = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    c.read(routerProvider).go(AppRoutes.newHost);
+    await settle(tester);
+    await enterKey(tester, 'host-name', 'unsaved-host');
+    for (final size in [const Size(460, 800), const Size(1280, 800)]) {
+      tester.view.physicalSize = size;
+      await settle(tester);
+      final field = find.descendant(of: find.byKey(const ValueKey('host-name')), matching: find.byType(EditableText));
+      expect(tester.widget<EditableText>(field).controller.text, 'unsaved-host');
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   phoneTest('Android: selected text opens the terminal menu and an AI attachment fits above the keyboard', (
     tester,
   ) async {

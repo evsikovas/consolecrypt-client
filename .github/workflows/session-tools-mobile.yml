@@ -2,7 +2,7 @@ name: Mobile session tools preview
 
 on:
   push:
-    branches: ['preview/session-tools-mobile']
+    branches: ['preview/session-tools-mobile', 'preview/android-adaptive']
 
 permissions:
   contents: read
@@ -16,9 +16,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [android, ios]
+        platform: ${{ fromJSON(github.ref_name == 'preview/android-adaptive' && '["android"]' || '["android","ios"]') }}
     env:
-      CC_BUILD_NUMBER: '91042'
+      CC_BUILD_NUMBER: ${{ github.ref_name == 'preview/android-adaptive' && '91043' || '91042' }}
       CARGO_BUILD_JOBS: '3'
       ANDROID_HOME: ${{ vars.ANDROID_HOME }}
       JAVA_HOME: ${{ vars.JAVA_HOME }}

@@ -106,7 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: l.settingsTitle,
       body: LayoutBuilder(
         builder: (context, bounds) {
-          final wide = !AppPlatform.isMobile && bounds.maxWidth >= 736 && bounds.maxHeight >= 360;
+          final wide = !AppWindowLayout.isPhone(context) && bounds.maxWidth >= 736 && bounds.maxHeight >= 360;
           final scrollbar = ScrollEdgeEffect(child: SingleChildScrollView(primary: false, child: sections));
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,

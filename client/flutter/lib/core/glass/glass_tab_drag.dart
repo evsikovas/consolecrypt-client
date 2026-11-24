@@ -23,7 +23,7 @@ class GlassTabDrag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reorder = onReorder;
-    if (reorder == null || AppPlatform.isMobile) return child;
+    if (reorder == null || AppWindowLayout.isPhone(context)) return child;
     final accent = GlassTokens.of(context).palette.accent;
     return LayoutBuilder(builder: (context, constraints) => _target(reorder, accent, constraints));
   }

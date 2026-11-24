@@ -3,8 +3,9 @@ part of 'shell.dart';
 /// Touch-first shell: the workspace keeps its Navigator and session state
 /// while tools cover it. No desktop rails consume the phone's viewport.
 class _MobileShell extends ConsumerStatefulWidget {
-  const _MobileShell({required this.navigationShell, required this.location});
+  const _MobileShell({required this.navigationShell, required this.workspace, required this.location});
   final StatefulNavigationShell navigationShell;
+  final Widget workspace;
   final String location;
 
   @override
@@ -14,12 +15,6 @@ class _MobileShell extends ConsumerStatefulWidget {
 class _MobileShellState extends ConsumerState<_MobileShell> {
   bool _more = false;
   static const _defaultPrimary = [ShellBranch.hosts, ShellBranch.terminal, ShellBranch.sftp];
-
-  @override
-  void initState() {
-    super.initState();
-    _listenDeviceUnlockOffer(this);
-  }
 
   void _go(ShellBranch branch) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -120,7 +115,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                       child: Column(
                         children: [
                           Offstage(offstage: rdpVisible && keyboardOpen, child: const _ShellBanners()),
-                          Expanded(child: SftpEditRecoveryListener(child: widget.navigationShell)),
+                          Expanded(child: widget.workspace),
                         ],
                       ),
                     ),

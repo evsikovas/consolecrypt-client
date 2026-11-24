@@ -95,7 +95,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
   final Set<String> _tags = {};
   final Set<ObjectId> _collapsed = {};
   late String _location = widget.initialGroups ? inventoryGroups : inventoryAll;
-  late bool _cards = AppPlatform.isMobile;
+  bool? _cardsOverride;
   ObjectId? _inspectedHost;
   bool _descending = false;
 
@@ -181,6 +181,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
 
   @override
   Widget build(BuildContext context) {
+    final cardsMode = _cardsOverride ?? AppWindowLayout.isPhone(context);
     final hostsAsync = ref.watch(hostsProvider);
     final groupsAsync = ref.watch(groupsProvider);
     final groups = ref.watch(groupByIdProvider);
@@ -277,7 +278,11 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 760;
           final inspect =
-              !AppPlatform.isMobile && !_cards && showHosts && hosts.isNotEmpty && constraints.maxWidth >= 980;
+              !AppWindowLayout.isPhone(context) &&
+              !cardsMode &&
+              showHosts &&
+              hosts.isNotEmpty &&
+              constraints.maxWidth >= 980;
           final inspected = inspect ? hosts.where((host) => host.id == _inspectedHost).firstOrNull : null;
           final navigation = InventoryNavigation(
             groups: groups,
@@ -314,9 +319,9 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                   ),
                   ViewModeToggle(
                     keyPrefix: 'inventory-view',
-                    cards: _cards,
+                    cards: cardsMode,
                     onChanged: (cards) => setState(() {
-                      _cards = cards;
+                      _cardsOverride = cards;
                       _inspectedHost = null;
                     }),
                   ),
@@ -502,12 +507,12 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                                   ),
                                 if (showHosts)
                                   SliverList.builder(
-                                    itemCount: _cards ? (hosts.length / columns).ceil() : hosts.length,
+                                    itemCount: cardsMode ? (hosts.length / columns).ceil() : hosts.length,
                                     itemBuilder: (context, index) {
                                       Widget hostTile(Host host) => _HostTile(
                                         host: host,
                                         groupName: groupPathName(groups, host.groupId),
-                                        cards: _cards,
+                                        cards: cardsMode,
                                         inspected: inspected?.id == host.id,
                                         onInspect: inspect
                                             ? () => setState(() {
@@ -517,8 +522,10 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                                         onDelete: () => _delete(host),
                                       );
                                       return Padding(
-                                        padding: EdgeInsets.only(bottom: _cards ? GlassSpacing.s12 : GlassSpacing.s4),
-                                        child: _cards
+                                        padding: EdgeInsets.only(
+                                          bottom: cardsMode ? GlassSpacing.s12 : GlassSpacing.s4,
+                                        ),
+                                        child: cardsMode
                                             ? Row(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [

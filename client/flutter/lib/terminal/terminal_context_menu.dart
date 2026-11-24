@@ -124,7 +124,7 @@ Future<void> showTerminalContextMenu(BuildContext context, WidgetRef ref, Termin
           label: l.commonCopy,
           icon: Icons.copy_rounded,
           enabled: selection != null,
-          shortcut: AppPlatform.isMobile
+          shortcut: AppWindowLayout.isPhone(context)
               ? null
               : AppPlatform.usesMeta
               ? '⌘C'
@@ -136,7 +136,7 @@ Future<void> showTerminalContextMenu(BuildContext context, WidgetRef ref, Termin
           label: l.terminalPaste,
           icon: Icons.content_paste_rounded,
           enabled: tab.isConnected,
-          shortcut: AppPlatform.isMobile
+          shortcut: AppWindowLayout.isPhone(context)
               ? null
               : AppPlatform.usesMeta
               ? '⌘V'
@@ -165,7 +165,7 @@ Future<void> showTerminalContextMenu(BuildContext context, WidgetRef ref, Termin
           value: _TerminalAction.selectAll,
           label: l.terminalSelectAll,
           icon: Icons.select_all_rounded,
-          shortcut: AppPlatform.isMobile
+          shortcut: AppWindowLayout.isPhone(context)
               ? null
               : AppPlatform.usesMeta
               ? '⌘A'

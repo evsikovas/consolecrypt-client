@@ -110,7 +110,7 @@ class GlassTabStrip extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: AppPlatform.isMobile ? 56 : GlassSizes.tabTrack,
+              height: AppWindowLayout.isPhone(context) ? 56 : GlassSizes.tabTrack,
               child: Row(
                 children: [
                   Expanded(
@@ -218,7 +218,7 @@ class _TabChip extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: GlassSizes.tabMinWidth, maxWidth: GlassSizes.tabMaxWidth),
               child: SizedBox(
-                height: AppPlatform.isMobile ? 48 : GlassSizes.tab,
+                height: AppWindowLayout.isPhone(context) ? 48 : GlassSizes.tab,
                 child: Padding(
                   padding: const EdgeInsetsDirectional.only(start: GlassSpacing.s12, end: GlassSpacing.s4),
                   child: Row(

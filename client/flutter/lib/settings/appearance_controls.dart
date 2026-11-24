@@ -279,7 +279,7 @@ class TerminalTabPlacementSetting extends ConsumerWidget {
         () => settings.updateLocal(settings.currentLocal.copyWith(terminalTabGrouped: value ?? false)),
       ),
     );
-    if (AppPlatform.isMobile) return groupSessions;
+    if (AppWindowLayout.isPhone(context)) return groupSessions;
     return LabeledValue(
       label: l.settingsTerminalTabPlacement,
       value: Column(

@@ -218,11 +218,11 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   /// Running forwards live in the shared right panel with the Kubernetes
   /// ones; narrow layouts push a page instead.
   void _toggleForwards() {
-    if (!AppPlatform.isMobile && _wide) {
+    if (!AppWindowLayout.isPhone(context) && _wide) {
       ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.forwards);
       return;
     }
-    if (!_wide || AppPlatform.isMobile) {
+    if (!_wide || AppWindowLayout.isPhone(context)) {
       unawaited(
         Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -454,7 +454,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
       session: widget.session,
       container: container,
     );
-    if (created == true && mounted && !AppPlatform.isMobile && _wide) {
+    if (created == true && mounted && !AppWindowLayout.isPhone(context) && _wide) {
       ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.forwards);
     }
   }

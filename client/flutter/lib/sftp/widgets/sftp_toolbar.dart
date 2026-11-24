@@ -174,7 +174,7 @@ class SftpToolbar extends ConsumerWidget {
       ],
     );
 
-    if (AppPlatform.isMobile) {
+    if (AppWindowLayout.isPhone(context)) {
       return Padding(
         padding: const EdgeInsets.all(8),
         child: Column(

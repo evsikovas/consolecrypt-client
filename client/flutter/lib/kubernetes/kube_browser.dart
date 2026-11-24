@@ -168,7 +168,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   double _inspectorWidth = 560;
   // Every desktop window uses the workspace layout (also next to the open
   // AI panel); phones keep the compact mobile flow.
-  bool get _desktopLayout => !AppPlatform.isMobile;
+  bool _desktopLayout = false;
   bool _navigatorOpen = true;
 
   bool get _current => mounted && _scope.unlocked && identical(_scope, _providerContainer.read(kubeScopeProvider));
@@ -181,8 +181,6 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     _navigationSnapshot = ref.read(kubeActiveNavigationProvider.notifier);
     _aiHost = ref.read(kubeAiHostProvider.notifier);
     _sidebar = ref.read(sidebarCollapsedProvider.notifier);
-    // The cluster workspace needs the width: the app menu folds to icons.
-    if (!AppPlatform.isMobile) scheduleMicrotask(_sidebar.autoCollapse);
     _restoreController = ref.read(kubeForwardRestoreProvider.notifier);
     _parked = ref.read(kubeParkedSessionsProvider.notifier);
     _gitOpsAlerts = ref.read(kubeGitOpsAlertsProvider.notifier);
@@ -195,6 +193,15 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     unawaited(_loadWorkspacePreferences());
     unawaited(_connect());
     _metricsTimer = Timer.periodic(const Duration(seconds: 10), (_) => unawaited(_loadMetrics()));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final desktop = !AppWindowLayout.isPhone(context);
+    if (_desktopLayout == desktop) return;
+    _desktopLayout = desktop;
+    scheduleMicrotask(desktop ? _sidebar.autoCollapse : _sidebar.restore);
   }
 
   void _disconnect(KubeSession? session) {
@@ -267,7 +274,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     _outputs.clear();
     _objectTabs.clear();
     scheduleMicrotask(() => _restoreController.clearContext(widget.connection.id));
-    if (!AppPlatform.isMobile) scheduleMicrotask(_sidebar.restore);
+    if (_desktopLayout) scheduleMicrotask(_sidebar.restore);
     super.dispose();
   }
 
@@ -1028,7 +1035,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
 
   void _publishAiHost({KubeResourceRef? selected, String? question, bool explicit = false}) {
     final session = _session, service = widget.service;
-    if (!_current || session == null || service is! KubeAiService || AppPlatform.isMobile) return;
+    if (!_current || session == null || service is! KubeAiService || !_desktopLayout) return;
     if (explicit) _aiRequest++;
     final host = KubeAiHost(
       session: session,
@@ -1085,7 +1092,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   void _showPanel() {
     final session = _session;
     if (!_current || session == null) return;
-    if (AppPlatform.isMobile || MediaQuery.sizeOf(context).width < 700) {
+    if (!_desktopLayout || MediaQuery.sizeOf(context).width < 700) {
       unawaited(
         showModalBottomSheet<void>(
           context: context,
@@ -1238,7 +1245,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         session != null &&
         !session.production &&
         (ref.watch(kubeWriteAccessProvider(session)).value?.canWrite ?? false);
-    final rightPanel = _panelRight && !AppPlatform.isMobile && MediaQuery.sizeOf(context).width >= 1100;
+    final rightPanel = _panelRight && _desktopLayout && MediaQuery.sizeOf(context).width >= 1100;
     final query = _query.trim().toLowerCase();
     final rows = _rows.values
         .where(

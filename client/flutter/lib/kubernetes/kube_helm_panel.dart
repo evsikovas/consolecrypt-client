@@ -145,7 +145,7 @@ class _KubeHelmPanelState extends ConsumerState<KubeHelmPanel> {
         fontWeight: strong ? FontWeight.w500 : null,
       ),
     );
-    if (AppPlatform.isMobile || MediaQuery.sizeOf(context).width < 600) return _compactList(context, releases);
+    if (AppWindowLayout.isPhone(context) || MediaQuery.sizeOf(context).width < 600) return _compactList(context, releases);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
