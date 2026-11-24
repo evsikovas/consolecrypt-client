@@ -16,7 +16,7 @@ class KubeResourceRelations extends ConsumerStatefulWidget {
     required this.resource,
     required this.detail,
     required this.service,
-    required this.openPod,
+    required this.podKind,
     required this.openResource,
     this.showEvents = true,
     this.showRelations = true,
@@ -28,7 +28,7 @@ class KubeResourceRelations extends ConsumerStatefulWidget {
   final KubeResourceDetail detail;
   final KubeBrowserService service;
   final bool showEvents, showRelations, showMetrics;
-  final void Function(KubeResourceRow row) openPod;
+  final KubeResourceKind? podKind;
   final ValueChanged<KubeResourceRef> openResource;
   @override
   ConsumerState<KubeResourceRelations> createState() => _KubeResourceRelationsState();
@@ -171,7 +171,11 @@ class _KubeResourceRelationsState extends ConsumerState<KubeResourceRelations> w
                             row.object['eventTime'],
                           ].whereType<String>().join(' · '),
                   ),
-                  onTap: pods ? () => widget.openPod(row) : null,
+                  onTap: pods && widget.podKind != null && row.namespace != null
+                      ? () => widget.openResource(
+                          KubeResourceRef(api: widget.podKind!, namespace: row.namespace, name: row.name),
+                        )
+                      : null,
                 );
               },
             ),

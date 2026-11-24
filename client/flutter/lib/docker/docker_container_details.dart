@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
@@ -156,6 +157,10 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
         imageKey: hasImageId ? (hostId: session.hostId, imageId: imageId) : null,
         publishImage: hasImageId
             ? (credential, path, tag) => service.publishImage(session.id, imageId, credential, path, tag)
+            : null,
+        buildImage: hasImageId && !AppPlatform.isMobile && DockerHost.isLocalId(session.hostId)
+            ? (credential, path, tag, build) =>
+                  service.publishImage(session.id, imageId, credential, path, tag, build: build)
             : null,
         resolveImage: canInspect
             ? () async => DockerKubeSource.inspect(

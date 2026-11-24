@@ -256,7 +256,7 @@ impl LocalComposeHost {
     /// The first executable `name` on PATH or in the usual places. Symlinks
     /// stay unresolved: some runtimes ship one multi-call binary that
     /// dispatches on its invoked name.
-    fn program(name: &str) -> Option<std::path::PathBuf> {
+    pub(crate) fn program(name: &str) -> Option<std::path::PathBuf> {
         let mut dirs: Vec<std::path::PathBuf> = std::env::var_os("PATH")
             .map(|path| std::env::split_paths(&path).collect())
             .unwrap_or_default();

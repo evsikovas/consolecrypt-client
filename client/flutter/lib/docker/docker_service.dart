@@ -11,6 +11,7 @@ import 'package:consolecrypt/docker/docker_removal.dart';
 export 'package:consolecrypt/docker/docker_removal.dart';
 
 typedef DockerJson = Map<String, dynamic>;
+typedef DockerBuildContext = ({String directory, List<String> platforms});
 
 /// What the core puts in place of a hidden value (same length for every
 /// secret).
@@ -491,7 +492,14 @@ abstract interface class DockerService {
   Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage);
 
   /// Publish the immutable image from this engine to the registry bound to the credential.
-  Future<String> publishImage(String sessionId, String imageId, Credential credential, String repository, String tag);
+  Future<String> publishImage(
+    String sessionId,
+    String imageId,
+    Credential credential,
+    String repository,
+    String tag, {
+    DockerBuildContext? build,
+  });
 
   /// The full `docker inspect`, secrets included; the core checks the vault
   /// passphrase or a presence token for [StepUpAction.dockerReveal] on

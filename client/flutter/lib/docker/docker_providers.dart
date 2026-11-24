@@ -24,7 +24,7 @@ final dockerScopeProvider = Provider<DockerScope>(
 
 typedef DockerImageKey = ({String hostId, String imageId});
 
-/// Last confirmed publication of an immutable local image on each engine.
+/// Last confirmed deployment image published from each container image, including source builds.
 final dockerPublishedImagesProvider = Provider<Map<DockerImageKey, String>>((ref) {
   ref.watch(dockerScopeProvider);
   return {};

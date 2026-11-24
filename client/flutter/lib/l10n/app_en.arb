@@ -23506,7 +23506,7 @@
   "@dockerKubeDeploy": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeIntro": "Experimental: one stateless Linux container, one replica and an internal ClusterIP Service. Review the manifest before deploying.",
+  "dockerKubeIntro": "One Linux replica and an internal ClusterIP Service. Configure Docker environment overrides and Compose dependencies separately.",
   "@dockerKubeIntro": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -23566,11 +23566,11 @@
   "@dockerKubeTemplate": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAiReview": "Review the template below before sending it to the AI provider. ConsoleCrypt adds the Docker startup command locally after receiving the response.",
+  "dockerKubeAiReview": "Review the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.",
   "@dockerKubeAiReview": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeSendAi": "Send template to AI",
+  "dockerKubeSendAi": "Send prompt",
   "@dockerKubeSendAi": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -23582,7 +23582,7 @@
   "@dockerKubeInvalidTarget": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAcknowledge": "I checked the image, CPU architecture and startup command. This deployment uses the image’s environment and filesystem. Configure any Docker environment overrides or Compose dependencies separately.",
+  "dockerKubeAcknowledge": "I checked the image, platform and startup command",
   "@dockerKubeAcknowledge": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -24872,5 +24872,33 @@
         "type": "int"
       }
     }
+  },
+  "registryBuildFromSource": "Build from a local Dockerfile",
+  "@registryBuildFromSource": {
+    "description": "Docker deployment wizard: Build from a local Dockerfile"
+  },
+  "registryBuildFolder": "Choose project folder",
+  "@registryBuildFolder": {
+    "description": "Docker deployment wizard: Choose project folder"
+  },
+  "registryBuildPush": "Build and publish",
+  "@registryBuildPush": {
+    "description": "Docker deployment wizard: Build and publish"
+  },
+  "registryBuildFailed": "Build or push failed. Check the Dockerfile, Buildx platform support and registry write access.",
+  "@registryBuildFailed": {
+    "description": "Docker deployment wizard: Build or push failed. Check the Dockerfile, Buildx platform support and registry write access."
+  },
+  "registryBuildContextError": "Choose a project folder containing a Dockerfile.",
+  "@registryBuildContextError": {
+    "description": "Docker deployment wizard: Choose a project folder containing a Dockerfile."
+  },
+  "registryPin": "Pin this image by digest",
+  "@registryPin": {
+    "description": "Docker deployment wizard: Pin this image by digest"
+  },
+  "dockerKubeDeployAction": "Deploy",
+  "@dockerKubeDeployAction": {
+    "description": "Docker deployment wizard: Deploy"
   }
 }

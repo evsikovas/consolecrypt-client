@@ -44,6 +44,7 @@ class KubeResourceDetails extends ConsumerStatefulWidget {
   const KubeResourceDetails({
     required this.session,
     required this.resource,
+    required this.podKind,
     required this.service,
     required this.contextName,
     this.onTerminalOpened,
@@ -77,6 +78,7 @@ class KubeResourceDetails extends ConsumerStatefulWidget {
   final List<KubeResourceRef> ancestors, openedResources;
   final ValueChanged<KubeResourceRef>? onSelectResource, onCloseResource;
   final KubeResourceRef resource;
+  final KubeResourceKind? podKind;
   final KubeBrowserService service;
   final String contextName;
   final VoidCallback? onTerminalOpened;
@@ -256,6 +258,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
     final changed = await showKubeResourceDetails<bool>(
       context,
       builder: (_) => KubeResourceDetails(
+        podKind: widget.podKind,
         session: widget.session,
         contextName: widget.contextName,
         resource: resource,
@@ -1010,20 +1013,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
         showRelations: links,
         showMetrics: metrics,
         openResource: _related,
-        openPod: (row) => _related(
-          KubeResourceRef(
-            api: const KubeResourceKind(
-              group: '',
-              version: 'v1',
-              resource: 'pods',
-              kind: 'Pod',
-              namespaced: true,
-              verbs: ['get', 'list', 'watch'],
-            ),
-            name: row.name,
-            namespace: row.namespace,
-          ),
-        ),
+        podKind: widget.podKind,
       );
 
   Widget _overview(KubeResourceDetail detail) {

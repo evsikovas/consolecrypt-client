@@ -101,8 +101,9 @@ class MockDockerService implements DockerService {
     String imageId,
     Credential credential,
     String repository,
-    String tag,
-  ) async {
+    String tag, {
+    DockerBuildContext? build,
+  }) async {
     await mockDelay(latency);
     final session = _sessions[sessionId];
     if (credential.registry == null ||

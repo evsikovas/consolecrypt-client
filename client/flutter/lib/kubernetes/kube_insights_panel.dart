@@ -27,6 +27,7 @@ class KubeInsightsPanel extends ConsumerStatefulWidget {
     required this.contextName,
     required this.service,
     required this.browser,
+    required this.podKind,
     required this.problems,
     this.namespace,
     this.onTerminalOpened,
@@ -47,6 +48,7 @@ class KubeInsightsPanel extends ConsumerStatefulWidget {
   final String? namespace;
   final KubeInsightsService service;
   final KubeBrowserService browser;
+  final KubeResourceKind? podKind;
   final bool problems;
   final VoidCallback? onTerminalOpened;
   final void Function(KubeResourceRef?, String?)? onExplain;
@@ -170,6 +172,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     final changed = await showKubeResourceDetails<bool>(
       context,
       builder: (_) => KubeResourceDetails(
+        podKind: widget.podKind,
         session: widget.session,
         contextName: widget.contextName,
         resource: resource.reference,

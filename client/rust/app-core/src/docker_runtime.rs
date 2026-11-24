@@ -27,6 +27,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+mod buildx;
 mod removal;
 
 const MAX_SESSIONS: usize = 16;
@@ -679,6 +680,7 @@ impl AppCore {
         credential_id: String,
         repository: String,
         tag: String,
+        build_json: Option<String>,
     ) -> AppResult<String> {
         let (_, u) = self.unlocked().await?;
         let live = u.docker.session(&session_id)?;
@@ -705,6 +707,19 @@ impl AppCore {
         let secret = u.writer.read_secret(secret_id).await?;
         if secret.kind != cc_models::secret::SecretKind::Password {
             return Err(invalid("registry_credential"));
+        }
+        if let Some(build) = build_json {
+            let options: buildx::BuildOptions =
+                serde_json::from_str(&build).map_err(|_| invalid("build_context"))?;
+            let endpoint = live
+                .local_endpoint
+                .as_deref()
+                .ok_or_else(|| invalid("build_context"))?;
+            return tokio::select! {
+                biased;
+                _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+                result = options.publish(endpoint, registry, &repository, &tag, username, secret.value.expose_secret()) => result,
+            };
         }
         tokio::select! {
             biased;
@@ -738,7 +753,10 @@ impl AppCore {
         }
     }
 
-    pub async fn docker_recent_events(&self, session_id: String) -> AppResult<Vec<serde_json::Value>> {
+    pub async fn docker_recent_events(
+        &self,
+        session_id: String,
+    ) -> AppResult<Vec<serde_json::Value>> {
         let (_, unlocked) = self.unlocked().await?;
         let live = unlocked.docker.session(&session_id)?;
         tokio::select! {

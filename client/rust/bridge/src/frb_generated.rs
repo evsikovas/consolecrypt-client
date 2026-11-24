@@ -9981,6 +9981,7 @@ fn wire__crate__api__docker__docker_publish_image_impl(
             let api_credential_id = <String>::sse_decode(&mut deserializer);
             let api_repository = <String>::sse_decode(&mut deserializer);
             let api_tag = <String>::sse_decode(&mut deserializer);
+            let api_build_json = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, crate::api::error::BridgeError>(
@@ -9991,6 +9992,7 @@ fn wire__crate__api__docker__docker_publish_image_impl(
                             api_credential_id,
                             api_repository,
                             api_tag,
+                            api_build_json,
                         )
                         .await?;
                         std::result::Result::Ok(output_ok)

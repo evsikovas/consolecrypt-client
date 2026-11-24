@@ -31,7 +31,7 @@ final class DockerKubeSource {
     if (canonical == null) return null;
     final original = sourceImage;
     if (original != null && canonical == DockerKubeTarget.dockerImage(original)) {
-      if (image != null) return canonical.contains('@') ? canonical : image;
+      if (image != null) return canonical;
       // A manually entered pin or explicit repository can be reachable from
       // the nodes using node credentials or an imagePullSecret. Never accept
       // a manufactured Docker Hub library tag as a way around the check.
@@ -304,16 +304,19 @@ final class DockerKubeTarget {
   };
 
   String get template => _yamlPair(deployment, service);
-  String get aiTemplate => _yamlPair(_deployment(withStartup: false), service);
-
-  // Outbound AI input only includes the reviewed target and resource defaults.
-  String get prompt =>
-      'Write exactly two Kubernetes YAML documents: Deployment and Service. ' // l10n-ignore: model output contract
-      'Use the following template. Keep every field and identity unchanged except container resources ' // l10n-ignore: model template restrictions
-      '(requests and limits: cpu and memory) and readinessProbe timing (1..300 seconds). ' // l10n-ignore: model field restrictions
-      'Do not add any other fields, containers, commands, environment variables or resources. ' // l10n-ignore: model schema instruction
-      'Return YAML only, no explanation. This is an experimental stateless deployment; ' // l10n-ignore: model output contract
-      'there is no measured usage data, so keep conservative resource defaults.\n$aiTemplate'; // l10n-ignore: model instruction and serialized template
+  // This is also the exact preview shown before sending. Local startup arguments stay on the device.
+  String get prompt => [
+    'Generate two Kubernetes YAML documents for a stateless Linux application. Return only YAML separated by ---.', // l10n-ignore: model contract
+    'Use apps/v1 Deployment and v1 Service. For both, metadata contains only name "$name" and namespace "$namespace".', // l10n-ignore: model contract
+    'Use one replica. Match selector, pod labels and Service selector using app.kubernetes.io/name=$name.', // l10n-ignore: model contract
+    'Use one container named "$name", image "$manifestImage", imagePullPolicy Always and one TCP containerPort $port.', // l10n-ignore: model contract
+    'Disable automountServiceAccountToken at pod level. In the container set allowPrivilegeEscalation to false and drop ALL capabilities.', // l10n-ignore: model contract
+    if (pullSecret.isNotEmpty)
+      'Set imagePullSecrets to the existing secret named "$pullSecret".', // l10n-ignore: model contract
+    'Choose conservative CPU and memory requests and limits. Use quoted positive integer quantities (m for CPU, Mi for memory).', // l10n-ignore: model contract
+    'Use a TCP readinessProbe on port $port with suitable integer timings from 1 to 300 seconds.', // l10n-ignore: model contract
+    'Expose one ClusterIP Service port $port targeting numeric port $port over TCP. Omit all other fields, including command, args and environment.', // l10n-ignore: model contract
+  ].join('\n');
 }
 
 String _yamlPair(Map<String, dynamic> deployment, Map<String, dynamic> service) =>
@@ -542,12 +545,15 @@ final class DockerKubeParser {
         port.send(null);
         return;
       }
-      final reviewed = target.deployment;
-      containerOf(reviewed)
-        ..['resources'] = resources
-        ..['readinessProbe'] = probe;
+      container['resources'] = resources;
+      container['readinessProbe'] = probe;
+      if (fromAi && target.startup.isNotEmpty) {
+        final startup = containerOf(target.deployment);
+        container['command'] = startup['command'];
+        if (startup.containsKey('args')) container['args'] = startup['args'];
+      }
       port.send(
-        fromAi ? [_yamlDocument(reviewed), _yamlDocument(target.service)] : [jsonEncode(reviewed), jsonEncode(service)],
+        fromAi ? [_yamlDocument(deployment), _yamlDocument(service)] : [jsonEncode(deployment), jsonEncode(service)],
       );
     } catch (_) {
       port.send(null);

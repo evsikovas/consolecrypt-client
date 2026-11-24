@@ -19,6 +19,7 @@ import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
+import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter/foundation.dart' show precisionErrorTolerance;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,7 +33,8 @@ const _container = DockerContainer(
   state: DockerContainerState.running,
 );
 const _published = 'docker.io/library/nginx@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-const _target = DockerKubeTarget(name: 'web', namespace: 'default', image: _published, port: 80);
+const _tag = 'docker.io/library/nginx:1.27';
+const _target = DockerKubeTarget(name: 'web', namespace: 'default', image: _tag, port: 80);
 const _rs = KubeResourceKind(
   group: 'apps',
   version: 'v1',
@@ -178,6 +180,12 @@ class _Kube implements KubeService, KubeBrowserService, KubeManifestService, Kub
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _ProjectFolder extends FileSelectorPlatform {
+  @override
+  Future<String?> getDirectoryPath({String? initialDirectory, String? confirmButtonText}) async =>
+      '/projects/stateless';
+}
+
 class _Ai implements AiService {
   final prompts = <String>[];
   @override
@@ -215,6 +223,7 @@ Future<ProviderContainer> _pump(
   bool writable = true,
   MockBackend? backend,
   Future<String> Function(Credential, String, String)? publishImage,
+  Future<String> Function(Credential, String, String, DockerBuildContext)? buildImage,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -249,6 +258,7 @@ Future<ProviderContainer> _pump(
             engineName: 'build-host',
             imageKey: (hostId: 'build-host', imageId: 'sha256:fixture'),
             publishImage: publishImage,
+            buildImage: buildImage,
           ),
         ),
       ),
@@ -260,7 +270,7 @@ Future<ProviderContainer> _pump(
 
 Future<void> _tap(WidgetTester tester, String key) async {
   final finder = find.byKey(ValueKey(key));
-  if (finder.evaluate().isEmpty || !tester.getRect(finder).overlaps(tester.getRect(find.byType(Scrollable).first))) {
+  if (finder.evaluate().isEmpty) {
     await tester.scrollUntilVisible(finder, 200, scrollable: find.byType(Scrollable).first);
   }
   await Scrollable.ensureVisible(tester.element(finder), alignment: 0.5);
@@ -351,6 +361,9 @@ void main() {
     expect(footer(), before);
     expect(submissions, ['registry.example.org/team/web:v1']);
     String field(String key) => tester.widget<TextField>(find.byKey(ValueKey('docker-kube-$key'))).controller!.text;
+    expect(field('image'), 'registry.example.org/team/web:v1');
+    expect(field('yaml'), isNot(contains('@sha256:')));
+    await _tap(tester, 'docker-kube-pin');
     expect(field('image'), pinned);
     expect(field('yaml'), contains(pinned), reason: 'refresh the existing template');
     expect(field('yaml'), isNot(contains(_published)));
@@ -369,13 +382,73 @@ void main() {
       ),
     );
     await _settle(tester);
-    expect(field('image'), pinned, reason: 'reopening uses the confirmed push instead of the original repository');
+    expect(field('image'), 'registry.example.org/team/web:v1', reason: 'reopening defaults to the published tag');
     await tester.pumpWidget(const SizedBox.shrink());
     await _pump(tester, _Kube(), _Ai(), backend: backend, publishImage: (_, _, _) async => image);
     await _tap(tester, 'registry-picker-null');
     await tester.tap(find.text('Build registry · registry.example.org').last);
     await _settle(tester);
     expect(find.byKey(const ValueKey('registry-publish')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('builds only from a chosen Dockerfile folder and publishes the selected platforms', (tester) async {
+    final backend = MockBackend(config: const MockConfig.test(seedDemoData: false));
+    await backend.debugCreateUnlockedLocalProfile();
+    addTearDown(backend.dispose);
+    final picker = FileSelectorPlatform.instance;
+    FileSelectorPlatform.instance = _ProjectFolder();
+    addTearDown(() => FileSelectorPlatform.instance = picker);
+    final account = await backend.inventory.createPasswordCredential(
+      name: 'Build Hub',
+      username: 'builder',
+      registry: 'docker.io',
+      password: SecretText('fixture'),
+    );
+    final builds = <DockerBuildContext>[];
+    await _pump(
+      tester,
+      _Kube(),
+      _Ai(),
+      backend: backend,
+      size: const Size(720, 640),
+      publishImage: (_, _, _) => throw StateError('wrong publish mode'),
+      buildImage: (c, repo, tag, build) async {
+        expect(c.id, account.id);
+        builds.add(build);
+        return 'docker.io/$repo@${_published.split('@').last}';
+      },
+    );
+    final ack = find.byKey(const ValueKey('docker-kube-acknowledge'));
+    final footer = tester.getRect(ack);
+    expect(ack.hitTestable(), findsOneWidget);
+    await _tap(tester, 'registry-picker-null');
+    await tester.tap(find.text('Build Hub · docker.io').last);
+    await _settle(tester);
+    await _tap(tester, 'registry-build-mode');
+    expect(_enabled(tester, 'registry-publish'), isFalse);
+    await _tap(tester, 'registry-build-folder');
+    await _tap(tester, 'registry-publish');
+    expect(builds.single.directory, '/projects/stateless');
+    expect(builds.single.platforms, ['linux/amd64', 'linux/arm64']);
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text,
+      'docker.io/builder/nginx:1.27',
+    );
+    Future<void> toggle(String platform) async {
+      final chip = find.widgetWithText(FilterChip, platform);
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await _settle(tester);
+    }
+
+    await toggle('linux/amd64');
+    await _tap(tester, 'registry-publish');
+    expect(builds.last.platforms, ['linux/arm64']);
+    await toggle('linux/arm64');
+    expect(_enabled(tester, 'registry-publish'), isFalse);
+    expect(tester.getRect(ack), footer);
+    expect(ack.hitTestable(), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -397,7 +470,7 @@ void main() {
     await tester.tap(find.text('${login.name} · docker.io').last);
     await _settle(tester);
     await _tap(tester, 'registry-publish');
-    expect(field('image'), _published);
+    expect(field('image'), _tag);
     expect(field('yaml'), yaml);
     expect(find.byKey(const ValueKey('docker-kube-error')), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -464,13 +537,15 @@ void main() {
     expect(find.textContaining('daemon off;'), findsNothing);
     final send = find.byKey(const ValueKey('docker-kube-send-ai'));
     expect(send.hitTestable(), findsOneWidget);
+    expect(find.text(_target.prompt), findsOneWidget);
     await tester.tap(send);
     await _settle(tester);
     await _parse(tester);
     expect(ai.prompts, hasLength(1));
     expect(yamlField.controller!.text, contains('daemon off;'));
     expect(yamlField.controller!.text, contains('kind: Deployment'));
-    expect(ai.prompts.single, contains(_target.image));
+    expect(ai.prompts.single, _target.prompt);
+    expect(ai.prompts.single, isNot(contains('apiVersion:')));
     expect(ai.prompts.single, isNot(contains('daemon off;')));
     expect(ai.prompts.single, isNot(contains('test-cluster')));
     expect(kube.calls, isEmpty);
@@ -478,7 +553,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('the wizard preselects a confirmed digest from the image lookup', (tester) async {
+  testWidgets('the wizard offers the confirmed digest and initially uses the tag', (tester) async {
     await _pump(
       tester,
       _Kube(),
@@ -486,7 +561,12 @@ void main() {
       publishedImage: null,
       resolveImage: () async => const DockerKubeSource(ports: [80], sourceImage: 'nginx:1.27', image: _published),
     );
-    expect(tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text, _published);
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text, _tag);
+    await _tap(tester, 'docker-kube-pin');
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text,
+      contains('@sha256:'),
+    );
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

@@ -900,6 +900,7 @@ abstract class RustLibApi extends BaseApi {
     required String credentialId,
     required String repository,
     required String tag,
+    String? buildJson,
   });
 
   Future<String> crateApiDockerDockerRecentEvents({required String sessionId});
@@ -7628,6 +7629,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String credentialId,
     required String repository,
     required String tag,
+    String? buildJson,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -7638,11 +7640,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(credentialId, serializer);
           sse_encode_String(repository, serializer);
           sse_encode_String(tag, serializer);
+          sse_encode_opt_String(buildJson, serializer);
           pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 248, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerPublishImageConstMeta,
-        argValues: [sessionId, imageId, credentialId, repository, tag],
+        argValues: [sessionId, imageId, credentialId, repository, tag, buildJson],
         apiImpl: this,
       ),
     );
@@ -7650,7 +7653,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiDockerDockerPublishImageConstMeta => const TaskConstMeta(
     debugName: "docker_publish_image",
-    argNames: ["sessionId", "imageId", "credentialId", "repository", "tag"],
+    argNames: ["sessionId", "imageId", "credentialId", "repository", "tag", "buildJson"],
   );
 
   @override

@@ -1,8 +1,8 @@
-use super::{image::sha256_id, DockerClient, REQUEST_TIMEOUT};
+use super::{DockerClient, REQUEST_TIMEOUT, image::sha256_id};
 use crate::DockerError;
-use base64::{engine::general_purpose::URL_SAFE, Engine};
+use base64::{Engine, engine::general_purpose::URL_SAFE};
 use http_body_util::BodyExt;
-use hyper::{header::HeaderValue, Method};
+use hyper::{Method, header::HeaderValue};
 use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
@@ -53,6 +53,16 @@ pub fn registry_authority(input: &str) -> Option<String> {
     Some(address.to_owned())
 }
 
+pub fn registry_repository(registry: &str, path: &str, tag: &str) -> Option<String> {
+    let registry = registry_authority(registry)?;
+    let repo = format!("{registry}/{path}");
+    (repo.len() <= 255
+        && PATH.is_match(path)
+        && TAG.is_match(tag)
+        && (registry != "docker.io" || path.contains('/')))
+    .then_some(repo)
+}
+
 fn pushed_digest(line: &[u8]) -> Result<Option<String>, DockerError> {
     if line.iter().all(u8::is_ascii_whitespace) {
         return Ok(None);
@@ -88,15 +98,8 @@ impl DockerClient {
         password: &str,
     ) -> Result<String, DockerError> {
         let registry = registry_authority(registry).ok_or(DockerError::InvalidRequest)?;
-        let repo = format!("{registry}/{path}");
-        if !sha256_id(image_id)
-            || repo.len() > 255
-            || !PATH.is_match(path)
-            || !TAG.is_match(tag)
-            || username.is_empty()
-            || password.is_empty()
-            || registry == "docker.io" && !path.contains('/')
-        {
+        let repo = registry_repository(&registry, path, tag).ok_or(DockerError::InvalidRequest)?;
+        if !sha256_id(image_id) || username.is_empty() || password.is_empty() {
             return Err(DockerError::InvalidRequest);
         }
         #[derive(Serialize)]
@@ -243,7 +246,12 @@ mod tests {
                 }
                 let (code, body) = match index {
                     0 => {
-                        assert_eq!(request, format!("POST /images/{id}/tag?repo=registry.example/team/app&tag=v1 HTTP/1.1"));
+                        assert_eq!(
+                            request,
+                            format!(
+                                "POST /images/{id}/tag?repo=registry.example/team/app&tag=v1 HTTP/1.1"
+                            )
+                        );
                         assert!(auth.is_none());
                         (201, String::new())
                     }
@@ -300,7 +308,7 @@ mod tests {
 
     #[tokio::test]
     async fn authenticates_only_the_push_and_returns_only_a_confirmed_digest() {
-        use std::sync::{atomic::Ordering, Arc};
+        use std::sync::{Arc, atomic::Ordering};
         for (fail, retagged, calls) in [(false, false, 3), (true, false, 2), (false, true, 3)] {
             let engine = Arc::new(RegistryEngine {
                 push_fails: fail,

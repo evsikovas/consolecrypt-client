@@ -29,6 +29,7 @@ class DockerKubeDialog extends ConsumerStatefulWidget {
     this.resolveImage,
     this.imageKey,
     this.publishImage,
+    this.buildImage,
     this.engineName = '',
     super.key,
   });
@@ -36,6 +37,7 @@ class DockerKubeDialog extends ConsumerStatefulWidget {
   final DockerImageKey? imageKey;
   final String engineName;
   final Future<String> Function(Credential, String, String)? publishImage;
+  final Future<String> Function(Credential, String, String, DockerBuildContext)? buildImage;
   final DockerContainer container;
   final Future<DockerKubeSource> Function()? resolveImage;
   @override
@@ -49,6 +51,8 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
   late DockerKubeSource _source = widget.source;
   bool _resolvingImage = false;
   bool _imageEdited = false;
+  String? _pinnedImage;
+  final _formScroll = ScrollController();
   final _name = TextEditingController(),
       _namespace = TextEditingController(),
       _image = TextEditingController(),
@@ -104,7 +108,8 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
     if (name.length > 50) name = name.substring(0, 50);
     _name.text = name.replaceAll(RegExp(r'-+$'), '');
     _port.text = (widget.source.ports.firstOrNull ?? 8080).toString();
-    _image.text = ref.read(dockerPublishedImagesProvider)[widget.imageKey] ?? _source.image ?? '';
+    final published = ref.read(dockerPublishedImagesProvider)[widget.imageKey];
+    _useKnownImage(published ?? _source.image);
     ref.listenManual(kubeScopeProvider, (_, next) {
       if (!identical(_scope, next)) _expire();
     });
@@ -119,13 +124,39 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
     }
   }
 
+  void _useKnownImage(String? reference) {
+    if (reference == null) return;
+    var tagged = reference.split('@').first;
+    if (reference.contains('@') && !tagged.split('/').last.contains(':')) {
+      final original = DockerKubeTarget.dockerImage(_source.sourceImage ?? '');
+      if (original == null || original.contains('@') || original.substring(0, original.lastIndexOf(':')) != tagged) {
+        _pinnedImage = null;
+        _image.text = reference;
+        return;
+      }
+      tagged = original;
+    }
+    _pinnedImage = reference.contains('@') ? "$tagged@${reference.split('@').last}" : null;
+    _image.text = tagged;
+  }
+
+  void _selectPin(bool pinned) {
+    final previous = _target;
+    final wasTemplate = previous.valid && _yaml.text == previous.template;
+    final reference = _pinnedImage!;
+    _imageEdited = true;
+    _image.text = pinned ? reference : reference.split('@').first;
+    _changed(target: true);
+    if (wasTemplate && _target.valid) _yaml.text = _target.template;
+  }
+
   Future<void> _resolveImage(Future<DockerKubeSource> Function() resolve) async {
     _resolvingImage = true;
     try {
       final source = await resolve().timeout(const Duration(seconds: 10));
       if (!_current) return;
       _source = source;
-      if (!_imageEdited && _image.text.isEmpty) _image.text = source.image ?? '';
+      if (!_imageEdited && _image.text.isEmpty) _useKnownImage(source.image);
     } catch (_) {
       // A published reference can still be supplied manually.
     } finally {
@@ -133,7 +164,7 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
     }
   }
 
-  Future<void> _publish(Credential credential, String path, String tag) async {
+  Future<void> _publish(Credential credential, String path, String tag, DockerBuildContext? build) async {
     if (!_current || _busy || _started || widget.publishImage == null) return;
     setState(() {
       _busy = true;
@@ -141,7 +172,9 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
       _error = null;
     });
     try {
-      final image = await widget.publishImage!(credential, path, tag);
+      final image = build == null
+          ? await widget.publishImage!(credential, path, tag)
+          : await widget.buildImage!(credential, path, tag, build);
       if (!_current) return;
       if (!DockerKubeTarget.validImage(image) || !image.startsWith('${credential.registry}/$path@sha256:')) {
         throw const FormatException();
@@ -149,13 +182,22 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
       final previous = _target;
       final usingTemplate = _yaml.text.isNotEmpty && previous.valid && _yaml.text == previous.template;
       _imageEdited = true;
-      _image.text = '${credential.registry}/$path:$tag@${image.split('@').last}';
-      if (widget.imageKey case final key?) ref.read(dockerPublishedImagesProvider)[key] = _image.text;
+      _useKnownImage('${credential.registry}/$path:$tag@${image.split('@').last}');
+      if (widget.imageKey case final key?) ref.read(dockerPublishedImagesProvider)[key] = _pinnedImage!;
       _changed(target: true);
       if (usingTemplate && _target.valid) _yaml.text = _target.template;
       if (mounted) showSnack(context, context.l10n.registryPublished);
-    } catch (_) {
-      if (_current) setState(() => _error = context.l10n.registryPublishFailed);
+    } catch (error) {
+      if (mounted && _current) {
+        final l = context.l10n;
+        setState(
+          () => _error = build == null
+              ? l.registryPublishFailed
+              : error is AppException && error.args['rule'] == 'build_context'
+              ? l.registryBuildContextError
+              : l.registryBuildFailed,
+        );
+      }
     } finally {
       if (_current) {
         setState(() {
@@ -234,6 +276,7 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _formScroll.dispose();
     _generation++;
     _statusTimer?.cancel();
     _stopAi();
@@ -567,7 +610,7 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
             spacing: GlassSpacing.s8,
             children: [
               Text(l.dockerKubeAiReview),
-              Expanded(child: SingleChildScrollView(child: SelectableText(review.$2.aiTemplate))),
+              Expanded(child: SingleChildScrollView(child: SelectableText(review.$2.prompt))),
             ],
           ),
         ),
@@ -643,7 +686,10 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
       enableIMEPersonalizedLearning: false,
       decoration: InputDecoration(labelText: label),
       onChanged: (_) {
-        if (identical(controller, _image)) _imageEdited = true;
+        if (identical(controller, _image)) {
+          _imageEdited = true;
+          _pinnedImage = null;
+        }
         _changed(target: true);
       },
     );
@@ -661,186 +707,215 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
                   children: [
                     SizedBox(height: 2, child: _busy ? const LinearProgressIndicator(minHeight: 2) : null),
                     Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          spacing: GlassSpacing.s8,
-                          children: [
-                            Text(l.dockerKubeIntro),
-                            DropdownButtonFormField<String>(
-                              key: const ValueKey('docker-kube-context'),
-                              initialValue: _context?.id,
-                              isExpanded: true,
-                              decoration: InputDecoration(labelText: l.dockerKubeContext),
-                              items: [for (final c in _contexts) DropdownMenuItem(value: c.id, child: Text(c.name))],
-                              onChanged: enabled
-                                  ? (id) {
-                                      if (id != null) unawaited(_connect(_contexts.firstWhere((c) => c.id == id)));
-                                    }
-                                  : null,
-                            ),
-                            if (session != null) ...[
-                              KubeWriteBanner(session: session, contextName: _context!.name),
-                              if (!_newNamespace)
-                                DropdownButtonFormField<String>(
-                                  key: ValueKey('docker-kube-namespace-${session.id}-${_namespace.text}'),
-                                  initialValue: _namespaces.contains(_namespace.text) ? _namespace.text : null,
-                                  isExpanded: true,
-                                  decoration: InputDecoration(labelText: l.kubeNamespace),
-                                  items: [for (final ns in _namespaces) DropdownMenuItem(value: ns, child: Text(ns))],
-                                  onChanged: enabled
-                                      ? (value) {
-                                          if (value != null) {
-                                            _namespace.text = value;
-                                            _changed(target: true);
-                                          }
-                                        }
-                                      : null,
-                                ),
-                              CheckboxListTile(
-                                key: const ValueKey('docker-kube-new-namespace'),
-                                title: Text(l.dockerKubeNewNamespace),
-                                value: _newNamespace,
+                      child: Scrollbar(
+                        controller: _formScroll,
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _formScroll,
+                          padding: const EdgeInsetsDirectional.only(top: 8, end: 16, bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            spacing: GlassSpacing.s16,
+                            children: [
+                              Text(l.dockerKubeIntro, style: Theme.of(context).textTheme.bodySmall),
+                              DropdownButtonFormField<String>(
+                                key: const ValueKey('docker-kube-context'),
+                                initialValue: _context?.id,
+                                isExpanded: true,
+                                decoration: InputDecoration(labelText: l.dockerKubeContext),
+                                items: [for (final c in _contexts) DropdownMenuItem(value: c.id, child: Text(c.name))],
                                 onChanged: enabled
-                                    ? (value) {
-                                        _newNamespace = value ?? false;
-                                        _namespace.clear();
-                                        _changed(target: true);
+                                    ? (id) {
+                                        if (id != null) unawaited(_connect(_contexts.firstWhere((c) => c.id == id)));
                                       }
                                     : null,
                               ),
-                              if (_newNamespace) ...[
-                                field(_namespace, 'namespace-name', l.kubeNamespace),
-                                Text(l.dockerKubeNamespaceHelp),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: GlassButton(
-                                    key: const ValueKey('docker-kube-create-namespace'),
-                                    label: l.dockerKubeCreateNamespace,
-                                    onPressed:
-                                        enabled && _canWrite && DockerKubeTarget.validName(_namespace.text.trim())
-                                        ? _createNamespace
+                              if (session != null) ...[
+                                KubeWriteBanner(session: session, contextName: _context!.name),
+                                if (!_newNamespace)
+                                  DropdownButtonFormField<String>(
+                                    key: ValueKey('docker-kube-namespace-${session.id}-${_namespace.text}'),
+                                    initialValue: _namespaces.contains(_namespace.text) ? _namespace.text : null,
+                                    isExpanded: true,
+                                    decoration: InputDecoration(labelText: l.kubeNamespace),
+                                    items: [for (final ns in _namespaces) DropdownMenuItem(value: ns, child: Text(ns))],
+                                    onChanged: enabled
+                                        ? (value) {
+                                            if (value != null) {
+                                              _namespace.text = value;
+                                              _changed(target: true);
+                                            }
+                                          }
                                         : null,
                                   ),
-                                ),
-                              ],
-                              if (_namespaceCreated)
-                                Text(
-                                  l.dockerKubeNamespaceCreated,
-                                  key: const ValueKey('docker-kube-namespace-created'),
-                                ),
-                            ],
-                            field(_name, 'name', l.kubeName),
-                            if (widget.publishImage != null)
-                              RegistryPublisher(
-                                enabled: enabled,
-                                publishing: _publishing,
-                                engineName: widget.engineName,
-                                sourceImage: _source.sourceImage ?? widget.container.image,
-                                publish: _publish,
-                              ),
-                            Row(
-                              children: [
-                                Expanded(child: field(_image, 'image', l.dockerKubeImage)),
-                                if (DockerKubeTarget.validImage(_image.text.trim()))
-                                  GlassIconButton(
-                                    tooltip: l.commonCopy,
-                                    icon: Icons.copy_rounded,
-                                    onPressed: () => copyPlainWithNotice(context, ref, _image.text.trim()),
-                                  ),
-                              ],
-                            ),
-                            if (_resolvingImage) const LinearProgressIndicator(minHeight: 2),
-                            Text(
-                              !_resolvingImage &&
-                                      _source.image == null &&
-                                      !_source.acceptsImage(_image.text.trim(), pullSecret: _pullSecret.text.trim())
-                                  ? l.dockerKubeUnverifiedImage
-                                  : l.dockerKubeImageHelp,
-                            ),
-                            field(_port, 'port', l.dockerKubePort),
-                            field(_pullSecret, 'pull-secret', l.dockerKubePullSecret),
-                            DropdownButtonFormField<String>(
-                              key: const ValueKey('docker-kube-provider'),
-                              initialValue: selected?.id.value,
-                              isExpanded: true,
-                              decoration: InputDecoration(labelText: l.kubeAiProvider),
-                              items: [
-                                for (final p in providers) DropdownMenuItem(value: p.id.value, child: Text(p.name)),
-                              ],
-                              onChanged: enabled
-                                  ? (value) => setState(() => _providerId = value == null ? null : ObjectId(value))
-                                  : null,
-                            ),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                GlassButton(
-                                  key: const ValueKey('docker-kube-generate'),
-                                  label: l.dockerKubeGenerate,
-                                  icon: Icons.auto_awesome,
-                                  onPressed: enabled && selected != null
-                                      ? () => setState(() {
-                                          if (_target.valid) {
-                                            _error = null;
-                                            _review = (selected, _target);
-                                          } else {
-                                            _error = l.dockerKubeInvalidTarget;
-                                          }
-                                        })
+                                CheckboxListTile(
+                                  key: const ValueKey('docker-kube-new-namespace'),
+                                  title: Text(l.dockerKubeNewNamespace),
+                                  value: _newNamespace,
+                                  onChanged: enabled
+                                      ? (value) {
+                                          _newNamespace = value ?? false;
+                                          _namespace.clear();
+                                          _changed(target: true);
+                                        }
                                       : null,
                                 ),
-                                GlassButton(
-                                  key: const ValueKey('docker-kube-template'),
-                                  label: l.dockerKubeTemplate,
-                                  onPressed: enabled ? _template : null,
-                                ),
+                                if (_newNamespace) ...[
+                                  field(_namespace, 'namespace-name', l.kubeNamespace),
+                                  Text(l.dockerKubeNamespaceHelp),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: GlassButton(
+                                      key: const ValueKey('docker-kube-create-namespace'),
+                                      label: l.dockerKubeCreateNamespace,
+                                      onPressed:
+                                          enabled && _canWrite && DockerKubeTarget.validName(_namespace.text.trim())
+                                          ? _createNamespace
+                                          : null,
+                                    ),
+                                  ),
+                                ],
+                                if (_namespaceCreated)
+                                  Text(
+                                    l.dockerKubeNamespaceCreated,
+                                    key: const ValueKey('docker-kube-namespace-created'),
+                                  ),
                               ],
-                            ),
-                            if (selected == null) Text(l.dockerKubeNoProvider),
-                            if (_error != null) Text(_error!, key: const ValueKey('docker-kube-error')),
-                            TextField(
-                              key: const ValueKey('docker-kube-yaml'),
-                              controller: _yaml,
-                              enabled: enabled,
-                              minLines: 8,
-                              maxLines: 16,
-                              maxLength: 65536,
-                              autocorrect: false,
-                              enableSuggestions: false,
-                              enableIMEPersonalizedLearning: false,
-                              style: GlassTokens.of(context).typography.mono,
-                              decoration: InputDecoration(
-                                labelText: l.dockerKubeManifestYaml,
-                                alignLabelWithHint: true,
-                                counterText: '',
+                              field(_name, 'name', l.kubeName),
+                              const Divider(height: 8),
+                              if (widget.publishImage != null)
+                                RegistryPublisher(
+                                  enabled: enabled,
+                                  publishing: _publishing,
+                                  engineName: widget.engineName,
+                                  sourceImage: _source.sourceImage ?? widget.container.image,
+                                  allowBuild: widget.buildImage != null,
+                                  publish: _publish,
+                                ),
+                              Row(
+                                children: [
+                                  Expanded(child: field(_image, 'image', l.dockerKubeImage)),
+                                  const SizedBox(width: 8),
+                                  if (DockerKubeTarget.validImage(_image.text.trim()))
+                                    GlassIconButton(
+                                      tooltip: l.commonCopy,
+                                      icon: Icons.copy_rounded,
+                                      onPressed: () => copyPlainWithNotice(context, ref, _image.text.trim()),
+                                    ),
+                                ],
                               ),
-                              onChanged: (_) => _changed(),
-                            ),
-                            CheckboxListTile(
-                              key: const ValueKey('docker-kube-acknowledge'),
-                              title: Text(l.dockerKubeAcknowledge),
-                              value: _acknowledged,
-                              onChanged: enabled
-                                  ? (value) {
-                                      _acknowledged = value ?? false;
-                                      _changed();
-                                    }
-                                  : null,
-                            ),
-                            if (_deployment?.validated ?? false)
-                              Text(l.dockerKubeValidated, key: const ValueKey('docker-kube-validated')),
-                          ],
+                              if (_pinnedImage != null)
+                                CheckboxListTile(
+                                  key: const ValueKey('docker-kube-pin'),
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  controlAffinity: ListTileControlAffinity.leading,
+                                  value: _image.text == _pinnedImage,
+                                  title: Text(l.registryPin),
+                                  onChanged: enabled ? (v) => _selectPin(v == true) : null,
+                                ),
+                              if (_resolvingImage) const LinearProgressIndicator(minHeight: 2),
+                              Text(
+                                !_resolvingImage &&
+                                        _source.image == null &&
+                                        !_source.acceptsImage(_image.text.trim(), pullSecret: _pullSecret.text.trim())
+                                    ? l.dockerKubeUnverifiedImage
+                                    : l.dockerKubeImageHelp,
+                              ),
+                              const Divider(height: 8),
+                              field(_port, 'port', l.dockerKubePort),
+                              field(_pullSecret, 'pull-secret', l.dockerKubePullSecret),
+                              DropdownButtonFormField<String>(
+                                key: const ValueKey('docker-kube-provider'),
+                                initialValue: selected?.id.value,
+                                isExpanded: true,
+                                decoration: InputDecoration(labelText: l.kubeAiProvider),
+                                items: [
+                                  for (final p in providers) DropdownMenuItem(value: p.id.value, child: Text(p.name)),
+                                ],
+                                onChanged: enabled
+                                    ? (value) => setState(() => _providerId = value == null ? null : ObjectId(value))
+                                    : null,
+                              ),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  GlassButton(
+                                    key: const ValueKey('docker-kube-generate'),
+                                    label: l.dockerKubeGenerate,
+                                    icon: Icons.auto_awesome,
+                                    onPressed: enabled && selected != null
+                                        ? () => setState(() {
+                                            if (_target.valid) {
+                                              _error = null;
+                                              _review = (selected, _target);
+                                            } else {
+                                              _error = l.dockerKubeInvalidTarget;
+                                            }
+                                          })
+                                        : null,
+                                  ),
+                                  GlassButton(
+                                    key: const ValueKey('docker-kube-template'),
+                                    label: l.dockerKubeTemplate,
+                                    onPressed: enabled ? _template : null,
+                                  ),
+                                ],
+                              ),
+                              if (selected == null) Text(l.dockerKubeNoProvider),
+                              TextField(
+                                key: const ValueKey('docker-kube-yaml'),
+                                controller: _yaml,
+                                enabled: enabled,
+                                minLines: 4,
+                                maxLines: 10,
+                                maxLength: 65536,
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                enableIMEPersonalizedLearning: false,
+                                style: GlassTokens.of(context).typography.mono,
+                                decoration: InputDecoration(
+                                  labelText: l.dockerKubeManifestYaml,
+                                  alignLabelWithHint: true,
+                                  counterText: '',
+                                ),
+                                onChanged: (_) => _changed(),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
+                    const Divider(height: 12),
+                    if (_error != null)
+                      Text(
+                        _error!,
+                        key: const ValueKey('docker-kube-error'),
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      ),
+                    CheckboxListTile(
+                      key: const ValueKey('docker-kube-acknowledge'),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Text(l.dockerKubeAcknowledge),
+                      value: _acknowledged,
+                      onChanged: enabled
+                          ? (value) {
+                              _acknowledged = value ?? false;
+                              _changed();
+                            }
+                          : null,
+                    ),
+                    if (_deployment?.validated ?? false)
+                      Text(l.dockerKubeValidated, key: const ValueKey('docker-kube-validated')),
                   ],
                 ),
         ),
         primaryAction: GlassButton.prominent(
           key: const ValueKey('docker-kube-deploy'),
-          label: l.dockerKubeDeploy,
+          label: l.dockerKubeDeployAction,
           onPressed: enabled && _canWrite && _acknowledged && (_deployment?.validated ?? false) ? _deploy : null,
         ),
         secondaryActions: [

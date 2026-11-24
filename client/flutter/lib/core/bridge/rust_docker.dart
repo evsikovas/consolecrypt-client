@@ -92,16 +92,23 @@ final class RustDockerService implements DockerService, DockerObservationService
   }
 
   @override
-  Future<String> publishImage(String sessionId, String imageId, Credential credential, String repository, String tag) =>
-      guard(
-        () => native.dockerPublishImage(
-          sessionId: sessionId,
-          imageId: imageId,
-          credentialId: credential.id.value,
-          repository: repository,
-          tag: tag,
-        ),
-      );
+  Future<String> publishImage(
+    String sessionId,
+    String imageId,
+    Credential credential,
+    String repository,
+    String tag, {
+    DockerBuildContext? build,
+  }) => guard(
+    () => native.dockerPublishImage(
+      sessionId: sessionId,
+      imageId: imageId,
+      credentialId: credential.id.value,
+      buildJson: build == null ? null : jsonEncode({'directory': build.directory, 'platforms': build.platforms}),
+      repository: repository,
+      tag: tag,
+    ),
+  );
 
   @override
   Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage) =>

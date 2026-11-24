@@ -193,6 +193,22 @@ void main() {
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   }
 
+  testWidgets('a workload pod opens with its discovered API and shows its own events', (tester) async {
+    final service = _RelatedPodService();
+    await _pump(tester, service, size: const Size(1600, 1000));
+    await tapKey(tester, 'kube-nav-kind-apps/v1/deployments');
+    await tapKey(tester, 'kube-resource-demo-pod');
+    await tapKey(tester, 'kube-related-tab');
+    await tester.tap(find.text('Workload Pods'));
+    await settle(tester);
+    await tester.tap(find.text('rollout-pod'));
+    await settle(tester);
+    await tapKey(tester, 'kube-events-tab');
+    expect(service.opened?.api, same(_RelatedPodService.podKind));
+    expect(service.opened?.namespace, 'test-space');
+    expect(find.textContaining('no match for platform'), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('cold connection completes discovery before resolving namespaces', (tester) async {
     final service = _ColdDiscoveryService();
     await _pump(tester, service);
@@ -2409,4 +2425,44 @@ class _WorkloadSwipeService extends _OperationsService {
   @override
   Future<void> restart(String sessionId, KubeResourceRef resource, String resourceVersion) async =>
       restarted.add((resource.name, resourceVersion));
+}
+
+class _RelatedPodService extends _WorkloadSwipeService {
+  static const podKind = KubeResourceKind(
+    group: '',
+    version: 'v1',
+    resource: 'pods',
+    kind: 'Pod',
+    namespaced: true,
+    verbs: ['create', 'delete', 'get', 'list', 'patch', 'update', 'watch'],
+  );
+  KubeResourceRef? opened;
+
+  @override
+  Future<List<KubeResourceKind>> discover(String sessionId) async => [...await super.discover(sessionId), podKind];
+  @override
+  Future<List<KubeResourceRow>> workloadPods(String sessionId, KubeResourceRef resource) async => const [
+    KubeResourceRow(name: 'rollout-pod', namespace: 'test-space', uid: 'pod-uid', resourceVersion: '1'),
+  ];
+  @override
+  Future<KubeResourceDetail> getResource(String sessionId, KubeResourceRef resource) async {
+    if (resource.name == 'rollout-pod') {
+      opened = resource;
+      if (!identical(resource.api, podKind)) throw StateError('Unknown pod descriptor');
+    }
+    return super.getResource(sessionId, resource);
+  }
+
+  @override
+  Future<List<KubeResourceRow>> objectEvents(String sessionId, KubeResourceRef resource, String uid) async =>
+      uid == 'rollout-pod'
+      ? const [
+          KubeResourceRow(
+            name: 'pull-failed',
+            uid: 'event',
+            resourceVersion: '2',
+            object: {'reason': 'Failed', 'message': 'no match for platform'},
+          ),
+        ]
+      : [];
 }

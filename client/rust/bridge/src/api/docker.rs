@@ -37,12 +37,18 @@ pub async fn docker_publish_image(
     credential_id: String,
     repository: String,
     tag: String,
+    build_json: Option<String>,
 ) -> Result<String, BridgeError> {
     with_core(move |c| async move {
-        Ok(
-            c.docker_publish_image(session_id, image_id, credential_id, repository, tag)
-                .await?,
+        Ok(c.docker_publish_image(
+            session_id,
+            image_id,
+            credential_id,
+            repository,
+            tag,
+            build_json,
         )
+        .await?)
     })
     .await
 }

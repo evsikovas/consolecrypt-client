@@ -17886,7 +17886,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerKubeIntro =>
-      'Experimental: one stateless Linux container, one replica and an internal ClusterIP Service. Review the manifest before deploying.';
+      'One Linux replica and an internal ClusterIP Service. Configure Docker environment overrides and Compose dependencies separately.';
 
   @override
   String get dockerKubeUnsupported =>
@@ -17936,10 +17936,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerKubeAiReview =>
-      'Review the template below before sending it to the AI provider. ConsoleCrypt adds the Docker startup command locally after receiving the response.';
+      'Review the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.';
 
   @override
-  String get dockerKubeSendAi => 'Send template to AI';
+  String get dockerKubeSendAi => 'Send prompt';
 
   @override
   String get dockerKubeManifestRejected =>
@@ -17950,8 +17950,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check the app/namespace names, published image with explicit registry and tag/digest, TCP port and pull-secret name.';
 
   @override
-  String get dockerKubeAcknowledge =>
-      'I checked the image, CPU architecture and startup command. This deployment uses the image’s environment and filesystem. Configure any Docker environment overrides or Compose dependencies separately.';
+  String get dockerKubeAcknowledge => 'I checked the image, platform and startup command';
 
   @override
   String get dockerKubeValidated =>
@@ -19826,4 +19825,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String captureExchangeCount(int count) {
     return 'Packets between these endpoints when selected: $count';
   }
+
+  @override
+  String get registryBuildFromSource => 'Build from a local Dockerfile';
+
+  @override
+  String get registryBuildFolder => 'Choose project folder';
+
+  @override
+  String get registryBuildPush => 'Build and publish';
+
+  @override
+  String get registryBuildFailed =>
+      'Build or push failed. Check the Dockerfile, Buildx platform support and registry write access.';
+
+  @override
+  String get registryBuildContextError => 'Choose a project folder containing a Dockerfile.';
+
+  @override
+  String get registryPin => 'Pin this image by digest';
+
+  @override
+  String get dockerKubeDeployAction => 'Deploy';
 }

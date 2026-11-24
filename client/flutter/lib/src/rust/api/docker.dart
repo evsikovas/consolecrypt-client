@@ -34,12 +34,14 @@ Future<String> dockerPublishImage({
   required String credentialId,
   required String repository,
   required String tag,
+  String? buildJson,
 }) => RustLib.instance.api.crateApiDockerDockerPublishImage(
   sessionId: sessionId,
   imageId: imageId,
   credentialId: credentialId,
   repository: repository,
   tag: tag,
+  buildJson: buildJson,
 );
 
 /// Registry-confirmed digests for this local image and its source repository.

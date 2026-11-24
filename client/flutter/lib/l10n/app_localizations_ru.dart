@@ -18228,7 +18228,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerKubeIntro =>
-      'Экспериментально: один stateless Linux-контейнер, одна реплика и внутренний Service ClusterIP. Проверьте манифест перед развёртыванием.';
+      'Одна реплика Linux и внутренний Service ClusterIP. Переменные из настроек Docker и зависимости Compose задаются отдельно.';
 
   @override
   String get dockerKubeUnsupported =>
@@ -18278,10 +18278,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerKubeAiReview =>
-      'Проверьте шаблон перед отправкой ИИ. ConsoleCrypt добавит команду запуска из Docker на этом устройстве после получения ответа.';
+      'Проверьте запрос перед отправкой. После генерации ConsoleCrypt добавит команду запуска локально.';
 
   @override
-  String get dockerKubeSendAi => 'Отправить шаблон ИИ';
+  String get dockerKubeSendAi => 'Отправить запрос';
 
   @override
   String get dockerKubeManifestRejected =>
@@ -18292,8 +18292,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'Проверьте имена приложения и namespace, опубликованный образ с явным registry и тегом/digest, TCP-порт и имя pull-secret.';
 
   @override
-  String get dockerKubeAcknowledge =>
-      'Я проверил образ, архитектуру процессора и команду запуска. Контейнер получит окружение и файлы из образа. Переменные из настроек Docker и зависимости Compose нужно настроить отдельно.';
+  String get dockerKubeAcknowledge => 'Образ, платформа и команда запуска проверены';
 
   @override
   String get dockerKubeValidated =>
@@ -20161,4 +20160,26 @@ class AppLocalizationsRu extends AppLocalizations {
   String captureExchangeCount(int count) {
     return 'Пакетов между этими адресами на момент выбора: $count';
   }
+
+  @override
+  String get registryBuildFromSource => 'Собрать из локального Dockerfile';
+
+  @override
+  String get registryBuildFolder => 'Выбрать папку проекта';
+
+  @override
+  String get registryBuildPush => 'Собрать и опубликовать';
+
+  @override
+  String get registryBuildFailed =>
+      'Сборка или публикация не удалась. Проверьте Dockerfile, поддержку платформ в Buildx и право записи в реестр.';
+
+  @override
+  String get registryBuildContextError => 'Выберите папку проекта с файлом Dockerfile.';
+
+  @override
+  String get registryPin => 'Закрепить версию по digest';
+
+  @override
+  String get dockerKubeDeployAction => 'Развернуть';
 }

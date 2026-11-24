@@ -17117,7 +17117,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeDeploy => '部署到 Kubernetes · 实验功能';
 
   @override
-  String get dockerKubeIntro => '此实验功能支持一个无状态 Linux 容器、一个副本和一个内部 ClusterIP 服务。部署前请检查清单。';
+  String get dockerKubeIntro => '一个 Linux 副本和一个内部 ClusterIP Service。请单独配置 Docker 环境覆盖项与 Compose 依赖。';
 
   @override
   String get dockerKubeUnsupported => '向导需要配置已经验证的 Linux 容器，且容器无需使用宿主机网络、设备或额外权限即可运行。请选择兼容的容器，或手动准备 Kubernetes 清单。';
@@ -17162,10 +17162,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeTemplate => '使用模板';
 
   @override
-  String get dockerKubeAiReview => '请先检查将发送给 AI 服务的模板。收到回复后，ConsoleCrypt 会在本机添加 Docker 启动命令。';
+  String get dockerKubeAiReview => '发送前请检查提示词。生成后，ConsoleCrypt 会在本地添加启动命令。';
 
   @override
-  String get dockerKubeSendAi => '将模板发送给 AI';
+  String get dockerKubeSendAi => '发送提示词';
 
   @override
   String get dockerKubeManifestRejected =>
@@ -17175,7 +17175,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeInvalidTarget => '请检查应用和命名空间的名称、已发布镜像的仓库及标签或摘要、TCP 端口和镜像拉取密钥的名称。';
 
   @override
-  String get dockerKubeAcknowledge => '我已检查镜像、CPU 架构和启动命令。部署使用镜像中的环境和文件系统。请单独配置 Docker 中覆盖的环境变量和 Compose 依赖。';
+  String get dockerKubeAcknowledge => '已核对镜像、平台和启动命令';
 
   @override
   String get dockerKubeValidated => '两个资源均已通过服务器端试运行。部署只会创建新资源，保留已有资源。';
@@ -19010,4 +19010,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String captureExchangeCount(int count) {
     return '选中时这两个端点之间的包数：$count';
   }
+
+  @override
+  String get registryBuildFromSource => '从本地 Dockerfile 构建';
+
+  @override
+  String get registryBuildFolder => '选择项目文件夹';
+
+  @override
+  String get registryBuildPush => '构建并发布';
+
+  @override
+  String get registryBuildFailed => '构建或发布失败。请检查 Dockerfile、Buildx 平台支持及仓库写入权限。';
+
+  @override
+  String get registryBuildContextError => '请选择含有 Dockerfile 的项目文件夹。';
+
+  @override
+  String get registryPin => '按摘要固定此版本';
+
+  @override
+  String get dockerKubeDeployAction => '部署';
 }

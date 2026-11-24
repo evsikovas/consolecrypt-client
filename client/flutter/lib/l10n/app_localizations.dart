@@ -31579,7 +31579,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Experimental: one stateless Linux container, one replica and an internal ClusterIP Service. Review the manifest before deploying.'**
+  /// **'One Linux replica and an internal ClusterIP Service. Configure Docker environment overrides and Compose dependencies separately.'**
   String get dockerKubeIntro;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -31669,13 +31669,13 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Review the template below before sending it to the AI provider. ConsoleCrypt adds the Docker startup command locally after receiving the response.'**
+  /// **'Review the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.'**
   String get dockerKubeAiReview;
 
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Send template to AI'**
+  /// **'Send prompt'**
   String get dockerKubeSendAi;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -31693,7 +31693,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'I checked the image, CPU architecture and startup command. This deployment uses the image’s environment and filesystem. Configure any Docker environment overrides or Compose dependencies separately.'**
+  /// **'I checked the image, platform and startup command'**
   String get dockerKubeAcknowledge;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -34914,6 +34914,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Packets between these endpoints when selected: {count}'**
   String captureExchangeCount(int count);
+
+  /// Docker deployment wizard: Build from a local Dockerfile
+  ///
+  /// In en, this message translates to:
+  /// **'Build from a local Dockerfile'**
+  String get registryBuildFromSource;
+
+  /// Docker deployment wizard: Choose project folder
+  ///
+  /// In en, this message translates to:
+  /// **'Choose project folder'**
+  String get registryBuildFolder;
+
+  /// Docker deployment wizard: Build and publish
+  ///
+  /// In en, this message translates to:
+  /// **'Build and publish'**
+  String get registryBuildPush;
+
+  /// Docker deployment wizard: Build or push failed. Check the Dockerfile, Buildx platform support and registry write access.
+  ///
+  /// In en, this message translates to:
+  /// **'Build or push failed. Check the Dockerfile, Buildx platform support and registry write access.'**
+  String get registryBuildFailed;
+
+  /// Docker deployment wizard: Choose a project folder containing a Dockerfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a project folder containing a Dockerfile.'**
+  String get registryBuildContextError;
+
+  /// Docker deployment wizard: Pin this image by digest
+  ///
+  /// In en, this message translates to:
+  /// **'Pin this image by digest'**
+  String get registryPin;
+
+  /// Docker deployment wizard: Deploy
+  ///
+  /// In en, this message translates to:
+  /// **'Deploy'**
+  String get dockerKubeDeployAction;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

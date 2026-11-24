@@ -18035,7 +18035,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dockerKubeIntro =>
-      'Función experimental para un contenedor Linux sin estado, una réplica y un servicio ClusterIP interno. Revisa el manifiesto antes de desplegar.';
+      'Una réplica Linux y un Service ClusterIP interno. Configura por separado las variables de Docker y las dependencias de Compose.';
 
   @override
   String get dockerKubeUnsupported =>
@@ -18085,10 +18085,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dockerKubeAiReview =>
-      'Revisa la plantilla antes de enviarla al proveedor de IA. ConsoleCrypt añade el comando de inicio de Docker en este dispositivo al recibir la respuesta.';
+      'Revisa la petición antes de enviarla. ConsoleCrypt añade el comando de inicio localmente después de la generación.';
 
   @override
-  String get dockerKubeSendAi => 'Enviar plantilla a la IA';
+  String get dockerKubeSendAi => 'Enviar petición';
 
   @override
   String get dockerKubeManifestRejected =>
@@ -18099,8 +18099,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Comprueba los nombres de la aplicación y del espacio de nombres, la imagen publicada con registro y etiqueta o resumen explícitos, el puerto TCP y el nombre del secreto de descarga.';
 
   @override
-  String get dockerKubeAcknowledge =>
-      'He comprobado la imagen, la arquitectura de CPU y el comando de inicio. El despliegue usa el entorno y los archivos de la imagen. Las variables configuradas en Docker y las dependencias de Compose se configuran por separado.';
+  String get dockerKubeAcknowledge => 'He revisado la imagen, la plataforma y el comando de inicio';
 
   @override
   String get dockerKubeValidated =>
@@ -19984,4 +19983,26 @@ class AppLocalizationsEs extends AppLocalizations {
   String captureExchangeCount(int count) {
     return 'Paquetes entre estos extremos al seleccionarlos: $count';
   }
+
+  @override
+  String get registryBuildFromSource => 'Compilar desde un Dockerfile local';
+
+  @override
+  String get registryBuildFolder => 'Elegir carpeta del proyecto';
+
+  @override
+  String get registryBuildPush => 'Compilar y publicar';
+
+  @override
+  String get registryBuildFailed =>
+      'Falló la compilación o publicación. Revisa el Dockerfile, las plataformas de Buildx y el acceso al registro.';
+
+  @override
+  String get registryBuildContextError => 'Elige una carpeta de proyecto con un Dockerfile.';
+
+  @override
+  String get registryPin => 'Fijar esta versión por digest';
+
+  @override
+  String get dockerKubeDeployAction => 'Desplegar';
 }

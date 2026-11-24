@@ -5,6 +5,8 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/credentials/credential_dialogs.dart';
 import 'package:consolecrypt/docker/docker_kube_plan.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
+import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -15,12 +17,13 @@ class RegistryPublisher extends ConsumerStatefulWidget {
     required this.engineName,
     required this.sourceImage,
     required this.publish,
+    required this.allowBuild,
     super.key,
   });
   final bool enabled;
-  final bool publishing;
+  final bool publishing, allowBuild;
   final String engineName, sourceImage;
-  final Future<void> Function(Credential, String, String) publish;
+  final Future<void> Function(Credential, String, String, DockerBuildContext?) publish;
   @override
   ConsumerState<RegistryPublisher> createState() => _RegistryPublisherState();
 }
@@ -28,6 +31,15 @@ class RegistryPublisher extends ConsumerStatefulWidget {
 class _RegistryPublisherState extends ConsumerState<RegistryPublisher> {
   String? selected;
   bool repositoryEdited = false;
+  bool rebuild = false;
+  String? directory;
+  final platforms = <String>{'linux/amd64', 'linux/arm64'};
+
+  Future<void> chooseDirectory() async {
+    final chosen = await getDirectoryPath();
+    if (mounted && chosen != null) setState(() => directory = chosen);
+  }
+
   late final String sourceName;
   final repository = TextEditingController(), tag = TextEditingController();
   static final repoPattern = RegExp(
@@ -85,7 +97,7 @@ class _RegistryPublisherState extends ConsumerState<RegistryPublisher> {
         (account.registry != 'docker.io' || path.contains('/'));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 8,
+      spacing: 12,
       children: [
         Row(
           children: [
@@ -108,6 +120,7 @@ class _RegistryPublisherState extends ConsumerState<RegistryPublisher> {
                     : null,
               ),
             ),
+            const SizedBox(width: 8),
             GlassIconButton(
               key: const ValueKey('registry-add'),
               tooltip: l.registryAdd,
@@ -144,18 +157,73 @@ class _RegistryPublisherState extends ConsumerState<RegistryPublisher> {
               ),
             ],
           ),
+          if (widget.allowBuild)
+            CheckboxListTile(
+              key: const ValueKey('registry-build-mode'),
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: rebuild,
+              title: Text(l.registryBuildFromSource),
+              onChanged: widget.enabled ? (v) => setState(() => rebuild = v == true) : null,
+            ),
+          if (rebuild) ...[
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                GlassButton(
+                  icon: Icons.folder_open_rounded,
+                  key: const ValueKey('registry-build-folder'),
+                  label: l.registryBuildFolder,
+                  onPressed: widget.enabled ? chooseDirectory : null,
+                ),
+                if (directory != null) SelectableText(directory!, style: GlassTokens.of(context).typography.caption),
+              ],
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final platform in const ['linux/amd64', 'linux/arm64'])
+                  FilterChip(
+                    label: Text(platform),
+                    selected: platforms.contains(platform),
+                    onSelected: !widget.enabled
+                        ? null
+                        : (selected) => setState(() {
+                            if (selected) {
+                              platforms.add(platform);
+                            } else {
+                              platforms.remove(platform);
+                            }
+                          }),
+                  ),
+              ],
+            ),
+          ],
           Text(
-            [if (widget.engineName.isNotEmpty) widget.engineName, '${widget.sourceImage} → $dest'].join(' · '),
+            rebuild
+                ? dest
+                : [if (widget.engineName.isNotEmpty) widget.engineName, '${widget.sourceImage} → $dest'].join(' · '),
             style: GlassTokens.of(context).typography.caption,
           ),
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: GlassButton(
               key: const ValueKey('registry-publish'),
-              label: l.registryPublish,
+              label: rebuild ? l.registryBuildPush : l.registryPublish,
               busy: widget.publishing,
               icon: Icons.cloud_upload_outlined,
-              onPressed: widget.enabled && valid ? () => widget.publish(account, path, version) : null,
+              onPressed: widget.enabled && valid && (!rebuild || (directory != null && platforms.isNotEmpty))
+                  ? () => widget.publish(
+                      account,
+                      path,
+                      version,
+                      rebuild ? (directory: directory!, platforms: platforms.toList()..sort()) : null,
+                    )
+                  : null,
             ),
           ),
         ],

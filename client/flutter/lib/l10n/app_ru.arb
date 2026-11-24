@@ -10768,7 +10768,7 @@
   "@dockerKubeDeploy": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeIntro": "Экспериментально: один stateless Linux-контейнер, одна реплика и внутренний Service ClusterIP. Проверьте манифест перед развёртыванием.",
+  "dockerKubeIntro": "Одна реплика Linux и внутренний Service ClusterIP. Переменные из настроек Docker и зависимости Compose задаются отдельно.",
   "@dockerKubeIntro": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -10822,11 +10822,11 @@
   "@dockerKubeTemplate": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAiReview": "\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0448\u0430\u0431\u043b\u043e\u043d \u043f\u0435\u0440\u0435\u0434 \u043e\u0442\u043f\u0440\u0430\u0432\u043a\u043e\u0439 \u0418\u0418. ConsoleCrypt \u0434\u043e\u0431\u0430\u0432\u0438\u0442 \u043a\u043e\u043c\u0430\u043d\u0434\u0443 \u0437\u0430\u043f\u0443\u0441\u043a\u0430 \u0438\u0437 Docker \u043d\u0430 \u044d\u0442\u043e\u043c \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0435 \u043f\u043e\u0441\u043b\u0435 \u043f\u043e\u043b\u0443\u0447\u0435\u043d\u0438\u044f \u043e\u0442\u0432\u0435\u0442\u0430.",
+  "dockerKubeAiReview": "Проверьте запрос перед отправкой. После генерации ConsoleCrypt добавит команду запуска локально.",
   "@dockerKubeAiReview": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeSendAi": "Отправить шаблон ИИ",
+  "dockerKubeSendAi": "Отправить запрос",
   "@dockerKubeSendAi": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -10838,7 +10838,7 @@
   "@dockerKubeInvalidTarget": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAcknowledge": "\u042f \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043b \u043e\u0431\u0440\u0430\u0437, \u0430\u0440\u0445\u0438\u0442\u0435\u043a\u0442\u0443\u0440\u0443 \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u043e\u0440\u0430 \u0438 \u043a\u043e\u043c\u0430\u043d\u0434\u0443 \u0437\u0430\u043f\u0443\u0441\u043a\u0430. \u041a\u043e\u043d\u0442\u0435\u0439\u043d\u0435\u0440 \u043f\u043e\u043b\u0443\u0447\u0438\u0442 \u043e\u043a\u0440\u0443\u0436\u0435\u043d\u0438\u0435 \u0438 \u0444\u0430\u0439\u043b\u044b \u0438\u0437 \u043e\u0431\u0440\u0430\u0437\u0430. \u041f\u0435\u0440\u0435\u043c\u0435\u043d\u043d\u044b\u0435 \u0438\u0437 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043a Docker \u0438 \u0437\u0430\u0432\u0438\u0441\u0438\u043c\u043e\u0441\u0442\u0438 Compose \u043d\u0443\u0436\u043d\u043e \u043d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e.",
+  "dockerKubeAcknowledge": "Образ, платформа и команда запуска проверены",
   "@dockerKubeAcknowledge": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -11427,5 +11427,12 @@
   "capturePrivilegeHint": "Для захвата нужны права root или права на захват пакетов. При необходимости sudo запросит пароль.",
   "captureInstallHost": "Установить tcpdump на {host}? Команда запустится в SSH-терминале этого хоста. Там можно ввести пароль sudo и подтвердить установку пакета.",
   "captureExchange": "Детали соединения",
-  "captureExchangeCount": "Пакетов между этими адресами на момент выбора: {count}"
+  "captureExchangeCount": "Пакетов между этими адресами на момент выбора: {count}",
+  "registryBuildFromSource": "Собрать из локального Dockerfile",
+  "registryBuildFolder": "Выбрать папку проекта",
+  "registryBuildPush": "Собрать и опубликовать",
+  "registryBuildFailed": "Сборка или публикация не удалась. Проверьте Dockerfile, поддержку платформ в Buildx и право записи в реестр.",
+  "registryBuildContextError": "Выберите папку проекта с файлом Dockerfile.",
+  "registryPin": "Закрепить версию по digest",
+  "dockerKubeDeployAction": "Развернуть"
 }

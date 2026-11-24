@@ -112,7 +112,7 @@ void main() {
       expect(target.valid, isFalse, reason: spelling);
       expect(source.acceptsImage(spelling, pullSecret: 'regcred'), isFalse, reason: spelling);
       expect(await parser.parse(target.template, target), isNull);
-      expect(await parser.mergeAi(target.aiTemplate, target), isNull);
+      expect(await parser.mergeAi(target.template, target), isNull);
     }
     final target = DockerKubeTarget(
       name: 'api',
@@ -175,7 +175,7 @@ void main() {
     final fullHub = imageSource('docker.io/library/alpine:3', []);
     expect(fullHub.acceptsImage('docker.io/library/alpine:3', pullSecret: 'team.registry-auth'), isTrue);
     final observed = imageSource('python:3', ['python@$version']);
-    expect(observed.resolveImage('python:3'), 'docker.io/library/python@$version');
+    expect(observed.resolveImage('python:3'), 'docker.io/library/python:3');
     expect(imageSource('python@$version', ['python@sha256:${'d' * 64}']).image, isNull);
   });
 
@@ -268,11 +268,12 @@ void main() {
 
   test('AI never sees argv and only validated tuning reaches the local review', () async {
     final target = _target(['private-program', 'private-directory']);
-    expect(target.aiTemplate, isNot(contains('command:')));
+    final generated = _target([]).template;
     expect(target.prompt, isNot(contains('private-program')));
     expect(target.prompt, isNot(contains('private-directory')));
-    expect(target.prompt, endsWith(target.aiTemplate));
-    final edited = target.aiTemplate.replaceFirst('128Mi', '256Mi');
+    expect(target.prompt, isNot(contains('apiVersion:')));
+    expect(target.prompt, contains(target.image));
+    final edited = generated.replaceFirst('128Mi', '256Mi');
     final merged = await parser.mergeAi(edited, target);
     expect(merged, isNotNull);
     expect(merged, contains('256Mi'));

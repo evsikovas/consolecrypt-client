@@ -97,6 +97,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   final _rows = <String, KubeResourceRow>{};
   final _objectTabs = <KubeResourceRef>[];
   KubeResourceKind? _kind;
+  KubeResourceKind? get _podKind => _kinds.where((k) => k.isPod && k.version == 'v1' && k.canRead).firstOrNull;
   String? _namespace, _continueToken;
   int _snapshotPages = 0;
   String _query = '', _labelSelector = '', _resourceVersion = '', _view = 'resources';
@@ -886,6 +887,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     final changed = await showKubeResourceDetails<bool>(
       context,
       builder: (_) => KubeResourceDetails(
+        podKind: _podKind,
         session: session,
         resource: resource,
         service: widget.service,
@@ -1461,6 +1463,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                 service: widget.service as KubeInsightsService,
                               )
                             : KubeInsightsPanel(
+                                podKind: _podKind,
                                 key: ValueKey((session.id, _namespace, _view, _gitOpsIntent)),
                                 session: session,
                                 contextName: widget.connection.name,
@@ -1944,6 +1947,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                           ),
                                         Expanded(
                                           child: KubeResourceDetails(
+                                            podKind: _podKind,
                                             key: ValueKey((inspected.id, _inspectorRequest)),
                                             embedded: true,
                                             session: session,
@@ -2296,6 +2300,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
               service: widget.service as KubeInsightsService,
             )
           : KubeInsightsPanel(
+              podKind: _podKind,
               key: ValueKey((session.id, _namespace, _view, _gitOpsIntent)),
               session: session,
               contextName: widget.connection.name,
