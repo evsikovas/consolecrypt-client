@@ -19772,4 +19772,87 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get hostInspector => 'Detalles del host';
+
+  @override
+  String get captureTitle => 'TCPdump';
+
+  @override
+  String get captureSubtitle => 'Cabeceras, direcciones y puertos en tiempo real.';
+
+  @override
+  String get captureChoose => 'Elige los equipos para iniciar la captura.';
+
+  @override
+  String get captureListening => 'Escuchando paquetes';
+
+  @override
+  String get captureStopped => 'Captura detenida';
+
+  @override
+  String get captureMissing => 'Falta tcpdump en el equipo de captura.';
+
+  @override
+  String get captureDenied => 'Se necesitan permisos para capturar paquetes.';
+
+  @override
+  String get captureFailed => 'No se pudo completar la captura.';
+
+  @override
+  String get captureNoPeer => 'No se pudieron determinar las direcciones de la conexión.';
+
+  @override
+  String get captureReceiver => 'Equipo ↔ servidor · capturar en el servidor';
+
+  @override
+  String get captureServers => 'Servidor ↔ servidor';
+
+  @override
+  String get captureLocal => 'Equipo ↔ servidor · capturar aquí';
+
+  @override
+  String get captureSource => 'Servidor de captura';
+
+  @override
+  String get captureTarget => 'Elegir servidor';
+
+  @override
+  String get captureLocalPoint => 'Este equipo';
+
+  @override
+  String get captureInterface => 'Interfaz (automática)';
+
+  @override
+  String get captureReceiverHelp => 'Se usa la dirección que ve SSH. Con un servidor de salto, es la del último salto.';
+
+  @override
+  String get captureServersHelp => 'El primer servidor captura su tráfico con el segundo.';
+
+  @override
+  String get captureLocalHelp => 'Captura en este equipo. Para loopback o VPN, indica la interfaz.';
+
+  @override
+  String get captureStart => 'Iniciar captura';
+
+  @override
+  String get captureStop => 'Detener';
+
+  @override
+  String captureCount(int shown, int total) {
+    return 'Se muestran $shown de $total paquetes';
+  }
+
+  @override
+  String get captureInstall => 'Instalar tcpdump';
+
+  @override
+  String captureInstallReview(String host) {
+    return 'Revisa el comando en el terminal de $host y pulsa Intro para instalar.';
+  }
+
+  @override
+  String get captureManualInstall =>
+      'Instala tcpdump con el gestor de paquetes del equipo y vuelve a iniciar la captura.';
+
+  @override
+  String get captureSudo => 'Reintentar con sudo sin contraseña';
 }

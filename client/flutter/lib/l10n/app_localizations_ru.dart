@@ -19950,4 +19950,87 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get hostInspector => 'Сведения о хосте';
+
+  @override
+  String get captureTitle => 'TCPdump';
+
+  @override
+  String get captureSubtitle => 'Сетевые пакеты в реальном времени. Видны адреса, порты и протоколы.';
+
+  @override
+  String get captureChoose => 'Выберите узлы для захвата.';
+
+  @override
+  String get captureListening => 'Идёт захват';
+
+  @override
+  String get captureStopped => 'Захват остановлен';
+
+  @override
+  String get captureMissing => 'В точке захвата не установлен tcpdump.';
+
+  @override
+  String get captureDenied => 'Для захвата нужны дополнительные права.';
+
+  @override
+  String get captureFailed => 'Не удалось завершить захват.';
+
+  @override
+  String get captureNoPeer => 'Не удалось определить адреса соединения.';
+
+  @override
+  String get captureReceiver => 'Компьютер ↔ сервер · захват на сервере';
+
+  @override
+  String get captureServers => 'Сервер ↔ сервер';
+
+  @override
+  String get captureLocal => 'Компьютер ↔ сервер · захват здесь';
+
+  @override
+  String get captureSource => 'Сервер захвата';
+
+  @override
+  String get captureTarget => 'Выбрать сервер';
+
+  @override
+  String get captureLocalPoint => 'Этот компьютер';
+
+  @override
+  String get captureInterface => 'Интерфейс (авто)';
+
+  @override
+  String get captureReceiverHelp =>
+      'Адрес клиента берётся из SSH-соединения. При подключении через бастион это адрес последнего узла.';
+
+  @override
+  String get captureServersHelp => 'Первый сервер снимает трафик, которым он обменивается со вторым.';
+
+  @override
+  String get captureLocalHelp => 'Захват на этом компьютере. Для loopback или VPN укажите нужный интерфейс.';
+
+  @override
+  String get captureStart => 'Начать захват';
+
+  @override
+  String get captureStop => 'Остановить';
+
+  @override
+  String captureCount(int shown, int total) {
+    return 'Показано пакетов: $shown из $total';
+  }
+
+  @override
+  String get captureInstall => 'Установить tcpdump';
+
+  @override
+  String captureInstallReview(String host) {
+    return 'Проверьте команду в терминале на $host и нажмите Enter для установки.';
+  }
+
+  @override
+  String get captureManualInstall => 'Установите tcpdump через менеджер пакетов этого хоста и запустите захват снова.';
+
+  @override
+  String get captureSudo => 'Повторить с беспарольным sudo';
 }

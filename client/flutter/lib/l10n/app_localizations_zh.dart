@@ -18801,4 +18801,86 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hostInspector => '主机详情';
+
+  @override
+  String get captureTitle => 'TCPdump';
+
+  @override
+  String get captureSubtitle => '实时查看数据包头、地址和端口。';
+
+  @override
+  String get captureChoose => '选择端点以开始抓包。';
+
+  @override
+  String get captureListening => '正在监听数据包';
+
+  @override
+  String get captureStopped => '抓包已停止';
+
+  @override
+  String get captureMissing => '抓包端未安装 tcpdump。';
+
+  @override
+  String get captureDenied => '需要更高权限才能抓包。';
+
+  @override
+  String get captureFailed => '未能完成抓包。';
+
+  @override
+  String get captureNoPeer => '无法确定连接地址。';
+
+  @override
+  String get captureReceiver => '本机 ↔ 服务器 · 在服务器抓包';
+
+  @override
+  String get captureServers => '服务器 ↔ 服务器';
+
+  @override
+  String get captureLocal => '本机 ↔ 服务器 · 在本机抓包';
+
+  @override
+  String get captureSource => '抓包服务器';
+
+  @override
+  String get captureTarget => '选择服务器';
+
+  @override
+  String get captureLocalPoint => '本机';
+
+  @override
+  String get captureInterface => '网卡（自动）';
+
+  @override
+  String get captureReceiverHelp => '使用 SSH 看到的客户端地址。经过跳板时，此地址属于最后一跳。';
+
+  @override
+  String get captureServersHelp => '在第一台服务器上抓取它与第二台服务器之间的双向流量。';
+
+  @override
+  String get captureLocalHelp => '在本机抓包。对于回环或 VPN 流量，请指定对应网卡。';
+
+  @override
+  String get captureStart => '开始抓包';
+
+  @override
+  String get captureStop => '停止';
+
+  @override
+  String captureCount(int shown, int total) {
+    return '显示 $shown / $total 个数据包';
+  }
+
+  @override
+  String get captureInstall => '安装 tcpdump';
+
+  @override
+  String captureInstallReview(String host) {
+    return '请在 $host 的终端中检查命令，按 Enter 安装。';
+  }
+
+  @override
+  String get captureManualInstall => '请使用此主机的包管理器安装 tcpdump，然后重新开始抓包。';
+
+  @override
+  String get captureSudo => '使用免密 sudo 重试';
 }

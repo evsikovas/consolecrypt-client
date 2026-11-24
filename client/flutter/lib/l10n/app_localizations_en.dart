@@ -19615,4 +19615,86 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hostInspector => 'Host details';
+
+  @override
+  String get captureTitle => 'TCPdump';
+
+  @override
+  String get captureSubtitle => 'Live packet headers, addresses and ports.';
+
+  @override
+  String get captureChoose => 'Choose the endpoints to start a capture.';
+
+  @override
+  String get captureListening => 'Listening for packets';
+
+  @override
+  String get captureStopped => 'Capture stopped';
+
+  @override
+  String get captureMissing => 'tcpdump is missing at the capture point.';
+
+  @override
+  String get captureDenied => 'Packet capture requires additional permissions.';
+
+  @override
+  String get captureFailed => 'Could not complete the capture.';
+
+  @override
+  String get captureNoPeer => 'Could not determine the connection addresses.';
+
+  @override
+  String get captureReceiver => 'Computer ↔ server · capture on server';
+
+  @override
+  String get captureServers => 'Server ↔ server';
+
+  @override
+  String get captureLocal => 'Computer ↔ server · capture here';
+
+  @override
+  String get captureSource => 'Capture server';
+
+  @override
+  String get captureTarget => 'Choose server';
+
+  @override
+  String get captureLocalPoint => 'This computer';
+
+  @override
+  String get captureInterface => 'Interface (automatic)';
+
+  @override
+  String get captureReceiverHelp => 'Uses the client address seen by SSH. With a jump host, this is the last hop.';
+
+  @override
+  String get captureServersHelp => 'The first server captures traffic to and from the second.';
+
+  @override
+  String get captureLocalHelp => 'Captures on this computer. For loopback or VPN traffic, enter its interface.';
+
+  @override
+  String get captureStart => 'Start capture';
+
+  @override
+  String get captureStop => 'Stop';
+
+  @override
+  String captureCount(int shown, int total) {
+    return 'Showing $shown of $total packets';
+  }
+
+  @override
+  String get captureInstall => 'Install tcpdump';
+
+  @override
+  String captureInstallReview(String host) {
+    return 'Review the command in the terminal on $host, then press Enter to install.';
+  }
+
+  @override
+  String get captureManualInstall => 'Install tcpdump with the host’s package manager, then start the capture again.';
+
+  @override
+  String get captureSudo => 'Retry with passwordless sudo';
 }

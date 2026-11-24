@@ -42,6 +42,7 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
   ShellBranch.kubernetes => l.kubeTitle,
   ShellBranch.databases => l.dbTitle,
   ShellBranch.docker => l.dockerTitle,
+  ShellBranch.tcpdump => l.captureTitle,
 };
 
 const navigationSections = [
@@ -56,6 +57,7 @@ const navigationSections = [
   if (kubernetesEnabled) NavigationSection(ShellBranch.kubernetes, ToolIcons.kubernetes),
   if (databasesEnabled) NavigationSection(ShellBranch.databases, Icons.storage_rounded),
   if (dockerEnabled) NavigationSection(ShellBranch.docker, ToolIcons.docker),
+  NavigationSection(ShellBranch.tcpdump, Icons.timeline_rounded),
   NavigationSection(ShellBranch.sftp, Icons.folder_copy_rounded),
   NavigationSection(ShellBranch.tunnels, Icons.swap_horiz_rounded),
   NavigationSection(ShellBranch.devices, Icons.devices_rounded, syncedOnly: true),
@@ -86,7 +88,13 @@ String navigationAreaLabel(NavigationArea area, AppLocalizations l) => switch (a
 
 /// Original application glyphs, shared by sidebar and configuration.
 Widget navigationSectionIcon(NavigationSection item) =>
-    {ShellBranch.rdp, ShellBranch.docker, ShellBranch.kubernetes, ShellBranch.automation}.contains(item.branch)
+    {
+      ShellBranch.rdp,
+      ShellBranch.docker,
+      ShellBranch.kubernetes,
+      ShellBranch.automation,
+      ShellBranch.tcpdump,
+    }.contains(item.branch)
     ? Icon(item.icon)
     : AppSymbolIcon(AppSymbol.values.byName(item.branch.name));
 
@@ -103,6 +111,7 @@ String navigationBranchRoute(ShellBranch branch) => switch (branch) {
   ShellBranch.kubernetes => AppRoutes.kubernetes,
   ShellBranch.databases => AppRoutes.databases,
   ShellBranch.docker => AppRoutes.docker,
+  ShellBranch.tcpdump => AppRoutes.tcpdump,
   ShellBranch.sftp => AppRoutes.sftp,
   ShellBranch.tunnels => AppRoutes.tunnels,
   ShellBranch.devices => AppRoutes.devices,

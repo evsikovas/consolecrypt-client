@@ -813,13 +813,16 @@ class _ShellToolbar extends ConsumerWidget {
           onPressed: () => dispatcher.invoke(AppCommandId.commandPalette),
         ),
         trailing: [
-          GlassIconButton(
-            key: const ValueKey('new-connection'),
-            icon: Icons.add_rounded,
-            size: 40,
-            style: pageHasPrimary ? GlassIconButtonStyle.glass : GlassIconButtonStyle.prominent,
-            tooltip: l10n.shellNewConnection,
-            onPressed: () => showConnectionPicker(context, ref),
+          SizedBox.square(
+            dimension: 40,
+            child: GlassIconButton(
+              key: const ValueKey('new-connection'),
+              icon: Icons.add_rounded,
+              size: GlassSizes.toolbarGroup,
+              style: pageHasPrimary ? GlassIconButtonStyle.glass : GlassIconButtonStyle.prominent,
+              tooltip: l10n.shellNewConnection,
+              onPressed: () => showConnectionPicker(context, ref),
+            ),
           ),
           const CriticalNoticeButton(),
           if (!compact) const SyncStatusPill(shortLabel: true),

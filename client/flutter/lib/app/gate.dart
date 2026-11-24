@@ -89,6 +89,7 @@ abstract final class AppRoutes {
   static const rdp = '/rdp';
   static const kubernetes = '/kubernetes';
   static const databases = '/databases';
+  static const tcpdump = '/tcpdump';
   static const docker = '/docker';
 
   /// Profile-creation routes, reachable from every stage ("Add profile").
@@ -115,6 +116,7 @@ abstract final class AppRoutes {
     kubernetes,
     databases,
     docker,
+    tcpdump,
   ];
 }
 

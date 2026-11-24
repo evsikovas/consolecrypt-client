@@ -34524,6 +34524,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Host details'**
   String get hostInspector;
+
+  /// Packet capture workspace. TCPdump
+  ///
+  /// In en, this message translates to:
+  /// **'TCPdump'**
+  String get captureTitle;
+
+  /// Packet capture workspace. Live packet headers, addresses and ports.
+  ///
+  /// In en, this message translates to:
+  /// **'Live packet headers, addresses and ports.'**
+  String get captureSubtitle;
+
+  /// Packet capture workspace. Choose the endpoints to start a capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the endpoints to start a capture.'**
+  String get captureChoose;
+
+  /// Packet capture workspace. Listening for packets
+  ///
+  /// In en, this message translates to:
+  /// **'Listening for packets'**
+  String get captureListening;
+
+  /// Packet capture workspace. Capture stopped
+  ///
+  /// In en, this message translates to:
+  /// **'Capture stopped'**
+  String get captureStopped;
+
+  /// Packet capture workspace. tcpdump is missing at the capture point.
+  ///
+  /// In en, this message translates to:
+  /// **'tcpdump is missing at the capture point.'**
+  String get captureMissing;
+
+  /// Packet capture workspace. Packet capture requires additional permissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Packet capture requires additional permissions.'**
+  String get captureDenied;
+
+  /// Packet capture workspace. Could not complete the capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not complete the capture.'**
+  String get captureFailed;
+
+  /// Packet capture workspace. Could not determine the connection addresses.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not determine the connection addresses.'**
+  String get captureNoPeer;
+
+  /// Packet capture workspace. Computer ↔ server · capture on server
+  ///
+  /// In en, this message translates to:
+  /// **'Computer ↔ server · capture on server'**
+  String get captureReceiver;
+
+  /// Packet capture workspace. Server ↔ server
+  ///
+  /// In en, this message translates to:
+  /// **'Server ↔ server'**
+  String get captureServers;
+
+  /// Packet capture workspace. Computer ↔ server · capture here
+  ///
+  /// In en, this message translates to:
+  /// **'Computer ↔ server · capture here'**
+  String get captureLocal;
+
+  /// Packet capture workspace. Capture server
+  ///
+  /// In en, this message translates to:
+  /// **'Capture server'**
+  String get captureSource;
+
+  /// Packet capture workspace. Choose server
+  ///
+  /// In en, this message translates to:
+  /// **'Choose server'**
+  String get captureTarget;
+
+  /// Packet capture workspace. This computer
+  ///
+  /// In en, this message translates to:
+  /// **'This computer'**
+  String get captureLocalPoint;
+
+  /// Packet capture workspace. Interface (automatic)
+  ///
+  /// In en, this message translates to:
+  /// **'Interface (automatic)'**
+  String get captureInterface;
+
+  /// Packet capture workspace. Uses the client address seen by SSH. With a jump host, this is the last hop.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the client address seen by SSH. With a jump host, this is the last hop.'**
+  String get captureReceiverHelp;
+
+  /// Packet capture workspace. The first server captures traffic to and from the second.
+  ///
+  /// In en, this message translates to:
+  /// **'The first server captures traffic to and from the second.'**
+  String get captureServersHelp;
+
+  /// Packet capture workspace. Captures on this computer. For loopback or VPN traffic, enter its interface.
+  ///
+  /// In en, this message translates to:
+  /// **'Captures on this computer. For loopback or VPN traffic, enter its interface.'**
+  String get captureLocalHelp;
+
+  /// Packet capture workspace. Start capture
+  ///
+  /// In en, this message translates to:
+  /// **'Start capture'**
+  String get captureStart;
+
+  /// Packet capture workspace. Stop
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get captureStop;
+
+  /// Packet capture workspace. Showing {shown} of {total} packets
+  ///
+  /// In en, this message translates to:
+  /// **'Showing {shown} of {total} packets'**
+  String captureCount(int shown, int total);
+
+  /// Packet capture workspace. Install tcpdump
+  ///
+  /// In en, this message translates to:
+  /// **'Install tcpdump'**
+  String get captureInstall;
+
+  /// Packet capture workspace. Review the command in the terminal on {host}, then press Enter to install.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the command in the terminal on {host}, then press Enter to install.'**
+  String captureInstallReview(String host);
+
+  /// Packet capture workspace. Install tcpdump with the host’s package manager, then start the capture again.
+  ///
+  /// In en, this message translates to:
+  /// **'Install tcpdump with the host’s package manager, then start the capture again.'**
+  String get captureManualInstall;
+
+  /// Packet capture workspace. Retry with passwordless sudo
+  ///
+  /// In en, this message translates to:
+  /// **'Retry with passwordless sudo'**
+  String get captureSudo;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

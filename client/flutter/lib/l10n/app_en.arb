@@ -24627,5 +24627,122 @@
   },
   "@hostInspector": {
     "description": "Button tooltip for showing the host in the side-by-side inspector."
+  },
+  "captureTitle": "TCPdump",
+  "@captureTitle": {
+    "description": "Packet capture workspace. TCPdump"
+  },
+  "captureSubtitle": "Live packet headers, addresses and ports.",
+  "@captureSubtitle": {
+    "description": "Packet capture workspace. Live packet headers, addresses and ports."
+  },
+  "captureChoose": "Choose the endpoints to start a capture.",
+  "@captureChoose": {
+    "description": "Packet capture workspace. Choose the endpoints to start a capture."
+  },
+  "captureListening": "Listening for packets",
+  "@captureListening": {
+    "description": "Packet capture workspace. Listening for packets"
+  },
+  "captureStopped": "Capture stopped",
+  "@captureStopped": {
+    "description": "Packet capture workspace. Capture stopped"
+  },
+  "captureMissing": "tcpdump is missing at the capture point.",
+  "@captureMissing": {
+    "description": "Packet capture workspace. tcpdump is missing at the capture point."
+  },
+  "captureDenied": "Packet capture requires additional permissions.",
+  "@captureDenied": {
+    "description": "Packet capture workspace. Packet capture requires additional permissions."
+  },
+  "captureFailed": "Could not complete the capture.",
+  "@captureFailed": {
+    "description": "Packet capture workspace. Could not complete the capture."
+  },
+  "captureNoPeer": "Could not determine the connection addresses.",
+  "@captureNoPeer": {
+    "description": "Packet capture workspace. Could not determine the connection addresses."
+  },
+  "captureReceiver": "Computer ↔ server · capture on server",
+  "@captureReceiver": {
+    "description": "Packet capture workspace. Computer ↔ server · capture on server"
+  },
+  "captureServers": "Server ↔ server",
+  "@captureServers": {
+    "description": "Packet capture workspace. Server ↔ server"
+  },
+  "captureLocal": "Computer ↔ server · capture here",
+  "@captureLocal": {
+    "description": "Packet capture workspace. Computer ↔ server · capture here"
+  },
+  "captureSource": "Capture server",
+  "@captureSource": {
+    "description": "Packet capture workspace. Capture server"
+  },
+  "captureTarget": "Choose server",
+  "@captureTarget": {
+    "description": "Packet capture workspace. Choose server"
+  },
+  "captureLocalPoint": "This computer",
+  "@captureLocalPoint": {
+    "description": "Packet capture workspace. This computer"
+  },
+  "captureInterface": "Interface (automatic)",
+  "@captureInterface": {
+    "description": "Packet capture workspace. Interface (automatic)"
+  },
+  "captureReceiverHelp": "Uses the client address seen by SSH. With a jump host, this is the last hop.",
+  "@captureReceiverHelp": {
+    "description": "Packet capture workspace. Uses the client address seen by SSH. With a jump host, this is the last hop."
+  },
+  "captureServersHelp": "The first server captures traffic to and from the second.",
+  "@captureServersHelp": {
+    "description": "Packet capture workspace. The first server captures traffic to and from the second."
+  },
+  "captureLocalHelp": "Captures on this computer. For loopback or VPN traffic, enter its interface.",
+  "@captureLocalHelp": {
+    "description": "Packet capture workspace. Captures on this computer. For loopback or VPN traffic, enter its interface."
+  },
+  "captureStart": "Start capture",
+  "@captureStart": {
+    "description": "Packet capture workspace. Start capture"
+  },
+  "captureStop": "Stop",
+  "@captureStop": {
+    "description": "Packet capture workspace. Stop"
+  },
+  "captureCount": "Showing {shown} of {total} packets",
+  "@captureCount": {
+    "description": "Packet capture workspace. Showing {shown} of {total} packets",
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "captureInstall": "Install tcpdump",
+  "@captureInstall": {
+    "description": "Packet capture workspace. Install tcpdump"
+  },
+  "captureInstallReview": "Review the command in the terminal on {host}, then press Enter to install.",
+  "@captureInstallReview": {
+    "description": "Packet capture workspace. Review the command in the terminal on {host}, then press Enter to install.",
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "captureManualInstall": "Install tcpdump with the host’s package manager, then start the capture again.",
+  "@captureManualInstall": {
+    "description": "Packet capture workspace. Install tcpdump with the host’s package manager, then start the capture again."
+  },
+  "captureSudo": "Retry with passwordless sudo",
+  "@captureSudo": {
+    "description": "Packet capture workspace. Retry with passwordless sudo"
   }
 }
