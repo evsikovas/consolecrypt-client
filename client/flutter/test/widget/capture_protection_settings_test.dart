@@ -32,6 +32,11 @@ void main() {
     await settle(tester);
     expect(find.byKey(const ValueKey('change-passphrase-dialog')), findsOneWidget);
     expect(affinity.calls, [false], reason: 'obscured fields are not revealed secrets');
+    final dialog = find.byKey(const ValueKey('change-passphrase-dialog'));
+    await tester.enterText(
+      find.descendant(of: dialog, matching: find.byType(EditableText)).first,
+      'example passphrase',
+    );
     await tester.tap(find.byTooltip('Show').first);
     await settle(tester);
     expect(affinity.calls, [false, true]);

@@ -31,7 +31,7 @@ final class DockerKubeSource {
     if (canonical == null) return null;
     final original = sourceImage;
     if (original != null && canonical == DockerKubeTarget.dockerImage(original)) {
-      if (image != null) return image;
+      if (image != null) return canonical.contains('@') ? canonical : image;
       // A manually entered pin or explicit repository can be reachable from
       // the nodes using node credentials or an imagePullSecret. Never accept
       // a manufactured Docker Hub library tag as a way around the check.
@@ -78,7 +78,7 @@ final class DockerKubeSource {
     final sourceImage = configuredImage is String && configuredImage.isNotEmpty
         ? configuredImage
         : detail.container.image;
-    final original = DockerKubeTarget.dockerImage(sourceImage);
+    final original = DockerKubeTarget.dockerImage(sourceImage, digestOnly: true);
     final image = _publishedImage(original, repoDigests);
     final startup = _startup(detail.inspect);
     return DockerKubeSource(
@@ -95,7 +95,7 @@ final class DockerKubeSource {
     final split = original.contains('@') ? original.indexOf('@') : original.lastIndexOf(':');
     final repository = original.substring(0, split);
     for (final digest in repoDigests) {
-      final canonical = DockerKubeTarget.dockerImage(digest);
+      final canonical = DockerKubeTarget.dockerImage(digest, digestOnly: true);
       if (canonical != null &&
           canonical.startsWith('$repository@sha256:') &&
           (!original.contains('@') || canonical == original)) {
@@ -159,7 +159,7 @@ final class DockerKubeTarget {
           .every((label) => label.length <= 63 && RegExp(r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$').hasMatch(label));
 
   // Docker inspect may return familiar Hub names or a bare local image ID.
-  static String? dockerImage(String reference) {
+  static String? dockerImage(String reference, {bool digestOnly = false}) {
     if (reference.isEmpty ||
         reference.length > 512 ||
         reference != reference.trim() ||
@@ -174,7 +174,7 @@ final class DockerKubeTarget {
       final tag = named.lastIndexOf(':');
       if (tag > named.lastIndexOf('/')) {
         if (!RegExp(r'^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$').hasMatch(named.substring(tag + 1))) return null;
-        image = named.substring(0, tag) + image.substring(digest);
+        if (digestOnly) image = named.substring(0, tag) + image.substring(digest);
       }
     } else if (!image.split('/').last.contains(':')) {
       image += ':latest';
@@ -203,7 +203,7 @@ final class DockerKubeTarget {
   static bool validImage(String value) {
     if (value.length > 512 ||
         !RegExp(
-          r'^[a-z0-9][a-z0-9.:-]*/[a-z0-9][a-z0-9._/-]*(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}|@sha256:[a-f0-9]{64})$',
+          r'^[a-z0-9][a-z0-9.:-]*/[a-z0-9][a-z0-9._/-]*(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}(?:@sha256:[a-f0-9]{64})?|@sha256:[a-f0-9]{64})$',
         ).hasMatch(value)) {
       return false;
     }

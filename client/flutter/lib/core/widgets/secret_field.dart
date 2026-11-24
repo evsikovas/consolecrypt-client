@@ -132,8 +132,9 @@ class _SecretFieldState extends State<SecretField> {
           text: typedScriptHint(l10n, _script!),
         ),
     ];
-    return RevealedSecret(
-      visible: _revealed,
+    return RevealedSecretText(
+      controller: widget.controller,
+      enabled: _revealed,
       child: TextFormField(
         controller: widget.controller,
         focusNode: _focus,

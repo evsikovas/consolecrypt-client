@@ -22,6 +22,14 @@ final dockerScopeProvider = Provider<DockerScope>(
   ),
 );
 
+typedef DockerImageKey = ({String hostId, String imageId});
+
+/// Last confirmed publication of an immutable local image on each engine.
+final dockerPublishedImagesProvider = Provider<Map<DockerImageKey, String>>((ref) {
+  ref.watch(dockerScopeProvider);
+  return {};
+});
+
 /// Running Docker port forwards (all engine sessions). Kept apart from the
 /// Kubernetes forwards on purpose.
 final dockerForwardsProvider = FutureProvider.autoDispose<List<DockerForward>>((ref) async {

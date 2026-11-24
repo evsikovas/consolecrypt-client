@@ -79,6 +79,7 @@ class _RegistryPublisherState extends ConsumerState<RegistryPublisher> {
     final valid =
         account != null &&
         repoPattern.hasMatch(path) &&
+        !version.contains('@') &&
         DockerKubeTarget.validImage(dest) &&
         '${account.registry}/$path'.length <= 255 &&
         (account.registry != 'docker.io' || path.contains('/'));

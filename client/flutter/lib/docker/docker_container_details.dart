@@ -70,6 +70,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
   /// The unmasked inspect after the vault passphrase; dropped on close,
   /// reload, lock and profile change.
   DockerJson? _fullInspect;
+  int _environmentRevision = 0;
   late final _scope = ref.read(dockerScopeProvider);
 
   @override
@@ -138,6 +139,12 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
     final imageId = detail.inspect['Image'];
     final hasImageId = imageId is String && RegExp(r'^sha256:[0-9a-f]{64}$').hasMatch(imageId);
     final canInspect = !source.unsupported && source.image == null && hasImageId;
+    // The deployment form can leave the container visible around its edges.
+    // Remask the underlying details before opening it.
+    setState(() {
+      _fullInspect = null;
+      _environmentRevision++;
+    });
     final request = await showAppDialog<KubeNavigationRequest>(
       context,
       secure: true,
@@ -146,6 +153,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
         container: detail.container,
         source: source,
         engineName: session.hostName,
+        imageKey: hasImageId ? (hostId: session.hostId, imageId: imageId) : null,
         publishImage: hasImageId
             ? (credential, path, tag) => service.publishImage(session.id, imageId, credential, path, tag)
             : null,
@@ -385,6 +393,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
               controller: _tabs,
               children: [
                 _DockerOverview(
+                  environmentRevision: _environmentRevision,
                   active: _tabs.index == DockerDetailsTab.overview.index,
                   container: container,
                   detail: _detail,
@@ -477,7 +486,9 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
 
 class _DockerOverview extends StatelessWidget {
   final bool active;
+  final int environmentRevision;
   const _DockerOverview({
+    required this.environmentRevision,
     required this.active,
     required this.container,
     required this.detail,
@@ -603,7 +614,7 @@ class _DockerOverview extends StatelessWidget {
           ),
         if (env.isNotEmpty)
           _EnvironmentSection(
-            key: ValueKey('docker-env-section-${container.id}'),
+            key: ValueKey((container.id, environmentRevision)),
             env: env,
             service: service,
             session: session,

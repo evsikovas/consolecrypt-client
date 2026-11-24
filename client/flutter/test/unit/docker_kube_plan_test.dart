@@ -146,7 +146,11 @@ void main() {
 
   test('fully qualified pins or named repositories can use explicit, node or default service account credentials', () {
     final version = 'sha256:${'c' * 64}';
-    for (final input in ['registry.example.org/team/api:v1', 'registry.example.org/team/api@$version']) {
+    for (final input in [
+      'registry.example.org/team/api:v1',
+      'registry.example.org/team/api@$version',
+      'registry.example.org/team/api:v1@$version',
+    ]) {
       final source = imageSource(input, []);
       expect(source.image, isNull);
       expect(source.acceptsImage(input), isTrue);
