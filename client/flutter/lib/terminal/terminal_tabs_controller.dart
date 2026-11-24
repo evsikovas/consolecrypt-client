@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:convert';
 
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -9,6 +8,7 @@ import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
+import 'package:consolecrypt/terminal/terminal_encoding.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_output.dart';
 import 'package:flutter/foundation.dart';
@@ -31,6 +31,8 @@ final class TerminalTab {
   Terminal terminal;
   final TerminalController controller;
   int renderGeneration = 0;
+  TerminalEncoding encoding = TerminalEncoding.utf8;
+  bool encodingRejected = false;
 
   SessionConnectionState state = SessionConnectionState.connecting;
 
@@ -277,8 +279,11 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     // Reset markers share the byte queue: old buffered data drains first,
     // then the parser and view reset before the new snapshot is replayed.
     tab
-      .._output = yieldingTerminalFrames(handle.framedOutput ?? handle.output.map(TerminalOutputFrame.new))
-          .listen((frame) {
+      .._output =
+          yieldingTerminalFrames(
+            handle.framedOutput ?? handle.output.map(TerminalOutputFrame.new),
+            encoding: () => tab.encoding,
+          ).listen((frame) {
             if (!_open.contains(tab)) return;
             if (frame.reset) {
               final previous = tab.terminal;
@@ -427,6 +432,13 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     _touch();
   }
 
+  void setEncoding(TerminalTab tab, TerminalEncoding encoding) {
+    if (!_open.contains(tab)) return;
+    tab.encoding = encoding;
+    tab.encodingRejected = false;
+    _touch();
+  }
+
   /// Keyboard input from the xterm widget.
   void _write(TerminalTab tab, String data) {
     if (tab.isConnected) _send(tab, data);
@@ -434,7 +446,17 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
 
   void _send(TerminalTab tab, String data) {
     if (!_open.contains(tab) || !tab.isConnected || data.isEmpty) return;
-    tab._input.add(Uint8List.fromList(utf8.encode(data)));
+    final bytes = tab.encoding.encode(data);
+    if (bytes == null) {
+      tab.encodingRejected = true;
+      _touch();
+      return;
+    }
+    if (tab.encodingRejected) {
+      tab.encodingRejected = false;
+      _touch();
+    }
+    tab._input.add(bytes);
     if (tab._sendingInput) return;
     tab._sendingInput = true;
     unawaited(_drainInput(tab, tab._inputGeneration));
@@ -683,6 +705,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     }
     if (tab.isConnected) {
       tab.terminal.paste(text);
+      return !tab.encodingRejected;
     } else {
       _sendOrQueue(tab, text);
     }
@@ -700,7 +723,7 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
       // whole instead of executing it line by line. Line breaks are sent as
       // CR, like a paste from a real terminal.
       tab.terminal.paste(command.replaceAll('\r\n', '\n').replaceAll('\n', '\r'));
-      _send(tab, '\r');
+      if (!tab.encodingRejected) _send(tab, '\r');
     } else {
       _sendOrQueue(tab, '$command\r');
     }

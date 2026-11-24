@@ -2,6 +2,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/terminal/host_metrics_panel.dart';
+import 'package:consolecrypt/terminal/terminal_status_bar.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -40,6 +41,43 @@ void main() {
       'loadAverage': '0.15 / 0.12 / 0.10',
     }),
   ];
+  testWidgets('narrow status bar keeps SSH latency visible and hides stale samples', (tester) async {
+    final state = ValueNotifier(
+      HostMetricsHistory(
+        samples: [
+          _sample(0, {'cpuPercent': 25.0, 'channelLatencyMs': 12, 'swapTotal': 0}),
+        ],
+      ),
+    );
+    addTearDown(state.dispose);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 210);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: TerminalStatusBar(history: state),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('25%'), findsOneWidget);
+    expect(tester.getRect(find.text('12 ms')).right, lessThanOrEqualTo(320));
+    expect(find.byTooltip('Swap'), findsNothing);
+    state.value = HostMetricsHistory(
+      samples: state.value.samples,
+      error: const AppException(AppErrorCode.serverUnreachable, 'test'),
+    );
+    await tester.pump();
+    expect(find.text('12 ms'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('updates charts, rates and host summary from the tab; narrow and wide layouts fit', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1000, 650);

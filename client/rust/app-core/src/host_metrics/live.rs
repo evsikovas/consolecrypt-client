@@ -374,6 +374,7 @@ impl AppCore {
                 "swapUsed":sample.swap.map(|v|v.1),"swapTotal":sample.swap.map(|v|v.0),
                 "timestampMs": SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis(),
                 "cpuPercent": cpu,
+                "channelLatencyMs": output.channel_latency.map(|v| v.as_millis()),
                 "memoryTotal": sample.memory.map(|v| v.0), "memoryUsed": sample.memory.map(|v| v.1),
                 "diskTotal": sample.disk.map(|v| v.0), "diskUsed": sample.disk.map(|v| v.1),
                 "receivedPerSecond": rates.map(|v| v.0), "sentPerSecond": rates.map(|v| v.1),

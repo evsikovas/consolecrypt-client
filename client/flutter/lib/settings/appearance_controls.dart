@@ -431,7 +431,8 @@ class TerminalAppearanceControls extends ConsumerWidget {
 }
 
 class TerminalDeviceControls extends ConsumerWidget {
-  const TerminalDeviceControls({super.key});
+  const TerminalDeviceControls({this.showServerMetrics = true, super.key});
+  final bool showServerMetrics;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -509,6 +510,17 @@ class TerminalDeviceControls extends ConsumerWidget {
             ],
           ),
         ),
+        if (showServerMetrics)
+          SwitchListTile.adaptive(
+            key: const ValueKey('terminal-metrics-setting'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.terminalMetricsBar),
+            value: local.terminalMetricsBar,
+            onChanged: (v) => runWithFeedback(
+              context,
+              () => settings.updateLocal(settings.currentLocal.copyWith(terminalMetricsBar: v)),
+            ),
+          ),
         const TerminalAppearanceControls(),
         const TerminalTabPlacementSetting(id: 'terminal-tab-placement'),
         LabeledValue(

@@ -12,6 +12,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/settings/appearance_controls.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
+import 'package:consolecrypt/terminal/terminal_status_bar.dart';
 import 'package:consolecrypt/terminal/terminal_tab_subtitle.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
@@ -185,7 +186,7 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
                         children: [ThemeAndGlassControls(), InterfaceAppearanceControls(showProfilePreference: false)],
                       ),
                     ),
-                    SingleChildScrollView(child: TerminalDeviceControls()),
+                    SingleChildScrollView(child: TerminalDeviceControls(showServerMetrics: false)),
                   ],
                 ),
               ),
@@ -202,6 +203,7 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     return GlassToolbarGroup(
       key: const ValueKey('terminal-only-toolbar'),
       children: [
+        if (ref.read(terminalTabsProvider).active case final tab?) TerminalEncodingButton(tab: tab),
         GlassIconButton(
           key: const ValueKey('glass-tab-add'),
           icon: Icons.add_rounded,
@@ -404,6 +406,7 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
                               padding: const EdgeInsets.all(GlassSpacing.s8),
                               child: Column(
                                 children: [
+                                  if (active?.encodingRejected == true) Text(l.terminalEncodingError),
                                   if (_opening || active?.state == SessionConnectionState.connecting)
                                     const LinearProgressIndicator(),
                                   if (_error != null) Padding(padding: const EdgeInsets.all(8), child: Text(_error!)),

@@ -10,6 +10,49 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get terminalMetricsBar => 'Mostrar métricas del servidor bajo el terminal';
+
+  @override
+  String get terminalChannelLatency => 'Latencia del canal SSH';
+
+  @override
+  String terminalLatencyValue(int value) {
+    return '$value ms';
+  }
+
+  @override
+  String get terminalNormalizedLoad => 'Carga por CPU en el último minuto';
+
+  @override
+  String get terminalEncodingError => 'Esta codificación no admite todos los caracteres. Elige otra para enviarlos.';
+
+  @override
+  String get terminalEncodingSimplifiedChinese => 'Chino simplificado';
+
+  @override
+  String get terminalEncodingTraditionalChinese => 'Chino tradicional';
+
+  @override
+  String get terminalEncodingJapanese => 'Japonés';
+
+  @override
+  String get terminalEncodingKorean => 'Coreano';
+
+  @override
+  String get terminalEncodingWesternEuropean => 'Europa occidental';
+
+  @override
+  String get terminalEncodingCentralEuropean => 'Europa central';
+
+  @override
+  String get terminalEncodingCyrillic => 'Cirílico';
+
+  @override
+  String dockerImageWeeksAgo(int count) {
+    return 'hace $count sem.';
+  }
+
+  @override
   String get sessionDiskIO => 'Disco · lectura / escritura';
 
   @override

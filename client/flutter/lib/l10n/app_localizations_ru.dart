@@ -10,6 +10,49 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get terminalMetricsBar => 'Показывать показатели сервера под терминалом';
+
+  @override
+  String get terminalChannelLatency => 'Задержка SSH-канала';
+
+  @override
+  String terminalLatencyValue(int value) {
+    return '$value мс';
+  }
+
+  @override
+  String get terminalNormalizedLoad => 'Нагрузка за минуту на одно ядро';
+
+  @override
+  String get terminalEncodingError => 'Ввод содержит символы вне выбранной кодировки. Для отправки смените кодировку.';
+
+  @override
+  String get terminalEncodingSimplifiedChinese => 'Китайская упрощённая';
+
+  @override
+  String get terminalEncodingTraditionalChinese => 'Китайская традиционная';
+
+  @override
+  String get terminalEncodingJapanese => 'Японская';
+
+  @override
+  String get terminalEncodingKorean => 'Корейская';
+
+  @override
+  String get terminalEncodingWesternEuropean => 'Западноевропейская';
+
+  @override
+  String get terminalEncodingCentralEuropean => 'Центральноевропейская';
+
+  @override
+  String get terminalEncodingCyrillic => 'Кириллица';
+
+  @override
+  String dockerImageWeeksAgo(int count) {
+    return '$count нед. назад';
+  }
+
+  @override
   String get sessionDiskIO => 'Диск · чтение / запись';
 
   @override

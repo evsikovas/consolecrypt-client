@@ -128,6 +128,8 @@ pub enum SessionEvent {
 /// Collected result of [`SshSession::exec`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ExecOutput {
+    /// Time until the server acknowledged the session channel, excluding command execution.
+    pub channel_latency: Option<Duration>,
     pub stdout: Vec<u8>,
     pub stderr: Vec<u8>,
     pub exit_status: Option<u32>,
@@ -1394,16 +1396,20 @@ impl SshSession {
     ) -> Result<Option<ExecOutput>, SshError> {
         self.ensure_open()?;
         tokio::pin!(stopped);
+        let started = std::time::Instant::now();
         let mut ch = tokio::select! { biased;
             _ = &mut stopped => return Ok(None),
             ch = self.target.channel_open_session() => ch?,
         };
+        let latency = started.elapsed();
         let result = tokio::select! { biased;
             _ = &mut stopped => Ok(None),
             out = async {
                 ch.exec(true, command).await?;
                 ch.eof().await?;
-                Self::collect_exec(&mut ch, output_limit).await
+                let mut output = Self::collect_exec(&mut ch, output_limit).await?;
+                output.channel_latency = Some(latency);
+                Ok(output)
             } => out.map(Some),
         };
         let _ = tokio::time::timeout(Duration::from_millis(500), ch.close()).await;
@@ -1760,6 +1766,7 @@ mod tests {
     #[test]
     fn exec_output_lossy() {
         let o = ExecOutput {
+            channel_latency: None,
             stdout: b"hi\n".to_vec(),
             stderr: vec![0xff],
             exit_status: Some(0),

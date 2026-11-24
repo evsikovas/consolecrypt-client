@@ -16,6 +16,7 @@ import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_database_connect.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_forwards.dart';
+import 'package:consolecrypt/docker/docker_image_list.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_removal_dialog.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
@@ -69,7 +70,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   bool _foreground = true, _loading = false, _loaded = false;
   DockerStateFilter _filter = DockerStateFilter.all;
   bool _volumes = false, _images = false;
-  Future<List<String>>? _imageNames;
+  final _imageList = GlobalKey<DockerImageListState>();
   DialogRoute<void>? _detailDialog;
 
   final _volumeList = GlobalKey<DockerVolumeListState>();
@@ -507,10 +508,8 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                   size: 28,
                   style: GlassIconButtonStyle.plain,
                   onPressed: () {
-                    if (_images && observer is DockerObservationService) {
-                      setState(
-                        () => _imageNames = (observer as DockerObservationService).imageNames(widget.session.id),
-                      );
+                    if (_images) {
+                      _imageList.currentState?.refresh();
                     } else {
                       unawaited(_refresh());
                     }
@@ -529,28 +528,15 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                   GlassSegment(value: false, label: l.dockerStandalone),
                   GlassSegment(value: true, label: l.kubeImages),
                 ],
-                onChanged: (v) => setState(() {
-                  _images = v;
-                  if (v) {
-                    _imageNames ??= (observer as DockerObservationService).imageNames(widget.session.id);
-                  }
-                }),
+                onChanged: (v) => setState(() => _images = v),
               ),
             ),
           Expanded(
             child: _images
-                ? FutureBuilder<List<String>>(
-                    future: _imageNames,
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) return Center(child: Text(l.sessionUsageUnavailable));
-                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                      final names = snapshot.data!;
-                      if (names.isEmpty) return Center(child: Text(l.wslcNoImagesYet));
-                      return ListView.builder(
-                        itemCount: names.length,
-                        itemBuilder: (_, i) => ListTile(dense: true, title: SelectableText(names[i])),
-                      );
-                    },
+                ? DockerImageList(
+                    key: _imageList,
+                    service: observer as DockerObservationService,
+                    session: widget.session,
                   )
                 : _error != null
                 ? Center(child: Text(dockerErrorText(l, _error!)))

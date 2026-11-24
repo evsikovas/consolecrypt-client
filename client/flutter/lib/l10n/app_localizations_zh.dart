@@ -10,6 +10,49 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get terminalMetricsBar => '在终端底部显示服务器指标';
+
+  @override
+  String get terminalChannelLatency => 'SSH 通道延迟';
+
+  @override
+  String terminalLatencyValue(int value) {
+    return '$value 毫秒';
+  }
+
+  @override
+  String get terminalNormalizedLoad => '每个 CPU 的一分钟平均负载';
+
+  @override
+  String get terminalEncodingError => '当前编码无法表示输入内容。请选择其他编码后再发送。';
+
+  @override
+  String get terminalEncodingSimplifiedChinese => '简体中文';
+
+  @override
+  String get terminalEncodingTraditionalChinese => '繁体中文';
+
+  @override
+  String get terminalEncodingJapanese => '日语';
+
+  @override
+  String get terminalEncodingKorean => '韩语';
+
+  @override
+  String get terminalEncodingWesternEuropean => '西欧';
+
+  @override
+  String get terminalEncodingCentralEuropean => '中欧';
+
+  @override
+  String get terminalEncodingCyrillic => '西里尔文';
+
+  @override
+  String dockerImageWeeksAgo(int count) {
+    return '$count 周前';
+  }
+
+  @override
   String get sessionDiskIO => '磁盘读 / 写';
 
   @override

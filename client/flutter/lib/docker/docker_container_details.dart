@@ -747,7 +747,8 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
     final tokens = GlassTokens.of(context);
     final entries = _revealed ?? widget.env;
     final mono = tokens.typography.mono.copyWith(
-      fontSize: 11,
+      fontSize: 10,
+      height: 1.35,
       fontWeight: FontWeight.w400,
       color: tokens.palette.label,
     );

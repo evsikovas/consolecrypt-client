@@ -15,6 +15,7 @@ import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_host_path.dart';
+import 'package:consolecrypt/docker/docker_image_list.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_screen.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
@@ -22,7 +23,7 @@ import 'package:consolecrypt/docker/docker_terminal.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
-import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
+import 'package:flutter/gestures.dart' show PointerDeviceKind, kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,7 +48,23 @@ class _Docker extends MockDockerService {
 
 class _ObservedDocker extends _Docker implements DockerObservationService {
   @override
-  Future<List<String>> imageNames(String sessionId) async => [];
+  Future<List<DockerImage>> images(String sessionId) async => [
+    if (removed.isEmpty)
+      DockerImage.fromJson({
+        'id': 'sha256:abcd',
+        'tags': null,
+        'digests': ['registry.example/project/server@sha256:abcd'],
+        'created': DateTime.now().subtract(const Duration(days: 28)).millisecondsSinceEpoch ~/ 1000,
+        'size': 4194304,
+      }),
+  ];
+  final removed = <(String, String, String?)>[];
+  @override
+  Future<bool> removeImage(String sessionId, String id, {String? tag}) async {
+    removed.add((sessionId, id, tag));
+    return true;
+  }
+
   @override
   Future<DockerJson> telemetry(String sessionId, String containerId) async => {
     'cpu': 22.0,
@@ -317,6 +334,56 @@ String _id(WidgetTester tester, String name) => tester
     .id;
 
 void main() {
+  testWidgets('image list shows compact names, size and age, and confirms deletion', (tester) async {
+    final service = _ObservedDocker();
+    const session = DockerSessionInfo(id: 'fixture', hostId: 'local', hostName: 'Test', engineVersion: 'test');
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+        home: Scaffold(
+          body: SizedBox(
+            width: 320,
+            child: DockerImageList(service: service, session: session),
+          ),
+        ),
+      ),
+    );
+    await settle(tester);
+    final name = find.text('registry.example/project/server');
+    expect(name, findsOneWidget);
+    expect(tester.widget<Text>(name).maxLines, 1);
+    expect(find.text('4 wk ago'), findsOneWidget);
+    expect(find.text('4.0 MiB'), findsOneWidget);
+    await tester.tap(name);
+    await settle(tester);
+    expect(find.text('sha256:abcd'), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await settle(tester);
+    Future<void> remove() async {
+      final gesture = await tester.startGesture(
+        tester.getCenter(name),
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await gesture.up();
+      await settle(tester);
+      expect(find.text('Details'), findsOneWidget);
+      await tester.tap(find.text('Delete image'));
+      await settle(tester);
+    }
+
+    await remove();
+    await tapKey(tester, 'confirm-cancel');
+    expect(service.removed, isEmpty);
+    await remove();
+    await tapKey(tester, 'confirm-ok');
+    expect(service.removed, [('fixture', 'sha256:abcd', null)]);
+    expect(name, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('resource and process cards show the sample and removal is last', (tester) async {
     await _pump(tester, service: _ObservedDocker());
     await _connectLocal(tester);

@@ -4,6 +4,7 @@ import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/terminal/host_metrics_panel.dart';
+import 'package:consolecrypt/terminal/terminal_status_bar.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,6 +31,14 @@ void main() {
     router.go(AppRoutes.terminal);
     await settle(tester);
     expect(first.isConnected, isTrue);
+    final statusBar = find.byType(TerminalStatusBar);
+    expect(tester.widget<TerminalStatusBar>(statusBar).history, same(first.hostMetrics));
+    final settings = backend.services.settings;
+    await settings.updateLocal(settings.currentLocal.copyWith(terminalMetricsBar: false));
+    await settle(tester);
+    expect(statusBar, findsNothing);
+    await settings.updateLocal(settings.currentLocal.copyWith(terminalMetricsBar: true));
+    await settle(tester);
     expect(entry.hitTestable(), findsOneWidget);
     if (mobile) {
       expect(tester.getRect(entry).left, greaterThan(tester.getRect(find.byKey(const ValueKey('glass-tab-add'))).left));
@@ -48,6 +57,7 @@ void main() {
       final pane = await tabs.split(first, Axis.horizontal);
       await settle(tester);
       expect(pane!.isConnected, isTrue);
+      expect(tester.widget<TerminalStatusBar>(statusBar).history, same(pane.hostMetrics));
       await tapKey(tester, entryKey);
       expect(tester.widget<HostMetricsPanel>(panel).history, same(pane.hostMetrics));
       tabs.focusPane(first);

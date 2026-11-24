@@ -189,15 +189,13 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
                 padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s6),
                 child: _errorBanner(l10n, error, state.errorDetail),
               ),
-            if (state.lastReport != null && !state.isStreaming)
+            if (state.lastReport?.remote == true && !state.isStreaming)
               Padding(
                 padding: const EdgeInsets.only(top: GlassSpacing.s6),
                 child: Tooltip(
                   message: describeSanitization(l10n, state.lastReport!),
                   child: Text(
-                    state.lastReport!.remote
-                        ? '${l10n.sessionHidden} · ${state.lastReport!.redactions}'
-                        : l10n.sessionLocal,
+                    '${l10n.sessionHidden} · ${state.lastReport!.redactions}',
                     style: t.caption.copyWith(color: tokens.secondaryLabel),
                   ),
                 ),
@@ -288,15 +286,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> with WidgetsBinding
                       ),
                     ],
                   ),
-                  if (provider != null && !compactKeyboard)
-                    Text(
-                      [
-                        if (state.isStreaming) l10n.sessionResponding,
-                        provider.isRemote ? l10n.sessionRemote : l10n.sessionLocal,
-                        if (provider.isRemote) provider.privacyProfile.localized(l10n),
-                      ].join(' · '),
-                      style: t.caption.copyWith(color: tokens.secondaryLabel),
-                    ),
                 ],
               ),
             ),

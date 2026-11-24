@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:consolecrypt/core/models/terminal.dart';
+import 'package:consolecrypt/terminal/terminal_encoding.dart';
 
 /// Decodes terminal bytes incrementally, yielding to the event queue before
 /// each bounded ordinary-text parser call. Surrogate pairs stay together.
@@ -32,15 +32,16 @@ final class TerminalRenderFrame {
 Stream<TerminalRenderFrame> yieldingTerminalFrames(
   Stream<TerminalOutputFrame> source, {
   int maxCodeUnitsPerTurn = 4096,
+  TerminalEncoding Function()? encoding,
 }) {
   if (maxCodeUnitsPerTurn < 2) throw RangeError.range(maxCodeUnitsPerTurn, 2, null, 'maxCodeUnitsPerTurn');
-  return _TerminalOutputPump(source, maxCodeUnitsPerTurn).stream;
+  return _TerminalOutputPump(source, maxCodeUnitsPerTurn, encoding).stream;
 }
 
 const terminalEscapeTokenLimit = 2 * 1024 * 1024;
 
 final class _TerminalOutputPump {
-  _TerminalOutputPump(this._source, this._limit) {
+  _TerminalOutputPump(this._source, this._limit, this._encoding) {
     _controller = StreamController<TerminalRenderFrame>(
       sync: true,
       onListen: _listen,
@@ -56,7 +57,8 @@ final class _TerminalOutputPump {
   late final StreamController<TerminalRenderFrame> _controller;
   // ignore: cancel_subscriptions
   StreamSubscription<TerminalOutputFrame>? _input;
-  late ByteConversionSink _decoder;
+  final TerminalEncoding Function()? _encoding;
+  TerminalByteDecoder? _decoder;
   Timer? _timer;
   String? _pending;
   StringBuffer? _token;
@@ -71,28 +73,24 @@ final class _TerminalOutputPump {
 
   Stream<TerminalRenderFrame> get stream => _controller.stream;
 
-  void _newDecoder() =>
-      _decoder = const Utf8Decoder(allowMalformed: true)
-          .startChunkedConversion(StringConversionSink.from(_DecodedSink(_receive)));
-
   void _listen() {
-    _newDecoder();
     _input = _source.listen(
       (frame) {
-        if (frame.reset) {
-          // Discard incomplete UTF-8 and ANSI tokens across a lost frame.
-          _newDecoder();
+        final encoding = _encoding?.call() ?? TerminalEncoding.utf8;
+        if (frame.reset || encoding != _decoder?.encoding) {
+          _decoder?.dispose();
+          _decoder = TerminalByteDecoder(encoding, _receive);
           _token = null;
           _tokenUnits = 0;
           _discardToken = false;
           _mode = _EscapeMode.text;
-          _controller.add(const TerminalRenderFrame('', reset: true));
+          if (frame.reset) _controller.add(const TerminalRenderFrame('', reset: true));
         }
-        if (!_cancelled && frame.data.isNotEmpty) _decoder.add(frame.data);
+        if (!_cancelled && frame.data.isNotEmpty) _decoder!.add(frame.data);
       },
       onError: _controller.addError,
       onDone: () {
-        _decoder.close();
+        _decoder?.finish();
         _inputDone = true;
         _schedule();
       },
@@ -246,6 +244,7 @@ final class _TerminalOutputPump {
 
   Future<void> _cancel() async {
     _cancelled = true;
+    _decoder?.dispose();
     _timer?.cancel();
     _timer = null;
     _pending = null;
@@ -253,15 +252,6 @@ final class _TerminalOutputPump {
     _tokenUnits = 0;
     await _input?.cancel();
   }
-}
-
-final class _DecodedSink implements Sink<String> {
-  _DecodedSink(this.receive);
-  final void Function(String) receive;
-  @override
-  void add(String data) => receive(data);
-  @override
-  void close() {}
 }
 
 enum _EscapeMode { text, escape, csi, osc, oscEscape, charset }

@@ -94,6 +94,84 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Show server metrics below the terminal
+  ///
+  /// In en, this message translates to:
+  /// **'Show server metrics below the terminal'**
+  String get terminalMetricsBar;
+
+  /// SSH channel latency
+  ///
+  /// In en, this message translates to:
+  /// **'SSH channel latency'**
+  String get terminalChannelLatency;
+
+  /// number ms
+  ///
+  /// In en, this message translates to:
+  /// **'{value} ms'**
+  String terminalLatencyValue(int value);
+
+  /// 1-minute load per CPU
+  ///
+  /// In en, this message translates to:
+  /// **'1-minute load per CPU'**
+  String get terminalNormalizedLoad;
+
+  /// This encoding cannot represent the input. Choose another encoding to send it.
+  ///
+  /// In en, this message translates to:
+  /// **'This encoding cannot represent the input. Choose another encoding to send it.'**
+  String get terminalEncodingError;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Simplified Chinese'**
+  String get terminalEncodingSimplifiedChinese;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Traditional Chinese'**
+  String get terminalEncodingTraditionalChinese;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Japanese'**
+  String get terminalEncodingJapanese;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Korean'**
+  String get terminalEncodingKorean;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Western European'**
+  String get terminalEncodingWesternEuropean;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Central European'**
+  String get terminalEncodingCentralEuropean;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyrillic'**
+  String get terminalEncodingCyrillic;
+
+  /// Compact age in completed weeks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} wk ago'**
+  String dockerImageWeeksAgo(int count);
+
   /// Disk bytes read and written by a container.
   ///
   /// In en, this message translates to:

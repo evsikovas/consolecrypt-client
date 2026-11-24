@@ -687,11 +687,23 @@ impl AppCore {
         }
     }
 
-    pub async fn docker_image_names(&self, session_id: String) -> AppResult<Vec<String>> {
+    pub async fn docker_images(&self, session_id: String) -> AppResult<Vec<serde_json::Value>> {
         let (_, unlocked) = self.unlocked().await?;
         let live = unlocked.docker.session(&session_id)?;
         tokio::select! { biased; _ = live.cancel.cancelled() => Err(invalid("session_closed")),
-        result = live.client.image_names() => result.map_err(docker_error) }
+        result = live.client.images() => result.map_err(docker_error) }
+    }
+
+    pub async fn docker_remove_image(
+        &self,
+        session_id: String,
+        image_id: String,
+        tag: Option<String>,
+    ) -> AppResult<bool> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! { biased; _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+        result = live.client.remove_image(&image_id, tag.as_deref()) => result.map_err(docker_error) }
     }
     pub async fn docker_telemetry(
         &self,

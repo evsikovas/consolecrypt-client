@@ -49,6 +49,7 @@ class SessionDockerPanel extends ConsumerWidget {
           ),
         ),
         data: (s) => DockerWorkspace(
+          key: ValueKey(s.id),
           service: ref.watch(dockerServiceProvider)!,
           session: s,
           sessionPanel: true,

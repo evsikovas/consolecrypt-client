@@ -84,7 +84,17 @@ impl DockerConnector for Engine {
                 }
             }
             let path = first.split_whitespace().nth(1).unwrap_or("");
-            let (code, body) = if n == 1 {
+            let (code, body) = if path == "/images/json?digests=true" {
+                (
+                    200,
+                    json!([{"Id":id,"RepoTags":["demo:test"],"RepoDigests":[],"Size":65,"Created":99,"Labels":{"fixture":"private"}}]),
+                )
+            } else if path == "/images/demo:test/json" {
+                (200, json!({"Id":reported}))
+            } else if path == "/images/demo:test?force=false&noprune=true" {
+                assert!(first.starts_with("DELETE "));
+                (status, json!([]))
+            } else if n == 1 {
                 assert_eq!(path, format!("/images/{id}/json"));
                 (
                     200,
@@ -147,6 +157,37 @@ async fn local_containerd_digest_needs_a_matching_registry_descriptor_before_pre
             }
         );
         assert_eq!(engine.calls.load(Ordering::Relaxed), reads);
+    }
+}
+
+#[tokio::test]
+async fn image_inventory_and_removal_use_exact_references_without_force() {
+    let id = format!("sha256:{}", "a".repeat(64));
+    for (reported, status, outcome, calls) in [
+        (id.clone(), 200, Some(true), 3),
+        (id.clone(), 409, Some(false), 3),
+        (format!("sha256:{}", "b".repeat(64)), 200, None, 2),
+    ] {
+        let engine = Arc::new(Engine {
+            id: id.clone(),
+            manifest: String::new(),
+            status,
+            reported,
+            calls: AtomicUsize::new(0),
+        });
+        let client = DockerClient::new(engine.clone());
+        let rows = client.images().await.unwrap();
+        assert_eq!(rows[0]["size"], 65);
+        assert!(rows[0].get("Labels").is_none());
+        assert!(client
+            .remove_image(&id, Some("demo:test?force=true"))
+            .await
+            .is_err());
+        assert_eq!(
+            client.remove_image(&id, Some("demo:test")).await.ok(),
+            outcome
+        );
+        assert_eq!(engine.calls.load(Ordering::Relaxed), calls);
     }
 }
 

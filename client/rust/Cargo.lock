@@ -970,6 +970,7 @@ dependencies = [
  "cc-vault-core",
  "cc-wslc-core",
  "chrono",
+ "encoding_rs",
  "flutter_rust_bridge",
  "jni 0.22.4",
  "ndk-context",

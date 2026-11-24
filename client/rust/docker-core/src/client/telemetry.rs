@@ -1,23 +1,6 @@
 use super::*;
 
 impl DockerClient {
-    pub async fn image_names(&self) -> Result<Vec<String>, DockerError> {
-        let list = self.json(Method::GET, "/images/json", None).await?;
-        let items = list.as_array().ok_or(DockerError::Protocol)?;
-        let mut names = Vec::new();
-        for image in items {
-            let before = names.len();
-            if let Some(tags) = image["RepoTags"].as_array() {
-                names.extend(tags.iter().filter_map(Value::as_str).map(str::to_owned));
-            }
-            if names.len() == before {
-                names.extend(image["Id"].as_str().map(str::to_owned));
-            }
-        }
-        names.sort();
-        Ok(names)
-    }
-
     pub async fn telemetry(&self, id: &str) -> Result<Value, DockerError> {
         let id = checked(id)?;
         let stats_path = format!("/containers/{id}/stats?stream=false");

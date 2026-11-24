@@ -115,6 +115,61 @@ fn candidates(image: &Value, id: &str, source: &str) -> Result<Vec<String>, Dock
 }
 
 impl DockerClient {
+    /// Inventory metadata only. Engine labels and build configuration can contain secrets.
+    pub async fn images(&self) -> Result<Vec<Value>, DockerError> {
+        let list = self.json(Method::GET, "/images/json?digests=true", None).await?;
+        let items = list.as_array().ok_or(DockerError::Protocol)?;
+        Ok(items
+            .iter()
+            .map(|image| {
+                serde_json::json!({
+                    "id": image["Id"], "tags": image["RepoTags"], "digests": image["RepoDigests"],
+                    "size": image["Size"], "created": image["Created"],
+                })
+            })
+            .collect())
+    }
+
+    /// False means Docker kept the image because something still references it.
+    pub async fn remove_image(
+        &self,
+        image_id: &str,
+        tag: Option<&str>,
+    ) -> Result<bool, DockerError> {
+        if !sha256_id(image_id) {
+            return Err(DockerError::InvalidRequest);
+        }
+        let reference = if let Some(tag) = tag {
+            if tag.is_empty()
+                || tag.len() > 512
+                || tag.split('/').any(|s| matches!(s, "" | "." | ".."))
+                || !tag
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b"/@:_-.[]".contains(&b))
+            {
+                return Err(DockerError::InvalidRequest);
+            }
+            // The user confirmed this named reference on this engine.
+            match self
+                .json(Method::GET, &format!("/images/{tag}/json"), None)
+                .await
+            {
+                Ok(value) if value["Id"].as_str() == Some(image_id) => tag,
+                Ok(_) => return Err(DockerError::InvalidRequest),
+                Err(DockerError::NotFound) => return Ok(true),
+                Err(error) => return Err(error),
+            }
+        } else {
+            image_id
+        };
+        let path = format!("/images/{reference}?force=false&noprune=true");
+        match self.json(Method::DELETE, &path, None).await {
+            Ok(_) | Err(DockerError::NotFound) => Ok(true),
+            Err(DockerError::Api { status: 409, .. }) => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
+
     /// Resolve the container image to an immutable pull reference. Containerd
     /// reports locally calculated RepoDigests for tags that were never pushed.
     /// Ask the same engine for the registry descriptor before suggesting one.

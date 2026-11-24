@@ -109,6 +109,7 @@ final class HostMetricsSample {
   HostMetricsSample.fromJson(Map<String, Object?> value)
     : time = DateTime.fromMillisecondsSinceEpoch(value['timestampMs'] as int),
       cpu = (value['cpuPercent'] as num?)?.toDouble(),
+      channelLatencyMs = value['channelLatencyMs'] as int?,
       memoryTotal = value['memoryTotal'] as int?,
       memoryUsed = value['memoryUsed'] as int?,
       diskTotal = value['diskTotal'] as int?,
@@ -141,7 +142,7 @@ final class HostMetricsSample {
   final int? memoryTotal, memoryUsed, diskTotal, diskUsed;
   final Duration uptime;
   final String? os, kernel, architecture, cpuModel, loadAverage;
-  final int? logicalCpus;
+  final int? logicalCpus, channelLatencyMs;
 
   double? get memoryPercent => _percent(memoryUsed, memoryTotal);
   double? get diskPercent => _percent(diskUsed, diskTotal);

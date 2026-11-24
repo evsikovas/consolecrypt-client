@@ -130,8 +130,11 @@ Future<void> dockerForwardStop({required String forwardId}) =>
 Future<String> dockerTelemetry({required String sessionId, required String container}) =>
     RustLib.instance.api.crateApiDockerDockerTelemetry(sessionId: sessionId, container: container);
 
-Future<List<String>> dockerImageNames({required String sessionId}) =>
-    RustLib.instance.api.crateApiDockerDockerImageNames(sessionId: sessionId);
+Future<String> dockerImages({required String sessionId}) =>
+    RustLib.instance.api.crateApiDockerDockerImages(sessionId: sessionId);
+
+Future<bool> dockerRemoveImage({required String sessionId, required String imageId, String? tag}) =>
+    RustLib.instance.api.crateApiDockerDockerRemoveImage(sessionId: sessionId, imageId: imageId, tag: tag);
 
 Future<String> dockerVolumes({required String sessionId}) =>
     RustLib.instance.api.crateApiDockerDockerVolumes(sessionId: sessionId);

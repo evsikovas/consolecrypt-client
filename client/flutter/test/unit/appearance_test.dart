@@ -59,12 +59,14 @@ void main() {
       terminalTabPlacement: TerminalTabPlacement.left,
       terminalTabColumnWidth: 300,
       terminalTabGrouped: true,
+      terminalMetricsBar: false,
       terminalTabColumnCollapsed: true,
       sidebarCollapsed: true,
       sidebarCollapsedBesideTabs: false,
     );
     final restored = localSettingsFromJson(decodeObject(encodeJson(localSettingsToJson(source))));
     expect(restored.terminalTabGrouped, isTrue);
+    expect(restored.terminalMetricsBar, isFalse);
     expect(restored.terminalTabPlacement, TerminalTabPlacement.left);
     expect(restored.terminalTabColumnWidth, 300);
     expect(restored.terminalTabColumnCollapsed, isTrue);
@@ -74,6 +76,7 @@ void main() {
 
     final old = localSettingsFromJson({'theme_mode': 'dark'});
     expect(old.terminalTabGrouped, isFalse);
+    expect(old.terminalMetricsBar, isTrue);
     expect(old.terminalTabPlacement, TerminalTabPlacement.top);
     expect(old.terminalTabColumnWidth, LocalSettings.terminalTabColumnDefault);
     expect(old.terminalTabColumnCollapsed, isFalse);

@@ -21,6 +21,7 @@ import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
+import 'package:consolecrypt/terminal/terminal_status_bar.dart';
 import 'package:consolecrypt/terminal/terminal_tab_subtitle.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
@@ -345,6 +346,7 @@ class _TerminalTabs extends ConsumerWidget {
       return Row(
         children: [
           Expanded(child: strip),
+          TerminalEncodingButton(tab: active),
           if (ref.watch(activeSshTerminalProvider) != null) ...[
             const SizedBox(width: GlassSpacing.s4),
             const _ServerMetricsButton(),
@@ -546,6 +548,7 @@ class _SessionToolbar extends ConsumerWidget {
     final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
     return GlassToolbarGroup(
       children: [
+        TerminalEncodingButton(tab: tab),
         if (minimal) _MinimalTerminalMenu(tab: tab),
         if (minimal && ref.watch(activeSshTerminalProvider) != null) const _ServerMetricsButton(),
         if (!minimal) ...[
@@ -769,19 +772,31 @@ class _TerminalCard extends ConsumerWidget {
       ),
       child: Padding(
         padding: minimal ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : const EdgeInsets.all(10),
-        child: IndexedStack(
-          index: state.activeIndex.clamp(0, state.tabs.length - 1),
-          sizing: StackFit.expand,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final tab in state.tabs)
-              tab.panes.isEmpty
-                  ? _PaneView(pane: tab, active: identical(tab, state.activeTab))
-                  : _SplitPanes(
-                      key: ValueKey('terminal-split-${tab.sessionId.value}'),
-                      tab: tab,
-                      current: identical(tab, state.activeTab),
-                      foreground: theme.foreground,
-                    ),
+            Expanded(
+              child: IndexedStack(
+                index: state.activeIndex.clamp(0, state.tabs.length - 1),
+                sizing: StackFit.expand,
+                children: [
+                  for (final tab in state.tabs)
+                    tab.panes.isEmpty
+                        ? _PaneView(pane: tab, active: identical(tab, state.activeTab))
+                        : _SplitPanes(
+                            key: ValueKey('terminal-split-${tab.sessionId.value}'),
+                            tab: tab,
+                            current: identical(tab, state.activeTab),
+                            foreground: theme.foreground,
+                          ),
+                ],
+              ),
+            ),
+            if (active.host != null &&
+                active.isConnected &&
+                !active.exited &&
+                (ref.watch(localSettingsProvider.select((s) => s.value?.terminalMetricsBar)) ?? true))
+              TerminalStatusBar(history: active.hostMetrics),
           ],
         ),
       ),
@@ -1042,6 +1057,9 @@ class _SessionBanners extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
       child: child,
     );
+    if (tab.encodingRejected && tab.isConnected) {
+      return pad(InfoBanner(message: l10n.terminalEncodingError, tone: BannerTone.warning));
+    }
     if (hostKey != null && hostKey.changed) {
       // Fixed, localized security text; the core's English diagnostic
       // (tab.message) says the same and is not repeated.

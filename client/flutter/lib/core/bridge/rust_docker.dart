@@ -17,7 +17,15 @@ final class RustDockerService implements DockerService, DockerObservationService
   Future<DockerJson> telemetry(String sessionId, String containerId) async =>
       _decodeInspect(await guard(() => native.dockerTelemetry(sessionId: sessionId, container: containerId)));
   @override
-  Future<List<String>> imageNames(String sessionId) => guard(() => native.dockerImageNames(sessionId: sessionId));
+  Future<List<DockerImage>> images(String sessionId) async =>
+      _decodeLargeReply(await guard(() => native.dockerImages(sessionId: sessionId)), _decodeImages);
+
+  static List<DockerImage> _decodeImages(String wire) =>
+      (jsonDecode(wire) as List).cast<DockerJson>().map(DockerImage.fromJson).toList();
+
+  @override
+  Future<bool> removeImage(String sessionId, String id, {String? tag}) =>
+      guard(() => native.dockerRemoveImage(sessionId: sessionId, imageId: id, tag: tag));
 
   @override
   Future<List<DockerHost>> hosts() async => [

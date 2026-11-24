@@ -434,9 +434,40 @@ final class DockerException implements Exception {
   String toString() => 'DockerException(${failure.name})';
 }
 
+final class DockerImage {
+  DockerImage.fromJson(DockerJson json)
+    : id = json['id'] as String,
+      tags = references(json['tags']),
+      digests = references(json['digests']),
+      size = json['size'] as int?,
+      created = json['created'] is int
+          ? DateTime.fromMillisecondsSinceEpoch((json['created'] as int) * 1000, isUtc: true)
+          : null;
+  final String id;
+  final List<String> tags, digests;
+  final int? size;
+  final DateTime? created;
+
+  static List<String> references(Object? values) =>
+      (values as List? ?? const [])
+          .whereType<String>()
+          .where((s) => s.isNotEmpty && !s.startsWith('<none>'))
+          .toSet()
+          .toList()
+        ..sort();
+
+  String label(String? tag) {
+    final reference = tag ?? digests.firstOrNull;
+    if (reference != null && !reference.startsWith('sha256:')) return reference.split('@').first;
+    final hash = id.replaceFirst('sha256:', '');
+    return hash.length > 12 ? hash.substring(0, 12) : hash;
+  }
+}
+
 abstract interface class DockerObservationService {
   Future<DockerJson> telemetry(String sessionId, String containerId);
-  Future<List<String>> imageNames(String sessionId);
+  Future<List<DockerImage>> images(String sessionId);
+  Future<bool> removeImage(String sessionId, String id, {String? tag});
 }
 
 abstract interface class DockerService {
