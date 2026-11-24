@@ -110,7 +110,7 @@ class DockerImageListState extends State<DockerImageList> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n, t = GlassTokens.of(context);
-    final meta = t.typography.caption.copyWith(color: t.secondaryLabel);
+    final meta = t.typography.caption.copyWith(color: t.secondaryLabel, fontSize: 10.5, height: 1.35);
     final actions = [
       GlassMenuItem(value: _Action.details, label: l.dockerDetails, icon: Icons.info_outline),
       const GlassMenuDivider<_Action>(),
@@ -131,7 +131,9 @@ class DockerImageListState extends State<DockerImageList> {
                   .toList();
         if (rows.isEmpty && query.isNotEmpty) return Center(child: Text(l.dockerNoMatches));
         if (rows.isEmpty) return Center(child: Text(l.wslcNoImagesYet));
-        return ListView.builder(
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          separatorBuilder: (_, _) => const SizedBox(height: 4),
           itemCount: rows.length,
           itemBuilder: (context, i) {
             final row = rows[i], img = row.image, date = img.created;
@@ -146,62 +148,70 @@ class DockerImageListState extends State<DockerImageList> {
               if (action != null && context.mounted) await _act(action, row);
             }
 
-            return GestureDetector(
-              onSecondaryTapUp: (e) => menu(e.globalPosition),
-              onLongPressStart: (e) => menu(e.globalPosition),
-              child: InkWell(
-                onTap: () => _act(_Action.details, row),
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(start: 12, end: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 5,
-                        child: Tooltip(
-                          message: row.tag ?? img.digests.firstOrNull ?? img.id,
-                          child: Text(
-                            img.label(row.tag),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: t.typography.callout,
+            return ContentSurface(
+              kind: ContentSurfaceKind.inset,
+              radius: t.radii.card,
+              padding: EdgeInsets.zero,
+              child: GestureDetector(
+                onSecondaryTapUp: (e) => menu(e.globalPosition),
+                onLongPressStart: (e) => menu(e.globalPosition),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(t.radii.card),
+                  onTap: () => _act(_Action.details, row),
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 12, end: 4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.layers_outlined, size: 14, color: t.secondaryLabel),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          flex: 5,
+                          child: Tooltip(
+                            message: row.tag ?? img.digests.firstOrNull ?? img.id,
+                            child: Text(
+                              img.label(row.tag),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.typography.callout.copyWith(fontSize: 12, height: 1.35),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          img.size == null ? '—' : formatBytes(l, img.size!),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                          style: meta,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            img.size == null ? '—' : formatBytes(l, img.size!),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: meta,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          age,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                          style: meta,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            age,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: meta,
+                          ),
                         ),
-                      ),
-                      GlassMenuButton<_Action>(
-                        entries: actions,
-                        onSelected: (a) => _act(a, row),
-                        builder: (_, open) => GlassIconButton(
-                          icon: Icons.more_horiz,
-                          tooltip: l.wslcMoreActions,
-                          size: 30,
-                          iconSize: 14,
-                          style: GlassIconButtonStyle.plain,
-                          onPressed: open,
+                        GlassMenuButton<_Action>(
+                          entries: actions,
+                          onSelected: (a) => _act(a, row),
+                          builder: (_, open) => GlassIconButton(
+                            icon: Icons.more_horiz,
+                            tooltip: l.wslcMoreActions,
+                            size: GlassSizes.toolbarButton,
+                            iconSize: 14,
+                            style: GlassIconButtonStyle.plain,
+                            onPressed: open,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
