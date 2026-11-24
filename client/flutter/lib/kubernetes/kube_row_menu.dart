@@ -1,11 +1,12 @@
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Shared by compact lists, desktop tables and Helm releases.
-class KubeRowMenu extends StatelessWidget {
+class KubeRowMenu extends ConsumerWidget {
   const KubeRowMenu({
     required this.name,
     required this.child,
@@ -23,7 +24,7 @@ class KubeRowMenu extends StatelessWidget {
   final ValueChanged<KubeResourceOpenAction>? onAction;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     Future<void> menu(Offset at) async {
       final chosen = await showGlassMenu<VoidCallback>(
@@ -32,7 +33,7 @@ class KubeRowMenu extends StatelessWidget {
         entries: [
           if (open case final cb?) GlassMenuItem(value: cb, label: l.kubeOverview, icon: Icons.info_outline),
           GlassMenuItem(
-            value: () => Clipboard.setData(ClipboardData(text: name)),
+            value: () => copyPlainWithNotice(context, ref, name, what: l.sftpCopyWhatName),
             label: l.sftpActionCopyName,
             icon: Icons.copy_outlined,
           ),

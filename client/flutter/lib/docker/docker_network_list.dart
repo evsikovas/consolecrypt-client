@@ -93,7 +93,7 @@ class DockerNetworkListState extends State<DockerNetworkList> {
                   const Divider(height: 9),
                   Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: SelectableText('ID  ${row['id'] ?? ''}', style: caption),
+                    child: SelectableText("${l.dockerNetworkId}  ${row['id'] ?? ''}", style: caption),
                   ),
                   for (final range in ranges)
                     if (range['gateway'] case final String gw) SelectableText(l.wslcGateway(gw), style: caption),

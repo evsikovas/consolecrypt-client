@@ -170,13 +170,13 @@ final class CapturePacket {
 }
 
 const displayLimit = 300;
-const installCommands = {
-  'apt-get': 'sudo apt-get install tcpdump',
-  'dnf': 'sudo dnf install tcpdump',
-  'yum': 'sudo yum install tcpdump',
-  'apk': 'sudo apk add tcpdump',
-  'pacman': 'sudo pacman -S tcpdump',
-  'zypper': 'sudo zypper install tcpdump',
-  'pkg': 'sudo pkg install tcpdump',
-  'brew': 'brew install tcpdump',
+const installActions = {
+  'apt-get': 'install',
+  'dnf': 'install',
+  'yum': 'install',
+  'apk': 'add',
+  'pacman': '-S',
+  'zypper': 'install',
+  'pkg': 'install',
+  'brew': 'install',
 };

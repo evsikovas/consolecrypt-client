@@ -60,7 +60,7 @@ class CaptureConnectionDetails extends StatelessWidget {
             ),
           SelectableText(packet.raw, style: mono),
           if (packet.hexDump.isNotEmpty) ...[
-            Text('${l.capturePacketBytes} · HEX / ASCII', style: t.typography.caption),
+            Text(l.capturePacketBytes, style: t.typography.caption),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SelectableText(packet.hexDump, style: mono),

@@ -119,6 +119,7 @@ class SavedForwardTile extends ConsumerWidget {
               plan.connectionId;
     final address = handle?.address ?? '${plan.localAddress}:${plan.localPort == 0 ? '0' : plan.localPort}';
     final product = plan.kind == SavedForwardKind.docker ? 'Docker' : 'Kubernetes';
+    final endpoint = '$address → ${plan.remotePort}/tcp';
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -181,10 +182,7 @@ class SavedForwardTile extends ConsumerWidget {
                 ],
               ),
               Text('$product · $host'),
-              Text(
-                '$address → ${plan.remotePort}/tcp',
-                style: GlassTokens.of(context).typography.mono,
-              ), // l10n-ignore: TCP port notation.
+              Text(endpoint, style: GlassTokens.of(context).typography.mono),
               Text(state),
             ],
           ),

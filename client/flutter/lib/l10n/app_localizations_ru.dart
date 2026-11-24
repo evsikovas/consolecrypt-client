@@ -104,7 +104,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get captureArpReply => 'Сообщает MAC-адрес устройства';
 
   @override
-  String get capturePacketBytes => 'Захваченные байты';
+  String get capturePacketBytes => 'Захваченные байты · HEX / ASCII';
+
+  @override
+  String get dockerTaskCount => 'Задачи';
+
+  @override
+  String get dockerNetworkId => 'ID сети';
+
+  @override
+  String get captureInvalidPassword => 'Пароль sudo содержит управляющий символ. Введите пароль в одну строку.';
 
   @override
   String get dockerDiskUsage => 'Место на диске';

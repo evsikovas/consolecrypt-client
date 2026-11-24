@@ -211,6 +211,8 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
       CaptureStatus.denied => l.captureDenied,
       CaptureStatus.failed => l.captureFailed,
       CaptureStatus.noPeer => l.captureNoPeer,
+      CaptureStatus.hostKeyChanged => l.errorHostKeyChanged,
+      CaptureStatus.invalidSudoPassword => l.captureInvalidPassword,
     };
     return PageScaffold(
       title: l.captureTitle,
@@ -316,7 +318,7 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
                               style: theme.typography.caption,
                             ),
                           if (current?.status == CaptureStatus.missing) ...[
-                            if (installCommands.containsKey(current!.manager))
+                            if (current!.installCommand != null)
                               GlassButton(
                                 label: l.captureInstall,
                                 icon: Icons.download_rounded,

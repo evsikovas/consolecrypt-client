@@ -102,7 +102,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get captureArpReply => '返回设备的 MAC 地址';
 
   @override
-  String get capturePacketBytes => '捕获的字节';
+  String get capturePacketBytes => '捕获的字节 · HEX / ASCII';
+
+  @override
+  String get dockerTaskCount => '任务数';
+
+  @override
+  String get dockerNetworkId => '网络 ID';
+
+  @override
+  String get captureInvalidPassword => 'sudo 密码含有控制字符。请使用单行输入密码。';
 
   @override
   String get dockerDiskUsage => '磁盘用量';

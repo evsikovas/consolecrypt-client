@@ -26,14 +26,15 @@ class _RegistryDialogState extends ConsumerState<RegistryCredentialDialog> {
   }
 
   static const presets = {
-    'Docker Hub': 'docker.io',
+    _dockerHub: 'docker.io',
     'Harbor': '',
     'GitLab': 'registry.gitlab.com',
     'Forgejo': '',
     'GitHub': 'ghcr.io',
     'custom': '',
   };
-  String provider = 'Docker Hub';
+  static const _dockerHub = 'Docker Hub'; // l10n-ignore: Official registry service name.
+  String provider = _dockerHub;
   final address = TextEditingController(text: 'docker.io'),
       user = TextEditingController(),
       token = TextEditingController(),

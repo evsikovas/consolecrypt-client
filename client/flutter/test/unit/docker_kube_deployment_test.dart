@@ -64,7 +64,8 @@ void main() {
     expect(DockerKubeTarget.dockerImage('team/image:1'), 'docker.io/team/image:1');
     expect(DockerKubeTarget.dockerImage('ghcr.io/org/image:2'), 'ghcr.io/org/image:2');
     final digest = 'sha256:${'a' * 64}';
-    expect(DockerKubeTarget.dockerImage('python:3@$digest'), 'docker.io/library/python@$digest');
+    expect(DockerKubeTarget.dockerImage('python:3@$digest'), 'docker.io/library/python:3@$digest');
+    expect(DockerKubeTarget.dockerImage('python:3@$digest', digestOnly: true), 'docker.io/library/python@$digest');
     for (final id in [digest, 'a' * 64, 'localhost:5000/image:2', 'https://ghcr.io/org/image']) {
       expect(DockerKubeTarget.dockerImage(id), isNull);
     }

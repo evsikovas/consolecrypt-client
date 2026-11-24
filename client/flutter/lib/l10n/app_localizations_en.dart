@@ -103,7 +103,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureArpReply => 'Announces the device’s MAC address';
 
   @override
-  String get capturePacketBytes => 'Captured bytes';
+  String get capturePacketBytes => 'Captured bytes · HEX / ASCII';
+
+  @override
+  String get dockerTaskCount => 'Tasks';
+
+  @override
+  String get dockerNetworkId => 'Network ID';
+
+  @override
+  String get captureInvalidPassword => 'The sudo password contains a control character. Enter it on a single line.';
 
   @override
   String get dockerDiskUsage => 'Disk usage';

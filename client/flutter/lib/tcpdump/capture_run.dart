@@ -8,7 +8,18 @@ import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/tcpdump/capture.dart';
 import 'package:flutter/foundation.dart';
 
-enum CaptureStatus { connecting, listening, stopped, ready, missing, denied, failed, noPeer }
+enum CaptureStatus {
+  connecting,
+  listening,
+  stopped,
+  ready,
+  missing,
+  denied,
+  failed,
+  noPeer,
+  hostKeyChanged,
+  invalidSudoPassword,
+}
 
 /// Each request exclusively owns its SSH PTY, including prompts.
 /// Packets are kept in memory and repaint at most ten times per second.
@@ -21,8 +32,10 @@ final class CaptureRun extends ChangeNotifier {
   String? manager, error;
   bool _root = false;
   String? get installCommand {
-    final command = installCommands[manager];
-    return _root ? command?.replaceFirst(RegExp(r'^sudo '), '') : command;
+    final tool = manager;
+    final action = installActions[tool];
+    if (tool == null || action == null) return null;
+    return [if (!_root && tool != 'brew') 'sudo', tool, action, 'tcpdump'].join(' ');
   }
 
   HostKeyInfo? hostKey;
@@ -40,6 +53,9 @@ final class CaptureRun extends ChangeNotifier {
   int? exitCode;
   final _drained = Completer<void>();
   static final _ansi = RegExp(r'\x1b\[[0-?]*[ -/]*[@-~]');
+  static final _listeningLine = RegExp(r'^(?:tcpdump: )?listening on');
+  static final _sudoAuthRequired = RegExp(r'(?:password|interactive authentication) is required');
+  static final _informationalDiagnostic = RegExp(r'verbose output suppressed|warning:|^tcpdump: data link type');
 
   Future<void> startRemote(Host source, ObjectId peerId, {bool privileged = false}) =>
       _startSsh(source, peerId: peerId, sudo: privileged);
@@ -65,7 +81,7 @@ final class CaptureRun extends ChangeNotifier {
             switch (event) {
               case TerminalHostKeyPrompt(:final info):
                 if (info.changed) {
-                  _fail('SSH host key changed');
+                  _finish(CaptureStatus.hostKeyChanged);
                   return;
                 }
                 hostKey = info;
@@ -177,7 +193,7 @@ final class CaptureRun extends ChangeNotifier {
       _finish(CaptureStatus.noPeer);
       return;
     }
-    if (line.startsWith('tcpdump: listening on') || line.startsWith('listening on')) {
+    if (_listeningLine.hasMatch(line)) {
       _listening();
       return;
     }
@@ -186,12 +202,9 @@ final class CaptureRun extends ChangeNotifier {
       if (lower.contains('permission') ||
           lower.contains('permitted') ||
           lower.contains('privilege') ||
-          lower.contains('password is required') ||
-          lower.contains('interactive authentication is required')) {
+          _sudoAuthRequired.hasMatch(lower)) {
         _finish(CaptureStatus.denied, line);
-      } else if (!lower.contains('verbose output suppressed') &&
-          !lower.contains('warning:') &&
-          !lower.startsWith('tcpdump: data link type')) {
+      } else if (!_informationalDiagnostic.hasMatch(lower)) {
         error = line;
       }
       return;
@@ -260,7 +273,7 @@ final class CaptureRun extends ChangeNotifier {
       bytes = secret.exposeBytes();
       // A single terminal line. Control characters would be interpreted by the PTY.
       if (bytes.any((b) => b < 32 || b == 127)) {
-        _finish(CaptureStatus.failed, 'Invalid control character in sudo password');
+        _finish(CaptureStatus.invalidSudoPassword);
         return;
       }
       input = Uint8List(bytes.length + 1)..setAll(0, bytes);

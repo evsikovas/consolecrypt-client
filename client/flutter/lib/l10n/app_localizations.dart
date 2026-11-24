@@ -277,8 +277,26 @@ abstract class AppLocalizations {
   /// Captured bytes
   ///
   /// In en, this message translates to:
-  /// **'Captured bytes'**
+  /// **'Captured bytes · HEX / ASCII'**
   String get capturePacketBytes;
+
+  /// Number of Linux tasks reported by Docker for the container
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get dockerTaskCount;
+
+  /// Label for the identifier of a Docker network
+  ///
+  /// In en, this message translates to:
+  /// **'Network ID'**
+  String get dockerNetworkId;
+
+  /// Shown when a sudo password cannot be sent as a single terminal line
+  ///
+  /// In en, this message translates to:
+  /// **'The sudo password contains a control character. Enter it on a single line.'**
+  String get captureInvalidPassword;
 
   /// Docker disk usage tab.
   ///
@@ -325,7 +343,7 @@ abstract class AppLocalizations {
   /// dockerLifecycleAction
   ///
   /// In en, this message translates to:
-  /// **'{action, select, create {Created} start {Started} restart {Restarted} stop {Stopped} die {Exited} kill {Kill signal} oom {Out of memory} destroy {Removed} pause {Paused} unpause {Resumed} rename {Renamed} healthy {Healthy} unhealthy {Unhealthy} starting {Health check starting} other {Event}}'**
+  /// **'{action, select, create{Created} start{Started} restart{Restarted} stop{Stopped} die{Exited} kill{Kill signal} oom{Out of memory} destroy{Removed} pause{Paused} unpause{Resumed} rename{Renamed} healthy{Healthy} unhealthy{Unhealthy} starting{Health check starting} other{Event}}'**
   String dockerLifecycleAction(String action);
 
   /// Group of previously opened local KeePass databases

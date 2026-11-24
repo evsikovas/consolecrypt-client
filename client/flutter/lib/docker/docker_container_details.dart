@@ -1107,7 +1107,7 @@ class _ContainerUsageState extends State<_ContainerUsage> with WidgetsBindingObs
                     children: [
                       if (widget.mainPid != null && widget.mainPid! > 0)
                         Text('${l.dockerMainPid}  ${widget.mainPid}', style: t.typography.caption),
-                      if (s['pids'] != null) Text("PIDs  ${s['pids']}", style: t.typography.caption),
+                      if (s['pids'] != null) Text('${l.dockerTaskCount}  ${s['pids']}', style: t.typography.caption),
                     ],
                   ),
                   if (rows != null && rows.isNotEmpty) ...[
