@@ -1,7 +1,6 @@
-import 'package:consolecrypt/ai/terminal_attachment.dart';
-
 import 'dart:ui' show PointerDeviceKind;
 
+import 'package:consolecrypt/ai/terminal_attachment.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/models/models.dart';

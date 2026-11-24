@@ -55,15 +55,17 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
         _mobileEntryScheduled ||
         !visible ||
         tab == null ||
-        !AppPlatform.isMobile ||
-        MediaQuery.sizeOf(context).shortestSide >= 600 ||
+        !AppWindowLayout.isPhone(context) ||
+        (AppPlatform.isIOS && MediaQuery.sizeOf(context).shortestSide >= 600) ||
         tab.info.id == _minimizedPhoneSession) {
       return;
     }
     _mobileEntryScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _mobileEntryScheduled = false;
-      if (mounted && !_fullscreen && ModalRoute.of(context)?.isCurrent == true) _openFullscreen();
+      if (mounted && !_fullscreen && AppWindowLayout.isPhone(context) && ModalRoute.of(context)?.isCurrent == true) {
+        _openFullscreen();
+      }
     });
   }
 
@@ -318,7 +320,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
         );
         return GlassBlurSuppressor(
           budget: GlassScope.of(context).budget,
-          child: mobile && active != null
+          child: AppWindowLayout.isPhone(context) && active != null
               ? Semantics(
                   container: true,
                   explicitChildNodes: true,
