@@ -44,17 +44,22 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
         .toList();
     final selected = _more ? primary.length : primary.indexOf(_navigationBranch(branch));
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final terminalFocused = branch == ShellBranch.terminal && !_more && ref.watch(terminalMinimalModeProvider);
     final rdpVisible = branch == ShellBranch.rdp && !_more && !toolsOpen;
     // The remote desktop and its input controls need the short landscape
     // viewport. Navigation returns as soon as the keyboard is dismissed.
     final hideAppBar =
-        toolsOpen || (rdpVisible && (keyboardOpen || MediaQuery.orientationOf(context) == Orientation.landscape));
+        toolsOpen ||
+        terminalFocused ||
+        (rdpVisible && (keyboardOpen || MediaQuery.orientationOf(context) == Orientation.landscape));
     return PopScope(
       canPop: !toolsOpen && !_more && branch == ShellBranch.hosts,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         if (toolsOpen) {
           ref.read(workspaceToolsProvider.notifier).close();
+        } else if (terminalFocused) {
+          ref.read(terminalMinimalModeProvider.notifier).leave();
         } else if (_more) {
           setState(() => _more = false);
         } else {
@@ -164,7 +169,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
             ],
           ),
         ),
-        bottomNavigationBar: keyboardOpen || toolsOpen
+        bottomNavigationBar: keyboardOpen || toolsOpen || terminalFocused
             ? null
             : primary.isEmpty
             ? SafeArea(

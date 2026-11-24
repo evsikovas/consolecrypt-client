@@ -1,4 +1,8 @@
 {
+  "registryBuildOnSsh": "Собрать на {host} по SSH",
+  "registryRemoteDirectory": "Папка с Dockerfile на сервере",
+  "registryRemoteAuthHelp": "Во время сборки Buildx использует на этом сервере выбранную учётную запись реестра.",
+  "registryRemoteTools": "На SSH-сервере нужны Python 3, Docker Buildx и доступ к локальному сокету Docker.",
   "registryLabel": "Реестр образов",
   "registryChoose": "Выберите сохранённый реестр",
   "registryAdd": "Добавить реестр",
@@ -10823,7 +10827,8 @@
   "@dockerKubeTemplate": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAiReview": "Проверьте запрос перед отправкой. После генерации ConsoleCrypt добавит команду запуска локально.",
+  "dockerKubePrompt": "Запрос к ИИ",
+  "dockerKubeAiReview": "Перед отправкой можно изменить запрос или добавить свои требования. Команду запуска ConsoleCrypt добавит локально.",
   "@dockerKubeAiReview": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },

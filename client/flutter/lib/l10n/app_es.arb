@@ -1,4 +1,8 @@
 {
+  "registryBuildOnSsh": "Compilar en {host} por SSH",
+  "registryRemoteDirectory": "Carpeta del servidor que contiene el Dockerfile",
+  "registryRemoteAuthHelp": "Durante la compilación, Buildx usa la cuenta del registro seleccionada en este servidor.",
+  "registryRemoteTools": "El servidor SSH necesita Python 3, Docker Buildx y acceso al socket local de Docker.",
   "registryLabel": "Registro de imágenes",
   "registryChoose": "Selecciona un registro guardado",
   "registryAdd": "Añadir registro",
@@ -5264,7 +5268,8 @@
   "dockerKubeNamespaceCreated": "Espacio de nombres creado. Se conservará si cancelas.",
   "dockerKubeGenerate": "Generar YAML con IA",
   "dockerKubeTemplate": "Usar plantilla",
-  "dockerKubeAiReview": "Revisa la petición antes de enviarla. ConsoleCrypt añade el comando de inicio localmente después de la generación.",
+  "dockerKubePrompt": "Petición a la IA",
+  "dockerKubeAiReview": "Puedes editar la petición antes de enviarla. ConsoleCrypt añade el comando de inicio localmente después de la generación.",
   "dockerKubeSendAi": "Enviar petición",
   "dockerKubeManifestRejected": "El manifiesto debe incluir exactamente un Deployment y un servicio ClusterIP con la imagen, los nombres y el puerto seleccionados. Solo puedes editar los recursos y los tiempos de la comprobación de disponibilidad TCP.",
   "dockerKubeInvalidTarget": "Comprueba los nombres de la aplicación y del espacio de nombres, la imagen publicada con registro y etiqueta o resumen explícitos, el puerto TCP y el nombre del secreto de descarga.",

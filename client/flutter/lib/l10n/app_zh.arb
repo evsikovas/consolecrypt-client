@@ -1,4 +1,8 @@
 {
+  "registryBuildOnSsh": "通过 SSH 在 {host} 上构建",
+  "registryRemoteDirectory": "服务器上包含 Dockerfile 的目录",
+  "registryRemoteAuthHelp": "构建期间，Buildx 会在此服务器上使用选定的镜像仓库帐户。",
+  "registryRemoteTools": "SSH 服务器需要 Python 3、Docker Buildx 以及本地 Docker 套接字访问权限。",
   "registryLabel": "镜像仓库",
   "registryChoose": "选择已保存的仓库",
   "registryAdd": "添加镜像仓库",
@@ -5264,7 +5268,8 @@
   "dockerKubeNamespaceCreated": "命名空间已创建。取消操作后仍会保留。",
   "dockerKubeGenerate": "使用 AI 生成 YAML",
   "dockerKubeTemplate": "使用模板",
-  "dockerKubeAiReview": "发送前请检查提示词。生成后，ConsoleCrypt 会在本地添加启动命令。",
+  "dockerKubePrompt": "提示词",
+  "dockerKubeAiReview": "发送前可以编辑提示词或补充要求。生成后，ConsoleCrypt 会在本地添加启动命令。",
   "dockerKubeSendAi": "发送提示词",
   "dockerKubeManifestRejected": "清单必须包含且仅包含一个 Deployment 和一个 ClusterIP 服务，并使用所选镜像、名称及端口。只能修改资源配置和 TCP 就绪探测的时间参数。",
   "dockerKubeInvalidTarget": "请检查应用和命名空间的名称、已发布镜像的仓库及标签或摘要、TCP 端口和镜像拉取密钥的名称。",

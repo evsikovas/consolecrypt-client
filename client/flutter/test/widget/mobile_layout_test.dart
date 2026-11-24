@@ -73,7 +73,7 @@ void main() {
   });
 
   for (final width in [360.0, 412.0]) {
-    phoneTest('Android $width: navigation, tools, editor and settings fit phone', (tester) async {
+    testWidgets('Phone $width: navigation, tools, editor and settings fit phone', (tester) async {
       final backend = testBackend();
       addTearDown(backend.dispose);
       await backend.debugSignInDemoAndUnlock();
@@ -96,6 +96,7 @@ void main() {
         AppRoutes.kubernetes,
         AppRoutes.databases,
         AppRoutes.docker,
+        AppRoutes.tcpdump,
         AppRoutes.passwords,
         AppRoutes.externalVault,
         AppRoutes.automation,
@@ -124,7 +125,7 @@ void main() {
       await settle(tester);
       expect(find.byKey(const ValueKey('workspace-tools-panel')), findsNothing);
       expect(tester.takeException(), isNull);
-    });
+    }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
   }
 
   phoneTest('Android: terminal control keys and navigation keep the session', (tester) async {

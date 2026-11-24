@@ -6,6 +6,7 @@ import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/sidebar_state.dart';
 import 'package:consolecrypt/app/theme.dart';
+import 'package:consolecrypt/app/workspace_tools.dart' show MobileSessionActions;
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -87,7 +88,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
       _sidebar.setBesideTabs(visible && column);
     });
     final l10n = context.l10n;
-    final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
+    final minimal = ref.watch(terminalMinimalModeProvider);
     final macTitlebar = minimal && AppPlatform.isMacOS && GlassScope.of(context).unifiedTitlebar;
     final pad = minimal
         ? 4.0
@@ -260,7 +261,7 @@ class _TerminalTabs extends ConsumerWidget {
     final subtitleMode =
         ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabSubtitle)) ?? TerminalTabSubtitle.name;
     final grouped =
-        placement == TerminalTabPlacement.left &&
+        (placement == TerminalTabPlacement.left || AppPlatform.isMobile) &&
         (ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabGrouped)) ?? false);
     String titleFor(TerminalTab tab) =>
         grouped && tab.customTitle == null && (tab.host?.name.trim().isNotEmpty ?? false)
@@ -293,22 +294,22 @@ class _TerminalTabs extends ConsumerWidget {
     ];
     final activeIndex = state.activeIndex.clamp(0, state.tabs.length - 1);
     void menu(int i, Offset position) => unawaited(_tabMenu(context, ref, state.tabs[i], i, position));
+    final folders = grouped ? ref.watch(groupByIdProvider) : null;
+    final hosts = grouped ? ref.watch(hostByIdProvider) : null;
+    ({String id, String label}) groupOf(TerminalTab tab) {
+      if (tab.isLocal) return (id: 'local', label: context.l10n.terminalLocalComputer);
+      final host = hosts?[tab.host?.id] ?? tab.host;
+      final folder = folders?[host?.groupId];
+      return folder == null
+          ? (id: 'ungrouped', label: context.l10n.inventoryUngrouped)
+          : (id: folder.id.value, label: folder.name);
+    }
+
     if (placement == TerminalTabPlacement.left) {
       final layout = ref.watch(
         localSettingsProvider.select((s) => (s.value?.terminalTabColumnWidth, s.value?.terminalTabColumnCollapsed)),
       );
       final settings = ref.read(settingsServiceProvider);
-      final folders = grouped ? ref.watch(groupByIdProvider) : null;
-      final hosts = grouped ? ref.watch(hostByIdProvider) : null;
-      ({String id, String label}) groupOf(TerminalTab tab) {
-        if (tab.isLocal) return (id: 'local', label: context.l10n.terminalLocalComputer);
-        final host = hosts?[tab.host?.id] ?? tab.host;
-        final folder = folders?[host?.groupId];
-        return folder == null
-            ? (id: 'ungrouped', label: context.l10n.inventoryUngrouped)
-            : (id: folder.id.value, label: folder.name);
-      }
-
       return GlassTabColumn(
         groups: grouped ? state.tabs.map(groupOf).toList() : null,
         key: const ValueKey('terminal-tab-column'),
@@ -346,6 +347,30 @@ class _TerminalTabs extends ConsumerWidget {
     if (AppPlatform.isMobile) {
       return Row(
         children: [
+          if (grouped)
+            PopupMenuButton<TerminalTab>(
+              key: const ValueKey('terminal-session-folders'),
+              tooltip: context.l10n.sessionGroupTabs,
+              icon: const Icon(Icons.folder_open_rounded),
+              itemBuilder: (context) {
+                final groups = <({String id, String label}), List<TerminalTab>>{};
+                for (final tab in state.tabs) {
+                  (groups[groupOf(tab)] ??= []).add(tab);
+                }
+                return [
+                  for (final group in groups.entries) ...[
+                    PopupMenuItem(enabled: false, child: Text(group.key.label)),
+                    for (final tab in group.value)
+                      CheckedPopupMenuItem(value: tab, checked: tab == active, child: Text(titleFor(tab))),
+                  ],
+                ];
+              },
+              onSelected: (tab) {
+                if (!context.mounted) return;
+                final index = ref.read(terminalTabsProvider).tabs.indexOf(tab);
+                if (index >= 0) controller.activate(index);
+              },
+            ),
           Expanded(child: strip),
           TerminalFindButton(tab: active),
           TerminalEncodingButton(tab: active),
@@ -759,7 +784,7 @@ class _TerminalCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = GlassTokens.of(context);
-    final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
+    final minimal = ref.watch(terminalMinimalModeProvider);
     final scheme = ref.watch(
       localSettingsProvider.select((s) => s.value?.terminalColorScheme ?? TerminalColorScheme.system),
     );
@@ -1261,6 +1286,9 @@ class _MobileTerminalKeys extends ConsumerWidget {
                   onPressed: () => showTerminalContextMenu(context, ref, tab, glassAnchorRect(anchorContext)),
                 ),
               ),
+              const _TerminalMinimalButton(),
+              const MobileSessionActions(),
+              _SplitMenu(tab: tab),
               for (final chord in [
                 ('Esc', TerminalKey.escape, false),
                 ('Tab', TerminalKey.tab, false),

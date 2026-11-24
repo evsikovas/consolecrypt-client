@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
@@ -78,12 +79,18 @@ void main() {
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
     final service = _Sessions();
-    await pumpApp(tester, backend, overrides: [terminalServiceProvider.overrideWithValue(service)]);
+    final mobile = AppPlatform.isMobile;
+    await pumpApp(
+      tester,
+      backend,
+      size: mobile ? const Size(360, 800) : const Size(1600, 1000),
+      overrides: [terminalServiceProvider.overrideWithValue(service)],
+    );
     await enterKey(tester, 'hosts-search', 'staging-web');
     await tapKey(tester, 'connect-staging-web');
     final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
     final root = container.read(terminalTabsProvider).active!;
-    await tapKey(tester, 'nav-tmux');
+    await tapKey(tester, mobile ? 'terminal-tool-tmux' : 'nav-tmux');
     expect(find.text('build'), findsOneWidget);
     Future<void> button(String label, {bool last = false}) async {
       final matches = find.byTooltip(label);
@@ -119,5 +126,5 @@ void main() {
     await settle(tester);
     expect(find.text('deploy'), findsOneWidget);
     expect(tester.takeException(), isNull);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.android, TargetPlatform.iOS}));
 }

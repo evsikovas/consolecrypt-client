@@ -10,6 +10,20 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String registryBuildOnSsh(String host) {
+    return '通过 SSH 在 $host 上构建';
+  }
+
+  @override
+  String get registryRemoteDirectory => '服务器上包含 Dockerfile 的目录';
+
+  @override
+  String get registryRemoteAuthHelp => '构建期间，Buildx 会在此服务器上使用选定的镜像仓库帐户。';
+
+  @override
+  String get registryRemoteTools => 'SSH 服务器需要 Python 3、Docker Buildx 以及本地 Docker 套接字访问权限。';
+
+  @override
   String get registryLabel => '镜像仓库';
 
   @override
@@ -17165,7 +17179,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeTemplate => '使用模板';
 
   @override
-  String get dockerKubeAiReview => '发送前请检查提示词。生成后，ConsoleCrypt 会在本地添加启动命令。';
+  String get dockerKubePrompt => '提示词';
+
+  @override
+  String get dockerKubeAiReview => '发送前可以编辑提示词或补充要求。生成后，ConsoleCrypt 会在本地添加启动命令。';
 
   @override
   String get dockerKubeSendAi => '发送提示词';

@@ -262,12 +262,24 @@ class TerminalTabPlacementSetting extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (AppPlatform.isMobile) return const SizedBox.shrink();
     final placement =
         ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabPlacement)) ?? TerminalTabPlacement.top;
     final settings = ref.read(settingsServiceProvider);
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
+    final groupSessions = CheckboxListTile(
+      key: ValueKey('$id-grouped'),
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      controlAffinity: ListTileControlAffinity.leading,
+      title: Text(l.sessionGroupTabs),
+      value: ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabGrouped)) ?? false,
+      onChanged: (value) => runWithFeedback(
+        context,
+        () => settings.updateLocal(settings.currentLocal.copyWith(terminalTabGrouped: value ?? false)),
+      ),
+    );
+    if (AppPlatform.isMobile) return groupSessions;
     return LabeledValue(
       label: l.settingsTerminalTabPlacement,
       value: Column(
@@ -296,19 +308,7 @@ class TerminalTabPlacementSetting extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: GlassSpacing.s4),
-          if (placement == TerminalTabPlacement.left)
-            CheckboxListTile(
-              key: ValueKey('$id-grouped'),
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              title: Text(l.sessionGroupTabs),
-              value: ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabGrouped)) ?? false,
-              onChanged: (value) => runWithFeedback(
-                context,
-                () => settings.updateLocal(settings.currentLocal.copyWith(terminalTabGrouped: value ?? false)),
-              ),
-            ),
+          if (placement == TerminalTabPlacement.left) groupSessions,
           Text(
             l.settingsTerminalTabPlacementHelp,
             style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),

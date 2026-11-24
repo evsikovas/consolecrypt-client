@@ -70,7 +70,7 @@ async fn saved_docker_forward_resolves_name_relays_tcp_and_rebinds_same_port() {
             },
             client: DockerClient::new(Arc::new(TestEngine(upstream.local_addr().unwrap().port()))),
             ssh: None,
-            local_endpoint: None,
+            cli_endpoint: None,
             host_id: None,
             cancel: unlocked.docker.shutdown.child_token(),
         }),

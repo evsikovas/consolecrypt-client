@@ -655,11 +655,18 @@ void main() {
       ),
     );
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-structural-summary')));
+    final summary = find.byKey(const ValueKey('kube-structural-summary'));
+    final title = find.text('Конфигурация нагрузки и узла');
+    expect(tester.getTopLeft(title).dx - tester.getTopLeft(summary).dx, closeTo(16, 0.1));
+    await tester.tap(title);
     await settle(tester);
-    await tester.tap(find.text('Контейнер · app'));
+    final container = find.text('Контейнер · app');
+    expect(tester.getTopLeft(container).dx - tester.getTopLeft(title).dx, closeTo(12, 0.1));
+    await tester.tap(container);
     await settle(tester);
-    expect(find.textContaining('100m'), findsOneWidget);
+    final requests = find.textContaining('100m');
+    expect(requests, findsOneWidget);
+    expect(tester.getTopLeft(requests).dx, closeTo(tester.getTopLeft(container).dx, 0.1));
     expect(find.textContaining('never-show'), findsNothing);
     expect(tester.takeException(), isNull);
   });

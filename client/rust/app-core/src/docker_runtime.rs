@@ -116,7 +116,7 @@ mod local_engine_tests {
                     },
                     client: DockerClient::new(Arc::new(NeverConnect)),
                     ssh: None,
-                    local_endpoint: None,
+                    cli_endpoint: None,
                     host_id: ssh_host,
                     cancel: CancellationToken::new(),
                 }),
@@ -227,8 +227,8 @@ struct LiveDocker {
     info: DockerSessionDto,
     client: DockerClient,
     ssh: Option<Arc<SshSession>>,
-    /// The engine socket of this computer (None over SSH).
-    local_endpoint: Option<String>,
+    /// Exact engine for CLI operations. A dial-stdio connection uses the remote CLI context.
+    cli_endpoint: Option<String>,
     host_id: Option<ObjectId>,
     cancel: CancellationToken,
 }
@@ -350,7 +350,7 @@ impl DockerRuntime {
         Ok(ComposeTarget {
             client: live.client.clone(),
             ssh: live.ssh.clone(),
-            local_endpoint: live.local_endpoint.clone(),
+            local_endpoint: live.cli_endpoint.clone(),
             cancel: live.cancel.clone(),
         })
     }
@@ -488,7 +488,7 @@ impl AppCore {
         let failed = |failure: &'static str, detail: String| {
             Ok(DockerConnectOutcome::Failed { failure, detail })
         };
-        let (client, ssh, host, name, local_endpoint) =
+        let (client, ssh, host, name, cli_endpoint) =
             if cc_docker_core::local::is_local_host(&host_id) {
                 let engines = tokio::task::spawn_blocking(cc_docker_core::local::local_engines)
                     .await
@@ -545,10 +545,10 @@ impl AppCore {
                 if let Some(path) = socket {
                     let client = DockerClient::new(Arc::new(SshSocket {
                         session: session.clone(),
-                        path,
+                        path: path.clone(),
                     }));
                     if client.info().await.is_ok() {
-                        chosen = Some(client);
+                        chosen = Some((client, Some(format!("unix://{path}"))));
                     }
                 }
                 if chosen.is_none() {
@@ -559,10 +559,10 @@ impl AppCore {
                         .await
                         .is_ok_and(|r| r.is_ok())
                     {
-                        chosen = Some(client);
+                        chosen = Some((client, None));
                     }
                 }
-                let Some(client) = chosen else {
+                let Some((client, endpoint)) = chosen else {
                     let _ = session.disconnect().await;
                     return match probe {
                         "missing" => failed("not_running", String::new()),
@@ -574,7 +574,7 @@ impl AppCore {
                         _ => failed("connection_failed", String::new()),
                     };
                 };
-                (client, Some(session), Some(host), name, None)
+                (client, Some(session), Some(host), name, endpoint)
             };
         let info = match tokio::time::timeout(Duration::from_secs(15), client.info()).await {
             Ok(Ok(info)) => info,
@@ -604,7 +604,7 @@ impl AppCore {
                     info: dto.clone(),
                     client,
                     ssh,
-                    local_endpoint,
+                    cli_endpoint,
                     host_id: host,
                     cancel,
                 }),
@@ -711,14 +711,28 @@ impl AppCore {
         if let Some(build) = build_json {
             let options: buildx::BuildOptions =
                 serde_json::from_str(&build).map_err(|_| invalid("build_context"))?;
+            let target = buildx::BuildTarget {
+                repo: cc_docker_core::registry_repository(registry, &repository, &tag)
+                    .ok_or_else(|| invalid("registry_credential"))?,
+                tag: &tag,
+                username,
+                password: secret.value.expose_secret(),
+            };
+            if let Some(ssh) = live.ssh.as_deref() {
+                return tokio::select! {
+                    biased;
+                    _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+                    result = options.publish_remote(ssh, live.cli_endpoint.as_deref(), &target) => result,
+                };
+            }
             let endpoint = live
-                .local_endpoint
+                .cli_endpoint
                 .as_deref()
                 .ok_or_else(|| invalid("build_context"))?;
             return tokio::select! {
                 biased;
                 _ = live.cancel.cancelled() => Err(invalid("session_closed")),
-                result = options.publish(endpoint, registry, &repository, &tag, username, secret.value.expose_secret()) => result,
+                result = options.publish(endpoint, &target) => result,
             };
         }
         tokio::select! {

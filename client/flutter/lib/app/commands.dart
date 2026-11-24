@@ -212,12 +212,11 @@ const appCommands = [
 /// turned off); unknown or invalid values fall back to the factory one.
 List<AppCommand> resolveAppCommands(Map<String, String> overrides) => [
   for (final command in appCommands)
-    if (!AppPlatform.isMobile || command.id != AppCommandId.toggleTerminalMinimalMode)
-      switch (overrides[command.id.name]) {
-        null => command,
-        '' => AppCommand(command.id, null),
-        final value => AppCommand(command.id, ShortcutBinding.decode(value) ?? command.binding),
-      },
+    switch (overrides[command.id.name]) {
+      null => command,
+      '' => AppCommand(command.id, null),
+      final value => AppCommand(command.id, ShortcutBinding.decode(value) ?? command.binding),
+    },
 ];
 
 final appCommandsProvider = Provider<List<AppCommand>>(
@@ -281,7 +280,7 @@ final class AppCommandDispatcher {
       case AppCommandId.customizeSidebar:
         if (context != null) unawaited(showNavigationCustomization(context));
       case AppCommandId.toggleTerminalMinimalMode:
-        if (!AppPlatform.isMobile && router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
+        if (router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
           _ref.read(terminalMinimalModeProvider.notifier).toggle();
         }
       case AppCommandId.commandPalette:
@@ -306,7 +305,7 @@ final class AppCommandDispatcher {
         if (!AppPlatform.isMobile && !narrow) _ref.read(sidebarCollapsedProvider.notifier).toggle();
       case AppCommandId.splitTerminalRight || AppCommandId.splitTerminalDown:
         final tab = _ref.read(terminalTabsProvider).active;
-        if (!AppPlatform.isMobile && tab != null && router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
+        if (tab != null && router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
           final axis = id == AppCommandId.splitTerminalRight ? Axis.horizontal : Axis.vertical;
           unawaited(_ref.read(terminalTabsProvider.notifier).split(tab, axis).then((_) {}, onError: (_) {}));
         }

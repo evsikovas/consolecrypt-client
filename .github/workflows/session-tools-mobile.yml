@@ -1,0 +1,74 @@
+name: Mobile session tools preview
+
+on:
+  push:
+    branches: ['preview/session-tools-mobile']
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: ${{ matrix.platform }}
+    if: github.repository == 'evsikovas/consolecrypt-client'
+    runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [android, ios]
+    env:
+      CC_BUILD_NUMBER: '91041'
+      CARGO_BUILD_JOBS: '3'
+      ANDROID_HOME: ${{ vars.ANDROID_HOME }}
+      JAVA_HOME: ${{ vars.JAVA_HOME }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          clean: false
+          persist-credentials: false
+      - name: Prepare the native toolchain
+        run: |
+          source client/scripts/ci-macos-tools.sh --xcode
+          git restore --source=HEAD -- client/flutter/pubspec.yaml client/flutter/lib/app/app_info.dart
+      - name: Verify the SSH build helper
+        run: python3 -m unittest discover -s client/scripts/tests -p test_buildx_remote.py
+      - name: Build and verify the signed APK
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          set -euo pipefail
+          caffeinate -i bash client/scripts/build-android.sh
+          cd dist/android
+          version=$(cat ConsoleCrypt.version)
+          [[ "$version" == "1.2.3+$CC_BUILD_NUMBER" ]]
+          apk=ConsoleCrypt-android-arm64.apk
+          build_tools="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}/build-tools/36.0.0"
+          signer=$("$build_tools/apksigner" verify --print-certs "$apk" | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-f]+)$/\1/p')
+          [[ "$signer" == 26c5639c133881b103123361eb19d226c0dc0dce19eafa26c661862847d8e485 ]]
+          package="ConsoleCrypt-$version-android-arm64.apk"
+          mkdir -p "$RUNNER_TEMP/mobile-$GITHUB_RUN_ID-android"
+          cd "$RUNNER_TEMP/mobile-$GITHUB_RUN_ID-android"
+          cp "$GITHUB_WORKSPACE/dist/android/$apk" "$package"
+          shasum -a 256 "$package" > SHA256SUMS-android.txt
+      - name: Build, install and launch on a fresh iPhone Simulator
+        if: matrix.platform == 'ios'
+        shell: bash
+        run: |
+          set -euo pipefail
+          caffeinate -i bash client/scripts/ci-ios.sh --build-only
+          version=$(cat dist/ios/ConsoleCrypt-simulator-universal.version)
+          [[ "$version" == "1.2.3+$CC_BUILD_NUMBER" ]]
+          package="ConsoleCrypt-$version-ios-simulator-universal.zip"
+          mkdir -p "$RUNNER_TEMP/mobile-$GITHUB_RUN_ID-ios"
+          cd "$RUNNER_TEMP/mobile-$GITHUB_RUN_ID-ios"
+          cp "$GITHUB_WORKSPACE/dist/ios/$package" .
+          unzip -tq "$package"
+          shasum -a 256 "$package" > SHA256SUMS-ios.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: mobile-${{ matrix.platform }}
+          path: ${{ runner.temp }}/mobile-${{ github.run_id }}-${{ matrix.platform }}/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

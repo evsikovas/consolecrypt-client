@@ -1,4 +1,12 @@
 {
+  "registryBuildOnSsh": "Build on {host} over SSH",
+  "@registryBuildOnSsh": {"description":"Build mode for the selected remote Docker engine","placeholders":{"host":{"type":"String"}}},
+  "registryRemoteDirectory": "Server folder containing Dockerfile",
+  "@registryRemoteDirectory": {"description":"Absolute build context directory on the SSH server"},
+  "registryRemoteAuthHelp": "Buildx uses the selected registry account on this server during the build.",
+  "@registryRemoteAuthHelp": {"description":"Where registry credentials are used for a remote build"},
+  "registryRemoteTools": "The SSH host needs Python 3, Docker Buildx and a local Docker socket.",
+  "@registryRemoteTools": {"description":"Requirements for building a project on an SSH server"},
   "registryLabel": "Container registry",
   "@registryLabel": {"description": "Container registry"},
   "registryChoose": "Select a saved registry",
@@ -23568,7 +23576,11 @@
   "@dockerKubeTemplate": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAiReview": "Review the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.",
+  "dockerKubePrompt": "Prompt",
+  "@dockerKubePrompt": {
+    "description": "Label of the editable prompt sent to the selected AI provider."
+  },
+  "dockerKubeAiReview": "You can edit the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.",
   "@dockerKubeAiReview": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },

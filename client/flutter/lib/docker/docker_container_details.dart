@@ -154,11 +154,12 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
         container: detail.container,
         source: source,
         engineName: session.hostName,
+        remoteBuild: !DockerHost.isLocalId(session.hostId),
         imageKey: hasImageId ? (hostId: session.hostId, imageId: imageId) : null,
         publishImage: hasImageId
             ? (credential, path, tag) => service.publishImage(session.id, imageId, credential, path, tag)
             : null,
-        buildImage: hasImageId && !AppPlatform.isMobile && DockerHost.isLocalId(session.hostId)
+        buildImage: hasImageId && (!DockerHost.isLocalId(session.hostId) || !AppPlatform.isMobile)
             ? (credential, path, tag, build) =>
                   service.publishImage(session.id, imageId, credential, path, tag, build: build)
             : null,

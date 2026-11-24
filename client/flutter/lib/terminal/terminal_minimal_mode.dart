@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -41,7 +40,6 @@ class TerminalMinimalMode extends Notifier<bool> {
   }
 
   void toggle() {
-    if (AppPlatform.isMobile) return;
     if (!state) ref.read(workspaceToolsProvider.notifier).close();
     state = !state;
   }

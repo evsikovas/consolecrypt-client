@@ -304,7 +304,7 @@ final class DockerKubeTarget {
   };
 
   String get template => _yamlPair(deployment, service);
-  // This is also the exact preview shown before sending. Local startup arguments stay on the device.
+  // Initial text for the prompt editor. Local startup arguments stay on the device.
   String get prompt => [
     'Generate two Kubernetes YAML documents for a stateless Linux application. Return only YAML separated by ---.', // l10n-ignore: model contract
     'Use apps/v1 Deployment and v1 Service. For both, metadata contains only name "$name" and namespace "$namespace".', // l10n-ignore: model contract

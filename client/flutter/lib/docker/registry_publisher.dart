@@ -18,10 +18,11 @@ class RegistryPublisher extends ConsumerStatefulWidget {
     required this.sourceImage,
     required this.publish,
     required this.allowBuild,
+    required this.remoteBuild,
     super.key,
   });
   final bool enabled;
-  final bool publishing, allowBuild;
+  final bool publishing, allowBuild, remoteBuild;
   final String engineName, sourceImage;
   final Future<void> Function(Credential, String, String, DockerBuildContext?) publish;
   @override
@@ -88,6 +89,13 @@ class _RegistryPublisherState extends ConsumerState<RegistryPublisher> {
     final account = credentials.where((c) => c.id.value == selected).firstOrNull;
     final path = repository.text.trim(), version = tag.text.trim();
     final dest = '${account?.registry}/$path:$version';
+    final buildDirectory = directory;
+    final directoryReady =
+        buildDirectory != null &&
+        (!widget.remoteBuild ||
+            (buildDirectory.startsWith('/') &&
+                buildDirectory != '/' &&
+                !RegExp(r'[\x00-\x1f\x7f]').hasMatch(buildDirectory)));
     final valid =
         account != null &&
         repoPattern.hasMatch(path) &&
@@ -164,24 +172,40 @@ class _RegistryPublisherState extends ConsumerState<RegistryPublisher> {
               dense: true,
               controlAffinity: ListTileControlAffinity.leading,
               value: rebuild,
-              title: Text(l.registryBuildFromSource),
+              title: Text(widget.remoteBuild ? l.registryBuildOnSsh(widget.engineName) : l.registryBuildFromSource),
               onChanged: widget.enabled ? (v) => setState(() => rebuild = v == true) : null,
             ),
           if (rebuild) ...[
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                GlassButton(
-                  icon: Icons.folder_open_rounded,
-                  key: const ValueKey('registry-build-folder'),
-                  label: l.registryBuildFolder,
-                  onPressed: widget.enabled ? chooseDirectory : null,
+            if (widget.remoteBuild)
+              TextFormField(
+                key: const ValueKey('registry-remote-folder'),
+                initialValue: directory,
+                enabled: widget.enabled,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: l.registryRemoteDirectory,
+                  hintText: '/srv/my-app',
+                  helperText: l.registryRemoteAuthHelp,
+                  helperMaxLines: 4,
                 ),
-                if (directory != null) SelectableText(directory!, style: GlassTokens.of(context).typography.caption),
-              ],
-            ),
+                onChanged: (value) => setState(() => directory = value),
+              )
+            else
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  GlassButton(
+                    icon: Icons.folder_open_rounded,
+                    key: const ValueKey('registry-build-folder'),
+                    label: l.registryBuildFolder,
+                    onPressed: widget.enabled ? chooseDirectory : null,
+                  ),
+                  if (directory != null) SelectableText(directory!, style: GlassTokens.of(context).typography.caption),
+                ],
+              ),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -204,7 +228,9 @@ class _RegistryPublisherState extends ConsumerState<RegistryPublisher> {
             ),
           ],
           Text(
-            rebuild
+            rebuild && widget.remoteBuild
+                ? '${widget.engineName} · ${directory ?? ''} → $dest'
+                : rebuild
                 ? dest
                 : [if (widget.engineName.isNotEmpty) widget.engineName, '${widget.sourceImage} → $dest'].join(' · '),
             style: GlassTokens.of(context).typography.caption,
@@ -216,7 +242,7 @@ class _RegistryPublisherState extends ConsumerState<RegistryPublisher> {
               label: rebuild ? l.registryBuildPush : l.registryPublish,
               busy: widget.publishing,
               icon: Icons.cloud_upload_outlined,
-              onPressed: widget.enabled && valid && (!rebuild || (directory != null && platforms.isNotEmpty))
+              onPressed: widget.enabled && valid && (!rebuild || (directoryReady && platforms.isNotEmpty))
                   ? () => widget.publish(
                       account,
                       path,

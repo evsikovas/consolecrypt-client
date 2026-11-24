@@ -310,7 +310,7 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: _desktop);
 
-  testWidgets('phones keep the tab strip and offer no placement setting', (tester) async {
+  testWidgets('phones can group and switch sessions without a sidebar', (tester) async {
     final (_, container) = await _terminal(tester, placement: TerminalTabPlacement.left, size: const Size(360, 800));
     expect(find.byType(GlassTabStrip), findsOneWidget);
     expect(find.byType(GlassTabColumn), findsNothing);
@@ -319,8 +319,15 @@ void main() {
     await settle(tester);
     expect(find.byKey(const ValueKey('terminal-tab-placement')), findsNothing);
     expect(find.byKey(const ValueKey('appearance-tab-placement')), findsNothing);
+    await tapKey(tester, 'terminal-tab-placement-grouped');
+    container.read(routerProvider).go(AppRoutes.terminal);
+    await settle(tester);
+    await tapKey(tester, 'terminal-session-folders');
+    await tester.tap(find.widgetWithText(CheckedPopupMenuItem<TerminalTab>, 'raspberry-pi'));
+    await settle(tester);
+    expect(container.read(terminalTabsProvider).active?.host?.name, 'raspberry-pi');
     expect(tester.takeException(), isNull);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+  }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
 
   test('sidebar state: Kubernetes folding, the tab column default and manual toggles', () async {
     final backend = testBackend();

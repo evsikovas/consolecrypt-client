@@ -10,6 +10,20 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String registryBuildOnSsh(String host) {
+    return 'Build on $host over SSH';
+  }
+
+  @override
+  String get registryRemoteDirectory => 'Server folder containing Dockerfile';
+
+  @override
+  String get registryRemoteAuthHelp => 'Buildx uses the selected registry account on this server during the build.';
+
+  @override
+  String get registryRemoteTools => 'The SSH host needs Python 3, Docker Buildx and a local Docker socket.';
+
+  @override
   String get registryLabel => 'Container registry';
 
   @override
@@ -17938,8 +17952,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dockerKubeTemplate => 'Use template';
 
   @override
+  String get dockerKubePrompt => 'Prompt';
+
+  @override
   String get dockerKubeAiReview =>
-      'Review the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.';
+      'You can edit the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.';
 
   @override
   String get dockerKubeSendAi => 'Send prompt';

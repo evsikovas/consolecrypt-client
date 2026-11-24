@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:consolecrypt/app/app.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -250,7 +251,12 @@ void main() {
     final backend = testBackend(), shell = _Shell()..connect();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
-    await pumpApp(tester, backend, overrides: [terminalServiceProvider.overrideWithValue(shell)]);
+    await pumpApp(
+      tester,
+      backend,
+      size: AppPlatform.isMobile ? const Size(390, 844) : const Size(1200, 900),
+      overrides: [terminalServiceProvider.overrideWithValue(shell)],
+    );
     final container = ProviderScope.containerOf(tester.element(find.byType(ConsoleCryptApp)));
     container.read(routerProvider).go(AppRoutes.tcpdump);
     await settle(tester);
@@ -264,16 +270,13 @@ void main() {
     await tester.tap(find.descendant(of: find.byType(HostPickerDialog), matching: find.byType(ListTile)).first);
     await settle(tester);
     final swap = find.byKey(const ValueKey('tcpdump-swap'));
-    final leftLabel = tester.getCenter(swap).dx;
-    final hostLabels = tester
-        .widgetList<Text>(find.byType(Text))
-        .where((w) => w.data != null && backend.inventory.currentHosts.any((h) => h.name == w.data))
-        .map((w) => w.data!)
-        .toSet();
-    final originalSource = hostLabels.firstWhere((name) => tester.getCenter(find.text(name).first).dx < leftLabel);
+    String hostLabel(String key) =>
+        tester.widget<Text>(find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(Text))).data!;
+    final originalSource = hostLabel('tcpdump-source'), originalPeer = hostLabel('tcpdump-peer');
     await tester.tap(swap);
     await settle(tester);
-    expect(tester.getCenter(find.text(originalSource).first).dx, greaterThan(leftLabel));
+    expect(hostLabel('tcpdump-source'), originalPeer);
+    expect(hostLabel('tcpdump-peer'), originalSource);
     await tester.tap(find.byTooltip('Run capture with sudo'));
     await tester.tap(find.text('Start capture'));
     await settle(tester);
@@ -328,5 +331,5 @@ void main() {
     await settle(tester);
     expect(shell.closed, 1);
     expect(tester.takeException(), isNull);
-  });
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.android, TargetPlatform.iOS}));
 }

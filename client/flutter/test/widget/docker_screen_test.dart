@@ -514,8 +514,11 @@ void main() {
     expect(sourceImage, inspect.container.image);
     expect(
       tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text,
-      startsWith('docker.io/example/shop-api@sha256:'),
+      'docker.io/example/shop-api:2.4.1',
     );
+    await tapKey(tester, 'docker-kube-pin');
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text,
+        contains('@sha256:'));
     expect(find.text('AI provider'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });

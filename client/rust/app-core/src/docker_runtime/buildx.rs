@@ -1,6 +1,7 @@
 use super::invalid;
 use crate::{AppResult, docker_compose::LocalComposeHost};
 use base64::{Engine, engine::general_purpose::STANDARD};
+use cc_ssh_core::SshSession;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
@@ -18,17 +19,7 @@ pub(super) struct BuildOptions {
 }
 
 impl BuildOptions {
-    pub(super) async fn publish(
-        self,
-        endpoint: &str,
-        registry: &str,
-        repository: &str,
-        tag: &str,
-        username: &str,
-        password: &str,
-    ) -> AppResult<String> {
-        let repo = cc_docker_core::registry_repository(registry, repository, tag)
-            .ok_or_else(|| invalid("registry_credential"))?;
+    fn validate_platforms(&self) -> AppResult<()> {
         if self.platforms.is_empty()
             || self.platforms.len() > 2
             || self
@@ -36,8 +27,77 @@ impl BuildOptions {
                 .iter()
                 .any(|p| !matches!(p.as_str(), "linux/amd64" | "linux/arm64"))
             || self.platforms.len() == 2 && self.platforms[0] == self.platforms[1]
-            || !self.directory.is_absolute()
         {
+            return Err(invalid("build_context"));
+        }
+        Ok(())
+    }
+
+    pub(super) async fn publish_remote(
+        self,
+        ssh: &SshSession,
+        endpoint: Option<&str>,
+        target: &BuildTarget<'_>,
+    ) -> AppResult<String> {
+        self.validate_platforms()?;
+        let path = self
+            .directory
+            .to_str()
+            .filter(|p| p.starts_with('/') && !p.chars().any(char::is_control))
+            .ok_or_else(|| invalid("build_context"))?;
+        #[derive(Serialize)]
+        struct BuildRequest<'a> {
+            directory: &'a str,
+            platforms: &'a [String],
+            endpoint: Option<&'a str>,
+            image: String,
+            registry: &'a str,
+            auth: &'a str,
+        }
+        let auth = target.auth();
+        let mut input = Zeroizing::new(
+            serde_json::to_vec(&BuildRequest {
+                directory: path,
+                platforms: &self.platforms,
+                endpoint,
+                image: format!("{}:{}", target.repo, target.tag),
+                registry: target.authority(),
+                auth: &auth,
+            })
+            .map_err(|_| invalid("build_context"))?,
+        );
+        input.push(b'\n');
+        if input.len() > 262144 {
+            return Err(invalid("build_context"));
+        }
+        let command = format!(
+            "exec python3 -I -c {}",
+            cc_docker_core::compose::shell_quote(include_str!("buildx_remote.py"))
+        );
+        let output = tokio::time::timeout(
+            std::time::Duration::from_secs(3660),
+            ssh.exec_with_private_input(&command, &input, 4096),
+        )
+        .await
+        .map_err(|_| invalid("buildx_failed"))?
+        .map_err(|_| invalid("buildx_failed"))?;
+        match output.exit_status {
+            Some(0) if output.exit_signal.is_none() => {
+                target.reference(std::str::from_utf8(&output.stdout).unwrap_or("").trim())
+            }
+            Some(2) => Err(invalid("build_context")),
+            Some(3 | 126 | 127) => Err(invalid("buildx_remote_tools")),
+            _ => Err(invalid("buildx_failed")),
+        }
+    }
+
+    pub(super) async fn publish(
+        self,
+        endpoint: &str,
+        target: &BuildTarget<'_>,
+    ) -> AppResult<String> {
+        self.validate_platforms()?;
+        if !self.directory.is_absolute() {
             return Err(invalid("build_context"));
         }
         let directory =
@@ -62,14 +122,7 @@ impl BuildOptions {
             std::fs::set_permissions(&config, std::fs::Permissions::from_mode(0o700))
                 .map_err(|_| invalid("build_context"))?;
         }
-        let (authority, _) = repo
-            .split_once('/')
-            .ok_or_else(|| invalid("registry_credential"))?;
-        let authority = if authority == "docker.io" {
-            "https://index.docker.io/v1/"
-        } else {
-            authority
-        };
+        let authority = target.authority();
         let mut plugins = Vec::new();
         if let Some(settings) = std::env::var_os("DOCKER_CONFIG")
             .map(PathBuf::from)
@@ -87,8 +140,7 @@ impl BuildOptions {
             "/Applications/Docker.app/Contents/Resources/cli-plugins",
         ));
         // Use only the selected account. Neither argv nor the user's Docker config receives its token.
-        let credentials = Zeroizing::new(format!("{username}:{password}"));
-        let auth = Zeroizing::new(STANDARD.encode(credentials.as_bytes()));
+        let auth = target.auth();
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
         struct DockerConfig<'a> {
@@ -120,7 +172,7 @@ impl BuildOptions {
                 "--platform",
                 &self.platforms.join(","),
                 "-t",
-                &format!("{repo}:{tag}"),
+                &format!("{}:{}", target.repo, target.tag),
                 "--push",
                 "--metadata-file",
             ])
@@ -141,15 +193,39 @@ impl BuildOptions {
         }
         let bytes = std::fs::read(metadata).map_err(|_| invalid("buildx_result"))?;
         let result: Value = serde_json::from_slice(&bytes).map_err(|_| invalid("buildx_result"))?;
-        let digest = result["containerimage.digest"]
-            .as_str()
-            .and_then(|s| s.strip_prefix("sha256:"))
+        target.reference(result["containerimage.digest"].as_str().unwrap_or(""))
+    }
+}
+
+pub(super) struct BuildTarget<'a> {
+    pub repo: String,
+    pub tag: &'a str,
+    pub username: &'a str,
+    pub password: &'a str,
+}
+
+impl BuildTarget<'_> {
+    fn authority(&self) -> &str {
+        match self.repo.split('/').next().unwrap_or("") {
+            "docker.io" => "https://index.docker.io/v1/",
+            authority => authority,
+        }
+    }
+
+    fn auth(&self) -> Zeroizing<String> {
+        let credentials = Zeroizing::new(format!("{}:{}", self.username, self.password));
+        Zeroizing::new(STANDARD.encode(credentials.as_bytes()))
+    }
+
+    fn reference(&self, digest: &str) -> AppResult<String> {
+        let digest = digest
+            .strip_prefix("sha256:")
             .filter(|s| {
                 s.len() == 64
                     && s.bytes()
                         .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
             })
             .ok_or_else(|| invalid("buildx_result"))?;
-        Ok(format!("{repo}@sha256:{digest}"))
+        Ok(format!("{}@sha256:{digest}", self.repo))
     }
 }

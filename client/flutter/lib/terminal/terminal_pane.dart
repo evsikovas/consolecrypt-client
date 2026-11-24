@@ -310,11 +310,14 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
                   if (primary &&
                       !keys.isAltPressed &&
                       !keys.isShiftPressed &&
-                      !AppPlatform.isMobile &&
                       (event.logicalKey == LogicalKeyboardKey.enter ||
                           event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
                     if (event is KeyDownEvent) {
-                      unawaited(toggleTerminalFullscreen());
+                      if (AppPlatform.isMobile) {
+                        ref.read(terminalMinimalModeProvider.notifier).toggle();
+                      } else {
+                        unawaited(toggleTerminalFullscreen());
+                      }
                     }
                     return KeyEventResult.handled;
                   }

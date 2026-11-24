@@ -226,66 +226,69 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    GlassPanel(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              GlassButton(
-                                label: source?.name ?? l.captureSource,
-                                icon: Icons.dns_rounded,
-                                onPressed: busy ? null : () => choose(true),
-                              ),
-                              GlassIconButton(
-                                key: const ValueKey('tcpdump-swap'),
-                                icon: Icons.swap_horiz_rounded,
-                                tooltip: l.captureSwap,
-                                onPressed: busy || source == null || target == null
-                                    ? null
-                                    : () => setState(() {
-                                        resetRun();
-                                        final previous = source;
-                                        source = target;
-                                        target = previous;
-                                        useSudo = false;
-                                      }),
-                              ),
-                              GlassButton(
-                                label: target?.name ?? l.captureTarget,
-                                icon: Icons.dns_rounded,
-                                onPressed: busy ? null : () => choose(false),
-                              ),
-                              GlassButton(
-                                icon: Icons.build_outlined,
-                                label: l.captureCheck,
-                                onPressed: busy || source == null ? null : check,
-                              ),
-                              GlassIconButton(
-                                icon: Icons.admin_panel_settings_outlined,
-                                tooltip: l.captureUseSudo,
-                                selected: useSudo,
-                                onPressed: busy ? null : () => setState(() => useSudo = !useSudo),
-                              ),
-                              if (busy)
-                                GlassButton(label: l.captureStop, icon: Icons.stop_rounded, onPressed: current!.stop)
-                              else
-                                GlassButton.prominent(
-                                  label: l.captureStart,
-                                  icon: Icons.play_arrow_rounded,
-                                  onPressed: target == null || source == null ? null : start,
+                    if (selected == null || bounds.maxWidth >= 600)
+                      GlassPanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                GlassButton(
+                                  key: const ValueKey('tcpdump-source'),
+                                  label: source?.name ?? l.captureSource,
+                                  icon: Icons.dns_rounded,
+                                  onPressed: busy ? null : () => choose(true),
                                 ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(l.captureServersHelp, style: theme.typography.caption),
-                          Text(l.capturePrivilegeHint, style: theme.typography.caption),
-                        ],
+                                GlassIconButton(
+                                  key: const ValueKey('tcpdump-swap'),
+                                  icon: Icons.swap_horiz_rounded,
+                                  tooltip: l.captureSwap,
+                                  onPressed: busy || source == null || target == null
+                                      ? null
+                                      : () => setState(() {
+                                          resetRun();
+                                          final previous = source;
+                                          source = target;
+                                          target = previous;
+                                          useSudo = false;
+                                        }),
+                                ),
+                                GlassButton(
+                                  key: const ValueKey('tcpdump-peer'),
+                                  label: target?.name ?? l.captureTarget,
+                                  icon: Icons.dns_rounded,
+                                  onPressed: busy ? null : () => choose(false),
+                                ),
+                                GlassButton(
+                                  icon: Icons.build_outlined,
+                                  label: l.captureCheck,
+                                  onPressed: busy || source == null ? null : check,
+                                ),
+                                GlassIconButton(
+                                  icon: Icons.admin_panel_settings_outlined,
+                                  tooltip: l.captureUseSudo,
+                                  selected: useSudo,
+                                  onPressed: busy ? null : () => setState(() => useSudo = !useSudo),
+                                ),
+                                if (busy)
+                                  GlassButton(label: l.captureStop, icon: Icons.stop_rounded, onPressed: current!.stop)
+                                else
+                                  GlassButton.prominent(
+                                    label: l.captureStart,
+                                    icon: Icons.play_arrow_rounded,
+                                    onPressed: target == null || source == null ? null : start,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(l.captureServersHelp, style: theme.typography.caption),
+                            Text(l.capturePrivilegeHint, style: theme.typography.caption),
+                          ],
+                        ),
                       ),
-                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Column(

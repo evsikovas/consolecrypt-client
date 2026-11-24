@@ -1,4 +1,3 @@
-import 'package:consolecrypt/app/commands.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
@@ -196,12 +195,17 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
-  testWidgets('mobile has no minimalism button or shortcut', (tester) async {
+  testWidgets('phone focus mode keeps the session and back restores navigation', (tester) async {
     final (_, container) = await pumpMinimalTerminal(tester, size: const Size(430, 900));
-    expect(find.byKey(const ValueKey('terminal-minimal-toggle')), findsNothing);
-    expect(container.read(appCommandsProvider).where((c) => c.id == AppCommandId.toggleTerminalMinimalMode), isEmpty);
-    container.read(terminalMinimalModeProvider.notifier).toggle();
+    final session = container.read(terminalTabsProvider).active;
+    await tapKey(tester, 'terminal-minimal-toggle');
+    expect(container.read(terminalMinimalModeProvider), isTrue);
+    expect(find.byKey(const ValueKey('mobile-navigation')), findsNothing);
+    await tester.binding.handlePopRoute();
+    await settle(tester);
     expect(container.read(terminalMinimalModeProvider), isFalse);
+    expect(container.read(terminalTabsProvider).active, same(session));
+    expect(find.byKey(const ValueKey('mobile-navigation')), findsOneWidget);
     expect(tester.takeException(), isNull);
   }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
 }

@@ -1,3 +1,4 @@
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:material_ui/material_ui.dart';
@@ -37,9 +38,10 @@ class KubeResourceSummary extends StatelessWidget {
       ..._maps(status['ephemeralContainerStatuses']),
     ];
     Widget entry(String title, String text) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: GlassSpacing.s4,
         children: [
           Text(title, style: Theme.of(context).textTheme.labelLarge),
           SelectableText(text),
@@ -71,9 +73,9 @@ class KubeResourceSummary extends StatelessWidget {
     if (containers.isEmpty && !node && volumes.isEmpty && spec['replicas'] == null) return const SizedBox.shrink();
     return ExpansionTile(
       key: const ValueKey('kube-structural-summary'),
-      tilePadding: EdgeInsets.zero,
+      tilePadding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s16),
       title: Text(l.kubeResourceConfiguration),
-      childrenPadding: const EdgeInsets.only(bottom: 12),
+      childrenPadding: const EdgeInsets.fromLTRB(GlassSpacing.s16, GlassSpacing.s4, GlassSpacing.s16, GlassSpacing.s8),
       expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (spec['replicas'] != null)
@@ -83,7 +85,13 @@ class KubeResourceSummary extends StatelessWidget {
         if (_map(pod['nodeSelector']).isNotEmpty) entry(l.kubeNodeSelector, quantities(pod['nodeSelector'])),
         for (final container in containers)
           ExpansionTile(
-            tilePadding: EdgeInsets.zero,
+            tilePadding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s12),
+            childrenPadding: const EdgeInsets.fromLTRB(
+              GlassSpacing.s12,
+              GlassSpacing.s4,
+              GlassSpacing.s12,
+              GlassSpacing.s8,
+            ),
             title: Text(
               /* l10n-ignore: Localized container label followed by the Kubernetes container name. */ '${l.kubeContainer} · ${_text(container['name'])}',
             ), // l10n-ignore: Localized container label followed by the Kubernetes container name.

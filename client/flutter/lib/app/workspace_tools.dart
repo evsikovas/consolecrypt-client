@@ -43,6 +43,52 @@ String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (too
   WorkspaceTool.tmux => l.tmuxTitle,
 };
 
+List<WorkspaceTool> _sessionTools(WidgetRef ref) {
+  final tab = ref.watch(activeSshTerminalProvider);
+  return [
+    if (ref.watch(terminalTabsProvider).active?.hasCommandHistory == true) WorkspaceTool.history,
+    if (tab != null && dockerEnabled && ref.watch(sessionHasDockerProvider(tab)).value == true) WorkspaceTool.docker,
+    if (tab != null && ref.watch(tmuxVersionProvider(tab.tmuxParent ?? tab)).value != null) WorkspaceTool.tmux,
+    if (tab != null) WorkspaceTool.server,
+  ];
+}
+
+class MobileSessionActions extends ConsumerWidget {
+  const MobileSessionActions({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (final tool in _sessionTools(ref))
+        if (tool != WorkspaceTool.server) _SessionToolButton(tool: tool, inTerminal: true),
+    ],
+  );
+}
+
+class _SessionToolButton extends ConsumerWidget {
+  const _SessionToolButton({required this.tool, this.inTerminal = false});
+  final WorkspaceTool tool;
+  final bool inTerminal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => GlassIconButton(
+    key: ValueKey('${inTerminal ? 'terminal-tool' : 'nav'}-${tool.name}'),
+    selected: ref.watch(workspaceToolsProvider.select((s) => s.selected == tool)),
+    icon: switch (tool) {
+      WorkspaceTool.docker => ToolIcons.docker,
+      WorkspaceTool.tmux => Icons.layers_outlined,
+      WorkspaceTool.history => Icons.history_rounded,
+      _ => Icons.show_chart_rounded,
+    },
+    tooltip: workspaceToolLabel(context.l10n, tool),
+    size: AppPlatform.isMobile ? 44 : 28,
+    iconSize: AppPlatform.isMobile ? 18 : 16,
+    style: GlassIconButtonStyle.plain,
+    onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(tool),
+  );
+}
+
 Widget _toolIcon(WorkspaceTool tool) => switch (tool) {
   WorkspaceTool.snippets => const AppSymbolIcon(AppSymbol.snippets),
   WorkspaceTool.notes => const AppSymbolIcon(AppSymbol.notes),
@@ -76,9 +122,6 @@ class WorkspaceToolRail extends ConsumerWidget {
             ? (ref.watch(kubeForwardsProvider(scope)).value ?? const []).where((f) => f.state == 'running').length
             : 0);
     final notes = ref.watch(notesAttentionProvider);
-    final tab = branch == ShellBranch.terminal ? ref.watch(activeSshTerminalProvider) : null;
-    final history = branch == ShellBranch.terminal && ref.watch(terminalTabsProvider).active?.hasCommandHistory == true;
-    final dockerHere = tab != null && dockerEnabled && ref.watch(sessionHasDockerProvider(tab)).value == true;
     return Padding(
       padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(4, 8, 0, 8),
       child: GlassSurface(
@@ -89,14 +132,7 @@ class WorkspaceToolRail extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s2, vertical: GlassSpacing.s8),
         child: Column(
           children: [
-            for (final tool in [
-              ..._generalTools,
-              if (history) WorkspaceTool.history,
-              if (dockerHere) WorkspaceTool.docker,
-              if (tab != null && ref.watch(tmuxVersionProvider(tab.tmuxParent ?? tab)).value != null)
-                WorkspaceTool.tmux,
-              if (tab != null) WorkspaceTool.server,
-            ]) ...[
+            for (final tool in [..._generalTools, if (branch == ShellBranch.terminal) ..._sessionTools(ref)]) ...[
               GlassSidebarItem(
                 key: ValueKey('nav-${tool.name}'),
                 icon: Icons.code_rounded,
@@ -160,12 +196,8 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
     if (selected != null && _generalTools.contains(selected)) _visited.add(selected);
     final tab = widget.branch == ShellBranch.terminal ? ref.watch(activeSshTerminalProvider) : null;
     final active = widget.branch == ShellBranch.terminal ? ref.watch(terminalTabsProvider).active : null;
-    final tools = [
-      if (active?.hasCommandHistory == true) WorkspaceTool.history,
-      if (tab != null && dockerEnabled && ref.watch(sessionHasDockerProvider(tab)).value == true) WorkspaceTool.docker,
-      if (tab != null && ref.watch(tmuxVersionProvider(tab.tmuxParent ?? tab)).value != null) WorkspaceTool.tmux,
-      if (tab != null) WorkspaceTool.server,
-    ];
+    final tools = widget.branch == ShellBranch.terminal ? _sessionTools(ref) : const <WorkspaceTool>[];
+    final mobileTools = widget.integrated && AppPlatform.isMobile && tools.isNotEmpty;
     if (selected != null && !_generalTools.contains(selected) && !tools.contains(selected)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && ref.read(workspaceToolsProvider).selected == selected) _close();
@@ -224,23 +256,8 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                               ),
                             ),
                           ],
-                          if (widget.integrated)
-                            for (final tool in tools)
-                              GlassIconButton(
-                                key: ValueKey('nav-${tool.name}'),
-                                selected: selected == tool,
-                                icon: switch (tool) {
-                                  WorkspaceTool.docker => ToolIcons.docker,
-                                  WorkspaceTool.tmux => Icons.layers_outlined,
-                                  WorkspaceTool.history => Icons.history_rounded,
-                                  _ => Icons.show_chart_rounded,
-                                },
-                                tooltip: workspaceToolLabel(l, tool),
-                                size: 28,
-                                iconSize: 16,
-                                style: GlassIconButtonStyle.plain,
-                                onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(tool),
-                              ),
+                          if (widget.integrated && !mobileTools)
+                            for (final tool in tools) _SessionToolButton(tool: tool),
                           GlassIconButton(
                             key: const ValueKey('workspace-tools-close'),
                             icon: widget.integrated && !AppPlatform.isMobile
@@ -253,6 +270,11 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                         ],
                       ),
                     ),
+                    if (mobileTools)
+                      Wrap(
+                        spacing: GlassSpacing.s4,
+                        children: [for (final tool in tools) _SessionToolButton(tool: tool)],
+                      ),
                     Expanded(
                       child: ColoredBox(
                         color: tokens.surfaces.contentSolid,

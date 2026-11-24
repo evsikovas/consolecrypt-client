@@ -94,6 +94,30 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Build mode for the selected remote Docker engine
+  ///
+  /// In en, this message translates to:
+  /// **'Build on {host} over SSH'**
+  String registryBuildOnSsh(String host);
+
+  /// Absolute build context directory on the SSH server
+  ///
+  /// In en, this message translates to:
+  /// **'Server folder containing Dockerfile'**
+  String get registryRemoteDirectory;
+
+  /// Where registry credentials are used for a remote build
+  ///
+  /// In en, this message translates to:
+  /// **'Buildx uses the selected registry account on this server during the build.'**
+  String get registryRemoteAuthHelp;
+
+  /// Requirements for building a project on an SSH server
+  ///
+  /// In en, this message translates to:
+  /// **'The SSH host needs Python 3, Docker Buildx and a local Docker socket.'**
+  String get registryRemoteTools;
+
   /// Container registry
   ///
   /// In en, this message translates to:
@@ -31672,10 +31696,16 @@ abstract class AppLocalizations {
   /// **'Use template'**
   String get dockerKubeTemplate;
 
+  /// Label of the editable prompt sent to the selected AI provider.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get dockerKubePrompt;
+
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Review the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.'**
+  /// **'You can edit the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.'**
   String get dockerKubeAiReview;
 
   /// Experimental Docker to Kubernetes deployment wizard.
