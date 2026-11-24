@@ -178,6 +178,14 @@ pub async fn docker_telemetry(
     with_core(move |c| async move { to_json(&c.docker_telemetry(session_id, container).await?) })
         .await
 }
+pub async fn docker_disk_usage(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_disk_usage(session_id).await?) }).await
+}
+
+pub async fn docker_recent_events(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_recent_events(session_id).await?) }).await
+}
+
 pub async fn docker_networks(session_id: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.docker_networks(session_id).await?) }).await
 }

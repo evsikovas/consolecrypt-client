@@ -10,6 +10,53 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get dockerDiskUsage => 'Espacio en disco';
+
+  @override
+  String get dockerEventJournal => 'Eventos';
+
+  @override
+  String get dockerBuildCache => 'Caché de compilación';
+
+  @override
+  String dockerObjectsCount(int count) {
+    return 'Objetos: $count';
+  }
+
+  @override
+  String dockerReclaimable(String size) {
+    return 'Se puede liberar: $size';
+  }
+
+  @override
+  String get dockerRecentLifecycle => 'Eventos de contenedores · últimas 24 horas';
+
+  @override
+  String get dockerJournalEmpty => 'No hay eventos de contenedores en las últimas 24 horas';
+
+  @override
+  String dockerLifecycleAction(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'create': 'Creado',
+      'start': 'Iniciado',
+      'restart': 'Reiniciado',
+      'stop': 'Detenido',
+      'die': 'Finalizado',
+      'kill': 'Señal de terminación',
+      'oom': 'Sin memoria',
+      'destroy': 'Eliminado',
+      'pause': 'En pausa',
+      'unpause': 'Reanudado',
+      'rename': 'Renombrado',
+      'healthy': 'Saludable',
+      'unhealthy': 'Con fallos',
+      'starting': 'Iniciando comprobación',
+      'other': 'Evento',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get terminalMetricsBar => 'Mostrar métricas del servidor bajo el terminal';
 
   @override

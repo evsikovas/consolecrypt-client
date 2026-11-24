@@ -21,6 +21,7 @@ import 'package:consolecrypt/docker/docker_network_list.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_removal_dialog.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:consolecrypt/docker/docker_system_views.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
 import 'package:consolecrypt/docker/docker_volume_list.dart';
 import 'package:consolecrypt/notes/note_models.dart';
@@ -59,7 +60,7 @@ class DockerWorkspace extends ConsumerStatefulWidget {
   ConsumerState<DockerWorkspace> createState() => _DockerWorkspaceState();
 }
 
-enum _DockerTab { containers, volumes, images, networks }
+enum _DockerTab { containers, volumes, images, networks, disk, events }
 
 class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsBindingObserver, NoteContextPublisher {
   @override
@@ -74,6 +75,8 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   DockerStateFilter _filter = DockerStateFilter.all;
   var _inventory = _DockerTab.containers;
   bool _images = false;
+  final _diskView = GlobalKey<DockerDiskUsageState>();
+  final _eventsView = GlobalKey<DockerEventJournalState>();
   final _networkList = GlobalKey<DockerNetworkListState>();
   final _imageList = GlobalKey<DockerImageListState>();
   DialogRoute<void>? _detailDialog;
@@ -94,7 +97,9 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     WidgetsBinding.instance.addObserver(this);
     unawaited(_refresh());
     _timer = Timer.periodic(widget.refreshInterval, (_) {
-      if (mounted && _foreground && !_loading && TickerMode.valuesOf(context).enabled) unawaited(_refresh());
+      if (!mounted || !_foreground || !TickerMode.valuesOf(context).enabled) return;
+      if (!_loading) unawaited(_refresh());
+      _eventsView.currentState?.refresh();
     });
   }
 
@@ -600,6 +605,20 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
             query: _query,
             containers: containers,
           )
+        : _inventory == _DockerTab.disk && observation is DockerObservationService
+        ? DockerDiskUsage(
+            key: _diskView,
+            service: observation as DockerObservationService,
+            sessionId: widget.session.id,
+            query: _query,
+          )
+        : _inventory == _DockerTab.events && observation is DockerObservationService
+        ? DockerEventJournal(
+            key: _eventsView,
+            service: observation as DockerObservationService,
+            sessionId: widget.session.id,
+            query: _query,
+          )
         : _inventory == _DockerTab.volumes
         ? DockerVolumeList(key: _volumeList, service: widget.service, session: widget.session, query: _query)
         : _error != null && !_loaded
@@ -644,6 +663,16 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
               _detailsFraction = (currentWidth + delta).clamp(_minDetailsWidth, maxDetailsWidth) / paneSpace;
             });
             final showDetails = _inventory == _DockerTab.containers && wide && selected != null;
+            final sections = <_DockerTab, String>{
+              _DockerTab.containers: l.dockerStandalone,
+              _DockerTab.volumes: l.dockerVolumes,
+              if (observation is DockerObservationService) ...{
+                _DockerTab.images: l.kubeImages,
+                _DockerTab.networks: l.dockerNetworks,
+                _DockerTab.disk: l.dockerDiskUsage,
+                _DockerTab.events: l.dockerEventJournal,
+              },
+            };
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -661,6 +690,8 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                     unawaited(_volumeList.currentState?.refresh());
                     _imageList.currentState?.refresh();
                     _networkList.currentState?.refresh();
+                    _diskView.currentState?.refresh();
+                    _eventsView.currentState?.refresh();
                   },
                   onForwards: _toggleForwards,
                   onDisconnect: widget.onDisconnect,
@@ -673,39 +704,29 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                     runSpacing: GlassSpacing.s8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      GlassSegmented<_DockerTab>(
-                        key: const ValueKey('docker-view'),
-                        inChrome: false,
-                        semanticLabel: l.dockerView,
-                        selected: _inventory,
-                        onChanged: (value) => setState(() => _inventory = value),
-                        segments: [
-                          GlassSegment(
-                            key: const ValueKey('docker-view-containers'),
-                            value: _DockerTab.containers,
-                            label: l.dockerStandalone,
-                          ),
-                          GlassSegment(
-                            key: const ValueKey('docker-view-volumes'),
-                            value: _DockerTab.volumes,
-                            label: l.dockerVolumes,
-                          ),
-                          if (observation is DockerObservationService) ...[
-                            GlassSegment(
-                              key: const ValueKey('docker-view-images'),
-                              value: _DockerTab.images,
-                              label: l.kubeImages,
-                            ),
-                            GlassSegment(
-                              key: const ValueKey('docker-view-networks'),
-                              value: _DockerTab.networks,
-                              label: l.dockerNetworks,
-                            ),
+                      DefaultTabController(
+                        length: sections.length,
+                        initialIndex: sections.keys.toList().indexOf(_inventory),
+                        child: TabBar(
+                          key: const ValueKey('docker-view'),
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          dividerHeight: 0,
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                          labelStyle: GlassTokens.of(context).typography.button,
+                          onTap: (i) => setState(() => _inventory = sections.keys.elementAt(i)),
+                          tabs: [
+                            for (final section in sections.entries)
+                              Tab(
+                                key: ValueKey('docker-view-${section.key.name}'),
+                                text: section.value,
+                                height: MediaQuery.textScalerOf(context).scale(20) + 14,
+                              ),
                           ],
-                        ],
+                        ),
                       ),
-                      SizedBox(
-                        width: constraints.maxWidth < 600 ? constraints.maxWidth : 320,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 320),
                         child: GlassField(
                           key: const ValueKey('docker-filter'),
                           fieldKey: const ValueKey('docker-filter-input'),

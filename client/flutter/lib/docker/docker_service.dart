@@ -465,6 +465,8 @@ final class DockerImage {
 }
 
 abstract interface class DockerObservationService {
+  Future<DockerJson> diskUsage(String sessionId);
+  Future<List<DockerJson>> recentEvents(String sessionId);
   Future<List<DockerJson>> networks(String sessionId);
   Future<DockerJson> telemetry(String sessionId, String containerId);
   Future<List<DockerImage>> images(String sessionId);

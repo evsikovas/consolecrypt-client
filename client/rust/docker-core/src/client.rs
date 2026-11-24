@@ -15,6 +15,7 @@ use tokio_util::sync::CancellationToken;
 
 mod image;
 pub(crate) mod removal;
+mod system;
 mod telemetry;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);

@@ -10,6 +10,53 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get dockerDiskUsage => 'Disk usage';
+
+  @override
+  String get dockerEventJournal => 'Events';
+
+  @override
+  String get dockerBuildCache => 'Build cache';
+
+  @override
+  String dockerObjectsCount(int count) {
+    return 'Objects: $count';
+  }
+
+  @override
+  String dockerReclaimable(String size) {
+    return 'Reclaimable: $size';
+  }
+
+  @override
+  String get dockerRecentLifecycle => 'Container events · last 24 hours';
+
+  @override
+  String get dockerJournalEmpty => 'No container events in the last 24 hours';
+
+  @override
+  String dockerLifecycleAction(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'create': 'Created',
+      'start': 'Started',
+      'restart': 'Restarted',
+      'stop': 'Stopped',
+      'die': 'Exited',
+      'kill': 'Kill signal',
+      'oom': 'Out of memory',
+      'destroy': 'Removed',
+      'pause': 'Paused',
+      'unpause': 'Resumed',
+      'rename': 'Renamed',
+      'healthy': 'Healthy',
+      'unhealthy': 'Unhealthy',
+      'starting': 'Health check starting',
+      'other': 'Event',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get terminalMetricsBar => 'Show server metrics below the terminal';
 
   @override

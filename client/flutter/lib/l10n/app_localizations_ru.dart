@@ -10,6 +10,53 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get dockerDiskUsage => 'Место на диске';
+
+  @override
+  String get dockerEventJournal => 'События';
+
+  @override
+  String get dockerBuildCache => 'Кэш сборки';
+
+  @override
+  String dockerObjectsCount(int count) {
+    return 'Объектов: $count';
+  }
+
+  @override
+  String dockerReclaimable(String size) {
+    return 'Можно освободить: $size';
+  }
+
+  @override
+  String get dockerRecentLifecycle => 'События контейнеров · за последние 24 часа';
+
+  @override
+  String get dockerJournalEmpty => 'За последние 24 часа событий контейнеров нет';
+
+  @override
+  String dockerLifecycleAction(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'create': 'Создан',
+      'start': 'Запущен',
+      'restart': 'Перезапущен',
+      'stop': 'Остановлен',
+      'die': 'Завершился',
+      'kill': 'Сигнал завершения',
+      'oom': 'Нехватка памяти',
+      'destroy': 'Удалён',
+      'pause': 'Приостановлен',
+      'unpause': 'Возобновлён',
+      'rename': 'Переименован',
+      'healthy': 'Исправен',
+      'unhealthy': 'Неисправен',
+      'starting': 'Началась проверка состояния',
+      'other': 'Событие',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get terminalMetricsBar => 'Показывать показатели сервера под терминалом';
 
   @override

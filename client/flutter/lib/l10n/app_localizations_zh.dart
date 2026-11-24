@@ -10,6 +10,53 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get dockerDiskUsage => '磁盘用量';
+
+  @override
+  String get dockerEventJournal => '事件';
+
+  @override
+  String get dockerBuildCache => '构建缓存';
+
+  @override
+  String dockerObjectsCount(int count) {
+    return '对象数：$count';
+  }
+
+  @override
+  String dockerReclaimable(String size) {
+    return '可回收：$size';
+  }
+
+  @override
+  String get dockerRecentLifecycle => '容器事件 · 最近 24 小时';
+
+  @override
+  String get dockerJournalEmpty => '最近 24 小时内没有容器事件';
+
+  @override
+  String dockerLifecycleAction(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'create': '已创建',
+      'start': '已启动',
+      'restart': '已重启',
+      'stop': '已停止',
+      'die': '已退出',
+      'kill': '终止信号',
+      'oom': '内存不足',
+      'destroy': '已删除',
+      'pause': '已暂停',
+      'unpause': '已恢复',
+      'rename': '已重命名',
+      'healthy': '健康',
+      'unhealthy': '不健康',
+      'starting': '正在进行健康检查',
+      'other': '事件',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get terminalMetricsBar => '在终端底部显示服务器指标';
 
   @override

@@ -1,4 +1,12 @@
 {
+  "dockerDiskUsage": "磁盘用量",
+  "dockerEventJournal": "事件",
+  "dockerBuildCache": "构建缓存",
+  "dockerObjectsCount": "对象数：{count}",
+  "dockerReclaimable": "可回收：{size}",
+  "dockerRecentLifecycle": "容器事件 · 最近 24 小时",
+  "dockerJournalEmpty": "最近 24 小时内没有容器事件",
+  "dockerLifecycleAction": "{action, select, create {已创建} start {已启动} restart {已重启} stop {已停止} die {已退出} kill {终止信号} oom {内存不足} destroy {已删除} pause {已暂停} unpause {已恢复} rename {已重命名} healthy {健康} unhealthy {不健康} starting {正在进行健康检查} other {事件}}",
   "terminalMetricsBar": "在终端底部显示服务器指标",
   "terminalChannelLatency": "SSH 通道延迟",
   "terminalLatencyValue": "{value} 毫秒",

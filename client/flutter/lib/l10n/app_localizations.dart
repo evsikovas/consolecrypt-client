@@ -94,6 +94,54 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Docker disk usage tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk usage'**
+  String get dockerDiskUsage;
+
+  /// Container lifecycle event log tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get dockerEventJournal;
+
+  /// Build cache disk usage category.
+  ///
+  /// In en, this message translates to:
+  /// **'Build cache'**
+  String get dockerBuildCache;
+
+  /// dockerObjectsCount
+  ///
+  /// In en, this message translates to:
+  /// **'Objects: {count}'**
+  String dockerObjectsCount(int count);
+
+  /// dockerReclaimable
+  ///
+  /// In en, this message translates to:
+  /// **'Reclaimable: {size}'**
+  String dockerReclaimable(String size);
+
+  /// Time range of the container event journal.
+  ///
+  /// In en, this message translates to:
+  /// **'Container events · last 24 hours'**
+  String get dockerRecentLifecycle;
+
+  /// Empty container event history.
+  ///
+  /// In en, this message translates to:
+  /// **'No container events in the last 24 hours'**
+  String get dockerJournalEmpty;
+
+  /// dockerLifecycleAction
+  ///
+  /// In en, this message translates to:
+  /// **'{action, select, create {Created} start {Started} restart {Restarted} stop {Stopped} die {Exited} kill {Kill signal} oom {Out of memory} destroy {Removed} pause {Paused} unpause {Resumed} rename {Renamed} healthy {Healthy} unhealthy {Unhealthy} starting {Health check starting} other {Event}}'**
+  String dockerLifecycleAction(String action);
+
   /// Show server metrics below the terminal
   ///
   /// In en, this message translates to:

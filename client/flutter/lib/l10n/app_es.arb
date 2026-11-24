@@ -1,4 +1,12 @@
 {
+  "dockerDiskUsage": "Espacio en disco",
+  "dockerEventJournal": "Eventos",
+  "dockerBuildCache": "Caché de compilación",
+  "dockerObjectsCount": "Objetos: {count}",
+  "dockerReclaimable": "Se puede liberar: {size}",
+  "dockerRecentLifecycle": "Eventos de contenedores · últimas 24 horas",
+  "dockerJournalEmpty": "No hay eventos de contenedores en las últimas 24 horas",
+  "dockerLifecycleAction": "{action, select, create {Creado} start {Iniciado} restart {Reiniciado} stop {Detenido} die {Finalizado} kill {Señal de terminación} oom {Sin memoria} destroy {Eliminado} pause {En pausa} unpause {Reanudado} rename {Renombrado} healthy {Saludable} unhealthy {Con fallos} starting {Iniciando comprobación} other {Evento}}",
   "terminalMetricsBar": "Mostrar métricas del servidor bajo el terminal",
   "terminalChannelLatency": "Latencia del canal SSH",
   "terminalLatencyValue": "{value} ms",

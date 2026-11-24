@@ -48,6 +48,18 @@ class _Docker extends MockDockerService {
 
 class _ObservedDocker extends _Docker implements DockerObservationService {
   @override
+  Future<DockerJson> diskUsage(String sessionId) async => {
+    'images': {'bytes': 1048576, 'count': 2, 'reclaimable': 512},
+    'volumes': {'bytes': 0, 'count': 0},
+    'cache': {'bytes': null, 'count': 1},
+    'containers': {'bytes': 2048, 'count': 3},
+  };
+  @override
+  Future<List<DockerJson>> recentEvents(String sessionId) async => [
+    {'timeMs': 1700000000000, 'name': 'shop-api-1', 'id': '123', 'action': 'die', 'exitCode': 137},
+    {'timeMs': 1699999999000, 'name': 'shop-worker-1', 'id': '456', 'action': 'restart'},
+  ];
+  @override
   Future<List<DockerJson>> networks(String sessionId) async => [
     {
       'id': 'a123',
@@ -407,6 +419,23 @@ void main() {
     expect(find.textContaining('172.28.0.1'), findsOneWidget);
     expect(find.text('Connected containers (0)'), findsOneWidget);
     await tapKey(tester, 'docker-view-containers');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('disk usage and lifecycle events follow the active engine and filter', (tester) async {
+    await _pump(tester, service: _ObservedDocker(), size: const Size(720, 820));
+    await _connectLocal(tester);
+    await tapKey(tester, 'docker-view-disk');
+    expect(find.byKey(const ValueKey('docker-usage-cache')), findsOneWidget);
+    expect(find.text('1.0 MiB'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    await tapKey(tester, 'docker-view-events');
+    expect(find.text('Restarted'), findsOneWidget);
+    expect(find.text('Exit code 137'), findsOneWidget);
+    await enterKey(tester, 'docker-filter-input', 'worker');
+    expect(find.text('shop-worker-1'), findsOneWidget);
+    expect(find.text('shop-api-1'), findsNothing);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

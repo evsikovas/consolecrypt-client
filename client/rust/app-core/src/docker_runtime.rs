@@ -687,6 +687,26 @@ impl AppCore {
         }
     }
 
+    pub async fn docker_disk_usage(&self, session_id: String) -> AppResult<serde_json::Value> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! {
+            biased;
+            _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+            result = live.client.disk_usage() => result.map_err(docker_error),
+        }
+    }
+
+    pub async fn docker_recent_events(&self, session_id: String) -> AppResult<Vec<serde_json::Value>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! {
+            biased;
+            _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+            result = live.client.recent_events() => result.map_err(docker_error),
+        }
+    }
+
     pub async fn docker_networks(&self, session_id: String) -> AppResult<Vec<serde_json::Value>> {
         let (_, unlocked) = self.unlocked().await?;
         let live = unlocked.docker.session(&session_id)?;
