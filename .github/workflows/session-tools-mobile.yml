@@ -18,7 +18,7 @@ jobs:
       matrix:
         platform: [android, ios]
     env:
-      CC_BUILD_NUMBER: '91041'
+      CC_BUILD_NUMBER: '91042'
       CARGO_BUILD_JOBS: '3'
       ANDROID_HOME: ${{ vars.ANDROID_HOME }}
       JAVA_HOME: ${{ vars.JAVA_HOME }}

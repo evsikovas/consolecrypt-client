@@ -52,7 +52,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get registryPublish => 'Загрузить образ';
 
   @override
-  String get registryPublished => 'Образ загружен. В поле образа подставлена ссылка с digest.';
+  String get registryPublished => 'Образ опубликован. В поле образа подставлен выбранный тег.';
 
   @override
   String get registryInvalid => 'Введите адрес реестра, например registry.example.org:5000.';

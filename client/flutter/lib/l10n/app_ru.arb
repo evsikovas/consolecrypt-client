@@ -12,7 +12,7 @@
   "registryTag": "Тег",
   "registryToken": "Пароль или токен доступа",
   "registryPublish": "Загрузить образ",
-  "registryPublished": "Образ загружен. В поле образа подставлена ссылка с digest.",
+  "registryPublished": "Образ опубликован. В поле образа подставлен выбранный тег.",
   "registryInvalid": "Введите адрес реестра, например registry.example.org:5000.",
   "registrySaveFailed": "Не удалось сохранить учётные данные реестра.",
   "registryPublishFailed": "Не удалось загрузить образ. Проверьте путь репозитория, права на запись и доступность реестра с Docker-хоста.",

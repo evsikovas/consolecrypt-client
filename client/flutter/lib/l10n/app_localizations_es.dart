@@ -53,7 +53,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get registryPublish => 'Publicar imagen';
 
   @override
-  String get registryPublished => 'Imagen publicada. La referencia por digest está lista.';
+  String get registryPublished => 'Imagen publicada. El campo de imagen contiene la etiqueta seleccionada.';
 
   @override
   String get registryInvalid => 'Introduce el servidor del registro y el puerto si procede.';

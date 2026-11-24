@@ -51,7 +51,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get registryPublish => '推送镜像';
 
   @override
-  String get registryPublished => '镜像已推送，摘要引用已填入。';
+  String get registryPublished => '镜像已发布。镜像字段已填入所选标签。';
 
   @override
   String get registryInvalid => '请输入仓库主机，可附加端口。';

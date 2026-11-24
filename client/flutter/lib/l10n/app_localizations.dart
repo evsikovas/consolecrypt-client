@@ -175,7 +175,7 @@ abstract class AppLocalizations {
   /// Image published. Its digest is ready to use.
   ///
   /// In en, this message translates to:
-  /// **'Image published. Its digest is ready to use.'**
+  /// **'Image published. The image field now contains the selected tag.'**
   String get registryPublished;
 
   /// Enter a registry host, optionally with a port.

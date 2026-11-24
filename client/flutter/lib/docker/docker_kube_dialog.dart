@@ -792,8 +792,9 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
                                     ],
                                     onChanged: enabled
                                         ? (id) {
-                                            if (id != null)
+                                            if (id != null) {
                                               unawaited(_connect(_contexts.firstWhere((c) => c.id == id)));
+                                            }
                                           }
                                         : null,
                                   ),

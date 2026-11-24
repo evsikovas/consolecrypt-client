@@ -12,7 +12,7 @@
   "registryTag": "标签",
   "registryToken": "密码或访问令牌",
   "registryPublish": "推送镜像",
-  "registryPublished": "镜像已推送，摘要引用已填入。",
+  "registryPublished": "镜像已发布。镜像字段已填入所选标签。",
   "registryInvalid": "请输入仓库主机，可附加端口。",
   "registrySaveFailed": "无法保存仓库凭据。",
   "registryPublishFailed": "推送失败。请检查镜像路径、推送权限以及 Docker 主机到仓库的连接。",

@@ -25,7 +25,7 @@
   "@registryToken": {"description": "Password or access token"},
   "registryPublish": "Push image",
   "@registryPublish": {"description": "Push image"},
-  "registryPublished": "Image published. Its digest is ready to use.",
+  "registryPublished": "Image published. The image field now contains the selected tag.",
   "@registryPublished": {"description": "Image published. Its digest is ready to use."},
   "registryInvalid": "Enter a registry host, optionally with a port.",
   "@registryInvalid": {"description": "Enter a registry host, optionally with a port."},

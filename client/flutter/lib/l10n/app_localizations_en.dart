@@ -51,7 +51,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registryPublish => 'Push image';
 
   @override
-  String get registryPublished => 'Image published. Its digest is ready to use.';
+  String get registryPublished => 'Image published. The image field now contains the selected tag.';
 
   @override
   String get registryInvalid => 'Enter a registry host, optionally with a port.';

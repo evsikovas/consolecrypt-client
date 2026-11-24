@@ -12,7 +12,7 @@
   "registryTag": "Etiqueta",
   "registryToken": "Contraseña o token de acceso",
   "registryPublish": "Publicar imagen",
-  "registryPublished": "Imagen publicada. La referencia por digest está lista.",
+  "registryPublished": "Imagen publicada. El campo de imagen contiene la etiqueta seleccionada.",
   "registryInvalid": "Introduce el servidor del registro y el puerto si procede.",
   "registrySaveFailed": "No se pudo guardar la credencial del registro.",
   "registryPublishFailed": "No se pudo publicar. Comprueba la ruta, los permisos de escritura y la conexión desde el host Docker.",
