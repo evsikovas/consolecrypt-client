@@ -516,6 +516,17 @@ class TerminalDeviceControls extends ConsumerWidget {
             ],
           ),
         ),
+        CheckboxListTile(
+          key: const ValueKey('terminal-allow-multiline-paste'),
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: Text(l10n.terminalAllowMultilinePaste),
+          value: local.allowMultilinePaste,
+          onChanged: (v) => runWithFeedback(
+            context,
+            () => settings.updateLocal(settings.currentLocal.copyWith(allowMultilinePaste: v)),
+          ),
+        ),
         if (showServerMetrics)
           SwitchListTile.adaptive(
             key: const ValueKey('terminal-metrics-setting'),

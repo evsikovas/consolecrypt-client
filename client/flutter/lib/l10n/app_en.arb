@@ -7593,6 +7593,8 @@
   "@terminalClearSelection": {
     "description": "Terminal context menu or its selected-text attachment."
   },
+  "terminalAllowMultilinePaste": "Allow multiline paste without confirmation",
+  "@terminalAllowMultilinePaste": {"description": "Terminal setting for clipboard text with ordinary line breaks."},
   "terminalPasteConfirmTitle": "Paste multiple lines or control characters?",
   "@terminalPasteConfirmTitle": {
     "description": "Terminal context menu or its selected-text attachment."

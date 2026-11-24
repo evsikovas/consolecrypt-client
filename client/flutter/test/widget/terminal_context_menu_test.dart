@@ -436,6 +436,39 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
+  testWidgets('multiline paste preference bypasses line breaks and still confirms terminal controls', (tester) async {
+    final (backend, _, tab) = await _open(tester);
+    final settings = backend.services.settings;
+    final writes = <String>[];
+    tab.terminal.onOutput = writes.add;
+    var clipboard = '';
+    _clipboard(tester, handler: (call) async => call.method == 'Clipboard.getData' ? {'text': clipboard} : null);
+    await settings.updateLocal(settings.currentLocal.copyWith(allowMultilinePaste: true));
+    for (final ending in ['\n', '\r\n']) {
+      clipboard = 'echo first${ending}echo second';
+      writes.clear();
+      await _menu(tester);
+      await tapKey(tester, 'terminal-menu-paste');
+      expect(find.byKey(const ValueKey('confirm-ok')), findsNothing);
+      expect(writes.join(), contains('echo second'));
+    }
+    for (final control in ['\x03', '\x1b[201~', '\r']) {
+      writes.clear();
+      clipboard = 'echo first\necho second$control';
+      await _menu(tester);
+      await tapKey(tester, 'terminal-menu-paste');
+      expect(writes, isEmpty);
+      await tapKey(tester, 'confirm-cancel');
+      expect(writes, isEmpty);
+    }
+    await settings.updateLocal(settings.currentLocal.copyWith(allowMultilinePaste: false));
+    clipboard = 'echo first\necho second';
+    await _menu(tester);
+    await tapKey(tester, 'terminal-menu-paste');
+    await tapKey(tester, 'confirm-cancel');
+    expect(writes, isEmpty);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('clipboard read finishing after a tab switch never writes to either session', (tester) async {
     final (_, c, tab) = await _open(tester);
     final read = Completer<Object?>();

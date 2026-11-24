@@ -5575,6 +5575,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get terminalClearSelection => '清除选择';
 
   @override
+  String get terminalAllowMultilinePaste => '允许粘贴多行文本而无需确认';
+
+  @override
   String get terminalPasteConfirmTitle => '粘贴多行或控制字符 ?';
 
   @override

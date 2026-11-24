@@ -1681,6 +1681,7 @@
   "terminalSaveSnippet": "另存为片段...",
   "terminalSelectAll": "选择整个缓冲",
   "terminalClearSelection": "清除选择",
+  "terminalAllowMultilinePaste": "允许粘贴多行文本而无需确认",
   "terminalPasteConfirmTitle": "粘贴多行或控制字符 ?",
   "terminalPasteConfirmMessage": "此文本可能执行命令或中断运行进程。在粘贴前审查它。",
   "aiTerminalAttachment": "选中文本 ^ {host}",

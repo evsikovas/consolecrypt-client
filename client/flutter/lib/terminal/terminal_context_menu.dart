@@ -59,6 +59,7 @@ Future<void> _pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab
   if (!tab.isConnected || !_validOrigin(ref, tab, profile)) return;
   final text = await readConfirmedTerminalPaste(
     context,
+    ref,
     isCurrent: () => tab.isConnected && _validOrigin(ref, tab, profile),
   );
   if (text == null || !context.mounted || !tab.isConnected || !_validOrigin(ref, tab, profile)) return;
@@ -66,18 +67,23 @@ Future<void> _pasteIntoTerminal(BuildContext context, WidgetRef ref, TerminalTab
   tab.controller.clearSelection();
 }
 
-/// Confirms multiline pastes and checks that the originating session is live.
-Future<String?> readConfirmedTerminalPaste(BuildContext context, {required bool Function() isCurrent}) async {
+/// Reads clipboard text for the originating session, honoring the local paste preference.
+Future<String?> readConfirmedTerminalPaste(
+  BuildContext context,
+  WidgetRef ref, {
+  required bool Function() isCurrent,
+}) async {
   if (!context.mounted || !isCurrent()) return null;
   final text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
   if (text == null || text.isEmpty || !context.mounted || !isCurrent()) return null;
-  // Multiline/control-character paste can execute commands even without an
-  // explicit Enter. The keyboard shortcut follows the same confirmation path.
-  if (RegExp(r'[\x00-\x08\x0a-\x1f\x7f]').hasMatch(text)) {
+  // LF and CRLF are ordinary line endings. A bare CR or terminal control
+  // sequence can affect the running process independently of line breaks.
+  final hasControl = RegExp(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]|\r(?!\n)').hasMatch(text);
+  if (hasControl || (text.contains('\n') && !ref.read(settingsServiceProvider).currentLocal.allowMultilinePaste)) {
     final l = context.l10n;
     final preview = text.length > 4000 ? '${text.substring(0, 4000)}…' : text;
     final visible = preview.replaceAllMapped(
-      RegExp(r'[\x00-\x08\x0b-\x1f\x7f]'),
+      RegExp(r'[\x00-\x08\x0b-\x1f\x7f-\x9f]'),
       (m) => '\\x${m[0]!.codeUnitAt(0).toRadixString(16).padLeft(2, '0')}',
     );
     final approved = await showConfirmDialog(

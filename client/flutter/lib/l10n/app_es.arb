@@ -1681,6 +1681,7 @@
   "terminalSaveSnippet": "Guardar como simboleta...",
   "terminalSelectAll": "Seleccione el buffer completo",
   "terminalClearSelection": "Selección clara",
+  "terminalAllowMultilinePaste": "Permitir pegar varias líneas sin confirmación",
   "terminalPasteConfirmTitle": "¿Paste múltiples líneas o caracteres de control?",
   "terminalPasteConfirmMessage": "Este texto puede ejecutar comandos o interrumpir un proceso de ejecución. Revise antes de pegar.",
   "aiTerminalAttachment": "Texto seleccionado · {host}",

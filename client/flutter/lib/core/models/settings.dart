@@ -219,6 +219,7 @@ final class LocalSettings {
     this.terminalTabSubtitle = TerminalTabSubtitle.name,
     this.terminalTabGrouped = false,
     this.terminalMetricsBar = true,
+    this.allowMultilinePaste = false,
     this.hiddenTerminalMetrics = const {},
     this.terminalMetricColors = const {},
     this.terminalTabPlacement = TerminalTabPlacement.top,
@@ -285,6 +286,7 @@ final class LocalSettings {
   /// Row above the terminal or column at its left edge (desktop only).
   final bool terminalTabGrouped;
   final bool terminalMetricsBar;
+  final bool allowMultilinePaste;
   final Set<TerminalMetric> hiddenTerminalMetrics;
   final Map<TerminalMetric, int> terminalMetricColors;
   final TerminalTabPlacement terminalTabPlacement;
@@ -381,6 +383,7 @@ final class LocalSettings {
     TerminalTabSubtitle? terminalTabSubtitle,
     bool? terminalTabGrouped,
     bool? terminalMetricsBar,
+    bool? allowMultilinePaste,
     Set<TerminalMetric>? hiddenTerminalMetrics,
     Map<TerminalMetric, int>? terminalMetricColors,
     TerminalTabPlacement? terminalTabPlacement,
@@ -425,6 +428,7 @@ final class LocalSettings {
     terminalTabSubtitle: terminalTabSubtitle ?? this.terminalTabSubtitle,
     terminalTabGrouped: terminalTabGrouped ?? this.terminalTabGrouped,
     terminalMetricsBar: terminalMetricsBar ?? this.terminalMetricsBar,
+    allowMultilinePaste: allowMultilinePaste ?? this.allowMultilinePaste,
     hiddenTerminalMetrics: hiddenTerminalMetrics ?? this.hiddenTerminalMetrics,
     terminalMetricColors: terminalMetricColors ?? this.terminalMetricColors,
     terminalTabPlacement: terminalTabPlacement ?? this.terminalTabPlacement,

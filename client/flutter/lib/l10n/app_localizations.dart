@@ -10174,6 +10174,12 @@ abstract class AppLocalizations {
   /// **'Clear selection'**
   String get terminalClearSelection;
 
+  /// Terminal setting for clipboard text with ordinary line breaks.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow multiline paste without confirmation'**
+  String get terminalAllowMultilinePaste;
+
   /// Terminal context menu or its selected-text attachment.
   ///
   /// In en, this message translates to:

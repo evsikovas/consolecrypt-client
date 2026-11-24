@@ -5756,6 +5756,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalClearSelection => 'Clear selection';
 
   @override
+  String get terminalAllowMultilinePaste => 'Allow multiline paste without confirmation';
+
+  @override
   String get terminalPasteConfirmTitle => 'Paste multiple lines or control characters?';
 
   @override

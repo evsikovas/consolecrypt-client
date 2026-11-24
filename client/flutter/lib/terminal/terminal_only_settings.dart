@@ -34,6 +34,7 @@ final class TerminalOnlySettings implements SettingsService {
     'terminal_tab_column_width',
     'terminal_tab_column_collapsed',
     'terminal_scrollback',
+    'allow_multiline_paste',
   };
 
   final File _file;

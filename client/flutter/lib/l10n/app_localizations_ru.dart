@@ -5952,6 +5952,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get terminalClearSelection => 'Снять выделение';
 
   @override
+  String get terminalAllowMultilinePaste => 'Разрешить многострочную вставку без подтверждения';
+
+  @override
   String get terminalPasteConfirmTitle => 'Вставить строки или управляющие символы?';
 
   @override
