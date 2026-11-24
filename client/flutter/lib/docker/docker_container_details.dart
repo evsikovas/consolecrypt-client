@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
@@ -25,6 +26,7 @@ import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/vault/vault_passphrase_confirmation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
 enum DockerDetailsTab { overview, logs, json }
@@ -69,6 +71,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
   /// The unmasked inspect after the vault passphrase; dropped on close,
   /// reload, lock and profile change.
   DockerJson? _fullInspect;
+  int _environmentRevision = 0;
   late final _scope = ref.read(dockerScopeProvider);
 
   @override
@@ -135,11 +138,14 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
     final source = DockerKubeSource.inspect(detail, session);
     // The image ID identifies what this container actually runs, even after a tag moves.
     final imageId = detail.inspect['Image'];
-    final canInspect =
-        !source.unsupported &&
-        source.image == null &&
-        imageId is String &&
-        RegExp(r'^sha256:[0-9a-f]{64}$').hasMatch(imageId);
+    final hasImageId = imageId is String && RegExp(r'^sha256:[0-9a-f]{64}$').hasMatch(imageId);
+    final canInspect = !source.unsupported && source.image == null && hasImageId;
+    // The deployment form can leave the container visible around its edges.
+    // Remask the underlying details before opening it.
+    setState(() {
+      _fullInspect = null;
+      _environmentRevision++;
+    });
     final request = await showAppDialog<KubeNavigationRequest>(
       context,
       secure: true,
@@ -147,6 +153,16 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
       builder: (_) => DockerKubeDialog(
         container: detail.container,
         source: source,
+        engineName: session.hostName,
+        remoteBuild: !DockerHost.isLocalId(session.hostId),
+        imageKey: hasImageId ? (hostId: session.hostId, imageId: imageId) : null,
+        publishImage: hasImageId
+            ? (credential, path, tag) => service.publishImage(session.id, imageId, credential, path, tag)
+            : null,
+        buildImage: hasImageId && (!DockerHost.isLocalId(session.hostId) || !AppPlatform.isMobile)
+            ? (credential, path, tag, build) =>
+                  service.publishImage(session.id, imageId, credential, path, tag, build: build)
+            : null,
         resolveImage: canInspect
             ? () async => DockerKubeSource.inspect(
                 detail,
@@ -178,14 +194,16 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
     final running = container.state == DockerContainerState.running;
     final busy = widget.actions.busy(container);
     final database = widget.actions.databaseTarget(container, _detail?.inspect);
-    Widget action(String key, String label, IconData icon, VoidCallback? onPressed, {String? tooltip}) => GlassButton(
-      key: ValueKey('docker-details-$key'),
-      label: label,
-      icon: icon,
-      tooltip: tooltip,
-      size: GlassControlSize.sm,
-      onPressed: busy ? null : onPressed,
-    );
+    Widget action(String key, String label, IconData icon, VoidCallback? onPressed, {String? tooltip}) =>
+        GlassIconButton(
+          key: ValueKey('docker-details-$key'),
+          icon: icon,
+          tooltip: tooltip ?? label,
+          style: GlassIconButtonStyle.plain,
+          size: 28,
+          iconSize: 16,
+          onPressed: busy ? null : onPressed,
+        );
     final full = _fullInspect;
     final shown = full ?? _detail?.inspect;
     final jsonTab = shown != null && _tabs.index == DockerDetailsTab.json.index;
@@ -227,7 +245,11 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                               container.shortId,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: tokens.typography.mono.copyWith(fontSize: 12, color: tokens.secondaryLabel),
+                              style: tokens.typography.mono.copyWith(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: tokens.secondaryLabel,
+                              ),
                             ),
                           ),
                         ],
@@ -245,7 +267,15 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                 GlassMenuButton<Object>(
                   key: const ValueKey('docker-details-menu'),
                   entries: dockerContainerMenu(l, container, database: database),
-                  onSelected: (value) => runDockerMenuValue(widget.actions, container, value, database: database),
+                  onSelected: (value) {
+                    if (value == DockerMenuCommand.logs || value == DockerMenuCommand.details) {
+                      _tabs.animateTo(
+                        (value == DockerMenuCommand.logs ? DockerDetailsTab.logs : DockerDetailsTab.overview).index,
+                      );
+                    } else {
+                      runDockerMenuValue(widget.actions, container, value, database: database);
+                    }
+                  },
                   builder: (context, open) => GlassIconButton(
                     icon: Icons.more_horiz_rounded,
                     tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
@@ -293,16 +323,6 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                       ? () => unawaited(widget.actions.run(container, DockerAction.restart))
                       : null,
                 ),
-                GlassButton(
-                  key: const ValueKey('docker-details-remove'),
-                  style: GlassButtonStyle.destructiveQuiet,
-                  label: l.dockerRemoveContainer,
-                  icon: Icons.delete_outline_rounded,
-                  size: GlassControlSize.sm,
-                  onPressed: busy || !dockerActionAllowed(DockerAction.remove, container.state)
-                      ? null
-                      : () => unawaited(widget.actions.run(container, DockerAction.remove)),
-                ),
                 action(
                   'terminal',
                   l.dockerTerminal,
@@ -328,6 +348,18 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                   l.dockerKubeDeploy,
                   Icons.cloud_upload_outlined,
                   _detail == null || _loading ? null : _openKubernetes,
+                ),
+                GlassIconButton(
+                  key: const ValueKey('docker-details-remove'),
+                  style: GlassIconButtonStyle.plain,
+                  tooltip: l.dockerRemoveContainer,
+                  color: p.danger,
+                  icon: Icons.delete_outline_rounded,
+                  size: 28,
+                  iconSize: 16,
+                  onPressed: busy || !dockerActionAllowed(DockerAction.remove, container.state)
+                      ? null
+                      : () => unawaited(widget.actions.run(container, DockerAction.remove)),
                 ),
               ],
             ),
@@ -367,6 +399,8 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
               controller: _tabs,
               children: [
                 _DockerOverview(
+                  environmentRevision: _environmentRevision,
+                  active: _tabs.index == DockerDetailsTab.overview.index,
                   container: container,
                   detail: _detail,
                   service: widget.service,
@@ -430,6 +464,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                                 child: DbDocumentView(
                                   key: ValueKey(full == null ? 'docker-json-masked-view' : 'docker-json-full-view'),
                                   document: shown,
+                                  textStyle: tokens.typography.mono.copyWith(fontSize: 10.5, height: 1.35),
                                   rawText: json,
                                   onCopySecret: full == null
                                       ? null
@@ -456,7 +491,16 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
 }
 
 class _DockerOverview extends StatelessWidget {
-  const _DockerOverview({required this.container, required this.detail, required this.service, required this.session});
+  final bool active;
+  final int environmentRevision;
+  const _DockerOverview({
+    required this.environmentRevision,
+    required this.active,
+    required this.container,
+    required this.detail,
+    required this.service,
+    required this.session,
+  });
   final DockerContainer container;
   final DockerContainerDetail? detail;
   final DockerService service;
@@ -506,12 +550,24 @@ class _DockerOverview extends StatelessWidget {
     ];
     Widget mono(String value, {Color? color}) => SelectableText(
       value,
-      style: tokens.typography.mono.copyWith(fontSize: 12, color: color ?? tokens.palette.label),
+      style: tokens.typography.mono.copyWith(
+        fontSize: 11,
+        fontWeight: FontWeight.w400,
+        color: color ?? tokens.palette.label,
+      ),
     );
     return ListView(
       key: const ValueKey('docker-overview'),
       padding: const EdgeInsets.all(GlassSpacing.s16),
       children: [
+        if (active && dockerIsActive(container.state) && service is DockerObservationService)
+          _ContainerUsage(
+            key: ValueKey((session.id, container.id)),
+            service: service as DockerObservationService,
+            session: session.id,
+            container: container.id,
+            mainPid: state['Pid'] as int?,
+          ),
         _Section(
           title: l.dockerDetails,
           child: Column(
@@ -556,12 +612,15 @@ class _DockerOverview extends StatelessWidget {
             title: l.dockerLabels,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [for (final entry in labels.entries) _Fact(label: entry.key, value: entry.value, mono: true)],
+              children: [
+                for (final entry in labels.entries)
+                  _Fact(label: entry.key, value: entry.value, mono: true, compactValue: true),
+              ],
             ),
           ),
         if (env.isNotEmpty)
           _EnvironmentSection(
-            key: ValueKey('docker-env-section-${container.id}'),
+            key: ValueKey((container.id, environmentRevision)),
             env: env,
             service: service,
             session: session,
@@ -604,7 +663,11 @@ class _MountsTable extends StatelessWidget {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final head = tokens.typography.caption.copyWith(color: tokens.secondaryLabel);
-    final mono = tokens.typography.mono.copyWith(fontSize: 12, color: tokens.palette.label);
+    final mono = tokens.typography.mono.copyWith(
+      fontSize: 11,
+      fontWeight: FontWeight.w400,
+      color: tokens.palette.label,
+    );
     TableRow row(List<Widget> cells) => TableRow(
       children: [
         for (final cell in cells) Padding(padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6), child: cell),
@@ -705,7 +768,12 @@ class _EnvironmentSectionState extends ConsumerState<_EnvironmentSection> {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final entries = _revealed ?? widget.env;
-    final mono = tokens.typography.mono.copyWith(fontSize: 12, color: tokens.palette.label);
+    final mono = tokens.typography.mono.copyWith(
+      fontSize: 10,
+      height: 1.35,
+      fontWeight: FontWeight.w400,
+      color: tokens.palette.label,
+    );
     return _Section(
       title: l.dockerEnvironment,
       trailing: _revealed != null
@@ -891,6 +959,200 @@ class _RevealDialogState<T> extends ConsumerState<_RevealDialog<T>> with VaultPa
   }
 }
 
+class _ContainerUsage extends StatefulWidget {
+  const _ContainerUsage({
+    super.key,
+    required this.service,
+    required this.session,
+    required this.container,
+    this.mainPid,
+  });
+  final DockerObservationService service;
+  final String session, container;
+  final int? mainPid;
+  @override
+  State<_ContainerUsage> createState() => _ContainerUsageState();
+}
+
+class _ContainerUsageState extends State<_ContainerUsage> with WidgetsBindingObserver {
+  DockerJson? _sample;
+  bool _failed = false, _loading = false, _foreground = true;
+  Timer? _timer;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_read());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _timer?.cancel();
+    if (_foreground) unawaited(_read());
+  }
+
+  Future<void> _read() async {
+    if (_loading || !_foreground) return;
+    _loading = true;
+    try {
+      final sample = await widget.service.telemetry(widget.session, widget.container);
+      if (mounted) {
+        setState(() {
+          _sample = sample;
+          _failed = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _sample = null;
+          _failed = true;
+        });
+      }
+    } finally {
+      _loading = false;
+      if (mounted && _foreground) _timer = Timer(const Duration(seconds: 5), _read);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n, t = GlassTokens.of(context);
+    final s = _sample;
+    String bytes(String key) => s?[key] is int ? formatBytes(l, s![key] as int) : '—';
+    final cpu = s?['cpu'] as num?, memory = s?['memory'] as num?, limit = s?['limit'] as num?;
+    final rows = (s?['processes'] as List?)?.whereType<List<Object?>>().where((r) => r.length == 6);
+    final valueStyle = t.typography.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w400);
+    final caption = t.typography.caption.copyWith(color: t.secondaryLabel);
+    Widget metric(String label, String value, {double? fraction}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: caption),
+        Text(value, style: t.typography.callout),
+        if (fraction != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: LinearProgressIndicator(value: fraction.clamp(0, 1), minHeight: 3),
+          ),
+      ],
+    );
+    Widget section(String title, Widget child) => ContentSurface(
+      kind: ContentSurfaceKind.inset,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: t.typography.bodyEmph),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+    final memoryText = "${bytes('memory')} / ${bytes('limit')}";
+    final percent = NumberFormat.decimalPercentPattern(locale: l.localeName, decimalDigits: 1);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 8,
+        children: [
+          section(
+            l.sessionUsage,
+            s == null
+                ? (_failed ? Text(l.sessionUsageUnavailable) : const LinearProgressIndicator())
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final twoColumns = constraints.maxWidth >= MediaQuery.textScalerOf(context).scale(264);
+                      final width = twoColumns ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+                      final cells = [
+                        metric(
+                          l.hostMetricsCpu,
+                          cpu == null ? '—' : percent.format(cpu / 100),
+                          fraction: cpu == null ? null : cpu / 100,
+                        ),
+                        metric(
+                          l.hostMetricsRam,
+                          memoryText,
+                          fraction: memory != null && limit != null && limit > 0 ? memory / limit : null,
+                        ),
+                        metric(l.hostMetricsNetwork, "↓ ${bytes('rx')}   ↑ ${bytes('tx')}"),
+                        metric(l.sessionDiskIO, "${bytes('read')} / ${bytes('write')}"),
+                      ];
+                      return Wrap(
+                        spacing: 16,
+                        runSpacing: 12,
+                        children: [for (final cell in cells) SizedBox(width: width, child: cell)],
+                      );
+                    },
+                  ),
+          ),
+          if (s != null)
+            section(
+              l.wslcProcesses,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 4,
+                    children: [
+                      if (widget.mainPid != null && widget.mainPid! > 0)
+                        Text('${l.dockerMainPid}  ${widget.mainPid}', style: t.typography.caption),
+                      if (s['pids'] != null) Text("PIDs  ${s['pids']}", style: t.typography.caption),
+                    ],
+                  ),
+                  if (rows != null && rows.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                          child: Table(
+                            defaultColumnWidth: const IntrinsicColumnWidth(),
+                            border: TableBorder(horizontalInside: BorderSide(color: t.surfaces.separator)),
+                            children: [
+                              for (final (i, row) in [
+                                ['PID', l.dockerCommand, l.dockerProcessUser, 'CPU %', 'RAM %', l.dockerProcessElapsed],
+                                for (final row in rows) [row[0], row[5], row[1], row[2], row[3], row[4]],
+                              ].indexed)
+                                TableRow(
+                                  children: [
+                                    for (final (column, value) in row.indexed)
+                                      Padding(
+                                        padding: EdgeInsetsDirectional.fromSTEB(0, 4, column == 5 ? 0 : 12, 4),
+                                        child: Text(
+                                          value.toString(),
+                                          textAlign: column == 3 || column == 4 ? TextAlign.end : TextAlign.start,
+                                          style: i == 0 ? caption : valueStyle.copyWith(fontSize: 10.5, height: 1.35),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.child, this.trailing});
   final String title;
@@ -922,16 +1184,22 @@ class _Section extends StatelessWidget {
 }
 
 class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value, this.mono = false});
+  const _Fact({required this.label, required this.value, this.mono = false, this.compactValue = false});
   final String label, value;
-  final bool mono;
+  final bool mono, compactValue;
 
   @override
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
-    final style = (mono ? tokens.typography.mono.copyWith(fontSize: 12) : tokens.typography.callout).copyWith(
-      color: tokens.palette.label,
-    );
+    final style =
+        (mono
+                ? tokens.typography.mono.copyWith(
+                    fontSize: compactValue ? 10 : 11,
+                    height: compactValue ? 1.35 : null,
+                    fontWeight: FontWeight.w400,
+                  )
+                : tokens.typography.callout)
+            .copyWith(color: tokens.palette.label);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: LayoutBuilder(

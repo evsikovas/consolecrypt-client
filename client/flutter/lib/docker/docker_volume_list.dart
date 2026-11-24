@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -167,7 +168,7 @@ class DockerVolumeListState extends ConsumerState<DockerVolumeList> {
                                       GlassBadge(
                                         label: name,
                                         tone: GlassTone.info,
-                                        icon: Icons.view_in_ar_outlined,
+                                        icon: ToolIcons.docker,
                                         dense: true,
                                       ),
                                 ],

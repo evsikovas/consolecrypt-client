@@ -94,6 +94,486 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Build mode for the selected remote Docker engine
+  ///
+  /// In en, this message translates to:
+  /// **'Build on {host} over SSH'**
+  String registryBuildOnSsh(String host);
+
+  /// Absolute build context directory on the SSH server
+  ///
+  /// In en, this message translates to:
+  /// **'Server folder containing Dockerfile'**
+  String get registryRemoteDirectory;
+
+  /// Where registry credentials are used for a remote build
+  ///
+  /// In en, this message translates to:
+  /// **'Buildx uses the selected registry account on this server during the build.'**
+  String get registryRemoteAuthHelp;
+
+  /// Requirements for building a project on an SSH server
+  ///
+  /// In en, this message translates to:
+  /// **'The SSH host needs Python 3, Docker Buildx and a local Docker socket.'**
+  String get registryRemoteTools;
+
+  /// Container registry
+  ///
+  /// In en, this message translates to:
+  /// **'Container registry'**
+  String get registryLabel;
+
+  /// Select a saved registry
+  ///
+  /// In en, this message translates to:
+  /// **'Select a saved registry'**
+  String get registryChoose;
+
+  /// Add registry
+  ///
+  /// In en, this message translates to:
+  /// **'Add registry'**
+  String get registryAdd;
+
+  /// Other registry
+  ///
+  /// In en, this message translates to:
+  /// **'Other registry'**
+  String get registryOther;
+
+  /// Registry host
+  ///
+  /// In en, this message translates to:
+  /// **'Registry host'**
+  String get registryAddress;
+
+  /// Repository path
+  ///
+  /// In en, this message translates to:
+  /// **'Repository path'**
+  String get registryRepo;
+
+  /// Tag
+  ///
+  /// In en, this message translates to:
+  /// **'Tag'**
+  String get registryTag;
+
+  /// Password or access token
+  ///
+  /// In en, this message translates to:
+  /// **'Password or access token'**
+  String get registryToken;
+
+  /// Push image
+  ///
+  /// In en, this message translates to:
+  /// **'Push image'**
+  String get registryPublish;
+
+  /// Image published. Its digest is ready to use.
+  ///
+  /// In en, this message translates to:
+  /// **'Image published. The image field now contains the selected tag.'**
+  String get registryPublished;
+
+  /// Enter a registry host, optionally with a port.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a registry host, optionally with a port.'**
+  String get registryInvalid;
+
+  /// Could not save the registry credential.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the registry credential.'**
+  String get registrySaveFailed;
+
+  /// Push failed. Check the repository path, push permission and connectivity from the Docker host.
+  ///
+  /// In en, this message translates to:
+  /// **'Push failed. Check the repository path, push permission and connectivity from the Docker host.'**
+  String get registryPublishFailed;
+
+  /// Bar indicators
+  ///
+  /// In en, this message translates to:
+  /// **'Bar indicators'**
+  String get terminalBarItems;
+
+  /// Indicator colour
+  ///
+  /// In en, this message translates to:
+  /// **'Indicator colour'**
+  String get terminalBarColor;
+
+  /// Restore default indicators and colours
+  ///
+  /// In en, this message translates to:
+  /// **'Restore default indicators and colours'**
+  String get terminalBarReset;
+
+  /// Swap servers
+  ///
+  /// In en, this message translates to:
+  /// **'Swap servers'**
+  String get captureSwap;
+
+  /// sudo password
+  ///
+  /// In en, this message translates to:
+  /// **'sudo password'**
+  String get captureSudoPassword;
+
+  /// Requests a TCP connection
+  ///
+  /// In en, this message translates to:
+  /// **'Requests a TCP connection'**
+  String get captureSyn;
+
+  /// Accepts the TCP connection request
+  ///
+  /// In en, this message translates to:
+  /// **'Accepts the TCP connection request'**
+  String get captureSynAck;
+
+  /// Acknowledges receipt
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledges receipt'**
+  String get captureAck;
+
+  /// Carries TCP data
+  ///
+  /// In en, this message translates to:
+  /// **'Carries TCP data'**
+  String get captureData;
+
+  /// Finishes sending data
+  ///
+  /// In en, this message translates to:
+  /// **'Finishes sending data'**
+  String get captureFin;
+
+  /// Resets the TCP connection
+  ///
+  /// In en, this message translates to:
+  /// **'Resets the TCP connection'**
+  String get captureRst;
+
+  /// Asks for a device’s MAC address
+  ///
+  /// In en, this message translates to:
+  /// **'Asks for a device’s MAC address'**
+  String get captureArpQuery;
+
+  /// Announces the device’s MAC address
+  ///
+  /// In en, this message translates to:
+  /// **'Announces the device’s MAC address'**
+  String get captureArpReply;
+
+  /// Captured bytes
+  ///
+  /// In en, this message translates to:
+  /// **'Captured bytes'**
+  String get capturePacketBytes;
+
+  /// Docker disk usage tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk usage'**
+  String get dockerDiskUsage;
+
+  /// Container lifecycle event log tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get dockerEventJournal;
+
+  /// Build cache disk usage category.
+  ///
+  /// In en, this message translates to:
+  /// **'Build cache'**
+  String get dockerBuildCache;
+
+  /// dockerObjectsCount
+  ///
+  /// In en, this message translates to:
+  /// **'Objects: {count}'**
+  String dockerObjectsCount(int count);
+
+  /// dockerReclaimable
+  ///
+  /// In en, this message translates to:
+  /// **'Reclaimable: {size}'**
+  String dockerReclaimable(String size);
+
+  /// Time range of the container event journal.
+  ///
+  /// In en, this message translates to:
+  /// **'Container events · last 24 hours'**
+  String get dockerRecentLifecycle;
+
+  /// Empty container event history.
+  ///
+  /// In en, this message translates to:
+  /// **'No container events in the last 24 hours'**
+  String get dockerJournalEmpty;
+
+  /// dockerLifecycleAction
+  ///
+  /// In en, this message translates to:
+  /// **'{action, select, create {Created} start {Started} restart {Restarted} stop {Stopped} die {Exited} kill {Kill signal} oom {Out of memory} destroy {Removed} pause {Paused} unpause {Resumed} rename {Renamed} healthy {Healthy} unhealthy {Unhealthy} starting {Health check starting} other {Event}}'**
+  String dockerLifecycleAction(String action);
+
+  /// Group of previously opened local KeePass databases
+  ///
+  /// In en, this message translates to:
+  /// **'Recent KDBX files'**
+  String get keepassRecentKdbx;
+
+  /// Shows the server metrics that do not fit in the terminal status bar
+  ///
+  /// In en, this message translates to:
+  /// **'More server metrics'**
+  String get terminalMoreMetrics;
+
+  /// Show server metrics below the terminal
+  ///
+  /// In en, this message translates to:
+  /// **'Show server metrics below the terminal'**
+  String get terminalMetricsBar;
+
+  /// SSH channel latency
+  ///
+  /// In en, this message translates to:
+  /// **'SSH channel latency'**
+  String get terminalChannelLatency;
+
+  /// number ms
+  ///
+  /// In en, this message translates to:
+  /// **'{value} ms'**
+  String terminalLatencyValue(int value);
+
+  /// 1-minute load per CPU
+  ///
+  /// In en, this message translates to:
+  /// **'1-minute load per CPU'**
+  String get terminalNormalizedLoad;
+
+  /// This encoding cannot represent the input. Choose another encoding to send it.
+  ///
+  /// In en, this message translates to:
+  /// **'This encoding cannot represent the input. Choose another encoding to send it.'**
+  String get terminalEncodingError;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Simplified Chinese'**
+  String get terminalEncodingSimplifiedChinese;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Traditional Chinese'**
+  String get terminalEncodingTraditionalChinese;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Japanese'**
+  String get terminalEncodingJapanese;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Korean'**
+  String get terminalEncodingKorean;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Western European'**
+  String get terminalEncodingWesternEuropean;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Central European'**
+  String get terminalEncodingCentralEuropean;
+
+  /// Search within the active terminal pane and its scrollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in terminal'**
+  String get terminalFindText;
+
+  /// Containers attached to the selected Docker network.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected containers'**
+  String get dockerNetworkContainers;
+
+  /// No Docker networks match the current filter.
+  ///
+  /// In en, this message translates to:
+  /// **'No networks match'**
+  String get dockerNetworkEmpty;
+
+  /// Language group in the terminal encoding chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyrillic'**
+  String get terminalEncodingCyrillic;
+
+  /// Compact age in completed weeks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} wk ago'**
+  String dockerImageWeeksAgo(int count);
+
+  /// Disk bytes read and written by a container.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk read / write'**
+  String get sessionDiskIO;
+
+  /// Terminal workspace and device settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Group sessions by host folder'**
+  String get sessionGroupTabs;
+
+  /// Terminal workspace and device settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh trust. Showing the last device list.'**
+  String get sessionDevicesStale;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get sessionRemote;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Local'**
+  String get sessionLocal;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Responding'**
+  String get sessionResponding;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Select provider'**
+  String get sessionNoProvider;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden'**
+  String get sessionHidden;
+
+  /// Session history loading error.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read command history'**
+  String get sessionHistoryUnavailable;
+
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'Server shell history'**
+  String get serverShellHistory;
+
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'The shell history file has no saved commands'**
+  String get serverHistoryEmpty;
+
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'Main PID'**
+  String get dockerMainPid;
+
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'Elapsed'**
+  String get dockerProcessElapsed;
+
+  /// Terminal and container inspector label.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get dockerProcessUser;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands from this session will appear here'**
+  String get sessionHistoryEmpty;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource usage'**
+  String get sessionUsage;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Metrics unavailable'**
+  String get sessionUsageUnavailable;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap'**
+  String get sessionSwap;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Login sessions'**
+  String get sessionLogins;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a snippet'**
+  String get sessionSnippetSearch;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about this host'**
+  String get sessionAsk;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a question'**
+  String get sessionAskGeneral;
+
+  /// Compact terminal workspace label.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as snippet'**
+  String get sessionSnip;
+
   /// Devices table heading.
   ///
   /// In en, this message translates to:
@@ -9717,6 +10197,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear selection'**
   String get terminalClearSelection;
+
+  /// Terminal setting for clipboard text with ordinary line breaks.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow multiline paste without confirmation'**
+  String get terminalAllowMultilinePaste;
 
   /// Terminal context menu or its selected-text attachment.
   ///
@@ -31123,7 +31609,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Experimental: one stateless Linux container, one replica and an internal ClusterIP Service. Review the manifest before deploying.'**
+  /// **'One Linux replica and an internal ClusterIP Service. Configure Docker environment overrides and Compose dependencies separately.'**
   String get dockerKubeIntro;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -31159,7 +31645,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Publish the image to a registry reachable by cluster nodes first. This wizard does not upload local images. Prefer a digest; a mutable tag can change. localhost is not a remote registry.'**
+  /// **'Use a published tag or digest that cluster nodes can pull. Private images may need an imagePullSecret.'**
   String get dockerKubeImageHelp;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -31210,16 +31696,22 @@ abstract class AppLocalizations {
   /// **'Use template'**
   String get dockerKubeTemplate;
 
+  /// Label of the editable prompt sent to the selected AI provider.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get dockerKubePrompt;
+
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Review the template below before sending it to the AI provider. ConsoleCrypt adds the Docker startup command locally after receiving the response.'**
+  /// **'You can edit the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.'**
   String get dockerKubeAiReview;
 
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Send template to AI'**
+  /// **'Send prompt'**
   String get dockerKubeSendAi;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -31237,7 +31729,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'I checked the image, CPU architecture and startup command. This deployment uses the image’s environment and filesystem. Configure any Docker environment overrides or Compose dependencies separately.'**
+  /// **'I checked the image, platform and startup command'**
   String get dockerKubeAcknowledge;
 
   /// Experimental Docker to Kubernetes deployment wizard.
@@ -34230,6 +34722,276 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Host details'**
   String get hostInspector;
+
+  /// Packet capture workspace. TCPdump
+  ///
+  /// In en, this message translates to:
+  /// **'TCPdump'**
+  String get captureTitle;
+
+  /// Packet capture workspace. Live packet headers, addresses and ports.
+  ///
+  /// In en, this message translates to:
+  /// **'Live packet headers, addresses and ports.'**
+  String get captureSubtitle;
+
+  /// Packet capture workspace. Choose the endpoints to start a capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the endpoints to start a capture.'**
+  String get captureChoose;
+
+  /// Packet capture workspace. Listening for packets
+  ///
+  /// In en, this message translates to:
+  /// **'Listening for packets'**
+  String get captureListening;
+
+  /// Packet capture workspace. Capture stopped
+  ///
+  /// In en, this message translates to:
+  /// **'Capture stopped'**
+  String get captureStopped;
+
+  /// Packet capture workspace. tcpdump is missing at the capture point.
+  ///
+  /// In en, this message translates to:
+  /// **'tcpdump is missing at the capture point.'**
+  String get captureMissing;
+
+  /// Packet capture workspace. Packet capture requires additional permissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Packet capture requires additional permissions.'**
+  String get captureDenied;
+
+  /// Timed out waiting for tcpdump to start on the capture server.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not report capture readiness within 20 seconds.'**
+  String get captureStartTimeout;
+
+  /// Packet capture workspace. Could not complete the capture.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not complete the capture.'**
+  String get captureFailed;
+
+  /// Packet capture workspace. Could not determine the connection addresses.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not determine the connection addresses.'**
+  String get captureNoPeer;
+
+  /// Packet capture workspace. Capture server
+  ///
+  /// In en, this message translates to:
+  /// **'Capture server'**
+  String get captureSource;
+
+  /// Packet capture workspace. Choose server
+  ///
+  /// In en, this message translates to:
+  /// **'Peer server'**
+  String get captureTarget;
+
+  /// Packet capture workspace. The first server captures traffic to and from the second.
+  ///
+  /// In en, this message translates to:
+  /// **'The first server captures traffic to and from the second.'**
+  String get captureServersHelp;
+
+  /// Packet capture workspace. Start capture
+  ///
+  /// In en, this message translates to:
+  /// **'Start capture'**
+  String get captureStart;
+
+  /// Packet capture workspace. Stop
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get captureStop;
+
+  /// Packet capture workspace. Showing {shown} of {total} packets
+  ///
+  /// In en, this message translates to:
+  /// **'Showing {shown} of {total} packets'**
+  String captureCount(int shown, int total);
+
+  /// Packet capture workspace. Install tcpdump
+  ///
+  /// In en, this message translates to:
+  /// **'Install tcpdump'**
+  String get captureInstall;
+
+  /// Packet capture workspace. Install tcpdump with the host’s package manager, then start the capture again.
+  ///
+  /// In en, this message translates to:
+  /// **'Install tcpdump with the host’s package manager, then start the capture again.'**
+  String get captureManualInstall;
+
+  /// Packet capture workspace. Retry with passwordless sudo
+  ///
+  /// In en, this message translates to:
+  /// **'Retry with sudo'**
+  String get captureSudo;
+
+  /// Terminal tmux panel: tmux sessions
+  ///
+  /// In en, this message translates to:
+  /// **'tmux sessions'**
+  String get tmuxTitle;
+
+  /// Terminal tmux panel: Sessions: {count}
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions: {count}'**
+  String tmuxCount(int count);
+
+  /// Terminal tmux panel: Windows: {windows} · Clients: {clients}
+  ///
+  /// In en, this message translates to:
+  /// **'Windows: {windows} · Clients: {clients}'**
+  String tmuxCounts(int windows, int clients);
+
+  /// Terminal tmux panel: Last active: {time}
+  ///
+  /// In en, this message translates to:
+  /// **'Last active: {time}'**
+  String tmuxActivity(String time);
+
+  /// Terminal tmux panel: Attach to session
+  ///
+  /// In en, this message translates to:
+  /// **'Attach to session'**
+  String get tmuxAttach;
+
+  /// Terminal tmux panel: Detach from session
+  ///
+  /// In en, this message translates to:
+  /// **'Detach from session'**
+  String get tmuxDetach;
+
+  /// Terminal tmux panel: Create session
+  ///
+  /// In en, this message translates to:
+  /// **'Create session'**
+  String get tmuxCreate;
+
+  /// Terminal tmux panel: End session
+  ///
+  /// In en, this message translates to:
+  /// **'End session'**
+  String get tmuxKill;
+
+  /// Terminal tmux panel: End “{name}” and stop its processes?
+  ///
+  /// In en, this message translates to:
+  /// **'End “{name}” and stop its processes?'**
+  String tmuxConfirmKill(String name);
+
+  /// Terminal tmux panel: No tmux sessions on this host
+  ///
+  /// In en, this message translates to:
+  /// **'No tmux sessions on this host'**
+  String get tmuxEmpty;
+
+  /// Terminal tmux panel: Couldn’t complete the tmux operation. Refresh the list and try again.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t complete the tmux operation. Refresh the list and try again.'**
+  String get tmuxError;
+
+  /// Terminal tmux panel: Use letters, numbers, spaces, dashes or underscores.
+  ///
+  /// In en, this message translates to:
+  /// **'Use letters, numbers, spaces, dashes or underscores.'**
+  String get tmuxNameHint;
+
+  /// Packet capture: Check tcpdump
+  ///
+  /// In en, this message translates to:
+  /// **'Check tcpdump'**
+  String get captureCheck;
+
+  /// Packet capture: tcpdump is installed
+  ///
+  /// In en, this message translates to:
+  /// **'tcpdump is installed'**
+  String get captureReady;
+
+  /// Packet capture: Run capture with sudo
+  ///
+  /// In en, this message translates to:
+  /// **'Run capture with sudo'**
+  String get captureUseSudo;
+
+  /// Packet capture: Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture requires root or packet capture privileges. Enter the sudo password if prompted.'**
+  String get capturePrivilegeHint;
+
+  /// Packet capture: Install tcpdump on {host}? The command runs in its SSH terminal, where you can respond to package or sudo prompts.
+  ///
+  /// In en, this message translates to:
+  /// **'Install tcpdump on {host}? The command runs in its SSH terminal, where you can respond to package or sudo prompts.'**
+  String captureInstallHost(String host);
+
+  /// Packet capture: Connection details
+  ///
+  /// In en, this message translates to:
+  /// **'Connection details'**
+  String get captureExchange;
+
+  /// Packet capture: Packets between these endpoints when selected: {count}
+  ///
+  /// In en, this message translates to:
+  /// **'Packets between these endpoints when selected: {count}'**
+  String captureExchangeCount(int count);
+
+  /// Docker deployment wizard: Build from a local Dockerfile
+  ///
+  /// In en, this message translates to:
+  /// **'Build from a local Dockerfile'**
+  String get registryBuildFromSource;
+
+  /// Docker deployment wizard: Choose project folder
+  ///
+  /// In en, this message translates to:
+  /// **'Choose project folder'**
+  String get registryBuildFolder;
+
+  /// Docker deployment wizard: Build and publish
+  ///
+  /// In en, this message translates to:
+  /// **'Build and publish'**
+  String get registryBuildPush;
+
+  /// Docker deployment wizard: Build or push failed. Check the Dockerfile, Buildx platform support and registry write access.
+  ///
+  /// In en, this message translates to:
+  /// **'Build or push failed. Check the Dockerfile, Buildx platform support and registry write access.'**
+  String get registryBuildFailed;
+
+  /// Docker deployment wizard: Choose a project folder containing a Dockerfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a project folder containing a Dockerfile.'**
+  String get registryBuildContextError;
+
+  /// Docker deployment wizard: Pin this image by digest
+  ///
+  /// In en, this message translates to:
+  /// **'Pin this image by digest'**
+  String get registryPin;
+
+  /// Docker deployment wizard: Deploy
+  ///
+  /// In en, this message translates to:
+  /// **'Deploy'**
+  String get dockerKubeDeployAction;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

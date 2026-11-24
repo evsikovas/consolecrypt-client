@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
+import 'package:consolecrypt/core/services/tmux_service.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
 import 'package:consolecrypt/src/rust/api/docker.dart' as rs_docker;
@@ -25,7 +26,8 @@ import 'package:flutter/services.dart';
 enum _PromptKind { hostKey, password, passphrase }
 
 final class _Session {
-  _Session(this.id, this.target, this.size);
+  _Session(this.id, this.target, this.size, {this.capture});
+  final ({ObjectId? peerId, bool sudo})? capture;
 
   final TerminalSessionId id;
   final TerminalTarget target;
@@ -62,9 +64,12 @@ final class _Session {
 final class RustTerminalService
     implements
         TerminalService,
+        TcpdumpService,
         LocalTerminalService,
+        TmuxService,
         KubernetesTerminalService,
         DockerTerminalService,
+        TerminalHistoryReader,
         HostMetricsReader,
         RuntimeTerminalService {
   RustTerminalService(RustBackend hub) : _hub = hub {
@@ -91,6 +96,15 @@ final class RustTerminalService
     }
     final host = hub.hosts.value.firstWhere((h) => h.id == hostId);
     return _open(SshTerminalTarget(host), size);
+  }
+
+  @override
+  Future<TerminalSessionHandle> openTcpdump({required ObjectId hostId, ObjectId? peerId, required bool sudo}) async {
+    final host = _hub?.hosts.value.where((h) => h.id == hostId).firstOrNull;
+    if (host == null) {
+      throw const AppException(AppErrorCode.notFound, 'Host not found', reason: AppErrorReason.hostNotFound);
+    }
+    return _open(SshTerminalTarget(host), const TerminalSize(240, 24), capture: (peerId: peerId, sudo: sudo));
   }
 
   String? connectedSshRuntimeId(TerminalSessionId id, ObjectId hostId) {
@@ -185,6 +199,55 @@ final class RustTerminalService
         shell: metadata['shell'] as String,
       ),
     );
+    return _adoptRuntime(runtimeId, target, size);
+  }
+
+  Future<Json> _tmux(TerminalSessionId parent, String action, [Map<String, Object> fields = const {}]) async {
+    final session = _session(parent);
+    final id = session.rustId;
+    if (session.target is! SshTerminalTarget || !session.connected || session.closed || id == null) {
+      throw const AppException(AppErrorCode.notFound, 'SSH session closed', reason: AppErrorReason.sessionClosed);
+    }
+    return decodeObject(
+      await guard(() => rs_ssh.terminalTmux(terminalId: id, requestJson: jsonEncode({'action': action, ...fields}))),
+    );
+  }
+
+  @override
+  Future<String?> tmuxVersion(TerminalSessionId parent) async => (await _tmux(parent, 'probe'))['version'] as String?;
+
+  @override
+  Future<List<TmuxSession>> tmuxSessions(TerminalSessionId parent) async =>
+      ((await _tmux(parent, 'list'))['sessions'] as List).cast<Json>().map(TmuxSession.fromJson).toList();
+
+  @override
+  Future<void> createTmux(TerminalSessionId parent, String name) async {
+    await _tmux(parent, 'create', {'name': name});
+  }
+
+  @override
+  Future<void> renameTmux(TerminalSessionId parent, TmuxSession session, String name) async {
+    await _tmux(parent, 'rename', {'session': session.identity, 'name': name});
+  }
+
+  @override
+  Future<void> killTmux(TerminalSessionId parent, TmuxSession session) async {
+    await _tmux(parent, 'kill', {'session': session.identity});
+  }
+
+  @override
+  Future<TerminalSessionHandle> attachTmux(TerminalSessionId parent, TmuxSession session) async {
+    final source = _session(parent);
+    final original = source.rustId;
+    final runtimeId = (await _tmux(parent, 'attach', {'session': session.identity}))['terminal'] as String;
+    if (source.closed || source.rustId != original || !source.connected) {
+      await _closeRust(runtimeId);
+      throw const AppException(AppErrorCode.notFound, 'SSH session closed', reason: AppErrorReason.sessionClosed);
+    }
+    return (await _adoptRuntime(runtimeId, source.target, source.size)).handle;
+  }
+
+  Future<RuntimeTerminalAttachment> _adoptRuntime(String runtimeId, TerminalTarget target, TerminalSize size) async {
     final session = _Session(TerminalSessionId.generate(), target, size)
       ..rustId = runtimeId
       ..connected = true
@@ -210,8 +273,8 @@ final class RustTerminalService
     }
   }
 
-  TerminalSessionHandle _open(TerminalTarget target, TerminalSize size) {
-    final s = _Session(TerminalSessionId.generate(), target, size);
+  TerminalSessionHandle _open(TerminalTarget target, TerminalSize size, {({ObjectId? peerId, bool sudo})? capture}) {
+    final s = _Session(TerminalSessionId.generate(), target, size, capture: capture);
     _sessions[s.id] = s;
     unawaited(_connect(s));
     return TerminalSessionHandle(
@@ -247,6 +310,11 @@ final class RustTerminalService
       final info = decodeObject(
         await guard(
           () => switch (s.target) {
+            SshTerminalTarget(:final host) when s.capture != null => rs_ssh.terminalOpenTcpdump(
+              hostId: host.id.value,
+              peerId: s.capture!.peerId?.value,
+              sudo: s.capture!.sudo,
+            ),
             SshTerminalTarget(:final host) => rs_ssh.terminalOpen(
               hostId: host.id.value,
               cols: s.size.columns,
@@ -301,7 +369,7 @@ final class RustTerminalService
       final title = info['title'] as String?;
       if (title != null && title.isNotEmpty) s.event(TerminalTitleChanged(title));
       // A resize may have arrived while native spawn/connect was pending.
-      await resize(s.id, s.size);
+      if (s.capture == null) await resize(s.id, s.size);
       if (!s.closed && s.rustId == rustId) _attach(s, rustId);
     } on AppException catch (e) {
       if (e.code == AppErrorCode.hostKeyChanged && s.hostId != null) {
@@ -311,6 +379,7 @@ final class RustTerminalService
           ),
         );
       }
+      if (s.capture != null) unawaited(s.output.close());
       s.event(TerminalStateChanged(SessionConnectionState.disconnected, message: e.message));
     } finally {
       s
@@ -374,6 +443,7 @@ final class RustTerminalService
   void _disconnected(_Session s, String? message) {
     if (!s.connected) return;
     s.connected = false;
+    if (s.capture != null) unawaited(s.output.close());
     s.event(TerminalStateChanged(SessionConnectionState.disconnected, message: message));
   }
 
@@ -434,6 +504,13 @@ final class RustTerminalService
           );
     }
     return true;
+  }
+
+  @override
+  Future<List<String>> commands(TerminalSessionId id) async {
+    final nativeId = _sessions[id]?.rustId;
+    if (nativeId == null) return const [];
+    return guard(() => rs_ssh.terminalCommandHistory(terminalId: nativeId));
   }
 
   @override

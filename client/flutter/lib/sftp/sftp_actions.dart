@@ -158,7 +158,7 @@ final class SftpActions {
               value: a,
               label: a.label(l10n),
               icon: a.icon,
-              shortcut: AppPlatform.isMobile ? null : a.shortcutLabel(keys),
+              shortcut: AppWindowLayout.isPhone(context) ? null : a.shortcutLabel(keys),
               destructive: a == SftpAction.delete,
               enabled: isEnabled(a, sel),
             ),

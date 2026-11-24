@@ -193,6 +193,22 @@ void main() {
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   }
 
+  testWidgets('a workload pod opens with its discovered API and shows its own events', (tester) async {
+    final service = _RelatedPodService();
+    await _pump(tester, service, size: const Size(1600, 1000));
+    await tapKey(tester, 'kube-nav-kind-apps/v1/deployments');
+    await tapKey(tester, 'kube-resource-demo-pod');
+    await tapKey(tester, 'kube-related-tab');
+    await tester.tap(find.text('Workload Pods'));
+    await settle(tester);
+    await tester.tap(find.text('rollout-pod'));
+    await settle(tester);
+    await tapKey(tester, 'kube-events-tab');
+    expect(service.opened?.api, same(_RelatedPodService.podKind));
+    expect(service.opened?.namespace, 'test-space');
+    expect(find.textContaining('no match for platform'), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('cold connection completes discovery before resolving namespaces', (tester) async {
     final service = _ColdDiscoveryService();
     await _pump(tester, service);
@@ -313,15 +329,17 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
-  testWidgets('tablet details retain the wide protected dialog over the resource table', (tester) async {
-    await _pump(tester, _Service(), size: const Size(1024, 900));
+  testWidgets('Android tablet opens the same resource inspector as a desktop window', (tester) async {
+    await _pump(tester, _Service(), size: const Size(1280, 900));
     await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
     await settle(tester);
     final details = find.byKey(const ValueKey('kube-resource-details'));
-    expect(ModalRoute.of(tester.element(details)), isA<PopupRoute<bool>>());
-    expect(tester.getSize(details).width, lessThan(1024));
-    expect(tester.getSize(details).width, greaterThan(700));
-    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('kube-mobile-navigation')), findsNothing);
+    expect(find.byKey(const ValueKey('kube-resource-demo-pod')), findsOneWidget);
+    expect(tester.getSize(details).width, inInclusiveRange(380, 800));
+    await tapKey(tester, 'kube-close-details');
+    expect(details, findsNothing);
+    expect(find.byKey(const ValueKey('kube-resource-demo-pod')), findsOneWidget);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
   testWidgets('mobile Flux swipe opens explicit review and never submits by itself', (tester) async {
@@ -364,13 +382,18 @@ void main() {
       tester.getTopLeft(bottom).dy,
       greaterThan(tester.getTopLeft(find.byKey(const ValueKey('kube-yaml-tab'))).dy),
     );
-    final reconcile = tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-detail-reconcile')));
+    final reconcile = tester.widget<GlassIconButton>(find.byKey(const ValueKey('kube-gitops-detail-reconcile')));
     expect(reconcile.onPressed, isNull);
-    expect(reconcile.label, 'Синхронизировать сейчас');
-    expect(reconcile.tooltip, 'Flux немедленно сверит выбранные ресурсы с Git и применит изменения (flux reconcile)');
+    expect(reconcile.tooltip, startsWith('Синхронизировать сейчас'));
     expect(
-      tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-detail-suspend'))).tooltip,
-      'Flux перестанет применять изменения из Git к выбранным ресурсам, пока синхронизацию не возобновят (flux suspend)',
+      reconcile.tooltip,
+      contains('Flux немедленно сверит выбранные ресурсы с Git и применит изменения (flux reconcile)'),
+    );
+    expect(
+      tester.widget<GlassIconButton>(find.byKey(const ValueKey('kube-gitops-detail-suspend'))).tooltip,
+      contains(
+        'Flux перестанет применять изменения из Git к выбранным ресурсам, пока синхронизацию не возобновят (flux suspend)',
+      ),
     );
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
@@ -634,11 +657,18 @@ void main() {
       ),
     );
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-structural-summary')));
+    final summary = find.byKey(const ValueKey('kube-structural-summary'));
+    final title = find.text('Конфигурация нагрузки и узла');
+    expect(tester.getTopLeft(title).dx - tester.getTopLeft(summary).dx, closeTo(16, 0.1));
+    await tester.tap(title);
     await settle(tester);
-    await tester.tap(find.text('Контейнер · app'));
+    final container = find.text('Контейнер · app');
+    expect(tester.getTopLeft(container).dx - tester.getTopLeft(title).dx, closeTo(12, 0.1));
+    await tester.tap(container);
     await settle(tester);
-    expect(find.textContaining('100m'), findsOneWidget);
+    final requests = find.textContaining('100m');
+    expect(requests, findsOneWidget);
+    expect(tester.getTopLeft(requests).dx, closeTo(tester.getTopLeft(container).dx, 0.1));
     expect(find.textContaining('never-show'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -1126,7 +1156,7 @@ void main() {
 
   testWidgets('port forward appears in cluster panel and stop revokes exact native identity', (tester) async {
     final service = _ForwardService();
-    await _pump(tester, service);
+    await _pump(tester, service, size: const Size(480, 900));
     await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
     await settle(tester);
     await tester.tap(find.byKey(const ValueKey('kube-pod-forward')));
@@ -1362,7 +1392,7 @@ void main() {
     expect(find.byKey(const ValueKey('kube-write-window')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
     await settle(tester);
-    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-edit-yaml'))).onPressed, isNull);
+    expect(tester.widget<GlassIconButton>(find.byKey(const ValueKey('kube-edit-yaml'))).onPressed, isNull);
     expect(service.openedNames, isEmpty);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
@@ -1543,7 +1573,7 @@ void main() {
           ...List.generate(9999, (i) => _row('pod-${i.toString().padLeft(5, '0')}')),
         ]),
       ]);
-    await _pump(tester, service);
+    await _pump(tester, service, size: const Size(480, 900));
     expect(service.requests.last.continueToken, 'next-page');
     expect(service.watches, hasLength(1));
     expect(service.watchVersions, ['10']);
@@ -1719,12 +1749,13 @@ void main() {
 
   testWidgets('cluster-scoped kind omits namespace and stale page is ignored', (tester) async {
     final service = _Service();
-    await _pump(tester, service);
+    await _pump(tester, service, size: const Size(480, 900));
     final pending = Completer<KubeResourcePage>();
     service.listPending = pending;
     await tester.tap(find.byKey(const ValueKey('kube-refresh-resources')));
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-kind')));
+    await tapKey(tester, 'kube-filters-expand');
+    await tapKey(tester, 'kube-kind');
     await settle(tester);
     service.listPending = null;
     service.pages.add(_page([_row('node-current')]));
@@ -2404,4 +2435,44 @@ class _WorkloadSwipeService extends _OperationsService {
   @override
   Future<void> restart(String sessionId, KubeResourceRef resource, String resourceVersion) async =>
       restarted.add((resource.name, resourceVersion));
+}
+
+class _RelatedPodService extends _WorkloadSwipeService {
+  static const podKind = KubeResourceKind(
+    group: '',
+    version: 'v1',
+    resource: 'pods',
+    kind: 'Pod',
+    namespaced: true,
+    verbs: ['create', 'delete', 'get', 'list', 'patch', 'update', 'watch'],
+  );
+  KubeResourceRef? opened;
+
+  @override
+  Future<List<KubeResourceKind>> discover(String sessionId) async => [...await super.discover(sessionId), podKind];
+  @override
+  Future<List<KubeResourceRow>> workloadPods(String sessionId, KubeResourceRef resource) async => const [
+    KubeResourceRow(name: 'rollout-pod', namespace: 'test-space', uid: 'pod-uid', resourceVersion: '1'),
+  ];
+  @override
+  Future<KubeResourceDetail> getResource(String sessionId, KubeResourceRef resource) async {
+    if (resource.name == 'rollout-pod') {
+      opened = resource;
+      if (!identical(resource.api, podKind)) throw StateError('Unknown pod descriptor');
+    }
+    return super.getResource(sessionId, resource);
+  }
+
+  @override
+  Future<List<KubeResourceRow>> objectEvents(String sessionId, KubeResourceRef resource, String uid) async =>
+      uid == 'rollout-pod'
+      ? const [
+          KubeResourceRow(
+            name: 'pull-failed',
+            uid: 'event',
+            resourceVersion: '2',
+            object: {'reason': 'Failed', 'message': 'no match for platform'},
+          ),
+        ]
+      : [];
 }

@@ -15,6 +15,7 @@ class GlassTabColumn extends StatefulWidget {
     required this.activeIndex,
     required this.onSelect,
     super.key,
+    this.groups,
     this.width = defaultWidth,
     this.minWidth = defaultMinWidth,
     this.maxWidth = defaultMaxWidth,
@@ -38,6 +39,7 @@ class GlassTabColumn extends StatefulWidget {
   static const double handleWidth = GlassSpacing.s4;
 
   final List<GlassTab> tabs;
+  final List<({String id, String label})>? groups;
   final int? activeIndex;
   final ValueChanged<int> onSelect;
   final ValueChanged<int>? onClose;
@@ -74,6 +76,7 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
   static const _step = 20.0;
 
   final _scroll = ScrollController();
+  final _closedGroups = <String>{};
   final _rowKeys = <GlobalKey>[];
   final _focusNodes = <FocusNode>[];
 
@@ -105,7 +108,12 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
     _syncChildren();
     if (oldWidget.width != widget.width || oldWidget.collapsed != widget.collapsed) _local = null;
     if (oldWidget.activeIndex != widget.activeIndex || oldWidget.tabs.length != widget.tabs.length) {
-      _reveal(widget.activeIndex);
+      final active = widget.activeIndex;
+      final groups = widget.groups;
+      if (active != null && groups != null && active >= 0 && active < groups.length) {
+        _closedGroups.remove(groups[active].id);
+      }
+      _reveal(active);
     }
   }
 
@@ -196,6 +204,34 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
     final folded = view.collapsed;
     final twoLines = widget.tabs.any((tab) => tab.subtitle != null);
     final menu = widget.onContextMenu;
+    final groups = folded ? null : widget.groups;
+    assert(groups == null || groups.length == widget.tabs.length);
+    final members = <String, List<int>>{};
+    if (groups != null) {
+      for (final (i, group) in groups.indexed) {
+        (members[group.id] ??= []).add(i);
+      }
+    }
+    final visible = groups == null
+        ? List<int>.generate(widget.tabs.length, (i) => i)
+        : [
+            for (final entry in members.entries)
+              if (!_closedGroups.contains(entry.key)) ...entry.value,
+          ];
+    void focusRelative(int i, int delta) {
+      if (visible.isNotEmpty) _focus(visible[(visible.indexOf(i) + delta).clamp(0, visible.length - 1)]);
+    }
+
+    void move(int from, int to) {
+      if (groups == null || groups[from].id == groups[to].id) widget.onReorder?.call(from, to);
+    }
+
+    void moveRelative(int i, int delta) {
+      final order = groups == null ? visible : members[groups[i].id]!;
+      final to = order.indexOf(i) + delta;
+      if (to >= 0 && to < order.length) move(i, order[to]);
+    }
+
     final rows = [
       for (final (i, tab) in widget.tabs.indexed)
         KeyedSubtree(
@@ -207,33 +243,34 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
             onLongPressStart: menu == null ? null : (details) => menu(i, details.globalPosition),
             child: CallbackShortcuts(
               bindings: {
-                const SingleActivator(LogicalKeyboardKey.arrowDown): () => _focus(i + 1),
-                const SingleActivator(LogicalKeyboardKey.arrowUp): () => _focus(i - 1),
-                const SingleActivator(LogicalKeyboardKey.home): () => _focus(0),
-                const SingleActivator(LogicalKeyboardKey.end): () => _focus(widget.tabs.length - 1),
+                const SingleActivator(LogicalKeyboardKey.arrowDown): () => focusRelative(i, 1),
+                const SingleActivator(LogicalKeyboardKey.arrowUp): () => focusRelative(i, -1),
+                const SingleActivator(LogicalKeyboardKey.home): () => _focus(visible.first),
+                const SingleActivator(LogicalKeyboardKey.end): () => _focus(visible.last),
                 if (menu != null) ...{
                   const SingleActivator(LogicalKeyboardKey.f10, shift: true): () => _menuFor(i),
                   const SingleActivator(LogicalKeyboardKey.contextMenu): () => _menuFor(i),
                 },
-                if (widget.onReorder case final reorder?) ...{
+                if (widget.onReorder != null) ...{
                   const SingleActivator(LogicalKeyboardKey.arrowUp, alt: true): () {
-                    if (i > 0) reorder(i, i - 1);
+                    moveRelative(i, -1);
                   },
                   const SingleActivator(LogicalKeyboardKey.arrowDown, alt: true): () {
-                    if (i < widget.tabs.length - 1) reorder(i, i + 1);
+                    moveRelative(i, 1);
                   },
                 },
               },
               child: GlassTabDrag(
                 index: i,
                 axis: Axis.vertical,
-                onReorder: widget.onReorder,
+                onReorder: widget.onReorder == null ? null : move,
                 child: _ColumnTab(
                   tab: tab,
                   number: i + 1,
                   active: i == widget.activeIndex,
                   folded: folded,
                   twoLines: twoLines,
+                  grouped: groups != null,
                   focusNode: _focusNodes[i],
                   onSelect: () => widget.onSelect(i),
                   onClose: widget.onClose == null ? null : () => widget.onClose!(i),
@@ -292,7 +329,49 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
                   child: SingleChildScrollView(
                     key: const ValueKey('glass-tab-column-scroll'),
                     controller: _scroll,
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: groups == null
+                          ? rows
+                          : [
+                              for (final entry in members.entries) ...[
+                                Semantics(
+                                  expanded: !_closedGroups.contains(entry.key),
+                                  button: true,
+                                  child: InkWell(
+                                    onTap: () => setState(() {
+                                      if (!_closedGroups.remove(entry.key)) _closedGroups.add(entry.key);
+                                    }),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            _closedGroups.contains(entry.key)
+                                                ? Icons.chevron_right_rounded
+                                                : Icons.expand_more_rounded,
+                                            size: 16,
+                                            color: tokens.secondaryLabel,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              groups[entry.value.first].label,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (!_closedGroups.contains(entry.key))
+                                  for (final i in entry.value) rows[i],
+                              ],
+                            ],
+                    ),
                   ),
                 ),
               ),
@@ -369,6 +448,7 @@ class _ColumnTab extends StatelessWidget {
     required this.active,
     required this.folded,
     required this.twoLines,
+    required this.grouped,
     required this.focusNode,
     required this.onSelect,
     this.onClose,
@@ -379,6 +459,7 @@ class _ColumnTab extends StatelessWidget {
   final bool active;
   final bool folded;
   final bool twoLines;
+  final bool grouped;
   final FocusNode focusNode;
   final VoidCallback onSelect;
   final VoidCallback? onClose;
@@ -420,7 +501,29 @@ class _ColumnTab extends StatelessWidget {
             child: Row(
               children: [
                 if (teamBar != null) ...[teamBar, const SizedBox(width: GlassSpacing.s4)],
-                _StatusDot(state: tab.state, hostColor: tab.hostColor),
+                if (grouped)
+                  SizedBox(
+                    width: 23,
+                    height: 23,
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: Icon(
+                            Icons.dns_outlined,
+                            size: 18,
+                            color: active ? Theme.of(context).colorScheme.primary : tokens.secondaryLabel,
+                          ),
+                        ),
+                        PositionedDirectional(
+                          top: 0,
+                          end: 0,
+                          child: _StatusDot(state: tab.state, hostColor: tab.hostColor),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  _StatusDot(state: tab.state, hostColor: tab.hostColor),
                 const SizedBox(width: GlassSpacing.s8),
                 Expanded(
                   child: Column(

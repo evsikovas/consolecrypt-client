@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/settings/color_picker.dart';
 import 'package:consolecrypt/settings/terminal_theme_editor.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
+import 'package:consolecrypt/terminal/terminal_status_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -252,21 +253,37 @@ String terminalSchemeLabel(TerminalColorScheme scheme, AppLocalizations l) => sw
   TerminalColorScheme.amber => l.settingsTerminalThemeAmber,
 };
 
-/// Terminal tabs above the terminal or in a column at its left edge
-/// (desktop only; shown under Terminal and Appearance). [id] keys each copy.
+/// Wide windows can change tab placement. The Terminal section also offers
+/// session grouping for the left column and for the phone's session picker.
 class TerminalTabPlacementSetting extends ConsumerWidget {
-  const TerminalTabPlacementSetting({required this.id, super.key});
+  const TerminalTabPlacementSetting({required this.id, this.showGrouping = false, super.key});
 
   final String id;
+  final bool showGrouping;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (AppPlatform.isMobile) return const SizedBox.shrink();
     final placement =
         ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabPlacement)) ?? TerminalTabPlacement.top;
     final settings = ref.read(settingsServiceProvider);
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
+    final phone = AppWindowLayout.isPhone(context);
+    final groupSessions = showGrouping && (phone || placement == TerminalTabPlacement.left)
+        ? CheckboxListTile(
+            key: ValueKey('$id-grouped'),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: Text(l.sessionGroupTabs),
+            value: ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabGrouped)) ?? false,
+            onChanged: (value) => runWithFeedback(
+              context,
+              () => settings.updateLocal(settings.currentLocal.copyWith(terminalTabGrouped: value ?? false)),
+            ),
+          )
+        : null;
+    if (phone) return groupSessions ?? const SizedBox.shrink();
     return LabeledValue(
       label: l.settingsTerminalTabPlacement,
       value: Column(
@@ -295,6 +312,7 @@ class TerminalTabPlacementSetting extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: GlassSpacing.s4),
+          ?groupSessions,
           Text(
             l.settingsTerminalTabPlacementHelp,
             style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel),
@@ -418,7 +436,8 @@ class TerminalAppearanceControls extends ConsumerWidget {
 }
 
 class TerminalDeviceControls extends ConsumerWidget {
-  const TerminalDeviceControls({super.key});
+  const TerminalDeviceControls({this.showServerMetrics = true, super.key});
+  final bool showServerMetrics;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -426,6 +445,11 @@ class TerminalDeviceControls extends ConsumerWidget {
     final settings = ref.watch(settingsServiceProvider);
     final local = ref.watch(localSettingsProvider).value ?? settings.currentLocal;
     final terminalFont = ref.watch(terminalFontProvider);
+    final foreground = AppTheme.terminalTheme(
+      GlassTokens.of(context).brightness,
+      scheme: local.terminalColorScheme,
+      custom: local.customTerminalColors,
+    ).foreground;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -496,8 +520,94 @@ class TerminalDeviceControls extends ConsumerWidget {
             ],
           ),
         ),
+        if (showServerMetrics)
+          SwitchListTile.adaptive(
+            key: const ValueKey('terminal-metrics-setting'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.terminalMetricsBar),
+            value: local.terminalMetricsBar,
+            onChanged: (v) => runWithFeedback(
+              context,
+              () => settings.updateLocal(settings.currentLocal.copyWith(terminalMetricsBar: v)),
+            ),
+          ),
+        if (showServerMetrics && local.terminalMetricsBar)
+          ExpansionTile(
+            key: const ValueKey('terminal-bar-editor'),
+            tilePadding: EdgeInsets.zero,
+            title: Text(l10n.terminalBarItems),
+            children: [
+              for (final metric in TerminalMetric.values)
+                Row(
+                  children: [
+                    Expanded(
+                      child: CheckboxListTile(
+                        key: ValueKey('bar-visible-${metric.name}'),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: Text(metric.label(context)),
+                        value: !local.hiddenTerminalMetrics.contains(metric),
+                        onChanged: (enabled) {
+                          final current = settings.currentLocal;
+                          final hidden = {...current.hiddenTerminalMetrics};
+                          if (enabled == true) {
+                            hidden.remove(metric);
+                          } else {
+                            hidden.add(metric);
+                          }
+                          runWithFeedback(
+                            context,
+                            () => settings.updateLocal(current.copyWith(hiddenTerminalMetrics: hidden)),
+                          );
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      key: ValueKey('bar-color-${metric.name}'),
+                      tooltip: '${l10n.terminalBarColor} · ${metric.label(context)}',
+                      icon: Icon(
+                        Icons.palette_outlined,
+                        color: local.terminalMetricColors.containsKey(metric)
+                            ? Color(0xff000000 | local.terminalMetricColors[metric]!)
+                            : null,
+                      ),
+                      onPressed: () async {
+                        final color = await pickRgbColor(
+                          context,
+                          title: '${l10n.terminalBarColor} · ${metric.label(context)}',
+                          color: local.terminalMetricColors[metric] ?? (foreground.toARGB32() & 0xffffff),
+                        );
+                        if (color == null || !context.mounted) return;
+                        final current = settings.currentLocal;
+                        await runWithFeedback(
+                          context,
+                          () => settings.updateLocal(
+                            current.copyWith(terminalMetricColors: {...current.terminalMetricColors, metric: color}),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton(
+                  onPressed: local.hiddenTerminalMetrics.isEmpty && local.terminalMetricColors.isEmpty
+                      ? null
+                      : () => runWithFeedback(
+                          context,
+                          () => settings.updateLocal(
+                            settings.currentLocal.copyWith(hiddenTerminalMetrics: {}, terminalMetricColors: {}),
+                          ),
+                        ),
+                  child: Text(l10n.terminalBarReset),
+                ),
+              ),
+            ],
+          ),
         const TerminalAppearanceControls(),
-        const TerminalTabPlacementSetting(id: 'terminal-tab-placement'),
+        const TerminalTabPlacementSetting(id: 'terminal-tab-placement', showGrouping: true),
         LabeledValue(
           label: l10n.settingsTerminalTabSubtitle,
           value: Align(

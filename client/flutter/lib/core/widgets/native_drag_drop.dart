@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/core/widgets/workspace_draggable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:super_clipboard/super_clipboard.dart';
@@ -64,6 +65,14 @@ class AppDragSource<T extends Object> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (AppPlatform.isAndroid && !AppWindowLayout.isPhone(context)) {
+      return WorkspaceDraggable<T>(
+        data: data,
+        dragAnchorStrategy: pointerDragAnchorStrategy,
+        feedback: feedback,
+        child: child,
+      );
+    }
     if (!nativeDragDrop) {
       return Draggable<T>(data: data, dragAnchorStrategy: pointerDragAnchorStrategy, feedback: feedback, child: child);
     }

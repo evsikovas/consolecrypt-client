@@ -15,7 +15,7 @@ class ShortcutSettingsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (AppPlatform.isMobile) return const SizedBox.shrink();
+    if (AppWindowLayout.isPhone(context)) return const SizedBox.shrink();
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final commands = ref.watch(appCommandsProvider);

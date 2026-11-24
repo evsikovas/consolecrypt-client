@@ -17,6 +17,18 @@ Future<String> credentialsList() => RustLib.instance.api.crateApiCredentialsCred
 Future<String> credentialsAddPassword({required String name, String? username, required List<int> password}) =>
     RustLib.instance.api.crateApiCredentialsCredentialsAddPassword(name: name, username: username, password: password);
 
+Future<String> credentialsAddRegistry({
+  required String name,
+  required String registry,
+  required String username,
+  required List<int> password,
+}) => RustLib.instance.api.crateApiCredentialsCredentialsAddRegistry(
+  name: name,
+  registry: registry,
+  username: username,
+  password: password,
+);
+
 Future<String> credentialsGenerateKey({
   required String name,
   String? username,

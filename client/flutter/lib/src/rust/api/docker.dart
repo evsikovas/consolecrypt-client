@@ -27,6 +27,23 @@ Future<String> dockerContainers({required String sessionId, required bool all}) 
 Future<String> dockerInspect({required String sessionId, required String container}) =>
     RustLib.instance.api.crateApiDockerDockerInspect(sessionId: sessionId, container: container);
 
+/// Publish the exact image from this engine with a registry-bound vault credential.
+Future<String> dockerPublishImage({
+  required String sessionId,
+  required String imageId,
+  required String credentialId,
+  required String repository,
+  required String tag,
+  String? buildJson,
+}) => RustLib.instance.api.crateApiDockerDockerPublishImage(
+  sessionId: sessionId,
+  imageId: imageId,
+  credentialId: credentialId,
+  repository: repository,
+  tag: tag,
+  buildJson: buildJson,
+);
+
 /// Registry-confirmed digests for this local image and its source repository.
 Future<List<String>> dockerImageRepoDigests({
   required String sessionId,
@@ -126,6 +143,24 @@ Future<String> dockerForwards() => RustLib.instance.api.crateApiDockerDockerForw
 
 Future<void> dockerForwardStop({required String forwardId}) =>
     RustLib.instance.api.crateApiDockerDockerForwardStop(forwardId: forwardId);
+
+Future<String> dockerTelemetry({required String sessionId, required String container}) =>
+    RustLib.instance.api.crateApiDockerDockerTelemetry(sessionId: sessionId, container: container);
+
+Future<String> dockerDiskUsage({required String sessionId}) =>
+    RustLib.instance.api.crateApiDockerDockerDiskUsage(sessionId: sessionId);
+
+Future<String> dockerRecentEvents({required String sessionId}) =>
+    RustLib.instance.api.crateApiDockerDockerRecentEvents(sessionId: sessionId);
+
+Future<String> dockerNetworks({required String sessionId}) =>
+    RustLib.instance.api.crateApiDockerDockerNetworks(sessionId: sessionId);
+
+Future<String> dockerImages({required String sessionId}) =>
+    RustLib.instance.api.crateApiDockerDockerImages(sessionId: sessionId);
+
+Future<bool> dockerRemoveImage({required String sessionId, required String imageId, String? tag}) =>
+    RustLib.instance.api.crateApiDockerDockerRemoveImage(sessionId: sessionId, imageId: imageId, tag: tag);
 
 Future<String> dockerVolumes({required String sessionId}) =>
     RustLib.instance.api.crateApiDockerDockerVolumes(sessionId: sessionId);

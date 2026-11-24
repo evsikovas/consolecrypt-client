@@ -299,6 +299,22 @@ void main() {
     expect(find.text('Расположение вкладок'), findsNWidgets(2));
     await tapKey(tester, 'terminal-tab-placement-left');
     expect(_saved(backend).terminalTabPlacement, TerminalTabPlacement.left);
+    final grouped = find.text('Группировать сеансы по папкам хостов');
+    expect(grouped, findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('settings-terminal-section')), matching: grouped),
+      findsOneWidget,
+    );
+    await tapKey(tester, 'terminal-tab-placement-grouped');
+    expect(_saved(backend).terminalTabGrouped, isTrue);
+    final paste = find.byKey(const ValueKey('terminal-allow-multiline-paste'));
+    expect(paste, findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('settings-security-section')), matching: paste),
+      findsOneWidget,
+    );
+    await tapKey(tester, 'terminal-allow-multiline-paste');
+    expect(_saved(backend).allowMultilinePaste, isTrue);
     expect(
       tester
           .widget<GlassSegmented<TerminalTabPlacement>>(find.byKey(const ValueKey('appearance-tab-placement')))
@@ -310,7 +326,7 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: _desktop);
 
-  testWidgets('phones keep the tab strip and offer no placement setting', (tester) async {
+  testWidgets('phones can group and switch sessions without a sidebar', (tester) async {
     final (_, container) = await _terminal(tester, placement: TerminalTabPlacement.left, size: const Size(360, 800));
     expect(find.byType(GlassTabStrip), findsOneWidget);
     expect(find.byType(GlassTabColumn), findsNothing);
@@ -319,8 +335,16 @@ void main() {
     await settle(tester);
     expect(find.byKey(const ValueKey('terminal-tab-placement')), findsNothing);
     expect(find.byKey(const ValueKey('appearance-tab-placement')), findsNothing);
+    expect(find.byKey(const ValueKey('appearance-tab-placement-grouped')), findsNothing);
+    await tapKey(tester, 'terminal-tab-placement-grouped');
+    container.read(routerProvider).go(AppRoutes.terminal);
+    await settle(tester);
+    await tapKey(tester, 'terminal-session-folders');
+    await tester.tap(find.widgetWithText(CheckedPopupMenuItem<TerminalTab>, 'raspberry-pi'));
+    await settle(tester);
+    expect(container.read(terminalTabsProvider).active?.host?.name, 'raspberry-pi');
     expect(tester.takeException(), isNull);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+  }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
 
   test('sidebar state: Kubernetes folding, the tab column default and manual toggles', () async {
     final backend = testBackend();
@@ -362,6 +386,35 @@ void main() {
     notifier.setBesideTabs(true);
     expect(collapsed(), isFalse, reason: 'the choice made beside the tab column is kept for it');
   });
+
+  testWidgets('folder folding and regrouping preserve the original session indices', (tester) async {
+    final selected = <int>[], closed = <int>[];
+    await pumpGlass(
+      tester,
+      GlassTabColumn(
+        tabs: [
+          for (final name in ['web', 'stage', 'db']) GlassTab(title: name),
+        ],
+        groups: const [(id: 'a', label: 'Production'), (id: 'b', label: 'Lab'), (id: 'a', label: 'Production')],
+        activeIndex: 0,
+        onSelect: selected.add,
+        onClose: closed.add,
+      ),
+    );
+    await settle(tester);
+    expect(tester.getTopLeft(find.text('db')).dy, lessThan(tester.getTopLeft(find.text('stage')).dy));
+    await tester.tap(find.text('Production'));
+    await settle(tester);
+    expect(find.text('db'), findsNothing);
+    await tester.tap(find.text('stage'));
+    expect(selected, [1]);
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    expect(closed, [1]);
+    await tester.tap(find.text('Production'));
+    await settle(tester);
+    await tester.tap(find.text('db'));
+    expect(selected, [1, 2]);
+  }, variant: _desktop);
 
   group('tab column keyboard', () {
     Future<(List<int>, List<int>)> pumpColumn(

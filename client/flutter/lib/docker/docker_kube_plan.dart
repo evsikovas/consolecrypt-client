@@ -31,7 +31,7 @@ final class DockerKubeSource {
     if (canonical == null) return null;
     final original = sourceImage;
     if (original != null && canonical == DockerKubeTarget.dockerImage(original)) {
-      if (image != null) return image;
+      if (image != null) return canonical;
       // A manually entered pin or explicit repository can be reachable from
       // the nodes using node credentials or an imagePullSecret. Never accept
       // a manufactured Docker Hub library tag as a way around the check.
@@ -78,7 +78,7 @@ final class DockerKubeSource {
     final sourceImage = configuredImage is String && configuredImage.isNotEmpty
         ? configuredImage
         : detail.container.image;
-    final original = DockerKubeTarget.dockerImage(sourceImage);
+    final original = DockerKubeTarget.dockerImage(sourceImage, digestOnly: true);
     final image = _publishedImage(original, repoDigests);
     final startup = _startup(detail.inspect);
     return DockerKubeSource(
@@ -95,7 +95,7 @@ final class DockerKubeSource {
     final split = original.contains('@') ? original.indexOf('@') : original.lastIndexOf(':');
     final repository = original.substring(0, split);
     for (final digest in repoDigests) {
-      final canonical = DockerKubeTarget.dockerImage(digest);
+      final canonical = DockerKubeTarget.dockerImage(digest, digestOnly: true);
       if (canonical != null &&
           canonical.startsWith('$repository@sha256:') &&
           (!original.contains('@') || canonical == original)) {
@@ -159,7 +159,7 @@ final class DockerKubeTarget {
           .every((label) => label.length <= 63 && RegExp(r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$').hasMatch(label));
 
   // Docker inspect may return familiar Hub names or a bare local image ID.
-  static String? dockerImage(String reference) {
+  static String? dockerImage(String reference, {bool digestOnly = false}) {
     if (reference.isEmpty ||
         reference.length > 512 ||
         reference != reference.trim() ||
@@ -174,7 +174,7 @@ final class DockerKubeTarget {
       final tag = named.lastIndexOf(':');
       if (tag > named.lastIndexOf('/')) {
         if (!RegExp(r'^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$').hasMatch(named.substring(tag + 1))) return null;
-        image = named.substring(0, tag) + image.substring(digest);
+        if (digestOnly) image = named.substring(0, tag) + image.substring(digest);
       }
     } else if (!image.split('/').last.contains(':')) {
       image += ':latest';
@@ -203,7 +203,7 @@ final class DockerKubeTarget {
   static bool validImage(String value) {
     if (value.length > 512 ||
         !RegExp(
-          r'^[a-z0-9][a-z0-9.:-]*/[a-z0-9][a-z0-9._/-]*(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}|@sha256:[a-f0-9]{64})$',
+          r'^[a-z0-9][a-z0-9.:-]*/[a-z0-9][a-z0-9._/-]*(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}(?:@sha256:[a-f0-9]{64})?|@sha256:[a-f0-9]{64})$',
         ).hasMatch(value)) {
       return false;
     }
@@ -304,16 +304,19 @@ final class DockerKubeTarget {
   };
 
   String get template => _yamlPair(deployment, service);
-  String get aiTemplate => _yamlPair(_deployment(withStartup: false), service);
-
-  // Outbound AI input only includes the reviewed target and resource defaults.
-  String get prompt =>
-      'Write exactly two Kubernetes YAML documents: Deployment and Service. ' // l10n-ignore: model output contract
-      'Use the following template. Keep every field and identity unchanged except container resources ' // l10n-ignore: model template restrictions
-      '(requests and limits: cpu and memory) and readinessProbe timing (1..300 seconds). ' // l10n-ignore: model field restrictions
-      'Do not add any other fields, containers, commands, environment variables or resources. ' // l10n-ignore: model schema instruction
-      'Return YAML only, no explanation. This is an experimental stateless deployment; ' // l10n-ignore: model output contract
-      'there is no measured usage data, so keep conservative resource defaults.\n$aiTemplate'; // l10n-ignore: model instruction and serialized template
+  // Initial text for the prompt editor. Local startup arguments stay on the device.
+  String get prompt => [
+    'Generate two Kubernetes YAML documents for a stateless Linux application. Return only YAML separated by ---.', // l10n-ignore: model contract
+    'Use apps/v1 Deployment and v1 Service. For both, metadata contains only name "$name" and namespace "$namespace".', // l10n-ignore: model contract
+    'Use one replica. Match selector, pod labels and Service selector using app.kubernetes.io/name=$name.', // l10n-ignore: model contract
+    'Use one container named "$name", image "$manifestImage", imagePullPolicy Always and one TCP containerPort $port.', // l10n-ignore: model contract
+    'Disable automountServiceAccountToken at pod level. In the container set allowPrivilegeEscalation to false and drop ALL capabilities.', // l10n-ignore: model contract
+    if (pullSecret.isNotEmpty)
+      'Set imagePullSecrets to the existing secret named "$pullSecret".', // l10n-ignore: model contract
+    'Choose conservative CPU and memory requests and limits. Use quoted positive integer quantities (m for CPU, Mi for memory).', // l10n-ignore: model contract
+    'Use a TCP readinessProbe on port $port with suitable integer timings from 1 to 300 seconds.', // l10n-ignore: model contract
+    'Expose one ClusterIP Service port $port targeting numeric port $port over TCP. Omit all other fields, including command, args and environment.', // l10n-ignore: model contract
+  ].join('\n');
 }
 
 String _yamlPair(Map<String, dynamic> deployment, Map<String, dynamic> service) =>
@@ -542,12 +545,15 @@ final class DockerKubeParser {
         port.send(null);
         return;
       }
-      final reviewed = target.deployment;
-      containerOf(reviewed)
-        ..['resources'] = resources
-        ..['readinessProbe'] = probe;
+      container['resources'] = resources;
+      container['readinessProbe'] = probe;
+      if (fromAi && target.startup.isNotEmpty) {
+        final startup = containerOf(target.deployment);
+        container['command'] = startup['command'];
+        if (startup.containsKey('args')) container['args'] = startup['args'];
+      }
       port.send(
-        fromAi ? [_yamlDocument(reviewed), _yamlDocument(target.service)] : [jsonEncode(reviewed), jsonEncode(service)],
+        fromAi ? [_yamlDocument(deployment), _yamlDocument(service)] : [jsonEncode(deployment), jsonEncode(service)],
       );
     } catch (_) {
       port.send(null);

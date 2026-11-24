@@ -10,6 +10,277 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String registryBuildOnSsh(String host) {
+    return 'Собрать на $host по SSH';
+  }
+
+  @override
+  String get registryRemoteDirectory => 'Папка с Dockerfile на сервере';
+
+  @override
+  String get registryRemoteAuthHelp =>
+      'Во время сборки Buildx использует на этом сервере выбранную учётную запись реестра.';
+
+  @override
+  String get registryRemoteTools => 'На SSH-сервере нужны Python 3, Docker Buildx и доступ к локальному сокету Docker.';
+
+  @override
+  String get registryLabel => 'Реестр образов';
+
+  @override
+  String get registryChoose => 'Выберите сохранённый реестр';
+
+  @override
+  String get registryAdd => 'Добавить реестр';
+
+  @override
+  String get registryOther => 'Другой реестр';
+
+  @override
+  String get registryAddress => 'Адрес реестра';
+
+  @override
+  String get registryRepo => 'Путь репозитория';
+
+  @override
+  String get registryTag => 'Тег';
+
+  @override
+  String get registryToken => 'Пароль или токен доступа';
+
+  @override
+  String get registryPublish => 'Загрузить образ';
+
+  @override
+  String get registryPublished => 'Образ опубликован. В поле образа подставлен выбранный тег.';
+
+  @override
+  String get registryInvalid => 'Введите адрес реестра, например registry.example.org:5000.';
+
+  @override
+  String get registrySaveFailed => 'Не удалось сохранить учётные данные реестра.';
+
+  @override
+  String get registryPublishFailed =>
+      'Не удалось загрузить образ. Проверьте путь репозитория, права на запись и доступность реестра с Docker-хоста.';
+
+  @override
+  String get terminalBarItems => 'Элементы бара';
+
+  @override
+  String get terminalBarColor => 'Цвет показателя';
+
+  @override
+  String get terminalBarReset => 'Вернуть исходные показатели и цвета';
+
+  @override
+  String get captureSwap => 'Поменять серверы местами';
+
+  @override
+  String get captureSudoPassword => 'Пароль sudo';
+
+  @override
+  String get captureSyn => 'Запрашивает TCP-соединение';
+
+  @override
+  String get captureSynAck => 'Подтверждает запрос на TCP-соединение';
+
+  @override
+  String get captureAck => 'Подтверждает получение';
+
+  @override
+  String get captureData => 'Передаёт данные по TCP';
+
+  @override
+  String get captureFin => 'Завершает передачу данных';
+
+  @override
+  String get captureRst => 'Сбрасывает TCP-соединение';
+
+  @override
+  String get captureArpQuery => 'Запрашивает MAC-адрес устройства';
+
+  @override
+  String get captureArpReply => 'Сообщает MAC-адрес устройства';
+
+  @override
+  String get capturePacketBytes => 'Захваченные байты';
+
+  @override
+  String get dockerDiskUsage => 'Место на диске';
+
+  @override
+  String get dockerEventJournal => 'События';
+
+  @override
+  String get dockerBuildCache => 'Кэш сборки';
+
+  @override
+  String dockerObjectsCount(int count) {
+    return 'Объектов: $count';
+  }
+
+  @override
+  String dockerReclaimable(String size) {
+    return 'Можно освободить: $size';
+  }
+
+  @override
+  String get dockerRecentLifecycle => 'События контейнеров · за последние 24 часа';
+
+  @override
+  String get dockerJournalEmpty => 'За последние 24 часа событий контейнеров нет';
+
+  @override
+  String dockerLifecycleAction(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'create': 'Создан',
+      'start': 'Запущен',
+      'restart': 'Перезапущен',
+      'stop': 'Остановлен',
+      'die': 'Завершился',
+      'kill': 'Сигнал завершения',
+      'oom': 'Нехватка памяти',
+      'destroy': 'Удалён',
+      'pause': 'Приостановлен',
+      'unpause': 'Возобновлён',
+      'rename': 'Переименован',
+      'healthy': 'Исправен',
+      'unhealthy': 'Неисправен',
+      'starting': 'Началась проверка состояния',
+      'other': 'Событие',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keepassRecentKdbx => 'Недавние базы KDBX';
+
+  @override
+  String get terminalMoreMetrics => 'Другие показатели сервера';
+
+  @override
+  String get terminalMetricsBar => 'Показывать показатели сервера под терминалом';
+
+  @override
+  String get terminalChannelLatency => 'Задержка SSH-канала';
+
+  @override
+  String terminalLatencyValue(int value) {
+    return '$value мс';
+  }
+
+  @override
+  String get terminalNormalizedLoad => 'Нагрузка за минуту на одно ядро';
+
+  @override
+  String get terminalEncodingError => 'Ввод содержит символы вне выбранной кодировки. Для отправки смените кодировку.';
+
+  @override
+  String get terminalEncodingSimplifiedChinese => 'Китайская упрощённая';
+
+  @override
+  String get terminalEncodingTraditionalChinese => 'Китайская традиционная';
+
+  @override
+  String get terminalEncodingJapanese => 'Японская';
+
+  @override
+  String get terminalEncodingKorean => 'Корейская';
+
+  @override
+  String get terminalEncodingWesternEuropean => 'Западноевропейская';
+
+  @override
+  String get terminalEncodingCentralEuropean => 'Центральноевропейская';
+
+  @override
+  String get terminalFindText => 'Найти в терминале';
+
+  @override
+  String get dockerNetworkContainers => 'Подключённые контейнеры';
+
+  @override
+  String get dockerNetworkEmpty => 'Сети не найдены';
+
+  @override
+  String get terminalEncodingCyrillic => 'Кириллица';
+
+  @override
+  String dockerImageWeeksAgo(int count) {
+    return '$count нед. назад';
+  }
+
+  @override
+  String get sessionDiskIO => 'Диск · чтение / запись';
+
+  @override
+  String get sessionGroupTabs => 'Группировать сеансы по папкам хостов';
+
+  @override
+  String get sessionDevicesStale => 'Не удалось проверить доверие. Показан последний список устройств.';
+
+  @override
+  String get sessionRemote => 'Удалённый';
+
+  @override
+  String get sessionLocal => 'Локальный';
+
+  @override
+  String get sessionResponding => 'Отвечает';
+
+  @override
+  String get sessionNoProvider => 'Выбрать провайдера';
+
+  @override
+  String get sessionHidden => 'Скрыто';
+
+  @override
+  String get sessionHistoryUnavailable => 'Не удалось загрузить историю команд';
+
+  @override
+  String get serverShellHistory => 'История команд сервера';
+
+  @override
+  String get serverHistoryEmpty => 'В файле истории оболочки пока нет сохранённых команд';
+
+  @override
+  String get dockerMainPid => 'Основной PID';
+
+  @override
+  String get dockerProcessElapsed => 'Время работы';
+
+  @override
+  String get dockerProcessUser => 'Пользователь';
+
+  @override
+  String get sessionHistoryEmpty => 'Здесь появятся команды этого сеанса';
+
+  @override
+  String get sessionUsage => 'Ресурсы';
+
+  @override
+  String get sessionUsageUnavailable => 'Метрики недоступны';
+
+  @override
+  String get sessionSwap => 'Подкачка';
+
+  @override
+  String get sessionLogins => 'Сеансы входа';
+
+  @override
+  String get sessionSnippetSearch => 'Найти сниппет';
+
+  @override
+  String get sessionAsk => 'Вопрос по хосту';
+
+  @override
+  String get sessionAskGeneral => 'Задать вопрос';
+
+  @override
+  String get sessionSnip => 'В сниппеты';
+
+  @override
   String get uiOtherDevices => 'Другие устройства';
 
   @override
@@ -5694,6 +5965,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get terminalClearSelection => 'Снять выделение';
+
+  @override
+  String get terminalAllowMultilinePaste => 'Разрешить многострочную вставку без подтверждения';
 
   @override
   String get terminalPasteConfirmTitle => 'Вставить строки или управляющие символы?';
@@ -17972,7 +18246,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerKubeIntro =>
-      'Экспериментально: один stateless Linux-контейнер, одна реплика и внутренний Service ClusterIP. Проверьте манифест перед развёртыванием.';
+      'Одна реплика Linux и внутренний Service ClusterIP. Переменные из настроек Docker и зависимости Compose задаются отдельно.';
 
   @override
   String get dockerKubeUnsupported =>
@@ -17993,7 +18267,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerKubeImageHelp =>
-      'Сначала опубликуйте образ в registry, доступном узлам кластера. Мастер не загружает локальные образы. Лучше указать digest: образ по тегу может измениться. localhost не является удалённым registry.';
+      'Укажите опубликованный тег или digest, доступный узлам кластера. Для закрытого образа может понадобиться imagePullSecret.';
 
   @override
   String get dockerKubePort => 'TCP-порт контейнера / Service';
@@ -18021,11 +18295,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerKubeTemplate => 'Использовать шаблон';
 
   @override
-  String get dockerKubeAiReview =>
-      'Проверьте шаблон перед отправкой ИИ. ConsoleCrypt добавит команду запуска из Docker на этом устройстве после получения ответа.';
+  String get dockerKubePrompt => 'Запрос к ИИ';
 
   @override
-  String get dockerKubeSendAi => 'Отправить шаблон ИИ';
+  String get dockerKubeAiReview =>
+      'Перед отправкой можно изменить запрос или добавить свои требования. Команду запуска ConsoleCrypt добавит локально.';
+
+  @override
+  String get dockerKubeSendAi => 'Отправить запрос';
 
   @override
   String get dockerKubeManifestRejected =>
@@ -18036,8 +18313,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'Проверьте имена приложения и namespace, опубликованный образ с явным registry и тегом/digest, TCP-порт и имя pull-secret.';
 
   @override
-  String get dockerKubeAcknowledge =>
-      'Я проверил образ, архитектуру процессора и команду запуска. Контейнер получит окружение и файлы из образа. Переменные из настроек Docker и зависимости Compose нужно настроить отдельно.';
+  String get dockerKubeAcknowledge => 'Образ, платформа и команда запуска проверены';
 
   @override
   String get dockerKubeValidated =>
@@ -19776,4 +20052,155 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get hostInspector => 'Сведения о хосте';
+
+  @override
+  String get captureTitle => 'TCPdump';
+
+  @override
+  String get captureSubtitle => 'Сетевые пакеты в реальном времени. Видны адреса, порты и протоколы.';
+
+  @override
+  String get captureChoose => 'Выберите узлы для захвата.';
+
+  @override
+  String get captureListening => 'Идёт захват';
+
+  @override
+  String get captureStopped => 'Захват остановлен';
+
+  @override
+  String get captureMissing => 'В точке захвата не установлен tcpdump.';
+
+  @override
+  String get captureDenied => 'Для захвата нужны дополнительные права.';
+
+  @override
+  String get captureStartTimeout => 'Сервер не подтвердил запуск захвата за 20 секунд.';
+
+  @override
+  String get captureFailed => 'Не удалось завершить захват.';
+
+  @override
+  String get captureNoPeer => 'Не удалось определить адреса соединения.';
+
+  @override
+  String get captureSource => 'Сервер захвата';
+
+  @override
+  String get captureTarget => 'Второй сервер';
+
+  @override
+  String get captureServersHelp => 'Первый сервер снимает трафик, которым он обменивается со вторым.';
+
+  @override
+  String get captureStart => 'Начать захват';
+
+  @override
+  String get captureStop => 'Остановить';
+
+  @override
+  String captureCount(int shown, int total) {
+    return 'Показано пакетов: $shown из $total';
+  }
+
+  @override
+  String get captureInstall => 'Установить tcpdump';
+
+  @override
+  String get captureManualInstall => 'Установите tcpdump через менеджер пакетов этого хоста и запустите захват снова.';
+
+  @override
+  String get captureSudo => 'Повторить через sudo';
+
+  @override
+  String get tmuxTitle => 'Сессии tmux';
+
+  @override
+  String tmuxCount(int count) {
+    return 'Сессий: $count';
+  }
+
+  @override
+  String tmuxCounts(int windows, int clients) {
+    return 'Окна: $windows · Клиенты: $clients';
+  }
+
+  @override
+  String tmuxActivity(String time) {
+    return 'Последняя активность: $time';
+  }
+
+  @override
+  String get tmuxAttach => 'Войти в сессию';
+
+  @override
+  String get tmuxDetach => 'Отсоединиться';
+
+  @override
+  String get tmuxCreate => 'Создать сессию';
+
+  @override
+  String get tmuxKill => 'Завершить сессию';
+
+  @override
+  String tmuxConfirmKill(String name) {
+    return 'Завершить сессию «$name» и остановить её процессы?';
+  }
+
+  @override
+  String get tmuxEmpty => 'На этом хосте пока нет сессий tmux';
+
+  @override
+  String get tmuxError => 'Не удалось выполнить действие в tmux. Обновите список и попробуйте ещё раз.';
+
+  @override
+  String get tmuxNameHint => 'Используйте буквы, цифры, пробелы, дефис или подчёркивание.';
+
+  @override
+  String get captureCheck => 'Проверить tcpdump';
+
+  @override
+  String get captureReady => 'tcpdump установлен';
+
+  @override
+  String get captureUseSudo => 'Запускать захват через sudo';
+
+  @override
+  String get capturePrivilegeHint =>
+      'Для захвата нужны права root или права на захват пакетов. При необходимости sudo запросит пароль.';
+
+  @override
+  String captureInstallHost(String host) {
+    return 'Установить tcpdump на $host? Команда запустится в SSH-терминале этого хоста. Там можно ввести пароль sudo и подтвердить установку пакета.';
+  }
+
+  @override
+  String get captureExchange => 'Детали соединения';
+
+  @override
+  String captureExchangeCount(int count) {
+    return 'Пакетов между этими адресами на момент выбора: $count';
+  }
+
+  @override
+  String get registryBuildFromSource => 'Собрать из локального Dockerfile';
+
+  @override
+  String get registryBuildFolder => 'Выбрать папку проекта';
+
+  @override
+  String get registryBuildPush => 'Собрать и опубликовать';
+
+  @override
+  String get registryBuildFailed =>
+      'Сборка или публикация не удалась. Проверьте Dockerfile, поддержку платформ в Buildx и право записи в реестр.';
+
+  @override
+  String get registryBuildContextError => 'Выберите папку проекта с файлом Dockerfile.';
+
+  @override
+  String get registryPin => 'Закрепить версию по digest';
+
+  @override
+  String get dockerKubeDeployAction => 'Развернуть';
 }

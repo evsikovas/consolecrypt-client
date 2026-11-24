@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
@@ -445,21 +446,25 @@ class KubeGitOpsDetailsState extends ConsumerState<KubeGitOpsDetails> {
           runSpacing: 8,
           children: [
             if (source && widget.service is KubeInsightsService && widget.service is KubeMutationService)
-              OutlinedButton.icon(
+              GlassIconButton(
                 key: const ValueKey('gitops-reconcile-source'),
                 onPressed: !_busy && access?.canWrite == true ? _reconcile : null,
-                icon: const Icon(Icons.sync),
-                label: Text(l.kubeGitOpsReconcile),
+                icon: Icons.sync,
+                tooltip: l.kubeGitOpsReconcile,
+                style: GlassIconButtonStyle.plain,
+                iconSize: GlassSizes.iconMenu,
               ),
             if (_flux)
-              TextButton.icon(
+              GlassIconButton(
                 key: const ValueKey('gitops-controller-logs'),
                 onPressed: _busy ? null : openControllerLogs,
-                icon: const Icon(Icons.article_outlined),
-                label: Text(l.kubeGitOpsControllerLogs),
+                icon: Icons.article_outlined,
+                tooltip: l.kubeGitOpsControllerLogs,
+                style: GlassIconButtonStyle.plain,
+                iconSize: GlassSizes.iconMenu,
               ),
             if (helm && widget.onHelm != null)
-              TextButton.icon(
+              GlassIconButton(
                 onPressed: () {
                   if (!_current) return;
                   final latest = history.isEmpty ? const <String, dynamic>{} : _map(history.first);
@@ -475,14 +480,18 @@ class KubeGitOpsDetailsState extends ConsumerState<KubeGitOpsDetails> {
                                   : widget.resource.namespace ?? 'default'));
                   widget.onHelm!(namespace, name.isNotEmpty ? name : widget.resource.name);
                 },
-                icon: const Icon(Icons.history),
-                label: Text(l.kubeHelmHistory),
+                icon: Icons.history,
+                tooltip: l.kubeHelmHistory,
+                style: GlassIconButtonStyle.plain,
+                iconSize: GlassSizes.iconMenu,
               ),
             if (helm && widget.service is KubeHelmComparisonService)
-              TextButton.icon(
+              GlassIconButton(
                 onPressed: _helmStorage() == null ? null : _compareHelm,
-                icon: const Icon(Icons.compare_arrows),
-                label: Text(l.kubeHelmCompareLive),
+                icon: Icons.compare_arrows,
+                tooltip: l.kubeHelmCompareLive,
+                style: GlassIconButtonStyle.plain,
+                iconSize: GlassSizes.iconMenu,
               ),
           ],
         ),

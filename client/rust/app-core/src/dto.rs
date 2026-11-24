@@ -641,6 +641,8 @@ pub struct CredentialDto {
     pub name: String,
     pub kind: CredentialKind,
     pub username: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub registry: Option<String>,
     /// A password / private key Secret is attached.
     pub has_secret: bool,
     /// The key passphrase is remembered (separate Secret object).
@@ -666,6 +668,7 @@ impl CredentialDto {
             name: c.name.clone(),
             kind: c.kind,
             username: c.username.clone(),
+            registry: c.registry.clone(),
             has_secret: c.secret_id.is_some(),
             has_remembered_passphrase: c.passphrase_secret_id.is_some(),
             key_encrypted: c.key_encrypted,

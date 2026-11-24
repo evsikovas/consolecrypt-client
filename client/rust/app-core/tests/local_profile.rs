@@ -981,3 +981,35 @@ async fn weak_kdf_password_envelope_is_rewrapped_on_passphrase_unlock() {
     assert_eq!(app.list_hosts().await.unwrap().len(), 1);
     app.shutdown().await.unwrap();
 }
+
+#[tokio::test]
+async fn registry_credential_survives_lock_and_keeps_its_token_out_of_metadata() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app = app_with(tmp.path(), memory_store(), true);
+    app.create_local_profile("Personal".into(), PASSPHRASE.into())
+        .await
+        .unwrap();
+    let credential = app
+        .add_registry_credential(
+            "Build images".into(),
+            "https://INDEX.DOCKER.IO:443/".into(),
+            "builder".into(),
+            "registry-fixture-token".into(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(credential.registry.as_deref(), Some("docker.io"));
+    assert!(credential.has_secret);
+    assert!(!serde_json::to_string(&credential)
+        .unwrap()
+        .contains("registry-fixture-token"));
+    app.lock().await.unwrap();
+    assert!(app.get_credential(credential.id.clone()).await.is_err());
+    app.unlock_with_passphrase(PASSPHRASE.into()).await.unwrap();
+    let reopened = app.get_credential(credential.id).await.unwrap();
+    assert_eq!(reopened.registry.as_deref(), Some("docker.io"));
+    assert_eq!(reopened.username.as_deref(), Some("builder"));
+    let token = app.reveal_credential_secret(reopened.id).await.unwrap();
+    assert!(token.value == "registry-fixture-token");
+    app.shutdown().await.unwrap();
+}

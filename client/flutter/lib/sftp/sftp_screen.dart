@@ -183,7 +183,7 @@ class _SftpScreenState extends ConsumerState<SftpScreen> with NoteContextPublish
 
     final actions = SftpActions(context, ref);
     final selection = state.selectedEntries;
-    final mobile = AppPlatform.isMobile;
+    final mobile = AppWindowLayout.isPhone(context);
     final tokens = GlassTokens.of(context);
     Widget filePane(Widget child) => Material(
       color: tokens.surfaces.contentSolid,
@@ -231,13 +231,11 @@ class _SftpScreenState extends ConsumerState<SftpScreen> with NoteContextPublish
                       children: [
                         SftpPathBar(key: _pathBar, onEditingDone: _listFocus.requestFocus),
                         const Divider(height: 1),
-                        Expanded(
-                          child: AppPlatform.isMobile ? const SftpMobileList() : SftpFileList(focusNode: _listFocus),
-                        ),
+                        Expanded(child: mobile ? const SftpMobileList() : SftpFileList(focusNode: _listFocus)),
                       ],
                     );
                     if (mobile) return remote;
-                    if (!state.prefs.showLocalPane) return filePane(remote);
+                    if (AppPlatform.isMobile || !state.prefs.showLocalPane) return filePane(remote);
                     final localWidth = (constraints.maxWidth * 0.38).clamp(0.0, 420.0);
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

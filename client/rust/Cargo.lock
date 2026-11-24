@@ -970,6 +970,7 @@ dependencies = [
  "cc-vault-core",
  "cc-wslc-core",
  "chrono",
+ "encoding_rs",
  "flutter_rust_bridge",
  "jni 0.22.4",
  "ndk-context",
@@ -1081,11 +1082,14 @@ name = "cc-docker-core"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "base64 0.22.1",
  "bytes",
  "http-body-util",
+ "httpdate",
  "hyper",
  "hyper-util",
  "percent-encoding",
+ "regex",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -1093,6 +1097,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
+ "zeroize",
 ]
 
 [[package]]

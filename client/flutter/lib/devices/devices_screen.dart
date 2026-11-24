@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:consolecrypt/account/enterprise_sign_in.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -29,7 +31,55 @@ class DevicesScreen extends ConsumerStatefulWidget {
   ConsumerState<DevicesScreen> createState() => _DevicesState();
 }
 
-class _DevicesState extends ConsumerState<DevicesScreen> {
+class _DevicesState extends ConsumerState<DevicesScreen> with WidgetsBindingObserver {
+  Timer? _timer;
+  bool _visible = false, _refreshing = false;
+  bool _foreground = true;
+  String? _refreshError;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _timer = Timer.periodic(const Duration(seconds: 20), (_) => _refresh());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final visible = TickerMode.valuesOf(context).enabled;
+    if (visible && !_visible) WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+    _visible = visible;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (_foreground) unawaited(_refresh());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    if (!mounted || !_visible || !_foreground || _refreshing || ref.read(activeProfileProvider)?.isSynced != true) {
+      return;
+    }
+    _refreshing = true;
+    try {
+      await ref.read(devicesServiceProvider).refresh();
+      if (mounted && _refreshError != null) setState(() => _refreshError = null);
+    } catch (_) {
+      if (mounted) setState(() => _refreshError = context.l10n.sessionDevicesStale);
+    } finally {
+      _refreshing = false;
+    }
+  }
+
   DeviceRequestId? selectedRequest;
 
   Future<void> _revoke(BuildContext context, WidgetRef ref, DeviceInfo d) async {
@@ -89,7 +139,7 @@ class _DevicesState extends ConsumerState<DevicesScreen> {
           key: const ValueKey('devices-refresh'),
           tooltip: l10n.devicesRefresh,
           icon: Icons.refresh_rounded,
-          onPressed: () => ref.read(devicesServiceProvider).refresh(),
+          onPressed: _refresh,
         ),
       ],
       body: AsyncValueView(
@@ -129,6 +179,7 @@ class _DevicesState extends ConsumerState<DevicesScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 12,
             children: [
+              if (_refreshError != null) InfoBanner(message: _refreshError!, tone: BannerTone.warning),
               table(l10n.uiTrustedDevices, trusted),
               if (remaining.isNotEmpty) table(l10n.uiOtherDevices, remaining),
             ],

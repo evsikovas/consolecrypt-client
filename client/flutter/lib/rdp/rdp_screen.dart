@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -54,15 +55,17 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
         _mobileEntryScheduled ||
         !visible ||
         tab == null ||
-        !AppPlatform.isMobile ||
-        MediaQuery.sizeOf(context).shortestSide >= 600 ||
+        !AppWindowLayout.isPhone(context) ||
+        (AppPlatform.isIOS && MediaQuery.sizeOf(context).shortestSide >= 600) ||
         tab.info.id == _minimizedPhoneSession) {
       return;
     }
     _mobileEntryScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _mobileEntryScheduled = false;
-      if (mounted && !_fullscreen && ModalRoute.of(context)?.isCurrent == true) _openFullscreen();
+      if (mounted && !_fullscreen && AppWindowLayout.isPhone(context) && ModalRoute.of(context)?.isCurrent == true) {
+        _openFullscreen();
+      }
     });
   }
 
@@ -168,7 +171,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
               : NoteContext(
                   target: NoteObjectTarget(NoteObjectKind.rdpHost, active!.hostId!),
                   label: active.title,
-                  icon: Icons.desktop_windows_outlined,
+                  icon: ToolIcons.rdp,
                 ),
         );
         final body = Column(
@@ -206,7 +209,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
             if (active == null)
               Expanded(
                 child: EmptyState(
-                  icon: Icons.desktop_windows_outlined,
+                  icon: ToolIcons.rdp,
                   title: l.rdpEmptyTitle,
                   message: l.rdpEmptyHelp,
                   action: GlassButton.prominent(
@@ -317,7 +320,7 @@ class _RdpScreenState extends ConsumerState<RdpScreen> with WidgetsBindingObserv
         );
         return GlassBlurSuppressor(
           budget: GlassScope.of(context).budget,
-          child: mobile && active != null
+          child: AppWindowLayout.isPhone(context) && active != null
               ? Semantics(
                   container: true,
                   explicitChildNodes: true,

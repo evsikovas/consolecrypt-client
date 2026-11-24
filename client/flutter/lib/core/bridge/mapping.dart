@@ -504,6 +504,7 @@ Credential credentialFromJson(Json j) => Credential(
   name: j['name']! as String,
   kind: _byWire(CredentialKind.values, (e) => e.wireName, j['kind'], CredentialKind.password),
   username: _str(j['username']),
+  registry: _str(j['registry']),
   secretId: _bool(j['has_secret']) ? storedSecretMarker : null,
   passphraseSecretId: _bool(j['has_remembered_passphrase']) ? storedSecretMarker : null,
   keyEncrypted: _bool(j['key_encrypted']),
@@ -867,6 +868,11 @@ Json localSettingsToJson(LocalSettings s) => {
   'terminal_font_size': s.terminalFontSize,
   'terminal_font_family': s.terminalFontFamily,
   'terminal_tab_subtitle': s.terminalTabSubtitle.name,
+  'terminal_tab_grouped': s.terminalTabGrouped,
+  'terminal_metrics_bar': s.terminalMetricsBar,
+  'allow_multiline_paste': s.allowMultilinePaste,
+  'terminal_hidden_metrics': [for (final metric in s.hiddenTerminalMetrics) metric.name],
+  'terminal_metric_colors': {for (final e in s.terminalMetricColors.entries) e.key.name: e.value},
   'terminal_tab_placement': s.terminalTabPlacement.name,
   'terminal_tab_column_width': s.terminalTabColumnWidth,
   'terminal_tab_column_collapsed': s.terminalTabColumnCollapsed,
@@ -958,6 +964,19 @@ LocalSettings localSettingsFromJson(Json j) {
       j['terminal_tab_subtitle'],
       d.terminalTabSubtitle,
     ),
+    terminalTabGrouped: j['terminal_tab_grouped'] == true,
+    terminalMetricsBar: j['terminal_metrics_bar'] != false,
+    allowMultilinePaste: j['allow_multiline_paste'] == true,
+    hiddenTerminalMetrics: {
+      if (j['terminal_hidden_metrics'] case final List<Object?> hidden)
+        for (final metric in TerminalMetric.values)
+          if (hidden.contains(metric.name)) metric,
+    },
+    terminalMetricColors: {
+      if (j['terminal_metric_colors'] case final Map<String, Object?> colors)
+        for (final metric in TerminalMetric.values)
+          if (rgb(colors[metric.name]) case final int color) metric: color,
+    },
     terminalTabPlacement: _byWire(
       TerminalTabPlacement.values,
       (e) => e.name,

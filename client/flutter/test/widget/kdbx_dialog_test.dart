@@ -1522,7 +1522,7 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
-  testWidgets('welcome shows five recent databases and reopens them through the unlock dialog', (tester) async {
+  testWidgets('welcome groups past local files and WebDAV and reopens them through the unlock dialog', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
@@ -1553,10 +1553,10 @@ void main() {
     await settle(tester);
 
     Finder row(KdbxSource source) => find.byKey(ValueKey('keepass-recent-source-${source.id}'));
-    expect(find.text('Recent databases'), findsOneWidget);
+    expect(find.text('Recent KDBX files'), findsOneWidget);
     expect(manager.recentSources.map((source) => source.id), otherFiles.reversed.map((source) => source.id));
     expect(row(otherFiles.last), findsOneWidget);
-    expect(row(local), findsNothing);
+    expect(row(local), findsOneWidget);
     expect(row(remote), findsNothing);
     expect(row(otherProfile), findsNothing);
 
@@ -1577,8 +1577,11 @@ void main() {
     ]);
     await settings.updateLocal(persisted);
     await settle(tester);
-    expect(row(otherFiles[1]), findsNothing);
-    expect(tester.getTopLeft(row(local)).dy, lessThan(tester.getTopLeft(row(remote)).dy));
+    expect(row(otherFiles[1]), findsOneWidget);
+    final dav = find.byKey(ValueKey('keepass-shared-source-${remote.id}'));
+    expect(row(remote), findsNothing);
+    expect(tester.getTopLeft(row(local)).dy, lessThan(tester.getTopLeft(find.text('WebDAV databases')).dy));
+    expect(tester.getTopLeft(dav).dy, greaterThan(tester.getTopLeft(find.text('WebDAV databases')).dy));
 
     await tester.tap(row(local));
     await settle(tester);
@@ -1589,7 +1592,8 @@ void main() {
 
     manager.lock(local);
     await settle(tester);
-    await tester.tap(row(remote));
+    await tester.ensureVisible(dav);
+    await tester.tap(dav);
     await settle(tester);
     expect(find.byKey(const ValueKey('keepass-password')), findsOneWidget);
     expect(tester.takeException(), isNull);

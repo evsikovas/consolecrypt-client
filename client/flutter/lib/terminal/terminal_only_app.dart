@@ -10,8 +10,11 @@ import 'package:consolecrypt/core/services/settings_service.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/settings/appearance_controls.dart';
+import 'package:consolecrypt/settings/clipboard_settings.dart';
+import 'package:consolecrypt/terminal/terminal_find.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
+import 'package:consolecrypt/terminal/terminal_status_bar.dart';
 import 'package:consolecrypt/terminal/terminal_tab_subtitle.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
@@ -145,6 +148,10 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
 
     final physical = event.physicalKey;
     final logical = event.logicalKey;
+    if (!keys.isShiftPressed && (logical == LogicalKeyboardKey.enter || logical == LogicalKeyboardKey.numpadEnter)) {
+      if (event is KeyDownEvent) unawaited(toggleTerminalFullscreen());
+      return KeyEventResult.handled;
+    }
     final newWindow =
         keys.isShiftPressed && (physical == PhysicalKeyboardKey.keyN || logical == LogicalKeyboardKey.keyN);
     final palette =
@@ -166,13 +173,14 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
         width: 840,
         title: l.navSettings,
         content: DefaultTabController(
-          length: 2,
+          length: 3,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TabBar(
                 tabs: [
                   Tab(text: l.settingsAppearanceTitle),
+                  Tab(text: l.settingsSecurityTitle),
                   Tab(text: l.settingsTerminalTitle),
                 ],
               ),
@@ -185,7 +193,8 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
                         children: [ThemeAndGlassControls(), InterfaceAppearanceControls(showProfilePreference: false)],
                       ),
                     ),
-                    SingleChildScrollView(child: TerminalDeviceControls()),
+                    SingleChildScrollView(child: MultilinePasteSetting()),
+                    SingleChildScrollView(child: TerminalDeviceControls(showServerMetrics: false)),
                   ],
                 ),
               ),
@@ -202,6 +211,10 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     return GlassToolbarGroup(
       key: const ValueKey('terminal-only-toolbar'),
       children: [
+        if (ref.read(terminalTabsProvider).active case final tab?) ...[
+          TerminalFindButton(tab: tab),
+          TerminalEncodingButton(tab: tab),
+        ],
         GlassIconButton(
           key: const ValueKey('glass-tab-add'),
           icon: Icons.add_rounded,
@@ -375,6 +388,9 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
                           GlassTabColumn(
                             key: const ValueKey('terminal-only-tab-column'),
                             tabs: items,
+                            groups: local.terminalTabGrouped
+                                ? [for (final _ in items) (id: 'local', label: l.terminalLocalComputer)]
+                                : null,
                             activeIndex: selected,
                             width: local.terminalTabColumnWidth,
                             maxWidth: (bounds.maxWidth - 360 - GlassTabColumn.handleWidth).clamp(
@@ -401,6 +417,7 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
                               padding: const EdgeInsets.all(GlassSpacing.s8),
                               child: Column(
                                 children: [
+                                  if (active?.encodingRejected == true) Text(l.terminalEncodingError),
                                   if (_opening || active?.state == SessionConnectionState.connecting)
                                     const LinearProgressIndicator(),
                                   if (_error != null) Padding(padding: const EdgeInsets.all(8), child: Text(_error!)),
@@ -548,14 +565,6 @@ class _ShellPaletteState extends State<_ShellPalette> {
                         }
                       },
                     ),
-                    if (showNewWindow)
-                      ListTile(
-                        key: const ValueKey('terminal-only-new-window'),
-                        leading: const Icon(Icons.open_in_new_rounded),
-                        title: Text(l.terminalOnlyNewWindow),
-                        onTap: _openingWindow ? null : () => unawaited(_openWindow()),
-                      ),
-                    if (_windowFailed) Text(l.terminalOnlyWindowError),
                     if (snapshot.connectionState == ConnectionState.waiting)
                       const LinearProgressIndicator()
                     else if (snapshot.hasError)
@@ -578,6 +587,14 @@ class _ShellPaletteState extends State<_ShellPalette> {
                             );
                           },
                         ),
+                      ),
+                    if (_windowFailed) Text(l.terminalOnlyWindowError),
+                    if (showNewWindow)
+                      ListTile(
+                        key: const ValueKey('terminal-only-new-window'),
+                        leading: const Icon(Icons.open_in_new_rounded),
+                        title: Text(l.terminalOnlyNewWindow),
+                        onTap: _openingWindow ? null : () => unawaited(_openWindow()),
                       ),
                   ],
                 ),

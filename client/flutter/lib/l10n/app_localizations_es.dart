@@ -10,6 +10,278 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String registryBuildOnSsh(String host) {
+    return 'Compilar en $host por SSH';
+  }
+
+  @override
+  String get registryRemoteDirectory => 'Carpeta del servidor que contiene el Dockerfile';
+
+  @override
+  String get registryRemoteAuthHelp =>
+      'Durante la compilación, Buildx usa la cuenta del registro seleccionada en este servidor.';
+
+  @override
+  String get registryRemoteTools =>
+      'El servidor SSH necesita Python 3, Docker Buildx y acceso al socket local de Docker.';
+
+  @override
+  String get registryLabel => 'Registro de imágenes';
+
+  @override
+  String get registryChoose => 'Selecciona un registro guardado';
+
+  @override
+  String get registryAdd => 'Añadir registro';
+
+  @override
+  String get registryOther => 'Otro registro';
+
+  @override
+  String get registryAddress => 'Servidor del registro';
+
+  @override
+  String get registryRepo => 'Ruta del repositorio';
+
+  @override
+  String get registryTag => 'Etiqueta';
+
+  @override
+  String get registryToken => 'Contraseña o token de acceso';
+
+  @override
+  String get registryPublish => 'Publicar imagen';
+
+  @override
+  String get registryPublished => 'Imagen publicada. El campo de imagen contiene la etiqueta seleccionada.';
+
+  @override
+  String get registryInvalid => 'Introduce el servidor del registro y el puerto si procede.';
+
+  @override
+  String get registrySaveFailed => 'No se pudo guardar la credencial del registro.';
+
+  @override
+  String get registryPublishFailed =>
+      'No se pudo publicar. Comprueba la ruta, los permisos de escritura y la conexión desde el host Docker.';
+
+  @override
+  String get terminalBarItems => 'Indicadores de la barra';
+
+  @override
+  String get terminalBarColor => 'Color del indicador';
+
+  @override
+  String get terminalBarReset => 'Restablecer indicadores y colores';
+
+  @override
+  String get captureSwap => 'Intercambiar servidores';
+
+  @override
+  String get captureSudoPassword => 'Contraseña de sudo';
+
+  @override
+  String get captureSyn => 'Solicita una conexión TCP';
+
+  @override
+  String get captureSynAck => 'Acepta la solicitud de conexión TCP';
+
+  @override
+  String get captureAck => 'Confirma la recepción';
+
+  @override
+  String get captureData => 'Transmite datos TCP';
+
+  @override
+  String get captureFin => 'Finaliza el envío de datos';
+
+  @override
+  String get captureRst => 'Restablece la conexión TCP';
+
+  @override
+  String get captureArpQuery => 'Solicita la dirección MAC del dispositivo';
+
+  @override
+  String get captureArpReply => 'Indica la dirección MAC del dispositivo';
+
+  @override
+  String get capturePacketBytes => 'Bytes capturados';
+
+  @override
+  String get dockerDiskUsage => 'Espacio en disco';
+
+  @override
+  String get dockerEventJournal => 'Eventos';
+
+  @override
+  String get dockerBuildCache => 'Caché de compilación';
+
+  @override
+  String dockerObjectsCount(int count) {
+    return 'Objetos: $count';
+  }
+
+  @override
+  String dockerReclaimable(String size) {
+    return 'Se puede liberar: $size';
+  }
+
+  @override
+  String get dockerRecentLifecycle => 'Eventos de contenedores · últimas 24 horas';
+
+  @override
+  String get dockerJournalEmpty => 'No hay eventos de contenedores en las últimas 24 horas';
+
+  @override
+  String dockerLifecycleAction(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'create': 'Creado',
+      'start': 'Iniciado',
+      'restart': 'Reiniciado',
+      'stop': 'Detenido',
+      'die': 'Finalizado',
+      'kill': 'Señal de terminación',
+      'oom': 'Sin memoria',
+      'destroy': 'Eliminado',
+      'pause': 'En pausa',
+      'unpause': 'Reanudado',
+      'rename': 'Renombrado',
+      'healthy': 'Saludable',
+      'unhealthy': 'Con fallos',
+      'starting': 'Iniciando comprobación',
+      'other': 'Evento',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keepassRecentKdbx => 'Archivos KDBX recientes';
+
+  @override
+  String get terminalMoreMetrics => 'Más métricas del servidor';
+
+  @override
+  String get terminalMetricsBar => 'Mostrar métricas del servidor bajo el terminal';
+
+  @override
+  String get terminalChannelLatency => 'Latencia del canal SSH';
+
+  @override
+  String terminalLatencyValue(int value) {
+    return '$value ms';
+  }
+
+  @override
+  String get terminalNormalizedLoad => 'Carga por CPU en el último minuto';
+
+  @override
+  String get terminalEncodingError => 'Esta codificación no admite todos los caracteres. Elige otra para enviarlos.';
+
+  @override
+  String get terminalEncodingSimplifiedChinese => 'Chino simplificado';
+
+  @override
+  String get terminalEncodingTraditionalChinese => 'Chino tradicional';
+
+  @override
+  String get terminalEncodingJapanese => 'Japonés';
+
+  @override
+  String get terminalEncodingKorean => 'Coreano';
+
+  @override
+  String get terminalEncodingWesternEuropean => 'Europa occidental';
+
+  @override
+  String get terminalEncodingCentralEuropean => 'Europa central';
+
+  @override
+  String get terminalFindText => 'Buscar en el terminal';
+
+  @override
+  String get dockerNetworkContainers => 'Contenedores conectados';
+
+  @override
+  String get dockerNetworkEmpty => 'No se encontraron redes';
+
+  @override
+  String get terminalEncodingCyrillic => 'Cirílico';
+
+  @override
+  String dockerImageWeeksAgo(int count) {
+    return 'hace $count sem.';
+  }
+
+  @override
+  String get sessionDiskIO => 'Disco · lectura / escritura';
+
+  @override
+  String get sessionGroupTabs => 'Agrupar sesiones por carpeta de hosts';
+
+  @override
+  String get sessionDevicesStale => 'No se pudo verificar la confianza. Se muestra la última lista.';
+
+  @override
+  String get sessionRemote => 'Remoto';
+
+  @override
+  String get sessionLocal => 'Local';
+
+  @override
+  String get sessionResponding => 'Respondiendo';
+
+  @override
+  String get sessionNoProvider => 'Elegir proveedor';
+
+  @override
+  String get sessionHidden => 'Ocultos';
+
+  @override
+  String get sessionHistoryUnavailable => 'No se pudo cargar el historial';
+
+  @override
+  String get serverShellHistory => 'Historial del servidor';
+
+  @override
+  String get serverHistoryEmpty => 'El archivo de historial del shell no contiene comandos guardados';
+
+  @override
+  String get dockerMainPid => 'PID principal';
+
+  @override
+  String get dockerProcessElapsed => 'Tiempo activo';
+
+  @override
+  String get dockerProcessUser => 'Usuario';
+
+  @override
+  String get sessionHistoryEmpty => 'Aquí aparecerán los comandos de esta sesión';
+
+  @override
+  String get sessionUsage => 'Uso de recursos';
+
+  @override
+  String get sessionUsageUnavailable => 'Métricas no disponibles';
+
+  @override
+  String get sessionSwap => 'Intercambio';
+
+  @override
+  String get sessionLogins => 'Sesiones de usuario';
+
+  @override
+  String get sessionSnippetSearch => 'Buscar fragmento';
+
+  @override
+  String get sessionAsk => 'Pregunta sobre este host';
+
+  @override
+  String get sessionAskGeneral => 'Haz una pregunta';
+
+  @override
+  String get sessionSnip => 'Guardar fragmento';
+
+  @override
   String get uiOtherDevices => 'Otros dispositivos';
 
   @override
@@ -5536,6 +5808,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get terminalClearSelection => 'Selección clara';
+
+  @override
+  String get terminalAllowMultilinePaste => 'Permitir pegar varias líneas sin confirmación';
 
   @override
   String get terminalPasteConfirmTitle => '¿Paste múltiples líneas o caracteres de control?';
@@ -17779,7 +18054,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dockerKubeIntro =>
-      'Función experimental para un contenedor Linux sin estado, una réplica y un servicio ClusterIP interno. Revisa el manifiesto antes de desplegar.';
+      'Una réplica Linux y un Service ClusterIP interno. Configura por separado las variables de Docker y las dependencias de Compose.';
 
   @override
   String get dockerKubeUnsupported =>
@@ -17800,7 +18075,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dockerKubeImageHelp =>
-      'Publica primero la imagen en un registro accesible desde los nodos del clúster. El asistente no sube imágenes locales. Usa un resumen de imagen siempre que puedas, ya que una etiqueta mutable puede cambiar. No uses localhost como registro remoto.';
+      'Utiliza una etiqueta o un digest accesible para los nodos. Las imágenes privadas pueden requerir un imagePullSecret.';
 
   @override
   String get dockerKubePort => 'Puerto TCP del contenedor y del servicio';
@@ -17828,11 +18103,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dockerKubeTemplate => 'Usar plantilla';
 
   @override
-  String get dockerKubeAiReview =>
-      'Revisa la plantilla antes de enviarla al proveedor de IA. ConsoleCrypt añade el comando de inicio de Docker en este dispositivo al recibir la respuesta.';
+  String get dockerKubePrompt => 'Petición a la IA';
 
   @override
-  String get dockerKubeSendAi => 'Enviar plantilla a la IA';
+  String get dockerKubeAiReview =>
+      'Puedes editar la petición antes de enviarla. ConsoleCrypt añade el comando de inicio localmente después de la generación.';
+
+  @override
+  String get dockerKubeSendAi => 'Enviar petición';
 
   @override
   String get dockerKubeManifestRejected =>
@@ -17843,8 +18121,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Comprueba los nombres de la aplicación y del espacio de nombres, la imagen publicada con registro y etiqueta o resumen explícitos, el puerto TCP y el nombre del secreto de descarga.';
 
   @override
-  String get dockerKubeAcknowledge =>
-      'He comprobado la imagen, la arquitectura de CPU y el comando de inicio. El despliegue usa el entorno y los archivos de la imagen. Las variables configuradas en Docker y las dependencias de Compose se configuran por separado.';
+  String get dockerKubeAcknowledge => 'He revisado la imagen, la plataforma y el comando de inicio';
 
   @override
   String get dockerKubeValidated =>
@@ -19598,4 +19875,156 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get hostInspector => 'Detalles del host';
+
+  @override
+  String get captureTitle => 'TCPdump';
+
+  @override
+  String get captureSubtitle => 'Cabeceras, direcciones y puertos en tiempo real.';
+
+  @override
+  String get captureChoose => 'Elige los equipos para iniciar la captura.';
+
+  @override
+  String get captureListening => 'Escuchando paquetes';
+
+  @override
+  String get captureStopped => 'Captura detenida';
+
+  @override
+  String get captureMissing => 'Falta tcpdump en el equipo de captura.';
+
+  @override
+  String get captureDenied => 'Se necesitan permisos para capturar paquetes.';
+
+  @override
+  String get captureStartTimeout => 'El servidor no confirmó el inicio de la captura en 20 segundos.';
+
+  @override
+  String get captureFailed => 'No se pudo completar la captura.';
+
+  @override
+  String get captureNoPeer => 'No se pudieron determinar las direcciones de la conexión.';
+
+  @override
+  String get captureSource => 'Servidor de captura';
+
+  @override
+  String get captureTarget => 'Servidor de destino';
+
+  @override
+  String get captureServersHelp => 'El primer servidor captura su tráfico con el segundo.';
+
+  @override
+  String get captureStart => 'Iniciar captura';
+
+  @override
+  String get captureStop => 'Detener';
+
+  @override
+  String captureCount(int shown, int total) {
+    return 'Se muestran $shown de $total paquetes';
+  }
+
+  @override
+  String get captureInstall => 'Instalar tcpdump';
+
+  @override
+  String get captureManualInstall =>
+      'Instala tcpdump con el gestor de paquetes del equipo y vuelve a iniciar la captura.';
+
+  @override
+  String get captureSudo => 'Reintentar con sudo';
+
+  @override
+  String get tmuxTitle => 'Sesiones tmux';
+
+  @override
+  String tmuxCount(int count) {
+    return 'Sesiones: $count';
+  }
+
+  @override
+  String tmuxCounts(int windows, int clients) {
+    return 'Ventanas: $windows · Clientes: $clients';
+  }
+
+  @override
+  String tmuxActivity(String time) {
+    return 'Última actividad: $time';
+  }
+
+  @override
+  String get tmuxAttach => 'Entrar en la sesión';
+
+  @override
+  String get tmuxDetach => 'Desconectarse de la sesión';
+
+  @override
+  String get tmuxCreate => 'Crear sesión';
+
+  @override
+  String get tmuxKill => 'Finalizar sesión';
+
+  @override
+  String tmuxConfirmKill(String name) {
+    return '¿Finalizar «$name» y detener sus procesos?';
+  }
+
+  @override
+  String get tmuxEmpty => 'No hay sesiones tmux en este equipo';
+
+  @override
+  String get tmuxError => 'No se pudo completar la operación en tmux. Actualiza la lista e inténtalo de nuevo.';
+
+  @override
+  String get tmuxNameHint => 'Usa letras, números, espacios, guiones o guiones bajos.';
+
+  @override
+  String get captureCheck => 'Comprobar tcpdump';
+
+  @override
+  String get captureReady => 'tcpdump está instalado';
+
+  @override
+  String get captureUseSudo => 'Capturar con sudo';
+
+  @override
+  String get capturePrivilegeHint =>
+      'La captura requiere root o permisos de captura. Introduce la contraseña de sudo si se solicita.';
+
+  @override
+  String captureInstallHost(String host) {
+    return '¿Instalar tcpdump en $host? El comando se ejecutará en su terminal SSH, donde podrás responder al gestor de paquetes o a sudo.';
+  }
+
+  @override
+  String get captureExchange => 'Detalles de la conexión';
+
+  @override
+  String captureExchangeCount(int count) {
+    return 'Paquetes entre estos extremos al seleccionarlos: $count';
+  }
+
+  @override
+  String get registryBuildFromSource => 'Compilar desde un Dockerfile local';
+
+  @override
+  String get registryBuildFolder => 'Elegir carpeta del proyecto';
+
+  @override
+  String get registryBuildPush => 'Compilar y publicar';
+
+  @override
+  String get registryBuildFailed =>
+      'Falló la compilación o publicación. Revisa el Dockerfile, las plataformas de Buildx y el acceso al registro.';
+
+  @override
+  String get registryBuildContextError => 'Elige una carpeta de proyecto con un Dockerfile.';
+
+  @override
+  String get registryPin => 'Fijar esta versión por digest';
+
+  @override
+  String get dockerKubeDeployAction => 'Desplegar';
 }

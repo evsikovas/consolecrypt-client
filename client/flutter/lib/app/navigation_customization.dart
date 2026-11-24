@@ -122,7 +122,9 @@ class NavigationContextArea extends StatelessWidget {
     },
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onSecondaryTapDown: AppPlatform.isMobile ? null : (details) => unawaited(_menu(context, details.globalPosition)),
+      onSecondaryTapDown: AppWindowLayout.isPhone(context)
+          ? null
+          : (details) => unawaited(_menu(context, details.globalPosition)),
       child: child,
     ),
   );

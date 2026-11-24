@@ -318,7 +318,13 @@ async fn failed_open_reports_error() {
 async fn close_by_user() {
     let (m, _) = manager(false);
     let id = m.open(plan(), TerminalSize::default()).await.unwrap();
+    let mut events = m.events();
     m.close(id).await.unwrap();
+    let first = events.recv().await.unwrap();
+    assert!(first.intentional_close);
+    assert!(matches!(first.status, TerminalStatus::Closed { .. }));
+    // The shell pump waking after close must not publish another terminal result.
+    assert!(tokio::time::timeout(Duration::from_millis(100), events.recv()).await.is_err());
     let st = m.wait_closed(id).await.unwrap();
     assert!(
         matches!(
@@ -488,6 +494,7 @@ async fn shutdown_between_preparation_and_registration_cannot_publish_connected(
     // Models the shared-session open path after SSH returned its channel but
     // before registration. The old closing=false snapshot is intentionally stale.
     let session = Arc::new(Session {
+        background: false,
         id: uuid::Uuid::new_v4(),
         target: TerminalTarget::Ssh {
             host_id: ObjectId::new(),
@@ -555,4 +562,48 @@ async fn swapping_the_opener_keeps_open_sessions() {
     let second = m.open(plan(), size).await.unwrap();
     assert_ne!(second, id);
     assert_eq!(m.list().len(), 2);
+}
+
+#[tokio::test]
+async fn background_capture_replays_fast_output_without_a_terminal_notice() {
+    let (manager, _) = manager(false);
+    let mut notices = manager.events();
+    let (channel, remote) = ShellChannel::pair(8);
+    remote
+        .events
+        .send(ShellEvent::Stderr(Bytes::from_static(b"tcpdump: denied\n")))
+        .await
+        .unwrap();
+    remote.events.send(ShellEvent::ExitStatus(1)).await.unwrap();
+    remote.events.send(ShellEvent::Closed).await.unwrap();
+    let id = manager
+        .open_background_channel(
+            TerminalTarget::Ssh {
+                host_id: plan().host_id,
+            },
+            "tcpdump".into(),
+            TerminalSize::default(),
+            OpenedShell {
+                channel,
+                session: None,
+                lifetime: None,
+            },
+        )
+        .await
+        .unwrap();
+    assert!(matches!(
+        manager.wait_closed(id).await.unwrap(),
+        TerminalStatus::Closed {
+            exit_status: Some(1),
+            ..
+        }
+    ));
+    assert_eq!(manager.attach(id).unwrap().snapshot, b"tcpdump: denied\n");
+    assert!(manager.list().is_empty());
+    manager.shutdown().await;
+    assert!(manager.info(id).is_err());
+    assert!(matches!(
+        notices.try_recv(),
+        Err(broadcast::error::TryRecvError::Empty)
+    ));
 }

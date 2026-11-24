@@ -119,17 +119,23 @@ GlassWindowBridge::GlassWindowBridge(flutter::BinaryMessenger* messenger,
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
                  result) {
+        if (call.method_name() == "toggleTerminalFullscreen") {
+          if (fullscreen_) EndFullscreen(); else BeginFullscreen();
+          terminal_fullscreen_ = fullscreen_;
+          result->Success();
+          return;
+        }
         if (call.method_name() == "beginRdpFullscreen") {
           result->Success(flutter::EncodableValue(BeginFullscreen()));
           return;
         }
         if (call.method_name() == "endRdpFullscreen") {
-          if (EndFullscreen()) result->Success();
+          if (terminal_fullscreen_ || EndFullscreen()) result->Success();
           else result->Error("fullscreen_restore", "Could not restore window.");
           return;
         }
         if (call.method_name() == "isRdpFullscreenRestored") {
-          result->Success(flutter::EncodableValue(!fullscreen_ && restore_succeeded_));
+          result->Success(flutter::EncodableValue(terminal_fullscreen_ ? IsFullscreen() : (!fullscreen_ && restore_succeeded_)));
           return;
         }
         if (call.method_name() == "isFullscreen") {

@@ -28,6 +28,7 @@
         </receiver>
         <activity
             android:name=".MainActivity"
+            android:resizeableActivity="true"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

@@ -8,6 +8,7 @@ import 'package:consolecrypt/app/navigation_customization.dart';
 import 'package:consolecrypt/app/navigation_registry.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -741,11 +742,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
           enabled: _openingHost == null,
           trailing: _openingHost == host.id
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : Icon(
-                  host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
-                  size: 16,
-                  semanticLabel: l10n.commonConnect,
-                ),
+              : Icon(host.isRdp ? ToolIcons.rdp : Icons.terminal_rounded, size: 16, semanticLabel: l10n.commonConnect),
           onSelect: () => unawaited(_connect(host.id)),
         ),
       for (final h in snippets)
@@ -771,7 +768,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         _Item(
           group: _Group.kubernetes,
           key: ValueKey('palette-kube-${connection.id}'),
-          icon: Icons.hub_outlined,
+          icon: ToolIcons.kubernetes,
           title: connection.name,
           subtitle: '${l10n.kubeCommandContext} · ${connection.clusterName} · ${connection.namespace}',
           onSelect: () => openKube(KubeNavigationRequest(scope: kubeScope!, contextId: connection.id)),
@@ -863,7 +860,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         _Item(
           key: const ValueKey('palette-open-kubernetes'),
           group: _Group.actions,
-          icon: Icons.hub_outlined,
+          icon: ToolIcons.kubernetes,
           title: l10n.kubeCommandOpen,
           onSelect: () {
             _close();

@@ -370,6 +370,7 @@ final class MockInventoryService extends VaultScopedMock implements InventorySer
     String name,
     CredentialKind kind, {
     String? username,
+    String? registry,
     bool hasSecret = true,
     bool remember = false,
     bool encrypted = false,
@@ -388,6 +389,7 @@ final class MockInventoryService extends VaultScopedMock implements InventorySer
       name: name.trim(),
       kind: kind,
       username: (username ?? '').trim().isEmpty ? null : username!.trim(),
+      registry: registry,
       secretId: hasSecret ? ObjectId.generate() : null,
       passphraseSecretId: remember ? ObjectId.generate() : null,
       keyEncrypted: encrypted,
@@ -406,11 +408,12 @@ final class MockInventoryService extends VaultScopedMock implements InventorySer
     required String name,
     required SecretText password,
     String? username,
+    String? registry,
   }) async {
     if (password.isEmpty) {
       throw const AppException(AppErrorCode.validation, 'Enter the password', reason: AppErrorReason.passwordRequired);
     }
-    final cred = _newCredential(name, CredentialKind.password, username: username);
+    final cred = _newCredential(name, CredentialKind.password, username: username, registry: registry);
     await mockDelay(_config.latency);
     final d = data;
     d.credentials.add(cred);

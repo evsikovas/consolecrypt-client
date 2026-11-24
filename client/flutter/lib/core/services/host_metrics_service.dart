@@ -109,6 +109,7 @@ final class HostMetricsSample {
   HostMetricsSample.fromJson(Map<String, Object?> value)
     : time = DateTime.fromMillisecondsSinceEpoch(value['timestampMs'] as int),
       cpu = (value['cpuPercent'] as num?)?.toDouble(),
+      channelLatencyMs = value['channelLatencyMs'] as int?,
       memoryTotal = value['memoryTotal'] as int?,
       memoryUsed = value['memoryUsed'] as int?,
       diskTotal = value['diskTotal'] as int?,
@@ -116,6 +117,15 @@ final class HostMetricsSample {
       received = (value['receivedPerSecond'] as num?)?.toDouble(),
       sent = (value['sentPerSecond'] as num?)?.toDouble(),
       uptime = Duration(seconds: (value['uptimeSeconds'] as num).round()),
+      docker = value['docker'] == true,
+      logins = value['logins'] as int?,
+      swapTotal = value['swapTotal'] as int?,
+      swapUsed = value['swapUsed'] as int?,
+      cores = Map<String, dynamic>.from(value['cores'] as Map? ?? const {}),
+      interfaces = (value['interfaces'] as List? ?? const [])
+          .whereType<Map<String, Object?>>()
+          .where((row) => row['name'] is String)
+          .toList(),
       os = value['os'] as String?,
       kernel = value['kernel'] as String?,
       architecture = value['architecture'] as String?,
@@ -123,12 +133,16 @@ final class HostMetricsSample {
       logicalCpus = value['logicalCpus'] as int?,
       loadAverage = value['loadAverage'] as String?;
 
+  final bool docker;
+  final int? logins, swapTotal, swapUsed;
+  final Map<String, dynamic> cores;
+  final List<Map<String, Object?>> interfaces;
   final DateTime time;
   final double? cpu, received, sent;
   final int? memoryTotal, memoryUsed, diskTotal, diskUsed;
   final Duration uptime;
   final String? os, kernel, architecture, cpuModel, loadAverage;
-  final int? logicalCpus;
+  final int? logicalCpus, channelLatencyMs;
 
   double? get memoryPercent => _percent(memoryUsed, memoryTotal);
   double? get diskPercent => _percent(diskUsed, diskTotal);

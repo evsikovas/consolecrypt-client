@@ -3,7 +3,7 @@ description: "ConsoleCrypt desktop client UI: zero-knowledge E2EE SSH client (Fl
 # Never published to pub.dev; distributed as a desktop application.
 publish_to: 'none'
 
-version: 1.2.3+67038
+version: 1.2.5+67039
 
 environment:
   sdk: ^3.13.4
@@ -107,6 +107,9 @@ flutter:
     - assets/nerd-fonts/LICENSE
     - assets/nerd-fonts/NOTICE.md
   fonts:
+    - family: ConsoleCryptTools
+      fonts:
+        - asset: assets/fonts/ConsoleCryptTools.ttf
     - family: ConsoleCryptSymbols
       fonts:
         - asset: assets/nerd-fonts/ConsoleCryptSymbols.ttf

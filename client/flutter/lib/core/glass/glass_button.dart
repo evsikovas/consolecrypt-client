@@ -114,7 +114,7 @@ class GlassButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
     final scope = GlassScope.of(context);
-    final onGlass = AppPlatform.isMobile || GlassOnGlass.isOnGlass(context);
+    final onGlass = AppWindowLayout.isPhone(context) || GlassOnGlass.isOnGlass(context);
     // Nothing moves on the secure material (approvals, secrets, risk).
     final still = GlassOnGlass.maybeOf(context)?.secure ?? false;
     final motion = tokens.motion(scope.appearance);
@@ -155,7 +155,7 @@ class GlassButton extends StatelessWidget {
         final padded = ColoredBox(
           color: overlay,
           child: SizedBox(
-            height: AppPlatform.isMobile ? size.height.clamp(48.0, double.infinity) : size.height,
+            height: AppWindowLayout.isPhone(context) ? size.height.clamp(48.0, double.infinity) : size.height,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: size.isCapsule ? GlassSpacing.s16 : GlassSpacing.s12),
               child: content,
@@ -332,7 +332,7 @@ class GlassIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
     final motion = tokens.motion(GlassScope.of(context).appearance);
-    final onGlass = AppPlatform.isMobile || GlassOnGlass.isOnGlass(context);
+    final onGlass = AppWindowLayout.isPhone(context) || GlassOnGlass.isOnGlass(context);
     final still = GlassOnGlass.maybeOf(context)?.secure ?? false;
     final shape = style == GlassIconButtonStyle.prominent
         ? const StadiumBorder() as OutlinedBorder
@@ -362,7 +362,7 @@ class GlassIconButton extends StatelessWidget {
               ? tokens.surfaces.fillHover
               : const Color(0x00000000);
           final glyph = SizedBox.square(
-            dimension: AppPlatform.isMobile ? size.clamp(48.0, double.infinity) : size,
+            dimension: AppWindowLayout.isPhone(context) ? size.clamp(48.0, double.infinity) : size,
             child: DecoratedBox(
               decoration: ShapeDecoration(color: overlay, shape: shape),
               child: Icon(icon, size: iconSize, color: fg),

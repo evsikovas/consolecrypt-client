@@ -3,6 +3,7 @@
 /// The native core does all networking; this file is the UI contract.
 library;
 
+import 'package:consolecrypt/core/models/credential.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/docker/docker_removal.dart';
@@ -10,6 +11,7 @@ import 'package:consolecrypt/docker/docker_removal.dart';
 export 'package:consolecrypt/docker/docker_removal.dart';
 
 typedef DockerJson = Map<String, dynamic>;
+typedef DockerBuildContext = ({String directory, List<String> platforms});
 
 /// What the core puts in place of a hidden value (same length for every
 /// secret).
@@ -434,6 +436,45 @@ final class DockerException implements Exception {
   String toString() => 'DockerException(${failure.name})';
 }
 
+final class DockerImage {
+  DockerImage.fromJson(DockerJson json)
+    : id = json['id'] as String,
+      tags = references(json['tags']),
+      digests = references(json['digests']),
+      size = json['size'] as int?,
+      created = json['created'] is int
+          ? DateTime.fromMillisecondsSinceEpoch((json['created'] as int) * 1000, isUtc: true)
+          : null;
+  final String id;
+  final List<String> tags, digests;
+  final int? size;
+  final DateTime? created;
+
+  static List<String> references(Object? values) =>
+      (values as List? ?? const [])
+          .whereType<String>()
+          .where((s) => s.isNotEmpty && !s.startsWith('<none>'))
+          .toSet()
+          .toList()
+        ..sort();
+
+  String label(String? tag) {
+    final reference = tag ?? digests.firstOrNull;
+    if (reference != null && !reference.startsWith('sha256:')) return reference.split('@').first;
+    final hash = id.replaceFirst('sha256:', '');
+    return hash.length > 12 ? hash.substring(0, 12) : hash;
+  }
+}
+
+abstract interface class DockerObservationService {
+  Future<DockerJson> diskUsage(String sessionId);
+  Future<List<DockerJson>> recentEvents(String sessionId);
+  Future<List<DockerJson>> networks(String sessionId);
+  Future<DockerJson> telemetry(String sessionId, String containerId);
+  Future<List<DockerImage>> images(String sessionId);
+  Future<bool> removeImage(String sessionId, String id, {String? tag});
+}
+
 abstract interface class DockerService {
   /// This computer (when a local socket exists) followed by saved SSH hosts.
   Future<List<DockerHost>> hosts();
@@ -449,6 +490,16 @@ abstract interface class DockerService {
 
   /// Registry-confirmed digests for the immutable image ID and original repository.
   Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage);
+
+  /// Publish the immutable image from this engine to the registry bound to the credential.
+  Future<String> publishImage(
+    String sessionId,
+    String imageId,
+    Credential credential,
+    String repository,
+    String tag, {
+    DockerBuildContext? build,
+  });
 
   /// The full `docker inspect`, secrets included; the core checks the vault
   /// passphrase or a presence token for [StepUpAction.dockerReveal] on

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -310,7 +311,7 @@ class _GroupHeader extends StatelessWidget {
                 color: tokens.secondaryLabel,
               ),
               const SizedBox(width: 4),
-              Icon(compose ? Icons.layers_outlined : Icons.view_in_ar_outlined, size: 16, color: tokens.secondaryLabel),
+              Icon(compose ? Icons.layers_outlined : ToolIcons.docker, size: 16, color: tokens.secondaryLabel),
               const SizedBox(width: 8),
               Expanded(
                 child: Row(

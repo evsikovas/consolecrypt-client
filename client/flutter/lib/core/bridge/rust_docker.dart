@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart';
+import 'package:consolecrypt/core/models/credential.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
@@ -12,7 +13,32 @@ import 'package:consolecrypt/src/rust/api/docker.dart' as native;
 
 /// Docker engines through the native core: the local socket or a saved SSH
 /// host's engine socket. Logs are polled in batches.
-final class RustDockerService implements DockerService {
+final class RustDockerService implements DockerService, DockerObservationService {
+  @override
+  Future<DockerJson> telemetry(String sessionId, String containerId) async =>
+      _decodeInspect(await guard(() => native.dockerTelemetry(sessionId: sessionId, container: containerId)));
+  @override
+  Future<DockerJson> diskUsage(String sessionId) async =>
+      _decodeInspect(await guard(() => native.dockerDiskUsage(sessionId: sessionId)));
+  @override
+  Future<List<DockerJson>> recentEvents(String sessionId) async =>
+      _decodeLargeReply(await guard(() => native.dockerRecentEvents(sessionId: sessionId)), _decodeRows);
+  @override
+  Future<List<DockerJson>> networks(String sessionId) async =>
+      _decodeLargeReply(await guard(() => native.dockerNetworks(sessionId: sessionId)), _decodeRows);
+  static List<DockerJson> _decodeRows(String wire) => (jsonDecode(wire) as List).cast<DockerJson>();
+
+  @override
+  Future<List<DockerImage>> images(String sessionId) async =>
+      _decodeLargeReply(await guard(() => native.dockerImages(sessionId: sessionId)), _decodeImages);
+
+  static List<DockerImage> _decodeImages(String wire) =>
+      (jsonDecode(wire) as List).cast<DockerJson>().map(DockerImage.fromJson).toList();
+
+  @override
+  Future<bool> removeImage(String sessionId, String id, {String? tag}) =>
+      guard(() => native.dockerRemoveImage(sessionId: sessionId, imageId: id, tag: tag));
+
   @override
   Future<List<DockerHost>> hosts() async => [
     for (final host in (jsonDecode(await guard(native.dockerHosts)) as List).cast<DockerJson>())
@@ -64,6 +90,25 @@ final class RustDockerService implements DockerService {
         );
     return DockerContainerDetail(container: container, inspect: inspect);
   }
+
+  @override
+  Future<String> publishImage(
+    String sessionId,
+    String imageId,
+    Credential credential,
+    String repository,
+    String tag, {
+    DockerBuildContext? build,
+  }) => guard(
+    () => native.dockerPublishImage(
+      sessionId: sessionId,
+      imageId: imageId,
+      credentialId: credential.id.value,
+      buildJson: build == null ? null : jsonEncode({'directory': build.directory, 'platforms': build.platforms}),
+      repository: repository,
+      tag: tag,
+    ),
+  );
 
   @override
   Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage) =>

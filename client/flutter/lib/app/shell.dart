@@ -113,11 +113,13 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  final _workspaceKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _openRequestedTool();
-    if (!AppPlatform.isMobile) _listenDeviceUnlockOffer(this);
+    _listenDeviceUnlockOffer(this);
   }
 
   @override
@@ -144,9 +146,10 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     ref.watch(passwordManagerProvider);
-    if (AppPlatform.isMobile) {
+    final workspace = SftpEditRecoveryListener(key: _workspaceKey, child: widget.navigationShell);
+    if (AppWindowLayout.isPhone(context)) {
       return NotesReminderWatcher(
-        child: _MobileShell(navigationShell: widget.navigationShell, location: widget.location),
+        child: _MobileShell(navigationShell: widget.navigationShell, workspace: workspace, location: widget.location),
       );
     }
 
@@ -180,134 +183,148 @@ class _AppShellState extends ConsumerState<AppShell> {
         WorkspacePanelStyle.expanded;
     final profileId = ref.watch(activeProfileProvider.select((p) => p?.id));
 
+    final layout = LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final contentLeft = sidebarWidth;
+        const railWidth = GlassSizes.workspaceRailWidth;
+        final panelOpen = tools.selected != null;
+        final top = minimal ? 0.0 : band;
+        final rightInset = minimal || integratedTools ? 0.0 : inset;
+        final railSpace = minimal || integratedTools && panelOpen ? 0.0 : railWidth;
+        final available = (w - sidebarWidth - railSpace - rightInset).clamp(0.0, double.infinity);
+        final docked = available >= (integratedTools ? 960 : 1000);
+        final panelWidth = docked
+            ? tools.width.clamp(360.0, available - 600.0)
+            : (tools.selected == WorkspaceTool.ai ? tools.chatWidth : 420.0).clamp(0.0, available);
+        final panelRight = minimal || integratedTools ? 0.0 : railWidth + inset;
+        final panelSpace = docked && panelOpen ? panelWidth + 8 : 0.0;
+        final contentWidth = available - panelSpace;
+        final sidebarRect = toolbarOnTop
+            ? Rect.fromLTWH(0, band - inset, sidebarLayoutWidth, h - band + inset)
+            : Rect.fromLTWH(0, 0, sidebarLayoutWidth, h);
+        final toolbarRect = toolbarOnTop
+            ? Rect.fromLTWH(0, 0, w - railWidth - inset, band)
+            : Rect.fromLTWH(contentLeft, 0, available, band);
+        final contentRect = Rect.fromLTWH(contentLeft, top, contentWidth, h - top);
+        return Stack(
+          children: [
+            Positioned.fromRect(
+              rect: sidebarRect,
+              child: Offstage(
+                offstage: minimal,
+                child: ExcludeFocus(
+                  excluding: minimal,
+                  child: _Sidebar(
+                    navigationShell: navigationShell,
+                    overlayTools: !docked,
+                    compact: compact,
+                    style: style,
+                    reserveTrafficLights: trafficLights && !toolbarOnTop,
+                  ),
+                ),
+              ),
+            ),
+            Positioned.fromRect(
+              rect: contentRect,
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(size: Size(contentWidth, h - top)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Offstage(
+                      offstage: minimal,
+                      child: ExcludeFocus(excluding: minimal, child: const _ShellBanners()),
+                    ),
+                    if (minimal) const CriticalNoticeAttentionBar(),
+                    // Offers to recover SFTP edit sessions left by a crash / quit (once per unlock).
+                    Expanded(
+                      child: ExcludeFocus(excluding: panelOpen && !docked, child: workspace),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              top: top,
+              bottom: 0,
+              right: rightInset,
+              width: railWidth,
+              child: Offstage(
+                offstage: minimal || integratedTools && panelOpen,
+                child: ExcludeFocus(
+                  excluding: minimal,
+                  child: WorkspaceToolRail(integrated: integratedTools, branch: branch),
+                ),
+              ),
+            ),
+            Positioned.fromRect(
+              rect: Rect.fromLTWH(contentLeft, top, available, h - top),
+              child: panelOpen && !docked
+                  ? ModalBarrier(
+                      key: const ValueKey('workspace-tools-barrier'),
+                      color: tokens.surfaces.barrier,
+                      dismissible: true,
+                      onDismiss: () => ref.read(workspaceToolsProvider.notifier).close(),
+                      semanticsLabel: context.l10n.workspaceToolsClose,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            Positioned(
+              top: minimal && trafficLights ? band : top,
+              bottom: integratedTools ? 0 : inset,
+              right: panelRight,
+              width: panelWidth,
+              child: WorkspaceToolPanel(key: ValueKey(profileId), integrated: integratedTools, branch: branch),
+            ),
+            Positioned(
+              top: top + 12,
+              bottom: inset + 12,
+              right: panelRight + panelWidth,
+              width: 8,
+              child: panelOpen && docked ? WorkspaceToolResizeHandle(width: panelWidth) : const SizedBox.shrink(),
+            ),
+            Positioned.fromRect(
+              rect: toolbarRect,
+              // Unmount the native macOS passthrough regions too; hidden
+              // toolbar rectangles must not intercept minimal-mode drags.
+              child: minimal
+                  ? const SizedBox.shrink()
+                  : _ShellToolbar(
+                      // Recreate native passthrough regions when the band moves.
+                      key: ValueKey('toolbar-$toolbarOnTop-$compact-$floating'),
+                      branch: branch,
+                      location: location,
+                      compact: compact,
+                      canCollapse: !narrowWindow,
+                      leadingInset: toolbarOnTop
+                          ? scope.trafficLightsLeading - GlassSpacing.s12 - GlassToolbar.frameInset
+                          : 0,
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+    final desktop = Scaffold(body: AppPlatform.isAndroid ? SafeArea(child: layout) : layout);
     return NotesReminderWatcher(
-      child: Scaffold(
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            final w = constraints.maxWidth;
-            final h = constraints.maxHeight;
-            final contentLeft = sidebarWidth;
-            const railWidth = GlassSizes.workspaceRailWidth;
-            final panelOpen = tools.selected != null;
-            final top = minimal ? 0.0 : band;
-            final rightInset = minimal || integratedTools ? 0.0 : inset;
-            final railSpace = minimal || integratedTools && panelOpen ? 0.0 : railWidth;
-            final available = (w - sidebarWidth - railSpace - rightInset).clamp(0.0, double.infinity);
-            final docked = available >= (integratedTools ? 960 : 1000);
-            final panelWidth = docked ? tools.width.clamp(360.0, available - 600.0) : 420.0.clamp(0.0, available);
-            final panelRight = minimal || integratedTools ? 0.0 : railWidth + inset;
-            final panelSpace = docked && panelOpen ? panelWidth + 8 : 0.0;
-            final contentWidth = available - panelSpace;
-            final sidebarRect = toolbarOnTop
-                ? Rect.fromLTWH(0, band - inset, sidebarLayoutWidth, h - band + inset)
-                : Rect.fromLTWH(0, 0, sidebarLayoutWidth, h);
-            final toolbarRect = toolbarOnTop
-                ? Rect.fromLTWH(0, 0, w - railWidth - inset, band)
-                : Rect.fromLTWH(contentLeft, 0, available, band);
-            final contentRect = Rect.fromLTWH(contentLeft, top, contentWidth, h - top);
-            return Stack(
-              children: [
-                Positioned.fromRect(
-                  rect: sidebarRect,
-                  child: Offstage(
-                    offstage: minimal,
-                    child: ExcludeFocus(
-                      excluding: minimal,
-                      child: _Sidebar(
-                        navigationShell: navigationShell,
-                        overlayTools: !docked,
-                        compact: compact,
-                        style: style,
-                        reserveTrafficLights: trafficLights && !toolbarOnTop,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned.fromRect(
-                  rect: contentRect,
-                  child: MediaQuery(
-                    data: MediaQuery.of(context).copyWith(size: Size(contentWidth, h - top)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Offstage(
-                          offstage: minimal,
-                          child: ExcludeFocus(excluding: minimal, child: const _ShellBanners()),
-                        ),
-                        if (minimal) const CriticalNoticeAttentionBar(),
-                        // Offers to recover SFTP edit sessions left by a crash / quit (once per unlock).
-                        Expanded(
-                          child: ExcludeFocus(
-                            excluding: panelOpen && !docked,
-                            child: SftpEditRecoveryListener(child: navigationShell),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: top,
-                  bottom: 0,
-                  right: rightInset,
-                  width: railWidth,
-                  child: Offstage(
-                    offstage: minimal || integratedTools && panelOpen,
-                    child: ExcludeFocus(
-                      excluding: minimal,
-                      child: WorkspaceToolRail(integrated: integratedTools, branch: branch),
-                    ),
-                  ),
-                ),
-                Positioned.fromRect(
-                  rect: Rect.fromLTWH(contentLeft, top, available, h - top),
-                  child: panelOpen && !docked
-                      ? ModalBarrier(
-                          key: const ValueKey('workspace-tools-barrier'),
-                          color: tokens.surfaces.barrier,
-                          dismissible: true,
-                          onDismiss: () => ref.read(workspaceToolsProvider.notifier).close(),
-                          semanticsLabel: context.l10n.workspaceToolsClose,
-                        )
-                      : const SizedBox.shrink(),
-                ),
-                Positioned(
-                  top: minimal && trafficLights ? band : top,
-                  bottom: integratedTools ? 0 : inset,
-                  right: panelRight,
-                  width: panelWidth,
-                  child: WorkspaceToolPanel(key: ValueKey(profileId), integrated: integratedTools, branch: branch),
-                ),
-                Positioned(
-                  top: top + 12,
-                  bottom: inset + 12,
-                  right: panelRight + panelWidth,
-                  width: 8,
-                  child: panelOpen && docked ? WorkspaceToolResizeHandle(width: panelWidth) : const SizedBox.shrink(),
-                ),
-                Positioned.fromRect(
-                  rect: toolbarRect,
-                  // Unmount the native macOS passthrough regions too; hidden
-                  // toolbar rectangles must not intercept minimal-mode drags.
-                  child: minimal
-                      ? const SizedBox.shrink()
-                      : _ShellToolbar(
-                          // Recreate native passthrough regions when the band moves.
-                          key: ValueKey('toolbar-$toolbarOnTop-$compact-$floating'),
-                          branch: branch,
-                          location: location,
-                          compact: compact,
-                          canCollapse: !narrowWindow,
-                          leadingInset: toolbarOnTop
-                              ? scope.trafficLightsLeading - GlassSpacing.s12 - GlassToolbar.frameInset
-                              : 0,
-                        ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
+      child: AppPlatform.isAndroid
+          ? PopScope(
+              canPop: tools.selected == null && !minimal && branch == ShellBranch.hosts,
+              onPopInvokedWithResult: (didPop, _) {
+                if (didPop) return;
+                if (tools.selected != null) {
+                  ref.read(workspaceToolsProvider.notifier).close();
+                } else if (minimal) {
+                  ref.read(terminalMinimalModeProvider.notifier).leave();
+                } else {
+                  navigationShell.goBranch(ShellBranch.hosts.index);
+                }
+              },
+              child: desktop,
+            )
+          : desktop,
     );
   }
 }
@@ -811,13 +828,16 @@ class _ShellToolbar extends ConsumerWidget {
           onPressed: () => dispatcher.invoke(AppCommandId.commandPalette),
         ),
         trailing: [
-          GlassIconButton(
-            key: const ValueKey('new-connection'),
-            icon: Icons.add_rounded,
-            size: 40,
-            style: pageHasPrimary ? GlassIconButtonStyle.glass : GlassIconButtonStyle.prominent,
-            tooltip: l10n.shellNewConnection,
-            onPressed: () => showConnectionPicker(context, ref),
+          SizedBox.square(
+            dimension: 40,
+            child: GlassIconButton(
+              key: const ValueKey('new-connection'),
+              icon: Icons.add_rounded,
+              size: GlassSizes.toolbarGroup,
+              style: pageHasPrimary ? GlassIconButtonStyle.glass : GlassIconButtonStyle.prominent,
+              tooltip: l10n.shellNewConnection,
+              onPressed: () => showConnectionPicker(context, ref),
+            ),
           ),
           const CriticalNoticeButton(),
           if (!compact) const SyncStatusPill(shortLabel: true),
@@ -974,7 +994,7 @@ class _ShellBanners extends ConsumerWidget {
   }
 
   Widget _pendingBanner(BuildContext context, List<DeviceTrustRequest> pending) {
-    if (AppPlatform.isMobile) {
+    if (AppWindowLayout.isPhone(context)) {
       return Material(
         color: GlassTokens.of(context).palette.warning.withValues(alpha: .12),
         child: ListTile(

@@ -18,8 +18,8 @@ use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
     sync::{
-        atomic::{AtomicU64, Ordering},
         Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
     },
     time::Duration,
 };
@@ -27,6 +27,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+mod buildx;
 mod removal;
 
 const MAX_SESSIONS: usize = 16;
@@ -115,7 +116,7 @@ mod local_engine_tests {
                     },
                     client: DockerClient::new(Arc::new(NeverConnect)),
                     ssh: None,
-                    local_endpoint: None,
+                    cli_endpoint: None,
                     host_id: ssh_host,
                     cancel: CancellationToken::new(),
                 }),
@@ -133,7 +134,7 @@ mod local_engine_tests {
 }
 
 /// Finds the engine socket the SSH user can use and reports why not.
-const SOCKET_PROBE: &str = "for s in /var/run/docker.sock /run/docker.sock \"/run/user/$(id -u)/docker.sock\"; do \
+pub(crate) const SOCKET_PROBE: &str = "for s in /var/run/docker.sock /run/docker.sock \"/run/user/$(id -u)/docker.sock\"; do \
     if [ -S \"$s\" ]; then if [ -r \"$s\" ] && [ -w \"$s\" ]; then echo \"ok $s\"; else \
     echo \"denied $s $(stat -c %G \"$s\" 2>/dev/null || stat -f %Sg \"$s\" 2>/dev/null)\"; fi; exit 0; fi; done; echo missing";
 
@@ -226,8 +227,8 @@ struct LiveDocker {
     info: DockerSessionDto,
     client: DockerClient,
     ssh: Option<Arc<SshSession>>,
-    /// The engine socket of this computer (None over SSH).
-    local_endpoint: Option<String>,
+    /// Exact engine for CLI operations. A dial-stdio connection uses the remote CLI context.
+    cli_endpoint: Option<String>,
     host_id: Option<ObjectId>,
     cancel: CancellationToken,
 }
@@ -349,7 +350,7 @@ impl DockerRuntime {
         Ok(ComposeTarget {
             client: live.client.clone(),
             ssh: live.ssh.clone(),
-            local_endpoint: live.local_endpoint.clone(),
+            local_endpoint: live.cli_endpoint.clone(),
             cancel: live.cancel.clone(),
         })
     }
@@ -487,7 +488,7 @@ impl AppCore {
         let failed = |failure: &'static str, detail: String| {
             Ok(DockerConnectOutcome::Failed { failure, detail })
         };
-        let (client, ssh, host, name, local_endpoint) =
+        let (client, ssh, host, name, cli_endpoint) =
             if cc_docker_core::local::is_local_host(&host_id) {
                 let engines = tokio::task::spawn_blocking(cc_docker_core::local::local_engines)
                     .await
@@ -544,10 +545,10 @@ impl AppCore {
                 if let Some(path) = socket {
                     let client = DockerClient::new(Arc::new(SshSocket {
                         session: session.clone(),
-                        path,
+                        path: path.clone(),
                     }));
                     if client.info().await.is_ok() {
-                        chosen = Some(client);
+                        chosen = Some((client, Some(format!("unix://{path}"))));
                     }
                 }
                 if chosen.is_none() {
@@ -558,10 +559,10 @@ impl AppCore {
                         .await
                         .is_ok_and(|r| r.is_ok())
                     {
-                        chosen = Some(client);
+                        chosen = Some((client, None));
                     }
                 }
-                let Some(client) = chosen else {
+                let Some((client, endpoint)) = chosen else {
                     let _ = session.disconnect().await;
                     return match probe {
                         "missing" => failed("not_running", String::new()),
@@ -573,12 +574,12 @@ impl AppCore {
                         _ => failed("connection_failed", String::new()),
                     };
                 };
-                (client, Some(session), Some(host), name, None)
+                (client, Some(session), Some(host), name, endpoint)
             };
         let info = match tokio::time::timeout(Duration::from_secs(15), client.info()).await {
             Ok(Ok(info)) => info,
             Ok(Err(DockerError::PermissionDenied)) => {
-                return failed("permission_denied", String::new())
+                return failed("permission_denied", String::new());
             }
             Ok(Err(DockerError::NotRunning)) => return failed("not_running", String::new()),
             _ => return failed("connection_failed", String::new()),
@@ -603,7 +604,7 @@ impl AppCore {
                     info: dto.clone(),
                     client,
                     ssh,
-                    local_endpoint,
+                    cli_endpoint,
                     host_id: host,
                     cancel,
                 }),
@@ -672,6 +673,75 @@ impl AppCore {
         ))
     }
 
+    pub async fn docker_publish_image(
+        &self,
+        session_id: String,
+        image_id: String,
+        credential_id: String,
+        repository: String,
+        tag: String,
+        build_json: Option<String>,
+    ) -> AppResult<String> {
+        let (_, u) = self.unlocked().await?;
+        let live = u.docker.session(&session_id)?;
+        let id = crate::dto::parse_id("credential", &credential_id)?;
+        let c = u
+            .working()
+            .credential(id)
+            .ok_or_else(|| invalid("registry_credential"))?;
+        let registry = c
+            .registry
+            .as_deref()
+            .ok_or_else(|| invalid("registry_credential"))?;
+        let username = c
+            .username
+            .as_deref()
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| invalid("registry_credential"))?;
+        let secret_id = c.secret_id.ok_or_else(|| invalid("registry_credential"))?;
+        if c.kind != cc_models::credential::CredentialKind::Password
+            || u.working().vault_of(id) != u.working().vault_of(secret_id)
+        {
+            return Err(invalid("registry_credential"));
+        }
+        let secret = u.writer.read_secret(secret_id).await?;
+        if secret.kind != cc_models::secret::SecretKind::Password {
+            return Err(invalid("registry_credential"));
+        }
+        if let Some(build) = build_json {
+            let options: buildx::BuildOptions =
+                serde_json::from_str(&build).map_err(|_| invalid("build_context"))?;
+            let target = buildx::BuildTarget {
+                repo: cc_docker_core::registry_repository(registry, &repository, &tag)
+                    .ok_or_else(|| invalid("registry_credential"))?,
+                tag: &tag,
+                username,
+                password: secret.value.expose_secret(),
+            };
+            if let Some(ssh) = live.ssh.as_deref() {
+                return tokio::select! {
+                    biased;
+                    _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+                    result = options.publish_remote(ssh, live.cli_endpoint.as_deref(), &target) => result,
+                };
+            }
+            let endpoint = live
+                .cli_endpoint
+                .as_deref()
+                .ok_or_else(|| invalid("build_context"))?;
+            return tokio::select! {
+                biased;
+                _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+                result = options.publish(endpoint, &target) => result,
+            };
+        }
+        tokio::select! {
+            biased;
+            _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+            result = live.client.publish_image(&image_id, registry, &repository, &tag, username, secret.value.expose_secret()) => result.map_err(docker_error),
+        }
+    }
+
     pub async fn docker_image_repo_digests(
         &self,
         session_id: String,
@@ -687,6 +757,64 @@ impl AppCore {
         }
     }
 
+    pub async fn docker_disk_usage(&self, session_id: String) -> AppResult<serde_json::Value> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! {
+            biased;
+            _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+            result = live.client.disk_usage() => result.map_err(docker_error),
+        }
+    }
+
+    pub async fn docker_recent_events(
+        &self,
+        session_id: String,
+    ) -> AppResult<Vec<serde_json::Value>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! {
+            biased;
+            _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+            result = live.client.recent_events() => result.map_err(docker_error),
+        }
+    }
+
+    pub async fn docker_networks(&self, session_id: String) -> AppResult<Vec<serde_json::Value>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! { biased; _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+        result = live.client.networks() => result.map_err(docker_error) }
+    }
+
+    pub async fn docker_images(&self, session_id: String) -> AppResult<Vec<serde_json::Value>> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! { biased; _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+        result = live.client.images() => result.map_err(docker_error) }
+    }
+
+    pub async fn docker_remove_image(
+        &self,
+        session_id: String,
+        image_id: String,
+        tag: Option<String>,
+    ) -> AppResult<bool> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! { biased; _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+        result = live.client.remove_image(&image_id, tag.as_deref()) => result.map_err(docker_error) }
+    }
+    pub async fn docker_telemetry(
+        &self,
+        session_id: String,
+        container: String,
+    ) -> AppResult<serde_json::Value> {
+        let (_, unlocked) = self.unlocked().await?;
+        let live = unlocked.docker.session(&session_id)?;
+        tokio::select! { biased; _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+        result = live.client.telemetry(&container) => result.map_err(docker_error) }
+    }
     pub async fn docker_volumes(
         &self,
         session_id: String,

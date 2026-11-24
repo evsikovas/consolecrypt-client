@@ -30,6 +30,29 @@ pub async fn docker_inspect(session_id: String, container: String) -> Result<Str
         .await
 }
 
+/// Publish the exact image from this engine with a registry-bound vault credential.
+pub async fn docker_publish_image(
+    session_id: String,
+    image_id: String,
+    credential_id: String,
+    repository: String,
+    tag: String,
+    build_json: Option<String>,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        Ok(c.docker_publish_image(
+            session_id,
+            image_id,
+            credential_id,
+            repository,
+            tag,
+            build_json,
+        )
+        .await?)
+    })
+    .await
+}
+
 /// Registry-confirmed digests for this local image and its source repository.
 pub async fn docker_image_repo_digests(
     session_id: String,
@@ -171,6 +194,36 @@ pub async fn docker_forward_stop(forward_id: String) -> Result<(), BridgeError> 
     with_core(move |c| async move { Ok(c.docker_forward_stop(forward_id).await?) }).await
 }
 
+pub async fn docker_telemetry(
+    session_id: String,
+    container: String,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_telemetry(session_id, container).await?) })
+        .await
+}
+pub async fn docker_disk_usage(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_disk_usage(session_id).await?) }).await
+}
+
+pub async fn docker_recent_events(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_recent_events(session_id).await?) }).await
+}
+
+pub async fn docker_networks(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_networks(session_id).await?) }).await
+}
+
+pub async fn docker_images(session_id: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.docker_images(session_id).await?) }).await
+}
+pub async fn docker_remove_image(
+    session_id: String,
+    image_id: String,
+    tag: Option<String>,
+) -> Result<bool, BridgeError> {
+    with_core(move |c| async move { Ok(c.docker_remove_image(session_id, image_id, tag).await?) })
+        .await
+}
 pub async fn docker_volumes(session_id: String) -> Result<String, BridgeError> {
     with_core(move |c| async move { to_json(&c.docker_volumes(session_id).await?) }).await
 }

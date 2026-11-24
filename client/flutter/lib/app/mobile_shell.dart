@@ -3,8 +3,9 @@ part of 'shell.dart';
 /// Touch-first shell: the workspace keeps its Navigator and session state
 /// while tools cover it. No desktop rails consume the phone's viewport.
 class _MobileShell extends ConsumerStatefulWidget {
-  const _MobileShell({required this.navigationShell, required this.location});
+  const _MobileShell({required this.navigationShell, required this.workspace, required this.location});
   final StatefulNavigationShell navigationShell;
+  final Widget workspace;
   final String location;
 
   @override
@@ -14,12 +15,6 @@ class _MobileShell extends ConsumerStatefulWidget {
 class _MobileShellState extends ConsumerState<_MobileShell> {
   bool _more = false;
   static const _defaultPrimary = [ShellBranch.hosts, ShellBranch.terminal, ShellBranch.sftp];
-
-  @override
-  void initState() {
-    super.initState();
-    _listenDeviceUnlockOffer(this);
-  }
 
   void _go(ShellBranch branch) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -44,17 +39,22 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
         .toList();
     final selected = _more ? primary.length : primary.indexOf(_navigationBranch(branch));
     final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final terminalFocused = branch == ShellBranch.terminal && !_more && ref.watch(terminalMinimalModeProvider);
     final rdpVisible = branch == ShellBranch.rdp && !_more && !toolsOpen;
     // The remote desktop and its input controls need the short landscape
     // viewport. Navigation returns as soon as the keyboard is dismissed.
     final hideAppBar =
-        toolsOpen || (rdpVisible && (keyboardOpen || MediaQuery.orientationOf(context) == Orientation.landscape));
+        toolsOpen ||
+        terminalFocused ||
+        (rdpVisible && (keyboardOpen || MediaQuery.orientationOf(context) == Orientation.landscape));
     return PopScope(
       canPop: !toolsOpen && !_more && branch == ShellBranch.hosts,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         if (toolsOpen) {
           ref.read(workspaceToolsProvider.notifier).close();
+        } else if (terminalFocused) {
+          ref.read(terminalMinimalModeProvider.notifier).leave();
         } else if (_more) {
           setState(() => _more = false);
         } else {
@@ -115,7 +115,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
                       child: Column(
                         children: [
                           Offstage(offstage: rdpVisible && keyboardOpen, child: const _ShellBanners()),
-                          Expanded(child: SftpEditRecoveryListener(child: widget.navigationShell)),
+                          Expanded(child: widget.workspace),
                         ],
                       ),
                     ),
@@ -164,7 +164,7 @@ class _MobileShellState extends ConsumerState<_MobileShell> {
             ],
           ),
         ),
-        bottomNavigationBar: keyboardOpen || toolsOpen
+        bottomNavigationBar: keyboardOpen || toolsOpen || terminalFocused
             ? null
             : primary.isEmpty
             ? SafeArea(

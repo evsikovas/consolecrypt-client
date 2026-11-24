@@ -14,7 +14,10 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 mod image;
+pub(crate) mod publish;
 pub(crate) mod removal;
+mod system;
+mod telemetry;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_BODY: usize = 32 * 1024 * 1024;
@@ -142,6 +145,17 @@ fn health(status: &str) -> Option<String> {
 }
 
 impl DockerClient {
+    /// Read all networks, including empty ones, without forwarding arbitrary driver options or labels.
+    pub async fn networks(&self) -> Result<Vec<Value>, DockerError> {
+        let list = self.json(Method::GET, "/networks", None).await?;
+        let networks = list.as_array().ok_or(DockerError::Protocol)?;
+        Ok(networks.iter().map(|net| {
+            let ranges: Vec<_> = net["IPAM"]["Config"].as_array().into_iter().flatten()
+                .map(|range| serde_json::json!({"subnet": range["Subnet"], "gateway": range["Gateway"]})).collect();
+            serde_json::json!({"id":net["Id"], "name":net["Name"], "driver":net["Driver"], "scope":net["Scope"], "ranges":ranges})
+        }).collect())
+    }
+
     pub fn new(connector: SharedConnector) -> Self {
         Self { connector }
     }
@@ -152,6 +166,17 @@ impl DockerClient {
         path: &str,
         body: Option<Value>,
         upgrade: bool,
+    ) -> Result<Response<Incoming>, DockerError> {
+        self.send_with_registry_auth(method, path, body, upgrade, None).await
+    }
+
+    async fn send_with_registry_auth(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<Value>,
+        upgrade: bool,
+        auth: Option<hyper::header::HeaderValue>,
     ) -> Result<Response<Incoming>, DockerError> {
         let io = self.connector.connect().await?;
         let (mut sender, connection) = hyper::client::conn::http1::handshake(TokioIo::new(io))
@@ -164,6 +189,9 @@ impl DockerClient {
             .method(method)
             .uri(path)
             .header(HOST, "docker");
+        if let Some(value) = auth {
+            request = request.header("X-Registry-Auth", value);
+        }
         if upgrade {
             request = request.header(CONNECTION, "Upgrade").header(UPGRADE, "tcp");
         }

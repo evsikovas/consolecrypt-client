@@ -6,6 +6,7 @@ import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/sidebar_state.dart';
 import 'package:consolecrypt/app/theme.dart';
+import 'package:consolecrypt/app/workspace_tools.dart' show MobileSessionActions;
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -19,8 +20,10 @@ import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
+import 'package:consolecrypt/terminal/terminal_find.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
+import 'package:consolecrypt/terminal/terminal_status_bar.dart';
 import 'package:consolecrypt/terminal/terminal_tab_subtitle.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
@@ -74,7 +77,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
     // Offstage shell branches disable tickers: that is "not on screen" for
     // the unseen-activity markers.
     final visible = TickerMode.valuesOf(context).enabled;
-    final placement = AppPlatform.isMobile
+    final placement = AppWindowLayout.isPhone(context)
         ? TerminalTabPlacement.top
         : ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabPlacement)) ?? TerminalTabPlacement.top;
     final column = placement == TerminalTabPlacement.left && state.tabs.isNotEmpty;
@@ -85,11 +88,11 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
       _sidebar.setBesideTabs(visible && column);
     });
     final l10n = context.l10n;
-    final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
+    final minimal = ref.watch(terminalMinimalModeProvider);
     final macTitlebar = minimal && AppPlatform.isMacOS && GlassScope.of(context).unifiedTitlebar;
     final pad = minimal
         ? 4.0
-        : AppPlatform.isMobile
+        : AppWindowLayout.isPhone(context)
         ? 6.0
         : pagePadding(context);
     final compactSidebar = ref.watch(sidebarCollapsedProvider);
@@ -204,7 +207,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                     SizedBox(height: minimal ? 4 : GlassSpacing.s8),
                     _SessionBanners(tab: active),
                     card,
-                    if (AppPlatform.isMobile) _MobileTerminalKeys(tab: active),
+                    if (AppWindowLayout.isPhone(context)) _MobileTerminalKeys(tab: active),
                   ],
                 ),
         ),
@@ -257,17 +260,29 @@ class _TerminalTabs extends ConsumerWidget {
     final controller = ref.read(terminalTabsProvider.notifier);
     final subtitleMode =
         ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabSubtitle)) ?? TerminalTabSubtitle.name;
+    final grouped =
+        (placement == TerminalTabPlacement.left || AppWindowLayout.isPhone(context)) &&
+        (ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabGrouped)) ?? false);
+    String titleFor(TerminalTab tab) =>
+        grouped && tab.customTitle == null && (tab.host?.name.trim().isNotEmpty ?? false)
+        ? tab.host!.name
+        : tab.displayTitle;
+    String? subtitleFor(TerminalTab tab) {
+      final subtitle = terminalTabSubtitle(context, tab, subtitleMode);
+      return subtitle == titleFor(tab) ? null : subtitle;
+    }
+
     final tabs = [
       for (final (i, tab) in state.tabs.indexed)
         GlassTab(
           key: ValueKey('tab-${tab.target.label}-$i'),
-          title: tab.displayTitle,
+          title: titleFor(tab),
           teamColor: switch (tab.host) {
             final host? => teamColor(teamOf(ref, host.id)?.color),
             null => null,
           },
           attention: tab.anyAttention,
-          subtitle: terminalTabSubtitle(context, tab, subtitleMode),
+          subtitle: subtitleFor(tab),
           state: _state(tab),
           tooltip: switch (_state(tab)) {
             GlassTabState.connected => strings.tabConnected,
@@ -279,12 +294,24 @@ class _TerminalTabs extends ConsumerWidget {
     ];
     final activeIndex = state.activeIndex.clamp(0, state.tabs.length - 1);
     void menu(int i, Offset position) => unawaited(_tabMenu(context, ref, state.tabs[i], i, position));
+    final folders = grouped ? ref.watch(groupByIdProvider) : null;
+    final hosts = grouped ? ref.watch(hostByIdProvider) : null;
+    ({String id, String label}) groupOf(TerminalTab tab) {
+      if (tab.isLocal) return (id: 'local', label: context.l10n.terminalLocalComputer);
+      final host = hosts?[tab.host?.id] ?? tab.host;
+      final folder = folders?[host?.groupId];
+      return folder == null
+          ? (id: 'ungrouped', label: context.l10n.inventoryUngrouped)
+          : (id: folder.id.value, label: folder.name);
+    }
+
     if (placement == TerminalTabPlacement.left) {
       final layout = ref.watch(
         localSettingsProvider.select((s) => (s.value?.terminalTabColumnWidth, s.value?.terminalTabColumnCollapsed)),
       );
       final settings = ref.read(settingsServiceProvider);
       return GlassTabColumn(
+        groups: grouped ? state.tabs.map(groupOf).toList() : null,
         key: const ValueKey('terminal-tab-column'),
         tabs: tabs,
         activeIndex: activeIndex,
@@ -315,12 +342,38 @@ class _TerminalTabs extends ConsumerWidget {
       onContextMenu: menu,
       onAdd: onNewTab,
       onReorder: controller.moveTab,
-      trailing: AppPlatform.isMobile ? null : _SessionToolbar(tab: active),
+      trailing: AppWindowLayout.isPhone(context) ? null : _SessionToolbar(tab: active),
     );
-    if (AppPlatform.isMobile) {
+    if (AppWindowLayout.isPhone(context)) {
       return Row(
         children: [
+          if (grouped)
+            PopupMenuButton<TerminalTab>(
+              key: const ValueKey('terminal-session-folders'),
+              tooltip: context.l10n.sessionGroupTabs,
+              icon: const Icon(Icons.folder_open_rounded),
+              itemBuilder: (context) {
+                final groups = <({String id, String label}), List<TerminalTab>>{};
+                for (final tab in state.tabs) {
+                  (groups[groupOf(tab)] ??= []).add(tab);
+                }
+                return [
+                  for (final group in groups.entries) ...[
+                    PopupMenuItem(enabled: false, child: Text(group.key.label)),
+                    for (final tab in group.value)
+                      CheckedPopupMenuItem(value: tab, checked: tab == active, child: Text(titleFor(tab))),
+                  ],
+                ];
+              },
+              onSelected: (tab) {
+                if (!context.mounted) return;
+                final index = ref.read(terminalTabsProvider).tabs.indexOf(tab);
+                if (index >= 0) controller.activate(index);
+              },
+            ),
           Expanded(child: strip),
+          TerminalFindButton(tab: active),
+          TerminalEncodingButton(tab: active),
           if (ref.watch(activeSshTerminalProvider) != null) ...[
             const SizedBox(width: GlassSpacing.s4),
             const _ServerMetricsButton(),
@@ -519,9 +572,12 @@ class _SessionToolbar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
+    final minimal = !AppWindowLayout.isPhone(context) && ref.watch(terminalMinimalModeProvider);
     return GlassToolbarGroup(
       children: [
+        TerminalFindButton(tab: tab),
+        if (AppPlatform.isAndroid && !AppWindowLayout.isPhone(context)) const _TerminalKeyboardButton(),
+        TerminalEncodingButton(tab: tab),
         if (minimal) _MinimalTerminalMenu(tab: tab),
         if (minimal && ref.watch(activeSshTerminalProvider) != null) const _ServerMetricsButton(),
         if (!minimal) ...[
@@ -552,9 +608,9 @@ class _SessionToolbar extends ConsumerWidget {
               ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.ai);
             },
           ),
-          if (AppPlatform.isMobile && tab.host != null) _TerminalSftpButton(tab: tab),
+          if (AppWindowLayout.isPhone(context) && tab.host != null) _TerminalSftpButton(tab: tab),
         ],
-        if (!AppPlatform.isMobile) ...[_SplitMenu(tab: tab), const _TerminalMinimalButton()],
+        if (!AppWindowLayout.isPhone(context)) ...[_SplitMenu(tab: tab), const _TerminalMinimalButton()],
       ],
     );
   }
@@ -729,7 +785,7 @@ class _TerminalCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = GlassTokens.of(context);
-    final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
+    final minimal = ref.watch(terminalMinimalModeProvider);
     final scheme = ref.watch(
       localSettingsProvider.select((s) => s.value?.terminalColorScheme ?? TerminalColorScheme.system),
     );
@@ -745,19 +801,36 @@ class _TerminalCard extends ConsumerWidget {
       ),
       child: Padding(
         padding: minimal ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : const EdgeInsets.all(10),
-        child: IndexedStack(
-          index: state.activeIndex.clamp(0, state.tabs.length - 1),
-          sizing: StackFit.expand,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final tab in state.tabs)
-              tab.panes.isEmpty
-                  ? _PaneView(pane: tab, active: identical(tab, state.activeTab))
-                  : _SplitPanes(
-                      key: ValueKey('terminal-split-${tab.sessionId.value}'),
-                      tab: tab,
-                      current: identical(tab, state.activeTab),
-                      foreground: theme.foreground,
-                    ),
+            Expanded(
+              child: IndexedStack(
+                index: state.activeIndex.clamp(0, state.tabs.length - 1),
+                sizing: StackFit.expand,
+                children: [
+                  for (final tab in state.tabs)
+                    tab.panes.isEmpty
+                        ? _PaneView(pane: tab, active: identical(tab, state.activeTab))
+                        : _SplitPanes(
+                            key: ValueKey('terminal-split-${tab.sessionId.value}'),
+                            tab: tab,
+                            current: identical(tab, state.activeTab),
+                            foreground: theme.foreground,
+                          ),
+                ],
+              ),
+            ),
+            if (active.host != null &&
+                active.isConnected &&
+                !active.exited &&
+                (ref.watch(localSettingsProvider.select((s) => s.value?.terminalMetricsBar)) ?? true))
+              TerminalStatusBar(
+                history: active.hostMetrics,
+                foreground: theme.foreground,
+                hidden: ref.watch(localSettingsProvider.select((s) => s.value?.hiddenTerminalMetrics)) ?? const {},
+                colors: ref.watch(localSettingsProvider.select((s) => s.value?.terminalMetricColors)) ?? const {},
+              ),
           ],
         ),
       ),
@@ -1018,6 +1091,9 @@ class _SessionBanners extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: GlassSpacing.s8),
       child: child,
     );
+    if (tab.encodingRejected && tab.isConnected) {
+      return pad(InfoBanner(message: l10n.terminalEncodingError, tone: BannerTone.warning));
+    }
     if (hostKey != null && hostKey.changed) {
       // Fixed, localized security text; the core's English diagnostic
       // (tab.message) says the same and is not repeated.
@@ -1180,13 +1256,32 @@ class TerminalPasswordPromptCardState extends ConsumerState<TerminalPasswordProm
 
 /// Explicit control chords work with touch IMEs (which send composed text
 /// rather than hardware key events). Never closes or recreates a session.
+class _TerminalKeyboardButton extends StatelessWidget {
+  const _TerminalKeyboardButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    return ExcludeFocus(
+      child: GlassIconButton(
+        key: const ValueKey('terminal-keyboard'),
+        icon: keyboardOpen ? Icons.keyboard_hide_rounded : Icons.keyboard_rounded,
+        tooltip: context.l10n.mobileKeyboard,
+        style: GlassIconButtonStyle.plain,
+        size: GlassSizes.tab,
+        onPressed: () =>
+            SystemChannels.textInput.invokeMethod<void>(keyboardOpen ? 'TextInput.hide' : 'TextInput.show'),
+      ),
+    );
+  }
+}
+
 class _MobileTerminalKeys extends ConsumerWidget {
   const _MobileTerminalKeys({required this.tab});
   final TerminalTab tab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     return ExcludeFocus(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -1194,14 +1289,7 @@ class _MobileTerminalKeys extends ConsumerWidget {
           padding: const EdgeInsets.only(top: 6),
           child: Row(
             children: [
-              GlassIconButton(
-                key: const ValueKey('terminal-keyboard'),
-                icon: keyboardOpen ? Icons.keyboard_hide_rounded : Icons.keyboard_rounded,
-                tooltip: context.l10n.mobileKeyboard,
-                style: GlassIconButtonStyle.plain,
-                onPressed: () =>
-                    SystemChannels.textInput.invokeMethod<void>(keyboardOpen ? 'TextInput.hide' : 'TextInput.show'),
-              ),
+              const _TerminalKeyboardButton(),
               Builder(
                 builder: (anchorContext) => GlassIconButton(
                   key: const ValueKey('terminal-context-menu'),
@@ -1211,6 +1299,9 @@ class _MobileTerminalKeys extends ConsumerWidget {
                   onPressed: () => showTerminalContextMenu(context, ref, tab, glassAnchorRect(anchorContext)),
                 ),
               ),
+              const _TerminalMinimalButton(),
+              const MobileSessionActions(),
+              _SplitMenu(tab: tab),
               for (final chord in [
                 ('Esc', TerminalKey.escape, false),
                 ('Tab', TerminalKey.tab, false),

@@ -59,8 +59,8 @@ class _RevealedSecretState extends State<RevealedSecret> {
   SecretExposure get _exposure => widget.exposure ?? SecretExposure.instance;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _sync();
   }
 
@@ -75,7 +75,7 @@ class _RevealedSecretState extends State<RevealedSecret> {
   }
 
   void _sync() {
-    if (widget.visible) {
+    if (widget.visible && Visibility.of(context)) {
       _release ??= _exposure.hold();
     } else {
       _release?.call();

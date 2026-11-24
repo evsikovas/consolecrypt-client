@@ -27,6 +27,7 @@ class KubeInsightsPanel extends ConsumerStatefulWidget {
     required this.contextName,
     required this.service,
     required this.browser,
+    required this.podKind,
     required this.problems,
     this.namespace,
     this.onTerminalOpened,
@@ -47,6 +48,7 @@ class KubeInsightsPanel extends ConsumerStatefulWidget {
   final String? namespace;
   final KubeInsightsService service;
   final KubeBrowserService browser;
+  final KubeResourceKind? podKind;
   final bool problems;
   final VoidCallback? onTerminalOpened;
   final void Function(KubeResourceRef?, String?)? onExplain;
@@ -170,6 +172,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     final changed = await showKubeResourceDetails<bool>(
       context,
       builder: (_) => KubeResourceDetails(
+        podKind: widget.podKind,
         session: widget.session,
         contextName: widget.contextName,
         resource: resource.reference,
@@ -268,7 +271,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
     final suspended = scoped.where((r) => r.suspended).length;
     final stalled = scoped.where(kubeGitOpsStalled).length;
     final stale = scoped.where((r) => _issuesFor(data!, r).any((i) => i.code == 'flux_source_stale')).length;
-    if (!AppPlatform.isMobile) {
+    if (!AppWindowLayout.isPhone(context)) {
       return _desktop(
         data,
         canWrite,
@@ -280,7 +283,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: bounds.maxHeight * (AppPlatform.isMobile ? .45 : .58)),
+            constraints: BoxConstraints(maxHeight: bounds.maxHeight * (AppWindowLayout.isPhone(context) ? .45 : .58)),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -789,7 +792,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
         child: Text(data.partial ? l.kubeNoVisibleProblems : l.kubeNoProblems),
       );
     }
-    if (!AppPlatform.isMobile) {
+    if (!AppWindowLayout.isPhone(context)) {
       return ContentList(
         key: const ValueKey('kube-problems-list'),
         itemCount: issues.length,
@@ -823,7 +826,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
         // Older issue DTOs lack an API group. Ambiguous kinds must not open an
         // arbitrary group's object.
         final resource = matches.length == 1 ? matches.single : null;
-        if (!AppPlatform.isMobile) return _problemRow(issue, resource);
+        if (!AppWindowLayout.isPhone(context)) return _problemRow(issue, resource);
         return ContentSurface(
           child: ListTile(
             leading: Icon(issue.severity == 'error' ? Icons.error_outline : Icons.warning_amber_outlined),
@@ -975,7 +978,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
           return a.resource.name.compareTo(b.resource.name);
         });
     if (resources.isEmpty) return Padding(padding: const EdgeInsets.all(12), child: Text(l.kubeNoGitOpsResources));
-    if (!AppPlatform.isMobile && MediaQuery.sizeOf(context).width >= 700) {
+    if (!AppWindowLayout.isPhone(context) && MediaQuery.sizeOf(context).width >= 700) {
       return _table(resources, canWrite);
     }
     return ListView.builder(
@@ -1032,7 +1035,7 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
                   ),
           ),
         );
-        if (!AppPlatform.isMobile || !resource.isFlux) return tile;
+        if (!AppWindowLayout.isPhone(context) || !resource.isFlux) return tile;
         final reconcile =
             canWrite && actions.contains('reconcile') && !_bulkBusy && !_busyActions.contains(resource.reference.id);
         Widget swipeBackground(String label, IconData icon, Alignment alignment) => ColoredBox(
@@ -1148,6 +1151,17 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
         }
       }),
       onOpen: (row) => unawaited(_open(byId[row.id]!)),
+      extraMenuItems: (row) {
+        final resource = byId[row.id]!;
+        return [
+          for (final action in kubeGitOpsActions(resource))
+            GlassMenuItem(
+              value: () => unawaited(_act(resource, action)),
+              label: kubeGitOpsActionLabel(l, action),
+              enabled: canWrite && !_bulkBusy && !_busyActions.contains(resource.reference.id),
+            ),
+        ];
+      },
       rowTrailing: (row) {
         final resource = byId[row.id]!;
         final actions = kubeGitOpsActions(resource);

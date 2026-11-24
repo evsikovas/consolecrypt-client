@@ -1,7 +1,10 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:consolecrypt/ai/terminal_attachment.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/widgets/workspace_draggable.dart';
 import 'package:consolecrypt/sftp/dialogs/quick_look_dialog.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
@@ -15,6 +18,95 @@ void phoneTest(String name, WidgetTesterCallback body) =>
     testWidgets(name, body, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
 void main() {
+  phoneTest('tablet rows scroll with a finger and drag with a mouse', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    int? accepted;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView.builder(
+            controller: scroll,
+            itemExtent: 60,
+            itemCount: 40,
+            itemBuilder: (_, index) => DragTarget<int>(
+              onAcceptWithDetails: (details) => accepted = details.data,
+              builder: (_, candidates, rejected) => WorkspaceDraggable<int>(
+                data: index,
+                feedback: const SizedBox.square(dimension: 30),
+                child: ColoredBox(color: Colors.grey, child: Text('row $index')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.dragFrom(const Offset(100, 200), const Offset(0, -120));
+    await settle(tester);
+    expect(scroll.offset, greaterThan(0));
+    expect(accepted, isNull);
+    scroll.jumpTo(0);
+    await tester.pump();
+    final mouse = await tester.startGesture(const Offset(100, 30), kind: PointerDeviceKind.mouse);
+    await mouse.moveBy(const Offset(0, 30));
+    await tester.pump();
+    await mouse.moveTo(const Offset(100, 150));
+    await tester.pump();
+    await mouse.up();
+    await tester.pump();
+    expect(accepted, 0);
+  });
+
+  phoneTest('Android: resizing a connected terminal switches chrome and keeps the session', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(390, 844));
+    final c = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final session = await c.read(terminalTabsProvider.notifier).open(backend.inventory.currentHosts.first);
+    final router = c.read(routerProvider);
+    router.go(AppRoutes.terminal);
+    await settle(tester);
+    final phoneNav = find.byKey(const ValueKey('mobile-navigation'));
+    final toolRail = find.byKey(const ValueKey('workspace-tools-rail'));
+    final keyboard = find.byKey(const ValueKey('terminal-keyboard'));
+    expect(phoneNav, findsOneWidget);
+    session.terminal.write('resize-marker');
+    expect(session.terminal.buffer.getText(), contains('resize-marker'));
+    for (final size in [const Size(600, 900), const Size(1440, 900), const Size(390, 844)]) {
+      tester.view.physicalSize = size * tester.view.devicePixelRatio;
+      await settle(tester);
+      final compact = size.width == 390;
+      expect(phoneNav, compact ? findsOneWidget : findsNothing);
+      expect(toolRail, compact ? findsNothing : findsOneWidget);
+      expect(keyboard, findsOneWidget);
+      expect(c.read(terminalTabsProvider).active, same(session));
+      expect(session.terminal.buffer.getText(), contains('resize-marker'));
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  phoneTest('Android: a draft stays editable across tablet and phone layouts', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, size: const Size(768, 1024));
+    final c = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    c.read(routerProvider).go(AppRoutes.newHost);
+    await settle(tester);
+    await enterKey(tester, 'host-name', 'unsaved-host');
+    for (final size in [const Size(460, 800), const Size(1280, 800)]) {
+      tester.view.physicalSize = size;
+      await settle(tester);
+      final field = find.descendant(of: find.byKey(const ValueKey('host-name')), matching: find.byType(EditableText));
+      expect(tester.widget<EditableText>(field).controller.text, 'unsaved-host');
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   phoneTest('Android: selected text opens the terminal menu and an AI attachment fits above the keyboard', (
     tester,
   ) async {
@@ -73,7 +165,7 @@ void main() {
   });
 
   for (final width in [360.0, 412.0]) {
-    phoneTest('Android $width: navigation, tools, editor and settings fit phone', (tester) async {
+    testWidgets('Phone $width: navigation, tools, editor and settings fit phone', (tester) async {
       final backend = testBackend();
       addTearDown(backend.dispose);
       await backend.debugSignInDemoAndUnlock();
@@ -96,6 +188,7 @@ void main() {
         AppRoutes.kubernetes,
         AppRoutes.databases,
         AppRoutes.docker,
+        AppRoutes.tcpdump,
         AppRoutes.passwords,
         AppRoutes.externalVault,
         AppRoutes.automation,
@@ -124,7 +217,7 @@ void main() {
       await settle(tester);
       expect(find.byKey(const ValueKey('workspace-tools-panel')), findsNothing);
       expect(tester.takeException(), isNull);
-    });
+    }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}));
   }
 
   phoneTest('Android: terminal control keys and navigation keep the session', (tester) async {

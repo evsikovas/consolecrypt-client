@@ -114,7 +114,7 @@ class _TerminalPanelState extends ConsumerState<TerminalPanel> {
     if (pasting || id == null || !_current(id)) return;
     pasting = true;
     try {
-      final text = await readConfirmedTerminalPaste(context, isCurrent: () => _current(id));
+      final text = await readConfirmedTerminalPaste(context, ref, isCurrent: () => _current(id));
       if (text != null && _current(id)) {
         terminal.paste(text);
         controller.clearSelection();

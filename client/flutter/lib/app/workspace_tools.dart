@@ -3,6 +3,7 @@ import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/symbols.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/app/workspace_forwards.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
@@ -17,13 +18,18 @@ import 'package:consolecrypt/notes/notes_panel.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/snippets/snippets_screen.dart';
 import 'package:consolecrypt/terminal/host_metrics_panel.dart';
+import 'package:consolecrypt/terminal/session_tools.dart';
+import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:consolecrypt/terminal/tmux_panel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 List<WorkspaceTool> get _generalTools => [
   for (final tool in WorkspaceTool.values)
-    if (tool != WorkspaceTool.server && (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled)) tool,
+    if (!const {WorkspaceTool.server, WorkspaceTool.docker, WorkspaceTool.tmux, WorkspaceTool.history}.contains(tool) &&
+        (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled))
+      tool,
 ];
 
 String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (tool) {
@@ -32,13 +38,65 @@ String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (too
   WorkspaceTool.ai => l.navAiChat,
   WorkspaceTool.forwards => l.navPortForwards,
   WorkspaceTool.server => l.hostMetricsTitle,
+  WorkspaceTool.history => l.settingsCommandHistoryLabel,
+  WorkspaceTool.docker => l.dockerTitle,
+  WorkspaceTool.tmux => l.tmuxTitle,
 };
+
+List<WorkspaceTool> _sessionTools(WidgetRef ref) {
+  final tab = ref.watch(activeSshTerminalProvider);
+  return [
+    if (ref.watch(terminalTabsProvider).active?.hasCommandHistory == true) WorkspaceTool.history,
+    if (tab != null && dockerEnabled && ref.watch(sessionHasDockerProvider(tab)).value == true) WorkspaceTool.docker,
+    if (tab != null && ref.watch(tmuxVersionProvider(tab.tmuxParent ?? tab)).value != null) WorkspaceTool.tmux,
+    if (tab != null) WorkspaceTool.server,
+  ];
+}
+
+class MobileSessionActions extends ConsumerWidget {
+  const MobileSessionActions({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (final tool in _sessionTools(ref))
+        if (tool != WorkspaceTool.server) _SessionToolButton(tool: tool, inTerminal: true),
+    ],
+  );
+}
+
+class _SessionToolButton extends ConsumerWidget {
+  const _SessionToolButton({required this.tool, this.inTerminal = false});
+  final WorkspaceTool tool;
+  final bool inTerminal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => GlassIconButton(
+    key: ValueKey('${inTerminal ? 'terminal-tool' : 'nav'}-${tool.name}'),
+    selected: ref.watch(workspaceToolsProvider.select((s) => s.selected == tool)),
+    icon: switch (tool) {
+      WorkspaceTool.docker => ToolIcons.docker,
+      WorkspaceTool.tmux => Icons.layers_outlined,
+      WorkspaceTool.history => Icons.history_rounded,
+      _ => Icons.show_chart_rounded,
+    },
+    tooltip: workspaceToolLabel(context.l10n, tool),
+    size: AppWindowLayout.isPhone(context) ? 44 : 28,
+    iconSize: AppWindowLayout.isPhone(context) ? 18 : 16,
+    style: GlassIconButtonStyle.plain,
+    onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(tool),
+  );
+}
 
 Widget _toolIcon(WorkspaceTool tool) => switch (tool) {
   WorkspaceTool.snippets => const AppSymbolIcon(AppSymbol.snippets),
   WorkspaceTool.notes => const AppSymbolIcon(AppSymbol.notes),
   WorkspaceTool.ai => const AppSymbolIcon(AppSymbol.ai),
   WorkspaceTool.forwards => const AppSymbolIcon(AppSymbol.tunnels),
+  WorkspaceTool.history => const Icon(Icons.history_rounded, size: 18),
+  WorkspaceTool.tmux => const Icon(Icons.layers_outlined, size: 18),
+  WorkspaceTool.docker => const Icon(ToolIcons.docker, size: 18),
   WorkspaceTool.server => const Icon(Icons.show_chart_rounded, size: GlassSizes.iconToolbar),
 };
 
@@ -64,7 +122,6 @@ class WorkspaceToolRail extends ConsumerWidget {
             ? (ref.watch(kubeForwardsProvider(scope)).value ?? const []).where((f) => f.state == 'running').length
             : 0);
     final notes = ref.watch(notesAttentionProvider);
-    final showServer = branch == ShellBranch.terminal && ref.watch(activeSshTerminalProvider) != null;
     return Padding(
       padding: integrated ? EdgeInsets.zero : const EdgeInsets.fromLTRB(4, 8, 0, 8),
       child: GlassSurface(
@@ -75,7 +132,7 @@ class WorkspaceToolRail extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s2, vertical: GlassSpacing.s8),
         child: Column(
           children: [
-            for (final tool in [..._generalTools, if (showServer) WorkspaceTool.server]) ...[
+            for (final tool in [..._generalTools, if (branch == ShellBranch.terminal) ..._sessionTools(ref)]) ...[
               GlassSidebarItem(
                 key: ValueKey('nav-${tool.name}'),
                 icon: Icons.code_rounded,
@@ -136,15 +193,14 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
         });
       }
     });
-    if (selected != null && selected != WorkspaceTool.server) _visited.add(selected);
+    if (selected != null && _generalTools.contains(selected)) _visited.add(selected);
     final tab = widget.branch == ShellBranch.terminal ? ref.watch(activeSshTerminalProvider) : null;
-    if (selected == WorkspaceTool.server && tab == null) {
+    final active = widget.branch == ShellBranch.terminal ? ref.watch(terminalTabsProvider).active : null;
+    final tools = widget.branch == ShellBranch.terminal ? _sessionTools(ref) : const <WorkspaceTool>[];
+    final mobileTools = widget.integrated && AppWindowLayout.isPhone(context) && tools.isNotEmpty;
+    if (selected != null && !_generalTools.contains(selected) && !tools.contains(selected)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted &&
-            ref.read(workspaceToolsProvider).selected == WorkspaceTool.server &&
-            (widget.branch != ShellBranch.terminal || ref.read(activeSshTerminalProvider) == null)) {
-          _close();
-        }
+        if (mounted && ref.read(workspaceToolsProvider).selected == selected) _close();
       });
     }
     final l = context.l10n;
@@ -200,18 +256,11 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                               ),
                             ),
                           ],
-                          if (widget.integrated && tab != null)
-                            GlassIconButton(
-                              key: const ValueKey('nav-server'),
-                              selected: selected == WorkspaceTool.server,
-                              icon: Icons.show_chart_rounded,
-                              tooltip: l.hostMetricsTitle,
-                              style: GlassIconButtonStyle.plain,
-                              onPressed: () => ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.server),
-                            ),
+                          if (widget.integrated && !mobileTools)
+                            for (final tool in tools) _SessionToolButton(tool: tool),
                           GlassIconButton(
                             key: const ValueKey('workspace-tools-close'),
-                            icon: widget.integrated && !AppPlatform.isMobile
+                            icon: widget.integrated && !AppWindowLayout.isPhone(context)
                                 ? Icons.chevron_right_rounded
                                 : Icons.close_rounded,
                             tooltip: widget.integrated ? l.workspaceToolsCollapse : l.workspaceToolsClose,
@@ -221,6 +270,11 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                         ],
                       ),
                     ),
+                    if (mobileTools)
+                      Wrap(
+                        spacing: GlassSpacing.s4,
+                        children: [for (final tool in tools) _SessionToolButton(tool: tool)],
+                      ),
                     Expanded(
                       child: ColoredBox(
                         color: tokens.surfaces.contentSolid,
@@ -241,42 +295,31 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                             WorkspaceTool.snippets => const SnippetsScreen(embedded: true),
                                             WorkspaceTool.notes => NotesPanel(branch: widget.branch),
                                             WorkspaceTool.forwards => const WorkspaceForwardsPanel(),
-                                            WorkspaceTool.server => const SizedBox.shrink(),
+                                            WorkspaceTool.server ||
+                                            WorkspaceTool.history ||
+                                            WorkspaceTool.tmux ||
+                                            WorkspaceTool.docker => const SizedBox.shrink(),
                                           },
                                   ),
                                 ),
                               ),
                             if (selected == WorkspaceTool.server && tab != null)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      GlassSpacing.s16,
-                                      GlassSpacing.s12,
-                                      GlassSpacing.s16,
-                                      0,
-                                    ),
-                                    child: Text(
-                                      [
-                                        if (tab.target.label.isNotEmpty) tab.target.label,
-                                        if (tab.target.detail.isNotEmpty && tab.target.detail != tab.target.label)
-                                          tab.target.detail,
-                                      ].join(' · '),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: tokens.typography.title3,
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: HostMetricsPanel(
-                                      key: ValueKey(tab.sessionId),
-                                      hostName: tab.host?.name,
-                                      history: tab.hostMetrics,
-                                    ),
-                                  ),
-                                ],
+                              HostMetricsPanel(
+                                key: ValueKey(tab.sessionId),
+                                hostName: tab.host?.name,
+                                address: tab.host?.address,
+                                description: tab.host?.notes,
+                                history: tab.hostMetrics,
                               ),
+                            if (selected == WorkspaceTool.history && active != null && tools.contains(selected))
+                              SessionHistoryPanel(key: ValueKey(active.sessionId), tab: active.tmuxParent ?? active),
+                            if (selected == WorkspaceTool.tmux && tab != null && tools.contains(selected))
+                              TmuxPanel(
+                                key: ValueKey((tab.tmuxParent ?? tab).sessionId),
+                                parent: tab.tmuxParent ?? tab,
+                              ),
+                            if (selected == WorkspaceTool.docker && tab != null && tools.contains(selected))
+                              SessionDockerPanel(key: ValueKey(tab.sessionId), tab: tab),
                           ],
                         ),
                       ),

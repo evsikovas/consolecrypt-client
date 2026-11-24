@@ -54,6 +54,9 @@ void main() {
         expect(button.icon, Icons.add_rounded);
         expect(button.tooltip, contains(locale == AppLocale.ru ? 'Новое подключение' : 'New connection'));
         expect(tester.getSize(connection), const Size(40, 40));
+        final circle = find.descendant(of: connection, matching: find.byType(GlassFocusRing));
+        expect(tester.getSize(circle), const Size(32, 32));
+        expect(tester.getCenter(circle), tester.getCenter(connection));
         expect(find.descendant(of: connection, matching: find.byType(Text)), findsNothing);
         final search = find.byKey(const ValueKey('open-palette'));
         expect(tester.getSize(search).width, width == 1600 ? greaterThan(420) : greaterThan(150));
@@ -90,7 +93,8 @@ void main() {
         expect(offline.tone, GlassTone.warning);
         expect(offline.label, contains(locale == AppLocale.ru ? 'Офлайн' : 'Offline'));
 
-        await tapKey(tester, 'new-connection');
+        await tester.tapAt(tester.getRect(connection).centerLeft + const Offset(1, 0));
+        await settle(tester);
         expect(find.byKey(const ValueKey('host-picker-search')), findsOneWidget);
       }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
     }

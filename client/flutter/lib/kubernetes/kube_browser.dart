@@ -97,6 +97,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   final _rows = <String, KubeResourceRow>{};
   final _objectTabs = <KubeResourceRef>[];
   KubeResourceKind? _kind;
+  KubeResourceKind? get _podKind => _kinds.where((k) => k.isPod && k.version == 'v1' && k.canRead).firstOrNull;
   String? _namespace, _continueToken;
   int _snapshotPages = 0;
   String _query = '', _labelSelector = '', _resourceVersion = '', _view = 'resources';
@@ -144,10 +145,30 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   // Desktop: the object open in the side inspector instead of a modal dialog.
   KubeResourceRef? _inspected;
   KubeResourceOpenAction? _pendingAction;
+  int _inspectorRequest = 0;
+
+  List<KubeResourceOpenAction> _menuActions(KubeResourceKind kind, KubeSession? session, bool canWrite) {
+    if (!kind.canRead) return const [];
+    final ops = canWrite && widget.service is KubeOperationsService && kind.group == 'apps';
+    return [
+      KubeResourceOpenAction.yaml,
+      KubeResourceOpenAction.events,
+      if (kind.isPod || const {'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'}.contains(kind.kind))
+        KubeResourceOpenAction.logs,
+      if (kind.isPod && session?.canExec == true) KubeResourceOpenAction.shell,
+      if (ops && const {'deployments', 'statefulsets', 'replicasets'}.contains(kind.resource))
+        KubeResourceOpenAction.scale,
+      if (ops && const {'deployments', 'statefulsets', 'daemonsets'}.contains(kind.resource))
+        KubeResourceOpenAction.restart,
+      if (canWrite && widget.service is KubeMutationService && kind.verbs.contains('delete'))
+        KubeResourceOpenAction.remove,
+    ];
+  }
+
   double _inspectorWidth = 560;
   // Every desktop window uses the workspace layout (also next to the open
   // AI panel); phones keep the compact mobile flow.
-  bool get _desktopLayout => !AppPlatform.isMobile;
+  bool _desktopLayout = false;
   bool _navigatorOpen = true;
 
   bool get _current => mounted && _scope.unlocked && identical(_scope, _providerContainer.read(kubeScopeProvider));
@@ -160,8 +181,6 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     _navigationSnapshot = ref.read(kubeActiveNavigationProvider.notifier);
     _aiHost = ref.read(kubeAiHostProvider.notifier);
     _sidebar = ref.read(sidebarCollapsedProvider.notifier);
-    // The cluster workspace needs the width: the app menu folds to icons.
-    if (!AppPlatform.isMobile) scheduleMicrotask(_sidebar.autoCollapse);
     _restoreController = ref.read(kubeForwardRestoreProvider.notifier);
     _parked = ref.read(kubeParkedSessionsProvider.notifier);
     _gitOpsAlerts = ref.read(kubeGitOpsAlertsProvider.notifier);
@@ -174,6 +193,15 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     unawaited(_loadWorkspacePreferences());
     unawaited(_connect());
     _metricsTimer = Timer.periodic(const Duration(seconds: 10), (_) => unawaited(_loadMetrics()));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final desktop = !AppWindowLayout.isPhone(context);
+    if (_desktopLayout == desktop) return;
+    _desktopLayout = desktop;
+    scheduleMicrotask(desktop ? _sidebar.autoCollapse : _sidebar.restore);
   }
 
   void _disconnect(KubeSession? session) {
@@ -246,7 +274,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     _outputs.clear();
     _objectTabs.clear();
     scheduleMicrotask(() => _restoreController.clearContext(widget.connection.id));
-    if (!AppPlatform.isMobile) scheduleMicrotask(_sidebar.restore);
+    if (_desktopLayout) scheduleMicrotask(_sidebar.restore);
     super.dispose();
   }
 
@@ -858,6 +886,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     if (_desktopLayout) {
       setState(() {
         _inspected = resource;
+        if (action != null || _pendingAction != null) _inspectorRequest++;
         _pendingAction = action;
       });
       return;
@@ -865,6 +894,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     final changed = await showKubeResourceDetails<bool>(
       context,
       builder: (_) => KubeResourceDetails(
+        podKind: _podKind,
         session: session,
         resource: resource,
         service: widget.service,
@@ -1005,7 +1035,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
 
   void _publishAiHost({KubeResourceRef? selected, String? question, bool explicit = false}) {
     final session = _session, service = widget.service;
-    if (!_current || session == null || service is! KubeAiService || AppPlatform.isMobile) return;
+    if (!_current || session == null || service is! KubeAiService || !_desktopLayout) return;
     if (explicit) _aiRequest++;
     final host = KubeAiHost(
       session: session,
@@ -1062,7 +1092,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   void _showPanel() {
     final session = _session;
     if (!_current || session == null) return;
-    if (AppPlatform.isMobile || MediaQuery.sizeOf(context).width < 700) {
+    if (!_desktopLayout || MediaQuery.sizeOf(context).width < 700) {
       unawaited(
         showModalBottomSheet<void>(
           context: context,
@@ -1215,7 +1245,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
         session != null &&
         !session.production &&
         (ref.watch(kubeWriteAccessProvider(session)).value?.canWrite ?? false);
-    final rightPanel = _panelRight && !AppPlatform.isMobile && MediaQuery.sizeOf(context).width >= 1100;
+    final rightPanel = _panelRight && _desktopLayout && MediaQuery.sizeOf(context).width >= 1100;
     final query = _query.trim().toLowerCase();
     final rows = _rows.values
         .where(
@@ -1440,6 +1470,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                 service: widget.service as KubeInsightsService,
                               )
                             : KubeInsightsPanel(
+                                podKind: _podKind,
                                 key: ValueKey((session.id, _namespace, _view, _gitOpsIntent)),
                                 session: session,
                                 contextName: widget.connection.name,
@@ -1500,6 +1531,8 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                 _scheduleEnrichment();
                               }
                             },
+                            menuActions: _menuActions(_kind!, session, canWrite),
+                            onMenuAction: (row, action) => _details(row, action: action),
                             onMobileAction:
                                 AppPlatform.isMobile &&
                                     (_kind!.isPod ||
@@ -1921,7 +1954,8 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                           ),
                                         Expanded(
                                           child: KubeResourceDetails(
-                                            key: ValueKey('kube-inspector-${inspected.id}'),
+                                            podKind: _podKind,
+                                            key: ValueKey((inspected.id, _inspectorRequest)),
                                             embedded: true,
                                             session: session,
                                             resource: inspected,
@@ -2273,6 +2307,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
               service: widget.service as KubeInsightsService,
             )
           : KubeInsightsPanel(
+              podKind: _podKind,
               key: ValueKey((session.id, _namespace, _view, _gitOpsIntent)),
               session: session,
               contextName: widget.connection.name,
@@ -2337,6 +2372,8 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                   contextId: widget.connection.id,
                   rows: rows,
                   kind: kind,
+                  menuActions: _menuActions(kind, session, canWrite),
+                  onMenuAction: (row, action) => _details(row, action: action),
                   activeName: _inspected?.api.id == kind.id ? _inspected : null,
                   columns: [
                     ..._columns,

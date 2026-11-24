@@ -1,6 +1,7 @@
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/symbols.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
@@ -94,7 +95,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
   final Set<String> _tags = {};
   final Set<ObjectId> _collapsed = {};
   late String _location = widget.initialGroups ? inventoryGroups : inventoryAll;
-  late bool _cards = AppPlatform.isMobile;
+  bool? _cardsOverride;
   ObjectId? _inspectedHost;
   bool _descending = false;
 
@@ -180,6 +181,7 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
 
   @override
   Widget build(BuildContext context) {
+    final cardsMode = _cardsOverride ?? AppWindowLayout.isPhone(context);
     final hostsAsync = ref.watch(hostsProvider);
     final groupsAsync = ref.watch(groupsProvider);
     final groups = ref.watch(groupByIdProvider);
@@ -276,7 +278,11 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 760;
           final inspect =
-              !AppPlatform.isMobile && !_cards && showHosts && hosts.isNotEmpty && constraints.maxWidth >= 980;
+              !AppWindowLayout.isPhone(context) &&
+              !cardsMode &&
+              showHosts &&
+              hosts.isNotEmpty &&
+              constraints.maxWidth >= 980;
           final inspected = inspect ? hosts.where((host) => host.id == _inspectedHost).firstOrNull : null;
           final navigation = InventoryNavigation(
             groups: groups,
@@ -313,9 +319,9 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                   ),
                   ViewModeToggle(
                     keyPrefix: 'inventory-view',
-                    cards: _cards,
+                    cards: cardsMode,
                     onChanged: (cards) => setState(() {
-                      _cards = cards;
+                      _cardsOverride = cards;
                       _inspectedHost = null;
                     }),
                   ),
@@ -501,12 +507,12 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                                   ),
                                 if (showHosts)
                                   SliverList.builder(
-                                    itemCount: _cards ? (hosts.length / columns).ceil() : hosts.length,
+                                    itemCount: cardsMode ? (hosts.length / columns).ceil() : hosts.length,
                                     itemBuilder: (context, index) {
                                       Widget hostTile(Host host) => _HostTile(
                                         host: host,
                                         groupName: groupPathName(groups, host.groupId),
-                                        cards: _cards,
+                                        cards: cardsMode,
                                         inspected: inspected?.id == host.id,
                                         onInspect: inspect
                                             ? () => setState(() {
@@ -516,8 +522,10 @@ class _InventoryBrowserState extends ConsumerState<_InventoryBrowser> {
                                         onDelete: () => _delete(host),
                                       );
                                       return Padding(
-                                        padding: EdgeInsets.only(bottom: _cards ? GlassSpacing.s12 : GlassSpacing.s4),
-                                        child: _cards
+                                        padding: EdgeInsets.only(
+                                          bottom: cardsMode ? GlassSpacing.s12 : GlassSpacing.s4,
+                                        ),
+                                        child: cardsMode
                                             ? Row(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
@@ -715,7 +723,7 @@ class _HostInspector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
-    final icon = host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded;
+    final icon = host.isRdp ? ToolIcons.rdp : Icons.terminal_rounded;
     final port = host.port ?? (host.isRdp ? defaultRdpPort : defaultSshPort);
     final details = [
       (l.hostEditorAddressLabel, host.address),
@@ -931,7 +939,7 @@ class _HostTile extends ConsumerWidget {
         GlassIconButton(
           key: ValueKey('connect-${host.name}'),
           onPressed: connect,
-          icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
+          icon: host.isRdp ? ToolIcons.rdp : Icons.terminal_rounded,
           tooltip: l10n.commonConnect,
           style: GlassIconButtonStyle.plain,
         ),
@@ -942,7 +950,7 @@ class _HostTile extends ConsumerWidget {
               key: ValueKey('host-connect-menu-${host.name}'),
               value: _HostAction.connect,
               label: l10n.commonConnect,
-              icon: host.isRdp ? Icons.desktop_windows_rounded : Icons.terminal_rounded,
+              icon: host.isRdp ? ToolIcons.rdp : Icons.terminal_rounded,
             ),
             GlassMenuItem(
               key: ValueKey('host-notes-menu-${host.name}'),
@@ -1098,7 +1106,7 @@ class _HostTile extends ConsumerWidget {
             cells: [
               Row(
                 children: [
-                  Icon(host.isRdp ? Icons.desktop_windows_outlined : Icons.dns_outlined, size: 16),
+                  Icon(host.isRdp ? ToolIcons.rdp : Icons.dns_outlined, size: 16),
                   const SizedBox(width: 6),
                   Expanded(child: heading),
                 ],

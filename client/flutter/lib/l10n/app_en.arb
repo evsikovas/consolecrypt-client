@@ -1,4 +1,164 @@
 {
+  "registryBuildOnSsh": "Build on {host} over SSH",
+  "@registryBuildOnSsh": {"description":"Build mode for the selected remote Docker engine","placeholders":{"host":{"type":"String"}}},
+  "registryRemoteDirectory": "Server folder containing Dockerfile",
+  "@registryRemoteDirectory": {"description":"Absolute build context directory on the SSH server"},
+  "registryRemoteAuthHelp": "Buildx uses the selected registry account on this server during the build.",
+  "@registryRemoteAuthHelp": {"description":"Where registry credentials are used for a remote build"},
+  "registryRemoteTools": "The SSH host needs Python 3, Docker Buildx and a local Docker socket.",
+  "@registryRemoteTools": {"description":"Requirements for building a project on an SSH server"},
+  "registryLabel": "Container registry",
+  "@registryLabel": {"description": "Container registry"},
+  "registryChoose": "Select a saved registry",
+  "@registryChoose": {"description": "Select a saved registry"},
+  "registryAdd": "Add registry",
+  "@registryAdd": {"description": "Add registry"},
+  "registryOther": "Other registry",
+  "@registryOther": {"description": "Other registry"},
+  "registryAddress": "Registry host",
+  "@registryAddress": {"description": "Registry host"},
+  "registryRepo": "Repository path",
+  "@registryRepo": {"description": "Repository path"},
+  "registryTag": "Tag",
+  "@registryTag": {"description": "Tag"},
+  "registryToken": "Password or access token",
+  "@registryToken": {"description": "Password or access token"},
+  "registryPublish": "Push image",
+  "@registryPublish": {"description": "Push image"},
+  "registryPublished": "Image published. The image field now contains the selected tag.",
+  "@registryPublished": {"description": "Image published. Its digest is ready to use."},
+  "registryInvalid": "Enter a registry host, optionally with a port.",
+  "@registryInvalid": {"description": "Enter a registry host, optionally with a port."},
+  "registrySaveFailed": "Could not save the registry credential.",
+  "@registrySaveFailed": {"description": "Could not save the registry credential."},
+  "registryPublishFailed": "Push failed. Check the repository path, push permission and connectivity from the Docker host.",
+  "@registryPublishFailed": {"description": "Push failed. Check the repository path, push permission and connectivity from the Docker host."},
+  "terminalBarItems": "Bar indicators",
+  "@terminalBarItems": {"description":"Bar indicators"},
+  "terminalBarColor": "Indicator colour",
+  "@terminalBarColor": {"description":"Indicator colour"},
+  "terminalBarReset": "Restore default indicators and colours",
+  "@terminalBarReset": {"description":"Restore default indicators and colours"},
+  "captureSwap": "Swap servers",
+  "@captureSwap": {"description":"Swap servers"},
+  "captureSudoPassword": "sudo password",
+  "@captureSudoPassword": {"description":"sudo password"},
+  "captureSyn": "Requests a TCP connection",
+  "@captureSyn": {"description":"Requests a TCP connection"},
+  "captureSynAck": "Accepts the TCP connection request",
+  "@captureSynAck": {"description":"Accepts the TCP connection request"},
+  "captureAck": "Acknowledges receipt",
+  "@captureAck": {"description":"Acknowledges receipt"},
+  "captureData": "Carries TCP data",
+  "@captureData": {"description":"Carries TCP data"},
+  "captureFin": "Finishes sending data",
+  "@captureFin": {"description":"Finishes sending data"},
+  "captureRst": "Resets the TCP connection",
+  "@captureRst": {"description":"Resets the TCP connection"},
+  "captureArpQuery": "Asks for a device’s MAC address",
+  "@captureArpQuery": {"description":"Asks for a device’s MAC address"},
+  "captureArpReply": "Announces the device’s MAC address",
+  "@captureArpReply": {"description":"Announces the device’s MAC address"},
+  "capturePacketBytes": "Captured bytes",
+  "@capturePacketBytes": {"description":"Captured bytes"},
+  "@dockerDiskUsage": {"description":"Docker disk usage tab."},
+  "@dockerEventJournal": {"description":"Container lifecycle event log tab."},
+  "@dockerBuildCache": {"description":"Build cache disk usage category."},
+  "@dockerRecentLifecycle": {"description":"Time range of the container event journal."},
+  "@dockerJournalEmpty": {"description":"Empty container event history."},
+  "dockerDiskUsage": "Disk usage",
+  "dockerEventJournal": "Events",
+  "dockerBuildCache": "Build cache",
+  "dockerObjectsCount": "Objects: {count}",
+  "dockerReclaimable": "Reclaimable: {size}",
+  "dockerRecentLifecycle": "Container events · last 24 hours",
+  "dockerJournalEmpty": "No container events in the last 24 hours",
+  "dockerLifecycleAction": "{action, select, create {Created} start {Started} restart {Restarted} stop {Stopped} die {Exited} kill {Kill signal} oom {Out of memory} destroy {Removed} pause {Paused} unpause {Resumed} rename {Renamed} healthy {Healthy} unhealthy {Unhealthy} starting {Health check starting} other {Event}}",
+  "@dockerObjectsCount": {"description":"dockerObjectsCount","placeholders":{"count":{"type":"int"}}},
+  "@dockerReclaimable": {"description":"dockerReclaimable","placeholders":{"size":{"type":"String"}}},
+  "@dockerLifecycleAction": {"description":"dockerLifecycleAction","placeholders":{"action":{"type":"String"}}},
+  "keepassRecentKdbx": "Recent KDBX files",
+  "@keepassRecentKdbx": {"description":"Group of previously opened local KeePass databases"},
+  "@terminalMoreMetrics": {"description":"Shows the server metrics that do not fit in the terminal status bar"},
+  "terminalMoreMetrics": "More server metrics",
+  "terminalMetricsBar": "Show server metrics below the terminal",
+  "@terminalMetricsBar": {"description":"Show server metrics below the terminal"},
+  "terminalChannelLatency": "SSH channel latency",
+  "@terminalChannelLatency": {"description":"SSH channel latency"},
+  "terminalLatencyValue": "{value} ms",
+  "@terminalLatencyValue": {"description":"number ms","placeholders":{"value":{"type":"int"}}},
+  "terminalNormalizedLoad": "1-minute load per CPU",
+  "@terminalNormalizedLoad": {"description":"1-minute load per CPU"},
+  "terminalEncodingError": "This encoding cannot represent the input. Choose another encoding to send it.",
+  "@terminalEncodingError": {"description":"This encoding cannot represent the input. Choose another encoding to send it."},
+  "terminalEncodingSimplifiedChinese": "Simplified Chinese",
+  "terminalEncodingTraditionalChinese": "Traditional Chinese",
+  "terminalEncodingJapanese": "Japanese",
+  "terminalEncodingKorean": "Korean",
+  "terminalEncodingWesternEuropean": "Western European",
+  "terminalEncodingCentralEuropean": "Central European",
+  "@terminalFindText": {"description":"Search within the active terminal pane and its scrollback."},
+  "@dockerNetworkContainers": {"description":"Containers attached to the selected Docker network."},
+  "@dockerNetworkEmpty": {"description":"No Docker networks match the current filter."},
+  "terminalFindText": "Find in terminal",
+  "dockerNetworkContainers": "Connected containers",
+  "dockerNetworkEmpty": "No networks match",
+  "terminalEncodingCyrillic": "Cyrillic",
+  "dockerImageWeeksAgo": "{count} wk ago",
+  "@dockerImageWeeksAgo": {"description":"Compact age in completed weeks.","placeholders":{"count":{"type":"int"}}},
+  "@terminalEncodingSimplifiedChinese": {"description":"Language group in the terminal encoding chooser."},
+  "@terminalEncodingTraditionalChinese": {"description":"Language group in the terminal encoding chooser."},
+  "@terminalEncodingJapanese": {"description":"Language group in the terminal encoding chooser."},
+  "@terminalEncodingKorean": {"description":"Language group in the terminal encoding chooser."},
+  "@terminalEncodingWesternEuropean": {"description":"Language group in the terminal encoding chooser."},
+  "@terminalEncodingCentralEuropean": {"description":"Language group in the terminal encoding chooser."},
+  "@terminalEncodingCyrillic": {"description":"Language group in the terminal encoding chooser."},
+  "sessionDiskIO": "Disk read / write",
+  "@sessionDiskIO": {"description":"Disk bytes read and written by a container."},
+  "sessionGroupTabs": "Group sessions by host folder",
+  "@sessionGroupTabs": {"description":"Terminal workspace and device settings."},
+  "sessionDevicesStale": "Could not refresh trust. Showing the last device list.",
+  "@sessionDevicesStale": {"description":"Terminal workspace and device settings."},
+  "sessionRemote": "Remote",
+  "@sessionRemote": {"description": "Compact terminal workspace label."},
+  "sessionLocal": "Local",
+  "@sessionLocal": {"description": "Compact terminal workspace label."},
+  "sessionResponding": "Responding",
+  "@sessionResponding": {"description": "Compact terminal workspace label."},
+  "sessionNoProvider": "Select provider",
+  "@sessionNoProvider": {"description": "Compact terminal workspace label."},
+  "sessionHidden": "Hidden",
+  "@sessionHidden": {"description": "Compact terminal workspace label."},
+  "sessionHistoryUnavailable": "Could not read command history",
+  "@sessionHistoryUnavailable": {"description":"Session history loading error."},
+  "serverShellHistory": "Server shell history",
+  "@serverShellHistory": {"description": "Terminal and container inspector label."},
+  "serverHistoryEmpty": "The shell history file has no saved commands",
+  "@serverHistoryEmpty": {"description": "Terminal and container inspector label."},
+  "dockerMainPid": "Main PID",
+  "@dockerMainPid": {"description": "Terminal and container inspector label."},
+  "dockerProcessElapsed": "Elapsed",
+  "@dockerProcessElapsed": {"description": "Terminal and container inspector label."},
+  "dockerProcessUser": "User",
+  "@dockerProcessUser": {"description": "Terminal and container inspector label."},
+  "sessionHistoryEmpty": "Commands from this session will appear here",
+  "@sessionHistoryEmpty": {"description": "Compact terminal workspace label."},
+  "sessionUsage": "Resource usage",
+  "@sessionUsage": {"description": "Compact terminal workspace label."},
+  "sessionUsageUnavailable": "Metrics unavailable",
+  "@sessionUsageUnavailable": {"description": "Compact terminal workspace label."},
+  "sessionSwap": "Swap",
+  "@sessionSwap": {"description": "Compact terminal workspace label."},
+  "sessionLogins": "Login sessions",
+  "@sessionLogins": {"description": "Compact terminal workspace label."},
+  "sessionSnippetSearch": "Find a snippet",
+  "@sessionSnippetSearch": {"description": "Compact terminal workspace label."},
+  "sessionAsk": "Ask about this host",
+  "@sessionAsk": {"description": "Compact terminal workspace label."},
+  "sessionAskGeneral": "Ask a question",
+  "@sessionAskGeneral": {"description": "Compact terminal workspace label."},
+  "sessionSnip": "Save as snippet",
+  "@sessionSnip": {"description": "Compact terminal workspace label."},
   "uiOtherDevices": "Other devices",
   "@uiOtherDevices": {"description": "Devices table heading."},
   "uiTrustedDevices": "Trusted devices",
@@ -7441,6 +7601,8 @@
   "@terminalClearSelection": {
     "description": "Terminal context menu or its selected-text attachment."
   },
+  "terminalAllowMultilinePaste": "Allow multiline paste without confirmation",
+  "@terminalAllowMultilinePaste": {"description": "Terminal setting for clipboard text with ordinary line breaks."},
   "terminalPasteConfirmTitle": "Paste multiple lines or control characters?",
   "@terminalPasteConfirmTitle": {
     "description": "Terminal context menu or its selected-text attachment."
@@ -23354,7 +23516,7 @@
   "@dockerKubeDeploy": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeIntro": "Experimental: one stateless Linux container, one replica and an internal ClusterIP Service. Review the manifest before deploying.",
+  "dockerKubeIntro": "One Linux replica and an internal ClusterIP Service. Configure Docker environment overrides and Compose dependencies separately.",
   "@dockerKubeIntro": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -23378,7 +23540,7 @@
   "@dockerKubeNoProvider": {
     "description": "Explains why manifest generation needs an AI provider"
   },
-  "dockerKubeImageHelp": "Publish the image to a registry reachable by cluster nodes first. This wizard does not upload local images. Prefer a digest; a mutable tag can change. localhost is not a remote registry.",
+  "dockerKubeImageHelp": "Use a published tag or digest that cluster nodes can pull. Private images may need an imagePullSecret.",
   "@dockerKubeImageHelp": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -23414,11 +23576,15 @@
   "@dockerKubeTemplate": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAiReview": "Review the template below before sending it to the AI provider. ConsoleCrypt adds the Docker startup command locally after receiving the response.",
+  "dockerKubePrompt": "Prompt",
+  "@dockerKubePrompt": {
+    "description": "Label of the editable prompt sent to the selected AI provider."
+  },
+  "dockerKubeAiReview": "You can edit the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.",
   "@dockerKubeAiReview": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeSendAi": "Send template to AI",
+  "dockerKubeSendAi": "Send prompt",
   "@dockerKubeSendAi": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -23430,7 +23596,7 @@
   "@dockerKubeInvalidTarget": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
-  "dockerKubeAcknowledge": "I checked the image, CPU architecture and startup command. This deployment uses the image’s environment and filesystem. Configure any Docker environment overrides or Compose dependencies separately.",
+  "dockerKubeAcknowledge": "I checked the image, platform and startup command",
   "@dockerKubeAcknowledge": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },
@@ -24529,5 +24695,224 @@
   },
   "@hostInspector": {
     "description": "Button tooltip for showing the host in the side-by-side inspector."
+  },
+  "captureTitle": "TCPdump",
+  "@captureTitle": {
+    "description": "Packet capture workspace. TCPdump"
+  },
+  "captureSubtitle": "Live packet headers, addresses and ports.",
+  "@captureSubtitle": {
+    "description": "Packet capture workspace. Live packet headers, addresses and ports."
+  },
+  "captureChoose": "Choose the endpoints to start a capture.",
+  "@captureChoose": {
+    "description": "Packet capture workspace. Choose the endpoints to start a capture."
+  },
+  "captureListening": "Listening for packets",
+  "@captureListening": {
+    "description": "Packet capture workspace. Listening for packets"
+  },
+  "captureStopped": "Capture stopped",
+  "@captureStopped": {
+    "description": "Packet capture workspace. Capture stopped"
+  },
+  "captureMissing": "tcpdump is missing at the capture point.",
+  "@captureMissing": {
+    "description": "Packet capture workspace. tcpdump is missing at the capture point."
+  },
+  "captureDenied": "Packet capture requires additional permissions.",
+  "@captureDenied": {
+    "description": "Packet capture workspace. Packet capture requires additional permissions."
+  },
+  "captureStartTimeout": "The server did not report capture readiness within 20 seconds.",
+  "@captureStartTimeout": {"description":"Timed out waiting for tcpdump to start on the capture server."},
+  "captureFailed": "Could not complete the capture.",
+  "@captureFailed": {
+    "description": "Packet capture workspace. Could not complete the capture."
+  },
+  "captureNoPeer": "Could not determine the connection addresses.",
+  "@captureNoPeer": {
+    "description": "Packet capture workspace. Could not determine the connection addresses."
+  },
+  "captureSource": "Capture server",
+  "@captureSource": {
+    "description": "Packet capture workspace. Capture server"
+  },
+  "captureTarget": "Peer server",
+  "@captureTarget": {
+    "description": "Packet capture workspace. Choose server"
+  },
+  "captureServersHelp": "The first server captures traffic to and from the second.",
+  "@captureServersHelp": {
+    "description": "Packet capture workspace. The first server captures traffic to and from the second."
+  },
+  "captureStart": "Start capture",
+  "@captureStart": {
+    "description": "Packet capture workspace. Start capture"
+  },
+  "captureStop": "Stop",
+  "@captureStop": {
+    "description": "Packet capture workspace. Stop"
+  },
+  "captureCount": "Showing {shown} of {total} packets",
+  "@captureCount": {
+    "description": "Packet capture workspace. Showing {shown} of {total} packets",
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "captureInstall": "Install tcpdump",
+  "@captureInstall": {
+    "description": "Packet capture workspace. Install tcpdump"
+  },
+  "captureManualInstall": "Install tcpdump with the host’s package manager, then start the capture again.",
+  "@captureManualInstall": {
+    "description": "Packet capture workspace. Install tcpdump with the host’s package manager, then start the capture again."
+  },
+  "captureSudo": "Retry with sudo",
+  "@captureSudo": {
+    "description": "Packet capture workspace. Retry with passwordless sudo"
+  },
+  "tmuxTitle": "tmux sessions",
+  "@tmuxTitle": {
+    "description": "Terminal tmux panel: tmux sessions"
+  },
+  "tmuxCount": "Sessions: {count}",
+  "@tmuxCount": {
+    "description": "Terminal tmux panel: Sessions: {count}",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tmuxCounts": "Windows: {windows} · Clients: {clients}",
+  "@tmuxCounts": {
+    "description": "Terminal tmux panel: Windows: {windows} · Clients: {clients}",
+    "placeholders": {
+      "windows": {
+        "type": "int"
+      },
+      "clients": {
+        "type": "int"
+      }
+    }
+  },
+  "tmuxActivity": "Last active: {time}",
+  "@tmuxActivity": {
+    "description": "Terminal tmux panel: Last active: {time}",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tmuxAttach": "Attach to session",
+  "@tmuxAttach": {
+    "description": "Terminal tmux panel: Attach to session"
+  },
+  "tmuxDetach": "Detach from session",
+  "@tmuxDetach": {
+    "description": "Terminal tmux panel: Detach from session"
+  },
+  "tmuxCreate": "Create session",
+  "@tmuxCreate": {
+    "description": "Terminal tmux panel: Create session"
+  },
+  "tmuxKill": "End session",
+  "@tmuxKill": {
+    "description": "Terminal tmux panel: End session"
+  },
+  "tmuxConfirmKill": "End “{name}” and stop its processes?",
+  "@tmuxConfirmKill": {
+    "description": "Terminal tmux panel: End “{name}” and stop its processes?",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tmuxEmpty": "No tmux sessions on this host",
+  "@tmuxEmpty": {
+    "description": "Terminal tmux panel: No tmux sessions on this host"
+  },
+  "tmuxError": "Couldn’t complete the tmux operation. Refresh the list and try again.",
+  "@tmuxError": {
+    "description": "Terminal tmux panel: Couldn’t complete the tmux operation. Refresh the list and try again."
+  },
+  "tmuxNameHint": "Use letters, numbers, spaces, dashes or underscores.",
+  "@tmuxNameHint": {
+    "description": "Terminal tmux panel: Use letters, numbers, spaces, dashes or underscores."
+  },
+  "captureCheck": "Check tcpdump",
+  "@captureCheck": {
+    "description": "Packet capture: Check tcpdump"
+  },
+  "captureReady": "tcpdump is installed",
+  "@captureReady": {
+    "description": "Packet capture: tcpdump is installed"
+  },
+  "captureUseSudo": "Run capture with sudo",
+  "@captureUseSudo": {
+    "description": "Packet capture: Run capture with sudo"
+  },
+  "capturePrivilegeHint": "Capture requires root or packet capture privileges. Enter the sudo password if prompted.",
+  "@capturePrivilegeHint": {
+    "description": "Packet capture: Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump."
+  },
+  "captureInstallHost": "Install tcpdump on {host}? The command runs in its SSH terminal, where you can respond to package or sudo prompts.",
+  "@captureInstallHost": {
+    "description": "Packet capture: Install tcpdump on {host}? The command runs in its SSH terminal, where you can respond to package or sudo prompts.",
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "captureExchange": "Connection details",
+  "@captureExchange": {
+    "description": "Packet capture: Connection details"
+  },
+  "captureExchangeCount": "Packets between these endpoints when selected: {count}",
+  "@captureExchangeCount": {
+    "description": "Packet capture: Packets between these endpoints when selected: {count}",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "registryBuildFromSource": "Build from a local Dockerfile",
+  "@registryBuildFromSource": {
+    "description": "Docker deployment wizard: Build from a local Dockerfile"
+  },
+  "registryBuildFolder": "Choose project folder",
+  "@registryBuildFolder": {
+    "description": "Docker deployment wizard: Choose project folder"
+  },
+  "registryBuildPush": "Build and publish",
+  "@registryBuildPush": {
+    "description": "Docker deployment wizard: Build and publish"
+  },
+  "registryBuildFailed": "Build or push failed. Check the Dockerfile, Buildx platform support and registry write access.",
+  "@registryBuildFailed": {
+    "description": "Docker deployment wizard: Build or push failed. Check the Dockerfile, Buildx platform support and registry write access."
+  },
+  "registryBuildContextError": "Choose a project folder containing a Dockerfile.",
+  "@registryBuildContextError": {
+    "description": "Docker deployment wizard: Choose a project folder containing a Dockerfile."
+  },
+  "registryPin": "Pin this image by digest",
+  "@registryPin": {
+    "description": "Docker deployment wizard: Pin this image by digest"
+  },
+  "dockerKubeDeployAction": "Deploy",
+  "@dockerKubeDeployAction": {
+    "description": "Docker deployment wizard: Deploy"
   }
 }

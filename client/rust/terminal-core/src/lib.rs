@@ -69,6 +69,8 @@ impl TerminalStatus {
 /// Status change notification.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TerminalEvent {
+    /// A user close or runtime shutdown does not require a connection alert.
+    pub intentional_close: bool,
     pub id: TerminalId,
     pub status: TerminalStatus,
 }
@@ -235,6 +237,7 @@ struct Inner {
 }
 
 struct Session {
+    background: bool,
     id: TerminalId,
     target: TerminalTarget,
     title: String,
@@ -325,7 +328,17 @@ impl TerminalManager {
 
     fn set_status(events: &broadcast::Sender<TerminalEvent>, s: &Session, status: TerminalStatus) {
         s.status.send_replace(status.clone());
-        let _ = events.send(TerminalEvent { id: s.id, status });
+        if !s.background {
+            let _ = events.send(TerminalEvent { id: s.id, status, intentional_close: false });
+        }
+    }
+
+    fn user_closed(events: &broadcast::Sender<TerminalEvent>, session: &Session) {
+        let status = TerminalStatus::Closed { exit_status: None, reason: None };
+        session.status.send_replace(status.clone());
+        if !session.background {
+            let _ = events.send(TerminalEvent { id: session.id, status, intentional_close: true });
+        }
     }
 
     /// Start connecting in the background; returns immediately with status
@@ -333,6 +346,7 @@ impl TerminalManager {
     pub fn spawn_open(&self, plan: ConnectionPlan, size: TerminalSize) -> TerminalId {
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
+            background: false,
             id,
             target: TerminalTarget::Ssh {
                 host_id: plan.host_id,
@@ -354,17 +368,11 @@ impl TerminalManager {
         self.register(session.clone());
         if self.stopped.load(Ordering::Acquire) {
             session.lock().closing = true;
-            Self::set_status(
-                &self.events,
-                &session,
-                TerminalStatus::Closed {
-                    exit_status: None,
-                    reason: None,
-                },
-            );
+            Self::user_closed(&self.events, &session);
             return id;
         }
         let _ = self.events.send(TerminalEvent {
+            intentional_close: false,
             id,
             status: TerminalStatus::Connecting,
         });
@@ -435,6 +443,7 @@ impl TerminalManager {
             .map_err(|e| TerminalError::Open(e.to_string()))?;
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
+            background: false,
             id,
             target: TerminalTarget::Ssh {
                 host_id: ssh.host_id(),
@@ -486,6 +495,7 @@ impl TerminalManager {
         let (profile, opened) = local::open(profile_id, size).await?;
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
+            background: false,
             id,
             target: TerminalTarget::Local {
                 profile_id: profile.id,
@@ -531,8 +541,33 @@ impl TerminalManager {
         size: TerminalSize,
         opened: OpenedShell,
     ) -> Result<TerminalId, TerminalError> {
+        self.register_channel(target, title, size, opened, false)
+            .await
+    }
+
+    /// Tool-owned command with ordered output and its own status UI.
+    pub async fn open_background_channel(
+        &self,
+        target: TerminalTarget,
+        title: String,
+        size: TerminalSize,
+        opened: OpenedShell,
+    ) -> Result<TerminalId, TerminalError> {
+        self.register_channel(target, title, size, opened, true)
+            .await
+    }
+
+    async fn register_channel(
+        &self,
+        target: TerminalTarget,
+        title: String,
+        size: TerminalSize,
+        opened: OpenedShell,
+        background: bool,
+    ) -> Result<TerminalId, TerminalError> {
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
+            background,
             id,
             target,
             title,
@@ -546,7 +581,7 @@ impl TerminalManager {
                 size,
                 scrollback: Scrollback::new(self.config.scrollback_bytes),
                 tracker: CommandTracker::new(),
-                tracking_suppressed: false,
+                tracking_suppressed: background,
             }),
         });
         self.register(session.clone());
@@ -581,14 +616,7 @@ impl TerminalManager {
                 if let Some(ssh) = owned {
                     let _ = ssh.disconnect().await;
                 }
-                Self::set_status(
-                    events,
-                    session,
-                    TerminalStatus::Closed {
-                        exit_status: None,
-                        reason: None,
-                    },
-                );
+                Self::user_closed(events, session);
                 return None;
             }
             // Resize before publishing Connected, retrying if the UI resized
@@ -678,7 +706,11 @@ impl TerminalManager {
                 reason,
             }
         };
-        Self::set_status(&events, &session, status);
+        // A user close already published Closed. Its transport shutdown may also wake ssh.closed().
+        let inner = session.lock();
+        if !inner.closing {
+            Self::set_status(&events, &session, status);
+        }
     }
 
     /// Send input bytes (keystrokes / paste).
@@ -778,7 +810,10 @@ impl TerminalManager {
     }
 
     pub fn list(&self) -> Vec<TerminalInfo> {
-        let ids: Vec<TerminalId> = self.map().keys().copied().collect();
+        let ids: Vec<TerminalId> = self.map().values()
+            .filter(|s| !s.background)
+            .map(|s| s.id)
+            .collect();
         ids.into_iter()
             .filter_map(|id| self.info(id).ok())
             .collect()
@@ -791,14 +826,7 @@ impl TerminalManager {
         let (writer, ssh, lifetime) = {
             let mut inner = s.lock();
             inner.closing = true;
-            Self::set_status(
-                &self.events,
-                &s,
-                TerminalStatus::Closed {
-                    exit_status: None,
-                    reason: None,
-                },
-            );
+            Self::user_closed(&self.events, &s);
             (
                 inner.writer.take(),
                 inner.session.take(),
@@ -820,8 +848,9 @@ impl TerminalManager {
     /// Permanently fence this unlocked runtime before closing its sessions.
     pub async fn shutdown(&self) {
         self.begin_shutdown();
-        for info in self.list() {
-            let _ = self.remove(info.id).await;
+        let ids: Vec<_> = self.map().keys().copied().collect();
+        for id in ids {
+            let _ = self.remove(id).await;
         }
     }
 
@@ -833,14 +862,7 @@ impl TerminalManager {
             if let Some(lifetime) = &inner.lifetime {
                 lifetime.close();
             }
-            Self::set_status(
-                &self.events,
-                session,
-                TerminalStatus::Closed {
-                    exit_status: None,
-                    reason: None,
-                },
-            );
+            Self::user_closed(&self.events, session);
         }
     }
 
@@ -865,6 +887,31 @@ impl TerminalManager {
         Ok(())
     }
 
+    pub fn set_history_filter(
+        &self,
+        id: TerminalId,
+        filter: Option<fn(&str) -> bool>,
+    ) -> Result<(), TerminalError> {
+        let s = self.get(id)?;
+        let mut inner = s.lock();
+        if !inner.tracking_suppressed
+            && matches!(
+                &s.target,
+                TerminalTarget::Ssh { .. } | TerminalTarget::Local { .. }
+            )
+        {
+            inner.tracker.set_history_filter(filter);
+        }
+        Ok(())
+    }
+    pub fn session_commands(&self, id: TerminalId) -> Result<Vec<String>, TerminalError> {
+        Ok(self.get(id)?.lock().tracker.history())
+    }
+    pub fn clear_command_histories(&self) {
+        for s in self.map().values() {
+            s.lock().tracker.set_history_filter(None);
+        }
+    }
     /// Last command typed in this session (best effort; AI hook).
     pub fn last_command(&self, id: TerminalId) -> Option<String> {
         let s = self.get(id).ok()?;

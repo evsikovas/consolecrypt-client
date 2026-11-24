@@ -55,6 +55,7 @@ final class Credential {
     required this.createdAt,
     required this.updatedAt,
     this.username,
+    this.registry,
     this.secretId,
     this.passphraseSecretId,
     this.keyEncrypted = false,
@@ -71,6 +72,9 @@ final class Credential {
 
   /// Optional username override.
   final String? username;
+
+  /// Registry host bound to this login for Docker image publication.
+  final String? registry;
 
   /// `Secret` holding the password or the OpenSSH private key.
   final ObjectId? secretId;
@@ -102,6 +106,7 @@ final class Credential {
     id: id,
     name: name ?? this.name,
     kind: kind,
+    registry: registry,
     username: clearUsername ? null : (username ?? this.username),
     secretId: secretId,
     passphraseSecretId: passphraseSecretId,

@@ -10,6 +10,9 @@ authors.workspace = true
 publish.workspace = true
 
 [dependencies]
+base64.workspace = true
+regex = "1"
+zeroize.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10"
@@ -21,6 +24,7 @@ tokio-util = { version = "0.7", features = ["rt"] }
 hyper = { version = "1", features = ["client", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 http-body-util = "0.1"
+httpdate = "1"
 percent-encoding = "2"
 
 [dev-dependencies]

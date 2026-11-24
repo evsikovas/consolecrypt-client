@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -105,7 +106,6 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final tokens = GlassTokens.of(context);
     final status = ref.watch(sharingStatusProvider);
     final items = ref.watch(sharingItemsProvider);
     final local = ref.watch(activeProfileProvider)?.isLocal ?? true;
@@ -157,48 +157,28 @@ class _SharingScreenState extends ConsumerState<SharingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Wrap(
-                      key: const ValueKey('sharing-navigation'),
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ChoiceChip(
-                          key: const ValueKey('sharing-incoming'),
-                          label: Text(l.sharingReceived),
-                          avatar: Icon(
-                            Icons.move_to_inbox_outlined,
-                            size: 18,
-                            color: !_owned ? tokens.palette.onAccent : tokens.palette.label,
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: GlassSegmented<bool>(
+                        key: const ValueKey('sharing-navigation'),
+                        inChrome: false,
+                        segments: [
+                          GlassSegment(
+                            key: const ValueKey('sharing-incoming'),
+                            value: false,
+                            label: l.sharingReceived,
+                            icon: Icons.move_to_inbox_outlined,
                           ),
-                          showCheckmark: false,
-                          selectedColor: tokens.palette.accentFill,
-                          labelStyle: tokens.typography.body.copyWith(
-                            color: !_owned ? tokens.palette.onAccent : tokens.palette.label,
-                            fontWeight: FontWeight.w600,
+                          GlassSegment(
+                            key: const ValueKey('sharing-owned'),
+                            value: true,
+                            label: l.sharingOwned,
+                            icon: Icons.share_outlined,
                           ),
-                          labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          selected: !_owned,
-                          onSelected: (_) => setState(() => _owned = false),
-                        ),
-                        ChoiceChip(
-                          key: const ValueKey('sharing-owned'),
-                          label: Text(l.sharingOwned),
-                          avatar: Icon(
-                            Icons.share_outlined,
-                            size: 18,
-                            color: _owned ? tokens.palette.onAccent : tokens.palette.label,
-                          ),
-                          showCheckmark: false,
-                          selectedColor: tokens.palette.accentFill,
-                          labelStyle: tokens.typography.body.copyWith(
-                            color: _owned ? tokens.palette.onAccent : tokens.palette.label,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          selected: _owned,
-                          onSelected: (_) => setState(() => _owned = true),
-                        ),
-                      ],
+                        ],
+                        selected: _owned,
+                        onChanged: (value) => setState(() => _owned = value),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -582,12 +562,12 @@ class _SharingTile extends ConsumerWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(switch (item.kind) {
-              SharingKind.host when item.isRdp => Icons.desktop_windows_rounded,
+              SharingKind.host when item.isRdp => ToolIcons.rdp,
               SharingKind.host => Icons.dns_outlined,
               SharingKind.snippet => Icons.code_rounded,
               SharingKind.group => Icons.folder_shared_outlined,
               SharingKind.secret => Icons.key_outlined,
-              SharingKind.kubeContext => Icons.hub_outlined,
+              SharingKind.kubeContext => ToolIcons.kubernetes,
               SharingKind.dbConnection => Icons.storage_rounded,
             }),
             title: Text(item.name ?? l.sharingInvitation),

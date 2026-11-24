@@ -45,6 +45,23 @@ Future<bool> reviewKubeRestart(
   return allowed();
 }
 
+Future<bool> reviewKubeOperation(
+  BuildContext context,
+  KubeSession session,
+  KubeResourceRef resource,
+  KubeResourceDetail detail,
+  KubeOperationsService service,
+  String action,
+) async =>
+    await showAppDialog<bool>(
+      context,
+      secure: true,
+      barrierDismissible: false,
+      builder: (_) =>
+          _OperationDialog(session: session, resource: resource, detail: detail, service: service, action: action),
+    ) ??
+    false;
+
 class KubeResourceOperations extends ConsumerStatefulWidget {
   const KubeResourceOperations({
     required this.session,
@@ -95,19 +112,15 @@ class _KubeResourceOperationsState extends ConsumerState<KubeResourceOperations>
       return;
     }
     if (action == 'scale' || action == 'debug' || action == 'drain') {
-      final changed = await showAppDialog<bool>(
+      final changed = await reviewKubeOperation(
         context,
-        secure: true,
-        barrierDismissible: false,
-        builder: (_) => _OperationDialog(
-          session: widget.session,
-          resource: resource,
-          detail: widget.detail,
-          service: widget.service,
-          action: action,
-        ),
+        widget.session,
+        resource,
+        widget.detail,
+        widget.service,
+        action,
       );
-      if (_current && changed == true) widget.onChanged();
+      if (_current && changed) widget.onChanged();
       return;
     }
     final approved = await showKubePassphraseConfirmation(
@@ -138,16 +151,18 @@ class _KubeResourceOperationsState extends ConsumerState<KubeResourceOperations>
     final api = widget.resource.api;
     final canWrite = ref.watch(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false;
     final spec = widget.detail.object['spec'] as Map? ?? const {};
-    final actions = <(String, String)>[
+    final actions = <(String, String, IconData)>[
       if (api.group == 'apps' && const {'deployments', 'statefulsets', 'replicasets'}.contains(api.resource))
-        ('scale', l.kubeScale),
+        ('scale', l.kubeScale, Icons.open_in_full),
       if (api.group == 'apps' && const {'deployments', 'statefulsets', 'daemonsets'}.contains(api.resource))
-        ('restart', l.kubeRestart),
+        ('restart', l.kubeRestart, Icons.restart_alt),
       if (api.group.isEmpty && api.resource == 'nodes') ...[
-        spec['unschedulable'] == true ? ('uncordon', l.kubeUncordon) : ('cordon', l.kubeCordon),
-        if (spec['unschedulable'] == true) ('drain', l.kubeDrain),
+        spec['unschedulable'] == true
+            ? ('uncordon', l.kubeUncordon, Icons.lock_open_outlined)
+            : ('cordon', l.kubeCordon, Icons.lock_outline),
+        if (spec['unschedulable'] == true) ('drain', l.kubeDrain, Icons.output),
       ],
-      if (api.isPod) ('debug', l.kubeDebugContainer),
+      if (api.isPod) ('debug', l.kubeDebugContainer, Icons.bug_report_outlined),
     ];
     if (actions.isEmpty) return const SizedBox.shrink();
     return Column(
@@ -158,9 +173,12 @@ class _KubeResourceOperationsState extends ConsumerState<KubeResourceOperations>
           runSpacing: 6,
           children: actions
               .map(
-                (action) => GlassButton(
+                (action) => GlassIconButton(
                   key: ValueKey('kube-operation-${action.$1}'),
-                  label: action.$2,
+                  tooltip: action.$2,
+                  icon: action.$3,
+                  style: GlassIconButtonStyle.plain,
+                  iconSize: GlassSizes.iconMenu,
                   onPressed: !_busy && canWrite && _version.isNotEmpty ? () => _action(action.$1, action.$2) : null,
                 ),
               )

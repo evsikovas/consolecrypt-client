@@ -10,6 +10,276 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String registryBuildOnSsh(String host) {
+    return 'Build on $host over SSH';
+  }
+
+  @override
+  String get registryRemoteDirectory => 'Server folder containing Dockerfile';
+
+  @override
+  String get registryRemoteAuthHelp => 'Buildx uses the selected registry account on this server during the build.';
+
+  @override
+  String get registryRemoteTools => 'The SSH host needs Python 3, Docker Buildx and a local Docker socket.';
+
+  @override
+  String get registryLabel => 'Container registry';
+
+  @override
+  String get registryChoose => 'Select a saved registry';
+
+  @override
+  String get registryAdd => 'Add registry';
+
+  @override
+  String get registryOther => 'Other registry';
+
+  @override
+  String get registryAddress => 'Registry host';
+
+  @override
+  String get registryRepo => 'Repository path';
+
+  @override
+  String get registryTag => 'Tag';
+
+  @override
+  String get registryToken => 'Password or access token';
+
+  @override
+  String get registryPublish => 'Push image';
+
+  @override
+  String get registryPublished => 'Image published. The image field now contains the selected tag.';
+
+  @override
+  String get registryInvalid => 'Enter a registry host, optionally with a port.';
+
+  @override
+  String get registrySaveFailed => 'Could not save the registry credential.';
+
+  @override
+  String get registryPublishFailed =>
+      'Push failed. Check the repository path, push permission and connectivity from the Docker host.';
+
+  @override
+  String get terminalBarItems => 'Bar indicators';
+
+  @override
+  String get terminalBarColor => 'Indicator colour';
+
+  @override
+  String get terminalBarReset => 'Restore default indicators and colours';
+
+  @override
+  String get captureSwap => 'Swap servers';
+
+  @override
+  String get captureSudoPassword => 'sudo password';
+
+  @override
+  String get captureSyn => 'Requests a TCP connection';
+
+  @override
+  String get captureSynAck => 'Accepts the TCP connection request';
+
+  @override
+  String get captureAck => 'Acknowledges receipt';
+
+  @override
+  String get captureData => 'Carries TCP data';
+
+  @override
+  String get captureFin => 'Finishes sending data';
+
+  @override
+  String get captureRst => 'Resets the TCP connection';
+
+  @override
+  String get captureArpQuery => 'Asks for a device’s MAC address';
+
+  @override
+  String get captureArpReply => 'Announces the device’s MAC address';
+
+  @override
+  String get capturePacketBytes => 'Captured bytes';
+
+  @override
+  String get dockerDiskUsage => 'Disk usage';
+
+  @override
+  String get dockerEventJournal => 'Events';
+
+  @override
+  String get dockerBuildCache => 'Build cache';
+
+  @override
+  String dockerObjectsCount(int count) {
+    return 'Objects: $count';
+  }
+
+  @override
+  String dockerReclaimable(String size) {
+    return 'Reclaimable: $size';
+  }
+
+  @override
+  String get dockerRecentLifecycle => 'Container events · last 24 hours';
+
+  @override
+  String get dockerJournalEmpty => 'No container events in the last 24 hours';
+
+  @override
+  String dockerLifecycleAction(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'create': 'Created',
+      'start': 'Started',
+      'restart': 'Restarted',
+      'stop': 'Stopped',
+      'die': 'Exited',
+      'kill': 'Kill signal',
+      'oom': 'Out of memory',
+      'destroy': 'Removed',
+      'pause': 'Paused',
+      'unpause': 'Resumed',
+      'rename': 'Renamed',
+      'healthy': 'Healthy',
+      'unhealthy': 'Unhealthy',
+      'starting': 'Health check starting',
+      'other': 'Event',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keepassRecentKdbx => 'Recent KDBX files';
+
+  @override
+  String get terminalMoreMetrics => 'More server metrics';
+
+  @override
+  String get terminalMetricsBar => 'Show server metrics below the terminal';
+
+  @override
+  String get terminalChannelLatency => 'SSH channel latency';
+
+  @override
+  String terminalLatencyValue(int value) {
+    return '$value ms';
+  }
+
+  @override
+  String get terminalNormalizedLoad => '1-minute load per CPU';
+
+  @override
+  String get terminalEncodingError => 'This encoding cannot represent the input. Choose another encoding to send it.';
+
+  @override
+  String get terminalEncodingSimplifiedChinese => 'Simplified Chinese';
+
+  @override
+  String get terminalEncodingTraditionalChinese => 'Traditional Chinese';
+
+  @override
+  String get terminalEncodingJapanese => 'Japanese';
+
+  @override
+  String get terminalEncodingKorean => 'Korean';
+
+  @override
+  String get terminalEncodingWesternEuropean => 'Western European';
+
+  @override
+  String get terminalEncodingCentralEuropean => 'Central European';
+
+  @override
+  String get terminalFindText => 'Find in terminal';
+
+  @override
+  String get dockerNetworkContainers => 'Connected containers';
+
+  @override
+  String get dockerNetworkEmpty => 'No networks match';
+
+  @override
+  String get terminalEncodingCyrillic => 'Cyrillic';
+
+  @override
+  String dockerImageWeeksAgo(int count) {
+    return '$count wk ago';
+  }
+
+  @override
+  String get sessionDiskIO => 'Disk read / write';
+
+  @override
+  String get sessionGroupTabs => 'Group sessions by host folder';
+
+  @override
+  String get sessionDevicesStale => 'Could not refresh trust. Showing the last device list.';
+
+  @override
+  String get sessionRemote => 'Remote';
+
+  @override
+  String get sessionLocal => 'Local';
+
+  @override
+  String get sessionResponding => 'Responding';
+
+  @override
+  String get sessionNoProvider => 'Select provider';
+
+  @override
+  String get sessionHidden => 'Hidden';
+
+  @override
+  String get sessionHistoryUnavailable => 'Could not read command history';
+
+  @override
+  String get serverShellHistory => 'Server shell history';
+
+  @override
+  String get serverHistoryEmpty => 'The shell history file has no saved commands';
+
+  @override
+  String get dockerMainPid => 'Main PID';
+
+  @override
+  String get dockerProcessElapsed => 'Elapsed';
+
+  @override
+  String get dockerProcessUser => 'User';
+
+  @override
+  String get sessionHistoryEmpty => 'Commands from this session will appear here';
+
+  @override
+  String get sessionUsage => 'Resource usage';
+
+  @override
+  String get sessionUsageUnavailable => 'Metrics unavailable';
+
+  @override
+  String get sessionSwap => 'Swap';
+
+  @override
+  String get sessionLogins => 'Login sessions';
+
+  @override
+  String get sessionSnippetSearch => 'Find a snippet';
+
+  @override
+  String get sessionAsk => 'Ask about this host';
+
+  @override
+  String get sessionAskGeneral => 'Ask a question';
+
+  @override
+  String get sessionSnip => 'Save as snippet';
+
+  @override
   String get uiOtherDevices => 'Other devices';
 
   @override
@@ -5498,6 +5768,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get terminalClearSelection => 'Clear selection';
+
+  @override
+  String get terminalAllowMultilinePaste => 'Allow multiline paste without confirmation';
 
   @override
   String get terminalPasteConfirmTitle => 'Paste multiple lines or control characters?';
@@ -17630,7 +17903,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerKubeIntro =>
-      'Experimental: one stateless Linux container, one replica and an internal ClusterIP Service. Review the manifest before deploying.';
+      'One Linux replica and an internal ClusterIP Service. Configure Docker environment overrides and Compose dependencies separately.';
 
   @override
   String get dockerKubeUnsupported =>
@@ -17651,7 +17924,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerKubeImageHelp =>
-      'Publish the image to a registry reachable by cluster nodes first. This wizard does not upload local images. Prefer a digest; a mutable tag can change. localhost is not a remote registry.';
+      'Use a published tag or digest that cluster nodes can pull. Private images may need an imagePullSecret.';
 
   @override
   String get dockerKubePort => 'Container / Service TCP port';
@@ -17679,11 +17952,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dockerKubeTemplate => 'Use template';
 
   @override
-  String get dockerKubeAiReview =>
-      'Review the template below before sending it to the AI provider. ConsoleCrypt adds the Docker startup command locally after receiving the response.';
+  String get dockerKubePrompt => 'Prompt';
 
   @override
-  String get dockerKubeSendAi => 'Send template to AI';
+  String get dockerKubeAiReview =>
+      'You can edit the prompt before sending it. ConsoleCrypt adds the startup command locally after generation.';
+
+  @override
+  String get dockerKubeSendAi => 'Send prompt';
 
   @override
   String get dockerKubeManifestRejected =>
@@ -17694,8 +17970,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check the app/namespace names, published image with explicit registry and tag/digest, TCP port and pull-secret name.';
 
   @override
-  String get dockerKubeAcknowledge =>
-      'I checked the image, CPU architecture and startup command. This deployment uses the image’s environment and filesystem. Configure any Docker environment overrides or Compose dependencies separately.';
+  String get dockerKubeAcknowledge => 'I checked the image, platform and startup command';
 
   @override
   String get dockerKubeValidated =>
@@ -19441,4 +19716,155 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hostInspector => 'Host details';
+
+  @override
+  String get captureTitle => 'TCPdump';
+
+  @override
+  String get captureSubtitle => 'Live packet headers, addresses and ports.';
+
+  @override
+  String get captureChoose => 'Choose the endpoints to start a capture.';
+
+  @override
+  String get captureListening => 'Listening for packets';
+
+  @override
+  String get captureStopped => 'Capture stopped';
+
+  @override
+  String get captureMissing => 'tcpdump is missing at the capture point.';
+
+  @override
+  String get captureDenied => 'Packet capture requires additional permissions.';
+
+  @override
+  String get captureStartTimeout => 'The server did not report capture readiness within 20 seconds.';
+
+  @override
+  String get captureFailed => 'Could not complete the capture.';
+
+  @override
+  String get captureNoPeer => 'Could not determine the connection addresses.';
+
+  @override
+  String get captureSource => 'Capture server';
+
+  @override
+  String get captureTarget => 'Peer server';
+
+  @override
+  String get captureServersHelp => 'The first server captures traffic to and from the second.';
+
+  @override
+  String get captureStart => 'Start capture';
+
+  @override
+  String get captureStop => 'Stop';
+
+  @override
+  String captureCount(int shown, int total) {
+    return 'Showing $shown of $total packets';
+  }
+
+  @override
+  String get captureInstall => 'Install tcpdump';
+
+  @override
+  String get captureManualInstall => 'Install tcpdump with the host’s package manager, then start the capture again.';
+
+  @override
+  String get captureSudo => 'Retry with sudo';
+
+  @override
+  String get tmuxTitle => 'tmux sessions';
+
+  @override
+  String tmuxCount(int count) {
+    return 'Sessions: $count';
+  }
+
+  @override
+  String tmuxCounts(int windows, int clients) {
+    return 'Windows: $windows · Clients: $clients';
+  }
+
+  @override
+  String tmuxActivity(String time) {
+    return 'Last active: $time';
+  }
+
+  @override
+  String get tmuxAttach => 'Attach to session';
+
+  @override
+  String get tmuxDetach => 'Detach from session';
+
+  @override
+  String get tmuxCreate => 'Create session';
+
+  @override
+  String get tmuxKill => 'End session';
+
+  @override
+  String tmuxConfirmKill(String name) {
+    return 'End “$name” and stop its processes?';
+  }
+
+  @override
+  String get tmuxEmpty => 'No tmux sessions on this host';
+
+  @override
+  String get tmuxError => 'Couldn’t complete the tmux operation. Refresh the list and try again.';
+
+  @override
+  String get tmuxNameHint => 'Use letters, numbers, spaces, dashes or underscores.';
+
+  @override
+  String get captureCheck => 'Check tcpdump';
+
+  @override
+  String get captureReady => 'tcpdump is installed';
+
+  @override
+  String get captureUseSudo => 'Run capture with sudo';
+
+  @override
+  String get capturePrivilegeHint =>
+      'Capture requires root or packet capture privileges. Enter the sudo password if prompted.';
+
+  @override
+  String captureInstallHost(String host) {
+    return 'Install tcpdump on $host? The command runs in its SSH terminal, where you can respond to package or sudo prompts.';
+  }
+
+  @override
+  String get captureExchange => 'Connection details';
+
+  @override
+  String captureExchangeCount(int count) {
+    return 'Packets between these endpoints when selected: $count';
+  }
+
+  @override
+  String get registryBuildFromSource => 'Build from a local Dockerfile';
+
+  @override
+  String get registryBuildFolder => 'Choose project folder';
+
+  @override
+  String get registryBuildPush => 'Build and publish';
+
+  @override
+  String get registryBuildFailed =>
+      'Build or push failed. Check the Dockerfile, Buildx platform support and registry write access.';
+
+  @override
+  String get registryBuildContextError => 'Choose a project folder containing a Dockerfile.';
+
+  @override
+  String get registryPin => 'Pin this image by digest';
+
+  @override
+  String get dockerKubeDeployAction => 'Deploy';
 }

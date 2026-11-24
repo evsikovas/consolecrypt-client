@@ -1727,7 +1727,9 @@ async fn terminal_event_task(
         match rx.recv().await {
             Ok(ev) => {
                 let status = (&ev.status).into();
-                notices.terminal(ev.id, &status);
+                if !ev.intentional_close {
+                    notices.terminal(ev.id, &status);
+                }
                 ctx.emit(AppEvent::TerminalStatus {
                     terminal_id: ev.id.to_string(),
                     status,

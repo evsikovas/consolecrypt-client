@@ -104,7 +104,7 @@ abstract final class GlassSpacing {
 /// Control sizes of the kit.
 enum GlassControlSize {
   sm(22),
-  md(28),
+  md(GlassSizes.standardButton),
   lg(36),
   xl(44);
 
@@ -119,7 +119,8 @@ enum GlassControlSize {
 /// Fixed component heights and icon sizes (§2.6, §4).
 abstract final class GlassSizes {
   static const double toolbarBand = 52;
-  static const double toolbarButton = 32;
+  static const double standardButton = 28;
+  static const double toolbarButton = standardButton;
   static const double toolbarGroup = 32;
   static const double workspaceRailWidth = 40;
   static const double sidebarRow = 32;

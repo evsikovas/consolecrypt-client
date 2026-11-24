@@ -37,6 +37,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.widget<TerminalPane>(find.byType(TerminalPane)).tab.target.label, 'zsh');
+    await tapKey(tester, 'terminal-find-button');
+    expect(find.byKey(const ValueKey('terminal-find-input')), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('terminal-find-input')), findsNothing);
 
     for (final (key, physicalKey) in [
       (LogicalKeyboardKey.keyK, PhysicalKeyboardKey.keyK),
@@ -60,6 +65,20 @@ void main() {
     }
     expect(tester.widget<TerminalPane>(find.byType(TerminalPane)).tab.target.label, 'bash');
     await tapKey(tester, 'terminal-only-palette');
+    final search = find.byKey(const ValueKey('terminal-only-search'));
+    final newWindow = find.byKey(const ValueKey('terminal-only-new-window'));
+    final lastShell = find.byKey(const ValueKey('terminal-only-shell-macos:bash'));
+    expect(tester.getBottomLeft(lastShell).dy, lessThanOrEqualTo(tester.getTopLeft(newWindow).dy));
+    await tester.enterText(search, 'zsh');
+    await tester.pumpAndSettle();
+    expect(newWindow, findsNothing);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(tester.widget<TerminalPane>(find.byType(TerminalPane)).tab.target.label, 'zsh');
+    await tapKey(tester, 'terminal-only-palette');
+    await tester.enterText(search, 'окно');
+    await tester.pumpAndSettle();
+    expect(lastShell, findsNothing);
     await tapKey(tester, 'terminal-only-new-window');
     expect(windows, 1);
     expect(tester.takeException(), isNull);
@@ -125,9 +144,14 @@ void main() {
     expect(find.byKey(const ValueKey('settings-reopen-last-profile')), findsNothing);
     await tapKey(tester, 'ui-accent-swatch-2275501');
     expect(backend.settings.currentLocal.uiAccentColor, 0x22b8ad);
-    await tester.tap(find.byType(Tab).last);
+    await tester.tap(find.widgetWithText(Tab, 'Безопасность'));
+    await tester.pumpAndSettle();
+    await tapKey(tester, 'terminal-allow-multiline-paste');
+    expect(backend.settings.currentLocal.allowMultilinePaste, isTrue);
+    await tester.tap(find.widgetWithText(Tab, 'Терминал'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('terminal-color-scheme')), findsOneWidget);
+    expect(find.byKey(const ValueKey('terminal-allow-multiline-paste')).hitTestable(), findsNothing);
     await tester.tap(find.text('Готово'));
     await tester.pumpAndSettle();
     expect(activeTab(), same(tab));

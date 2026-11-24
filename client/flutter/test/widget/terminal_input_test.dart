@@ -8,6 +8,8 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/terminal/terminal_encoding.dart';
+import 'package:consolecrypt/terminal/terminal_find.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -49,6 +51,66 @@ Future<(ProviderContainer, TerminalTab)> openTerminal(WidgetTester tester, {Term
 }
 
 void main() {
+  test('search maps wrapped wide and supplementary characters to buffer cells', () {
+    final term = Terminal()
+      ..resize(5, 8)
+      ..write('a界🚀BC');
+    final hit = findTerminalText(term, '🚀bc').single;
+    expect(hit.start, const CellOffset(3, 0));
+    expect(hit.end, const CellOffset(2, 1));
+  });
+  testWidgets('find searches the active terminal and Ctrl Enter toggles the native window', (tester) async {
+    final (_, tab) = await openTerminal(tester);
+    tab.terminal.write('\r\nneedle A\r\nneedle B');
+    await tapKey(tester, 'terminal-find-button');
+    await tester.enterText(find.byKey(const ValueKey('terminal-find-input')), 'needle');
+    await settle(tester);
+    expect(find.text('1/2'), findsOneWidget);
+    final first = tab.controller.highlights.single.range!.begin;
+    await tester.tap(find.byTooltip('Next'));
+    await settle(tester);
+    expect(find.text('2/2'), findsOneWidget);
+    expect(tab.controller.highlights.single.range!.begin, isNot(first));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await settle(tester);
+    expect(tab.controller.highlights, isEmpty);
+    final calls = <String>[];
+    const window = MethodChannel('consolecrypt/window');
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(window, (call) async {
+      calls.add(call.method);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(window, null));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(calls, contains('toggleTerminalFullscreen'));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  testWidgets('a pane switches its byte encoding for input and fragmented output', (tester) async {
+    final service = _DelayedEcho()..release();
+    final (container, tab) = await openTerminal(tester, service: service);
+    await tapKey(tester, 'terminal-encoding');
+    final item = find.textContaining('ISO-8859-1 ·');
+    await tester.ensureVisible(item);
+    await tester.tap(item);
+    await settle(tester);
+    expect(tab.encoding, TerminalEncoding.latin1);
+    tab.terminal.textInput('café');
+    await settle(tester);
+    expect(service.completed.expand((b) => b).toList(), [99, 97, 102, 233]);
+    expect(tab.terminal.buffer.lines[0].getText(), 'café');
+    tab.terminal.textInput('😀');
+    await settle(tester);
+    expect(tab.encodingRejected, isTrue);
+    tab.terminal.write('\x1b[?2004h');
+    final tabs = container.read(terminalTabsProvider.notifier);
+    expect(tabs.insertIntoActive('😀'), isFalse);
+    tabs.runInTab(tab, 'echo 😀\necho fin');
+    await settle(tester);
+    expect(service.completed.expand((b) => b).length, 4);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('Ctrl arrows cycle tabs and subsequent input reaches the newly active terminal', (tester) async {
     final (container, first) = await openTerminal(tester);
     final second = await container.read(terminalTabsProvider.notifier).open(first.host!);

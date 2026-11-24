@@ -13,11 +13,14 @@ void main() {
     final first = await TerminalOnlySettings.open(file: file);
     final second = await TerminalOnlySettings.open(file: file);
     expect(first.currentLocal.terminalTabPlacement, TerminalTabPlacement.left);
+    expect(first.currentLocal.allowMultilinePaste, isFalse);
     await first.updateLocal(
       first.currentLocal.copyWith(
         terminalTabPlacement: TerminalTabPlacement.top,
         terminalTabColumnCollapsed: false,
         terminalTabColumnWidth: 228,
+        terminalTabGrouped: true,
+        allowMultilinePaste: true,
         uiAccentColor: 0x22B8AD,
         themeMode: AppThemeMode.dark,
         terminalFontFamily: 'Consolas',
@@ -29,7 +32,9 @@ void main() {
     ]);
     final reopened = (await TerminalOnlySettings.open(file: file)).currentLocal;
     expect(reopened.terminalTabPlacement, TerminalTabPlacement.top);
+    expect(reopened.allowMultilinePaste, isTrue);
     expect(reopened.terminalTabColumnCollapsed, isFalse);
+    expect(reopened.terminalTabGrouped, isTrue);
     expect(reopened.terminalTabColumnWidth, 228);
     expect(reopened.uiAccentColor, 0x22B8AD);
     expect(reopened.themeMode, AppThemeMode.dark);

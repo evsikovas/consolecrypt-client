@@ -4,6 +4,25 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+/// Layout follows the app window, including free-form Android windows on a
+/// tablet or external display. The root scope keeps nested workspace
+/// MediaQueries (sized to an individual pane) from switching the shell.
+class AppWindowLayout extends InheritedWidget {
+  const AppWindowLayout({required this.phone, required super.child, super.key});
+
+  final bool phone;
+
+  static bool phoneFor(Size size) =>
+      AppPlatform.isIOS || AppPlatform.isAndroid && (size.width < 600 || (size.width < 1000 && size.height < 480));
+
+  static bool isPhone(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<AppWindowLayout>()?.phone ??
+      phoneFor(MediaQuery.maybeSizeOf(context) ?? Size.zero);
+
+  @override
+  bool updateShouldNotify(AppWindowLayout oldWidget) => phone != oldWidget.phone;
+}
+
 /// Platform adaptation helpers. Uses `defaultTargetPlatform` (not
 /// `dart:io`) so widget tests can switch platforms with
 /// `debugDefaultTargetPlatformOverride` / `TargetPlatformVariant`.

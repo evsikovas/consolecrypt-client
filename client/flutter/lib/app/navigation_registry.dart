@@ -2,6 +2,7 @@ import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/symbols.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -41,20 +42,22 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
   ShellBranch.kubernetes => l.kubeTitle,
   ShellBranch.databases => l.dbTitle,
   ShellBranch.docker => l.dockerTitle,
+  ShellBranch.tcpdump => l.captureTitle,
 };
 
 const navigationSections = [
   NavigationSection(ShellBranch.hosts, Icons.dns_rounded),
   NavigationSection(ShellBranch.credentials, Icons.key_rounded),
   NavigationSection(ShellBranch.passwords, Icons.password_rounded),
-  NavigationSection(ShellBranch.automation, Icons.account_tree_outlined, defaultPinned: false),
+  NavigationSection(ShellBranch.automation, ToolIcons.automation, defaultPinned: false),
   NavigationSection(ShellBranch.knownHosts, Icons.verified_user_outlined),
   NavigationSection(ShellBranch.sharing, Icons.people_outline_rounded, syncedOnly: true),
   NavigationSection(ShellBranch.terminal, Icons.terminal_rounded),
-  NavigationSection(ShellBranch.rdp, Icons.desktop_windows_outlined),
-  if (kubernetesEnabled) NavigationSection(ShellBranch.kubernetes, Icons.hub_outlined),
+  NavigationSection(ShellBranch.rdp, ToolIcons.rdp),
+  if (kubernetesEnabled) NavigationSection(ShellBranch.kubernetes, ToolIcons.kubernetes),
   if (databasesEnabled) NavigationSection(ShellBranch.databases, Icons.storage_rounded),
-  if (dockerEnabled) NavigationSection(ShellBranch.docker, Icons.view_in_ar_outlined),
+  if (dockerEnabled) NavigationSection(ShellBranch.docker, ToolIcons.docker),
+  NavigationSection(ShellBranch.tcpdump, ToolIcons.tcpdump),
   NavigationSection(ShellBranch.sftp, Icons.folder_copy_rounded),
   NavigationSection(ShellBranch.tunnels, Icons.swap_horiz_rounded),
   NavigationSection(ShellBranch.devices, Icons.devices_rounded, syncedOnly: true),
@@ -85,7 +88,13 @@ String navigationAreaLabel(NavigationArea area, AppLocalizations l) => switch (a
 
 /// Original application glyphs, shared by sidebar and configuration.
 Widget navigationSectionIcon(NavigationSection item) =>
-    item.branch == ShellBranch.rdp || item.branch == ShellBranch.docker
+    {
+      ShellBranch.rdp,
+      ShellBranch.docker,
+      ShellBranch.kubernetes,
+      ShellBranch.automation,
+      ShellBranch.tcpdump,
+    }.contains(item.branch)
     ? Icon(item.icon)
     : AppSymbolIcon(AppSymbol.values.byName(item.branch.name));
 
@@ -102,6 +111,7 @@ String navigationBranchRoute(ShellBranch branch) => switch (branch) {
   ShellBranch.kubernetes => AppRoutes.kubernetes,
   ShellBranch.databases => AppRoutes.databases,
   ShellBranch.docker => AppRoutes.docker,
+  ShellBranch.tcpdump => AppRoutes.tcpdump,
   ShellBranch.sftp => AppRoutes.sftp,
   ShellBranch.tunnels => AppRoutes.tunnels,
   ShellBranch.devices => AppRoutes.devices,

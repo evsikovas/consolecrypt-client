@@ -315,7 +315,7 @@ class _GlassMenuTileState<T> extends State<_GlassMenuTile<T>> {
         return DecoratedBox(
           decoration: ShapeDecoration(color: bg, shape: GlassRadii.shape(radius)),
           child: SizedBox(
-            height: AppPlatform.isMobile
+            height: AppWindowLayout.isPhone(context)
                 ? (subtitle == null ? 48 : 64)
                 : subtitle == null
                 ? GlassSizes.menuItem

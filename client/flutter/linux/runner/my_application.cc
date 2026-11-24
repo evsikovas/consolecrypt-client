@@ -34,7 +34,12 @@ static void window_method_call(FlMethodChannel* channel, FlMethodCall* call, gpo
   const gchar* method = fl_method_call_get_name(call);
   g_autoptr(FlValue) value = nullptr;
   g_autoptr(FlMethodResponse) response = nullptr;
-  if (g_strcmp0(method, "beginRdpFullscreen") == 0) {
+  if (g_strcmp0(method, "toggleTerminalFullscreen") == 0) {
+    if (!state->leased) {
+      if (is_fullscreen(state->window)) gtk_window_unfullscreen(state->window);
+      else gtk_window_fullscreen(state->window);
+    }
+  } else if (g_strcmp0(method, "beginRdpFullscreen") == 0) {
     if (!state->leased) {
       state->was_fullscreen = is_fullscreen(state->window);
       state->leased = TRUE;

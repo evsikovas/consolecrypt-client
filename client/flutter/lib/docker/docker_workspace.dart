@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/tool_icons.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -15,9 +16,12 @@ import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_database_connect.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_forwards.dart';
+import 'package:consolecrypt/docker/docker_image_list.dart';
+import 'package:consolecrypt/docker/docker_network_list.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_removal_dialog.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:consolecrypt/docker/docker_system_views.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
 import 'package:consolecrypt/docker/docker_volume_list.dart';
 import 'package:consolecrypt/notes/note_models.dart';
@@ -42,9 +46,11 @@ class DockerWorkspace extends ConsumerStatefulWidget {
     required this.session,
     required this.onDisconnect,
     this.host,
+    this.sessionPanel = false,
     this.refreshInterval = const Duration(seconds: 5),
     super.key,
   });
+  final bool sessionPanel;
   final DockerService service;
   final DockerSessionInfo session;
   final DockerHost? host;
@@ -53,6 +59,8 @@ class DockerWorkspace extends ConsumerStatefulWidget {
   @override
   ConsumerState<DockerWorkspace> createState() => _DockerWorkspaceState();
 }
+
+enum _DockerTab { containers, volumes, images, networks, disk, events }
 
 class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsBindingObserver, NoteContextPublisher {
   @override
@@ -65,7 +73,14 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   Timer? _timer;
   bool _foreground = true, _loading = false, _loaded = false;
   DockerStateFilter _filter = DockerStateFilter.all;
-  bool _volumes = false;
+  var _inventory = _DockerTab.containers;
+  bool _images = false;
+  final _diskView = GlobalKey<DockerDiskUsageState>();
+  final _eventsView = GlobalKey<DockerEventJournalState>();
+  final _networkList = GlobalKey<DockerNetworkListState>();
+  final _imageList = GlobalKey<DockerImageListState>();
+  DialogRoute<void>? _detailDialog;
+
   final _volumeList = GlobalKey<DockerVolumeListState>();
   Object? _error;
   String _query = '';
@@ -82,13 +97,21 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     WidgetsBinding.instance.addObserver(this);
     unawaited(_refresh());
     _timer = Timer.periodic(widget.refreshInterval, (_) {
-      if (mounted && _foreground && !_loading && TickerMode.valuesOf(context).enabled) unawaited(_refresh());
+      if (!mounted || !_foreground || !TickerMode.valuesOf(context).enabled) return;
+      if (!_loading) unawaited(_refresh());
+      _eventsView.currentState?.refresh();
     });
   }
 
   @override
   void dispose() {
     _generation++;
+    final route = _detailDialog;
+    if (route != null && route.isActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      });
+    }
     _timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _containers.dispose();
@@ -126,6 +149,41 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   bool _wide = false;
 
   void _open(DockerContainer container, [DockerDetailsTab tab = DockerDetailsTab.overview]) {
+    if (widget.sessionPanel) {
+      if (_detailDialog?.isActive == true) {
+        return;
+      }
+      late final DialogRoute<void> route;
+      route = DialogRoute<void>(
+        context: context,
+        builder: (ctx) => Dialog(
+          child: SizedBox(
+            width: 760,
+            height: 620,
+            child: _DetailsHost(
+              containers: _containers,
+              id: container.id,
+              builder: (current, close) => DockerContainerDetails(
+                key: ValueKey(current.id),
+                service: widget.service,
+                session: widget.session,
+                container: current,
+                initialTab: tab,
+                onClose: close,
+                actions: _actions,
+              ),
+            ),
+          ),
+        ),
+      );
+      _detailDialog = route;
+      unawaited(
+        Navigator.of(context).push(route).whenComplete(() {
+          if (identical(_detailDialog, route)) _detailDialog = null;
+        }),
+      );
+      return;
+    }
     if (!_wide) {
       unawaited(
         Navigator.of(context).push(
@@ -160,11 +218,11 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   /// Running forwards live in the shared right panel with the Kubernetes
   /// ones; narrow layouts push a page instead.
   void _toggleForwards() {
-    if (!AppPlatform.isMobile && _wide) {
+    if (!AppWindowLayout.isPhone(context) && _wide) {
       ref.read(workspaceToolsProvider.notifier).toggle(WorkspaceTool.forwards);
       return;
     }
-    if (!_wide || AppPlatform.isMobile) {
+    if (!_wide || AppWindowLayout.isPhone(context)) {
       unawaited(
         Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -301,7 +359,9 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
             issues.add('${target.name} — ${dockerRemovalReason(l, result.error ?? 'unknown')}');
           }
           for (final r in result.resources) {
-            if (r.status != DockerRemovalStatus.removed) issues.add('${r.name} — ${dockerRemovalReason(l, r.reason)}');
+            if (r.status != DockerRemovalStatus.removed) {
+              issues.add('${r.name} — ${dockerRemovalReason(l, r.reason)}');
+            }
           }
         } catch (error) {
           issues.add('${target.name} — ${dockerErrorText(l, error)}');
@@ -394,7 +454,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
       session: widget.session,
       container: container,
     );
-    if (created == true && mounted && !AppPlatform.isMobile && _wide) {
+    if (created == true && mounted && !AppWindowLayout.isPhone(context) && _wide) {
       ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.forwards);
     }
   }
@@ -417,27 +477,149 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   @override
   Widget build(BuildContext context) {
     final noted = _containers.value.where((c) => c.id == _selected).firstOrNull;
-    publishNoteContext(
-      noted == null
-          ? null
-          : NoteContext(
-              // The Docker host id is `local` for this computer.
-              target: NoteDockerTarget(
-                hostId: widget.session.hostId == 'local' ? null : widget.session.hostId, // l10n-ignore: Docker host id
-                name: noted.name,
+    if (!widget.sessionPanel) {
+      publishNoteContext(
+        noted == null
+            ? null
+            : NoteContext(
+                // The Docker host id is `local` for this computer.
+                target: NoteDockerTarget(
+                  hostId: widget.session.hostId == 'local'
+                      ? null
+                      : widget.session.hostId, // l10n-ignore: Docker host id
+                  name: noted.name,
+                ),
+                label: noted.name,
+                icon: ToolIcons.docker,
               ),
-              label: noted.name,
-              icon: Icons.view_in_ar_outlined,
-            ),
-    );
+      );
+    }
     final l = context.l10n;
     final containers = _containers.value;
+    if (widget.sessionPanel) {
+      final observer = widget.service;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 8, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _hostName,
+                    overflow: TextOverflow.ellipsis,
+                    style: GlassTokens.of(context).typography.bodyEmph,
+                  ),
+                ),
+                GlassIconButton(
+                  icon: Icons.refresh,
+                  tooltip: l.dockerRefresh,
+                  size: 28,
+                  style: GlassIconButtonStyle.plain,
+                  onPressed: () {
+                    if (_images) {
+                      _imageList.currentState?.refresh();
+                    } else {
+                      unawaited(_refresh());
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          if (observer is DockerObservationService)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: GlassSegmented<bool>(
+                semanticLabel: l.dockerView,
+                selected: _images,
+                segments: [
+                  GlassSegment(value: false, label: l.dockerStandalone),
+                  GlassSegment(value: true, label: l.kubeImages),
+                ],
+                onChanged: (v) => setState(() => _images = v),
+              ),
+            ),
+          Expanded(
+            child: _images
+                ? DockerImageList(
+                    key: _imageList,
+                    service: observer as DockerObservationService,
+                    session: widget.session,
+                  )
+                : _error != null
+                ? Center(child: Text(dockerErrorText(l, _error!)))
+                : !_loaded
+                ? const Center(child: CircularProgressIndicator())
+                : containers.isEmpty
+                ? Center(child: Text(l.dockerNoContainers))
+                : ListView.separated(
+                    itemCount: containers.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final c = containers[i], tokens = GlassTokens.of(context);
+                      return ListTile(
+                        dense: true,
+                        visualDensity: VisualDensity.compact,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                        leading: Icon(
+                          ToolIcons.docker,
+                          size: 18,
+                          color: c.state == DockerContainerState.running
+                              ? tokens.palette.success
+                              : tokens.secondaryLabel,
+                        ),
+                        title: Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(c.image, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        trailing: Tooltip(
+                          message: c.status,
+                          child: Text(dockerStateLabel(l, c.state), style: tokens.typography.caption),
+                        ),
+                        onTap: () => _open(c),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      );
+    }
     final groups = groupDockerContainers(containers, query: _query, filter: _filter);
     final active = containers.where((c) => dockerIsActive(c.state)).length;
     final selected = containers.where((c) => c.id == _selected).firstOrNull;
     final forwards = ref.watch(dockerForwardsProvider).value?.where((f) => f.state == DockerForwardState.running);
     final pad = pagePadding(context);
-    final list = _volumes
+    final observation = widget.service;
+    final list = _inventory == _DockerTab.images && observation is DockerObservationService
+        ? DockerImageList(
+            key: _imageList,
+            service: observation as DockerObservationService,
+            session: widget.session,
+            query: _query,
+          )
+        : _inventory == _DockerTab.networks && observation is DockerObservationService
+        ? DockerNetworkList(
+            key: _networkList,
+            service: observation as DockerObservationService,
+            session: widget.session,
+            query: _query,
+            containers: containers,
+          )
+        : _inventory == _DockerTab.disk && observation is DockerObservationService
+        ? DockerDiskUsage(
+            key: _diskView,
+            service: observation as DockerObservationService,
+            sessionId: widget.session.id,
+            query: _query,
+          )
+        : _inventory == _DockerTab.events && observation is DockerObservationService
+        ? DockerEventJournal(
+            key: _eventsView,
+            service: observation as DockerObservationService,
+            sessionId: widget.session.id,
+            query: _query,
+          )
+        : _inventory == _DockerTab.volumes
         ? DockerVolumeList(key: _volumeList, service: widget.service, session: widget.session, query: _query)
         : _error != null && !_loaded
         ? Center(
@@ -453,7 +635,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
         : groups.isEmpty
         ? EmptyState(
             key: const ValueKey('docker-no-containers'),
-            icon: Icons.view_in_ar_outlined,
+            icon: ToolIcons.docker,
             title: containers.isEmpty ? l.dockerNoContainers : l.dockerNoMatches,
             message: containers.isEmpty ? l.dockerNoContainersHelp : null,
           )
@@ -480,7 +662,17 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
               final currentWidth = (_detailsFraction * paneSpace).clamp(_minDetailsWidth, maxDetailsWidth);
               _detailsFraction = (currentWidth + delta).clamp(_minDetailsWidth, maxDetailsWidth) / paneSpace;
             });
-            final showDetails = wide && selected != null;
+            final showDetails = _inventory == _DockerTab.containers && wide && selected != null;
+            final sections = <_DockerTab, String>{
+              _DockerTab.containers: l.dockerStandalone,
+              _DockerTab.volumes: l.dockerVolumes,
+              if (observation is DockerObservationService) ...{
+                _DockerTab.images: l.kubeImages,
+                _DockerTab.networks: l.dockerNetworks,
+                _DockerTab.disk: l.dockerDiskUsage,
+                _DockerTab.events: l.dockerEventJournal,
+              },
+            };
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -496,6 +688,10 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                   onRefresh: () {
                     unawaited(_refresh());
                     unawaited(_volumeList.currentState?.refresh());
+                    _imageList.currentState?.refresh();
+                    _networkList.currentState?.refresh();
+                    _diskView.currentState?.refresh();
+                    _eventsView.currentState?.refresh();
                   },
                   onForwards: _toggleForwards,
                   onDisconnect: widget.onDisconnect,
@@ -508,32 +704,38 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                     runSpacing: GlassSpacing.s8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      GlassSegmented<bool>(
-                        key: const ValueKey('docker-view'),
-                        inChrome: false,
-                        semanticLabel: l.dockerView,
-                        selected: _volumes,
-                        onChanged: (value) => setState(() => _volumes = value),
-                        segments: [
-                          GlassSegment(
-                            key: const ValueKey('docker-view-containers'),
-                            value: false,
-                            label: l.dockerStandalone,
-                          ),
-                          GlassSegment(key: const ValueKey('docker-view-volumes'), value: true, label: l.dockerVolumes),
-                        ],
+                      DefaultTabController(
+                        length: sections.length,
+                        initialIndex: sections.keys.toList().indexOf(_inventory),
+                        child: TabBar(
+                          key: const ValueKey('docker-view'),
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          dividerHeight: 0,
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                          labelStyle: GlassTokens.of(context).typography.button,
+                          onTap: (i) => setState(() => _inventory = sections.keys.elementAt(i)),
+                          tabs: [
+                            for (final section in sections.entries)
+                              Tab(
+                                key: ValueKey('docker-view-${section.key.name}'),
+                                text: section.value,
+                                height: MediaQuery.textScalerOf(context).scale(20) + 14,
+                              ),
+                          ],
+                        ),
                       ),
-                      SizedBox(
-                        width: constraints.maxWidth < 600 ? constraints.maxWidth : 320,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 320),
                         child: GlassField(
                           key: const ValueKey('docker-filter'),
                           fieldKey: const ValueKey('docker-filter-input'),
                           search: true,
-                          placeholder: l.dockerFilterContainers,
+                          placeholder: _inventory == _DockerTab.containers ? l.dockerFilterContainers : l.commonSearch,
                           onChanged: (value) => setState(() => _query = value),
                         ),
                       ),
-                      if (!_volumes)
+                      if (_inventory == _DockerTab.containers)
                         GlassSegmented<DockerStateFilter>(
                           key: const ValueKey('docker-state-filter'),
                           inChrome: false,
@@ -743,7 +945,7 @@ class _DetailsHost extends StatelessWidget {
       final container = list.where((c) => c.id == id).firstOrNull;
       if (container == null) {
         return EmptyState(
-          icon: Icons.view_in_ar_outlined,
+          icon: ToolIcons.docker,
           title: context.l10n.dockerContainerGone,
           compact: true,
           action: GlassButton(label: context.l10n.commonClose, onPressed: () => Navigator.of(context).maybePop()),

@@ -93,6 +93,24 @@ void main() {
     expect(exposure.count, 0);
   });
 
+  testWidgets('a retained background workspace does not protect the foreground window', (tester) async {
+    final exposure = SecretExposure();
+    Widget workspace(int index) => IndexedStack(
+      alignment: Alignment.topLeft,
+      index: index,
+      children: [
+        RevealedSecret(exposure: exposure, child: const SizedBox()),
+        const SizedBox(),
+      ],
+    );
+    await tester.pumpWidget(workspace(0));
+    expect(exposure.visible, isTrue);
+    await tester.pumpWidget(workspace(1));
+    expect(exposure.visible, isFalse);
+    await tester.pumpWidget(workspace(0));
+    expect(exposure.visible, isTrue);
+  });
+
   testWidgets('RevealedSecretText follows text and bullet drawing', (tester) async {
     final exposure = SecretExposure.instance;
     final controller = ObscurableTextController();

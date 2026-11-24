@@ -44,6 +44,7 @@ class KubeResourceDetails extends ConsumerStatefulWidget {
   const KubeResourceDetails({
     required this.session,
     required this.resource,
+    required this.podKind,
     required this.service,
     required this.contextName,
     this.onTerminalOpened,
@@ -77,6 +78,7 @@ class KubeResourceDetails extends ConsumerStatefulWidget {
   final List<KubeResourceRef> ancestors, openedResources;
   final ValueChanged<KubeResourceRef>? onSelectResource, onCloseResource;
   final KubeResourceRef resource;
+  final KubeResourceKind? podKind;
   final KubeBrowserService service;
   final String contextName;
   final VoidCallback? onTerminalOpened;
@@ -105,10 +107,18 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
   void initState() {
     super.initState();
     _scope = ref.read(kubeScopeProvider);
-    _tabs = TabController(length: _hasLogs ? 5 : 4, initialIndex: widget.initialLogs && _hasLogs ? 2 : 0, vsync: this)
-      ..addListener(() {
-        if (mounted) setState(() {});
-      });
+    _tabs =
+        TabController(
+          length: _hasLogs ? 5 : 4,
+          initialIndex: switch (widget.initialAction) {
+            KubeResourceOpenAction.yaml => 1,
+            KubeResourceOpenAction.events => _hasLogs ? 3 : 2,
+            _ => widget.initialLogs && _hasLogs ? 2 : 0,
+          },
+          vsync: this,
+        )..addListener(() {
+          if (mounted) setState(() {});
+        });
     unawaited(_load());
   }
 
@@ -156,7 +166,27 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
 
   Future<void> _reviewInitialAction() async {
     if (!_current || _detail == null) return;
-    if (widget.initialAction == KubeResourceOpenAction.shell && widget.resource.api.isPod) {
+    if (widget.initialAction == KubeResourceOpenAction.remove &&
+        widget.resource.api.verbs.contains('delete') &&
+        (ref.read(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false)) {
+      await _delete();
+    } else if (widget.initialAction == KubeResourceOpenAction.scale &&
+        widget.service is KubeOperationsService &&
+        (ref.read(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false)) {
+      final changed = await reviewKubeOperation(
+        context,
+        widget.session,
+        widget.resource,
+        _detail!,
+        widget.service as KubeOperationsService,
+        'scale',
+      );
+      if (_current && changed) {
+        _changed = true;
+        widget.onChanged?.call();
+        await _load();
+      }
+    } else if (widget.initialAction == KubeResourceOpenAction.shell && widget.resource.api.isPod) {
       await _terminal();
     } else if (widget.initialAction == KubeResourceOpenAction.restart && widget.service is KubeOperationsService) {
       setState(() => _mutating = true);
@@ -228,6 +258,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
     final changed = await showKubeResourceDetails<bool>(
       context,
       builder: (_) => KubeResourceDetails(
+        podKind: widget.podKind,
         session: widget.session,
         contextName: widget.contextName,
         resource: resource,
@@ -608,7 +639,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                 ),
               if (_loading)
                 const Padding(padding: EdgeInsets.only(top: 6), child: LinearProgressIndicator(minHeight: 2)),
-              if (!AppPlatform.isMobile && _gitOpsResource != null)
+              if (!AppWindowLayout.isPhone(context) && _gitOpsResource != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(GlassSpacing.s16, GlassSpacing.s8, GlassSpacing.s16, 0),
                   child: _gitOpsActionBar(canWrite),
@@ -656,9 +687,11 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                               if (widget.onPinLogs != null)
                                 Align(
                                   alignment: Alignment.centerLeft,
-                                  child: GlassButton.plain(
+                                  child: GlassIconButton(
                                     key: const ValueKey('kube-pin-logs'),
-                                    label: l.kubePinLogs,
+                                    style: GlassIconButtonStyle.plain,
+                                    iconSize: GlassSizes.iconMenu,
+                                    tooltip: l.kubePinLogs,
                                     icon: Icons.push_pin_outlined,
                                     onPressed: () {
                                       final callback = widget.onPinLogs!;
@@ -693,7 +726,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                   ),
                 ),
               ],
-              if (AppPlatform.isMobile && _gitOpsResource != null) _gitOpsActionBar(canWrite),
+              if (AppWindowLayout.isPhone(context) && _gitOpsResource != null) _gitOpsActionBar(canWrite),
             ],
           );
     final shortcuts = <ShortcutActivator, VoidCallback>{
@@ -747,7 +780,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
           width: 980,
           title: '${widget.resource.api.kind} · ${widget.resource.name}',
           content: SizedBox(
-            height: AppPlatform.isMobile && MediaQuery.sizeOf(context).width < 720 ? double.infinity : 600,
+            height: AppWindowLayout.isPhone(context) && MediaQuery.sizeOf(context).width < 720 ? double.infinity : 600,
             child: body,
           ),
           primaryAction: GlassButton(label: l.commonClose, onPressed: _mutating ? null : () => _close()),
@@ -781,10 +814,15 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
           'ReplicaSet',
           'Job',
         ].contains(widget.resource.api.kind);
-    Widget action(String key, String label, IconData icon, VoidCallback? onPressed, {String? tooltip}) => Tooltip(
-      message: tooltip ?? label,
-      child: GlassButton(key: ValueKey(key), label: label, icon: icon, size: GlassControlSize.md, onPressed: onPressed),
-    );
+    Widget action(String key, String label, IconData icon, VoidCallback? onPressed, {String? tooltip}) =>
+        GlassIconButton(
+          key: ValueKey(key),
+          icon: icon,
+          tooltip: tooltip == null || tooltip == label ? label : '$label · $tooltip',
+          style: GlassIconButtonStyle.plain,
+          iconSize: GlassSizes.iconMenu,
+          onPressed: onPressed,
+        );
     return Padding(
       padding: const EdgeInsets.fromLTRB(GlassSpacing.s16, GlassSpacing.s12, GlassSpacing.s16, 0),
       child: Wrap(
@@ -909,7 +947,9 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
             GlassIconButton(
               key: const ValueKey('kube-delete-resource'),
               icon: Icons.delete_outline,
-              tooltip: canWrite ? l.commonDelete : l.kubeReadOnly,
+              style: GlassIconButtonStyle.plain,
+              iconSize: GlassSizes.iconMenu,
+              tooltip: canWrite ? l.commonDelete : '${l.commonDelete} · ${l.kubeReadOnly}',
               color: canWrite ? GlassTokens.of(context).palette.danger : null,
               onPressed: canWrite && !_mutating ? _delete : null,
             ),
@@ -921,25 +961,44 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
   Widget _gitOpsActionBar(bool canWrite) {
     final l = context.l10n, resource = _gitOpsResource!;
     return Wrap(
-      key: ValueKey(AppPlatform.isMobile ? 'kube-gitops-bottom-actions' : 'kube-gitops-top-actions'),
+      key: ValueKey(AppWindowLayout.isPhone(context) ? 'kube-gitops-bottom-actions' : 'kube-gitops-top-actions'),
       spacing: GlassSpacing.s6,
       runSpacing: GlassSpacing.s6,
       children: [
         for (final action in kubeGitOpsActions(resource))
-          GlassButton(
+          GlassIconButton(
             key: ValueKey('kube-gitops-detail-$action'),
-            label: kubeGitOpsActionLabel(l, action),
-            tooltip: resource.isFlux ? kubeGitOpsActionHelp(l, action) : null,
+            icon: switch (action) {
+              'reconcile_with_source' => Icons.account_tree_outlined,
+              'suspend' => Icons.pause_rounded,
+              'resume' => Icons.play_arrow_rounded,
+              'reset' => Icons.restore_rounded,
+              'force' => Icons.bolt_rounded,
+              'sync' => Icons.sync_rounded,
+              'hard_refresh' => Icons.cached_rounded,
+              _ => Icons.refresh_rounded,
+            },
+            tooltip: [kubeGitOpsActionLabel(l, action), ?kubeGitOpsActionHelp(l, action)].join(' · '),
+            style: GlassIconButtonStyle.plain,
+            iconSize: GlassSizes.iconMenu,
             onPressed: canWrite && !_mutating ? () => _gitOpsAction(action) : null,
           ),
-        GlassButton(
-          label: l.kubeLogs,
+        GlassIconButton(
+          tooltip: l.kubeLogs,
           icon: Icons.article_outlined,
+          style: GlassIconButtonStyle.plain,
+          iconSize: GlassSizes.iconMenu,
           onPressed: () {
             if (_current) unawaited(_gitOpsDetailsKey.currentState?.openControllerLogs());
           },
         ),
-        GlassButton(label: l.kubeGitOpsFlow, icon: Icons.account_tree_outlined, onPressed: _gitOpsGraph),
+        GlassIconButton(
+          tooltip: l.kubeGitOpsFlow,
+          icon: Icons.hub_outlined,
+          style: GlassIconButtonStyle.plain,
+          iconSize: GlassSizes.iconMenu,
+          onPressed: _gitOpsGraph,
+        ),
       ],
     );
   }
@@ -954,20 +1013,7 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
         showRelations: links,
         showMetrics: metrics,
         openResource: _related,
-        openPod: (row) => _related(
-          KubeResourceRef(
-            api: const KubeResourceKind(
-              group: '',
-              version: 'v1',
-              resource: 'pods',
-              kind: 'Pod',
-              namespaced: true,
-              verbs: ['get', 'list', 'watch'],
-            ),
-            name: row.name,
-            namespace: row.namespace,
-          ),
-        ),
+        podKind: widget.podKind,
       );
 
   Widget _overview(KubeResourceDetail detail) {

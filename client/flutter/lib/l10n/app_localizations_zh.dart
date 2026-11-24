@@ -10,6 +10,275 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String registryBuildOnSsh(String host) {
+    return '通过 SSH 在 $host 上构建';
+  }
+
+  @override
+  String get registryRemoteDirectory => '服务器上包含 Dockerfile 的目录';
+
+  @override
+  String get registryRemoteAuthHelp => '构建期间，Buildx 会在此服务器上使用选定的镜像仓库帐户。';
+
+  @override
+  String get registryRemoteTools => 'SSH 服务器需要 Python 3、Docker Buildx 以及本地 Docker 套接字访问权限。';
+
+  @override
+  String get registryLabel => '镜像仓库';
+
+  @override
+  String get registryChoose => '选择已保存的仓库';
+
+  @override
+  String get registryAdd => '添加镜像仓库';
+
+  @override
+  String get registryOther => '其他仓库';
+
+  @override
+  String get registryAddress => '仓库主机';
+
+  @override
+  String get registryRepo => '镜像路径';
+
+  @override
+  String get registryTag => '标签';
+
+  @override
+  String get registryToken => '密码或访问令牌';
+
+  @override
+  String get registryPublish => '推送镜像';
+
+  @override
+  String get registryPublished => '镜像已发布。镜像字段已填入所选标签。';
+
+  @override
+  String get registryInvalid => '请输入仓库主机，可附加端口。';
+
+  @override
+  String get registrySaveFailed => '无法保存仓库凭据。';
+
+  @override
+  String get registryPublishFailed => '推送失败。请检查镜像路径、推送权限以及 Docker 主机到仓库的连接。';
+
+  @override
+  String get terminalBarItems => '状态栏指标';
+
+  @override
+  String get terminalBarColor => '指标颜色';
+
+  @override
+  String get terminalBarReset => '恢复默认指标和颜色';
+
+  @override
+  String get captureSwap => '交换服务器';
+
+  @override
+  String get captureSudoPassword => 'sudo 密码';
+
+  @override
+  String get captureSyn => '请求建立 TCP 连接';
+
+  @override
+  String get captureSynAck => '确认 TCP 连接请求';
+
+  @override
+  String get captureAck => '确认收到数据';
+
+  @override
+  String get captureData => '传输 TCP 数据';
+
+  @override
+  String get captureFin => '结束发送数据';
+
+  @override
+  String get captureRst => '重置 TCP 连接';
+
+  @override
+  String get captureArpQuery => '查询设备的 MAC 地址';
+
+  @override
+  String get captureArpReply => '返回设备的 MAC 地址';
+
+  @override
+  String get capturePacketBytes => '捕获的字节';
+
+  @override
+  String get dockerDiskUsage => '磁盘用量';
+
+  @override
+  String get dockerEventJournal => '事件';
+
+  @override
+  String get dockerBuildCache => '构建缓存';
+
+  @override
+  String dockerObjectsCount(int count) {
+    return '对象数：$count';
+  }
+
+  @override
+  String dockerReclaimable(String size) {
+    return '可回收：$size';
+  }
+
+  @override
+  String get dockerRecentLifecycle => '容器事件 · 最近 24 小时';
+
+  @override
+  String get dockerJournalEmpty => '最近 24 小时内没有容器事件';
+
+  @override
+  String dockerLifecycleAction(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'create': '已创建',
+      'start': '已启动',
+      'restart': '已重启',
+      'stop': '已停止',
+      'die': '已退出',
+      'kill': '终止信号',
+      'oom': '内存不足',
+      'destroy': '已删除',
+      'pause': '已暂停',
+      'unpause': '已恢复',
+      'rename': '已重命名',
+      'healthy': '健康',
+      'unhealthy': '不健康',
+      'starting': '正在进行健康检查',
+      'other': '事件',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keepassRecentKdbx => '最近打开的 KDBX 文件';
+
+  @override
+  String get terminalMoreMetrics => '更多服务器指标';
+
+  @override
+  String get terminalMetricsBar => '在终端底部显示服务器指标';
+
+  @override
+  String get terminalChannelLatency => 'SSH 通道延迟';
+
+  @override
+  String terminalLatencyValue(int value) {
+    return '$value 毫秒';
+  }
+
+  @override
+  String get terminalNormalizedLoad => '每个 CPU 的一分钟平均负载';
+
+  @override
+  String get terminalEncodingError => '当前编码无法表示输入内容。请选择其他编码后再发送。';
+
+  @override
+  String get terminalEncodingSimplifiedChinese => '简体中文';
+
+  @override
+  String get terminalEncodingTraditionalChinese => '繁体中文';
+
+  @override
+  String get terminalEncodingJapanese => '日语';
+
+  @override
+  String get terminalEncodingKorean => '韩语';
+
+  @override
+  String get terminalEncodingWesternEuropean => '西欧';
+
+  @override
+  String get terminalEncodingCentralEuropean => '中欧';
+
+  @override
+  String get terminalFindText => '在终端中查找';
+
+  @override
+  String get dockerNetworkContainers => '已连接的容器';
+
+  @override
+  String get dockerNetworkEmpty => '未找到网络';
+
+  @override
+  String get terminalEncodingCyrillic => '西里尔文';
+
+  @override
+  String dockerImageWeeksAgo(int count) {
+    return '$count 周前';
+  }
+
+  @override
+  String get sessionDiskIO => '磁盘读 / 写';
+
+  @override
+  String get sessionGroupTabs => '按主机文件夹分组会话';
+
+  @override
+  String get sessionDevicesStale => '无法刷新信任状态，当前显示上次的设备列表。';
+
+  @override
+  String get sessionRemote => '远程';
+
+  @override
+  String get sessionLocal => '本地';
+
+  @override
+  String get sessionResponding => '正在回复';
+
+  @override
+  String get sessionNoProvider => '选择提供方';
+
+  @override
+  String get sessionHidden => '已隐藏';
+
+  @override
+  String get sessionHistoryUnavailable => '无法读取命令历史记录';
+
+  @override
+  String get serverShellHistory => '服务器命令历史';
+
+  @override
+  String get serverHistoryEmpty => 'Shell 历史文件中暂无已保存的命令';
+
+  @override
+  String get dockerMainPid => '主进程 PID';
+
+  @override
+  String get dockerProcessElapsed => '运行时间';
+
+  @override
+  String get dockerProcessUser => '用户';
+
+  @override
+  String get sessionHistoryEmpty => '此会话的命令将显示在这里';
+
+  @override
+  String get sessionUsage => '资源使用量';
+
+  @override
+  String get sessionUsageUnavailable => '指标不可用';
+
+  @override
+  String get sessionSwap => '交换空间';
+
+  @override
+  String get sessionLogins => '登录会话';
+
+  @override
+  String get sessionSnippetSearch => '搜索代码片段';
+
+  @override
+  String get sessionAsk => '询问此主机';
+
+  @override
+  String get sessionAskGeneral => '提个问题';
+
+  @override
+  String get sessionSnip => '存为代码片段';
+
+  @override
   String get uiOtherDevices => '其他设备';
 
   @override
@@ -5318,6 +5587,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get terminalClearSelection => '清除选择';
+
+  @override
+  String get terminalAllowMultilinePaste => '允许粘贴多行文本而无需确认';
 
   @override
   String get terminalPasteConfirmTitle => '粘贴多行或控制字符 ?';
@@ -16862,7 +17134,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeDeploy => '部署到 Kubernetes · 实验功能';
 
   @override
-  String get dockerKubeIntro => '此实验功能支持一个无状态 Linux 容器、一个副本和一个内部 ClusterIP 服务。部署前请检查清单。';
+  String get dockerKubeIntro => '一个 Linux 副本和一个内部 ClusterIP Service。请单独配置 Docker 环境覆盖项与 Compose 依赖。';
 
   @override
   String get dockerKubeUnsupported => '向导需要配置已经验证的 Linux 容器，且容器无需使用宿主机网络、设备或额外权限即可运行。请选择兼容的容器，或手动准备 Kubernetes 清单。';
@@ -16880,7 +17152,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeNoProvider => '请在设置中添加 AI 提供商以生成清单。';
 
   @override
-  String get dockerKubeImageHelp => '请先将镜像发布到集群节点可以访问的镜像仓库。此向导不会上传本地镜像。建议使用镜像摘要，因为可变标签可能指向其他镜像。localhost 不能用作远程仓库。';
+  String get dockerKubeImageHelp => '使用集群节点可拉取的标签或摘要。私有镜像可能需要 imagePullSecret。';
 
   @override
   String get dockerKubePort => '容器和服务的 TCP 端口';
@@ -16907,10 +17179,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeTemplate => '使用模板';
 
   @override
-  String get dockerKubeAiReview => '请先检查将发送给 AI 服务的模板。收到回复后，ConsoleCrypt 会在本机添加 Docker 启动命令。';
+  String get dockerKubePrompt => '提示词';
 
   @override
-  String get dockerKubeSendAi => '将模板发送给 AI';
+  String get dockerKubeAiReview => '发送前可以编辑提示词或补充要求。生成后，ConsoleCrypt 会在本地添加启动命令。';
+
+  @override
+  String get dockerKubeSendAi => '发送提示词';
 
   @override
   String get dockerKubeManifestRejected =>
@@ -16920,7 +17195,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeInvalidTarget => '请检查应用和命名空间的名称、已发布镜像的仓库及标签或摘要、TCP 端口和镜像拉取密钥的名称。';
 
   @override
-  String get dockerKubeAcknowledge => '我已检查镜像、CPU 架构和启动命令。部署使用镜像中的环境和文件系统。请单独配置 Docker 中覆盖的环境变量和 Compose 依赖。';
+  String get dockerKubeAcknowledge => '已核对镜像、平台和启动命令';
 
   @override
   String get dockerKubeValidated => '两个资源均已通过服务器端试运行。部署只会创建新资源，保留已有资源。';
@@ -18627,4 +18902,153 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hostInspector => '主机详情';
+
+  @override
+  String get captureTitle => 'TCPdump';
+
+  @override
+  String get captureSubtitle => '实时查看数据包头、地址和端口。';
+
+  @override
+  String get captureChoose => '选择端点以开始抓包。';
+
+  @override
+  String get captureListening => '正在监听数据包';
+
+  @override
+  String get captureStopped => '抓包已停止';
+
+  @override
+  String get captureMissing => '抓包端未安装 tcpdump。';
+
+  @override
+  String get captureDenied => '需要更高权限才能抓包。';
+
+  @override
+  String get captureStartTimeout => '服务器未在 20 秒内确认抓包已启动。';
+
+  @override
+  String get captureFailed => '未能完成抓包。';
+
+  @override
+  String get captureNoPeer => '无法确定连接地址。';
+
+  @override
+  String get captureSource => '抓包服务器';
+
+  @override
+  String get captureTarget => '对端服务器';
+
+  @override
+  String get captureServersHelp => '在第一台服务器上抓取它与第二台服务器之间的双向流量。';
+
+  @override
+  String get captureStart => '开始抓包';
+
+  @override
+  String get captureStop => '停止';
+
+  @override
+  String captureCount(int shown, int total) {
+    return '显示 $shown / $total 个数据包';
+  }
+
+  @override
+  String get captureInstall => '安装 tcpdump';
+
+  @override
+  String get captureManualInstall => '请使用此主机的包管理器安装 tcpdump，然后重新开始抓包。';
+
+  @override
+  String get captureSudo => '使用 sudo 重试';
+
+  @override
+  String get tmuxTitle => 'tmux 会话';
+
+  @override
+  String tmuxCount(int count) {
+    return '$count 个会话';
+  }
+
+  @override
+  String tmuxCounts(int windows, int clients) {
+    return '窗口：$windows · 客户端：$clients';
+  }
+
+  @override
+  String tmuxActivity(String time) {
+    return '上次活动：$time';
+  }
+
+  @override
+  String get tmuxAttach => '连接会话';
+
+  @override
+  String get tmuxDetach => '分离会话';
+
+  @override
+  String get tmuxCreate => '新建会话';
+
+  @override
+  String get tmuxKill => '终止会话';
+
+  @override
+  String tmuxConfirmKill(String name) {
+    return '终止“$name”及其中的进程？';
+  }
+
+  @override
+  String get tmuxEmpty => '此主机暂无 tmux 会话';
+
+  @override
+  String get tmuxError => 'tmux 操作失败。请刷新列表后重试。';
+
+  @override
+  String get tmuxNameHint => '请使用字母、数字、空格、连字符或下划线。';
+
+  @override
+  String get captureCheck => '检查 tcpdump';
+
+  @override
+  String get captureReady => '已安装 tcpdump';
+
+  @override
+  String get captureUseSudo => '使用 sudo 捕获';
+
+  @override
+  String get capturePrivilegeHint => '抓包需要 root 或抓包权限。若 sudo 提示，请输入密码。';
+
+  @override
+  String captureInstallHost(String host) {
+    return '在 $host 上安装 tcpdump？命令将在其 SSH 终端中运行，可在终端中输入 sudo 密码并确认安装。';
+  }
+
+  @override
+  String get captureExchange => '连接详情';
+
+  @override
+  String captureExchangeCount(int count) {
+    return '选中时这两个端点之间的包数：$count';
+  }
+
+  @override
+  String get registryBuildFromSource => '从本地 Dockerfile 构建';
+
+  @override
+  String get registryBuildFolder => '选择项目文件夹';
+
+  @override
+  String get registryBuildPush => '构建并发布';
+
+  @override
+  String get registryBuildFailed => '构建或发布失败。请检查 Dockerfile、Buildx 平台支持及仓库写入权限。';
+
+  @override
+  String get registryBuildContextError => '请选择含有 Dockerfile 的项目文件夹。';
+
+  @override
+  String get registryPin => '按摘要固定此版本';
+
+  @override
+  String get dockerKubeDeployAction => '部署';
 }

@@ -695,7 +695,12 @@ impl AppCore {
         let object = VaultObject::VaultSettings(model);
         validate_refs(ws, &object)?;
         u.writer.put(object).await?;
-        let stored = ws.vault_settings(id).ok_or_else(|| AppError::internal("settings vanished after save"))?;
+        if !crate::ai::history_enabled(ws) {
+            u.ssh.terminals.clear_command_histories();
+        }
+        let stored = ws
+            .vault_settings(id)
+            .ok_or_else(|| AppError::internal("settings vanished after save"))?;
         let mut result = VaultSettingsDto::from_model(&stored);
         result.external_vaults = Some(ws.external_vaults());
         Ok(result)

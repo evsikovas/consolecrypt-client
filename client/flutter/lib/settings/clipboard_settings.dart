@@ -1,9 +1,32 @@
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secure_clipboard.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
+class MultilinePasteSetting extends ConsumerWidget {
+  const MultilinePasteSetting({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.read(settingsServiceProvider);
+    return CheckboxListTile(
+      key: const ValueKey('terminal-allow-multiline-paste'),
+      contentPadding: EdgeInsets.zero,
+      controlAffinity: ListTileControlAffinity.leading,
+      title: Text(context.l10n.terminalAllowMultilinePaste),
+      value: ref.watch(localSettingsProvider.select((s) => s.value?.allowMultilinePaste)) ?? false,
+      onChanged: (value) => runWithFeedback(
+        context,
+        () => settings.updateLocal(settings.currentLocal.copyWith(allowMultilinePaste: value)),
+      ),
+    );
+  }
+}
 
 /// Android only (S8, ТР-4): clear the clipboard at the deadline even when the
 /// app is in the background and cannot check that it still holds our secret.

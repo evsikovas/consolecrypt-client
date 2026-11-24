@@ -12,6 +12,13 @@ use cc_terminal_core::{OpenedShell, ShellOpener, TerminalError, TerminalId, Term
 use std::{future::Future, path::Path, sync::Arc};
 use tokio::sync::{Mutex, broadcast, mpsc};
 
+#[path = "ssh_history.rs"]
+mod history;
+#[path = "ssh_tmux.rs"]
+mod tmux;
+#[path = "ssh_tcpdump.rs"]
+mod tcpdump;
+
 fn parse_terminal_id(s: &str) -> AppResult<TerminalId> {
     uuid::Uuid::parse_str(s.trim()).map_err(|_| AppError::invalid("terminal_id", "not a valid id"))
 }
@@ -294,10 +301,16 @@ impl AppCore {
     /// Send keyboard input.
     pub async fn terminal_write(&self, terminal_id: String, data: Vec<u8>) -> AppResult<()> {
         let (_, u) = self.unlocked().await?;
-        Ok(u.ssh
-            .terminals
-            .write(parse_terminal_id(&terminal_id)?, &data)
-            .await?)
+        let id = parse_terminal_id(&terminal_id)?;
+        if data.iter().any(|b| matches!(b, b'\n' | b'\r')) {
+            let enabled = crate::ai::history_enabled(u.working())
+                && matches!(u.ssh.terminals.info(id)?.target, cc_terminal_core::TerminalTarget::Local { .. });
+            u.ssh.terminals.set_history_filter(
+                id,
+                enabled.then_some(|cmd| !cc_docker_core::contains_secret(cmd)),
+            )?;
+        }
+        Ok(u.ssh.terminals.write(id, &data).await?)
     }
 
     pub async fn terminal_resize(
@@ -348,10 +361,42 @@ impl AppCore {
     pub async fn close_terminal(&self, terminal_id: String) -> AppResult<()> {
         let (_, u) = self.unlocked().await?;
         let tid = parse_terminal_id(&terminal_id)?;
-        let _ = u.ssh.terminals.close(tid).await;
         Ok(u.ssh.terminals.remove(tid).await?)
     }
 
+    pub async fn terminal_command_history(&self, terminal_id: String) -> AppResult<Vec<String>> {
+        let (_, u) = self.unlocked().await?;
+        if !crate::ai::history_enabled(u.working()) {
+            u.ssh.terminals.clear_command_histories();
+            return Ok(Vec::new());
+        }
+        let id = parse_terminal_id(&terminal_id)?;
+        let terminals = &u.ssh.terminals;
+        let host_id = match terminals.info(id)?.target {
+            cc_terminal_core::TerminalTarget::Local { .. } => return Ok(terminals.session_commands(id)?),
+            cc_terminal_core::TerminalTarget::Ssh { host_id } => host_id,
+            _ => return Err(AppError::invalid("terminal_history", "SSH or local shell required")),
+        };
+        let connection = terminals.connected_ssh(id, host_id)
+            .ok_or_else(|| AppError::invalid("terminal_history", "SSH session is closed"))?;
+        let mut shutdown = u.sharing_shutdown.subscribe();
+        if *shutdown.borrow() { return Err(AppError::VaultLocked); }
+        let mut result = connection.exec_bounded(history::READ, history::LIMIT + 64, async {
+            tokio::select! {
+                _ = terminals.wait_closed(id) => {},
+                _ = shutdown.changed() => {},
+                _ = tokio::time::sleep(std::time::Duration::from_secs(8)) => {},
+            }
+        }).await?.ok_or(AppError::Cancelled)?;
+        let stdout = zeroize::Zeroizing::new(std::mem::take(&mut result.stdout));
+        if *shutdown.borrow() || !crate::ai::history_enabled(u.working()) {
+            return Ok(Vec::new());
+        }
+        if result.exit_status != Some(0) || result.exit_signal.is_some() {
+            return Err(AppError::invalid("terminal_history", "shell history unavailable"));
+        }
+        Ok(history::commands(&stdout))
+    }
     /// Best-effort last command / error of a terminal (AI context hooks).
     pub async fn terminal_last_command(&self, terminal_id: String) -> AppResult<Option<String>> {
         let (_, u) = self.unlocked().await?;

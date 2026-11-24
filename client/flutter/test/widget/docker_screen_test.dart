@@ -15,6 +15,7 @@ import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_host_path.dart';
+import 'package:consolecrypt/docker/docker_image_list.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_screen.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
@@ -22,7 +23,7 @@ import 'package:consolecrypt/docker/docker_terminal.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
-import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
+import 'package:flutter/gestures.dart' show PointerDeviceKind, kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,6 +44,61 @@ class _Docker extends MockDockerService {
     forwardsStarted.add((containerId: containerId, remotePort: remotePort, localPort: localPort));
     return super.startForward(sessionId, containerId, remotePort: remotePort, localPort: localPort);
   }
+}
+
+class _ObservedDocker extends _Docker implements DockerObservationService {
+  @override
+  Future<DockerJson> diskUsage(String sessionId) async => {
+    'images': {'bytes': 1048576, 'count': 2, 'reclaimable': 512},
+    'volumes': {'bytes': 0, 'count': 0},
+    'cache': {'bytes': null, 'count': 1},
+    'containers': {'bytes': 2048, 'count': 3},
+  };
+  @override
+  Future<List<DockerJson>> recentEvents(String sessionId) async => [
+    {'timeMs': 1700000000000, 'name': 'shop-api-1', 'id': '123', 'action': 'die', 'exitCode': 137},
+    {'timeMs': 1699999999000, 'name': 'shop-worker-1', 'id': '456', 'action': 'restart'},
+  ];
+  @override
+  Future<List<DockerJson>> networks(String sessionId) async => [
+    {
+      'id': 'a123',
+      'name': 'test-net',
+      'driver': 'bridge',
+      'scope': 'local',
+      'ranges': [
+        {'subnet': '172.28.0.0/16', 'gateway': '172.28.0.1'},
+      ],
+    },
+  ];
+  @override
+  Future<List<DockerImage>> images(String sessionId) async => [
+    if (removed.isEmpty)
+      DockerImage.fromJson({
+        'id': 'sha256:abcd',
+        'tags': null,
+        'digests': ['registry.example/project/server@sha256:abcd'],
+        'created': DateTime.now().subtract(const Duration(days: 28)).millisecondsSinceEpoch ~/ 1000,
+        'size': 4194304,
+      }),
+  ];
+  final removed = <(String, String, String?)>[];
+  @override
+  Future<bool> removeImage(String sessionId, String id, {String? tag}) async {
+    removed.add((sessionId, id, tag));
+    return true;
+  }
+
+  @override
+  Future<DockerJson> telemetry(String sessionId, String containerId) async => {
+    'cpu': 22.0,
+    'memory': 512,
+    'limit': 4096,
+    'pids': 17,
+    'processes': [
+      ['42', 'app', '2.0', '0.4', '3:08', 'worker'],
+    ],
+  };
 }
 
 class _PortRangeDocker extends _Docker {
@@ -302,6 +358,100 @@ String _id(WidgetTester tester, String name) => tester
     .id;
 
 void main() {
+  testWidgets('image list shows compact names, size and age, and confirms deletion', (tester) async {
+    final service = _ObservedDocker();
+    const session = DockerSessionInfo(id: 'fixture', hostId: 'local', hostName: 'Test', engineVersion: 'test');
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+        home: Scaffold(
+          body: SizedBox(
+            width: 320,
+            child: DockerImageList(service: service, session: session),
+          ),
+        ),
+      ),
+    );
+    await settle(tester);
+    final name = find.text('registry.example/project/server');
+    expect(name, findsOneWidget);
+    expect(tester.widget<Text>(name).maxLines, 1);
+    expect(find.text('4 wk ago'), findsOneWidget);
+    expect(find.text('4.0 MiB'), findsOneWidget);
+    await tester.tap(name);
+    await settle(tester);
+    expect(find.text('sha256:abcd'), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await settle(tester);
+    Future<void> remove() async {
+      final gesture = await tester.startGesture(
+        tester.getCenter(name),
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await gesture.up();
+      await settle(tester);
+      expect(find.text('Details'), findsOneWidget);
+      await tester.tap(find.text('Delete image'));
+      await settle(tester);
+    }
+
+    await remove();
+    await tapKey(tester, 'confirm-cancel');
+    expect(service.removed, isEmpty);
+    await remove();
+    await tapKey(tester, 'confirm-ok');
+    expect(service.removed, [('fixture', 'sha256:abcd', null)]);
+    expect(name, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('main engine inventory lists images and networks including empty networks', (tester) async {
+    await _pump(tester, service: _ObservedDocker());
+    await _connectLocal(tester);
+    await tapKey(tester, 'docker-view-images');
+    expect(find.text('registry.example/project/server'), findsOneWidget);
+    await tapKey(tester, 'docker-view-networks');
+    await tester.tap(find.text('test-net'));
+    await settle(tester);
+    expect(find.textContaining('172.28.0.1'), findsOneWidget);
+    expect(find.text('Connected containers (0)'), findsOneWidget);
+    await tapKey(tester, 'docker-view-containers');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('disk usage and lifecycle events follow the active engine and filter', (tester) async {
+    await _pump(tester, service: _ObservedDocker(), size: const Size(720, 820));
+    await _connectLocal(tester);
+    await tapKey(tester, 'docker-view-disk');
+    expect(find.byKey(const ValueKey('docker-usage-cache')), findsOneWidget);
+    expect(find.text('1.0 MiB'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    await tapKey(tester, 'docker-view-events');
+    expect(find.text('Restarted'), findsOneWidget);
+    expect(find.text('Exit code 137'), findsOneWidget);
+    await enterKey(tester, 'docker-filter-input', 'worker');
+    expect(find.text('shop-worker-1'), findsOneWidget);
+    expect(find.text('shop-api-1'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('resource and process cards show the sample and removal is last', (tester) async {
+    await _pump(tester, service: _ObservedDocker());
+    await _connectLocal(tester);
+    await tapKey(tester, 'docker-menu-button-${_id(tester, 'shop-postgres-1')}');
+    await tapKey(tester, 'docker-menu-details');
+    final resourceCard = find.ancestor(of: find.text('Resource usage'), matching: find.byType(ContentSurface)).first;
+    final processCard = find.ancestor(of: find.text('worker'), matching: find.byType(ContentSurface)).first;
+    expect(tester.getRect(resourceCard).bottom, lessThan(tester.getRect(processCard).top));
+    final remove = tester.getRect(find.byKey(const ValueKey('docker-details-remove')));
+    final deploy = tester.getRect(find.byKey(const ValueKey('docker-details-kubernetes')));
+    expect(remove.top > deploy.top || remove.left >= deploy.right, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   testWidgets('16,384 ports are bounded in the row and paginated in overview and forwarding', (tester) async {
     await _pump(tester, service: _PortRangeDocker());
     await _connectLocal(tester);
@@ -364,8 +514,11 @@ void main() {
     expect(sourceImage, inspect.container.image);
     expect(
       tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text,
-      startsWith('docker.io/example/shop-api@sha256:'),
+      'docker.io/example/shop-api:2.4.1',
     );
+    await tapKey(tester, 'docker-kube-pin');
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text,
+        contains('@sha256:'));
     expect(find.text('AI provider'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -530,7 +683,7 @@ void main() {
     await tester.ensureVisible(name);
     await tester.tap(name);
     await settle(tester);
-    expect(find.text('Remove container…'), findsOneWidget);
+    expect(find.byTooltip('Remove container…'), findsOneWidget);
     await tapKey(tester, 'docker-details-remove');
     Finder key(String id) => find.byKey(ValueKey(id));
     expect(find.text('Host files are kept'), findsOneWidget);

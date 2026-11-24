@@ -21,6 +21,10 @@ Future<void> terminalOnlyShutdown() => RustLib.instance.api.crateApiSshTerminalO
 Future<String> terminalOpen({required String hostId, required int cols, required int rows}) =>
     RustLib.instance.api.crateApiSshTerminalOpen(hostId: hostId, cols: cols, rows: rows);
 
+/// Run the tcpdump prerequisite check or a two-server capture on its own SSH channel.
+Future<String> terminalOpenTcpdump({required String hostId, String? peerId, required bool sudo}) =>
+    RustLib.instance.api.crateApiSshTerminalOpenTcpdump(hostId: hostId, peerId: peerId, sudo: sudo);
+
 /// Device-local shell profiles. Executables and argv remain owned by Rust.
 Future<String> terminalLocalProfiles() => RustLib.instance.api.crateApiSshTerminalLocalProfiles();
 
@@ -35,6 +39,12 @@ Stream<TerminalFrame> terminalAttach({required String terminalId}) =>
 /// Keyboard / paste input (UTF-8 bytes).
 Future<void> terminalWrite({required String terminalId, required List<int> data}) =>
     RustLib.instance.api.crateApiSshTerminalWrite(terminalId: terminalId, data: data);
+
+Future<String> terminalTmux({required String terminalId, required String requestJson}) =>
+    RustLib.instance.api.crateApiSshTerminalTmux(terminalId: terminalId, requestJson: requestJson);
+
+Future<List<String>> terminalCommandHistory({required String terminalId}) =>
+    RustLib.instance.api.crateApiSshTerminalCommandHistory(terminalId: terminalId);
 
 Future<void> terminalResize({required String terminalId, required int cols, required int rows}) =>
     RustLib.instance.api.crateApiSshTerminalResize(terminalId: terminalId, cols: cols, rows: rows);

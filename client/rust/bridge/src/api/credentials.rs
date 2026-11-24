@@ -44,6 +44,22 @@ pub async fn credentials_add_password(
     .await
 }
 
+pub async fn credentials_add_registry(
+    name: String,
+    registry: String,
+    username: String,
+    password: Vec<u8>,
+) -> Result<String, BridgeError> {
+    let password = secret_string("password", password)?;
+    with_core(move |c| async move {
+        to_json(
+            &c.add_registry_credential(name, registry, username, password)
+                .await?,
+        )
+    })
+    .await
+}
+
 pub async fn credentials_generate_key(
     name: String,
     username: Option<String>,
