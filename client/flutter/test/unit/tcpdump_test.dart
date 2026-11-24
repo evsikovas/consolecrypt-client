@@ -71,10 +71,10 @@ void main() {
       expect(() => remoteCaptureCommand(invalid), throwsFormatException);
     }
     expect(checkedPeer('[2001:db8::1]'), '2001:db8::1');
-    expect(remoteCaptureCommand('db.example.test'), contains(r'host db.example.test and ($localfilter)'));
+    expect(remoteCaptureCommand('db.example.test'), contains(r'dst host db.example.test and ($sources)'));
     final receiver = remoteCaptureCommand(null);
-    expect(receiver, contains(r'host $1 and host $3'));
-    expect(receiver, contains(r'port $2 and port $4'));
+    expect(receiver, contains(r'src host $1 and dst host $3'));
+    expect(receiver, contains(r'src port $2 and dst host $3 and dst port $4'));
     expect(receiver, isNot(contains('sudo -n')));
   });
 

@@ -99,7 +99,7 @@ set -f; set -- $SSH_CONNECTION;
 if [ "$#" -ne 4 ]; then echo CC_NO_PEER; exit 44; fi;
 for ip in "$1" "$3"; do case "$ip" in ""|*[!a-fA-F0-9:.]*) echo CC_NO_PEER; exit 44;; esac; done;
 for port in "$2" "$4"; do case "$port" in ""|*[!0-9]*) echo CC_NO_PEER; exit 44;; esac; done;
-exclude="not (tcp and host $1 and host $3 and port $2 and port $4)";
+exclude="not (tcp and ((src host $1 and src port $2 and dst host $3 and dst port $4) or (src host $3 and src port $4 and dst host $1 and dst port $2)))";
 ''';
   const localAddresses = r'''
 if command -v ip >/dev/null 2>&1; then
@@ -107,15 +107,15 @@ if command -v ip >/dev/null 2>&1; then
 else
   addrs=$(ifconfig -a | awk '$1=="inet" || $1=="inet6" {split($2,a,"%"); print a[1]}');
 fi;
-localfilter="";
+sources=""; destinations="";
 for addr in $addrs; do case "$addr" in ""|*[!a-fA-F0-9:.]*) continue;; esac;
-  localfilter="${localfilter:+$localfilter or }host $addr";
+  sources="${sources:+$sources or }src host $addr"; destinations="${destinations:+$destinations or }dst host $addr";
 done;
-if [ -z "$localfilter" ]; then echo CC_NO_PEER; exit 44; fi;
+if [ -z "$sources" ]; then echo CC_NO_PEER; exit 44; fi;
 ''';
   final pair = peer.isEmpty
-      ? r'pair="host $1 and host $3"; echo "CC_PEER $1 $3";'
-      : '$localAddresses pair="host $peer and (\$localfilter)";';
+      ? r'pair="(src host $1 and dst host $3) or (src host $3 and dst host $1)"; echo "CC_PEER $1 $3";'
+      : '$localAddresses pair="(dst host $peer and (\$sources)) or (src host $peer and (\$destinations))";';
   const capture = r'''
 set --; if [ "$(uname -s)" = Linux ]; then set -- -i any; fi;
 ''';
@@ -132,7 +132,8 @@ Future<List<String>> localCaptureArguments(String address) async {
     includeLinkLocal: true,
   )).expand((iface) => iface.addresses).map((ip) => ip.address.split('%').first).toSet();
   if (addresses.isEmpty) throw const SocketException('No IP interfaces');
-  final localFilter = addresses.map((ip) => 'host $ip').join(' or ');
+  final sources = addresses.map((ip) => 'src host $ip').join(' or ');
+  final destinations = addresses.map((ip) => 'dst host $ip').join(' or ');
   return [
     if (Platform.isLinux) ...['-i', 'any'],
     '-p',
@@ -143,6 +144,6 @@ Future<List<String>> localCaptureArguments(String address) async {
     '96',
     '-c',
     '$captureLimit',
-    '(ip or ip6) and host $peer and ($localFilter)',
+    '(ip or ip6) and ((dst host $peer and ($sources)) or (src host $peer and ($destinations)))',
   ];
 }
