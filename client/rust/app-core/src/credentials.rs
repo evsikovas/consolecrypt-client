@@ -119,6 +119,39 @@ impl AppCore {
         self.store_credential(&u, c).await
     }
 
+    pub async fn add_registry_credential(
+        &self,
+        name: String,
+        registry: String,
+        username: String,
+        password: String,
+    ) -> AppResult<CredentialDto> {
+        let password = SecretString::from(password);
+        let registry = cc_docker_core::registry_authority(&registry)
+            .ok_or_else(|| AppError::invalid("registry", "invalid registry address"))?;
+        let username =
+            clean(Some(username)).ok_or_else(|| AppError::invalid("username", "required"))?;
+        if password.expose_secret().is_empty() {
+            return Err(AppError::invalid("password", "required"));
+        }
+        let mut credential = Credential::new(check_name(&name)?, CredentialKind::Password);
+        let secret = Secret::new(
+            SecretKind::Password,
+            SecretValue::new(password.expose_secret()),
+        );
+        credential.registry = Some(registry);
+        credential.username = Some(username);
+        credential.secret_id = Some(secret.id);
+        let (_, u) = self.unlocked().await?;
+        u.writer
+            .put_batch(vec![
+                VaultObject::Secret(secret),
+                VaultObject::Credential(credential.clone()),
+            ])
+            .await?;
+        Ok(with_owner(&u, &credential))
+    }
+
     /// Generate an SSH key pair (Ed25519 default; RSA 3072/4096 for
     /// compatibility). With `passphrase` the stored private key is
     /// encrypted; `remember_passphrase` stores the passphrase as its own

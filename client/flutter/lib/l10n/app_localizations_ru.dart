@@ -10,6 +10,46 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get registryLabel => 'Реестр образов';
+
+  @override
+  String get registryChoose => 'Выберите сохранённый реестр';
+
+  @override
+  String get registryAdd => 'Добавить реестр';
+
+  @override
+  String get registryOther => 'Другой реестр';
+
+  @override
+  String get registryAddress => 'Адрес реестра';
+
+  @override
+  String get registryRepo => 'Путь репозитория';
+
+  @override
+  String get registryTag => 'Тег';
+
+  @override
+  String get registryToken => 'Пароль или токен доступа';
+
+  @override
+  String get registryPublish => 'Загрузить образ';
+
+  @override
+  String get registryPublished => 'Образ загружен. В поле образа подставлена ссылка с digest.';
+
+  @override
+  String get registryInvalid => 'Введите адрес реестра, например registry.example.org:5000.';
+
+  @override
+  String get registrySaveFailed => 'Не удалось сохранить учётные данные реестра.';
+
+  @override
+  String get registryPublishFailed =>
+      'Не удалось загрузить образ. Проверьте путь репозитория, права на запись и доступность реестра с Docker-хоста.';
+
+  @override
   String get terminalBarItems => 'Элементы бара';
 
   @override
@@ -18209,7 +18249,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dockerKubeImageHelp =>
-      'Сначала опубликуйте образ в registry, доступном узлам кластера. Мастер не загружает локальные образы. Лучше указать digest: образ по тегу может измениться. localhost не является удалённым registry.';
+      'Укажите опубликованный тег или digest, доступный узлам кластера. Для закрытого образа может понадобиться imagePullSecret.';
 
   @override
   String get dockerKubePort => 'TCP-порт контейнера / Service';

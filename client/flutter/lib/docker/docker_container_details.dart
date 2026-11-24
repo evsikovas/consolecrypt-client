@@ -136,11 +136,8 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
     final source = DockerKubeSource.inspect(detail, session);
     // The image ID identifies what this container actually runs, even after a tag moves.
     final imageId = detail.inspect['Image'];
-    final canInspect =
-        !source.unsupported &&
-        source.image == null &&
-        imageId is String &&
-        RegExp(r'^sha256:[0-9a-f]{64}$').hasMatch(imageId);
+    final hasImageId = imageId is String && RegExp(r'^sha256:[0-9a-f]{64}$').hasMatch(imageId);
+    final canInspect = !source.unsupported && source.image == null && hasImageId;
     final request = await showAppDialog<KubeNavigationRequest>(
       context,
       secure: true,
@@ -148,6 +145,10 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
       builder: (_) => DockerKubeDialog(
         container: detail.container,
         source: source,
+        engineName: session.hostName,
+        publishImage: hasImageId
+            ? (credential, path, tag) => service.publishImage(session.id, imageId, credential, path, tag)
+            : null,
         resolveImage: canInspect
             ? () async => DockerKubeSource.inspect(
                 detail,

@@ -14,6 +14,7 @@ import 'package:consolecrypt/core/widgets/obscurable_text_controller.dart';
 import 'package:consolecrypt/core/widgets/secret_exposure.dart';
 import 'package:consolecrypt/core/widgets/secret_field.dart';
 import 'package:consolecrypt/core/widgets/security_widgets.dart';
+import 'package:consolecrypt/credentials/registry_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -641,7 +642,8 @@ enum NewCredentialKind {
   generate(Icons.auto_fix_high_rounded),
   import(Icons.file_download_rounded),
   certificate(Icons.workspace_premium_rounded),
-  agent(Icons.support_agent_rounded);
+  agent(Icons.support_agent_rounded),
+  registry(Icons.cloud_upload_outlined);
 
   const NewCredentialKind(this.icon);
 
@@ -649,6 +651,7 @@ enum NewCredentialKind {
 
   /// Menu / chooser entry text.
   String localizedLabel(AppLocalizations l10n) => switch (this) {
+    NewCredentialKind.registry => l10n.registryLabel,
     NewCredentialKind.password => l10n.credentialsNewPassword,
     NewCredentialKind.generate => l10n.credentialsNewGenerateKey,
     NewCredentialKind.import => l10n.credentialsNewImportKey,
@@ -665,6 +668,7 @@ Future<Credential?> showCreateCredentialDialog(BuildContext context, NewCredenti
       context,
       secure: kind != NewCredentialKind.agent,
       builder: (_) => switch (kind) {
+        NewCredentialKind.registry => const RegistryCredentialDialog(),
         NewCredentialKind.password => const PasswordCredentialDialog(),
         NewCredentialKind.generate => const GenerateKeyDialog(),
         NewCredentialKind.import => const ImportKeyDialog(),
@@ -686,7 +690,7 @@ Future<Credential?> showNewCredentialChooser(BuildContext context, {List<NewCred
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final k in kinds ?? NewCredentialKind.values)
+            for (final k in kinds ?? NewCredentialKind.values.where((kind) => kind != NewCredentialKind.registry))
               ListTile(
                 key: ValueKey('new-credential-${k.name}'),
                 leading: Icon(k.icon),

@@ -13,6 +13,7 @@ mod compose_mask;
 pub mod local;
 mod logs;
 pub mod secrets;
+pub use client::publish::registry_authority;
 pub use client::removal::{
     DockerRemovalPlan, DockerRemovalResource, DockerRemovalResult, DockerRemovalSelection,
     DockerRemovedResource,

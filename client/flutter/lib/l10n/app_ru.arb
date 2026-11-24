@@ -1,4 +1,17 @@
 {
+  "registryLabel": "Реестр образов",
+  "registryChoose": "Выберите сохранённый реестр",
+  "registryAdd": "Добавить реестр",
+  "registryOther": "Другой реестр",
+  "registryAddress": "Адрес реестра",
+  "registryRepo": "Путь репозитория",
+  "registryTag": "Тег",
+  "registryToken": "Пароль или токен доступа",
+  "registryPublish": "Загрузить образ",
+  "registryPublished": "Образ загружен. В поле образа подставлена ссылка с digest.",
+  "registryInvalid": "Введите адрес реестра, например registry.example.org:5000.",
+  "registrySaveFailed": "Не удалось сохранить учётные данные реестра.",
+  "registryPublishFailed": "Не удалось загрузить образ. Проверьте путь репозитория, права на запись и доступность реестра с Docker-хоста.",
   "terminalBarItems": "Элементы бара",
   "terminalBarColor": "Цвет показателя",
   "terminalBarReset": "Вернуть исходные показатели и цвета",
@@ -10773,7 +10786,7 @@
   },
   "dockerKubeManifestYaml": "\u041c\u0430\u043d\u0438\u0444\u0435\u0441\u0442 \u0440\u0430\u0437\u0432\u0451\u0440\u0442\u044b\u0432\u0430\u043d\u0438\u044f (YAML)",
   "dockerKubeNoProvider": "\u0414\u043b\u044f \u0433\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u0438 \u043c\u0430\u043d\u0438\u0444\u0435\u0441\u0442\u0430 \u0434\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440\u0430 \u0418\u0418 \u0432 \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430\u0445.",
-  "dockerKubeImageHelp": "Сначала опубликуйте образ в registry, доступном узлам кластера. Мастер не загружает локальные образы. Лучше указать digest: образ по тегу может измениться. localhost не является удалённым registry.",
+  "dockerKubeImageHelp": "Укажите опубликованный тег или digest, доступный узлам кластера. Для закрытого образа может понадобиться imagePullSecret.",
   "@dockerKubeImageHelp": {
     "description": "Experimental Docker to Kubernetes deployment wizard."
   },

@@ -38,7 +38,12 @@ abstract interface class InventoryService {
   // Credentials (metadata only; secret material stays in core)
   Stream<List<Credential>> watchCredentials();
 
-  Future<Credential> createPasswordCredential({required String name, required SecretText password, String? username});
+  Future<Credential> createPasswordCredential({
+    required String name,
+    required SecretText password,
+    String? username,
+    String? registry,
+  });
 
   /// Ed25519 (default) or RSA 3072/4096 (§7.1). Optional passphrase protects
   /// the generated key; [rememberPassphrase] stores it as a separate Secret.

@@ -44,6 +44,9 @@ pub struct Credential {
     /// (OS user).
     #[serde(default)]
     pub username: Option<String>,
+    /// Registry authority to which Docker may send this credential.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub registry: Option<String>,
     /// `Secret` holding the password or the OpenSSH private key.
     #[serde(default)]
     pub secret_id: Option<ObjectId>,
@@ -80,6 +83,7 @@ impl Credential {
             name: name.into(),
             kind,
             username: None,
+            registry: None,
             secret_id: None,
             passphrase_secret_id: None,
             key_encrypted: false,

@@ -672,6 +672,47 @@ impl AppCore {
         ))
     }
 
+    pub async fn docker_publish_image(
+        &self,
+        session_id: String,
+        image_id: String,
+        credential_id: String,
+        repository: String,
+        tag: String,
+    ) -> AppResult<String> {
+        let (_, u) = self.unlocked().await?;
+        let live = u.docker.session(&session_id)?;
+        let id = crate::dto::parse_id("credential", &credential_id)?;
+        let c = u
+            .working()
+            .credential(id)
+            .ok_or_else(|| invalid("registry_credential"))?;
+        let registry = c
+            .registry
+            .as_deref()
+            .ok_or_else(|| invalid("registry_credential"))?;
+        let username = c
+            .username
+            .as_deref()
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| invalid("registry_credential"))?;
+        let secret_id = c.secret_id.ok_or_else(|| invalid("registry_credential"))?;
+        if c.kind != cc_models::credential::CredentialKind::Password
+            || u.working().vault_of(id) != u.working().vault_of(secret_id)
+        {
+            return Err(invalid("registry_credential"));
+        }
+        let secret = u.writer.read_secret(secret_id).await?;
+        if secret.kind != cc_models::secret::SecretKind::Password {
+            return Err(invalid("registry_credential"));
+        }
+        tokio::select! {
+            biased;
+            _ = live.cancel.cancelled() => Err(invalid("session_closed")),
+            result = live.client.publish_image(&image_id, registry, &repository, &tag, username, secret.value.expose_secret()) => result.map_err(docker_error),
+        }
+    }
+
     pub async fn docker_image_repo_digests(
         &self,
         session_id: String,

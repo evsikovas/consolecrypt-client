@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/mock/mock_backend.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -210,6 +211,8 @@ Future<ProviderContainer> _pump(
   String? publishedImage = _published,
   Future<DockerKubeSource> Function()? resolveImage,
   bool writable = true,
+  MockBackend? backend,
+  Future<String> Function(Credential, String, String)? publishImage,
 }) async {
   tester.view.physicalSize = const Size(1200, 1000);
   tester.view.devicePixelRatio = 1;
@@ -218,6 +221,7 @@ Future<ProviderContainer> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        if (backend != null) appServicesProvider.overrideWithValue(backend.services),
         kubeServiceProvider.overrideWithValue(kube),
         kubeScopeProvider.overrideWith((ref) => ref.watch(_scopeProvider)),
         dockerScopeProvider.overrideWithValue(const DockerScope('profile', true)),
@@ -240,6 +244,8 @@ Future<ProviderContainer> _pump(
               startup: startup,
             ),
             resolveImage: resolveImage,
+            engineName: 'build-host',
+            publishImage: publishImage,
           ),
         ),
       ),
@@ -284,6 +290,80 @@ bool _enabled(WidgetTester tester, String key) =>
     tester.widget<GlassButton>(find.byKey(ValueKey(key))).onPressed != null;
 
 void main() {
+  testWidgets('save a reusable registry, publish, and pin its digest in the deployment template', (tester) async {
+    final backend = MockBackend(config: const MockConfig.test(seedDemoData: false));
+    await backend.debugCreateUnlockedLocalProfile();
+    addTearDown(backend.dispose);
+    final digest = _published.split('@').last;
+    final image = 'registry.example.org/team/web@$digest';
+    final submissions = <String>[];
+    final scope = await _pump(
+      tester,
+      _Kube(),
+      _Ai(),
+      backend: backend,
+      publishImage: (credential, repo, tag) async {
+        submissions.add('${credential.registry}/$repo:$tag');
+        return image;
+      },
+    );
+    await _templateAndAck(tester);
+    await _tap(tester, 'registry-add');
+    await tester.enterText(find.byKey(const ValueKey('registry-address')), 'registry.example.org');
+    await tester.enterText(find.byKey(const ValueKey('registry-name')), 'Build registry');
+    await tester.enterText(find.byKey(const ValueKey('registry-user')), 'builder');
+    await tester.enterText(
+      find.descendant(of: find.byKey(const ValueKey('registry-token')), matching: find.byType(EditableText)),
+      'fixture-token',
+    );
+    await _settle(tester);
+    await _tap(tester, 'registry-save');
+    final saved = scope.read(credentialsProvider).requireValue.single;
+    expect(saved.registry, 'registry.example.org');
+    expect(saved.username, 'builder');
+    await tester.enterText(find.byKey(const ValueKey('registry-repo')), 'team/web');
+    await tester.enterText(find.byKey(const ValueKey('registry-tag')), 'v1');
+    await _tap(tester, 'registry-publish');
+    expect(submissions, ['registry.example.org/team/web:v1']);
+    String field(String key) => tester.widget<TextField>(find.byKey(ValueKey('docker-kube-$key'))).controller!.text;
+    expect(field('image'), image);
+    expect(field('yaml'), isEmpty);
+    await _tap(tester, 'docker-kube-template');
+    expect(field('yaml'), contains(image));
+    expect(field('yaml'), isNot(contains('fixture-token')));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await _pump(tester, _Kube(), _Ai(), backend: backend, publishImage: (_, _, _) async => image);
+    await _tap(tester, 'registry-picker-null');
+    await tester.tap(find.text('Build registry · registry.example.org').last);
+    await _settle(tester);
+    expect(find.byKey(const ValueKey('registry-publish')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('a failed push keeps the previous image and reviewed manifest', (tester) async {
+    final backend = MockBackend(config: const MockConfig.test(seedDemoData: false));
+    await backend.debugCreateUnlockedLocalProfile();
+    addTearDown(backend.dispose);
+    final login = await backend.inventory.createPasswordCredential(
+      name: 'Test Hub',
+      username: 'builder',
+      registry: 'docker.io',
+      password: SecretText('fixture'),
+    );
+    await _pump(tester, _Kube(), _Ai(), backend: backend, publishImage: (_, _, _) async => throw StateError('fixture'));
+    await _templateAndAck(tester);
+    String field(String key) => tester.widget<TextField>(find.byKey(ValueKey('docker-kube-$key'))).controller!.text;
+    final yaml = field('yaml');
+    await _tap(tester, 'registry-picker-null');
+    await tester.tap(find.text('${login.name} · docker.io').last);
+    await _settle(tester);
+    await _tap(tester, 'registry-publish');
+    expect(field('image'), _published);
+    expect(field('yaml'), yaml);
+    expect(find.byKey(const ValueKey('docker-kube-error')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('experimental wizard requires dry-run, invalidates edits and creates both resources', (tester) async {
     final kube = _Kube();
     await _pump(tester, kube, _Ai());

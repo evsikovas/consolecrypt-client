@@ -94,7 +94,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1044016475;
+  int get rustContentHash => -955322380;
 
   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
     stem: 'cc_bridge',
@@ -524,6 +524,13 @@ abstract class RustLibApi extends BaseApi {
     required List<int> password,
   });
 
+  Future<String> crateApiCredentialsCredentialsAddRegistry({
+    required String name,
+    required String registry,
+    required String username,
+    required List<int> password,
+  });
+
   Future<void> crateApiCredentialsCredentialsDelete({required String id});
 
   Future<String> crateApiCredentialsCredentialsForgetPassphrase({required String id});
@@ -886,6 +893,14 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiDockerDockerLogsStop({required String streamId});
 
   Future<String> crateApiDockerDockerNetworks({required String sessionId});
+
+  Future<String> crateApiDockerDockerPublishImage({
+    required String sessionId,
+    required String imageId,
+    required String credentialId,
+    required String repository,
+    required String tag,
+  });
 
   Future<String> crateApiDockerDockerRecentEvents({required String sessionId});
 
@@ -5045,13 +5060,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "credentials_add_password", argNames: ["name", "username", "password"]);
 
   @override
+  Future<String> crateApiCredentialsCredentialsAddRegistry({
+    required String name,
+    required String registry,
+    required String username,
+    required List<int> password,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(name, serializer);
+          sse_encode_String(registry, serializer);
+          sse_encode_String(username, serializer);
+          sse_encode_list_prim_u_8_loose(password, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 134, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiCredentialsCredentialsAddRegistryConstMeta,
+        argValues: [name, registry, username, password],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCredentialsCredentialsAddRegistryConstMeta => const TaskConstMeta(
+    debugName: "credentials_add_registry",
+    argNames: ["name", "registry", "username", "password"],
+  );
+
+  @override
   Future<void> crateApiCredentialsCredentialsDelete({required String id}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 134, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 135, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiCredentialsCredentialsDeleteConstMeta,
@@ -5071,7 +5116,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 135, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 136, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiCredentialsCredentialsForgetPassphraseConstMeta,
@@ -5101,7 +5146,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_key_gen_choice(algorithm, serializer);
           sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
           sse_encode_bool(rememberPassphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 136, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 137, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiCredentialsCredentialsGenerateKeyConstMeta,
@@ -5135,7 +5180,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
           sse_encode_bool(rememberPassphrase, serializer);
           sse_encode_opt_String(certificate, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 137, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 138, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiCredentialsCredentialsImportKeyConstMeta,
@@ -5157,7 +5202,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(privateKey, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 138, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 139, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_key_inspection_result, decodeErrorData: null),
         constMeta: kCrateApiCredentialsCredentialsInspectKeyConstMeta,
@@ -5176,7 +5221,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 139, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 140, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiCredentialsCredentialsListConstMeta,
@@ -5196,7 +5241,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 140, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 141, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiCredentialsCredentialsPublicKeyConstMeta,
@@ -5217,7 +5262,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 141, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 142, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiCredentialsCredentialsRememberPassphraseConstMeta,
@@ -5237,7 +5282,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(credentialId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 142, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 143, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAccountCredentialsRevealSecretConstMeta,
@@ -5258,7 +5303,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_list_prim_u_8_loose(password, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 143, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 144, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiCredentialsCredentialsSetPasswordConstMeta,
@@ -5286,7 +5331,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(name, serializer);
           sse_encode_opt_String(username, serializer);
           sse_encode_opt_String(certificate, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 144, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 145, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiCredentialsCredentialsUpdateConstMeta,
@@ -5312,7 +5357,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(ticket, serializer);
           sse_encode_String(consentJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 145, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 146, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbAiAskConstMeta,
@@ -5332,7 +5377,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 146, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 147, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbAiCancelConstMeta,
@@ -5353,7 +5398,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
           sse_encode_u_32(waitMs, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 147, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 148, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbAiPollConstMeta,
@@ -5379,7 +5424,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(providerId, serializer);
           sse_encode_String(requestJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 148, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 149, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbAiPrepareConstMeta,
@@ -5398,7 +5443,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 149, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 150, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbAiProvidersConstMeta,
@@ -5418,7 +5463,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 150, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 151, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbAiRevokeConstMeta,
@@ -5439,7 +5484,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(requestJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 151, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 152, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDesignerDbApplyDesignConstMeta,
@@ -5459,7 +5504,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(queryId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 152, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 153, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCancelConstMeta,
@@ -5480,7 +5525,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 153, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 154, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_CastedPrimitive_u_64, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCommitCellEditsConstMeta,
@@ -5502,7 +5547,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(text, serializer);
           sse_encode_u_32(cursor, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 154, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 155, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCompleteConstMeta,
@@ -5523,7 +5568,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
           sse_encode_String(choicesJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 155, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 156, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_u_32, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbConfirmImportConstMeta,
@@ -5544,7 +5589,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(connectionId, serializer);
           sse_encode_opt_list_prim_u_8_strict(password, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 156, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 157, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbConnectConstMeta,
@@ -5563,7 +5608,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 157, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 158, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbConnectionsConstMeta,
@@ -5591,7 +5636,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_u_32(resultIndex, serializer);
           sse_encode_String(selectionJson, serializer);
           sse_encode_String(optionsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 158, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 159, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCopyResultConstMeta,
@@ -5623,7 +5668,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(path, serializer);
           sse_encode_String(optionsJson, serializer);
           sse_encode_String(mappingJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 159, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 160, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCsvCheckConstMeta,
@@ -5653,7 +5698,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(optionsJson, serializer);
           sse_encode_String(engineJson, serializer);
           sse_encode_String(tableJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 160, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 161, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCsvCreateTableConstMeta,
@@ -5675,7 +5720,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(importId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 161, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 162, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCsvImportCancelConstMeta,
@@ -5695,7 +5740,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 162, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 163, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCsvImportDiscardConstMeta,
@@ -5715,7 +5760,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(importId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 163, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 164, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCsvImportProgressConstMeta,
@@ -5741,7 +5786,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(path, serializer);
           sse_encode_String(planJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 164, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 165, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCsvImportReviewConstMeta,
@@ -5762,7 +5807,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 165, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 166, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCsvImportStartConstMeta,
@@ -5783,7 +5828,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(path, serializer);
           sse_encode_String(optionsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 166, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 167, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbCsvPreviewConstMeta,
@@ -5804,7 +5849,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(objectJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 167, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 168, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbDdlConstMeta,
@@ -5824,7 +5869,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 168, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 169, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbDeleteConnectionConstMeta,
@@ -5844,7 +5889,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(connectionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 169, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 170, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbDeleteHistoryConstMeta,
@@ -5864,7 +5909,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(engineName, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 170, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 171, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDesignerDbDesignDialectConstMeta,
@@ -5890,7 +5935,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(engineName, serializer);
           sse_encode_opt_String(originalJson, serializer);
           sse_encode_String(designJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 171, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 172, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDesignerDbDesignPlanConstMeta,
@@ -5910,7 +5955,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 172, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 173, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbDiscardCellEditsConstMeta,
@@ -5930,7 +5975,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 173, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 174, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbDiscardImportConstMeta,
@@ -5950,7 +5995,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 174, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 175, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbDisconnectConstMeta,
@@ -5971,7 +6016,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(tableJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 175, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 176, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbEditColumnsConstMeta,
@@ -5992,7 +6037,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(requestJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 176, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 177, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbExecuteConstMeta,
@@ -6018,7 +6063,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(requestJson, serializer);
           sse_encode_bool(analyze, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 177, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 178, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbExplainConstMeta,
@@ -6038,7 +6083,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(exportId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 178, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 179, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbExportCancelConstMeta,
@@ -6058,7 +6103,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(exportId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 179, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 180, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbExportProgressConstMeta,
@@ -6086,7 +6131,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_u_32(resultIndex, serializer);
           sse_encode_String(optionsJson, serializer);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 180, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 181, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbExportStartConstMeta,
@@ -6107,7 +6152,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(engine, serializer);
           sse_encode_String(text, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 181, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 182, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbFormatQueryConstMeta,
@@ -6139,7 +6184,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_bool(favoritesOnly, serializer);
           sse_encode_opt_String(cursor, serializer);
           sse_encode_u_32(limit, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 182, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 183, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbHistoryConstMeta,
@@ -6162,7 +6207,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(historyId, serializer);
           sse_encode_bool(favorite, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 183, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 184, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbHistoryFavoriteConstMeta,
@@ -6182,7 +6227,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(connectionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 184, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 185, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbHistoryPolicyConstMeta,
@@ -6203,7 +6248,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(objectJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 185, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 186, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbIdentifierConstMeta,
@@ -6222,7 +6267,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 186, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 187, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbImportDefaultPgpassConstMeta,
@@ -6242,7 +6287,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(contents, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 187, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 188, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbImportPgpassConstMeta,
@@ -6262,7 +6307,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(uri, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 188, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 189, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbImportUriConstMeta,
@@ -6284,7 +6329,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(objectJson, serializer);
           sse_encode_opt_box_autoadd_u_32(sample, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 189, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 190, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbInspectConstMeta,
@@ -6305,7 +6350,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(queryId, serializer);
           sse_encode_u_32(rows, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 190, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 191, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbLoadMoreConstMeta,
@@ -6325,7 +6370,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 191, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 192, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbLockProductionConstMeta,
@@ -6345,7 +6390,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(connectionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 192, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 193, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbMoveConnectionToVaultConstMeta,
@@ -6371,7 +6416,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(objectJson, serializer);
           sse_encode_u_32(limit, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 193, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 194, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbObjectQueryConstMeta,
@@ -6392,7 +6437,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(queryId, serializer);
           sse_encode_u_32(waitMs, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 194, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 195, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbPollConstMeta,
@@ -6422,7 +6467,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(mode, serializer);
           sse_encode_u_32(selectionStart, serializer);
           sse_encode_u_32(selectionEnd, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 195, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 196, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbPrepareQueryConstMeta,
@@ -6444,7 +6489,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 196, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 197, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbPrivilegesConstMeta,
@@ -6464,7 +6509,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(queryId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 197, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 198, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbReleaseConstMeta,
@@ -6485,7 +6530,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(requestJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 198, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 199, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbReviewConstMeta,
@@ -6511,7 +6556,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(tableJson, serializer);
           sse_encode_String(editsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 199, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 200, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbReviewCellEditsConstMeta,
@@ -6537,7 +6582,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(tableJson, serializer);
           sse_encode_String(changesJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 200, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 201, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbReviewRowChangesConstMeta,
@@ -6563,7 +6608,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(connectionJson, serializer);
           sse_encode_opt_list_prim_u_8_strict(password, serializer);
           sse_encode_opt_list_prim_u_8_strict(privateKey, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 201, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 202, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbSaveConnectionConstMeta,
@@ -6584,7 +6629,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(historyId, serializer);
           sse_encode_String(name, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 202, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 203, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbSaveHistorySnippetConstMeta,
@@ -6604,7 +6649,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 203, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 204, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbSessionStateConstMeta,
@@ -6625,7 +6670,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(connectionId, serializer);
           sse_encode_String(policy, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 204, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 205, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbSetHistoryPolicyConstMeta,
@@ -6646,7 +6691,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_bool(allow, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 205, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 206, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbSetSessionWriteConstMeta,
@@ -6666,7 +6711,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 206, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 207, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbSqliteCreateFileConstMeta,
@@ -6685,7 +6730,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 207, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 208, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbSyncReadinessConstMeta,
@@ -6706,7 +6751,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(tableJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 208, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 209, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDesignerDbTableDesignConstMeta,
@@ -6727,7 +6772,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(connectionJson, serializer);
           sse_encode_opt_list_prim_u_8_strict(password, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 209, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 210, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbTestConnectionConstMeta,
@@ -6749,7 +6794,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_opt_String(parentJson, serializer);
           sse_encode_opt_String(cursor, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 210, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 211, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbTreeConstMeta,
@@ -6777,7 +6822,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
           sse_encode_opt_String(presenceToken, serializer);
           sse_encode_u_32(minutes, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 211, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 212, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDatabaseDbUnlockProductionConstMeta,
@@ -6799,7 +6844,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(requestId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 212, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 213, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesApprovalStatusConstMeta,
@@ -6820,7 +6865,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(requestId, serializer);
           sse_encode_String(confirmedCode, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 213, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 214, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesConfirmApprovalConstMeta,
@@ -6846,7 +6891,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(requestId, serializer);
           sse_encode_String(approverDeviceId, serializer);
           sse_encode_String(shownCode, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 214, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 215, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesConfirmApproverConstMeta,
@@ -6868,7 +6913,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_opt_String(vaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 215, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 216, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesFinishApprovalConstMeta,
@@ -6887,7 +6932,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 216, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 217, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesListConstMeta,
@@ -6905,7 +6950,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 217, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 218, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesOwnCodeConstMeta,
@@ -6925,7 +6970,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(requestId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 218, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 219, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesRejectConstMeta,
@@ -6946,7 +6991,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(deviceId, serializer);
           sse_encode_String(name, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 219, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 220, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesRenameConstMeta,
@@ -6966,7 +7011,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_opt_String(vaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 220, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 221, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesRequestApprovalConstMeta,
@@ -6987,7 +7032,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(deviceId, serializer);
           sse_encode_opt_String(reason, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 221, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 222, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesRevokeConstMeta,
@@ -7007,7 +7052,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(requestId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 222, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 223, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncDevicesStartApprovalConstMeta,
@@ -7033,7 +7078,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(container, serializer);
           sse_encode_String(action, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 223, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 224, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerActionConstMeta,
@@ -7054,7 +7099,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(jobId, serializer);
           sse_encode_u_32(waitMs, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 224, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 225, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerComposeJobPollConstMeta,
@@ -7075,7 +7120,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(project, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 225, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 226, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerComposeProjectConstMeta,
@@ -7101,7 +7146,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(project, serializer);
           sse_encode_String(grant, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 226, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 227, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerComposeRevealConstMeta,
@@ -7133,7 +7178,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_prim_u_8_loose(edits, serializer);
           sse_encode_bool(apply, serializer);
           sse_encode_bool(allowSharedDirs, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 227, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 228, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerComposeSaveConstMeta,
@@ -7163,7 +7208,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(project, serializer);
           sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
           sse_encode_opt_String(presenceToken, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 228, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 229, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerComposeUnlockConstMeta,
@@ -7185,7 +7230,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(hostId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 229, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 230, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerConnectConstMeta,
@@ -7206,7 +7251,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_bool(all, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 230, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 231, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerContainersConstMeta,
@@ -7226,7 +7271,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(text, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 231)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 232)!;
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: null),
         constMeta: kCrateApiDockerDockerContainsSecretConstMeta,
@@ -7246,7 +7291,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 232, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 233, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerDisconnectConstMeta,
@@ -7266,7 +7311,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 233, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 234, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerDiskUsageConstMeta,
@@ -7294,7 +7339,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(container, serializer);
           sse_encode_u_16(remotePort, serializer);
           sse_encode_u_16(localPort, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 234, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 235, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerForwardStartConstMeta,
@@ -7316,7 +7361,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(forwardId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 235, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 236, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerForwardStopConstMeta,
@@ -7335,7 +7380,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 236, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 237, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerForwardsConstMeta,
@@ -7354,7 +7399,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 237, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 238, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerHostsConstMeta,
@@ -7379,7 +7424,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(imageId, serializer);
           sse_encode_String(sourceImage, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 238, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 239, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerImageRepoDigestsConstMeta,
@@ -7399,7 +7444,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 239, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 240, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerImagesConstMeta,
@@ -7419,7 +7464,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 240, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 241, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerInfoConstMeta,
@@ -7440,7 +7485,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(container, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 241, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 242, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerInspectConstMeta,
@@ -7468,7 +7513,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(container, serializer);
           sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
           sse_encode_opt_String(presenceToken, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 242, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 243, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerInspectRevealConstMeta,
@@ -7491,7 +7536,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(streamId, serializer);
           sse_encode_u_32(waitMs, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 243, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 244, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerLogsPollConstMeta,
@@ -7521,7 +7566,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_u_32(tail, serializer);
           sse_encode_bool(follow, serializer);
           sse_encode_bool(timestamps, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 244, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 245, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerLogsStartConstMeta,
@@ -7543,7 +7588,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(streamId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 245, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 246, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerLogsStopConstMeta,
@@ -7563,7 +7608,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 246, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 247, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerNetworksConstMeta,
@@ -7577,13 +7622,45 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "docker_networks", argNames: ["sessionId"]);
 
   @override
+  Future<String> crateApiDockerDockerPublishImage({
+    required String sessionId,
+    required String imageId,
+    required String credentialId,
+    required String repository,
+    required String tag,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sessionId, serializer);
+          sse_encode_String(imageId, serializer);
+          sse_encode_String(credentialId, serializer);
+          sse_encode_String(repository, serializer);
+          sse_encode_String(tag, serializer);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 248, port: port_);
+        },
+        codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
+        constMeta: kCrateApiDockerDockerPublishImageConstMeta,
+        argValues: [sessionId, imageId, credentialId, repository, tag],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiDockerDockerPublishImageConstMeta => const TaskConstMeta(
+    debugName: "docker_publish_image",
+    argNames: ["sessionId", "imageId", "credentialId", "repository", "tag"],
+  );
+
+  @override
   Future<String> crateApiDockerDockerRecentEvents({required String sessionId}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 247, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 249, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerRecentEventsConstMeta,
@@ -7604,7 +7681,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(container, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 248, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 250, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerRemovalPlanConstMeta,
@@ -7626,7 +7703,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(imageId, serializer);
           sse_encode_opt_String(tag, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 249, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 251, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerRemoveImageConstMeta,
@@ -7652,7 +7729,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(container, serializer);
           sse_encode_String(selectionJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 250, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 252, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerRemoveWithCleanupConstMeta,
@@ -7682,7 +7759,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(container, serializer);
           sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
           sse_encode_opt_String(presenceToken, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 251, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 253, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerRevealEnvironmentConstMeta,
@@ -7705,7 +7782,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(container, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 252, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 254, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerTelemetryConstMeta,
@@ -7737,7 +7814,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_String(command, serializer);
           sse_encode_u_32(cols, serializer);
           sse_encode_u_32(rows, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 253, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 255, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerTerminalOpenConstMeta,
@@ -7759,7 +7836,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 254, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 256, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiDockerDockerVolumesConstMeta,
@@ -7779,7 +7856,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(hostId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 255, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 257, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditConnectConstMeta,
@@ -7799,7 +7876,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 256, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 258, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditDiscardLeftoverConstMeta,
@@ -7818,7 +7895,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 257, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 259, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditLeftoversConstMeta,
@@ -7840,7 +7917,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sftpId, serializer);
           sse_encode_String(remotePath, serializer);
           sse_encode_opt_String(openWithJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 258, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 260, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditOpenConstMeta,
@@ -7860,7 +7937,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(fileName, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 259)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 261)!;
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: null),
         constMeta: kCrateApiSftpEditOpensAsTextConstMeta,
@@ -7881,7 +7958,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_opt_String(openWithJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 260, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 262, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditReopenConstMeta,
@@ -7902,7 +7979,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_edit_conflict_choice(resolution, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 261, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 263, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_opt_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditResolveConstMeta,
@@ -7924,7 +8001,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(sftpId, serializer);
           sse_encode_opt_String(openWithJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 262, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 264, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditResumeConstMeta,
@@ -7944,7 +8021,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 263, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 265, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditRevealConstMeta,
@@ -7963,7 +8040,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 264, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 266, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditSessionsConstMeta,
@@ -7983,7 +8060,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_edit_stop_choice(mode, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 265, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 267, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditStopConstMeta,
@@ -8003,7 +8080,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 266, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 268, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpEditSyncNowConstMeta,
@@ -8024,7 +8101,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(label, serializer);
           sse_encode_String(text, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 267)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 269)!;
         },
         codec: SseCodec(decodeSuccessData: sse_decode_opt_list_prim_u_8_strict, decodeErrorData: null),
         constMeta: kCrateApiTerminalCodecEncodeTerminalInputConstMeta,
@@ -8050,7 +8127,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(id, serializer);
           sse_encode_String(requestId, serializer);
           sse_encode_bool(confirmedManual, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 268, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 270, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentAcceptConstMeta,
@@ -8071,7 +8148,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(requestId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 269, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 271, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentChallengeConstMeta,
@@ -8092,7 +8169,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(createJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 270, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 272, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentCreateConstMeta,
@@ -8113,7 +8190,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(bundle, serializer);
           sse_encode_String(confirmedCode, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 271, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 273, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentEndorseConstMeta,
@@ -8134,7 +8211,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(grantId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 272, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 274, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentExportConstMeta,
@@ -8154,7 +8231,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 273, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 275, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentGrantsConstMeta,
@@ -8174,7 +8251,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(bundle, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 274, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 276, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentInspectConstMeta,
@@ -8193,7 +8270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 275, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 277, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentPendingConstMeta,
@@ -8214,7 +8291,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(bundle, serializer);
           sse_encode_bool(editor, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 276, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 278, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentPrepareConstMeta,
@@ -8233,7 +8310,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 277, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 279, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentProcessAutomaticConstMeta,
@@ -8254,7 +8331,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(verificationId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 278, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 280, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentReconcileConstMeta,
@@ -8274,7 +8351,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 279, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 281, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentRequestsConstMeta,
@@ -8295,7 +8372,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(requestId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 280, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 282, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentRespondConstMeta,
@@ -8316,7 +8393,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(bundle, serializer);
           sse_encode_String(confirmedCode, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 281, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 283, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentRestorePairingConstMeta,
@@ -8337,7 +8414,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(grantId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 282, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 284, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentRevokeConstMeta,
@@ -8358,7 +8435,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(bundle, serializer);
           sse_encode_String(confirmedCode, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 283, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 285, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiEnrollmentEnrollmentSubmitConstMeta,
@@ -8388,7 +8465,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_opt_String(loginHint, serializer);
           sse_encode_opt_String(displayName, serializer);
           sse_encode_bool(allowNewDeviceIdentity, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 284, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 286, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAccountEnterpriseOidcBeginConstMeta,
@@ -8410,7 +8487,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 285, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 287, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAccountEnterpriseOidcCancelConstMeta,
@@ -8431,7 +8508,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
           sse_encode_opt_String(callbackUrl, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 286, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 288, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAccountEnterpriseOidcCompleteConstMeta,
@@ -8451,7 +8528,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 287, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 289, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryGroupsDeleteConstMeta,
@@ -8470,7 +8547,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 288, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 290, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryGroupsListConstMeta,
@@ -8490,7 +8567,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(groupJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 289, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 291, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryGroupsSaveConstMeta,
@@ -8510,7 +8587,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(operationId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 290, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 292, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiHostMetricsHostMetricsCancelConstMeta,
@@ -8533,7 +8610,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             final serializer = SseSerializer(generalizedFrbRustBinding);
             sse_encode_String(requestJson, serializer);
             sse_encode_StreamSink_String_Sse(sink, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 291, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 293, port: port_);
           },
           codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
           constMeta: kCrateApiHostMetricsHostMetricsWatchConstMeta,
@@ -8555,7 +8632,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 292, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 294, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryHostsDeleteConstMeta,
@@ -8575,7 +8652,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(hostId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 293, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 295, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryHostsDescribeConnectionConstMeta,
@@ -8594,7 +8671,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 294, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 296, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryHostsListConstMeta,
@@ -8613,7 +8690,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(hostJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 295, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 297, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryHostsPlanPreviewConstMeta,
@@ -8633,7 +8710,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(hostJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 296, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 298, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryHostsSaveConstMeta,
@@ -8654,7 +8731,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(hostJson, serializer);
           sse_encode_box_autoadd_host_auth_input(auth, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 297, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 299, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryHostsSaveWithAuthConstMeta,
@@ -8674,7 +8751,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_opt_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 298, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 300, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryHostsSshConfigPreviewConstMeta,
@@ -8693,7 +8770,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 299, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 301, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: null),
         constMeta: kCrateApiAppInitAppConstMeta,
@@ -8712,7 +8789,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 300, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 302, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryJumpProfilesDeleteConstMeta,
@@ -8731,7 +8808,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 301, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 303, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryJumpProfilesListConstMeta,
@@ -8751,7 +8828,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(profileJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 302, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 304, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryJumpProfilesSaveConstMeta,
@@ -8770,7 +8847,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 303, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 305, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryKnownHostsListConstMeta,
@@ -8790,7 +8867,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 304, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 306, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryKnownHostsRemoveConstMeta,
@@ -8811,7 +8888,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 305, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 307, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeAiCancelConstMeta,
@@ -8831,7 +8908,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(conversationId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 306, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 308, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeAiDeleteConversationConstMeta,
@@ -8851,7 +8928,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(contextId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 307, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 309, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeAiHistoryConstMeta,
@@ -8872,7 +8949,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(requestId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 308, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 310, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeAiPollConstMeta,
@@ -8893,7 +8970,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_list_prim_u_8_loose(questionJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 309, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 311, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeAiPrepareConstMeta,
@@ -8913,7 +8990,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 310, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 312, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeAiRevokeConstMeta,
@@ -8939,7 +9016,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(ticket, serializer);
           sse_encode_bool(approveExternal, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 311, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 313, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeAiStartConstMeta,
@@ -8969,7 +9046,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_prim_u_8_loose(manifest, serializer);
           sse_encode_bool(dryRun, serializer);
           sse_encode_bool(force, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 312, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 314, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeApplyYamlConstMeta,
@@ -8997,7 +9074,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
           sse_encode_String(action, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 313, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 315, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeArgoActionConstMeta,
@@ -9017,7 +9094,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 314, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 316, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeAuthCancelConstMeta,
@@ -9037,7 +9114,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 315, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 317, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeCloseWriteWindowConstMeta,
@@ -9063,7 +9140,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(contextId, serializer);
           sse_encode_list_String(tags, serializer);
           sse_encode_opt_String(color, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 316, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 318, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeClusterLabelsConstMeta,
@@ -9082,7 +9159,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 317, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 319, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeClustersListConstMeta,
@@ -9102,7 +9179,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(contextId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 318, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 320, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeConnectConstMeta,
@@ -9122,7 +9199,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 319, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 321, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeContextDeleteConstMeta,
@@ -9148,7 +9225,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(id, serializer);
           sse_encode_list_String(namespaces, serializer);
           sse_encode_list_String(kinds, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 320, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 322, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeContextFavouritesConstMeta,
@@ -9174,7 +9251,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(namespace, serializer);
           sse_encode_String(profileId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 321, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 323, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeContextTerminalConstMeta,
@@ -9193,7 +9270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 322, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 324, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeContextTerminalProfilesConstMeta,
@@ -9214,7 +9291,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(contextId, serializer);
           sse_encode_String(updateJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 323, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 325, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeContextUpdateConstMeta,
@@ -9233,7 +9310,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 324, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 326, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeContextsListConstMeta,
@@ -9261,7 +9338,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(node, serializer);
           sse_encode_String(resourceVersion, serializer);
           sse_encode_bool(unschedulable, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 325, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 327, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeCordonConstMeta,
@@ -9291,7 +9368,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(referenceJson, serializer);
           sse_encode_list_prim_u_8_loose(manifest, serializer);
           sse_encode_bool(dryRun, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 326, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 328, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeCreateResourceConstMeta,
@@ -9321,7 +9398,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(referenceJson, serializer);
           sse_encode_String(resourceVersion, serializer);
           sse_encode_String(containerJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 327, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 329, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeDebugContainerConstMeta,
@@ -9343,7 +9420,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 328, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 330, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeDisconnectConstMeta,
@@ -9363,7 +9440,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 329, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 331, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeDiscoverConstMeta,
@@ -9384,7 +9461,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(node, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 330, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 332, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeDrainPlanConstMeta,
@@ -9416,7 +9493,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_opt_CastedPrimitive_i_64(beforeMs, serializer);
           sse_encode_opt_String(beforeUid, serializer);
           sse_encode_u_32(limit, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 331, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 333, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeEventHistoryConstMeta,
@@ -9438,7 +9515,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(contextId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 332, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 334, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeEventHistoryClearConstMeta,
@@ -9466,7 +9543,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(referenceJson, serializer);
           sse_encode_String(uid, serializer);
           sse_encode_String(resourceVersion, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 333, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 335, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeEvictPodConstMeta,
@@ -9488,7 +9565,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 334, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 336, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeExecApproveConstMeta,
@@ -9508,7 +9585,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(contextId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 335, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 337, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeExecReviewConstMeta,
@@ -9534,7 +9611,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(contextId, serializer);
           sse_encode_String(path, serializer);
           sse_encode_bool(includeCredentials, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 336, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 338, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeExportContextConstMeta,
@@ -9562,7 +9639,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(path, serializer);
           sse_encode_list_prim_u_8_loose(contents, serializer);
           sse_encode_bool(mask, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 337, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 339, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeExportLogsConstMeta,
@@ -9590,7 +9667,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(referenceJson, serializer);
           sse_encode_String(action, serializer);
           sse_encode_opt_String(reason, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 338, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 340, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxActionConstMeta,
@@ -9610,7 +9687,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 339, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 341, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_opt_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxApproveConstMeta,
@@ -9630,7 +9707,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 340, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 342, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxCancelConstMeta,
@@ -9650,7 +9727,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_opt_String(manualPath, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 341, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 343, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxDiscoverConstMeta,
@@ -9669,7 +9746,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 342, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 344, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxPathAddConstMeta,
@@ -9689,7 +9766,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_opt_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 343, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 345, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxPreferencesConstMeta,
@@ -9709,7 +9786,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(preferencesJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 344, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 346, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxPreferencesSaveConstMeta,
@@ -9729,7 +9806,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 345, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 347, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxProbeConstMeta,
@@ -9755,7 +9832,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(version, serializer);
           sse_encode_String(method, serializer);
           sse_encode_String(operation, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 346, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 348, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxReviewConstMeta,
@@ -9781,7 +9858,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(path, serializer);
           sse_encode_String(actionJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 347, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 349, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxRunConstMeta,
@@ -9802,7 +9879,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 348, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 350, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeFluxTerminalConstMeta,
@@ -9821,7 +9898,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 349, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 351, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeForwardListConstMeta,
@@ -9851,7 +9928,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(pod, serializer);
           sse_encode_u_16(remotePort, serializer);
           sse_encode_u_16(localPort, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 350, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 352, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeForwardStartConstMeta,
@@ -9877,7 +9954,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(requestJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 351, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 353, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeForwardStartConfiguredConstMeta,
@@ -9898,7 +9975,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(forwardId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 352, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 354, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeForwardStopConstMeta,
@@ -9919,7 +9996,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 353, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 355, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeForwardTargetsConstMeta,
@@ -9945,7 +10022,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(namespace, serializer);
           sse_encode_String(secretName, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 354, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 356, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeHelmCompareLiveConstMeta,
@@ -9971,7 +10048,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_opt_String(namespace, serializer);
           sse_encode_opt_String(releaseName, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 355, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 357, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeHelmHistoryConstMeta,
@@ -9997,7 +10074,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(namespace, serializer);
           sse_encode_String(secretName, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 356, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 358, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeHelmReleaseConstMeta,
@@ -10017,7 +10094,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 357, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 359, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeHelmRollbackApproveConstMeta,
@@ -10047,7 +10124,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(release, serializer);
           sse_encode_CastedPrimitive_u_64(revision, serializer);
           sse_encode_opt_String(manualPath, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 358, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 360, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeHelmRollbackReviewConstMeta,
@@ -10069,7 +10146,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 359, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 361, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeHistoryStatusConstMeta,
@@ -10090,7 +10167,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
           sse_encode_String(choicesJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 360, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 362, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeImportCommitConstMeta,
@@ -10110,7 +10187,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 361, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 363, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeImportDiscardConstMeta,
@@ -10131,7 +10208,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
           sse_encode_u_32(index, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 362, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 364, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeImportInspectExecConstMeta,
@@ -10152,7 +10229,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(yaml, serializer);
           sse_encode_opt_String(sourceFile, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 363, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 365, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeImportPreviewConstMeta,
@@ -10172,7 +10249,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 364, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 366, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeImportPreviewFileConstMeta,
@@ -10193,7 +10270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_opt_String(namespace, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 365, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 367, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeInsightsConstMeta,
@@ -10214,7 +10291,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(watchId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 366, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 368, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeInsightsWatchPollConstMeta,
@@ -10235,7 +10312,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_opt_String(namespace, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 367, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 369, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeInsightsWatchStartConstMeta,
@@ -10256,7 +10333,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(watchId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 368, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 370, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeInsightsWatchStopConstMeta,
@@ -10275,7 +10352,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 369, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 371, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeInventoryConstMeta,
@@ -10294,7 +10371,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 370, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 372, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeKubectlDiscoverConstMeta,
@@ -10314,7 +10391,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 371, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 373, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeKubectlProbeConstMeta,
@@ -10334,7 +10411,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(method, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 372, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 374, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeKubectlReviewConstMeta,
@@ -10355,7 +10432,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 373, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 375, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeLogTargetsConstMeta,
@@ -10383,7 +10460,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(namespace, serializer);
           sse_encode_String(pod, serializer);
           sse_encode_String(queryJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 374, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 376, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeLogsConstMeta,
@@ -10404,7 +10481,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(streamId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 375, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 377, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeLogsPollConstMeta,
@@ -10432,7 +10509,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(namespace, serializer);
           sse_encode_String(pod, serializer);
           sse_encode_String(queryJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 376, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 378, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeLogsStartConstMeta,
@@ -10453,7 +10530,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(streamId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 377, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 379, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeLogsStopConstMeta,
@@ -10479,7 +10556,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
           sse_encode_list_prim_u_8_loose(manifest, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 378, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 380, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeManifestDiffConstMeta,
@@ -10501,7 +10578,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_bool(pods, serializer);
           sse_encode_opt_String(namespace, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 379, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 381, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeMetricsConstMeta,
@@ -10521,7 +10598,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 380, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 382, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeNamespacesConstMeta,
@@ -10547,7 +10624,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
           sse_encode_String(uid, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 381, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 383, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeObjectEventsConstMeta,
@@ -10567,7 +10644,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(contextId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 382, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 384, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeOidcBeginConstMeta,
@@ -10588,7 +10665,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(ticket, serializer);
           sse_encode_opt_String(callbackUrl, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 383, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 385, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeOidcCompleteConstMeta,
@@ -10609,7 +10686,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(namespace, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 384, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 386, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubePermissionsConstMeta,
@@ -10630,7 +10707,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 385, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 387, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeRelatedObjectsConstMeta,
@@ -10654,7 +10731,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(typedContextName, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 386, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 388, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeRequestWriteWindowConstMeta,
@@ -10682,7 +10759,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(referenceJson, serializer);
           sse_encode_String(uid, serializer);
           sse_encode_String(resourceVersion, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 387, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 389, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeResourceDeleteConstMeta,
@@ -10705,7 +10782,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 388, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 390, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeResourceGetConstMeta,
@@ -10731,7 +10808,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(kindJson, serializer);
           sse_encode_String(queryJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 389, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 391, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeResourcesListConstMeta,
@@ -10757,7 +10834,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(kindJson, serializer);
           sse_encode_String(queryJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 390, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 392, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeResourcesTableConstMeta,
@@ -10783,7 +10860,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
           sse_encode_String(resourceVersion, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 391, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 393, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeRestartConstMeta,
@@ -10811,7 +10888,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(referenceJson, serializer);
           sse_encode_CastedPrimitive_u_64(before, serializer);
           sse_encode_CastedPrimitive_u_64(after, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 392, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 394, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeRolloutDiffConstMeta,
@@ -10832,7 +10909,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 393, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 395, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeRolloutHistoryConstMeta,
@@ -10860,7 +10937,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(referenceJson, serializer);
           sse_encode_String(resourceVersion, serializer);
           sse_encode_u_32(replicas, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 394, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 396, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeScaleConstMeta,
@@ -10882,7 +10959,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(directory, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 395, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 397, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeScanConfigFilesConstMeta,
@@ -10903,7 +10980,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(kindJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 396, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 398, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeSchemaConstMeta,
@@ -10924,7 +11001,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 397, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 399, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeSecretRevealConstMeta,
@@ -10952,7 +11029,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(requestJson, serializer);
           sse_encode_u_32(cols, serializer);
           sse_encode_u_32(rows, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 398, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 400, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeTerminalOpenConstMeta,
@@ -10972,7 +11049,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(contextId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 399, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 401, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeViewPreferencesConstMeta,
@@ -10993,7 +11070,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(contextId, serializer);
           sse_encode_String(patchJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 400, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 402, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeViewPreferencesUpdateConstMeta,
@@ -11014,7 +11091,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(watchId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 401, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 403, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeWatchPollConstMeta,
@@ -11042,7 +11119,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(kindJson, serializer);
           sse_encode_String(queryJson, serializer);
           sse_encode_opt_String(resourceVersion, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 402, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 404, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeWatchStartConstMeta,
@@ -11065,7 +11142,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(watchId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 403, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 405, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeWatchStopConstMeta,
@@ -11086,7 +11163,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(referenceJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 404, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 406, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeWorkloadPodsConstMeta,
@@ -11106,7 +11183,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 405, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 407, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiKubernetesKubeWriteAccessConstMeta,
@@ -11126,7 +11203,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 406, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 408, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryNotesDeleteConstMeta,
@@ -11145,7 +11222,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 407, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 409, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryNotesListConstMeta,
@@ -11164,7 +11241,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(noteJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 408, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 410, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryNotesSaveConstMeta,
@@ -11185,7 +11262,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_opt_box_autoadd_os_auth_kind_choice(kind, serializer);
           sse_encode_bool(notEnrolled, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 409)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 411)!;
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: null),
         constMeta: kCrateApiAppOsAuthReportConstMeta,
@@ -11215,7 +11292,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(method, serializer);
           sse_encode_list_prim_u_8_loose(secret, serializer);
           sse_encode_opt_String(pin, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 410, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 412, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiPasswordVaultPasswordVaultKeyConstMeta,
@@ -11234,7 +11311,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 411, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 413, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesProfilesCloseConstMeta,
@@ -11255,7 +11332,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(displayName, serializer);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 412, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 414, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesProfilesCreateLocalConstMeta,
@@ -11285,7 +11362,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(email, serializer);
           sse_encode_list_prim_u_8_loose(password, serializer);
           sse_encode_bool(register, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 413, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 415, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesProfilesCreateSyncedConstMeta,
@@ -11315,7 +11392,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(serverUrl, serializer);
           sse_encode_String(login, serializer);
           sse_encode_list_prim_u_8_loose(password, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 414, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 416, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAccountProfilesCreateSyncedLdapConstMeta,
@@ -11336,7 +11413,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 415, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 417, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_opt_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesProfilesLastActiveIdConstMeta,
@@ -11355,7 +11432,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 416, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 418, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesProfilesListConstMeta,
@@ -11375,7 +11452,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(profileId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 417, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 419, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesProfilesOpenConstMeta,
@@ -11394,7 +11471,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 418, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 420, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesProfilesRemoteVaultsConstMeta,
@@ -11414,7 +11491,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(profileId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 419, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 421, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesProfilesRemoveConstMeta,
@@ -11435,7 +11512,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(profileId, serializer);
           sse_encode_String(displayName, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 420, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 422, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesProfilesRenameConstMeta,
@@ -11457,7 +11534,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(requestJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 421, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 423, port: port_);
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -11482,7 +11559,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(requestId, serializer);
           sse_encode_host_key_answer(answer, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 422, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 424, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAppPromptAnswerHostKeyConstMeta,
@@ -11503,7 +11580,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(requestId, serializer);
           sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 423, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 425, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAppPromptAnswerPassphraseConstMeta,
@@ -11524,7 +11601,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(requestId, serializer);
           sse_encode_opt_list_prim_u_8_strict(password, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 424, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 426, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAppPromptAnswerPasswordConstMeta,
@@ -11543,7 +11620,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 425, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 427, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_rdp_capabilities, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpCapabilitiesConstMeta,
@@ -11564,7 +11641,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(ticket, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 426, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 428, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpCommitClipboardPasteConstMeta,
@@ -11590,7 +11667,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_box_autoadd_rdp_connection(options, serializer);
           sse_encode_list_prim_u_8_loose(password, serializer);
           sse_encode_String(certificateSha256, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 427, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 429, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_rdp_session_info, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpConnectConstMeta,
@@ -11618,7 +11695,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_prim_u_8_loose(password, serializer);
           sse_encode_String(certificateSha256, serializer);
           sse_encode_box_autoadd_rdp_permissions(permissions, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 428, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 430, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_rdp_session_info, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpConnectWithPermissionsConstMeta,
@@ -11640,7 +11717,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 429, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 431, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpDisconnectConstMeta,
@@ -11661,7 +11738,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(text, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 430, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 432, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpOfferClipboardTextConstMeta,
@@ -11682,7 +11759,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_String(text, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 431, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 433, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpOfferClipboardTextConfirmedConstMeta,
@@ -11702,7 +11779,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 432, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 434, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_rdp_permissions, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpPermissionsConstMeta,
@@ -11721,7 +11798,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 433, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 435, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_rdp_permissions, decodeErrorData: null),
         constMeta: kCrateApiRdpRdpPermissionsDefaultConstMeta,
@@ -11740,7 +11817,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 434, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 436, port: port_);
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_box_autoadd_rdp_directory_grant,
@@ -11763,7 +11840,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 435, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 437, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_rdp_poll, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpPollConstMeta,
@@ -11783,7 +11860,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(address, serializer);
           sse_encode_u_16(port, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 436, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 438, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_rdp_certificate, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpProbeCertificateConstMeta,
@@ -11803,7 +11880,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(grantId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 437, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 439, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpReleaseDirectoryGrantConstMeta,
@@ -11823,7 +11900,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 438, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 440, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpRequestClipboardTextConstMeta,
@@ -11849,7 +11926,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_box_autoadd_rdp_saved_host_ticket(ticket, serializer);
           sse_encode_opt_list_prim_u_8_strict(password, serializer);
           sse_encode_box_autoadd_rdp_permissions(permissions, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 439, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 441, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_rdp_session_info, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpHostsRdpSavedHostConnectConstMeta,
@@ -11869,7 +11946,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(hostId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 440, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 442, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_rdp_saved_host_ticket, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpHostsRdpSavedHostProbeConstMeta,
@@ -11890,7 +11967,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_list_rdp_input_message(messages, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 441, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 443, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpSendInputConstMeta,
@@ -11911,7 +11988,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
           sse_encode_box_autoadd_rdp_permissions(permissions, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 442, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 444, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpSetPermissionsConstMeta,
@@ -11931,7 +12008,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 443, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 445, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_opt_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiRdpRdpTakeClipboardTextConstMeta,
@@ -11952,7 +12029,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(serverUrl, serializer);
           sse_encode_String(clientVersion, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 444, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 446, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAppServerProbeConstMeta,
@@ -11972,7 +12049,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(transferId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 445, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 447, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshSftpCancelTransferConstMeta,
@@ -11994,7 +12071,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sftpId, serializer);
           sse_encode_String(path, serializer);
           sse_encode_u_32(mode, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 446, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 448, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpSftpChmodConstMeta,
@@ -12013,7 +12090,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 447, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 449, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpSftpClearFinishedTransfersConstMeta,
@@ -12033,7 +12110,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sftpId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 448, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 450, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshSftpCloseConstMeta,
@@ -12054,7 +12131,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sftpId, serializer);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 449, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 451, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpSftpCreateFileConstMeta,
@@ -12076,7 +12153,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sftpId, serializer);
           sse_encode_String(from, serializer);
           sse_encode_String(to, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 450, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 452, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpSftpDuplicateConstMeta,
@@ -12096,7 +12173,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sftpId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 451, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 453, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshSftpHomeConstMeta,
@@ -12116,7 +12193,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sftpId, serializer);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 452, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 454, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshSftpListConstMeta,
@@ -12137,7 +12214,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sftpId, serializer);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 453, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 455, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpSftpListDetailedConstMeta,
@@ -12158,7 +12235,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sftpId, serializer);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 454, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 456, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshSftpMkdirConstMeta,
@@ -12178,7 +12255,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(hostId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 455, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 457, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshSftpOpenConstMeta,
@@ -12203,7 +12280,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sftpId, serializer);
           sse_encode_String(path, serializer);
           sse_encode_CastedPrimitive_u_64(maxBytes, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 456, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 458, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_sftp_preview, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpSftpReadPreviewConstMeta,
@@ -12225,7 +12302,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sftpId, serializer);
           sse_encode_String(path, serializer);
           sse_encode_bool(recursive, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 457, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 459, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshSftpRemoveConstMeta,
@@ -12247,7 +12324,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sftpId, serializer);
           sse_encode_String(from, serializer);
           sse_encode_String(to, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 458, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 460, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshSftpRenameConstMeta,
@@ -12273,7 +12350,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(sftpId, serializer);
           sse_encode_String(input, serializer);
           sse_encode_String(base, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 459, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 461, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpSftpResolveDirectoryConstMeta,
@@ -12297,7 +12374,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             sse_encode_String(transferId, serializer);
             sse_encode_String(newTransferId, serializer);
             sse_encode_StreamSink_transfer_update_Sse(sink, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 460, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 462, port: port_);
           },
           codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
           constMeta: kCrateApiSshSftpRetryTransferConstMeta,
@@ -12320,7 +12397,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sftpId, serializer);
           sse_encode_String(path, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 461, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 463, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpSftpStatConstMeta,
@@ -12353,7 +12430,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             sse_encode_String(localPath, serializer);
             sse_encode_String(remotePath, serializer);
             sse_encode_StreamSink_transfer_update_Sse(sink, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 462, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 464, port: port_);
           },
           codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
           constMeta: kCrateApiSshSftpTransferConstMeta,
@@ -12376,7 +12453,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 463, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 465, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSftpSftpTransfersConstMeta,
@@ -12397,7 +12474,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(shareId, serializer);
           sse_encode_String(noteId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 464, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 466, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingShareNoteDeleteConstMeta,
@@ -12418,7 +12495,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(object, serializer);
           sse_encode_String(shareId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 465, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 467, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingShareNoteLinkConstMeta,
@@ -12437,7 +12514,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 466, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 468, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingShareNoteLinksConstMeta,
@@ -12458,7 +12535,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(shareId, serializer);
           sse_encode_String(noteJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 467, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 469, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingShareNoteSaveConstMeta,
@@ -12478,7 +12555,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(shareId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 468, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 470, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingShareNotesConstMeta,
@@ -12499,7 +12576,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(verificationId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 469, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 471, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingAcceptConstMeta,
@@ -12520,7 +12597,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(identityJson, serializer);
           sse_encode_opt_String(email, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 470, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 472, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingChoosePeerConstMeta,
@@ -12546,7 +12623,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(shareId, serializer);
           sse_encode_String(routeJson, serializer);
           sse_encode_bool(includeCredentials, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 471, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 473, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingCopyDbConnectionConstMeta,
@@ -12569,7 +12646,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_opt_String(credentialId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 472, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 474, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingCopyHostConstMeta,
@@ -12595,7 +12672,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(shareId, serializer);
           sse_encode_String(routeJson, serializer);
           sse_encode_bool(includeCredentials, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 473, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 475, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingCopyKubeContextConstMeta,
@@ -12618,7 +12695,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(shareId, serializer);
           sse_encode_bool(includePassword, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 474, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 476, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingCopyRdpHostConstMeta,
@@ -12638,7 +12715,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 475, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 477, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingCopySecretCredentialConstMeta,
@@ -12658,7 +12735,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 476, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 478, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingCopySnippetConstMeta,
@@ -12678,7 +12755,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 477, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 479, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingDeleteConstMeta,
@@ -12697,7 +12774,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 478, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 480, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingDeletedConstMeta,
@@ -12717,7 +12794,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 479, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 481, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingDetachHostConstMeta,
@@ -12737,7 +12814,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 480, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 482, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingDiscardPendingConstMeta,
@@ -12757,7 +12834,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(email, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 481, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 483, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingDiscoverConstMeta,
@@ -12776,7 +12853,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 482, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 484, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingDismissVerificationBannerConstMeta,
@@ -12797,7 +12874,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(projectionJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 483, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 485, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingEditConstMeta,
@@ -12818,7 +12895,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_list_prim_u_8_loose(value, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 484, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 486, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingEditSecretConstMeta,
@@ -12837,7 +12914,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 485, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 487, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingFlushConstMeta,
@@ -12856,7 +12933,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 486, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 488, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingIdentityConstMeta,
@@ -12876,7 +12953,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 487, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 489, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingInspectConstMeta,
@@ -12896,7 +12973,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 488, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 490, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingLeaveConstMeta,
@@ -12916,7 +12993,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_bool(refresh, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 489, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 491, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingListConstMeta,
@@ -12935,7 +13012,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 490, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 492, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingOutboxConstMeta,
@@ -12954,7 +13031,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 491, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 493, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPeerPinsConstMeta,
@@ -12973,7 +13050,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 492, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 494, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPolicyConstMeta,
@@ -12994,7 +13071,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_bool(includeCredentials, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 493, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 495, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPreviewDbConnectionConstMeta,
@@ -13015,7 +13092,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(childrenJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 494, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 496, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPreviewGroupConstMeta,
@@ -13036,7 +13113,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_bool(includeNotes, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 495, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 497, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPreviewHostConstMeta,
@@ -13057,7 +13134,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_bool(includeCredentials, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 496, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 498, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPreviewKubeContextConstMeta,
@@ -13083,7 +13160,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(hostId, serializer);
           sse_encode_bool(includePassword, serializer);
           sse_encode_bool(includeNotes, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 497, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 499, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPreviewRdpHostConstMeta,
@@ -13106,7 +13183,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_bool(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 498, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 500, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPreviewSecretConstMeta,
@@ -13126,7 +13203,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 499, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 501, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPreviewSnippetConstMeta,
@@ -13147,7 +13224,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(projectionJson, serializer);
           sse_encode_String(grantsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 500, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 502, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPublishConstMeta,
@@ -13175,7 +13252,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_bool(includeCredentials, serializer);
           sse_encode_String(expectedStamp, serializer);
           sse_encode_String(grantsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 501, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 503, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPublishDbConnectionConstMeta,
@@ -13205,7 +13282,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_bool(includeCredentials, serializer);
           sse_encode_String(expectedStamp, serializer);
           sse_encode_String(grantsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 502, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 504, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPublishKubeContextConstMeta,
@@ -13237,7 +13314,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_bool(includeNotes, serializer);
           sse_encode_String(expectedStamp, serializer);
           sse_encode_String(grantsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 503, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 505, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPublishRdpHostConstMeta,
@@ -13265,7 +13342,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(id, serializer);
           sse_encode_bool(passphrase, serializer);
           sse_encode_String(grantsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 504, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 506, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingPublishSecretConstMeta,
@@ -13286,7 +13363,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(verificationId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 505, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 507, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingReconcileConstMeta,
@@ -13307,7 +13384,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_bool(confirmEndpointChange, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 506, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 508, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingRefreshBoundHostConstMeta,
@@ -13333,7 +13410,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(id, serializer);
           sse_encode_String(address, serializer);
           sse_encode_u_16(port, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 507, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 509, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingRefreshBoundHostExpectedConstMeta,
@@ -13353,7 +13430,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 508, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 510, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingRestoreConstMeta,
@@ -13373,7 +13450,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 509, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 511, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_prim_u_8_strict, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingRevealSecretConstMeta,
@@ -13394,7 +13471,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(grantsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 510, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 512, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingRotateConstMeta,
@@ -13414,7 +13491,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(identityJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 511, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 513, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingSafetyNumberConstMeta,
@@ -13434,7 +13511,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(policyJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 512, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 514, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingSetPolicyConstMeta,
@@ -13453,7 +13530,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 513, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 515, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingStatusConstMeta,
@@ -13472,7 +13549,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 514, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 516, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingVerificationBannerConstMeta,
@@ -13500,7 +13577,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(method, serializer);
           sse_encode_String(input, serializer);
           sse_encode_opt_String(email, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 515, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 517, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSharingSharingVerifyPeerConstMeta,
@@ -13520,7 +13597,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 516, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 518, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventorySnippetsDeleteConstMeta,
@@ -13539,7 +13616,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 517, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 519, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventorySnippetsListConstMeta,
@@ -13560,7 +13637,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(snippetJson, serializer);
           sse_encode_String(valuesJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 518, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 520, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventorySnippetsRenderConstMeta,
@@ -13580,7 +13657,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(snippetJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 519, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 521, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventorySnippetsSaveConstMeta,
@@ -13601,7 +13678,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(query, serializer);
           sse_encode_u_32(limit, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 520, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 522, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventorySnippetsSearchConstMeta,
@@ -13621,7 +13698,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_bool(revokeDevice, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 521, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 523, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncSyncDisconnectConstMeta,
@@ -13649,7 +13726,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(email, serializer);
           sse_encode_list_prim_u_8_loose(password, serializer);
           sse_encode_bool(register, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 522, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 524, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncSyncEnableConstMeta,
@@ -13675,7 +13752,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(serverUrl, serializer);
           sse_encode_String(login, serializer);
           sse_encode_list_prim_u_8_loose(password, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 523, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 525, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAccountSyncEnableLdapConstMeta,
@@ -13694,7 +13771,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 524, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 526, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncSyncNowConstMeta,
@@ -13714,7 +13791,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(password, serializer);
           sse_encode_bool(allowNewDeviceIdentity, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 525, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 527, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncSyncReauthenticateConstMeta,
@@ -13740,7 +13817,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(login, serializer);
           sse_encode_list_prim_u_8_loose(password, serializer);
           sse_encode_bool(allowNewDeviceIdentity, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 526, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 528, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAccountSyncReauthenticateLdapConstMeta,
@@ -13761,7 +13838,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 527, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 529, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_CastedPrimitive_u_64, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncSyncRetryFailedConstMeta,
@@ -13780,7 +13857,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 528, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 530, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncSyncStatusConstMeta,
@@ -13799,7 +13876,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(invitationId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 529, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 531, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsAcceptInvitationConstMeta,
@@ -13825,7 +13902,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(vaultId, serializer);
           sse_encode_String(userId, serializer);
           sse_encode_String(roleName, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 530, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 532, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsChangeRoleConstMeta,
@@ -13845,7 +13922,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(invitationId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 531, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 533, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsCloseInvitationConstMeta,
@@ -13866,7 +13943,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
           sse_encode_String(invitationId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 532, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 534, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsConfirmMemberConstMeta,
@@ -13887,7 +13964,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_String(ids, serializer);
           sse_encode_opt_String(targetVaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 533, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 535, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsCopyObjectsConstMeta,
@@ -13910,7 +13987,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_opt_String(color, serializer);
           sse_encode_opt_String(icon, serializer);
           sse_encode_opt_String(description, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 534, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 536, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsCreateConstMeta,
@@ -13931,7 +14008,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
           sse_encode_String(groupJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 535, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 537, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsCreateGroupConstMeta,
@@ -13950,7 +14027,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 536, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 538, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsIncomingInvitationsConstMeta,
@@ -13970,7 +14047,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 537, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 539, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsInvitationsConstMeta,
@@ -13998,7 +14075,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(email, serializer);
           sse_encode_String(roleName, serializer);
           sse_encode_opt_String(note, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 538, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 540, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsInviteConstMeta,
@@ -14018,7 +14095,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 539, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 541, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsJoinRequestsConstMeta,
@@ -14038,7 +14115,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 540, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 542, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsLeaveConstMeta,
@@ -14057,7 +14134,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 541, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 543, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsListConstMeta,
@@ -14076,7 +14153,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 542, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 544, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsLogConstMeta,
@@ -14096,7 +14173,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 543, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 545, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsMembersConstMeta,
@@ -14117,7 +14194,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_String(ids, serializer);
           sse_encode_opt_String(targetVaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 544, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 546, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsMoveObjectsConstMeta,
@@ -14136,7 +14213,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 545, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 547, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsObjectVaultsConstMeta,
@@ -14155,7 +14232,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 546, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 548, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsRefreshConstMeta,
@@ -14176,7 +14253,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
           sse_encode_String(userId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 547, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 549, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsRemoveMemberConstMeta,
@@ -14196,7 +14273,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 548, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 550, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsRotateKeyConstMeta,
@@ -14217,7 +14294,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
           sse_encode_String(settingsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 549, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 551, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsSaveSettingsConstMeta,
@@ -14245,7 +14322,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_opt_String(localColor, serializer);
           sse_encode_i_32(sortOrder, serializer);
           sse_encode_bool(hidden, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 550, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 552, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsSetPreferencesConstMeta,
@@ -14267,7 +14344,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 551, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 553, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsSettingsConstMeta,
@@ -14286,7 +14363,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 552, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 554, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsSupportedConstMeta,
@@ -14307,7 +14384,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
           sse_encode_String(userId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 553, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 555, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiTeamsTeamsTransferOwnerConstMeta,
@@ -14330,7 +14407,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             final serializer = SseSerializer(generalizedFrbRustBinding);
             sse_encode_String(terminalId, serializer);
             sse_encode_StreamSink_terminal_frame_Sse(sink, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 554, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 556, port: port_);
           },
           codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
           constMeta: kCrateApiSshTerminalAttachConstMeta,
@@ -14352,7 +14429,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(terminalId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 555, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 557, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalCloseConstMeta,
@@ -14372,7 +14449,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(terminalId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 556, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 558, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_list_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalCommandHistoryConstMeta,
@@ -14392,7 +14469,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(terminalId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 557, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 559, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalInfoConstMeta,
@@ -14411,7 +14488,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 558, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 560, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalLocalProfilesConstMeta,
@@ -14430,7 +14507,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 559, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 561, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalOnlyShutdownConstMeta,
@@ -14449,7 +14526,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 560, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 562, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalOnlyStartConstMeta,
@@ -14471,7 +14548,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(hostId, serializer);
           sse_encode_u_32(cols, serializer);
           sse_encode_u_32(rows, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 561, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 563, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalOpenConstMeta,
@@ -14493,7 +14570,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(profileId, serializer);
           sse_encode_u_32(cols, serializer);
           sse_encode_u_32(rows, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 562, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 564, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalOpenLocalConstMeta,
@@ -14515,7 +14592,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(hostId, serializer);
           sse_encode_opt_String(peerId, serializer);
           sse_encode_bool(sudo, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 563, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 565, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalOpenTcpdumpConstMeta,
@@ -14537,7 +14614,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(terminalId, serializer);
           sse_encode_u_32(cols, serializer);
           sse_encode_u_32(rows, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 564, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 566, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalResizeConstMeta,
@@ -14558,7 +14635,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(terminalId, serializer);
           sse_encode_String(requestJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 565, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 567, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalTmuxConstMeta,
@@ -14579,7 +14656,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(terminalId, serializer);
           sse_encode_list_prim_u_8_loose(data, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 566, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 568, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalWriteConstMeta,
@@ -14599,7 +14676,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(tunnelId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 567, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 569, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTunnelStartConstMeta,
@@ -14618,7 +14695,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 568, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 570, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTunnelStatusesConstMeta,
@@ -14638,7 +14715,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(tunnelId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 569, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 571, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTunnelStopConstMeta,
@@ -14658,7 +14735,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 570, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 572, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryTunnelsDeleteConstMeta,
@@ -14677,7 +14754,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 571, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 573, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryTunnelsListConstMeta,
@@ -14697,7 +14774,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(tunnelJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 572, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 574, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryTunnelsSaveConstMeta,
@@ -14717,7 +14794,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(key, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 573, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 575, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_opt_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAppUiStoreGetConstMeta,
@@ -14738,7 +14815,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(key, serializer);
           sse_encode_opt_String(value, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 574, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 576, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiAppUiStoreSetConstMeta,
@@ -14757,7 +14834,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 575, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 577, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultAcknowledgeRecoveryKitConstMeta,
@@ -14778,7 +14855,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(current, serializer);
           sse_encode_list_prim_u_8_loose(next, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 576, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 578, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultChangePassphraseConstMeta,
@@ -14806,7 +14883,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(object, serializer);
           sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
           sse_encode_opt_String(presenceToken, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 577, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 579, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultConfirmStepUpConstMeta,
@@ -14828,7 +14905,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 578, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 580, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultCreateConstMeta,
@@ -14847,7 +14924,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 579, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 581, port: port_);
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_CastedPrimitive_i_64,
@@ -14869,7 +14946,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 580, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 582, port: port_);
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_list_prim_u_8_strict,
@@ -14891,7 +14968,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 581, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 583, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultDeviceUnlockInfoConstMeta,
@@ -14910,7 +14987,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 582, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 584, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultDeviceUnlockInvalidatedConstMeta,
@@ -14929,7 +15006,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 583, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 585, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultDismissDeviceUnlockOfferConstMeta,
@@ -14955,7 +15032,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_prim_u_8_loose(material, serializer);
           sse_encode_list_prim_u_8_loose(handle, serializer);
           sse_encode_String(kind, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 584, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 586, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultEnableDeviceUnlockWithMaterialConstMeta,
@@ -14976,7 +15053,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 585, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 587, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultHasPendingRecoveryKitConstMeta,
@@ -14995,7 +15072,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 586, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 588, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultIsUnlockedConstMeta,
@@ -15016,7 +15093,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(vaultId, serializer);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 587, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 589, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultJoinWithPassphraseConstMeta,
@@ -15042,7 +15119,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(vaultId, serializer);
           sse_encode_list_prim_u_8_loose(recoveryInput, serializer);
           sse_encode_opt_list_prim_u_8_strict(newPassphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 588, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 590, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultJoinWithRecoveryKeyConstMeta,
@@ -15064,7 +15141,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 589, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 591, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncVaultKeyConfirmConstMeta,
@@ -15083,7 +15160,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 590, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 592, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSyncVaultKeyStatusConstMeta,
@@ -15102,7 +15179,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 591, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 593, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultLockConstMeta,
@@ -15120,7 +15197,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 592, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 594, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultRecoveryKitAvailableConstMeta,
@@ -15139,7 +15216,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 593, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 595, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultRegenerateRecoveryKitConstMeta,
@@ -15160,7 +15237,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(next, serializer);
           sse_encode_String(reason, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 594, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 596, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultResetPassphraseWithDeviceConstMeta,
@@ -15184,7 +15261,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(material, serializer);
           sse_encode_list_prim_u_8_loose(next, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 595, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 597, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultResetPassphraseWithDeviceMaterialConstMeta,
@@ -15208,7 +15285,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(recoveryInput, serializer);
           sse_encode_list_prim_u_8_loose(next, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 596, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 598, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultResetPassphraseWithRecoveryKeyConstMeta,
@@ -15227,7 +15304,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 597, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 599, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultSecurityKeyInfoConstMeta,
@@ -15247,7 +15324,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_bool(enabled, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 598, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 600, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultSetConfirmActionsWithPresenceConstMeta,
@@ -15273,7 +15350,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_bool(enabled, serializer);
           sse_encode_String(reason, serializer);
           sse_encode_bool(allowUnprotected, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 599, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 601, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultSetDeviceUnlockEnabledConstMeta,
@@ -15296,7 +15373,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_bool(enabled, serializer);
           sse_encode_opt_list_prim_u_8_strict(pin, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 600, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 602, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultSetSecurityKeyEnabledConstMeta,
@@ -15315,7 +15392,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 601, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 603, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryVaultSettingsGetConstMeta,
@@ -15335,7 +15412,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(settingsJson, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 602, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 604, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiInventoryVaultSettingsSaveConstMeta,
@@ -15355,7 +15432,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(reason, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 603, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 605, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultUnlockWithDeviceConstMeta,
@@ -15375,7 +15452,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(material, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 604, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 606, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultUnlockWithDeviceMaterialConstMeta,
@@ -15395,7 +15472,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 605, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 607, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultUnlockWithPassphraseConstMeta,
@@ -15415,7 +15492,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(recoveryInput, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 606, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 608, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultUnlockWithRecoveryKeyConstMeta,
@@ -15435,7 +15512,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_opt_list_prim_u_8_strict(pin, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 607, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 609, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultUnlockWithSecurityKeyConstMeta,
@@ -15455,7 +15532,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(passphrase, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 608, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 610, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_bool, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultVerifyPassphraseConstMeta,
@@ -15481,7 +15558,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(action, serializer);
           sse_encode_String(object, serializer);
           sse_encode_String(reason, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 609, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 611, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultVerifyUserPresenceConstMeta,
@@ -15507,7 +15584,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(action, serializer);
           sse_encode_String(object, serializer);
           sse_encode_list_prim_u_8_loose(material, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 610, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 612, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiProfilesVaultVerifyUserPresenceWithMaterialConstMeta,
@@ -15529,7 +15606,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(sessionId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 611, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 613, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_unit, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiWslcWslcCloseConstMeta,
@@ -15549,7 +15626,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(profileId, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 612, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 614, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiWslcWslcOpenConstMeta,
@@ -15570,7 +15647,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(specJson, serializer);
           sse_encode_bool(copy, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 613)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 615)!;
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiWslcWslcPreviewConstMeta,
@@ -15598,7 +15675,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_opt_String(server, serializer);
           sse_encode_String(username, serializer);
           sse_encode_list_prim_u_8_loose(password, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 614, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 616, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiWslcWslcRegistryLoginConstMeta,
@@ -15628,7 +15705,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(argsJson, serializer);
           sse_encode_opt_list_prim_u_8_strict(passphrase, serializer);
           sse_encode_opt_String(presenceToken, serializer);
-          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 615, port: port_);
+          pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 617, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiWslcWslcRequestConstMeta,

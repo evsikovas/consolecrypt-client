@@ -3,6 +3,7 @@
 /// The native core does all networking; this file is the UI contract.
 library;
 
+import 'package:consolecrypt/core/models/credential.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/docker/docker_removal.dart';
@@ -488,6 +489,9 @@ abstract interface class DockerService {
 
   /// Registry-confirmed digests for the immutable image ID and original repository.
   Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage);
+
+  /// Publish the immutable image from this engine to the registry bound to the credential.
+  Future<String> publishImage(String sessionId, String imageId, Credential credential, String repository, String tag);
 
   /// The full `docker inspect`, secrets included; the core checks the vault
   /// passphrase or a presence token for [StepUpAction.dockerReveal] on

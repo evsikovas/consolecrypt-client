@@ -94,6 +94,84 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Container registry
+  ///
+  /// In en, this message translates to:
+  /// **'Container registry'**
+  String get registryLabel;
+
+  /// Select a saved registry
+  ///
+  /// In en, this message translates to:
+  /// **'Select a saved registry'**
+  String get registryChoose;
+
+  /// Add registry
+  ///
+  /// In en, this message translates to:
+  /// **'Add registry'**
+  String get registryAdd;
+
+  /// Other registry
+  ///
+  /// In en, this message translates to:
+  /// **'Other registry'**
+  String get registryOther;
+
+  /// Registry host
+  ///
+  /// In en, this message translates to:
+  /// **'Registry host'**
+  String get registryAddress;
+
+  /// Repository path
+  ///
+  /// In en, this message translates to:
+  /// **'Repository path'**
+  String get registryRepo;
+
+  /// Tag
+  ///
+  /// In en, this message translates to:
+  /// **'Tag'**
+  String get registryTag;
+
+  /// Password or access token
+  ///
+  /// In en, this message translates to:
+  /// **'Password or access token'**
+  String get registryToken;
+
+  /// Push image
+  ///
+  /// In en, this message translates to:
+  /// **'Push image'**
+  String get registryPublish;
+
+  /// Image published. Its digest is ready to use.
+  ///
+  /// In en, this message translates to:
+  /// **'Image published. Its digest is ready to use.'**
+  String get registryPublished;
+
+  /// Enter a registry host, optionally with a port.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a registry host, optionally with a port.'**
+  String get registryInvalid;
+
+  /// Could not save the registry credential.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the registry credential.'**
+  String get registrySaveFailed;
+
+  /// Push failed. Check the repository path, push permission and connectivity from the Docker host.
+  ///
+  /// In en, this message translates to:
+  /// **'Push failed. Check the repository path, push permission and connectivity from the Docker host.'**
+  String get registryPublishFailed;
+
   /// Bar indicators
   ///
   /// In en, this message translates to:
@@ -31537,7 +31615,7 @@ abstract class AppLocalizations {
   /// Experimental Docker to Kubernetes deployment wizard.
   ///
   /// In en, this message translates to:
-  /// **'Publish the image to a registry reachable by cluster nodes first. This wizard does not upload local images. Prefer a digest; a mutable tag can change. localhost is not a remote registry.'**
+  /// **'Use a published tag or digest that cluster nodes can pull. Private images may need an imagePullSecret.'**
   String get dockerKubeImageHelp;
 
   /// Experimental Docker to Kubernetes deployment wizard.

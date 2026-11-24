@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/mock/mock_config.dart';
 import 'package:consolecrypt/core/mock/mock_presence.dart';
+import 'package:consolecrypt/core/models/credential.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
@@ -93,6 +94,24 @@ class MockDockerService implements DockerService {
   }
 
   static String _imageId(String image) => 'sha256:${_id('image/$image')}';
+
+  @override
+  Future<String> publishImage(
+    String sessionId,
+    String imageId,
+    Credential credential,
+    String repository,
+    String tag,
+  ) async {
+    await mockDelay(latency);
+    final session = _sessions[sessionId];
+    if (credential.registry == null ||
+        session == null ||
+        !_seed(session.hostId).any((c) => _imageId(c.image) == imageId)) {
+      throw const DockerException(DockerFailure.other, 'Unavailable image or registry');
+    }
+    return '${credential.registry}/$repository@sha256:${_id('manifest/$imageId')}';
+  }
 
   @override
   Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage) async {

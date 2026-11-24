@@ -12,6 +12,7 @@ import 'package:consolecrypt/docker/docker_kube_deployment.dart';
 import 'package:consolecrypt/docker/docker_kube_plan.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:consolecrypt/docker/registry_publisher.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
 import 'package:consolecrypt/kubernetes/kube_navigation.dart';
@@ -22,8 +23,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 class DockerKubeDialog extends ConsumerStatefulWidget {
-  const DockerKubeDialog({required this.source, required this.container, this.resolveImage, super.key});
+  const DockerKubeDialog({
+    required this.source,
+    required this.container,
+    this.resolveImage,
+    this.publishImage,
+    this.engineName = '',
+    super.key,
+  });
   final DockerKubeSource source;
+  final String engineName;
+  final Future<String> Function(Credential, String, String)? publishImage;
   final DockerContainer container;
   final Future<DockerKubeSource> Function()? resolveImage;
   @override
@@ -52,6 +62,7 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
   DockerKubeDeployment? _deployment;
   ObjectId? _providerId;
   (AiProviderConfig, DockerKubeTarget)? _review;
+  bool _publishing = false;
   bool _busy = false, _newNamespace = false, _acknowledged = false, _namespaceCreated = false;
   DockerKubeRollout? _rollout, _lastPodProblem;
   Timer? _statusTimer;
@@ -117,6 +128,35 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
       // A published reference can still be supplied manually.
     } finally {
       if (_current) setState(() => _resolvingImage = false);
+    }
+  }
+
+  Future<void> _publish(Credential credential, String path, String tag) async {
+    if (!_current || _busy || _started || widget.publishImage == null) return;
+    setState(() {
+      _busy = true;
+      _publishing = true;
+      _error = null;
+    });
+    try {
+      final image = await widget.publishImage!(credential, path, tag);
+      if (!_current) return;
+      if (!DockerKubeTarget.validImage(image) || !image.startsWith('${credential.registry}/$path@sha256:')) {
+        throw const FormatException();
+      }
+      _imageEdited = true;
+      _image.text = image;
+      _changed(target: true);
+      if (mounted) showSnack(context, context.l10n.registryPublished);
+    } catch (_) {
+      if (_current) setState(() => _error = context.l10n.registryPublishFailed);
+    } finally {
+      if (_current) {
+        setState(() {
+          _busy = false;
+          _publishing = false;
+        });
+      }
     }
   }
 
@@ -677,7 +717,25 @@ class _DockerKubeDialogState extends ConsumerState<DockerKubeDialog> with Widget
                           Text(l.dockerKubeNamespaceCreated, key: const ValueKey('docker-kube-namespace-created')),
                       ],
                       field(_name, 'name', l.kubeName),
-                      field(_image, 'image', l.dockerKubeImage),
+                      if (widget.publishImage != null)
+                        RegistryPublisher(
+                          enabled: enabled,
+                          publishing: _publishing,
+                          engineName: widget.engineName,
+                          sourceImage: _source.sourceImage ?? widget.container.image,
+                          publish: _publish,
+                        ),
+                      Row(
+                        children: [
+                          Expanded(child: field(_image, 'image', l.dockerKubeImage)),
+                          if (DockerKubeTarget.validImage(_image.text.trim()))
+                            GlassIconButton(
+                              tooltip: l.commonCopy,
+                              icon: Icons.copy_rounded,
+                              onPressed: () => copyPlainWithNotice(context, ref, _image.text.trim()),
+                            ),
+                        ],
+                      ),
                       if (_resolvingImage) const LinearProgressIndicator(minHeight: 2),
                       Text(
                         !_resolvingImage &&

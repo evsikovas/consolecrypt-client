@@ -10,6 +10,46 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get registryLabel => 'Container registry';
+
+  @override
+  String get registryChoose => 'Select a saved registry';
+
+  @override
+  String get registryAdd => 'Add registry';
+
+  @override
+  String get registryOther => 'Other registry';
+
+  @override
+  String get registryAddress => 'Registry host';
+
+  @override
+  String get registryRepo => 'Repository path';
+
+  @override
+  String get registryTag => 'Tag';
+
+  @override
+  String get registryToken => 'Password or access token';
+
+  @override
+  String get registryPublish => 'Push image';
+
+  @override
+  String get registryPublished => 'Image published. Its digest is ready to use.';
+
+  @override
+  String get registryInvalid => 'Enter a registry host, optionally with a port.';
+
+  @override
+  String get registrySaveFailed => 'Could not save the registry credential.';
+
+  @override
+  String get registryPublishFailed =>
+      'Push failed. Check the repository path, push permission and connectivity from the Docker host.';
+
+  @override
   String get terminalBarItems => 'Bar indicators';
 
   @override
@@ -17867,7 +17907,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dockerKubeImageHelp =>
-      'Publish the image to a registry reachable by cluster nodes first. This wizard does not upload local images. Prefer a digest; a mutable tag can change. localhost is not a remote registry.';
+      'Use a published tag or digest that cluster nodes can pull. Private images may need an imagePullSecret.';
 
   @override
   String get dockerKubePort => 'Container / Service TCP port';

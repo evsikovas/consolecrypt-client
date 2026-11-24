@@ -53,6 +53,7 @@ class CredentialsScreen extends ConsumerWidget {
                   NewCredentialKind.import => 'new-import',
                   NewCredentialKind.certificate => 'new-certificate',
                   NewCredentialKind.agent => 'new-agent',
+                  NewCredentialKind.registry => 'new-registry',
                 }),
                 value: k,
                 label: k.localizedLabel(l10n),
@@ -110,7 +111,7 @@ class CredentialsScreen extends ConsumerWidget {
                     ),
                     subtitle: Text(
                       [
-                        c.kind.localized(l10n),
+                        if (c.registry case final address?) address else c.kind.localized(l10n),
                         if (c.keyAlgorithm != null) c.keyAlgorithm!.localized(l10n),
                         if (c.username != null) l10n.credentialsListUser(c.username!),
                         if (c.keyEncrypted)
@@ -274,6 +275,7 @@ class _CredentialDetailsDialogState extends ConsumerState<CredentialDetailsDialo
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             LabeledValue(label: l10n.credentialsDetailsType, value: Text(c.kind.localized(l10n))),
+            if (c.registry case final address?) LabeledValue(label: l10n.registryLabel, value: SelectableText(address)),
             if (c.username != null) LabeledValue(label: l10n.credentialsDetailsUsername, value: Text(c.username!)),
             if (c.keyAlgorithm != null)
               LabeledValue(label: l10n.credentialsDetailsAlgorithm, value: Text(c.keyAlgorithm!.localized(l10n))),

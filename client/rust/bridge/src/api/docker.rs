@@ -30,6 +30,23 @@ pub async fn docker_inspect(session_id: String, container: String) -> Result<Str
         .await
 }
 
+/// Publish the exact image from this engine with a registry-bound vault credential.
+pub async fn docker_publish_image(
+    session_id: String,
+    image_id: String,
+    credential_id: String,
+    repository: String,
+    tag: String,
+) -> Result<String, BridgeError> {
+    with_core(move |c| async move {
+        Ok(
+            c.docker_publish_image(session_id, image_id, credential_id, repository, tag)
+                .await?,
+        )
+    })
+    .await
+}
+
 /// Registry-confirmed digests for this local image and its source repository.
 pub async fn docker_image_repo_digests(
     session_id: String,

@@ -198,10 +198,20 @@ final class RustInventoryService implements InventoryService, SshConfigImportSer
     required String name,
     required SecretText password,
     String? username,
+    String? registry,
   }) async {
     final json = await withSecret(
       password,
-      (bytes) => guard(() => rs_cred.credentialsAddPassword(name: name, username: _clean(username), password: bytes)),
+      (bytes) => registry != null
+          ? guard(
+              () => rs_cred.credentialsAddRegistry(
+                name: name,
+                registry: registry,
+                username: username ?? '',
+                password: bytes,
+              ),
+            )
+          : guard(() => rs_cred.credentialsAddPassword(name: name, username: _clean(username), password: bytes)),
     );
     return _storedCredential(json);
   }

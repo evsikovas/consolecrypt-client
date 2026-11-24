@@ -10,6 +10,45 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get registryLabel => '镜像仓库';
+
+  @override
+  String get registryChoose => '选择已保存的仓库';
+
+  @override
+  String get registryAdd => '添加镜像仓库';
+
+  @override
+  String get registryOther => '其他仓库';
+
+  @override
+  String get registryAddress => '仓库主机';
+
+  @override
+  String get registryRepo => '镜像路径';
+
+  @override
+  String get registryTag => '标签';
+
+  @override
+  String get registryToken => '密码或访问令牌';
+
+  @override
+  String get registryPublish => '推送镜像';
+
+  @override
+  String get registryPublished => '镜像已推送，摘要引用已填入。';
+
+  @override
+  String get registryInvalid => '请输入仓库主机，可附加端口。';
+
+  @override
+  String get registrySaveFailed => '无法保存仓库凭据。';
+
+  @override
+  String get registryPublishFailed => '推送失败。请检查镜像路径、推送权限以及 Docker 主机到仓库的连接。';
+
+  @override
   String get terminalBarItems => '状态栏指标';
 
   @override
@@ -17096,7 +17135,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerKubeNoProvider => '请在设置中添加 AI 提供商以生成清单。';
 
   @override
-  String get dockerKubeImageHelp => '请先将镜像发布到集群节点可以访问的镜像仓库。此向导不会上传本地镜像。建议使用镜像摘要，因为可变标签可能指向其他镜像。localhost 不能用作远程仓库。';
+  String get dockerKubeImageHelp => '使用集群节点可拉取的标签或摘要。私有镜像可能需要 imagePullSecret。';
 
   @override
   String get dockerKubePort => '容器和服务的 TCP 端口';

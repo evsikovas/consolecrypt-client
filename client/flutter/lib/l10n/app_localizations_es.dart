@@ -10,6 +10,46 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get registryLabel => 'Registro de imágenes';
+
+  @override
+  String get registryChoose => 'Selecciona un registro guardado';
+
+  @override
+  String get registryAdd => 'Añadir registro';
+
+  @override
+  String get registryOther => 'Otro registro';
+
+  @override
+  String get registryAddress => 'Servidor del registro';
+
+  @override
+  String get registryRepo => 'Ruta del repositorio';
+
+  @override
+  String get registryTag => 'Etiqueta';
+
+  @override
+  String get registryToken => 'Contraseña o token de acceso';
+
+  @override
+  String get registryPublish => 'Publicar imagen';
+
+  @override
+  String get registryPublished => 'Imagen publicada. La referencia por digest está lista.';
+
+  @override
+  String get registryInvalid => 'Introduce el servidor del registro y el puerto si procede.';
+
+  @override
+  String get registrySaveFailed => 'No se pudo guardar la credencial del registro.';
+
+  @override
+  String get registryPublishFailed =>
+      'No se pudo publicar. Comprueba la ruta, los permisos de escritura y la conexión desde el host Docker.';
+
+  @override
   String get terminalBarItems => 'Indicadores de la barra';
 
   @override
@@ -18016,7 +18056,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dockerKubeImageHelp =>
-      'Publica primero la imagen en un registro accesible desde los nodos del clúster. El asistente no sube imágenes locales. Usa un resumen de imagen siempre que puedas, ya que una etiqueta mutable puede cambiar. No uses localhost como registro remoto.';
+      'Utiliza una etiqueta o un digest accesible para los nodos. Las imágenes privadas pueden requerir un imagePullSecret.';
 
   @override
   String get dockerKubePort => 'Puerto TCP del contenedor y del servicio';

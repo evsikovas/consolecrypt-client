@@ -4,7 +4,7 @@ use hyper::Method;
 use serde_json::Value;
 use std::{net::IpAddr, time::Duration};
 
-fn sha256_id(id: &str) -> bool {
+pub(super) fn sha256_id(id: &str) -> bool {
     id.strip_prefix("sha256:").is_some_and(|hex| {
         hex.len() == 64
             && hex

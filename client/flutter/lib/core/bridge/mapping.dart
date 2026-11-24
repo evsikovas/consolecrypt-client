@@ -504,6 +504,7 @@ Credential credentialFromJson(Json j) => Credential(
   name: j['name']! as String,
   kind: _byWire(CredentialKind.values, (e) => e.wireName, j['kind'], CredentialKind.password),
   username: _str(j['username']),
+  registry: _str(j['registry']),
   secretId: _bool(j['has_secret']) ? storedSecretMarker : null,
   passphraseSecretId: _bool(j['has_remembered_passphrase']) ? storedSecretMarker : null,
   keyEncrypted: _bool(j['key_encrypted']),

@@ -14,6 +14,7 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 mod image;
+pub(crate) mod publish;
 pub(crate) mod removal;
 mod system;
 mod telemetry;
@@ -166,6 +167,17 @@ impl DockerClient {
         body: Option<Value>,
         upgrade: bool,
     ) -> Result<Response<Incoming>, DockerError> {
+        self.send_with_registry_auth(method, path, body, upgrade, None).await
+    }
+
+    async fn send_with_registry_auth(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<Value>,
+        upgrade: bool,
+        auth: Option<hyper::header::HeaderValue>,
+    ) -> Result<Response<Incoming>, DockerError> {
         let io = self.connector.connect().await?;
         let (mut sender, connection) = hyper::client::conn::http1::handshake(TokioIo::new(io))
             .await
@@ -177,6 +189,9 @@ impl DockerClient {
             .method(method)
             .uri(path)
             .header(HOST, "docker");
+        if let Some(value) = auth {
+            request = request.header("X-Registry-Auth", value);
+        }
         if upgrade {
             request = request.header(CONNECTION, "Upgrade").header(UPGRADE, "tcp");
         }

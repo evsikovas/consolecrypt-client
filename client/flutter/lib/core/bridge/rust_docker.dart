@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_account.dart';
+import 'package:consolecrypt/core/models/credential.dart';
 import 'package:consolecrypt/core/models/step_up.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
@@ -89,6 +90,18 @@ final class RustDockerService implements DockerService, DockerObservationService
         );
     return DockerContainerDetail(container: container, inspect: inspect);
   }
+
+  @override
+  Future<String> publishImage(String sessionId, String imageId, Credential credential, String repository, String tag) =>
+      guard(
+        () => native.dockerPublishImage(
+          sessionId: sessionId,
+          imageId: imageId,
+          credentialId: credential.id.value,
+          repository: repository,
+          tag: tag,
+        ),
+      );
 
   @override
   Future<List<String>> imageRepoDigests(String sessionId, String imageId, String sourceImage) =>

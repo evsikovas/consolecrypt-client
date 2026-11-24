@@ -27,6 +27,21 @@ Future<String> dockerContainers({required String sessionId, required bool all}) 
 Future<String> dockerInspect({required String sessionId, required String container}) =>
     RustLib.instance.api.crateApiDockerDockerInspect(sessionId: sessionId, container: container);
 
+/// Publish the exact image from this engine with a registry-bound vault credential.
+Future<String> dockerPublishImage({
+  required String sessionId,
+  required String imageId,
+  required String credentialId,
+  required String repository,
+  required String tag,
+}) => RustLib.instance.api.crateApiDockerDockerPublishImage(
+  sessionId: sessionId,
+  imageId: imageId,
+  credentialId: credentialId,
+  repository: repository,
+  tag: tag,
+);
+
 /// Registry-confirmed digests for this local image and its source repository.
 Future<List<String>> dockerImageRepoDigests({
   required String sessionId,
