@@ -19644,34 +19644,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureNoPeer => 'Could not determine the connection addresses.';
 
   @override
-  String get captureReceiver => 'Computer ↔ server · capture on server';
-
-  @override
-  String get captureServers => 'Server ↔ server';
-
-  @override
-  String get captureLocal => 'Computer ↔ server · capture here';
-
-  @override
   String get captureSource => 'Capture server';
 
   @override
-  String get captureTarget => 'Choose server';
-
-  @override
-  String get captureLocalPoint => 'This computer';
-
-  @override
-  String get captureInterface => 'Interface (automatic)';
-
-  @override
-  String get captureReceiverHelp => 'Uses the client address seen by SSH. With a jump host, this is the last hop.';
+  String get captureTarget => 'Peer server';
 
   @override
   String get captureServersHelp => 'The first server captures traffic to and from the second.';
-
-  @override
-  String get captureLocalHelp => 'Captures on this computer. For loopback or VPN traffic, enter its interface.';
 
   @override
   String get captureStart => 'Start capture';
@@ -19686,11 +19665,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get captureInstall => 'Install tcpdump';
-
-  @override
-  String captureInstallReview(String host) {
-    return 'Review the command in the terminal on $host, then press Enter to install.';
-  }
 
   @override
   String get captureManualInstall => 'Install tcpdump with the host’s package manager, then start the capture again.';
@@ -19741,4 +19715,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tmuxNameHint => 'Use letters, numbers, spaces, dashes or underscores.';
+
+  @override
+  String get captureCheck => 'Check tcpdump';
+
+  @override
+  String get captureReady => 'tcpdump is installed';
+
+  @override
+  String get captureUseSudo => 'Run capture with sudo';
+
+  @override
+  String get capturePrivilegeHint =>
+      'Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump.';
+
+  @override
+  String captureInstallHost(String host) {
+    return 'Install tcpdump on $host? The command runs in its SSH terminal, where you can respond to package or sudo prompts.';
+  }
+
+  @override
+  String get captureExchange => 'Connection details';
+
+  @override
+  String captureExchangeCount(int count) {
+    return 'Packets between these endpoints when selected: $count';
+  }
 }

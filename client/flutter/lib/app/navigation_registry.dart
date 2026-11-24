@@ -57,7 +57,7 @@ const navigationSections = [
   if (kubernetesEnabled) NavigationSection(ShellBranch.kubernetes, ToolIcons.kubernetes),
   if (databasesEnabled) NavigationSection(ShellBranch.databases, Icons.storage_rounded),
   if (dockerEnabled) NavigationSection(ShellBranch.docker, ToolIcons.docker),
-  NavigationSection(ShellBranch.tcpdump, Icons.timeline_rounded),
+  NavigationSection(ShellBranch.tcpdump, ToolIcons.tcpdump),
   NavigationSection(ShellBranch.sftp, Icons.folder_copy_rounded),
   NavigationSection(ShellBranch.tunnels, Icons.swap_horiz_rounded),
   NavigationSection(ShellBranch.devices, Icons.devices_rounded, syncedOnly: true),

@@ -34579,24 +34579,6 @@ abstract class AppLocalizations {
   /// **'Could not determine the connection addresses.'**
   String get captureNoPeer;
 
-  /// Packet capture workspace. Computer ↔ server · capture on server
-  ///
-  /// In en, this message translates to:
-  /// **'Computer ↔ server · capture on server'**
-  String get captureReceiver;
-
-  /// Packet capture workspace. Server ↔ server
-  ///
-  /// In en, this message translates to:
-  /// **'Server ↔ server'**
-  String get captureServers;
-
-  /// Packet capture workspace. Computer ↔ server · capture here
-  ///
-  /// In en, this message translates to:
-  /// **'Computer ↔ server · capture here'**
-  String get captureLocal;
-
   /// Packet capture workspace. Capture server
   ///
   /// In en, this message translates to:
@@ -34606,38 +34588,14 @@ abstract class AppLocalizations {
   /// Packet capture workspace. Choose server
   ///
   /// In en, this message translates to:
-  /// **'Choose server'**
+  /// **'Peer server'**
   String get captureTarget;
-
-  /// Packet capture workspace. This computer
-  ///
-  /// In en, this message translates to:
-  /// **'This computer'**
-  String get captureLocalPoint;
-
-  /// Packet capture workspace. Interface (automatic)
-  ///
-  /// In en, this message translates to:
-  /// **'Interface (automatic)'**
-  String get captureInterface;
-
-  /// Packet capture workspace. Uses the client address seen by SSH. With a jump host, this is the last hop.
-  ///
-  /// In en, this message translates to:
-  /// **'Uses the client address seen by SSH. With a jump host, this is the last hop.'**
-  String get captureReceiverHelp;
 
   /// Packet capture workspace. The first server captures traffic to and from the second.
   ///
   /// In en, this message translates to:
   /// **'The first server captures traffic to and from the second.'**
   String get captureServersHelp;
-
-  /// Packet capture workspace. Captures on this computer. For loopback or VPN traffic, enter its interface.
-  ///
-  /// In en, this message translates to:
-  /// **'Captures on this computer. For loopback or VPN traffic, enter its interface.'**
-  String get captureLocalHelp;
 
   /// Packet capture workspace. Start capture
   ///
@@ -34662,12 +34620,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install tcpdump'**
   String get captureInstall;
-
-  /// Packet capture workspace. Review the command in the terminal on {host}, then press Enter to install.
-  ///
-  /// In en, this message translates to:
-  /// **'Review the command in the terminal on {host}, then press Enter to install.'**
-  String captureInstallReview(String host);
 
   /// Packet capture workspace. Install tcpdump with the host’s package manager, then start the capture again.
   ///
@@ -34752,6 +34704,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use letters, numbers, spaces, dashes or underscores.'**
   String get tmuxNameHint;
+
+  /// Packet capture: Check tcpdump
+  ///
+  /// In en, this message translates to:
+  /// **'Check tcpdump'**
+  String get captureCheck;
+
+  /// Packet capture: tcpdump is installed
+  ///
+  /// In en, this message translates to:
+  /// **'tcpdump is installed'**
+  String get captureReady;
+
+  /// Packet capture: Run capture with sudo
+  ///
+  /// In en, this message translates to:
+  /// **'Run capture with sudo'**
+  String get captureUseSudo;
+
+  /// Packet capture: Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump.'**
+  String get capturePrivilegeHint;
+
+  /// Packet capture: Install tcpdump on {host}? The command runs in its SSH terminal, where you can respond to package or sudo prompts.
+  ///
+  /// In en, this message translates to:
+  /// **'Install tcpdump on {host}? The command runs in its SSH terminal, where you can respond to package or sudo prompts.'**
+  String captureInstallHost(String host);
+
+  /// Packet capture: Connection details
+  ///
+  /// In en, this message translates to:
+  /// **'Connection details'**
+  String get captureExchange;
+
+  /// Packet capture: Packets between these endpoints when selected: {count}
+  ///
+  /// In en, this message translates to:
+  /// **'Packets between these endpoints when selected: {count}'**
+  String captureExchangeCount(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

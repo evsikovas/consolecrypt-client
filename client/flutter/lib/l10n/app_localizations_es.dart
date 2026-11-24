@@ -19801,34 +19801,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get captureNoPeer => 'No se pudieron determinar las direcciones de la conexión.';
 
   @override
-  String get captureReceiver => 'Equipo ↔ servidor · capturar en el servidor';
-
-  @override
-  String get captureServers => 'Servidor ↔ servidor';
-
-  @override
-  String get captureLocal => 'Equipo ↔ servidor · capturar aquí';
-
-  @override
   String get captureSource => 'Servidor de captura';
 
   @override
-  String get captureTarget => 'Elegir servidor';
-
-  @override
-  String get captureLocalPoint => 'Este equipo';
-
-  @override
-  String get captureInterface => 'Interfaz (automática)';
-
-  @override
-  String get captureReceiverHelp => 'Se usa la dirección que ve SSH. Con un servidor de salto, es la del último salto.';
+  String get captureTarget => 'Servidor de destino';
 
   @override
   String get captureServersHelp => 'El primer servidor captura su tráfico con el segundo.';
-
-  @override
-  String get captureLocalHelp => 'Captura en este equipo. Para loopback o VPN, indica la interfaz.';
 
   @override
   String get captureStart => 'Iniciar captura';
@@ -19843,11 +19822,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get captureInstall => 'Instalar tcpdump';
-
-  @override
-  String captureInstallReview(String host) {
-    return 'Revisa el comando en el terminal de $host y pulsa Intro para instalar.';
-  }
 
   @override
   String get captureManualInstall =>
@@ -19899,4 +19873,30 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get tmuxNameHint => 'Usa letras, números, espacios, guiones o guiones bajos.';
+
+  @override
+  String get captureCheck => 'Comprobar tcpdump';
+
+  @override
+  String get captureReady => 'tcpdump está instalado';
+
+  @override
+  String get captureUseSudo => 'Capturar con sudo';
+
+  @override
+  String get capturePrivilegeHint =>
+      'La captura requiere root o permisos de captura. Con sudo, tcpdump debe poder ejecutarse sin contraseña.';
+
+  @override
+  String captureInstallHost(String host) {
+    return '¿Instalar tcpdump en $host? El comando se ejecutará en su terminal SSH, donde podrás responder al gestor de paquetes o a sudo.';
+  }
+
+  @override
+  String get captureExchange => 'Detalles de la conexión';
+
+  @override
+  String captureExchangeCount(int count) {
+    return 'Paquetes entre estos extremos al seleccionarlos: $count';
+  }
 }

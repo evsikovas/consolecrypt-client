@@ -3,12 +3,35 @@ import 'dart:io';
 /// Decode packet headers from tcpdump output. Linux cooked capture
 /// can also print an interface and direction before the network header.
 final class CapturePacket {
-  const CapturePacket(this.time, this.protocol, this.source, this.destination, this.summary);
+  const CapturePacket(
+    this.time,
+    this.protocol,
+    this.source,
+    this.destination,
+    this.summary, {
+    this.network = '',
+    this.interface,
+    this.direction,
+    this.sequence,
+    this.ack,
+    this.window,
+    this.length,
+  });
   final DateTime time;
   final String protocol, source, destination, summary;
 
+  final String network;
+  final String? interface, direction, sequence, ack, window;
+  final int? length;
+
+  String get transport => protocol == 'DNS' ? 'UDP' : protocol;
+  bool sharesEndpoints(CapturePacket other) =>
+      transport == other.transport &&
+      ((source == other.source && destination == other.destination) ||
+          (source == other.destination && destination == other.source));
+
   static final _packet = RegExp(
-    r'^(\d{9,11})\.(\d{1,9})\s+(?:\S+\s+(?:In|Out|B|M|P)\s+)?(IP6?)\s+(\S+) > (\S+):\s*(.*)$',
+    r'^(\d{9,11})\.(\d{1,9})\s+(?:(?<iface>\S+)\s+(?<direction>In|Out|B|M|P)\s+)?(IP6?)\s+(\S+) > (\S+):\s*(.*)$',
   );
   static final _port = RegExp(r'^(.+)\.(\d{1,5})$');
 
@@ -21,19 +44,19 @@ final class CapturePacket {
   static CapturePacket? parse(String line) {
     final m = _packet.firstMatch(line);
     if (m == null) return null;
-    final detail = m[6]!;
+    final detail = m[8]!;
     final flags = RegExp(r'^Flags \[([FSRP.UWE0-9]+)\]').firstMatch(detail)?[1];
     final tcp = flags != null || detail.startsWith('tcp ');
     final length = RegExp(r'\blength (\d+)').allMatches(detail).lastOrNull?[1];
-    final dnsPort = m[4]!.endsWith('.53') || m[5]!.endsWith('.53');
+    final dnsPort = m[6]!.endsWith('.53') || m[7]!.endsWith('.53');
     final dns = dnsPort && RegExp(r'^\d+[+*%|!-]*\s').hasMatch(detail);
     final icmp = detail.startsWith('ICMP');
     final protocol = switch (detail) {
       _ when tcp => 'TCP',
       _ when dns => 'DNS',
-      _ when icmp => m[3] == 'IP6' ? 'ICMPv6' : 'ICMP',
+      _ when icmp => m[5] == 'IP6' ? 'ICMPv6' : 'ICMP',
       _ when detail.startsWith('UDP') => 'UDP',
-      _ => m[3] == 'IP6' ? 'IPv6' : 'IPv4',
+      _ => m[5] == 'IP6' ? 'IPv6' : 'IPv4',
     };
     const flagLabels = {'S': 'SYN', '.': 'ACK', 'F': 'FIN', 'R': 'RST', 'P': 'PSH', 'U': 'URG', 'W': 'CWR', 'E': 'ECE'};
     final summary = <String>[
@@ -49,9 +72,16 @@ final class CapturePacket {
     return CapturePacket(
       DateTime.fromMicrosecondsSinceEpoch(stamp),
       protocol,
-      endpoint(m[4]!),
-      endpoint(m[5]!),
+      endpoint(m[6]!),
+      endpoint(m[7]!),
       summary,
+      network: m[5] == 'IP6' ? 'IPv6' : 'IPv4',
+      interface: m.namedGroup('iface'),
+      direction: m.namedGroup('direction'),
+      sequence: RegExp(r'\bseq ([0-9]+(?::[0-9]+)?)').firstMatch(detail)?[1],
+      ack: tcp ? (RegExp(r'\back (\d+)').firstMatch(detail)?[1]) : null,
+      window: tcp ? (RegExp(r'\bwin (\d+)').firstMatch(detail)?[1]) : null,
+      length: int.tryParse(length ?? ''),
     );
   }
 }
@@ -83,11 +113,7 @@ const installCommands = {
   'brew': 'brew install tcpdump',
 };
 
-/// Run in the foreground in a dedicated SSH PTY. Closing the PTY hangs up
-/// the capture even when it is waiting for its first packet.
-String remoteCaptureCommand(String? destination, {bool privileged = false}) {
-  final peer = destination == null ? '' : checkedPeer(destination);
-  const preflight = r'''
+const _detectTcpdump = r'''
 export LC_ALL=C PATH="$PATH:/usr/sbin:/sbin";
 if ! command -v tcpdump >/dev/null 2>&1; then
   for manager in apt-get dnf yum apk pacman zypper pkg brew; do
@@ -95,6 +121,20 @@ if ! command -v tcpdump >/dev/null 2>&1; then
   done;
   echo "CC_MISSING unknown"; exit 43;
 fi;
+''';
+
+String _shellCommand(String script) {
+  final line = script.replaceAll('\n', ' ').trim();
+  return "exec sh -c '${line.replaceAll("'", "'\\''")}'";
+}
+
+String get remoteTcpdumpCheck => _shellCommand('$_detectTcpdump echo CC_TCPDUMP_READY');
+
+/// Run in the foreground in a dedicated SSH PTY. Closing the PTY hangs up
+/// the capture even when it is waiting for its first packet.
+String remoteCaptureCommand(String destination, {bool privileged = false}) {
+  final peer = checkedPeer(destination);
+  const preflight = r'''
 set -f; set -- $SSH_CONNECTION;
 if [ "$#" -ne 4 ]; then echo CC_NO_PEER; exit 44; fi;
 for ip in "$1" "$3"; do case "$ip" in ""|*[!a-fA-F0-9:.]*) echo CC_NO_PEER; exit 44;; esac; done;
@@ -113,37 +153,12 @@ for addr in $addrs; do case "$addr" in ""|*[!a-fA-F0-9:.]*) continue;; esac;
 done;
 if [ -z "$sources" ]; then echo CC_NO_PEER; exit 44; fi;
 ''';
-  final pair = peer.isEmpty
-      ? r'pair="(src host $1 and dst host $3) or (src host $3 and dst host $1)"; echo "CC_PEER $1 $3";'
-      : '$localAddresses pair="(dst host $peer and (\$sources)) or (src host $peer and (\$destinations))";';
+  final pair = '$localAddresses pair="(dst host $peer and (\$sources)) or (src host $peer and (\$destinations))";';
   const capture = r'''
 set --; if [ "$(uname -s)" = Linux ]; then set -- -i any; fi;
 ''';
-  final script =
-      '$preflight $pair $capture exec ${privileged ? 'sudo -n ' : ''}tcpdump -p -nn -tt -l -s 96 -c $captureLimit "\$@" "(ip or ip6) and (\$pair) and \$exclude" 2>&1';
-  final singleLine = script.replaceAll('\n', ' ').trim();
-  return "exec sh -c '${singleLine.replaceAll("'", "'\\''")}'";
-}
-
-Future<List<String>> localCaptureArguments(String address) async {
-  final peer = checkedPeer(address);
-  final addresses = (await NetworkInterface.list(
-    includeLoopback: true,
-    includeLinkLocal: true,
-  )).expand((iface) => iface.addresses).map((ip) => ip.address.split('%').first).toSet();
-  if (addresses.isEmpty) throw const SocketException('No IP interfaces');
-  final sources = addresses.map((ip) => 'src host $ip').join(' or ');
-  final destinations = addresses.map((ip) => 'dst host $ip').join(' or ');
-  return [
-    if (Platform.isLinux) ...['-i', 'any'],
-    '-p',
-    '-nn',
-    '-tt',
-    '-l',
-    '-s',
-    '96',
-    '-c',
-    '$captureLimit',
-    '(ip or ip6) and ((dst host $peer and ($sources)) or (src host $peer and ($destinations)))',
-  ];
+  final elevation = privileged ? r'prefix=; if [ "$(id -u)" != 0 ]; then prefix="sudo -n"; fi;' : '';
+  return _shellCommand(
+    '$_detectTcpdump $preflight $pair $capture $elevation exec ${privileged ? r'$prefix ' : ''}tcpdump -p -nn -tt -l -s 96 -c $captureLimit "\$@" "(ip or ip6) and (\$pair) and \$exclude" 2>&1',
+  );
 }

@@ -18830,34 +18830,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get captureNoPeer => '无法确定连接地址。';
 
   @override
-  String get captureReceiver => '本机 ↔ 服务器 · 在服务器抓包';
-
-  @override
-  String get captureServers => '服务器 ↔ 服务器';
-
-  @override
-  String get captureLocal => '本机 ↔ 服务器 · 在本机抓包';
-
-  @override
   String get captureSource => '抓包服务器';
 
   @override
-  String get captureTarget => '选择服务器';
-
-  @override
-  String get captureLocalPoint => '本机';
-
-  @override
-  String get captureInterface => '网卡（自动）';
-
-  @override
-  String get captureReceiverHelp => '使用 SSH 看到的客户端地址。经过跳板时，此地址属于最后一跳。';
+  String get captureTarget => '对端服务器';
 
   @override
   String get captureServersHelp => '在第一台服务器上抓取它与第二台服务器之间的双向流量。';
-
-  @override
-  String get captureLocalHelp => '在本机抓包。对于回环或 VPN 流量，请指定对应网卡。';
 
   @override
   String get captureStart => '开始抓包';
@@ -18872,11 +18851,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get captureInstall => '安装 tcpdump';
-
-  @override
-  String captureInstallReview(String host) {
-    return '请在 $host 的终端中检查命令，按 Enter 安装。';
-  }
 
   @override
   String get captureManualInstall => '请使用此主机的包管理器安装 tcpdump，然后重新开始抓包。';
@@ -18927,4 +18901,29 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tmuxNameHint => '请使用字母、数字、空格、连字符或下划线。';
+
+  @override
+  String get captureCheck => '检查 tcpdump';
+
+  @override
+  String get captureReady => '已安装 tcpdump';
+
+  @override
+  String get captureUseSudo => '使用 sudo 捕获';
+
+  @override
+  String get capturePrivilegeHint => '抓包需要 root 或抓包权限。使用 sudo 时，必须允许免密运行 tcpdump。';
+
+  @override
+  String captureInstallHost(String host) {
+    return '在 $host 上安装 tcpdump？命令将在其 SSH 终端中运行，可在终端中输入 sudo 密码并确认安装。';
+  }
+
+  @override
+  String get captureExchange => '连接详情';
+
+  @override
+  String captureExchangeCount(int count) {
+    return '选中时这两个端点之间的包数：$count';
+  }
 }

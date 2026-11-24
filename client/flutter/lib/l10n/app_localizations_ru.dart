@@ -19979,35 +19979,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get captureNoPeer => 'Не удалось определить адреса соединения.';
 
   @override
-  String get captureReceiver => 'Компьютер ↔ сервер · захват на сервере';
-
-  @override
-  String get captureServers => 'Сервер ↔ сервер';
-
-  @override
-  String get captureLocal => 'Компьютер ↔ сервер · захват здесь';
-
-  @override
   String get captureSource => 'Сервер захвата';
 
   @override
-  String get captureTarget => 'Выбрать сервер';
-
-  @override
-  String get captureLocalPoint => 'Этот компьютер';
-
-  @override
-  String get captureInterface => 'Интерфейс (авто)';
-
-  @override
-  String get captureReceiverHelp =>
-      'Адрес клиента берётся из SSH-соединения. При подключении через бастион это адрес последнего узла.';
+  String get captureTarget => 'Второй сервер';
 
   @override
   String get captureServersHelp => 'Первый сервер снимает трафик, которым он обменивается со вторым.';
-
-  @override
-  String get captureLocalHelp => 'Захват на этом компьютере. Для loopback или VPN укажите нужный интерфейс.';
 
   @override
   String get captureStart => 'Начать захват';
@@ -20022,11 +20000,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get captureInstall => 'Установить tcpdump';
-
-  @override
-  String captureInstallReview(String host) {
-    return 'Проверьте команду в терминале на $host и нажмите Enter для установки.';
-  }
 
   @override
   String get captureManualInstall => 'Установите tcpdump через менеджер пакетов этого хоста и запустите захват снова.';
@@ -20077,4 +20050,30 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get tmuxNameHint => 'Используйте буквы, цифры, пробелы, дефис или подчёркивание.';
+
+  @override
+  String get captureCheck => 'Проверить tcpdump';
+
+  @override
+  String get captureReady => 'tcpdump установлен';
+
+  @override
+  String get captureUseSudo => 'Запускать захват через sudo';
+
+  @override
+  String get capturePrivilegeHint =>
+      'Для захвата нужны права root или права на захват пакетов. Для режима sudo нужен запуск tcpdump без пароля.';
+
+  @override
+  String captureInstallHost(String host) {
+    return 'Установить tcpdump на $host? Команда запустится в SSH-терминале этого хоста. Там можно ввести пароль sudo и подтвердить установку пакета.';
+  }
+
+  @override
+  String get captureExchange => 'Детали соединения';
+
+  @override
+  String captureExchangeCount(int count) {
+    return 'Пакетов между этими адресами на момент выбора: $count';
+  }
 }

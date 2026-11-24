@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -9,9 +8,9 @@ import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/tcpdump/capture.dart';
 import 'package:flutter/foundation.dart';
 
-enum CaptureStatus { connecting, listening, stopped, missing, denied, failed, noPeer }
+enum CaptureStatus { connecting, listening, stopped, ready, missing, denied, failed, noPeer }
 
-/// Each request exclusively owns its process or SSH PTY, including prompts.
+/// Each request exclusively owns its SSH PTY, including prompts.
 /// Packets are kept in memory and repaint at most ten times per second.
 final class CaptureRun extends ChangeNotifier {
   CaptureRun(this.service);
@@ -19,7 +18,7 @@ final class CaptureRun extends ChangeNotifier {
   final packets = ListQueue<CapturePacket>(displayLimit);
   int count = 0;
   CaptureStatus status = CaptureStatus.connecting;
-  String? manager, error, observedPair;
+  String? manager, error;
   bool _root = false;
   String? get installCommand {
     final command = installCommands[manager];
@@ -31,22 +30,29 @@ final class CaptureRun extends ChangeNotifier {
   bool get active => status == CaptureStatus.connecting || status == CaptureStatus.listening;
   final _subscriptions = <StreamSubscription<dynamic>>[];
   TerminalSessionId? _id;
-  Process? _process;
   Timer? _paint, _startup;
   bool _closed = false, _commandSent = false;
   static final _ansi = RegExp(r'\x1b\[[0-?]*[ -/]*[@-~]');
-  static final _peer = RegExp(r'^CC_PEER ([0-9a-fA-F:.]+) ([0-9a-fA-F:.]+)$');
 
-  Future<void> startRemote(Host source, String? other, {bool privileged = false}) async {
+  Future<void> startRemote(Host source, String other, {bool privileged = false}) async {
     try {
-      final command = remoteCaptureCommand(other, privileged: privileged);
+      await _startSsh(source, remoteCaptureCommand(other, privileged: privileged));
+    } catch (e) {
+      _fail(e);
+    }
+  }
+
+  Future<void> checkRemote(Host host) => _startSsh(host, remoteTcpdumpCheck);
+
+  Future<void> _startSsh(Host source, String command) async {
+    try {
       final handle = await service.open(hostId: source.id, size: const TerminalSize(240, 24));
       if (_closed || !active) {
         await service.close(handle.id);
         return;
       }
       _id = handle.id;
-      unawaited(_listenBytes(handle.output));
+      _listenBytes(handle.output);
       _subscriptions.add(
         handle.events.listen(
           (event) {
@@ -93,73 +99,7 @@ final class CaptureRun extends ChangeNotifier {
     }
   }
 
-  Future<void> startLocal(String peer, {String? device}) async {
-    try {
-      final executable = _localExecutable();
-      if (executable == null) {
-        manager = _localManager();
-        _finish(CaptureStatus.missing);
-        return;
-      }
-      final args = await localCaptureArguments(peer);
-      if (device != null && device.isNotEmpty) {
-        if (args.first == '-i') args.removeRange(0, 2);
-        args.insertAll(0, ['-i', device]);
-      }
-      if (_closed || !active) return;
-      final process = await Process.start(executable, args, environment: {'LC_ALL': 'C'});
-      if (_closed || !active) {
-        process.kill();
-        return;
-      }
-      _process = process;
-      _startDeadline();
-      final outputDone = _listenBytes(process.stdout), errorDone = _listenBytes(process.stderr);
-      final code = await process.exitCode;
-      await Future.wait([outputDone, errorDone]);
-      _finish(code == 0 ? CaptureStatus.stopped : CaptureStatus.failed);
-    } on ProcessException catch (e) {
-      if (e.errorCode == 2 || e.errorCode == 3) {
-        manager = _localManager();
-        _finish(CaptureStatus.missing);
-      } else {
-        _fail(e);
-      }
-    } catch (e) {
-      _fail(e);
-    }
-  }
-
-  static String? _localExecutable() {
-    final name = Platform.isWindows ? 'tcpdump.exe' : 'tcpdump';
-    final path = Platform.environment['PATH'] ?? '';
-    final paths = {
-      if (!Platform.isWindows) ...['/usr/sbin', '/sbin', '/opt/homebrew/bin', '/usr/local/bin'],
-      ...path.split(Platform.isWindows ? ';' : ':'),
-    };
-    for (final entry in paths) {
-      final dir = Directory(entry.replaceAll('"', ''));
-      if (!dir.isAbsolute) continue;
-      final file = File('${dir.path}${Platform.pathSeparator}$name');
-      if (file.existsSync()) return file.path;
-    }
-    return null;
-  }
-
-  static String? _localManager() {
-    if (Platform.isMacOS) return 'brew';
-    if (Platform.isLinux) {
-      for (final manager in installCommands.keys) {
-        for (final bin in ['/usr/bin', '/sbin', '/usr/sbin', '/bin']) {
-          if (File('$bin/$manager').existsSync()) return manager;
-        }
-      }
-    }
-    return null;
-  }
-
-  Future<void> _listenBytes(Stream<List<int>> stream) {
-    final done = Completer<void>();
+  void _listenBytes(Stream<List<int>> stream) {
     String? partial = '';
     // A login banner or malformed diagnostic can omit line breaks. Discard
     // an oversized line until its delimiter instead of retaining it forever.
@@ -188,23 +128,9 @@ final class CaptureRun extends ChangeNotifier {
         .cast<List<int>>()
         .transform(const Utf8Decoder(allowMalformed: true))
         .transform(lines)
-        .listen(
-          _line,
-          onError: (Object e) {
-            _fail(e);
-            if (!done.isCompleted) done.complete();
-          },
-          onDone: () {
-            if (!done.isCompleted) done.complete();
-          },
-        );
+        .listen(_line, onError: _fail);
     _subscriptions.add(sub);
-    // Local exit waits for buffered output; cancellation must also release it.
-    _drains.add(done);
-    return done.future;
   }
-
-  final _drains = <Completer<void>>[];
 
   void _startDeadline() {
     _startup = Timer(const Duration(seconds: 20), () => _finish(CaptureStatus.failed));
@@ -220,13 +146,12 @@ final class CaptureRun extends ChangeNotifier {
       _finish(CaptureStatus.missing);
       return;
     }
-    if (line == 'CC_NO_PEER') {
-      _finish(CaptureStatus.noPeer);
+    if (line == 'CC_TCPDUMP_READY') {
+      _finish(CaptureStatus.ready);
       return;
     }
-    final peer = _peer.firstMatch(line);
-    if (peer != null) {
-      observedPair = '${peer[1]} ↔ ${peer[2]}';
+    if (line == 'CC_NO_PEER') {
+      _finish(CaptureStatus.noPeer);
       return;
     }
     if (line.startsWith('tcpdump: listening on') || line.startsWith('listening on')) {
@@ -306,8 +231,6 @@ final class CaptureRun extends ChangeNotifier {
   void _release() {
     _startup?.cancel();
     _paint?.cancel();
-    _process?.kill();
-    _process = null;
     final id = _id;
     _id = null;
     if (id != null) unawaited(service.close(id).catchError((Object _) {}));
@@ -315,10 +238,6 @@ final class CaptureRun extends ChangeNotifier {
       unawaited(sub.cancel());
     }
     _subscriptions.clear();
-    for (final done in _drains) {
-      if (!done.isCompleted) done.complete();
-    }
-    _drains.clear();
   }
 
   @override
