@@ -57,6 +57,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get keepassRecentKdbx => '最近打开的 KDBX 文件';
+
+  @override
+  String get terminalMoreMetrics => '更多服务器指标';
+
+  @override
   String get terminalMetricsBar => '在终端底部显示服务器指标';
 
   @override

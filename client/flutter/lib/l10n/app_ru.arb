@@ -7,6 +7,8 @@
   "dockerRecentLifecycle": "События контейнеров · за последние 24 часа",
   "dockerJournalEmpty": "За последние 24 часа событий контейнеров нет",
   "dockerLifecycleAction": "{action, select, create {Создан} start {Запущен} restart {Перезапущен} stop {Остановлен} die {Завершился} kill {Сигнал завершения} oom {Нехватка памяти} destroy {Удалён} pause {Приостановлен} unpause {Возобновлён} rename {Переименован} healthy {Исправен} unhealthy {Неисправен} starting {Началась проверка состояния} other {Событие}}",
+  "keepassRecentKdbx": "Недавние базы KDBX",
+  "terminalMoreMetrics": "Другие показатели сервера",
   "terminalMetricsBar": "Показывать показатели сервера под терминалом",
   "terminalChannelLatency": "Задержка SSH-канала",
   "terminalLatencyValue": "{value} мс",

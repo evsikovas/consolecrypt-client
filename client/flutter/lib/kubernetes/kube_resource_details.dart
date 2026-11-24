@@ -684,9 +684,11 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
                               if (widget.onPinLogs != null)
                                 Align(
                                   alignment: Alignment.centerLeft,
-                                  child: GlassButton.plain(
+                                  child: GlassIconButton(
                                     key: const ValueKey('kube-pin-logs'),
-                                    label: l.kubePinLogs,
+                                    style: GlassIconButtonStyle.plain,
+                                    iconSize: GlassSizes.iconMenu,
+                                    tooltip: l.kubePinLogs,
                                     icon: Icons.push_pin_outlined,
                                     onPressed: () {
                                       final callback = widget.onPinLogs!;
@@ -809,10 +811,15 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
           'ReplicaSet',
           'Job',
         ].contains(widget.resource.api.kind);
-    Widget action(String key, String label, IconData icon, VoidCallback? onPressed, {String? tooltip}) => Tooltip(
-      message: tooltip ?? label,
-      child: GlassButton(key: ValueKey(key), label: label, icon: icon, size: GlassControlSize.md, onPressed: onPressed),
-    );
+    Widget action(String key, String label, IconData icon, VoidCallback? onPressed, {String? tooltip}) =>
+        GlassIconButton(
+          key: ValueKey(key),
+          icon: icon,
+          tooltip: tooltip == null || tooltip == label ? label : '$label · $tooltip',
+          style: GlassIconButtonStyle.plain,
+          iconSize: GlassSizes.iconMenu,
+          onPressed: onPressed,
+        );
     return Padding(
       padding: const EdgeInsets.fromLTRB(GlassSpacing.s16, GlassSpacing.s12, GlassSpacing.s16, 0),
       child: Wrap(
@@ -937,7 +944,9 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
             GlassIconButton(
               key: const ValueKey('kube-delete-resource'),
               icon: Icons.delete_outline,
-              tooltip: canWrite ? l.commonDelete : l.kubeReadOnly,
+              style: GlassIconButtonStyle.plain,
+              iconSize: GlassSizes.iconMenu,
+              tooltip: canWrite ? l.commonDelete : '${l.commonDelete} · ${l.kubeReadOnly}',
               color: canWrite ? GlassTokens.of(context).palette.danger : null,
               onPressed: canWrite && !_mutating ? _delete : null,
             ),
@@ -954,20 +963,39 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
       runSpacing: GlassSpacing.s6,
       children: [
         for (final action in kubeGitOpsActions(resource))
-          GlassButton(
+          GlassIconButton(
             key: ValueKey('kube-gitops-detail-$action'),
-            label: kubeGitOpsActionLabel(l, action),
-            tooltip: resource.isFlux ? kubeGitOpsActionHelp(l, action) : null,
+            icon: switch (action) {
+              'reconcile_with_source' => Icons.account_tree_outlined,
+              'suspend' => Icons.pause_rounded,
+              'resume' => Icons.play_arrow_rounded,
+              'reset' => Icons.restore_rounded,
+              'force' => Icons.bolt_rounded,
+              'sync' => Icons.sync_rounded,
+              'hard_refresh' => Icons.cached_rounded,
+              _ => Icons.refresh_rounded,
+            },
+            tooltip: [kubeGitOpsActionLabel(l, action), ?kubeGitOpsActionHelp(l, action)].join(' · '),
+            style: GlassIconButtonStyle.plain,
+            iconSize: GlassSizes.iconMenu,
             onPressed: canWrite && !_mutating ? () => _gitOpsAction(action) : null,
           ),
-        GlassButton(
-          label: l.kubeLogs,
+        GlassIconButton(
+          tooltip: l.kubeLogs,
           icon: Icons.article_outlined,
+          style: GlassIconButtonStyle.plain,
+          iconSize: GlassSizes.iconMenu,
           onPressed: () {
             if (_current) unawaited(_gitOpsDetailsKey.currentState?.openControllerLogs());
           },
         ),
-        GlassButton(label: l.kubeGitOpsFlow, icon: Icons.account_tree_outlined, onPressed: _gitOpsGraph),
+        GlassIconButton(
+          tooltip: l.kubeGitOpsFlow,
+          icon: Icons.hub_outlined,
+          style: GlassIconButtonStyle.plain,
+          iconSize: GlassSizes.iconMenu,
+          onPressed: _gitOpsGraph,
+        ),
       ],
     );
   }

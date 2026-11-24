@@ -237,15 +237,16 @@ void main() {
       ),
     );
     await tapText('Passwords');
-    final recent = find.byKey(ValueKey('keepass-recent-vault-${connection.id}'));
+    final recent = find.byKey(ValueKey('keepass-saved-vault-${connection.id}'));
     final older = find.byKey(ValueKey('keepass-saved-vault-${stored.id}'));
     expect(recent, findsOneWidget);
     expect(older, findsOneWidget);
     expect(find.text(stored.name), findsOneWidget);
     expect(find.text(connection.name), findsOneWidget);
-    expect(find.text('Fixture0.kdbx'), findsNothing);
+    expect(find.text('Fixture0.kdbx'), findsOneWidget);
     expect(find.text('Fixture1.kdbx'), findsOneWidget);
-    expect(tester.getTopLeft(recent).dy, lessThan(tester.getTopLeft(find.text('Fixture4.kdbx')).dy));
+    expect(tester.getTopLeft(recent).dy, greaterThan(tester.getTopLeft(find.text('Fixture4.kdbx')).dy));
+    expect(tester.getTopLeft(recent).dy, lessThan(tester.getTopLeft(older).dy));
     expect(find.textContaining('fixture-wrapped'), findsNothing);
     final requestCount = requests.length;
     await tester.ensureVisible(older);

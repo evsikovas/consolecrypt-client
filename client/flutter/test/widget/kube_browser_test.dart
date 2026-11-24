@@ -364,13 +364,18 @@ void main() {
       tester.getTopLeft(bottom).dy,
       greaterThan(tester.getTopLeft(find.byKey(const ValueKey('kube-yaml-tab'))).dy),
     );
-    final reconcile = tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-detail-reconcile')));
+    final reconcile = tester.widget<GlassIconButton>(find.byKey(const ValueKey('kube-gitops-detail-reconcile')));
     expect(reconcile.onPressed, isNull);
-    expect(reconcile.label, 'Синхронизировать сейчас');
-    expect(reconcile.tooltip, 'Flux немедленно сверит выбранные ресурсы с Git и применит изменения (flux reconcile)');
+    expect(reconcile.tooltip, startsWith('Синхронизировать сейчас'));
     expect(
-      tester.widget<GlassButton>(find.byKey(const ValueKey('kube-gitops-detail-suspend'))).tooltip,
-      'Flux перестанет применять изменения из Git к выбранным ресурсам, пока синхронизацию не возобновят (flux suspend)',
+      reconcile.tooltip,
+      contains('Flux немедленно сверит выбранные ресурсы с Git и применит изменения (flux reconcile)'),
+    );
+    expect(
+      tester.widget<GlassIconButton>(find.byKey(const ValueKey('kube-gitops-detail-suspend'))).tooltip,
+      contains(
+        'Flux перестанет применять изменения из Git к выбранным ресурсам, пока синхронизацию не возобновят (flux suspend)',
+      ),
     );
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
@@ -1362,7 +1367,7 @@ void main() {
     expect(find.byKey(const ValueKey('kube-write-window')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
     await settle(tester);
-    expect(tester.widget<GlassButton>(find.byKey(const ValueKey('kube-edit-yaml'))).onPressed, isNull);
+    expect(tester.widget<GlassIconButton>(find.byKey(const ValueKey('kube-edit-yaml'))).onPressed, isNull);
     expect(service.openedNames, isEmpty);
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));

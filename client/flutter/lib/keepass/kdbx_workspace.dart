@@ -343,11 +343,7 @@ class KdbxWorkspace extends StatelessWidget {
     titleAlignment: ListTileTitleAlignment.center,
     leading: const Icon(Icons.shield_outlined, size: 18),
     title: Text(connection.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-    subtitle: Text(
-      '${context.l10n.externalVaultTitle} · ${connection.endpoint.origin}',
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    ),
+    subtitle: Text(connection.endpoint.origin, maxLines: 1, overflow: TextOverflow.ellipsis),
     trailing: const Icon(Icons.chevron_right_rounded, size: 18),
     onTap: busy ? null : () => onVault(connection.id),
   );
@@ -355,20 +351,36 @@ class KdbxWorkspace extends StatelessWidget {
   Widget _sources(BuildContext context, {bool welcome = false}) {
     final sources = manager.sources;
     final recent = welcome ? manager.recentPasswordSources(vaultConnections) : const <RecentPasswordSource>[];
-    final recentKdbx = recent.whereType<RecentKdbxSource>().map((item) => item.source.id).toSet();
-    final recentVaults = recent.whereType<RecentExternalVaultSource>().map((item) => item.connection.id).toSet();
-    final shared = welcome ? sources.where((s) => s.remote && !recentKdbx.contains(s.id)) : const <KdbxSource>[];
-    final savedVaults = welcome
-        ? vaultConnections.where((c) => !recentVaults.contains(c.id))
-        : const <ExternalVaultConnection>[];
+    final recentFiles = recent.whereType<RecentKdbxSource>().map((item) => item.source);
+    final recentVaults = recent.whereType<RecentExternalVaultSource>().map((item) => item.connection);
+    // Keep each source in one section, most recently used first. Older local
+    // files can predate the per-profile list of recent source IDs.
+    final files = {
+      for (final s in [...recentFiles, ...sources.reversed]) s.id: s,
+    }.values;
+    final local = files.where((s) => !s.remote);
+    final remote = files.where((s) => s.remote);
+    final connections = {
+      for (final c in [...recentVaults, ...vaultConnections]) c.id: c,
+    }.values;
     final l = context.l10n;
-    final title = recent.isNotEmpty
-        ? l.keepassRecentDatabases
-        : shared.isNotEmpty
-        ? l.keepassDavDatabases
-        : savedVaults.isNotEmpty
-        ? l.externalVaultTitle
-        : l.keepassDatabases;
+    final groups = <(String, List<Widget>)>[
+      if (welcome && local.isNotEmpty)
+        (
+          l.keepassRecentKdbx,
+          [for (final s in local) _sourceTile(context, s, tileKey: ValueKey('keepass-recent-source-${s.id}'))],
+        ),
+      if (welcome && connections.isNotEmpty)
+        (
+          l.externalVaultTitle,
+          [for (final c in connections) _vaultTile(context, c, key: ValueKey('keepass-saved-vault-${c.id}'))],
+        ),
+      if (welcome && remote.isNotEmpty)
+        (
+          l.keepassDavDatabases,
+          [for (final s in remote) _sourceTile(context, s, tileKey: ValueKey('keepass-shared-source-${s.id}'))],
+        ),
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -378,40 +390,29 @@ class KdbxWorkspace extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
           child: Row(
             children: [
-              Expanded(child: Text(title, style: Theme.of(context).textTheme.titleSmall)),
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    groups.firstOrNull?.$1 ?? l.keepassDatabases,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+              ),
               if (sources.any((s) => !manager.sessions.containsKey(s.id))) _unlockOthers(context),
               if (!welcome) _addMenu(context),
             ],
           ),
         ),
         if (welcome) ...[
-          for (final item in recent)
-            switch (item) {
-              RecentKdbxSource(:final source) => _sourceTile(
-                context,
-                source,
-                tileKey: ValueKey('keepass-recent-source-${source.id}'),
+          for (final (index, group) in groups.indexed) ...[
+            if (index > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
+                child: Semantics(header: true, child: Text(group.$1, style: Theme.of(context).textTheme.titleSmall)),
               ),
-              RecentExternalVaultSource(:final connection) => _vaultTile(
-                context,
-                connection,
-                key: ValueKey('keepass-recent-vault-${connection.id}'),
-              ),
-            },
-          if (recent.isNotEmpty && shared.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
-              child: Text(l.keepassDavDatabases, style: Theme.of(context).textTheme.titleSmall),
-            ),
-          for (final source in shared)
-            _sourceTile(context, source, tileKey: ValueKey('keepass-shared-source-${source.id}')),
-          if ((recent.isNotEmpty || shared.isNotEmpty) && savedVaults.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
-              child: Text(l.externalVaultTitle, style: Theme.of(context).textTheme.titleSmall),
-            ),
-          for (final connection in savedVaults)
-            _vaultTile(context, connection, key: ValueKey('keepass-saved-vault-${connection.id}')),
+            ...group.$2,
+          ],
         ] else
           Flexible(
             child: ListView(

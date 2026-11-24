@@ -57,6 +57,12 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get keepassRecentKdbx => 'Недавние базы KDBX';
+
+  @override
+  String get terminalMoreMetrics => 'Другие показатели сервера';
+
+  @override
   String get terminalMetricsBar => 'Показывать показатели сервера под терминалом';
 
   @override

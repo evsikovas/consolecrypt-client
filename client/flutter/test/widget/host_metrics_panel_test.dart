@@ -3,6 +3,7 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/terminal/host_metrics_panel.dart';
 import 'package:consolecrypt/terminal/terminal_status_bar.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -75,6 +76,71 @@ void main() {
     );
     await tester.pump();
     expect(find.text('12 ms'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('only overflowed metrics open above the arrow on hover or tap', (tester) async {
+    final state = ValueNotifier(
+      HostMetricsHistory(
+        samples: [
+          _sample(0, {
+            'cpuPercent': 25.0,
+            'channelLatencyMs': 12,
+            'swapTotal': 4096,
+            'swapUsed': 1024,
+            'memoryUsed': 1024,
+            'memoryTotal': 4096,
+            'receivedPerSecond': 100.0,
+            'sentPerSecond': 70.0,
+          }),
+        ],
+      ),
+    );
+    addTearDown(state.dispose);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(210, 300);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: TerminalStatusBar(history: state),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final more = find.byKey(const ValueKey('terminal-metrics-more'));
+    final popup = find.byKey(const ValueKey('terminal-hidden-metrics'));
+    expect(more, findsOneWidget);
+    expect(popup, findsNothing);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer();
+    await mouse.moveTo(tester.getCenter(more));
+    await tester.pump(const Duration(milliseconds: 160));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(popup).bottom, lessThanOrEqualTo(tester.getRect(more).top + 1));
+    expect(find.descendant(of: popup, matching: find.text('Swap')), findsOneWidget);
+    expect(find.descendant(of: popup, matching: find.text('CPU usage')), findsNothing);
+    await mouse.moveTo(tester.getCenter(popup));
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(popup, findsOneWidget);
+    await mouse.moveTo(const Offset(2, 2));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(popup, findsNothing);
+    await mouse.removePointer();
+    await tester.tap(more);
+    await tester.pumpAndSettle();
+    expect(popup, findsOneWidget);
+    tester.view.physicalSize = const Size(1150, 300);
+    await tester.pumpAndSettle();
+    expect(more, findsNothing);
+    expect(popup, findsNothing);
+    expect(find.byTooltip('Swap'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -594,7 +594,10 @@ class _DockerOverview extends StatelessWidget {
             title: l.dockerLabels,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [for (final entry in labels.entries) _Fact(label: entry.key, value: entry.value, mono: true)],
+              children: [
+                for (final entry in labels.entries)
+                  _Fact(label: entry.key, value: entry.value, mono: true, compactValue: true),
+              ],
             ),
           ),
         if (env.isNotEmpty)
@@ -1163,15 +1166,21 @@ class _Section extends StatelessWidget {
 }
 
 class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value, this.mono = false});
+  const _Fact({required this.label, required this.value, this.mono = false, this.compactValue = false});
   final String label, value;
-  final bool mono;
+  final bool mono, compactValue;
 
   @override
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
     final style =
-        (mono ? tokens.typography.mono.copyWith(fontSize: 11, fontWeight: FontWeight.w400) : tokens.typography.callout)
+        (mono
+                ? tokens.typography.mono.copyWith(
+                    fontSize: compactValue ? 10 : 11,
+                    height: compactValue ? 1.35 : null,
+                    fontWeight: FontWeight.w400,
+                  )
+                : tokens.typography.callout)
             .copyWith(color: tokens.palette.label);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),

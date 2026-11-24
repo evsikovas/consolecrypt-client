@@ -57,6 +57,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get keepassRecentKdbx => 'Archivos KDBX recientes';
+
+  @override
+  String get terminalMoreMetrics => 'Más métricas del servidor';
+
+  @override
   String get terminalMetricsBar => 'Mostrar métricas del servidor bajo el terminal';
 
   @override

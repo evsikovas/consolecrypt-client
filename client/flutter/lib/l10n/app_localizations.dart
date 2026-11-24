@@ -142,6 +142,18 @@ abstract class AppLocalizations {
   /// **'{action, select, create {Created} start {Started} restart {Restarted} stop {Stopped} die {Exited} kill {Kill signal} oom {Out of memory} destroy {Removed} pause {Paused} unpause {Resumed} rename {Renamed} healthy {Healthy} unhealthy {Unhealthy} starting {Health check starting} other {Event}}'**
   String dockerLifecycleAction(String action);
 
+  /// Group of previously opened local KeePass databases
+  ///
+  /// In en, this message translates to:
+  /// **'Recent KDBX files'**
+  String get keepassRecentKdbx;
+
+  /// Shows the server metrics that do not fit in the terminal status bar
+  ///
+  /// In en, this message translates to:
+  /// **'More server metrics'**
+  String get terminalMoreMetrics;
+
   /// Show server metrics below the terminal
   ///
   /// In en, this message translates to:

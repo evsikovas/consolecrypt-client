@@ -63,9 +63,12 @@ class TerminalEncodingButton extends ConsumerWidget {
   }
 }
 
+typedef _Metric = ({String label, IconData icon, String value});
+
 class TerminalStatusBar extends StatelessWidget {
-  const TerminalStatusBar({required this.history, super.key});
+  const TerminalStatusBar({required this.history, this.foreground, super.key});
   final ValueListenable<HostMetricsHistory> history;
+  final Color? foreground;
 
   @override
   Widget build(BuildContext context) => ValueListenableBuilder<HostMetricsHistory>(
@@ -80,72 +83,191 @@ class TerminalStatusBar extends StatelessWidget {
           used == null || total == null ? '—' : '${formatBytes(l, used)} / ${formatBytes(l, total)}';
       String rate(double? value) => value == null ? '—' : l.sftpTransferSpeed(formatBytes(l, value.round()));
       final load = double.tryParse(s.loadAverage?.split('/').first.trim() ?? '');
-      Widget metric(String label, IconData icon, String value, Color color) => Tooltip(
-        message: label,
+      final metrics = <_Metric>[
+        (label: l.hostMetricsCpu, icon: Icons.memory, value: percent(s.cpu)),
+        (label: l.hostMetricsRam, icon: Icons.view_stream_outlined, value: memory(s.memoryUsed, s.memoryTotal)),
+        (label: l.hostMetricsDisk, icon: Icons.storage, value: percent(s.diskPercent)),
+        (label: l.hostMetricsReceived, icon: Icons.arrow_downward, value: rate(s.received)),
+        (label: l.hostMetricsSent, icon: Icons.arrow_upward, value: rate(s.sent)),
+        if ((s.swapTotal ?? 0) > 0)
+          (label: l.sessionSwap, icon: Icons.swap_horiz, value: memory(s.swapUsed, s.swapTotal)),
+        if (load != null && (s.logicalCpus ?? 0) > 0)
+          (label: l.terminalNormalizedLoad, icon: Icons.speed, value: percent(load * 100 / s.logicalCpus!)),
+      ];
+      final ms = s.channelLatencyMs;
+      final _Metric? latency = ms == null
+          ? null
+          : (label: l.terminalChannelLatency, icon: Icons.monitor_heart_outlined, value: l.terminalLatencyValue(ms));
+      final ink = foreground ?? t.palette.label;
+      final style = DefaultTextStyle.of(context).style
+          .merge(t.typography.mono)
+          .copyWith(color: ink.withValues(alpha: t.highContrast ? 1 : .76), fontSize: 11, height: 1.2);
+      final iconColor = ink.withValues(alpha: t.highContrast ? 1 : .60);
+      const iconSize = 12.0, iconGap = 4.0, gap = 12.0, moreWidth = 24.0;
+      double width(_Metric m) =>
+          iconSize +
+          iconGap +
+          TextPainter.computeWidth(
+            text: TextSpan(text: m.value, style: style),
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+            locale: Localizations.maybeLocaleOf(context),
+            maxLines: 1,
+          ).ceilToDouble();
+      Widget inline(_Metric m) => Tooltip(
+        message: m.label,
         child: Semantics(
-          label: '$label $value',
+          label: '${m.label} ${m.value}',
           excludeSemantics: true,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 13, color: color),
-              const SizedBox(width: 4),
-              Text(value, style: t.typography.mono.copyWith(fontSize: 11, color: color)),
+              Icon(m.icon, size: iconSize, color: iconColor),
+              const SizedBox(width: iconGap),
+              Text(m.value, style: style, maxLines: 1, softWrap: false),
             ],
           ),
         ),
       );
-      return Container(
+      return DecoratedBox(
         key: const ValueKey('terminal-status-bar'),
         decoration: BoxDecoration(
-          color: t.surfaces.inset,
-          border: Border(top: BorderSide(color: t.surfaces.separator)),
+          border: Border(top: BorderSide(color: ink.withValues(alpha: .12), width: 0)),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-        child: Row(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final widths = metrics.map(width).toList();
+              final latencyWidth = latency == null ? 0.0 : width(latency);
+              final total =
+                  widths.fold(0.0, (a, b) => a + b) + latencyWidth + gap * (metrics.length - (latency == null ? 1 : 0));
+              final overflow = total > constraints.maxWidth;
+              final pinLatency =
+                  latency != null && (!overflow || latencyWidth + gap + moreWidth <= constraints.maxWidth);
+              var remaining =
+                  constraints.maxWidth - (overflow ? moreWidth + gap : 0) - (pinLatency ? latencyWidth + gap : 0);
+              var shown = 0;
+              while (shown < widths.length && (!overflow || widths[shown] <= remaining)) {
+                remaining -= widths[shown++] + gap;
+              }
+              final hidden = [...metrics.skip(shown), if (latency != null && !pinLatency) latency];
+              return ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 24),
                 child: Row(
-                  spacing: 12,
                   children: [
-                    metric(l.hostMetricsCpu, Icons.memory, percent(s.cpu), t.palette.success),
-                    metric(
-                      l.hostMetricsRam,
-                      Icons.view_stream_outlined,
-                      memory(s.memoryUsed, s.memoryTotal),
-                      t.palette.warning,
-                    ),
-                    if ((s.swapTotal ?? 0) > 0)
-                      metric(l.sessionSwap, Icons.swap_horiz, memory(s.swapUsed, s.swapTotal), t.palette.secondary),
-                    metric(l.hostMetricsDisk, Icons.storage, percent(s.diskPercent), t.palette.success),
-                    metric(l.hostMetricsSent, Icons.arrow_upward, rate(s.sent), t.palette.info),
-                    metric(l.hostMetricsReceived, Icons.arrow_downward, rate(s.received), t.palette.info),
-                    if (load != null && (s.logicalCpus ?? 0) > 0)
-                      metric(
-                        l.terminalNormalizedLoad,
-                        Icons.speed,
-                        percent(load * 100 / s.logicalCpus!),
-                        t.palette.success,
+                    for (var i = 0; i < shown; i++) ...[if (i > 0) const SizedBox(width: gap), inline(metrics[i])],
+                    const Spacer(),
+                    if (pinLatency) inline(latency),
+                    if (hidden.isNotEmpty) ...[
+                      if (pinLatency) const SizedBox(width: gap),
+                      SizedBox(
+                        width: constraints.maxWidth.clamp(0.0, moreWidth),
+                        height: 24,
+                        child: _MoreMetrics(metrics: hidden, ink: iconColor),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    },
+  );
+}
+
+class _MoreMetrics extends StatefulWidget {
+  const _MoreMetrics({required this.metrics, required this.ink});
+  final List<_Metric> metrics;
+  final Color ink;
+  @override
+  State<_MoreMetrics> createState() => _MoreMetricsState();
+}
+
+class _MoreMetricsState extends State<_MoreMetrics> {
+  final _tooltip = GlobalKey<RawTooltipState>();
+  @override
+  Widget build(BuildContext context) {
+    final t = GlassTokens.of(context);
+    final label = context.l10n.terminalMoreMetrics;
+    return RawTooltip(
+      key: _tooltip,
+      semanticsTooltip: label,
+      hoverDelay: const Duration(milliseconds: 120),
+      dismissDelay: const Duration(milliseconds: 220),
+      triggerMode: TooltipTriggerMode.manual,
+      positionDelegate: (p) => positionDependentBox(
+        size: p.overlaySize,
+        childSize: p.tooltipSize,
+        target: p.target,
+        preferBelow: false,
+        verticalOffset: p.targetSize.height / 2,
+      ),
+      tooltipBuilder: (context, animation) {
+        final trigger = _tooltip.currentContext!.findRenderObject()! as RenderBox;
+        final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+        final above = trigger.localToGlobal(Offset.zero, ancestor: overlay).dy;
+        // Leave room for the overlay margin. On a terminal docked against the
+        // top edge, the tooltip positioner can use the space below instead.
+        final room = above >= 64 ? above : overlay.size.height - above - trigger.size.height;
+        return FadeTransition(
+          opacity: animation,
+          child: Material(
+            key: const ValueKey('terminal-hidden-metrics'),
+            color: t.surfaces.contentSolid,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: t.surfaces.separator),
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 296, maxHeight: (room - 12).clamp(0, 320)),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final m in widget.metrics)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Icon(m.icon, size: 14, color: t.secondaryLabel),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(m.label, style: t.typography.callout.copyWith(color: t.secondaryLabel)),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: Text(
+                                  m.value,
+                                  textAlign: TextAlign.end,
+                                  style: t.typography.mono.copyWith(fontSize: 11, color: t.palette.label),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                   ],
                 ),
               ),
             ),
-            if (s.channelLatencyMs case final ms?)
-              Padding(
-                padding: const EdgeInsets.only(left: 6),
-                child: metric(
-                  l.terminalChannelLatency,
-                  Icons.monitor_heart_outlined,
-                  l.terminalLatencyValue(ms),
-                  t.palette.success,
-                ),
-              ),
-          ],
-        ),
-      );
-    },
-  );
+          ),
+        );
+      },
+      child: IconButton(
+        key: const ValueKey('terminal-metrics-more'),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.tightFor(height: 24),
+        iconSize: 16,
+        visualDensity: VisualDensity.compact,
+        onPressed: () => _tooltip.currentState?.ensureTooltipVisible(),
+        icon: Icon(Icons.keyboard_arrow_right_rounded, color: widget.ink, semanticLabel: label),
+      ),
+    );
+  }
 }
