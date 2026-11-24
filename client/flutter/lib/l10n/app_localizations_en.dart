@@ -19638,6 +19638,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureDenied => 'Packet capture requires additional permissions.';
 
   @override
+  String get captureStartTimeout => 'The server did not report capture readiness within 20 seconds.';
+
+  @override
   String get captureFailed => 'Could not complete the capture.';
 
   @override

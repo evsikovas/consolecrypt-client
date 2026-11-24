@@ -24656,6 +24656,8 @@
   "@captureDenied": {
     "description": "Packet capture workspace. Packet capture requires additional permissions."
   },
+  "captureStartTimeout": "The server did not report capture readiness within 20 seconds.",
+  "@captureStartTimeout": {"description":"Timed out waiting for tcpdump to start on the capture server."},
   "captureFailed": "Could not complete the capture.",
   "@captureFailed": {
     "description": "Packet capture workspace. Could not complete the capture."

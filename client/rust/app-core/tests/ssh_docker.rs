@@ -526,3 +526,114 @@ async fn ssh_terminal_tunnel_sftp_through_two_jump_hosts() {
         "the target's unknown key was asked through the UI prompt"
     );
 }
+
+/// Exercise the same facade, snapshot and streaming channel as the desktop client.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn tcpdump_check_denied_capture_and_stop_over_real_ssh() {
+    if !testing::enabled() {
+        return;
+    }
+    let tb = tokio::task::spawn_blocking(|| SshTestbed::start(false))
+        .await
+        .unwrap()
+        .unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let app = app_with(tmp.path(), memory_store(), false);
+    app.create_local_profile("Capture IT".into(), PASSPHRASE.into())
+        .await
+        .unwrap();
+    let mut source = host("source", "127.0.0.1", None);
+    source.port = Some(tb.bastion1_port);
+    source.username = Some(tb.secrets.user.clone());
+    source.host_key_policy = HostKeyPolicy::AcceptNew;
+    let source = app
+        .save_host_with_auth(
+            source,
+            HostAuth::InlinePassword {
+                password: Some(tb.secrets.password.expose_secret().to_owned()),
+            },
+        )
+        .await
+        .unwrap();
+    let peer = app
+        .save_host(host("peer", "127.0.0.2", None))
+        .await
+        .unwrap();
+
+    async fn finished(app: &AppCore, id: String) -> String {
+        tokio::time::timeout(Duration::from_secs(8), app.terminal_wait_closed(id.clone()))
+            .await
+            .unwrap()
+            .unwrap();
+        let mut attachment = app.attach_terminal(id.clone()).await.unwrap();
+        let mut data = attachment.snapshot;
+        while let Some(chunk) = attachment.output.recv().await {
+            if let TerminalChunk::Data(bytes) = chunk {
+                data.extend(bytes);
+            }
+        }
+        app.close_terminal(id).await.unwrap();
+        String::from_utf8(data).unwrap()
+    }
+
+    let check = app
+        .open_tcpdump(source.id.clone(), None, false)
+        .await
+        .unwrap();
+    assert!(finished(&app, check.id).await.contains("CC_MISSING apk"));
+    tb.exec_in(&tb.bastion1, "apk add --no-cache tcpdump iproute2 sudo")
+        .unwrap();
+    let check = app
+        .open_tcpdump(source.id.clone(), None, false)
+        .await
+        .unwrap();
+    assert!(finished(&app, check.id).await.contains("CC_TCPDUMP_READY"));
+    let denied = app
+        .open_tcpdump(source.id.clone(), Some(peer.id.clone()), false)
+        .await
+        .unwrap();
+    assert!(
+        finished(&app, denied.id)
+            .await
+            .to_lowercase()
+            .contains("permission")
+    );
+    tb.exec_in(&tb.bastion1, "printf 'tester ALL=(root) NOPASSWD: %s\\n' \"$(command -v tcpdump)\" >/etc/sudoers.d/capture-it && chmod 440 /etc/sudoers.d/capture-it").unwrap();
+    let capture = app
+        .open_tcpdump(source.id, Some(peer.id), true)
+        .await
+        .unwrap();
+    assert!(app.list_terminals().await.unwrap().is_empty());
+    let mut stream = app.attach_terminal(capture.id.clone()).await.unwrap();
+    let mut text = String::from_utf8(stream.snapshot).unwrap();
+    tokio::time::timeout(Duration::from_secs(8), async {
+        let mut generated = false;
+        loop {
+            if !generated && text.contains("listening on") {
+                tb.exec_in(
+                    &tb.bastion1,
+                    "ping -qc 1 -I 127.0.0.1 127.0.0.3 && ping -qc 2 -I 127.0.0.1 127.0.0.2",
+                )
+                .unwrap();
+                generated = true;
+            }
+            if text.contains("127.0.0.2 > 127.0.0.1: ICMP echo reply") {
+                break;
+            }
+            match stream.output.recv().await {
+                Some(TerminalChunk::Data(bytes)) => text.push_str(&String::from_utf8_lossy(&bytes)),
+                other => panic!("unexpected capture end {other:?}: {text}"),
+            }
+        }
+    })
+    .await
+    .unwrap();
+    assert!(text.contains("127.0.0.1 > 127.0.0.2: ICMP echo request"));
+    assert!(!text.contains("127.0.0.3"));
+    app.close_terminal(capture.id).await.unwrap();
+    tb.exec_in(
+        &tb.bastion1,
+        "for i in 1 2 3 4 5; do pgrep -x tcpdump >/dev/null || exit 0; sleep 1; done; exit 1",
+    )
+    .unwrap();
+}

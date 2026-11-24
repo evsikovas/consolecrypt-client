@@ -284,7 +284,7 @@ impl ShellOpener for RoutingShellOpener {
     ) -> Result<OpenedShell, TerminalError> {
         match plan.backend {
             SshBackend::Native => self.native.open_shell(plan, pty).await,
-            SshBackend::OpenSsh => open_openssh_shell(plan, &self.resolver, &self.known_hosts)
+            SshBackend::OpenSsh => open_openssh_shell(plan, &self.resolver, &self.known_hosts, None)
                 .await
                 .map_err(|e| TerminalError::Open(e.to_string())),
         }
@@ -335,8 +335,9 @@ async fn open_openssh_shell(
     plan: &ConnectionPlan,
     resolver: &Arc<VaultCredentialResolver>,
     known_hosts: &Arc<VaultKnownHosts>,
+    remote_command: Option<String>,
 ) -> AppResult<OpenedShell> {
-    let launch = launch_openssh(plan, resolver, known_hosts, None, true).await?;
+    let launch = launch_openssh(plan, resolver, known_hosts, remote_command, true).await?;
     let mut cmd = tokio::process::Command::from(launch.command.to_command());
     cmd.stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -571,6 +572,25 @@ impl SshRuntime {
             }
         }
         self.exec_plan(&plan, command).await
+    }
+
+    pub(crate) async fn open_command_pty(
+        &self, plan: &ConnectionPlan, command: String,
+    ) -> AppResult<OpenedShell> {
+        match plan.backend {
+            SshBackend::OpenSsh => open_openssh_shell(plan, &self.resolver, &self.known_hosts, Some(command)).await,
+            SshBackend::Native => {
+                let session = Arc::new(self.connector.connect(plan).await?);
+                let channel = match session.open_command_pty(PtyRequest::default(), &command).await {
+                    Ok(channel) => channel,
+                    Err(error) => {
+                        let _ = session.disconnect().await;
+                        return Err(error.into());
+                    }
+                };
+                Ok(OpenedShell { channel, session: Some(session), lifetime: None })
+            }
+        }
     }
 
     pub(crate) async fn exec_plan(

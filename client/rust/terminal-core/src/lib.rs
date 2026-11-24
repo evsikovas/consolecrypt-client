@@ -237,6 +237,7 @@ struct Inner {
 }
 
 struct Session {
+    background: bool,
     id: TerminalId,
     target: TerminalTarget,
     title: String,
@@ -327,13 +328,17 @@ impl TerminalManager {
 
     fn set_status(events: &broadcast::Sender<TerminalEvent>, s: &Session, status: TerminalStatus) {
         s.status.send_replace(status.clone());
-        let _ = events.send(TerminalEvent { id: s.id, status, intentional_close: false });
+        if !s.background {
+            let _ = events.send(TerminalEvent { id: s.id, status, intentional_close: false });
+        }
     }
 
     fn user_closed(events: &broadcast::Sender<TerminalEvent>, session: &Session) {
         let status = TerminalStatus::Closed { exit_status: None, reason: None };
         session.status.send_replace(status.clone());
-        let _ = events.send(TerminalEvent { id: session.id, status, intentional_close: true });
+        if !session.background {
+            let _ = events.send(TerminalEvent { id: session.id, status, intentional_close: true });
+        }
     }
 
     /// Start connecting in the background; returns immediately with status
@@ -341,6 +346,7 @@ impl TerminalManager {
     pub fn spawn_open(&self, plan: ConnectionPlan, size: TerminalSize) -> TerminalId {
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
+            background: false,
             id,
             target: TerminalTarget::Ssh {
                 host_id: plan.host_id,
@@ -437,6 +443,7 @@ impl TerminalManager {
             .map_err(|e| TerminalError::Open(e.to_string()))?;
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
+            background: false,
             id,
             target: TerminalTarget::Ssh {
                 host_id: ssh.host_id(),
@@ -488,6 +495,7 @@ impl TerminalManager {
         let (profile, opened) = local::open(profile_id, size).await?;
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
+            background: false,
             id,
             target: TerminalTarget::Local {
                 profile_id: profile.id,
@@ -533,8 +541,33 @@ impl TerminalManager {
         size: TerminalSize,
         opened: OpenedShell,
     ) -> Result<TerminalId, TerminalError> {
+        self.register_channel(target, title, size, opened, false)
+            .await
+    }
+
+    /// Tool-owned command with ordered output and its own status UI.
+    pub async fn open_background_channel(
+        &self,
+        target: TerminalTarget,
+        title: String,
+        size: TerminalSize,
+        opened: OpenedShell,
+    ) -> Result<TerminalId, TerminalError> {
+        self.register_channel(target, title, size, opened, true)
+            .await
+    }
+
+    async fn register_channel(
+        &self,
+        target: TerminalTarget,
+        title: String,
+        size: TerminalSize,
+        opened: OpenedShell,
+        background: bool,
+    ) -> Result<TerminalId, TerminalError> {
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
+            background,
             id,
             target,
             title,
@@ -548,7 +581,7 @@ impl TerminalManager {
                 size,
                 scrollback: Scrollback::new(self.config.scrollback_bytes),
                 tracker: CommandTracker::new(),
-                tracking_suppressed: false,
+                tracking_suppressed: background,
             }),
         });
         self.register(session.clone());
@@ -777,7 +810,10 @@ impl TerminalManager {
     }
 
     pub fn list(&self) -> Vec<TerminalInfo> {
-        let ids: Vec<TerminalId> = self.map().keys().copied().collect();
+        let ids: Vec<TerminalId> = self.map().values()
+            .filter(|s| !s.background)
+            .map(|s| s.id)
+            .collect();
         ids.into_iter()
             .filter_map(|id| self.info(id).ok())
             .collect()
@@ -812,8 +848,9 @@ impl TerminalManager {
     /// Permanently fence this unlocked runtime before closing its sessions.
     pub async fn shutdown(&self) {
         self.begin_shutdown();
-        for info in self.list() {
-            let _ = self.remove(info.id).await;
+        let ids: Vec<_> = self.map().keys().copied().collect();
+        for id in ids {
+            let _ = self.remove(id).await;
         }
     }
 

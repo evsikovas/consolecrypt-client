@@ -17,7 +17,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../helpers/test_app.dart';
 
-class _Shell implements TerminalService {
+class _Shell implements TerminalService, TcpdumpService {
   final pending = Completer<TerminalSessionHandle>();
   final output = StreamController<Uint8List>();
   final events = StreamController<TerminalEvent>();
@@ -27,6 +27,13 @@ class _Shell implements TerminalService {
 
   void connect() => pending.complete(TerminalSessionHandle(id: id, output: output.stream, events: events.stream));
   void line(String s) => output.add(Uint8List.fromList(utf8.encode('$s\r\n')));
+  final requests = <({ObjectId source, ObjectId? peer, bool sudo})>[];
+  @override
+  Future<TerminalSessionHandle> openTcpdump({required ObjectId hostId, ObjectId? peerId, required bool sudo}) {
+    requests.add((source: hostId, peer: peerId, sudo: sudo));
+    return pending.future;
+  }
+
   @override
   Future<TerminalSessionHandle> open({required ObjectId hostId, required TerminalSize size}) => pending.future;
   @override
@@ -42,14 +49,20 @@ class _Shell implements TerminalService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _InstallHost extends Fake implements TerminalService {
+class _InstallHost extends Fake implements TerminalService, TcpdumpService {
   final check = _Shell()..connect(), install = _Shell()..connect();
   final hosts = <ObjectId>[];
   _Shell shell(TerminalSessionId id) => id == check.id ? check : install;
   @override
   Future<TerminalSessionHandle> open({required ObjectId hostId, required TerminalSize size}) {
     hosts.add(hostId);
-    return (hosts.length == 1 ? check : install).pending.future;
+    return install.pending.future;
+  }
+
+  @override
+  Future<TerminalSessionHandle> openTcpdump({required ObjectId hostId, ObjectId? peerId, required bool sudo}) {
+    hosts.add(hostId);
+    return check.openTcpdump(hostId: hostId, peerId: peerId, sudo: sudo);
   }
 
   @override
@@ -94,21 +107,11 @@ void main() {
     expect(CapturePacket.parse('Last login: 12:00'), isNull);
   });
 
-  test('limits both endpoints; host text cannot introduce commands or filters', () {
-    for (final invalid in ['x;id', '10.0.0.1 or tcp', 'host/24', 'a\nid', '-i', r'$(id)', "a'b"]) {
-      expect(() => remoteCaptureCommand(invalid), throwsFormatException);
-    }
-    expect(checkedPeer('[2001:db8::1]'), '2001:db8::1');
-    expect(remoteCaptureCommand('db.example.test'), contains(r'dst host db.example.test and ($sources)'));
-    final command = remoteCaptureCommand('db.example.test');
-    expect(command, contains(r'src port $2 and dst host $3 and dst port $4'));
-    expect(command, isNot(contains('sudo -n')));
-  });
-
   final host = Host.create(name: 'lab', address: '192.0.2.10');
+  final peer = Host.create(name: 'peer', address: '192.0.2.20');
   test('stop before SSH finishes closes the late handle without writing', () async {
     final shell = _Shell(), run = CaptureRun(shell);
-    final start = run.startRemote(host, '192.0.2.20');
+    final start = run.startRemote(host, peer.id);
     run.stop();
     shell.connect();
     await start;
@@ -119,11 +122,12 @@ void main() {
 
   test('missing package offers only the detected manager command, as the actual user', () async {
     final shell = _Shell()..connect(), run = CaptureRun(shell);
-    await run.startRemote(host, '192.0.2.20');
+    await run.startRemote(host, peer.id);
     expect(run.status, CaptureStatus.connecting, reason: run.error);
     shell.events.add(const TerminalStateChanged(SessionConnectionState.connected));
     await Future<void>.delayed(Duration.zero);
-    expect(shell.commands.single, contains('exec sh -c'));
+    expect(shell.requests.single, (source: host.id, peer: peer.id, sudo: false));
+    expect(shell.commands, isEmpty);
     shell.line('CC_MISSING apk 0');
     await Future<void>.delayed(Duration.zero);
     expect(run.status, CaptureStatus.missing);
@@ -137,8 +141,8 @@ void main() {
     await run.checkRemote(host);
     shell.events.add(const TerminalStateChanged(SessionConnectionState.connected));
     await Future<void>.delayed(Duration.zero);
-    expect(shell.commands.single, contains('command -v tcpdump'));
-    expect(shell.commands.single, isNot(contains('-nn')));
+    expect(shell.requests.single, (source: host.id, peer: null, sudo: false));
+    expect(shell.commands, isEmpty);
     shell.line('CC_TCPDUMP_READY');
     await Future<void>.delayed(Duration.zero);
     expect(run.status, CaptureStatus.ready);
@@ -146,9 +150,40 @@ void main() {
     run.dispose();
   });
 
+  test('keeps the final permission diagnostic even when the exit event arrives first', () async {
+    final shell = _Shell()..connect(), run = CaptureRun(shell);
+    await run.startRemote(host, peer.id, privileged: true);
+    shell.events.add(const TerminalStateChanged(SessionConnectionState.connected));
+    shell.events.add(const TerminalExited(1));
+    shell.events.add(const TerminalStateChanged(SessionConnectionState.disconnected));
+    await Future<void>.delayed(Duration.zero);
+    expect(shell.closed, 0);
+    shell.output.add(Uint8List.fromList(utf8.encode('sudo: a pass')));
+    shell.output.add(Uint8List.fromList(utf8.encode('word is required')));
+    await shell.output.close();
+    expect(run.status, CaptureStatus.denied);
+    expect(run.error, 'sudo: a password is required');
+    expect(shell.closed, 1);
+    run.dispose();
+  });
+
+  test('retains the exit code and unprefixed shell diagnostic', () async {
+    final shell = _Shell()..connect(), run = CaptureRun(shell);
+    await run.startRemote(host, peer.id);
+    shell.events.add(const TerminalExited(127));
+    shell.events.add(const TerminalStateChanged(SessionConnectionState.disconnected));
+    shell.line('sh: tcpdump: not found');
+    await shell.output.close();
+    await Future<void>.delayed(Duration.zero);
+    expect(run.status, CaptureStatus.failed);
+    expect(run.error, 'sh: tcpdump: not found');
+    expect(run.exitCode, 127);
+    run.dispose();
+  });
+
   test('streams packets, bounds visible rows and closes the capture on stop', () async {
     final shell = _Shell()..connect(), run = CaptureRun(shell);
-    await run.startRemote(host, '192.0.2.20');
+    await run.startRemote(host, peer.id);
     expect(run.status, CaptureStatus.connecting, reason: run.error);
     shell.line('tcpdump: listening on any, link-type LINUX_SLL2');
     for (int i = 0; i < displayLimit + 2; i++) {
@@ -216,7 +251,8 @@ void main() {
     await settle(tester);
     shell.events.add(const TerminalStateChanged(SessionConnectionState.connected));
     await settle(tester);
-    expect(shell.commands, hasLength(1));
+    expect(shell.requests.single.peer, isNotNull);
+    expect(shell.commands, isEmpty);
     shell.line('tcpdump: listening on eth0');
     for (var i = 0; i < 100; i++) {
       shell.line('1795500000.000001 IP 192.0.2.3.40000 > 192.0.2.4.80: Flags [.], win 2, length 0');

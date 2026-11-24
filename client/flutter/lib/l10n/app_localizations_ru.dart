@@ -19973,6 +19973,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get captureDenied => 'Для захвата нужны дополнительные права.';
 
   @override
+  String get captureStartTimeout => 'Сервер не подтвердил запуск захвата за 20 секунд.';
+
+  @override
   String get captureFailed => 'Не удалось завершить захват.';
 
   @override

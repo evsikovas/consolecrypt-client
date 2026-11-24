@@ -18824,6 +18824,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get captureDenied => '需要更高权限才能抓包。';
 
   @override
+  String get captureStartTimeout => '服务器未在 20 秒内确认抓包已启动。';
+
+  @override
   String get captureFailed => '未能完成抓包。';
 
   @override

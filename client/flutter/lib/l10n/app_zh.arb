@@ -5745,6 +5745,7 @@
   "captureStopped": "抓包已停止",
   "captureMissing": "抓包端未安装 tcpdump。",
   "captureDenied": "需要更高权限才能抓包。",
+  "captureStartTimeout": "服务器未在 20 秒内确认抓包已启动。",
   "captureFailed": "未能完成抓包。",
   "captureNoPeer": "无法确定连接地址。",
   "captureSource": "抓包服务器",

@@ -26,7 +26,8 @@ import 'package:flutter/services.dart';
 enum _PromptKind { hostKey, password, passphrase }
 
 final class _Session {
-  _Session(this.id, this.target, this.size);
+  _Session(this.id, this.target, this.size, {this.capture});
+  final ({ObjectId? peerId, bool sudo})? capture;
 
   final TerminalSessionId id;
   final TerminalTarget target;
@@ -63,6 +64,7 @@ final class _Session {
 final class RustTerminalService
     implements
         TerminalService,
+        TcpdumpService,
         LocalTerminalService,
         TmuxService,
         KubernetesTerminalService,
@@ -94,6 +96,15 @@ final class RustTerminalService
     }
     final host = hub.hosts.value.firstWhere((h) => h.id == hostId);
     return _open(SshTerminalTarget(host), size);
+  }
+
+  @override
+  Future<TerminalSessionHandle> openTcpdump({required ObjectId hostId, ObjectId? peerId, required bool sudo}) async {
+    final host = _hub?.hosts.value.where((h) => h.id == hostId).firstOrNull;
+    if (host == null) {
+      throw const AppException(AppErrorCode.notFound, 'Host not found', reason: AppErrorReason.hostNotFound);
+    }
+    return _open(SshTerminalTarget(host), const TerminalSize(240, 24), capture: (peerId: peerId, sudo: sudo));
   }
 
   String? connectedSshRuntimeId(TerminalSessionId id, ObjectId hostId) {
@@ -262,8 +273,8 @@ final class RustTerminalService
     }
   }
 
-  TerminalSessionHandle _open(TerminalTarget target, TerminalSize size) {
-    final s = _Session(TerminalSessionId.generate(), target, size);
+  TerminalSessionHandle _open(TerminalTarget target, TerminalSize size, {({ObjectId? peerId, bool sudo})? capture}) {
+    final s = _Session(TerminalSessionId.generate(), target, size, capture: capture);
     _sessions[s.id] = s;
     unawaited(_connect(s));
     return TerminalSessionHandle(
@@ -299,6 +310,11 @@ final class RustTerminalService
       final info = decodeObject(
         await guard(
           () => switch (s.target) {
+            SshTerminalTarget(:final host) when s.capture != null => rs_ssh.terminalOpenTcpdump(
+              hostId: host.id.value,
+              peerId: s.capture!.peerId?.value,
+              sudo: s.capture!.sudo,
+            ),
             SshTerminalTarget(:final host) => rs_ssh.terminalOpen(
               hostId: host.id.value,
               cols: s.size.columns,
@@ -353,7 +369,7 @@ final class RustTerminalService
       final title = info['title'] as String?;
       if (title != null && title.isNotEmpty) s.event(TerminalTitleChanged(title));
       // A resize may have arrived while native spawn/connect was pending.
-      await resize(s.id, s.size);
+      if (s.capture == null) await resize(s.id, s.size);
       if (!s.closed && s.rustId == rustId) _attach(s, rustId);
     } on AppException catch (e) {
       if (e.code == AppErrorCode.hostKeyChanged && s.hostId != null) {
@@ -363,6 +379,7 @@ final class RustTerminalService
           ),
         );
       }
+      if (s.capture != null) unawaited(s.output.close());
       s.event(TerminalStateChanged(SessionConnectionState.disconnected, message: e.message));
     } finally {
       s
@@ -426,6 +443,7 @@ final class RustTerminalService
   void _disconnected(_Session s, String? message) {
     if (!s.connected) return;
     s.connected = false;
+    if (s.capture != null) unawaited(s.output.close());
     s.event(TerminalStateChanged(SessionConnectionState.disconnected, message: message));
   }
 

@@ -32,6 +32,12 @@ abstract interface class TerminalService {
   Future<void> close(TerminalSessionId id);
 }
 
+/// Dedicated SSH commands finish their output stream after the final bytes,
+/// including when the process exits before the caller subscribes.
+abstract interface class TcpdumpService {
+  Future<TerminalSessionHandle> openTcpdump({required ObjectId hostId, ObjectId? peerId, required bool sudo});
+}
+
 /// Optional desktop capability. SSH-only adapters and mobile keep the same
 /// service contract; unsupported platforms expose no local profiles.
 abstract interface class TerminalHistoryReader {

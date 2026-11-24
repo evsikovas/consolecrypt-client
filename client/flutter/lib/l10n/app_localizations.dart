@@ -34567,6 +34567,12 @@ abstract class AppLocalizations {
   /// **'Packet capture requires additional permissions.'**
   String get captureDenied;
 
+  /// Timed out waiting for tcpdump to start on the capture server.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not report capture readiness within 20 seconds.'**
+  String get captureStartTimeout;
+
   /// Packet capture workspace. Could not complete the capture.
   ///
   /// In en, this message translates to:

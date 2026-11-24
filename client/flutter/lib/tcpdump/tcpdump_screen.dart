@@ -85,7 +85,7 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
     resetRun();
     final next = CaptureRun(ref.read(terminalServiceProvider));
     setState(() => run = next);
-    unawaited(next.startRemote(source!, target!.address, privileged: useSudo));
+    unawaited(next.startRemote(source!, target!.id, privileged: useSudo));
   }
 
   Future<void> install(CaptureRun current) async {
@@ -232,7 +232,16 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
                             ],
                           ),
                           if (current != null && !busy && current.error != null)
-                            SelectableText(current.error!, style: mono),
+                            SelectableText(current.error!, style: mono)
+                          else if (current?.status == CaptureStatus.failed)
+                            Text(
+                              current!.timedOut
+                                  ? l.captureStartTimeout
+                                  : current.exitCode != null
+                                  ? l.wslcExitedWithCode('tcpdump', current.exitCode!)
+                                  : l.errorReasonSessionClosed,
+                              style: theme.typography.caption,
+                            ),
                           if (current?.status == CaptureStatus.missing) ...[
                             if (installCommands.containsKey(current!.manager))
                               GlassButton(
@@ -243,7 +252,7 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
                             else
                               Text(l.captureManualInstall),
                           ],
-                          if (current?.status == CaptureStatus.denied)
+                          if (current?.status == CaptureStatus.denied && !useSudo)
                             GlassButton(
                               label: l.captureSudo,
                               onPressed: () {

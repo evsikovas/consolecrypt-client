@@ -31,22 +31,22 @@ final class CaptureRun extends ChangeNotifier {
   final _subscriptions = <StreamSubscription<dynamic>>[];
   TerminalSessionId? _id;
   Timer? _paint, _startup;
-  bool _closed = false, _commandSent = false;
+  bool _closed = false;
+  bool timedOut = false;
+  int? exitCode;
+  final _drained = Completer<void>();
   static final _ansi = RegExp(r'\x1b\[[0-?]*[ -/]*[@-~]');
 
-  Future<void> startRemote(Host source, String other, {bool privileged = false}) async {
-    try {
-      await _startSsh(source, remoteCaptureCommand(other, privileged: privileged));
-    } catch (e) {
-      _fail(e);
-    }
-  }
+  Future<void> startRemote(Host source, ObjectId peerId, {bool privileged = false}) =>
+      _startSsh(source, peerId: peerId, sudo: privileged);
 
-  Future<void> checkRemote(Host host) => _startSsh(host, remoteTcpdumpCheck);
+  Future<void> checkRemote(Host host) => _startSsh(host);
 
-  Future<void> _startSsh(Host source, String command) async {
+  Future<void> _startSsh(Host source, {ObjectId? peerId, bool sudo = false}) async {
     try {
-      final handle = await service.open(hostId: source.id, size: const TerminalSize(240, 24));
+      final transport = service;
+      if (transport is! TcpdumpService) throw UnsupportedError('TCPdump requires the SSH backend');
+      final handle = await (transport as TcpdumpService).openTcpdump(hostId: source.id, peerId: peerId, sudo: sudo);
       if (_closed || !active) {
         await service.close(handle.id);
         return;
@@ -69,29 +69,17 @@ final class CaptureRun extends ChangeNotifier {
                 passwordPrompt = event;
                 notifyListeners();
               case TerminalStateChanged(state: SessionConnectionState.connected):
-                if (_commandSent) return;
-                _commandSent = true;
                 _startDeadline();
-                unawaited(
-                  service
-                      .write(handle.id, Uint8List.fromList(utf8.encode('$command\r')))
-                      .catchError((Object e) => _fail(e)),
-                );
               case TerminalStateChanged(state: SessionConnectionState.disconnected, :final message):
-                _finish(
-                  status == CaptureStatus.listening && message == null ? CaptureStatus.stopped : CaptureStatus.failed,
-                  message,
-                );
-              case TerminalExited(:final exitCode):
-                _finish(
-                  exitCode == 0 && status == CaptureStatus.listening ? CaptureStatus.stopped : CaptureStatus.failed,
-                );
+                unawaited(_ended(message));
+              case TerminalExited(exitCode: final code):
+                exitCode = code;
               default:
                 break;
             }
           },
           onError: _fail,
-          onDone: () => _finish(CaptureStatus.stopped),
+          onDone: () => unawaited(_ended(null)),
         ),
       );
     } catch (e) {
@@ -128,12 +116,29 @@ final class CaptureRun extends ChangeNotifier {
         .cast<List<int>>()
         .transform(const Utf8Decoder(allowMalformed: true))
         .transform(lines)
-        .listen(_line, onError: _fail);
+        .listen(
+          _line,
+          onError: _fail,
+          onDone: () {
+            if (!_drained.isCompleted) _drained.complete();
+          },
+        );
     _subscriptions.add(sub);
   }
 
+  Future<void> _ended(String? message) async {
+    await _drained.future;
+    if (_closed || !active) return;
+    final clean = status == CaptureStatus.listening && exitCode == 0 && message == null;
+    _finish(clean ? CaptureStatus.stopped : CaptureStatus.failed, message);
+  }
+
   void _startDeadline() {
-    _startup = Timer(const Duration(seconds: 20), () => _finish(CaptureStatus.failed));
+    if (status != CaptureStatus.connecting || _startup != null) return;
+    _startup = Timer(const Duration(seconds: 20), () {
+      timedOut = true;
+      _finish(CaptureStatus.failed);
+    });
   }
 
   void _line(String raw) {
@@ -173,7 +178,12 @@ final class CaptureRun extends ChangeNotifier {
       return;
     }
     final packet = CapturePacket.parse(line);
-    if (packet == null) return;
+    if (packet == null) {
+      // A dedicated exec has no prompt or echoed command. Preserve shell and
+      // system diagnostics as well as messages carrying the tcpdump prefix.
+      if (status == CaptureStatus.connecting && line.isNotEmpty) error ??= line;
+      return;
+    }
     _listening();
     if (packets.length == displayLimit) packets.removeLast();
     packets.addFirst(packet);
@@ -187,6 +197,7 @@ final class CaptureRun extends ChangeNotifier {
   void _listening() {
     if (status == CaptureStatus.listening) return;
     _startup?.cancel();
+    error = null;
     status = CaptureStatus.listening;
     notifyListeners();
   }
@@ -229,6 +240,7 @@ final class CaptureRun extends ChangeNotifier {
   }
 
   void _release() {
+    if (!_drained.isCompleted) _drained.complete();
     _startup?.cancel();
     _paint?.cancel();
     final id = _id;

@@ -43,7 +43,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1675303163;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1044016475;
 
 // Section: executor
 
@@ -22201,6 +22201,49 @@ fn wire__crate__api__ssh__terminal_open_local_impl(
         },
     )
 }
+fn wire__crate__api__ssh__terminal_open_tcpdump_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "terminal_open_tcpdump",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_host_id = <String>::sse_decode(&mut deserializer);
+            let api_peer_id = <Option<String>>::sse_decode(&mut deserializer);
+            let api_sudo = <bool>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::error::BridgeError>(
+                    (move || async move {
+                        let output_ok = crate::api::ssh::terminal_open_tcpdump(
+                            api_host_id,
+                            api_peer_id,
+                            api_sudo,
+                        )
+                        .await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__ssh__terminal_resize_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -25661,57 +25704,58 @@ fn pde_ffi_dispatcher_primary_impl(
 560 => wire__crate__api__ssh__terminal_only_start_impl(port, ptr, rust_vec_len, data_len),
 561 => wire__crate__api__ssh__terminal_open_impl(port, ptr, rust_vec_len, data_len),
 562 => wire__crate__api__ssh__terminal_open_local_impl(port, ptr, rust_vec_len, data_len),
-563 => wire__crate__api__ssh__terminal_resize_impl(port, ptr, rust_vec_len, data_len),
-564 => wire__crate__api__ssh__terminal_tmux_impl(port, ptr, rust_vec_len, data_len),
-565 => wire__crate__api__ssh__terminal_write_impl(port, ptr, rust_vec_len, data_len),
-566 => wire__crate__api__ssh__tunnel_start_impl(port, ptr, rust_vec_len, data_len),
-567 => wire__crate__api__ssh__tunnel_statuses_impl(port, ptr, rust_vec_len, data_len),
-568 => wire__crate__api__ssh__tunnel_stop_impl(port, ptr, rust_vec_len, data_len),
-569 => wire__crate__api__inventory__tunnels_delete_impl(port, ptr, rust_vec_len, data_len),
-570 => wire__crate__api__inventory__tunnels_list_impl(port, ptr, rust_vec_len, data_len),
-571 => wire__crate__api__inventory__tunnels_save_impl(port, ptr, rust_vec_len, data_len),
-572 => wire__crate__api__app__ui_store_get_impl(port, ptr, rust_vec_len, data_len),
-573 => wire__crate__api__app__ui_store_set_impl(port, ptr, rust_vec_len, data_len),
-574 => wire__crate__api__profiles__vault_acknowledge_recovery_kit_impl(port, ptr, rust_vec_len, data_len),
-575 => wire__crate__api__profiles__vault_change_passphrase_impl(port, ptr, rust_vec_len, data_len),
-576 => wire__crate__api__profiles__vault_confirm_step_up_impl(port, ptr, rust_vec_len, data_len),
-577 => wire__crate__api__profiles__vault_create_impl(port, ptr, rust_vec_len, data_len),
-578 => wire__crate__api__sync__vault_deletion_scheduled_impl(port, ptr, rust_vec_len, data_len),
-579 => wire__crate__api__profiles__vault_device_unlock_handle_impl(port, ptr, rust_vec_len, data_len),
-580 => wire__crate__api__profiles__vault_device_unlock_info_impl(port, ptr, rust_vec_len, data_len),
-581 => wire__crate__api__profiles__vault_device_unlock_invalidated_impl(port, ptr, rust_vec_len, data_len),
-582 => wire__crate__api__profiles__vault_dismiss_device_unlock_offer_impl(port, ptr, rust_vec_len, data_len),
-583 => wire__crate__api__profiles__vault_enable_device_unlock_with_material_impl(port, ptr, rust_vec_len, data_len),
-584 => wire__crate__api__profiles__vault_has_pending_recovery_kit_impl(port, ptr, rust_vec_len, data_len),
-585 => wire__crate__api__profiles__vault_is_unlocked_impl(port, ptr, rust_vec_len, data_len),
-586 => wire__crate__api__profiles__vault_join_with_passphrase_impl(port, ptr, rust_vec_len, data_len),
-587 => wire__crate__api__profiles__vault_join_with_recovery_key_impl(port, ptr, rust_vec_len, data_len),
-588 => wire__crate__api__sync__vault_key_confirm_impl(port, ptr, rust_vec_len, data_len),
-589 => wire__crate__api__sync__vault_key_status_impl(port, ptr, rust_vec_len, data_len),
-590 => wire__crate__api__profiles__vault_lock_impl(port, ptr, rust_vec_len, data_len),
-591 => wire__crate__api__profiles__vault_recovery_kit_available_impl(port, ptr, rust_vec_len, data_len),
-592 => wire__crate__api__profiles__vault_regenerate_recovery_kit_impl(port, ptr, rust_vec_len, data_len),
-593 => wire__crate__api__profiles__vault_reset_passphrase_with_device_impl(port, ptr, rust_vec_len, data_len),
-594 => wire__crate__api__profiles__vault_reset_passphrase_with_device_material_impl(port, ptr, rust_vec_len, data_len),
-595 => wire__crate__api__profiles__vault_reset_passphrase_with_recovery_key_impl(port, ptr, rust_vec_len, data_len),
-596 => wire__crate__api__profiles__vault_security_key_info_impl(port, ptr, rust_vec_len, data_len),
-597 => wire__crate__api__profiles__vault_set_confirm_actions_with_presence_impl(port, ptr, rust_vec_len, data_len),
-598 => wire__crate__api__profiles__vault_set_device_unlock_enabled_impl(port, ptr, rust_vec_len, data_len),
-599 => wire__crate__api__profiles__vault_set_security_key_enabled_impl(port, ptr, rust_vec_len, data_len),
-600 => wire__crate__api__inventory__vault_settings_get_impl(port, ptr, rust_vec_len, data_len),
-601 => wire__crate__api__inventory__vault_settings_save_impl(port, ptr, rust_vec_len, data_len),
-602 => wire__crate__api__profiles__vault_unlock_with_device_impl(port, ptr, rust_vec_len, data_len),
-603 => wire__crate__api__profiles__vault_unlock_with_device_material_impl(port, ptr, rust_vec_len, data_len),
-604 => wire__crate__api__profiles__vault_unlock_with_passphrase_impl(port, ptr, rust_vec_len, data_len),
-605 => wire__crate__api__profiles__vault_unlock_with_recovery_key_impl(port, ptr, rust_vec_len, data_len),
-606 => wire__crate__api__profiles__vault_unlock_with_security_key_impl(port, ptr, rust_vec_len, data_len),
-607 => wire__crate__api__profiles__vault_verify_passphrase_impl(port, ptr, rust_vec_len, data_len),
-608 => wire__crate__api__profiles__vault_verify_user_presence_impl(port, ptr, rust_vec_len, data_len),
-609 => wire__crate__api__profiles__vault_verify_user_presence_with_material_impl(port, ptr, rust_vec_len, data_len),
-610 => wire__crate__api__wslc__wslc_close_impl(port, ptr, rust_vec_len, data_len),
-611 => wire__crate__api__wslc__wslc_open_impl(port, ptr, rust_vec_len, data_len),
-613 => wire__crate__api__wslc__wslc_registry_login_impl(port, ptr, rust_vec_len, data_len),
-614 => wire__crate__api__wslc__wslc_request_impl(port, ptr, rust_vec_len, data_len),
+563 => wire__crate__api__ssh__terminal_open_tcpdump_impl(port, ptr, rust_vec_len, data_len),
+564 => wire__crate__api__ssh__terminal_resize_impl(port, ptr, rust_vec_len, data_len),
+565 => wire__crate__api__ssh__terminal_tmux_impl(port, ptr, rust_vec_len, data_len),
+566 => wire__crate__api__ssh__terminal_write_impl(port, ptr, rust_vec_len, data_len),
+567 => wire__crate__api__ssh__tunnel_start_impl(port, ptr, rust_vec_len, data_len),
+568 => wire__crate__api__ssh__tunnel_statuses_impl(port, ptr, rust_vec_len, data_len),
+569 => wire__crate__api__ssh__tunnel_stop_impl(port, ptr, rust_vec_len, data_len),
+570 => wire__crate__api__inventory__tunnels_delete_impl(port, ptr, rust_vec_len, data_len),
+571 => wire__crate__api__inventory__tunnels_list_impl(port, ptr, rust_vec_len, data_len),
+572 => wire__crate__api__inventory__tunnels_save_impl(port, ptr, rust_vec_len, data_len),
+573 => wire__crate__api__app__ui_store_get_impl(port, ptr, rust_vec_len, data_len),
+574 => wire__crate__api__app__ui_store_set_impl(port, ptr, rust_vec_len, data_len),
+575 => wire__crate__api__profiles__vault_acknowledge_recovery_kit_impl(port, ptr, rust_vec_len, data_len),
+576 => wire__crate__api__profiles__vault_change_passphrase_impl(port, ptr, rust_vec_len, data_len),
+577 => wire__crate__api__profiles__vault_confirm_step_up_impl(port, ptr, rust_vec_len, data_len),
+578 => wire__crate__api__profiles__vault_create_impl(port, ptr, rust_vec_len, data_len),
+579 => wire__crate__api__sync__vault_deletion_scheduled_impl(port, ptr, rust_vec_len, data_len),
+580 => wire__crate__api__profiles__vault_device_unlock_handle_impl(port, ptr, rust_vec_len, data_len),
+581 => wire__crate__api__profiles__vault_device_unlock_info_impl(port, ptr, rust_vec_len, data_len),
+582 => wire__crate__api__profiles__vault_device_unlock_invalidated_impl(port, ptr, rust_vec_len, data_len),
+583 => wire__crate__api__profiles__vault_dismiss_device_unlock_offer_impl(port, ptr, rust_vec_len, data_len),
+584 => wire__crate__api__profiles__vault_enable_device_unlock_with_material_impl(port, ptr, rust_vec_len, data_len),
+585 => wire__crate__api__profiles__vault_has_pending_recovery_kit_impl(port, ptr, rust_vec_len, data_len),
+586 => wire__crate__api__profiles__vault_is_unlocked_impl(port, ptr, rust_vec_len, data_len),
+587 => wire__crate__api__profiles__vault_join_with_passphrase_impl(port, ptr, rust_vec_len, data_len),
+588 => wire__crate__api__profiles__vault_join_with_recovery_key_impl(port, ptr, rust_vec_len, data_len),
+589 => wire__crate__api__sync__vault_key_confirm_impl(port, ptr, rust_vec_len, data_len),
+590 => wire__crate__api__sync__vault_key_status_impl(port, ptr, rust_vec_len, data_len),
+591 => wire__crate__api__profiles__vault_lock_impl(port, ptr, rust_vec_len, data_len),
+592 => wire__crate__api__profiles__vault_recovery_kit_available_impl(port, ptr, rust_vec_len, data_len),
+593 => wire__crate__api__profiles__vault_regenerate_recovery_kit_impl(port, ptr, rust_vec_len, data_len),
+594 => wire__crate__api__profiles__vault_reset_passphrase_with_device_impl(port, ptr, rust_vec_len, data_len),
+595 => wire__crate__api__profiles__vault_reset_passphrase_with_device_material_impl(port, ptr, rust_vec_len, data_len),
+596 => wire__crate__api__profiles__vault_reset_passphrase_with_recovery_key_impl(port, ptr, rust_vec_len, data_len),
+597 => wire__crate__api__profiles__vault_security_key_info_impl(port, ptr, rust_vec_len, data_len),
+598 => wire__crate__api__profiles__vault_set_confirm_actions_with_presence_impl(port, ptr, rust_vec_len, data_len),
+599 => wire__crate__api__profiles__vault_set_device_unlock_enabled_impl(port, ptr, rust_vec_len, data_len),
+600 => wire__crate__api__profiles__vault_set_security_key_enabled_impl(port, ptr, rust_vec_len, data_len),
+601 => wire__crate__api__inventory__vault_settings_get_impl(port, ptr, rust_vec_len, data_len),
+602 => wire__crate__api__inventory__vault_settings_save_impl(port, ptr, rust_vec_len, data_len),
+603 => wire__crate__api__profiles__vault_unlock_with_device_impl(port, ptr, rust_vec_len, data_len),
+604 => wire__crate__api__profiles__vault_unlock_with_device_material_impl(port, ptr, rust_vec_len, data_len),
+605 => wire__crate__api__profiles__vault_unlock_with_passphrase_impl(port, ptr, rust_vec_len, data_len),
+606 => wire__crate__api__profiles__vault_unlock_with_recovery_key_impl(port, ptr, rust_vec_len, data_len),
+607 => wire__crate__api__profiles__vault_unlock_with_security_key_impl(port, ptr, rust_vec_len, data_len),
+608 => wire__crate__api__profiles__vault_verify_passphrase_impl(port, ptr, rust_vec_len, data_len),
+609 => wire__crate__api__profiles__vault_verify_user_presence_impl(port, ptr, rust_vec_len, data_len),
+610 => wire__crate__api__profiles__vault_verify_user_presence_with_material_impl(port, ptr, rust_vec_len, data_len),
+611 => wire__crate__api__wslc__wslc_close_impl(port, ptr, rust_vec_len, data_len),
+612 => wire__crate__api__wslc__wslc_open_impl(port, ptr, rust_vec_len, data_len),
+614 => wire__crate__api__wslc__wslc_registry_login_impl(port, ptr, rust_vec_len, data_len),
+615 => wire__crate__api__wslc__wslc_request_impl(port, ptr, rust_vec_len, data_len),
                         _ => unreachable!(),
                     }
 }
@@ -25767,7 +25811,7 @@ fn pde_ffi_dispatcher_sync_impl(
             data_len,
         ),
         409 => wire__crate__api__app__os_auth_report_impl(ptr, rust_vec_len, data_len),
-        612 => wire__crate__api__wslc__wslc_preview_impl(ptr, rust_vec_len, data_len),
+        613 => wire__crate__api__wslc__wslc_preview_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

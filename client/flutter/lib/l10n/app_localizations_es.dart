@@ -19795,6 +19795,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get captureDenied => 'Se necesitan permisos para capturar paquetes.';
 
   @override
+  String get captureStartTimeout => 'El servidor no confirmó el inicio de la captura en 20 segundos.';
+
+  @override
   String get captureFailed => 'No se pudo completar la captura.';
 
   @override

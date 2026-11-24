@@ -114,6 +114,11 @@ pub async fn terminal_open(host_id: String, cols: u32, rows: u32) -> Result<Stri
     with_core(move |c| async move { to_json(&c.open_terminal(host_id, cols, rows).await?) }).await
 }
 
+/// Run the tcpdump prerequisite check or a two-server capture on its own SSH channel.
+pub async fn terminal_open_tcpdump(host_id: String, peer_id: Option<String>, sudo: bool) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.open_tcpdump(host_id, peer_id, sudo).await?) }).await
+}
+
 /// Device-local shell profiles. Executables and argv remain owned by Rust.
 pub async fn terminal_local_profiles() -> Result<String, BridgeError> {
     if let Some(terminals) = TERMINAL_ONLY.get() {

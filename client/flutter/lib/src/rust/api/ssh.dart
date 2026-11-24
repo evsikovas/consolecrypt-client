@@ -21,6 +21,10 @@ Future<void> terminalOnlyShutdown() => RustLib.instance.api.crateApiSshTerminalO
 Future<String> terminalOpen({required String hostId, required int cols, required int rows}) =>
     RustLib.instance.api.crateApiSshTerminalOpen(hostId: hostId, cols: cols, rows: rows);
 
+/// Run the tcpdump prerequisite check or a two-server capture on its own SSH channel.
+Future<String> terminalOpenTcpdump({required String hostId, String? peerId, required bool sudo}) =>
+    RustLib.instance.api.crateApiSshTerminalOpenTcpdump(hostId: hostId, peerId: peerId, sudo: sudo);
+
 /// Device-local shell profiles. Executables and argv remain owned by Rust.
 Future<String> terminalLocalProfiles() => RustLib.instance.api.crateApiSshTerminalLocalProfiles();
 

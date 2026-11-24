@@ -5745,6 +5745,7 @@
   "captureStopped": "Captura detenida",
   "captureMissing": "Falta tcpdump en el equipo de captura.",
   "captureDenied": "Se necesitan permisos para capturar paquetes.",
+  "captureStartTimeout": "El servidor no confirmó el inicio de la captura en 20 segundos.",
   "captureFailed": "No se pudo completar la captura.",
   "captureNoPeer": "No se pudieron determinar las direcciones de la conexión.",
   "captureSource": "Servidor de captura",
