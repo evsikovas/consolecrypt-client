@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/settings/color_picker.dart';
 import 'package:consolecrypt/settings/terminal_theme_editor.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
+import 'package:consolecrypt/terminal/terminal_status_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -440,6 +441,11 @@ class TerminalDeviceControls extends ConsumerWidget {
     final settings = ref.watch(settingsServiceProvider);
     final local = ref.watch(localSettingsProvider).value ?? settings.currentLocal;
     final terminalFont = ref.watch(terminalFontProvider);
+    final foreground = AppTheme.terminalTheme(
+      GlassTokens.of(context).brightness,
+      scheme: local.terminalColorScheme,
+      custom: local.customTerminalColors,
+    ).foreground;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -520,6 +526,81 @@ class TerminalDeviceControls extends ConsumerWidget {
               context,
               () => settings.updateLocal(settings.currentLocal.copyWith(terminalMetricsBar: v)),
             ),
+          ),
+        if (showServerMetrics && local.terminalMetricsBar)
+          ExpansionTile(
+            key: const ValueKey('terminal-bar-editor'),
+            tilePadding: EdgeInsets.zero,
+            title: Text(l10n.terminalBarItems),
+            children: [
+              for (final metric in TerminalMetric.values)
+                Row(
+                  children: [
+                    Expanded(
+                      child: CheckboxListTile(
+                        key: ValueKey('bar-visible-${metric.name}'),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: Text(metric.label(context)),
+                        value: !local.hiddenTerminalMetrics.contains(metric),
+                        onChanged: (enabled) {
+                          final current = settings.currentLocal;
+                          final hidden = {...current.hiddenTerminalMetrics};
+                          if (enabled == true) {
+                            hidden.remove(metric);
+                          } else {
+                            hidden.add(metric);
+                          }
+                          runWithFeedback(
+                            context,
+                            () => settings.updateLocal(current.copyWith(hiddenTerminalMetrics: hidden)),
+                          );
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      key: ValueKey('bar-color-${metric.name}'),
+                      tooltip: '${l10n.terminalBarColor} · ${metric.label(context)}',
+                      icon: Icon(
+                        Icons.palette_outlined,
+                        color: local.terminalMetricColors.containsKey(metric)
+                            ? Color(0xff000000 | local.terminalMetricColors[metric]!)
+                            : null,
+                      ),
+                      onPressed: () async {
+                        final color = await pickRgbColor(
+                          context,
+                          title: '${l10n.terminalBarColor} · ${metric.label(context)}',
+                          color: local.terminalMetricColors[metric] ?? (foreground.toARGB32() & 0xffffff),
+                        );
+                        if (color == null || !context.mounted) return;
+                        final current = settings.currentLocal;
+                        await runWithFeedback(
+                          context,
+                          () => settings.updateLocal(
+                            current.copyWith(terminalMetricColors: {...current.terminalMetricColors, metric: color}),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton(
+                  onPressed: local.hiddenTerminalMetrics.isEmpty && local.terminalMetricColors.isEmpty
+                      ? null
+                      : () => runWithFeedback(
+                          context,
+                          () => settings.updateLocal(
+                            settings.currentLocal.copyWith(hiddenTerminalMetrics: {}, terminalMetricColors: {}),
+                          ),
+                        ),
+                  child: Text(l10n.terminalBarReset),
+                ),
+              ),
+            ],
           ),
         const TerminalAppearanceControls(),
         const TerminalTabPlacementSetting(id: 'terminal-tab-placement'),

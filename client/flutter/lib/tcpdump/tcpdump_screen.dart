@@ -13,6 +13,7 @@ import 'package:consolecrypt/hosts/host_picker.dart';
 import 'package:consolecrypt/tcpdump/capture.dart';
 import 'package:consolecrypt/tcpdump/capture_run.dart';
 import 'package:consolecrypt/tcpdump/connection_details.dart';
+import 'package:consolecrypt/tcpdump/sudo_dialog.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -29,7 +30,59 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
   CaptureRun? get currentOperation => preparation ?? run;
   bool useSudo = false;
   CapturePacket? selected;
-  List<CapturePacket> exchange = const [];
+  List<CapturePacket>? snapshot;
+  Route<dynamic>? sudoRoute;
+  bool prompting = false;
+
+  void closeSudoDialog() {
+    final route = sudoRoute;
+    if (route == null) return;
+    sudoRoute = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (route.isActive) route.navigator?.removeRoute(route);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  void observeSudo() {
+    final owner = run, host = source;
+    final request = owner?.sudoPrompt;
+    if (owner == null || request == null || host == null) {
+      closeSudoDialog();
+      return;
+    }
+    if (prompting) return;
+    prompting = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || run != owner || owner.sudoPrompt != request) {
+        prompting = false;
+        if (mounted) observeSudo();
+        return;
+      }
+      final secret = await showAppDialog<SecretText>(
+        context,
+        secure: true,
+        builder: (ctx) {
+          sudoRoute = ModalRoute.of(ctx);
+          if (!mounted || run != owner || owner.sudoPrompt != request) closeSudoDialog();
+          return CaptureSudoDialog(host: '${host.name} · ${host.address}', retry: request > 1);
+        },
+      );
+      prompting = false;
+      sudoRoute = null;
+      if (mounted && run == owner && owner.sudoPrompt == request) {
+        if (secret == null) {
+          owner.stop();
+        } else {
+          await owner.answerSudo(request, secret);
+        }
+      } else {
+        secret?.wipe();
+      }
+      if (mounted) observeSudo();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
 
   final password = TextEditingController();
   bool get busy => currentOperation?.active == true;
@@ -37,10 +90,12 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
   void resetRun() {
     preparation?.dispose();
     preparation = null;
+    closeSudoDialog();
+    run?.removeListener(observeSudo);
     run?.dispose();
     run = null;
     selected = null;
-    exchange = const [];
+    snapshot = null;
     password.clear();
   }
 
@@ -64,6 +119,7 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
     setState(() {
       resetRun();
       if (first) {
+        if (source?.id != host.id) useSudo = false;
         source = host;
       } else {
         target = host;
@@ -84,6 +140,7 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
     if (busy || target == null || source == null) return;
     resetRun();
     final next = CaptureRun(ref.read(terminalServiceProvider));
+    next.addListener(observeSudo);
     setState(() => run = next);
     unawaited(next.startRemote(source!, target!.id, privileged: useSudo));
   }
@@ -143,7 +200,7 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
     final l = context.l10n, current = currentOperation;
     final theme = GlassTokens.of(context);
     final mono = theme.typography.mono.copyWith(fontSize: 12);
-    final body = run?.packets.toList(growable: false) ?? const <CapturePacket>[];
+    final body = snapshot ?? run?.packets.toList(growable: false) ?? const <CapturePacket>[];
     final status = switch (current?.status) {
       null => l.captureChoose,
       CaptureStatus.connecting => l.terminalConnecting,
@@ -183,7 +240,20 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
                                 icon: Icons.dns_rounded,
                                 onPressed: busy ? null : () => choose(true),
                               ),
-                              const Icon(Icons.swap_horiz_rounded, size: 16),
+                              GlassIconButton(
+                                key: const ValueKey('tcpdump-swap'),
+                                icon: Icons.swap_horiz_rounded,
+                                tooltip: l.captureSwap,
+                                onPressed: busy || source == null || target == null
+                                    ? null
+                                    : () => setState(() {
+                                        resetRun();
+                                        final previous = source;
+                                        source = target;
+                                        target = previous;
+                                        useSudo = false;
+                                      }),
+                              ),
                               GlassButton(
                                 label: target?.name ?? l.captureTarget,
                                 icon: Icons.dns_rounded,
@@ -302,58 +372,58 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
                         ],
                       ),
                     ),
+                    if (selected case final packet?)
+                      CaptureConnectionDetails(
+                        packet: packet,
+                        count: body.where(packet.sharesEndpoints).length,
+                        back: () => setState(() {
+                          selected = null;
+                          snapshot = null;
+                        }),
+                      ),
                   ],
                 ),
               ),
             ),
             Expanded(
-              child: selected != null
-                  ? CaptureConnectionDetails(
-                      packet: selected!,
-                      packets: exchange,
-                      back: () => setState(() {
-                        selected = null;
-                        exchange = const [];
-                      }),
-                      select: (item) => setState(() => selected = item),
-                    )
-                  : ListView.builder(
-                      key: const PageStorageKey('tcpdump-packets'),
-                      itemCount: body.length,
-                      itemBuilder: (context, i) {
-                        final p = body[i];
-                        return InkWell(
-                          onTap: () => setState(() {
-                            selected = p;
-                            exchange = body.where(p.sharesEndpoints).toList(growable: false);
-                          }),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border(bottom: BorderSide(color: theme.surfaces.separator)),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            child: Row(
+              child: ListView.builder(
+                key: const PageStorageKey('tcpdump-packets'),
+                itemCount: body.length,
+                itemBuilder: (context, i) {
+                  final p = body[i];
+                  return InkWell(
+                    onTap: () => setState(() {
+                      selected = p;
+                      snapshot ??= body;
+                    }),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: identical(p, selected) ? theme.palette.accent.withValues(alpha: .10) : null,
+                        border: Border(bottom: BorderSide(color: theme.surfaces.separator)),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Wrap(
+                              spacing: 12,
+                              runSpacing: 2,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                Expanded(
-                                  child: Wrap(
-                                    spacing: 12,
-                                    runSpacing: 2,
-                                    crossAxisAlignment: WrapCrossAlignment.center,
-                                    children: [
-                                      Text(packetTime(p), style: mono.copyWith(color: theme.secondaryLabel)),
-                                      Text(p.protocol, style: mono.copyWith(color: theme.palette.accent)),
-                                      Text('${p.source} → ${p.destination}', style: mono),
-                                      Text(p.summary, style: theme.typography.caption),
-                                    ],
-                                  ),
-                                ),
-                                Icon(Icons.chevron_right_rounded, size: 16, color: theme.secondaryLabel),
+                                Text(packetTime(p), style: mono.copyWith(color: theme.secondaryLabel)),
+                                Text(p.protocol, style: mono.copyWith(color: theme.palette.accent)),
+                                Text('${p.source} → ${p.destination}', style: mono),
+                                Text(p.summary, style: theme.typography.caption),
                               ],
                             ),
                           ),
-                        );
-                      },
+                          Icon(Icons.chevron_right_rounded, size: 16, color: theme.secondaryLabel),
+                        ],
+                      ),
                     ),
+                  );
+                },
+              ),
             ),
           ],
         ),

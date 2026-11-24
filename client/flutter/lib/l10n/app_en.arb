@@ -1,4 +1,32 @@
 {
+  "terminalBarItems": "Bar indicators",
+  "@terminalBarItems": {"description":"Bar indicators"},
+  "terminalBarColor": "Indicator colour",
+  "@terminalBarColor": {"description":"Indicator colour"},
+  "terminalBarReset": "Restore default indicators and colours",
+  "@terminalBarReset": {"description":"Restore default indicators and colours"},
+  "captureSwap": "Swap servers",
+  "@captureSwap": {"description":"Swap servers"},
+  "captureSudoPassword": "sudo password",
+  "@captureSudoPassword": {"description":"sudo password"},
+  "captureSyn": "Requests a TCP connection",
+  "@captureSyn": {"description":"Requests a TCP connection"},
+  "captureSynAck": "Accepts the TCP connection request",
+  "@captureSynAck": {"description":"Accepts the TCP connection request"},
+  "captureAck": "Acknowledges receipt",
+  "@captureAck": {"description":"Acknowledges receipt"},
+  "captureData": "Carries TCP data",
+  "@captureData": {"description":"Carries TCP data"},
+  "captureFin": "Finishes sending data",
+  "@captureFin": {"description":"Finishes sending data"},
+  "captureRst": "Resets the TCP connection",
+  "@captureRst": {"description":"Resets the TCP connection"},
+  "captureArpQuery": "Asks for a device’s MAC address",
+  "@captureArpQuery": {"description":"Asks for a device’s MAC address"},
+  "captureArpReply": "Announces the device’s MAC address",
+  "@captureArpReply": {"description":"Announces the device’s MAC address"},
+  "capturePacketBytes": "Captured bytes",
+  "@capturePacketBytes": {"description":"Captured bytes"},
   "@dockerDiskUsage": {"description":"Docker disk usage tab."},
   "@dockerEventJournal": {"description":"Container lifecycle event log tab."},
   "@dockerBuildCache": {"description":"Build cache disk usage category."},
@@ -24706,7 +24734,7 @@
   "@captureManualInstall": {
     "description": "Packet capture workspace. Install tcpdump with the host’s package manager, then start the capture again."
   },
-  "captureSudo": "Retry with passwordless sudo",
+  "captureSudo": "Retry with sudo",
   "@captureSudo": {
     "description": "Packet capture workspace. Retry with passwordless sudo"
   },
@@ -24793,7 +24821,7 @@
   "@captureUseSudo": {
     "description": "Packet capture: Run capture with sudo"
   },
-  "capturePrivilegeHint": "Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump.",
+  "capturePrivilegeHint": "Capture requires root or packet capture privileges. Enter the sudo password if prompted.",
   "@capturePrivilegeHint": {
     "description": "Packet capture: Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump."
   },

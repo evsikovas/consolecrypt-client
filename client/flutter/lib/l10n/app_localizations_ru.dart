@@ -10,6 +10,48 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get terminalBarItems => 'Элементы бара';
+
+  @override
+  String get terminalBarColor => 'Цвет показателя';
+
+  @override
+  String get terminalBarReset => 'Вернуть исходные показатели и цвета';
+
+  @override
+  String get captureSwap => 'Поменять серверы местами';
+
+  @override
+  String get captureSudoPassword => 'Пароль sudo';
+
+  @override
+  String get captureSyn => 'Запрашивает TCP-соединение';
+
+  @override
+  String get captureSynAck => 'Подтверждает запрос на TCP-соединение';
+
+  @override
+  String get captureAck => 'Подтверждает получение';
+
+  @override
+  String get captureData => 'Передаёт данные по TCP';
+
+  @override
+  String get captureFin => 'Завершает передачу данных';
+
+  @override
+  String get captureRst => 'Сбрасывает TCP-соединение';
+
+  @override
+  String get captureArpQuery => 'Запрашивает MAC-адрес устройства';
+
+  @override
+  String get captureArpReply => 'Сообщает MAC-адрес устройства';
+
+  @override
+  String get capturePacketBytes => 'Захваченные байты';
+
+  @override
   String get dockerDiskUsage => 'Место на диске';
 
   @override
@@ -20008,7 +20050,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get captureManualInstall => 'Установите tcpdump через менеджер пакетов этого хоста и запустите захват снова.';
 
   @override
-  String get captureSudo => 'Повторить с беспарольным sudo';
+  String get captureSudo => 'Повторить через sudo';
 
   @override
   String get tmuxTitle => 'Сессии tmux';
@@ -20065,7 +20107,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get capturePrivilegeHint =>
-      'Для захвата нужны права root или права на захват пакетов. Для режима sudo нужен запуск tcpdump без пароля.';
+      'Для захвата нужны права root или права на захват пакетов. При необходимости sudo запросит пароль.';
 
   @override
   String captureInstallHost(String host) {

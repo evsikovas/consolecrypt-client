@@ -10,6 +10,48 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get terminalBarItems => 'Bar indicators';
+
+  @override
+  String get terminalBarColor => 'Indicator colour';
+
+  @override
+  String get terminalBarReset => 'Restore default indicators and colours';
+
+  @override
+  String get captureSwap => 'Swap servers';
+
+  @override
+  String get captureSudoPassword => 'sudo password';
+
+  @override
+  String get captureSyn => 'Requests a TCP connection';
+
+  @override
+  String get captureSynAck => 'Accepts the TCP connection request';
+
+  @override
+  String get captureAck => 'Acknowledges receipt';
+
+  @override
+  String get captureData => 'Carries TCP data';
+
+  @override
+  String get captureFin => 'Finishes sending data';
+
+  @override
+  String get captureRst => 'Resets the TCP connection';
+
+  @override
+  String get captureArpQuery => 'Asks for a device’s MAC address';
+
+  @override
+  String get captureArpReply => 'Announces the device’s MAC address';
+
+  @override
+  String get capturePacketBytes => 'Captured bytes';
+
+  @override
   String get dockerDiskUsage => 'Disk usage';
 
   @override
@@ -19673,7 +19715,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureManualInstall => 'Install tcpdump with the host’s package manager, then start the capture again.';
 
   @override
-  String get captureSudo => 'Retry with passwordless sudo';
+  String get captureSudo => 'Retry with sudo';
 
   @override
   String get tmuxTitle => 'tmux sessions';
@@ -19730,7 +19772,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get capturePrivilegeHint =>
-      'Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump.';
+      'Capture requires root or packet capture privileges. Enter the sudo password if prompted.';
 
   @override
   String captureInstallHost(String host) {

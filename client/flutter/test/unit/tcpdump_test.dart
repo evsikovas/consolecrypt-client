@@ -107,6 +107,22 @@ void main() {
     expect(CapturePacket.parse('Last login: 12:00'), isNull);
   });
 
+  test('keeps Ethernet and cooked summaries, ARP targets and bounded actual bytes', () {
+    final reply = CapturePacket.parse(
+      '1795500000.123456 aa:bb:cc:dd:ee:ff > 12:34:56:78:9a:bc, ethertype ARP (0x0806), length 60: Reply 192.0.2.2 is-at aa:bb:cc:dd:ee:ff, length 28',
+    )!;
+    expect(reply.source, '192.0.2.2');
+    expect(reply.appendHex('0x0000:  0001 0800 0604 0002 aabb ccdd eeff c000  ................'), isTrue);
+    expect(reply.appendHex('0x0010:  0202 1234 5678 9abc c000 0201            ...4Vx......'), isTrue);
+    expect(reply.destination, '192.0.2.1');
+    expect(reply.hexDump, contains('12 34 56 78'));
+    expect(reply.hexDump, contains('...4Vx'));
+    expect(reply.appendHex('0x0000:  ffff'), isFalse);
+    final icmp = CapturePacket.parse(
+      '1795521787.314386 lo    In  ifindex 1 00:00:00:00:00:00 ethertype IPv4 (0x0800), length 104: 127.0.0.1 > 127.0.0.2: ICMP echo request, id 12, seq 0, length 64',
+    )!;
+    expect((icmp.interface, icmp.protocol, icmp.source), ('lo', 'ICMP', '127.0.0.1'));
+  });
   final host = Host.create(name: 'lab', address: '192.0.2.10');
   final peer = Host.create(name: 'peer', address: '192.0.2.20');
   test('stop before SSH finishes closes the late handle without writing', () async {
@@ -247,12 +263,39 @@ void main() {
     await settle(tester);
     await tester.tap(find.descendant(of: find.byType(HostPickerDialog), matching: find.byType(ListTile)).first);
     await settle(tester);
+    final swap = find.byKey(const ValueKey('tcpdump-swap'));
+    final leftLabel = tester.getCenter(swap).dx;
+    final hostLabels = tester
+        .widgetList<Text>(find.byType(Text))
+        .where((w) => w.data != null && backend.inventory.currentHosts.any((h) => h.name == w.data))
+        .map((w) => w.data!)
+        .toSet();
+    final originalSource = hostLabels.firstWhere((name) => tester.getCenter(find.text(name).first).dx < leftLabel);
+    await tester.tap(swap);
+    await settle(tester);
+    expect(tester.getCenter(find.text(originalSource).first).dx, greaterThan(leftLabel));
+    await tester.tap(find.byTooltip('Run capture with sudo'));
     await tester.tap(find.text('Start capture'));
     await settle(tester);
     shell.events.add(const TerminalStateChanged(SessionConnectionState.connected));
     await settle(tester);
     expect(shell.requests.single.peer, isNotNull);
     expect(shell.commands, isEmpty);
+    shell.line('CC_TCPDUMP_SUDO_PASSWORD');
+    await settle(tester);
+    expect(find.text('sudo password'), findsOneWidget);
+    final field = find.byWidgetPredicate((w) => w is TextField && w.obscureText);
+    await tester.enterText(field, 'fixture input');
+    await tester.tap(find.text('Continue').last);
+    await settle(tester);
+    expect(shell.commands, ['fixture input\n']);
+    shell.line('CC_TCPDUMP_SUDO_PASSWORD');
+    await settle(tester);
+    expect(find.text('sudo password'), findsOneWidget);
+    await tester.enterText(field, 'fixture retry');
+    await tester.tap(find.text('Continue').last);
+    await settle(tester);
+    expect(shell.commands.last, 'fixture retry\n');
     shell.line('tcpdump: listening on eth0');
     for (var i = 0; i < 100; i++) {
       shell.line('1795500000.000001 IP 192.0.2.3.40000 > 192.0.2.4.80: Flags [.], win 2, length 0');
@@ -269,6 +312,13 @@ void main() {
     expect(find.text('Connection details'), findsOneWidget);
     expect(find.text('seq 2'), findsOneWidget);
     expect(find.text('Packets between these endpoints when selected: 2'), findsOneWidget);
+    final pinned = tester.getTopLeft(find.text('Connection details'));
+    shell.line('1795500000.000002 IP 192.0.2.7.40000 > 192.0.2.4.80: Flags [.], win 2, length 0');
+    await settle(tester);
+    expect(find.textContaining('192.0.2.7:40000'), findsNothing);
+    await tester.drag(list, const Offset(0, -260));
+    await settle(tester);
+    expect(tester.getTopLeft(find.text('Connection details')), pinned);
     await tester.tap(find.byTooltip('Back'));
     await settle(tester);
     await tester.drag(list, const Offset(0, -420));

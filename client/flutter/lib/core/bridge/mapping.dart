@@ -869,6 +869,8 @@ Json localSettingsToJson(LocalSettings s) => {
   'terminal_tab_subtitle': s.terminalTabSubtitle.name,
   'terminal_tab_grouped': s.terminalTabGrouped,
   'terminal_metrics_bar': s.terminalMetricsBar,
+  'terminal_hidden_metrics': [for (final metric in s.hiddenTerminalMetrics) metric.name],
+  'terminal_metric_colors': {for (final e in s.terminalMetricColors.entries) e.key.name: e.value},
   'terminal_tab_placement': s.terminalTabPlacement.name,
   'terminal_tab_column_width': s.terminalTabColumnWidth,
   'terminal_tab_column_collapsed': s.terminalTabColumnCollapsed,
@@ -962,6 +964,16 @@ LocalSettings localSettingsFromJson(Json j) {
     ),
     terminalTabGrouped: j['terminal_tab_grouped'] == true,
     terminalMetricsBar: j['terminal_metrics_bar'] != false,
+    hiddenTerminalMetrics: {
+      if (j['terminal_hidden_metrics'] case final List<Object?> hidden)
+        for (final metric in TerminalMetric.values)
+          if (hidden.contains(metric.name)) metric,
+    },
+    terminalMetricColors: {
+      if (j['terminal_metric_colors'] case final Map<String, Object?> colors)
+        for (final metric in TerminalMetric.values)
+          if (rgb(colors[metric.name]) case final int color) metric: color,
+    },
     terminalTabPlacement: _byWire(
       TerminalTabPlacement.values,
       (e) => e.name,

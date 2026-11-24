@@ -10,6 +10,31 @@ import 'package:xterm/xterm.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  testWidgets('edit terminal indicators and restore defaults in Settings', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend);
+    await tapKey(tester, 'nav-settings');
+    await tapKey(tester, 'terminal-bar-editor');
+    await tapKey(tester, 'bar-visible-ram');
+    final settings = backend.services.settings;
+    expect(settings.currentLocal.hiddenTerminalMetrics, contains(TerminalMetric.ram));
+    await tapKey(tester, 'bar-color-ram');
+    await enterKey(tester, 'color-picker-hex', '#EDB223');
+    await tapKey(tester, 'color-picker-apply');
+    expect(settings.currentLocal.terminalMetricColors[TerminalMetric.ram], 0xedb223);
+    await tapKey(tester, 'bar-visible-ram');
+    expect(settings.currentLocal.hiddenTerminalMetrics, isEmpty);
+    expect(settings.currentLocal.terminalMetricColors[TerminalMetric.ram], 0xedb223);
+    final reset = find.text('Restore default indicators and colours');
+    await tester.ensureVisible(reset);
+    await tester.tap(reset);
+    await settle(tester);
+    expect(settings.currentLocal.terminalMetricColors, isEmpty);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('right-panel preference changes through Settings and keeps live tool drafts', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);

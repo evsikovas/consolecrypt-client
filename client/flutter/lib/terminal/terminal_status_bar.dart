@@ -1,5 +1,6 @@
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/models/settings.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/terminal/terminal_encoding.dart';
@@ -63,12 +64,43 @@ class TerminalEncodingButton extends ConsumerWidget {
   }
 }
 
-typedef _Metric = ({String label, IconData icon, String value});
+extension TerminalMetricPresentation on TerminalMetric {
+  String label(BuildContext context) => switch (this) {
+    TerminalMetric.cpu => context.l10n.hostMetricsCpu,
+    TerminalMetric.ram => context.l10n.hostMetricsRam,
+    TerminalMetric.disk => context.l10n.hostMetricsDisk,
+    TerminalMetric.received => context.l10n.hostMetricsReceived,
+    TerminalMetric.sent => context.l10n.hostMetricsSent,
+    TerminalMetric.swap => context.l10n.sessionSwap,
+    TerminalMetric.load => context.l10n.terminalNormalizedLoad,
+    TerminalMetric.latency => context.l10n.terminalChannelLatency,
+  };
+  IconData get icon => switch (this) {
+    TerminalMetric.cpu => Icons.memory,
+    TerminalMetric.ram => Icons.view_stream_outlined,
+    TerminalMetric.disk => Icons.storage,
+    TerminalMetric.received => Icons.arrow_downward,
+    TerminalMetric.sent => Icons.arrow_upward,
+    TerminalMetric.swap => Icons.swap_horiz,
+    TerminalMetric.load => Icons.speed,
+    TerminalMetric.latency => Icons.monitor_heart_outlined,
+  };
+}
+
+typedef _Metric = ({TerminalMetric kind, String value, Color? color});
 
 class TerminalStatusBar extends StatelessWidget {
-  const TerminalStatusBar({required this.history, this.foreground, super.key});
+  const TerminalStatusBar({
+    required this.history,
+    this.foreground,
+    this.hidden = const {},
+    this.colors = const {},
+    super.key,
+  });
   final ValueListenable<HostMetricsHistory> history;
   final Color? foreground;
+  final Set<TerminalMetric> hidden;
+  final Map<TerminalMetric, int> colors;
 
   @override
   Widget build(BuildContext context) => ValueListenableBuilder<HostMetricsHistory>(
@@ -83,21 +115,22 @@ class TerminalStatusBar extends StatelessWidget {
           used == null || total == null ? '—' : '${formatBytes(l, used)} / ${formatBytes(l, total)}';
       String rate(double? value) => value == null ? '—' : l.sftpTransferSpeed(formatBytes(l, value.round()));
       final load = double.tryParse(s.loadAverage?.split('/').first.trim() ?? '');
+      _Metric item(TerminalMetric kind, String value) =>
+          (kind: kind, value: value, color: colors[kind] == null ? null : Color(0xff000000 | colors[kind]!));
       final metrics = <_Metric>[
-        (label: l.hostMetricsCpu, icon: Icons.memory, value: percent(s.cpu)),
-        (label: l.hostMetricsRam, icon: Icons.view_stream_outlined, value: memory(s.memoryUsed, s.memoryTotal)),
-        (label: l.hostMetricsDisk, icon: Icons.storage, value: percent(s.diskPercent)),
-        (label: l.hostMetricsReceived, icon: Icons.arrow_downward, value: rate(s.received)),
-        (label: l.hostMetricsSent, icon: Icons.arrow_upward, value: rate(s.sent)),
-        if ((s.swapTotal ?? 0) > 0)
-          (label: l.sessionSwap, icon: Icons.swap_horiz, value: memory(s.swapUsed, s.swapTotal)),
-        if (load != null && (s.logicalCpus ?? 0) > 0)
-          (label: l.terminalNormalizedLoad, icon: Icons.speed, value: percent(load * 100 / s.logicalCpus!)),
-      ];
+        item(TerminalMetric.cpu, percent(s.cpu)),
+        item(TerminalMetric.ram, memory(s.memoryUsed, s.memoryTotal)),
+        item(TerminalMetric.disk, percent(s.diskPercent)),
+        item(TerminalMetric.received, rate(s.received)),
+        item(TerminalMetric.sent, rate(s.sent)),
+        if ((s.swapTotal ?? 0) > 0) item(TerminalMetric.swap, memory(s.swapUsed, s.swapTotal)),
+        if (load != null && (s.logicalCpus ?? 0) > 0) item(TerminalMetric.load, percent(load * 100 / s.logicalCpus!)),
+      ].where((m) => !hidden.contains(m.kind)).toList();
       final ms = s.channelLatencyMs;
-      final _Metric? latency = ms == null
+      final _Metric? latency = ms == null || hidden.contains(TerminalMetric.latency)
           ? null
-          : (label: l.terminalChannelLatency, icon: Icons.monitor_heart_outlined, value: l.terminalLatencyValue(ms));
+          : item(TerminalMetric.latency, l.terminalLatencyValue(ms));
+      if (metrics.isEmpty && latency == null) return const SizedBox.shrink();
       final ink = foreground ?? t.palette.label;
       final style = DefaultTextStyle.of(context).style
           .merge(t.typography.mono)
@@ -115,16 +148,21 @@ class TerminalStatusBar extends StatelessWidget {
             maxLines: 1,
           ).ceilToDouble();
       Widget inline(_Metric m) => Tooltip(
-        message: m.label,
+        message: m.kind.label(context),
         child: Semantics(
-          label: '${m.label} ${m.value}',
+          label: '${m.kind.label(context)} ${m.value}',
           excludeSemantics: true,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(m.icon, size: iconSize, color: iconColor),
+              Icon(m.kind.icon, size: iconSize, color: m.color ?? iconColor),
               const SizedBox(width: iconGap),
-              Text(m.value, style: style, maxLines: 1, softWrap: false),
+              Text(
+                m.value,
+                style: m.color == null ? style : style.copyWith(color: m.color),
+                maxLines: 1,
+                softWrap: false,
+              ),
             ],
           ),
         ),
@@ -233,10 +271,13 @@ class _MoreMetricsState extends State<_MoreMetrics> {
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(
                           children: [
-                            Icon(m.icon, size: 14, color: t.secondaryLabel),
+                            Icon(m.kind.icon, size: 14, color: m.color ?? t.secondaryLabel),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(m.label, style: t.typography.callout.copyWith(color: t.secondaryLabel)),
+                              child: Text(
+                                m.kind.label(context),
+                                style: t.typography.callout.copyWith(color: t.secondaryLabel),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Flexible(
@@ -245,7 +286,7 @@ class _MoreMetricsState extends State<_MoreMetrics> {
                                 child: Text(
                                   m.value,
                                   textAlign: TextAlign.end,
-                                  style: t.typography.mono.copyWith(fontSize: 11, color: t.palette.label),
+                                  style: t.typography.mono.copyWith(fontSize: 11, color: m.color ?? t.palette.label),
                                 ),
                               ),
                             ),

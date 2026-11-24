@@ -10,6 +10,48 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get terminalBarItems => 'Indicadores de la barra';
+
+  @override
+  String get terminalBarColor => 'Color del indicador';
+
+  @override
+  String get terminalBarReset => 'Restablecer indicadores y colores';
+
+  @override
+  String get captureSwap => 'Intercambiar servidores';
+
+  @override
+  String get captureSudoPassword => 'Contraseña de sudo';
+
+  @override
+  String get captureSyn => 'Solicita una conexión TCP';
+
+  @override
+  String get captureSynAck => 'Acepta la solicitud de conexión TCP';
+
+  @override
+  String get captureAck => 'Confirma la recepción';
+
+  @override
+  String get captureData => 'Transmite datos TCP';
+
+  @override
+  String get captureFin => 'Finaliza el envío de datos';
+
+  @override
+  String get captureRst => 'Restablece la conexión TCP';
+
+  @override
+  String get captureArpQuery => 'Solicita la dirección MAC del dispositivo';
+
+  @override
+  String get captureArpReply => 'Indica la dirección MAC del dispositivo';
+
+  @override
+  String get capturePacketBytes => 'Bytes capturados';
+
+  @override
   String get dockerDiskUsage => 'Espacio en disco';
 
   @override
@@ -19831,7 +19873,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'Instala tcpdump con el gestor de paquetes del equipo y vuelve a iniciar la captura.';
 
   @override
-  String get captureSudo => 'Reintentar con sudo sin contraseña';
+  String get captureSudo => 'Reintentar con sudo';
 
   @override
   String get tmuxTitle => 'Sesiones tmux';
@@ -19888,7 +19930,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get capturePrivilegeHint =>
-      'La captura requiere root o permisos de captura. Con sudo, tcpdump debe poder ejecutarse sin contraseña.';
+      'La captura requiere root o permisos de captura. Introduce la contraseña de sudo si se solicita.';
 
   @override
   String captureInstallHost(String host) {

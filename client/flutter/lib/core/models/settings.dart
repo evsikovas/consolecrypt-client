@@ -160,6 +160,8 @@ enum TerminalTabSubtitle { name, address, off }
 /// edge (desktop; phones always use the row).
 enum TerminalTabPlacement { top, left }
 
+enum TerminalMetric { cpu, ram, disk, received, sent, swap, load, latency }
+
 /// Terminal colours are independent of the interface; system follows it.
 enum TerminalColorScheme { system, dark, light, midnight, ocean, forest, amber, custom }
 
@@ -217,6 +219,8 @@ final class LocalSettings {
     this.terminalTabSubtitle = TerminalTabSubtitle.name,
     this.terminalTabGrouped = false,
     this.terminalMetricsBar = true,
+    this.hiddenTerminalMetrics = const {},
+    this.terminalMetricColors = const {},
     this.terminalTabPlacement = TerminalTabPlacement.top,
     this.terminalTabColumnWidth = terminalTabColumnDefault,
     this.terminalTabColumnCollapsed = false,
@@ -281,6 +285,8 @@ final class LocalSettings {
   /// Row above the terminal or column at its left edge (desktop only).
   final bool terminalTabGrouped;
   final bool terminalMetricsBar;
+  final Set<TerminalMetric> hiddenTerminalMetrics;
+  final Map<TerminalMetric, int> terminalMetricColors;
   final TerminalTabPlacement terminalTabPlacement;
 
   /// Width of the expanded tab column, resized by dragging its edge.
@@ -375,6 +381,8 @@ final class LocalSettings {
     TerminalTabSubtitle? terminalTabSubtitle,
     bool? terminalTabGrouped,
     bool? terminalMetricsBar,
+    Set<TerminalMetric>? hiddenTerminalMetrics,
+    Map<TerminalMetric, int>? terminalMetricColors,
     TerminalTabPlacement? terminalTabPlacement,
     double? terminalTabColumnWidth,
     bool? terminalTabColumnCollapsed,
@@ -417,6 +425,8 @@ final class LocalSettings {
     terminalTabSubtitle: terminalTabSubtitle ?? this.terminalTabSubtitle,
     terminalTabGrouped: terminalTabGrouped ?? this.terminalTabGrouped,
     terminalMetricsBar: terminalMetricsBar ?? this.terminalMetricsBar,
+    hiddenTerminalMetrics: hiddenTerminalMetrics ?? this.hiddenTerminalMetrics,
+    terminalMetricColors: terminalMetricColors ?? this.terminalMetricColors,
     terminalTabPlacement: terminalTabPlacement ?? this.terminalTabPlacement,
     terminalTabColumnWidth: terminalTabColumnWidth ?? this.terminalTabColumnWidth,
     terminalTabColumnCollapsed: terminalTabColumnCollapsed ?? this.terminalTabColumnCollapsed,

@@ -1,5 +1,4 @@
-# Invoked through SSH exec in its own PTY. Only tcpdump's header summary
-# is returned. The PTY hangs up the foreground process when capture stops.
+# Invoked through SSH exec in its own PTY. The snapshot includes at most 96 bytes per packet. The PTY hangs up the foreground process when capture stops.
 export LC_ALL=C PATH="$PATH:/usr/sbin:/sbin"
 if ! command -v tcpdump >/dev/null 2>&1; then
   for manager in apt-get dnf yum apk pacman zypper pkg brew; do
@@ -40,7 +39,14 @@ for addr in $addrs; do
 done
 if [ -z "$sources" ]; then echo CC_NO_PEER; exit 44; fi
 pair="(dst host $peer and ($sources)) or (src host $peer and ($destinations))"
-set -- tcpdump -p -nn -tt -l -s 96 -c 2000
+set -- tcpdump -p -nn -tt -l -e -X -s 96 -c 2000
 if [ "$(uname -s)" = Linux ]; then set -- "$@" -i any; fi
-if [ "$sudo_mode" = sudo ] && [ "$(id -u)" != 0 ]; then set -- sudo -n "$@"; fi
-exec "$@" "(ip or ip6) and ($pair) and $exclude" 2>&1
+if [ "$sudo_mode" = sudo ] && [ "$(id -u)" != 0 ]; then
+  # The prompt is a complete line even when sudo-rs wraps it in a PAM label.
+  # Disable terminal echo before the client can receive the prompt.
+  stty -echo -echonl || exit 1
+  set -- sudo -S -p '
+CC_TCPDUMP_SUDO_PASSWORD
+' -- "$@"
+fi
+exec "$@" "(ip or ip6 or arp) and ($pair) and $exclude" 2>&1

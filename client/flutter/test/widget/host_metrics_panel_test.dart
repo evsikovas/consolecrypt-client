@@ -1,4 +1,5 @@
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/models/settings.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/terminal/host_metrics_panel.dart';
@@ -107,7 +108,11 @@ void main() {
         home: Scaffold(
           body: Align(
             alignment: Alignment.bottomCenter,
-            child: TerminalStatusBar(history: state),
+            child: TerminalStatusBar(
+              history: state,
+              hidden: const {TerminalMetric.received},
+              colors: const {TerminalMetric.cpu: 0xffcc00, TerminalMetric.swap: 0x88eeaa},
+            ),
           ),
         ),
       ),
@@ -117,6 +122,7 @@ void main() {
     final popup = find.byKey(const ValueKey('terminal-hidden-metrics'));
     expect(more, findsOneWidget);
     expect(popup, findsNothing);
+    expect(tester.widget<Text>(find.text('25%')).style?.color, const Color(0xffffcc00));
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer();
     await mouse.moveTo(tester.getCenter(more));
@@ -124,6 +130,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getRect(popup).bottom, lessThanOrEqualTo(tester.getRect(more).top + 1));
     expect(find.descendant(of: popup, matching: find.text('Swap')), findsOneWidget);
+    expect(find.descendant(of: popup, matching: find.byIcon(Icons.arrow_downward)), findsNothing);
+    expect(
+      tester.widget<Icon>(find.descendant(of: popup, matching: find.byIcon(Icons.swap_horiz))).color,
+      const Color(0xff88eeaa),
+    );
     expect(find.descendant(of: popup, matching: find.text('CPU usage')), findsNothing);
     await mouse.moveTo(tester.getCenter(popup));
     await tester.pump(const Duration(milliseconds: 350));

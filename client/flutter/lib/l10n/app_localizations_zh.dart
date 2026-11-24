@@ -10,6 +10,48 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get terminalBarItems => '状态栏指标';
+
+  @override
+  String get terminalBarColor => '指标颜色';
+
+  @override
+  String get terminalBarReset => '恢复默认指标和颜色';
+
+  @override
+  String get captureSwap => '交换服务器';
+
+  @override
+  String get captureSudoPassword => 'sudo 密码';
+
+  @override
+  String get captureSyn => '请求建立 TCP 连接';
+
+  @override
+  String get captureSynAck => '确认 TCP 连接请求';
+
+  @override
+  String get captureAck => '确认收到数据';
+
+  @override
+  String get captureData => '传输 TCP 数据';
+
+  @override
+  String get captureFin => '结束发送数据';
+
+  @override
+  String get captureRst => '重置 TCP 连接';
+
+  @override
+  String get captureArpQuery => '查询设备的 MAC 地址';
+
+  @override
+  String get captureArpReply => '返回设备的 MAC 地址';
+
+  @override
+  String get capturePacketBytes => '捕获的字节';
+
+  @override
   String get dockerDiskUsage => '磁盘用量';
 
   @override
@@ -18859,7 +18901,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get captureManualInstall => '请使用此主机的包管理器安装 tcpdump，然后重新开始抓包。';
 
   @override
-  String get captureSudo => '使用免密 sudo 重试';
+  String get captureSudo => '使用 sudo 重试';
 
   @override
   String get tmuxTitle => 'tmux 会话';
@@ -18915,7 +18957,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get captureUseSudo => '使用 sudo 捕获';
 
   @override
-  String get capturePrivilegeHint => '抓包需要 root 或抓包权限。使用 sudo 时，必须允许免密运行 tcpdump。';
+  String get capturePrivilegeHint => '抓包需要 root 或抓包权限。若 sudo 提示，请输入密码。';
 
   @override
   String captureInstallHost(String host) {

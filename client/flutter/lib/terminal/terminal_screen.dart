@@ -799,7 +799,12 @@ class _TerminalCard extends ConsumerWidget {
                 active.isConnected &&
                 !active.exited &&
                 (ref.watch(localSettingsProvider.select((s) => s.value?.terminalMetricsBar)) ?? true))
-              TerminalStatusBar(history: active.hostMetrics, foreground: theme.foreground),
+              TerminalStatusBar(
+                history: active.hostMetrics,
+                foreground: theme.foreground,
+                hidden: ref.watch(localSettingsProvider.select((s) => s.value?.hiddenTerminalMetrics)) ?? const {},
+                colors: ref.watch(localSettingsProvider.select((s) => s.value?.terminalMetricColors)) ?? const {},
+              ),
           ],
         ),
       ),

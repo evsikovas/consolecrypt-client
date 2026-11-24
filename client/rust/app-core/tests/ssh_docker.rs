@@ -598,6 +598,49 @@ async fn tcpdump_check_denied_capture_and_stop_over_real_ssh() {
             .to_lowercase()
             .contains("permission")
     );
+    async fn read_until(stream: &mut TerminalAttachment, text: &mut String, marker: &str) {
+        tokio::time::timeout(Duration::from_secs(12), async {
+            while !text.contains(marker) {
+                match stream.output.recv().await {
+                    Some(TerminalChunk::Data(bytes)) => {
+                        text.push_str(&String::from_utf8_lossy(&bytes))
+                    }
+                    _ => panic!("capture ended before the expected prompt or status"),
+                }
+            }
+        })
+        .await
+        .expect("capture prompt or status timed out");
+    }
+
+    tb.exec_in(&tb.bastion1, "printf 'tester ALL=(root) PASSWD: %s\\n' \"$(command -v tcpdump)\" >/etc/sudoers.d/capture-it && chmod 440 /etc/sudoers.d/capture-it").unwrap();
+    for cancel in [true, false] {
+        let capture = app
+            .open_tcpdump(source.id.clone(), Some(peer.id.clone()), true)
+            .await
+            .unwrap();
+        let mut stream = app.attach_terminal(capture.id.clone()).await.unwrap();
+        let mut text = String::from_utf8(std::mem::take(&mut stream.snapshot)).unwrap();
+        read_until(&mut stream, &mut text, "CC_TCPDUMP_SUDO_PASSWORD\r\n").await;
+        if !cancel {
+            text.clear();
+            app.terminal_write(capture.id.clone(), b"test-incorrect-password\n".to_vec())
+                .await
+                .unwrap();
+            read_until(&mut stream, &mut text, "CC_TCPDUMP_SUDO_PASSWORD\r\n").await;
+            assert!(
+                !text.contains("test-incorrect-password"),
+                "sudo echoed its input"
+            );
+            let secret = tb.secrets.password.expose_secret();
+            let mut input = secret.as_bytes().to_vec();
+            input.push(b'\n');
+            app.terminal_write(capture.id.clone(), input).await.unwrap();
+            read_until(&mut stream, &mut text, "listening on").await;
+            assert!(!text.contains(secret), "sudo echoed its input");
+        }
+        app.close_terminal(capture.id).await.unwrap();
+    }
     tb.exec_in(&tb.bastion1, "printf 'tester ALL=(root) NOPASSWD: %s\\n' \"$(command -v tcpdump)\" >/etc/sudoers.d/capture-it && chmod 440 /etc/sudoers.d/capture-it").unwrap();
     let capture = app
         .open_tcpdump(source.id, Some(peer.id), true)
@@ -630,6 +673,7 @@ async fn tcpdump_check_denied_capture_and_stop_over_real_ssh() {
     .unwrap();
     assert!(text.contains("127.0.0.1 > 127.0.0.2: ICMP echo request"));
     assert!(!text.contains("127.0.0.3"));
+    assert!(text.contains("ethertype IPv4") && text.contains("0x0000:"));
     app.close_terminal(capture.id).await.unwrap();
     tb.exec_in(
         &tb.bastion1,

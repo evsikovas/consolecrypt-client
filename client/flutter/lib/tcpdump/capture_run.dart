@@ -33,6 +33,10 @@ final class CaptureRun extends ChangeNotifier {
   Timer? _paint, _startup;
   bool _closed = false;
   bool timedOut = false;
+  bool _sudoEnabled = false;
+  int sudoAttempts = 0;
+  int? sudoPrompt;
+  CapturePacket? _lastPacket;
   int? exitCode;
   final _drained = Completer<void>();
   static final _ansi = RegExp(r'\x1b\[[0-?]*[ -/]*[@-~]');
@@ -43,6 +47,7 @@ final class CaptureRun extends ChangeNotifier {
   Future<void> checkRemote(Host host) => _startSsh(host);
 
   Future<void> _startSsh(Host source, {ObjectId? peerId, bool sudo = false}) async {
+    _sudoEnabled = sudo && peerId != null;
     try {
       final transport = service;
       if (transport is! TcpdumpService) throw UnsupportedError('TCPdump requires the SSH backend');
@@ -134,7 +139,7 @@ final class CaptureRun extends ChangeNotifier {
   }
 
   void _startDeadline() {
-    if (status != CaptureStatus.connecting || _startup != null) return;
+    if (status != CaptureStatus.connecting || sudoPrompt != null || _startup != null) return;
     _startup = Timer(const Duration(seconds: 20), () {
       timedOut = true;
       _finish(CaptureStatus.failed);
@@ -144,6 +149,19 @@ final class CaptureRun extends ChangeNotifier {
   void _line(String raw) {
     if (_closed || !active || raw.length > 4096) return;
     final line = raw.replaceAll(_ansi, '').trim();
+    if (line.startsWith('0x')) {
+      if (_lastPacket?.appendHex(line) == true) _schedulePaint();
+      return;
+    }
+    _lastPacket = null;
+    if (_sudoEnabled && status == CaptureStatus.connecting && line == 'CC_TCPDUMP_SUDO_PASSWORD') {
+      _startup?.cancel();
+      _startup = null;
+      error = null;
+      sudoPrompt = ++sudoAttempts;
+      notifyListeners();
+      return;
+    }
     final missing = RegExp(r'^CC_MISSING ([a-z-]+)(?: (\d+))?$').firstMatch(line);
     if (missing != null) {
       manager = missing[1];
@@ -168,7 +186,8 @@ final class CaptureRun extends ChangeNotifier {
       if (lower.contains('permission') ||
           lower.contains('permitted') ||
           lower.contains('privilege') ||
-          lower.contains('password is required')) {
+          lower.contains('password is required') ||
+          lower.contains('interactive authentication is required')) {
         _finish(CaptureStatus.denied, line);
       } else if (!lower.contains('verbose output suppressed') &&
           !lower.contains('warning:') &&
@@ -186,8 +205,13 @@ final class CaptureRun extends ChangeNotifier {
     }
     _listening();
     if (packets.length == displayLimit) packets.removeLast();
+    _lastPacket = packet;
     packets.addFirst(packet);
     count++;
+    _schedulePaint();
+  }
+
+  void _schedulePaint() {
     _paint ??= Timer(const Duration(milliseconds: 100), () {
       _paint = null;
       if (!_closed) notifyListeners();
@@ -197,6 +221,7 @@ final class CaptureRun extends ChangeNotifier {
   void _listening() {
     if (status == CaptureStatus.listening) return;
     _startup?.cancel();
+    sudoPrompt = null;
     error = null;
     status = CaptureStatus.listening;
     notifyListeners();
@@ -226,12 +251,39 @@ final class CaptureRun extends ChangeNotifier {
     }
   }
 
+  Future<void> answerSudo(int request, SecretText secret) async {
+    Uint8List? bytes, input;
+    try {
+      final id = _id;
+      if (_closed || !active || id == null || sudoPrompt != request) return;
+      sudoPrompt = null;
+      bytes = secret.exposeBytes();
+      // A single terminal line. Control characters would be interpreted by the PTY.
+      if (bytes.any((b) => b < 32 || b == 127)) {
+        _finish(CaptureStatus.failed, 'Invalid control character in sudo password');
+        return;
+      }
+      input = Uint8List(bytes.length + 1)..setAll(0, bytes);
+      input.last = 10;
+      _startDeadline();
+      notifyListeners();
+      await service.write(id, input);
+    } catch (e) {
+      _fail(e);
+    } finally {
+      bytes?.fillRange(0, bytes.length, 0);
+      input?.fillRange(0, input.length, 0);
+      secret.wipe();
+    }
+  }
+
   void _fail(Object e) => _finish(CaptureStatus.failed, e.toString());
   void stop() => _finish(CaptureStatus.stopped);
 
   void _finish(CaptureStatus next, [String? message]) {
     if (_closed || !active) return;
     status = next;
+    sudoPrompt = null;
     error ??= message;
     hostKey = null;
     passwordPrompt = null;

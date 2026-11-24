@@ -94,6 +94,90 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Bar indicators
+  ///
+  /// In en, this message translates to:
+  /// **'Bar indicators'**
+  String get terminalBarItems;
+
+  /// Indicator colour
+  ///
+  /// In en, this message translates to:
+  /// **'Indicator colour'**
+  String get terminalBarColor;
+
+  /// Restore default indicators and colours
+  ///
+  /// In en, this message translates to:
+  /// **'Restore default indicators and colours'**
+  String get terminalBarReset;
+
+  /// Swap servers
+  ///
+  /// In en, this message translates to:
+  /// **'Swap servers'**
+  String get captureSwap;
+
+  /// sudo password
+  ///
+  /// In en, this message translates to:
+  /// **'sudo password'**
+  String get captureSudoPassword;
+
+  /// Requests a TCP connection
+  ///
+  /// In en, this message translates to:
+  /// **'Requests a TCP connection'**
+  String get captureSyn;
+
+  /// Accepts the TCP connection request
+  ///
+  /// In en, this message translates to:
+  /// **'Accepts the TCP connection request'**
+  String get captureSynAck;
+
+  /// Acknowledges receipt
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledges receipt'**
+  String get captureAck;
+
+  /// Carries TCP data
+  ///
+  /// In en, this message translates to:
+  /// **'Carries TCP data'**
+  String get captureData;
+
+  /// Finishes sending data
+  ///
+  /// In en, this message translates to:
+  /// **'Finishes sending data'**
+  String get captureFin;
+
+  /// Resets the TCP connection
+  ///
+  /// In en, this message translates to:
+  /// **'Resets the TCP connection'**
+  String get captureRst;
+
+  /// Asks for a device’s MAC address
+  ///
+  /// In en, this message translates to:
+  /// **'Asks for a device’s MAC address'**
+  String get captureArpQuery;
+
+  /// Announces the device’s MAC address
+  ///
+  /// In en, this message translates to:
+  /// **'Announces the device’s MAC address'**
+  String get captureArpReply;
+
+  /// Captured bytes
+  ///
+  /// In en, this message translates to:
+  /// **'Captured bytes'**
+  String get capturePacketBytes;
+
   /// Docker disk usage tab.
   ///
   /// In en, this message translates to:
@@ -34636,7 +34720,7 @@ abstract class AppLocalizations {
   /// Packet capture workspace. Retry with passwordless sudo
   ///
   /// In en, this message translates to:
-  /// **'Retry with passwordless sudo'**
+  /// **'Retry with sudo'**
   String get captureSudo;
 
   /// Terminal tmux panel: tmux sessions
@@ -34732,7 +34816,7 @@ abstract class AppLocalizations {
   /// Packet capture: Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump.
   ///
   /// In en, this message translates to:
-  /// **'Capture needs root or packet capture privileges. The sudo option requires passwordless access to tcpdump.'**
+  /// **'Capture requires root or packet capture privileges. Enter the sudo password if prompted.'**
   String get capturePrivilegeHint;
 
   /// Packet capture: Install tcpdump on {host}? The command runs in its SSH terminal, where you can respond to package or sudo prompts.
