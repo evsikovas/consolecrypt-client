@@ -1148,6 +1148,17 @@ class _KubeInsightsPanelState extends ConsumerState<KubeInsightsPanel> {
         }
       }),
       onOpen: (row) => unawaited(_open(byId[row.id]!)),
+      extraMenuItems: (row) {
+        final resource = byId[row.id]!;
+        return [
+          for (final action in kubeGitOpsActions(resource))
+            GlassMenuItem(
+              value: () => unawaited(_act(resource, action)),
+              label: kubeGitOpsActionLabel(l, action),
+              enabled: canWrite && !_bulkBusy && !_busyActions.contains(resource.reference.id),
+            ),
+        ];
+      },
       rowTrailing: (row) {
         final resource = byId[row.id]!;
         final actions = kubeGitOpsActions(resource);

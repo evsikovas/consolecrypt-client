@@ -14,6 +14,7 @@ import 'package:consolecrypt/kubernetes/kube_helm_rollback.dart';
 import 'package:consolecrypt/kubernetes/kube_insights_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_table_view.dart';
+import 'package:consolecrypt/kubernetes/kube_row_menu.dart';
 import 'package:consolecrypt/kubernetes/kube_write_access.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_editor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -311,14 +312,18 @@ class _KubeHelmPanelState extends ConsumerState<KubeHelmPanel> {
             itemCount: releases.length,
             itemBuilder: (context, index) {
               final release = releases[index];
-              return ListTile(
-                key: ValueKey('kube-helm-${release.id}'),
-                title: Text(release.name),
-                subtitle: Text(
-                  '${release.namespace} · ${release.status}\n${release.chart} ${release.chartVersion} · ${l.kubeHelmRevision(release.revision)}',
+              return KubeRowMenu(
+                name: release.name,
+                open: () => _open(release),
+                child: ListTile(
+                  key: ValueKey('kube-helm-${release.id}'),
+                  title: Text(release.name),
+                  subtitle: Text(
+                    '${release.namespace} · ${release.status}\n${release.chart} ${release.chartVersion} · ${l.kubeHelmRevision(release.revision)}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(release),
                 ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _open(release),
               );
             },
           ),

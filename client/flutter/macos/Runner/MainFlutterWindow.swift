@@ -205,6 +205,9 @@ final class FullscreenBridge: NSObject {
             return button.convert(button.bounds, to: content).maxX
           }
         result(rightEdges.max().map { Double($0 + 12) })
+      case "toggleTerminalFullscreen":
+        if !self.leased && !self.transitioning && !self.restorePending { window.toggleFullScreen(nil) }
+        result(nil)
       case "beginRdpFullscreen":
         if !self.leased {
           self.originalFullscreen = window.styleMask.contains(.fullScreen)

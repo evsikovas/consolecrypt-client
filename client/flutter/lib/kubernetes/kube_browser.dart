@@ -144,6 +144,26 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
   // Desktop: the object open in the side inspector instead of a modal dialog.
   KubeResourceRef? _inspected;
   KubeResourceOpenAction? _pendingAction;
+  int _inspectorRequest = 0;
+
+  List<KubeResourceOpenAction> _menuActions(KubeResourceKind kind, KubeSession? session, bool canWrite) {
+    if (!kind.canRead) return const [];
+    final ops = canWrite && widget.service is KubeOperationsService && kind.group == 'apps';
+    return [
+      KubeResourceOpenAction.yaml,
+      KubeResourceOpenAction.events,
+      if (kind.isPod || const {'Deployment', 'StatefulSet', 'DaemonSet', 'ReplicaSet', 'Job'}.contains(kind.kind))
+        KubeResourceOpenAction.logs,
+      if (kind.isPod && session?.canExec == true) KubeResourceOpenAction.shell,
+      if (ops && const {'deployments', 'statefulsets', 'replicasets'}.contains(kind.resource))
+        KubeResourceOpenAction.scale,
+      if (ops && const {'deployments', 'statefulsets', 'daemonsets'}.contains(kind.resource))
+        KubeResourceOpenAction.restart,
+      if (canWrite && widget.service is KubeMutationService && kind.verbs.contains('delete'))
+        KubeResourceOpenAction.remove,
+    ];
+  }
+
   double _inspectorWidth = 560;
   // Every desktop window uses the workspace layout (also next to the open
   // AI panel); phones keep the compact mobile flow.
@@ -858,6 +878,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
     if (_desktopLayout) {
       setState(() {
         _inspected = resource;
+        if (action != null || _pendingAction != null) _inspectorRequest++;
         _pendingAction = action;
       });
       return;
@@ -1500,6 +1521,8 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                 _scheduleEnrichment();
                               }
                             },
+                            menuActions: _menuActions(_kind!, session, canWrite),
+                            onMenuAction: (row, action) => _details(row, action: action),
                             onMobileAction:
                                 AppPlatform.isMobile &&
                                     (_kind!.isPod ||
@@ -1921,7 +1944,7 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                                           ),
                                         Expanded(
                                           child: KubeResourceDetails(
-                                            key: ValueKey('kube-inspector-${inspected.id}'),
+                                            key: ValueKey((inspected.id, _inspectorRequest)),
                                             embedded: true,
                                             session: session,
                                             resource: inspected,
@@ -2337,6 +2360,8 @@ class _KubeBrowserState extends ConsumerState<KubeBrowser> with WidgetsBindingOb
                   contextId: widget.connection.id,
                   rows: rows,
                   kind: kind,
+                  menuActions: _menuActions(kind, session, canWrite),
+                  onMenuAction: (row, action) => _details(row, action: action),
                   activeName: _inspected?.api.id == kind.id ? _inspected : null,
                   columns: [
                     ..._columns,

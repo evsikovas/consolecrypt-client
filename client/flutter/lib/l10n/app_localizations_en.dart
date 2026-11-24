@@ -45,6 +45,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalEncodingCentralEuropean => 'Central European';
 
   @override
+  String get terminalFindText => 'Find in terminal';
+
+  @override
+  String get dockerNetworkContainers => 'Connected containers';
+
+  @override
+  String get dockerNetworkEmpty => 'No networks match';
+
+  @override
   String get terminalEncodingCyrillic => 'Cyrillic';
 
   @override

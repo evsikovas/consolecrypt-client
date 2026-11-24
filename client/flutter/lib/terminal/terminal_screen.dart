@@ -19,6 +19,7 @@ import 'package:consolecrypt/core/widgets/security_widgets.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
+import 'package:consolecrypt/terminal/terminal_find.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_status_bar.dart';
@@ -346,6 +347,7 @@ class _TerminalTabs extends ConsumerWidget {
       return Row(
         children: [
           Expanded(child: strip),
+          TerminalFindButton(tab: active),
           TerminalEncodingButton(tab: active),
           if (ref.watch(activeSshTerminalProvider) != null) ...[
             const SizedBox(width: GlassSpacing.s4),
@@ -548,6 +550,7 @@ class _SessionToolbar extends ConsumerWidget {
     final minimal = !AppPlatform.isMobile && ref.watch(terminalMinimalModeProvider);
     return GlassToolbarGroup(
       children: [
+        TerminalFindButton(tab: tab),
         TerminalEncodingButton(tab: tab),
         if (minimal) _MinimalTerminalMenu(tab: tab),
         if (minimal && ref.watch(activeSshTerminalProvider) != null) const _ServerMetricsButton(),

@@ -2,7 +2,7 @@ import 'package:consolecrypt/kubernetes/kube_service.dart';
 
 /// UI entry points open the existing scoped detail/review flow, never perform
 /// an operation directly from a table gesture.
-enum KubeResourceOpenAction { logs, shell, restart }
+enum KubeResourceOpenAction { yaml, events, logs, shell, scale, restart, remove }
 
 /// Handles are allocated by the native core and expire with the vault session.
 /// No kubeconfig, certificate, token or external command crosses this interface.

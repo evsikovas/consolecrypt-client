@@ -32,8 +32,16 @@ Object? decodeDbDocument(String text) {
 /// A lazy, depth-limited document tree; large arrays never allocate a widget per
 /// entry. Raw values stay in the enclosing scoped result, never on disk.
 class DbDocumentView extends StatefulWidget {
-  const DbDocumentView({required this.document, this.rawText, this.maxNodes = 10000, this.onCopySecret, super.key});
+  const DbDocumentView({
+    required this.document,
+    this.rawText,
+    this.maxNodes = 10000,
+    this.onCopySecret,
+    this.textStyle,
+    super.key,
+  });
   final Object? document;
+  final TextStyle? textStyle;
   final String? rawText;
   final int maxNodes;
 
@@ -77,6 +85,7 @@ class _DbDocumentViewState extends State<DbDocumentView> {
   @override
   Widget build(BuildContext context) {
     final rows = _rows(), l = context.l10n;
+    final mono = widget.textStyle ?? const TextStyle(fontFamily: 'monospace');
     final raw = _raw ? widget.rawText ?? const JsonEncoder.withIndent('  ').convert(widget.document) : '';
     return Column(
       children: [
@@ -92,12 +101,8 @@ class _DbDocumentViewState extends State<DbDocumentView> {
           child: _raw
               ? SingleChildScrollView(
                   child: widget.onCopySecret == null
-                      ? SelectableText(raw, style: const TextStyle(fontFamily: 'monospace'))
-                      : SecretSelectableText(
-                          raw,
-                          style: const TextStyle(fontFamily: 'monospace'),
-                          onCopy: widget.onCopySecret!,
-                        ),
+                      ? SelectableText(raw, style: mono)
+                      : SecretSelectableText(raw, style: mono, onCopy: widget.onCopySecret!),
                 )
               : ListView.builder(
                   itemCount: rows.length,
@@ -118,7 +123,7 @@ class _DbDocumentViewState extends State<DbDocumentView> {
                           label.isEmpty ? text : '$label: $text',
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontFamily: 'monospace'),
+                          style: mono,
                         ),
                         onTap: nested
                             ? () => setState(() {

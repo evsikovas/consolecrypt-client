@@ -69,6 +69,8 @@ impl TerminalStatus {
 /// Status change notification.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TerminalEvent {
+    /// A user close or runtime shutdown does not require a connection alert.
+    pub intentional_close: bool,
     pub id: TerminalId,
     pub status: TerminalStatus,
 }
@@ -325,7 +327,13 @@ impl TerminalManager {
 
     fn set_status(events: &broadcast::Sender<TerminalEvent>, s: &Session, status: TerminalStatus) {
         s.status.send_replace(status.clone());
-        let _ = events.send(TerminalEvent { id: s.id, status });
+        let _ = events.send(TerminalEvent { id: s.id, status, intentional_close: false });
+    }
+
+    fn user_closed(events: &broadcast::Sender<TerminalEvent>, session: &Session) {
+        let status = TerminalStatus::Closed { exit_status: None, reason: None };
+        session.status.send_replace(status.clone());
+        let _ = events.send(TerminalEvent { id: session.id, status, intentional_close: true });
     }
 
     /// Start connecting in the background; returns immediately with status
@@ -354,17 +362,11 @@ impl TerminalManager {
         self.register(session.clone());
         if self.stopped.load(Ordering::Acquire) {
             session.lock().closing = true;
-            Self::set_status(
-                &self.events,
-                &session,
-                TerminalStatus::Closed {
-                    exit_status: None,
-                    reason: None,
-                },
-            );
+            Self::user_closed(&self.events, &session);
             return id;
         }
         let _ = self.events.send(TerminalEvent {
+            intentional_close: false,
             id,
             status: TerminalStatus::Connecting,
         });
@@ -581,14 +583,7 @@ impl TerminalManager {
                 if let Some(ssh) = owned {
                     let _ = ssh.disconnect().await;
                 }
-                Self::set_status(
-                    events,
-                    session,
-                    TerminalStatus::Closed {
-                        exit_status: None,
-                        reason: None,
-                    },
-                );
+                Self::user_closed(events, session);
                 return None;
             }
             // Resize before publishing Connected, retrying if the UI resized
@@ -678,7 +673,11 @@ impl TerminalManager {
                 reason,
             }
         };
-        Self::set_status(&events, &session, status);
+        // A user close already published Closed. Its transport shutdown may also wake ssh.closed().
+        let inner = session.lock();
+        if !inner.closing {
+            Self::set_status(&events, &session, status);
+        }
     }
 
     /// Send input bytes (keystrokes / paste).
@@ -791,14 +790,7 @@ impl TerminalManager {
         let (writer, ssh, lifetime) = {
             let mut inner = s.lock();
             inner.closing = true;
-            Self::set_status(
-                &self.events,
-                &s,
-                TerminalStatus::Closed {
-                    exit_status: None,
-                    reason: None,
-                },
-            );
+            Self::user_closed(&self.events, &s);
             (
                 inner.writer.take(),
                 inner.session.take(),
@@ -833,14 +825,7 @@ impl TerminalManager {
             if let Some(lifetime) = &inner.lifetime {
                 lifetime.close();
             }
-            Self::set_status(
-                &self.events,
-                session,
-                TerminalStatus::Closed {
-                    exit_status: None,
-                    reason: None,
-                },
-            );
+            Self::user_closed(&self.events, session);
         }
     }
 

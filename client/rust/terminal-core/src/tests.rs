@@ -318,7 +318,13 @@ async fn failed_open_reports_error() {
 async fn close_by_user() {
     let (m, _) = manager(false);
     let id = m.open(plan(), TerminalSize::default()).await.unwrap();
+    let mut events = m.events();
     m.close(id).await.unwrap();
+    let first = events.recv().await.unwrap();
+    assert!(first.intentional_close);
+    assert!(matches!(first.status, TerminalStatus::Closed { .. }));
+    // The shell pump waking after close must not publish another terminal result.
+    assert!(tokio::time::timeout(Duration::from_millis(100), events.recv()).await.is_err());
     let st = m.wait_closed(id).await.unwrap();
     assert!(
         matches!(

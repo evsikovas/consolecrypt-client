@@ -105,10 +105,18 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
   void initState() {
     super.initState();
     _scope = ref.read(kubeScopeProvider);
-    _tabs = TabController(length: _hasLogs ? 5 : 4, initialIndex: widget.initialLogs && _hasLogs ? 2 : 0, vsync: this)
-      ..addListener(() {
-        if (mounted) setState(() {});
-      });
+    _tabs =
+        TabController(
+          length: _hasLogs ? 5 : 4,
+          initialIndex: switch (widget.initialAction) {
+            KubeResourceOpenAction.yaml => 1,
+            KubeResourceOpenAction.events => _hasLogs ? 3 : 2,
+            _ => widget.initialLogs && _hasLogs ? 2 : 0,
+          },
+          vsync: this,
+        )..addListener(() {
+          if (mounted) setState(() {});
+        });
     unawaited(_load());
   }
 
@@ -156,7 +164,27 @@ class _KubeResourceDetailsState extends ConsumerState<KubeResourceDetails> with 
 
   Future<void> _reviewInitialAction() async {
     if (!_current || _detail == null) return;
-    if (widget.initialAction == KubeResourceOpenAction.shell && widget.resource.api.isPod) {
+    if (widget.initialAction == KubeResourceOpenAction.remove &&
+        widget.resource.api.verbs.contains('delete') &&
+        (ref.read(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false)) {
+      await _delete();
+    } else if (widget.initialAction == KubeResourceOpenAction.scale &&
+        widget.service is KubeOperationsService &&
+        (ref.read(kubeWriteAccessProvider(widget.session)).value?.canWrite ?? false)) {
+      final changed = await reviewKubeOperation(
+        context,
+        widget.session,
+        widget.resource,
+        _detail!,
+        widget.service as KubeOperationsService,
+        'scale',
+      );
+      if (_current && changed) {
+        _changed = true;
+        widget.onChanged?.call();
+        await _load();
+      }
+    } else if (widget.initialAction == KubeResourceOpenAction.shell && widget.resource.api.isPod) {
       await _terminal();
     } else if (widget.initialAction == KubeResourceOpenAction.restart && widget.service is KubeOperationsService) {
       setState(() => _mutating = true);

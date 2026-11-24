@@ -66,6 +66,7 @@ class GlassWindowBridge {
   bool EndFullscreen();
   HWND window_;
   bool fullscreen_ = false;
+  bool terminal_fullscreen_ = false;
   bool restore_succeeded_ = true;
   LONG_PTR previous_style_ = 0;
   LONG_PTR previous_ex_style_ = 0;

@@ -45,6 +45,23 @@ Future<bool> reviewKubeRestart(
   return allowed();
 }
 
+Future<bool> reviewKubeOperation(
+  BuildContext context,
+  KubeSession session,
+  KubeResourceRef resource,
+  KubeResourceDetail detail,
+  KubeOperationsService service,
+  String action,
+) async =>
+    await showAppDialog<bool>(
+      context,
+      secure: true,
+      barrierDismissible: false,
+      builder: (_) =>
+          _OperationDialog(session: session, resource: resource, detail: detail, service: service, action: action),
+    ) ??
+    false;
+
 class KubeResourceOperations extends ConsumerStatefulWidget {
   const KubeResourceOperations({
     required this.session,
@@ -95,19 +112,15 @@ class _KubeResourceOperationsState extends ConsumerState<KubeResourceOperations>
       return;
     }
     if (action == 'scale' || action == 'debug' || action == 'drain') {
-      final changed = await showAppDialog<bool>(
+      final changed = await reviewKubeOperation(
         context,
-        secure: true,
-        barrierDismissible: false,
-        builder: (_) => _OperationDialog(
-          session: widget.session,
-          resource: resource,
-          detail: widget.detail,
-          service: widget.service,
-          action: action,
-        ),
+        widget.session,
+        resource,
+        widget.detail,
+        widget.service,
+        action,
       );
-      if (_current && changed == true) widget.onChanged();
+      if (_current && changed) widget.onChanged();
       return;
     }
     final approved = await showKubePassphraseConfirmation(

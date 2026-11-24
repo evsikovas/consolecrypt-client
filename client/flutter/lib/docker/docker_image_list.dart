@@ -11,9 +11,10 @@ typedef _Row = ({DockerImage image, String? tag});
 enum _Action { details, remove }
 
 class DockerImageList extends StatefulWidget {
-  const DockerImageList({required this.service, required this.session, super.key});
+  const DockerImageList({required this.service, required this.session, this.query = '', super.key});
   final DockerObservationService service;
   final DockerSessionInfo session;
+  final String query;
   @override
   State<DockerImageList> createState() => DockerImageListState();
 }
@@ -120,7 +121,15 @@ class DockerImageListState extends State<DockerImageList> {
       builder: (context, snapshot) {
         if (snapshot.hasError) return Center(child: Text(dockerErrorText(l, snapshot.error!)));
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-        final rows = snapshot.data!;
+        final query = widget.query.trim().toLowerCase();
+        final rows = query.isEmpty
+            ? snapshot.data!
+            : snapshot.data!
+                  .where(
+                    (r) => [r.tag ?? '', r.image.id, ...r.image.digests].any((s) => s.toLowerCase().contains(query)),
+                  )
+                  .toList();
+        if (rows.isEmpty && query.isNotEmpty) return Center(child: Text(l.dockerNoMatches));
         if (rows.isEmpty) return Center(child: Text(l.wslcNoImagesYet));
         return ListView.builder(
           itemCount: rows.length,

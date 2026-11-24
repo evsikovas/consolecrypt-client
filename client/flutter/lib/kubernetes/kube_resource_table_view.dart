@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/kubernetes/kube_row_menu.dart';
 import 'package:consolecrypt/kubernetes/kube_view_preferences_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +28,9 @@ class KubeResourceTableView extends ConsumerStatefulWidget {
     required this.onMore,
     this.contextId,
     this.onVisibleRows,
+    this.menuActions = const [],
+    this.onMenuAction,
+    this.extraMenuItems,
     this.onMobileAction,
     this.mobileTrailingAction,
     this.activeName,
@@ -46,6 +50,9 @@ class KubeResourceTableView extends ConsumerStatefulWidget {
   final ValueChanged<Set<String>>? onVisibleRows;
   final Future<void> Function(KubeResourceRow, KubeResourceOpenAction)? onMobileAction;
   final KubeResourceOpenAction? mobileTrailingAction;
+  final List<KubeResourceOpenAction> menuActions;
+  final List<GlassMenuEntry<VoidCallback>> Function(KubeResourceRow)? extraMenuItems;
+  final void Function(KubeResourceRow, KubeResourceOpenAction)? onMenuAction;
 
   /// Object shown in the desktop inspector; its row stays highlighted.
   final KubeResourceRef? activeName;
@@ -320,6 +327,15 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
       ),
     ),
   );
+  Widget _rowMenu(KubeResourceRow row, Widget child) => KubeRowMenu(
+    name: row.name,
+    open: widget.kind.canRead ? () => widget.onOpen(row) : null,
+    actions: widget.menuActions,
+    extraItems: () => widget.extraMenuItems?.call(row) ?? const [],
+    onAction: (action) => widget.onMenuAction?.call(row, action),
+    child: child,
+  );
+
   Widget _mobile() => ListView.builder(
     key: const ValueKey('kube-resource-list'),
     controller: _vertical,
@@ -327,23 +343,26 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
     itemBuilder: (context, index) {
       if (index == _rows.length) return _more();
       final row = _rows[index];
-      final tile = ListTile(
-        key: ValueKey('kube-resource-${row.id}'),
-        selected: widget.selected.contains(row.id),
-        leading: widget.canSelect ? _select(row) : null,
-        title: Text(row.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          [
-            if (row.namespace != null) row.namespace!,
-            if (row.status.isNotEmpty) row.status,
-            for (final column in _columns.where((c) => c.index >= 0).take(3))
-              '${_label(column)}: ${_value(row, column)}',
-          ].join(' · '),
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
+      final tile = _rowMenu(
+        row,
+        ListTile(
+          key: ValueKey('kube-resource-${row.id}'),
+          selected: widget.selected.contains(row.id),
+          leading: widget.canSelect ? _select(row) : null,
+          title: Text(row.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            [
+              if (row.namespace != null) row.namespace!,
+              if (row.status.isNotEmpty) row.status,
+              for (final column in _columns.where((c) => c.index >= 0).take(3))
+                '${_label(column)}: ${_value(row, column)}',
+            ].join(' · '),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: widget.kind.canRead ? const Icon(Icons.chevron_right) : null,
+          onTap: widget.kind.canRead ? () => widget.onOpen(row) : null,
         ),
-        trailing: widget.kind.canRead ? const Icon(Icons.chevron_right) : null,
-        onTap: widget.kind.canRead ? () => widget.onOpen(row) : null,
       );
       final action = widget.onMobileAction;
       if (action == null || !widget.kind.canRead) return tile;
@@ -357,6 +376,7 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
               KubeResourceOpenAction.logs => context.l10n.kubeLogs,
               KubeResourceOpenAction.shell => context.l10n.kubePodTerminal,
               KubeResourceOpenAction.restart => context.l10n.kubeRestart,
+              _ => throw StateError(operation.name),
             }),
           ),
         ),
@@ -547,59 +567,64 @@ class _KubeResourceTableViewState extends ConsumerState<KubeResourceTableView> {
                                         widget.activeName?.name == row.name &&
                                         widget.activeName?.namespace == row.namespace;
                                     final keyboard = _keyboardFocus.hasFocus && row.id == _keyboardId;
-                                    return Semantics(
-                                      focused: keyboard,
-                                      selected: widget.selected.contains(row.id) || active,
-                                      child: GlassInteractive(
-                                        key: ValueKey('kube-resource-${row.id}'),
-                                        canRequestFocus: false,
-                                        semanticLabel: row.name,
-                                        onPressed: widget.kind.canRead ? () => widget.onOpen(row) : null,
-                                        builder: (context, state) => DecoratedBox(
-                                          decoration: BoxDecoration(
-                                            color: active || widget.selected.contains(row.id)
-                                                ? tokens.rowSelection
-                                                : keyboard
-                                                ? tokens.surfaces.fillPressed
-                                                : state.hovered
-                                                ? tokens.surfaces.fillHover
-                                                : Colors.transparent,
-                                            border: active ? Border(left: BorderSide(color: p.accent, width: 2)) : null,
-                                          ),
-                                          child: SizedBox(
-                                            height: extent,
-                                            child: Row(
-                                              children: [
-                                                SizedBox(width: lead, child: widget.canSelect ? _select(row) : null),
-                                                if (widget.rowTrailing != null)
-                                                  SizedBox(width: trailing, child: widget.rowTrailing!(row)),
-                                                for (final column in columns)
-                                                  SizedBox(
-                                                    width: _width(column),
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                                                      child: column.id == 'status'
-                                                          ? KubeStatusLabel(status: _value(row, column))
-                                                          : Text(
-                                                              _value(row, column),
-                                                              maxLines: 1,
-                                                              overflow: TextOverflow.ellipsis,
-                                                              style:
-                                                                  (column.id == 'name'
-                                                                          ? tokens.typography.body
-                                                                          : tokens.typography.callout)
-                                                                      .copyWith(
-                                                                        color: column.id == 'name'
-                                                                            ? p.label
-                                                                            : tokens.secondaryLabel,
-                                                                        fontWeight: column.id == 'name'
-                                                                            ? FontWeight.w500
-                                                                            : null,
-                                                                      ),
-                                                            ),
+                                    return _rowMenu(
+                                      row,
+                                      Semantics(
+                                        focused: keyboard,
+                                        selected: widget.selected.contains(row.id) || active,
+                                        child: GlassInteractive(
+                                          key: ValueKey('kube-resource-${row.id}'),
+                                          canRequestFocus: false,
+                                          semanticLabel: row.name,
+                                          onPressed: widget.kind.canRead ? () => widget.onOpen(row) : null,
+                                          builder: (context, state) => DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              color: active || widget.selected.contains(row.id)
+                                                  ? tokens.rowSelection
+                                                  : keyboard
+                                                  ? tokens.surfaces.fillPressed
+                                                  : state.hovered
+                                                  ? tokens.surfaces.fillHover
+                                                  : Colors.transparent,
+                                              border: active
+                                                  ? Border(left: BorderSide(color: p.accent, width: 2))
+                                                  : null,
+                                            ),
+                                            child: SizedBox(
+                                              height: extent,
+                                              child: Row(
+                                                children: [
+                                                  SizedBox(width: lead, child: widget.canSelect ? _select(row) : null),
+                                                  if (widget.rowTrailing != null)
+                                                    SizedBox(width: trailing, child: widget.rowTrailing!(row)),
+                                                  for (final column in columns)
+                                                    SizedBox(
+                                                      width: _width(column),
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                                        child: column.id == 'status'
+                                                            ? KubeStatusLabel(status: _value(row, column))
+                                                            : Text(
+                                                                _value(row, column),
+                                                                maxLines: 1,
+                                                                overflow: TextOverflow.ellipsis,
+                                                                style:
+                                                                    (column.id == 'name'
+                                                                            ? tokens.typography.body
+                                                                            : tokens.typography.callout)
+                                                                        .copyWith(
+                                                                          color: column.id == 'name'
+                                                                              ? p.label
+                                                                              : tokens.secondaryLabel,
+                                                                          fontWeight: column.id == 'name'
+                                                                              ? FontWeight.w500
+                                                                              : null,
+                                                                        ),
+                                                              ),
+                                                      ),
                                                     ),
-                                                  ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
                                           ),
                                         ),

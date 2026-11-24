@@ -143,6 +143,17 @@ fn health(status: &str) -> Option<String> {
 }
 
 impl DockerClient {
+    /// Read all networks, including empty ones, without forwarding arbitrary driver options or labels.
+    pub async fn networks(&self) -> Result<Vec<Value>, DockerError> {
+        let list = self.json(Method::GET, "/networks", None).await?;
+        let networks = list.as_array().ok_or(DockerError::Protocol)?;
+        Ok(networks.iter().map(|net| {
+            let ranges: Vec<_> = net["IPAM"]["Config"].as_array().into_iter().flatten()
+                .map(|range| serde_json::json!({"subnet": range["Subnet"], "gateway": range["Gateway"]})).collect();
+            serde_json::json!({"id":net["Id"], "name":net["Name"], "driver":net["Driver"], "scope":net["Scope"], "ranges":ranges})
+        }).collect())
+    }
+
     pub fn new(connector: SharedConnector) -> Self {
         Self { connector }
     }

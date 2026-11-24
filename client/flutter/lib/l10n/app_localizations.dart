@@ -160,6 +160,24 @@ abstract class AppLocalizations {
   /// **'Central European'**
   String get terminalEncodingCentralEuropean;
 
+  /// Search within the active terminal pane and its scrollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Find in terminal'**
+  String get terminalFindText;
+
+  /// Containers attached to the selected Docker network.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected containers'**
+  String get dockerNetworkContainers;
+
+  /// No Docker networks match the current filter.
+  ///
+  /// In en, this message translates to:
+  /// **'No networks match'**
+  String get dockerNetworkEmpty;
+
   /// Language group in the terminal encoding chooser.
   ///
   /// In en, this message translates to:

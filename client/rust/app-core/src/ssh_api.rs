@@ -357,7 +357,6 @@ impl AppCore {
     pub async fn close_terminal(&self, terminal_id: String) -> AppResult<()> {
         let (_, u) = self.unlocked().await?;
         let tid = parse_terminal_id(&terminal_id)?;
-        let _ = u.ssh.terminals.close(tid).await;
         Ok(u.ssh.terminals.remove(tid).await?)
     }
 

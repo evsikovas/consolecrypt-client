@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/terminal/terminal_context_menu.dart';
+import 'package:consolecrypt/terminal/terminal_find.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
@@ -16,6 +17,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:xterm/xterm.dart';
+
+Future<void> toggleTerminalFullscreen() =>
+    const MethodChannel('consolecrypt/window').invokeMethod<void>('toggleTerminalFullscreen');
 
 /// Keeps native terminal selection and mouse reporting; selected text or
 /// Shift+right-click opts into the local menu even in a mouse-aware TUI.
@@ -236,7 +240,7 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
         });
       });
     }
-    return RepaintBoundary(
+    final view = RepaintBoundary(
       child: ExcludeFocus(
         excluding: !widget.active,
         child: Listener(
@@ -305,6 +309,24 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
                       : keys.isControlPressed && !keys.isMetaPressed;
                   if (primary &&
                       !keys.isAltPressed &&
+                      !keys.isShiftPressed &&
+                      !AppPlatform.isMobile &&
+                      (event.logicalKey == LogicalKeyboardKey.enter ||
+                          event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                    if (event is KeyDownEvent) {
+                      unawaited(toggleTerminalFullscreen());
+                    }
+                    return KeyEventResult.handled;
+                  }
+                  if (primary &&
+                      !keys.isAltPressed &&
+                      keys.isShiftPressed &&
+                      event.logicalKey == LogicalKeyboardKey.keyF) {
+                    if (event is KeyDownEvent) ref.read(terminalTabsProvider.notifier).showFind(tab, true);
+                    return KeyEventResult.handled;
+                  }
+                  if (primary &&
+                      !keys.isAltPressed &&
                       (!keys.isShiftPressed || AppPlatform.isWindows) &&
                       event.logicalKey == LogicalKeyboardKey.keyV) {
                     if (event is KeyDownEvent) unawaited(pasteIntoTerminal(context, ref, tab));
@@ -358,6 +380,28 @@ class _TerminalPaneState extends ConsumerState<TerminalPane> {
           ),
         ),
       ),
+    );
+    return Column(
+      children: [
+        if (widget.active && tab.findOpen)
+          TerminalFindBar(
+            key: ValueKey((tab.sessionId, tab.renderGeneration)),
+            tab: tab,
+            close: () {
+              ref.read(terminalTabsProvider.notifier).showFind(tab, false);
+              _activate();
+            },
+            reveal: (row) {
+              final render = _view.currentState?.renderTerminal;
+              if (render == null || !_scroll.hasClients) return;
+              final p = _scroll.position, top = row * render.lineHeight;
+              if (top < p.pixels || top + render.lineHeight > p.pixels + p.viewportDimension) {
+                _scroll.jumpTo((top - p.viewportDimension / 3).clamp(p.minScrollExtent, p.maxScrollExtent));
+              }
+            },
+          ),
+        Expanded(child: view),
+      ],
     );
   }
 }

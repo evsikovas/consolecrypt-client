@@ -3,6 +3,7 @@ import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_operations_service.dart';
 import 'package:consolecrypt/kubernetes/kube_resource_table_view.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind, kSecondaryMouseButton;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -64,6 +65,23 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('right click opens actions for the pointed resource without changing selection', (tester) async {
+    KubeResourceRow? opened;
+    const row = KubeResourceRow(name: 'worker', uid: 'w', resourceVersion: '1');
+    await pump(tester, [row], onOpen: (value) => opened = value);
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('worker')),
+      kind: PointerDeviceKind.mouse,
+      buttons: kSecondaryMouseButton,
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text('Copy name'), findsOneWidget);
+    expect(opened, isNull);
+    await tester.tap(find.text('Overview'));
+    await tester.pumpAndSettle();
+    expect(opened, same(row));
+  });
   testWidgets('10,000 rows stay virtualized and sort/open by stable resource identity', (tester) async {
     final rows = List.generate(
       10000,

@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/services/settings_service.dart';
 import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/settings/appearance_controls.dart';
+import 'package:consolecrypt/terminal/terminal_find.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_status_bar.dart';
@@ -146,6 +147,10 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
 
     final physical = event.physicalKey;
     final logical = event.logicalKey;
+    if (!keys.isShiftPressed && (logical == LogicalKeyboardKey.enter || logical == LogicalKeyboardKey.numpadEnter)) {
+      if (event is KeyDownEvent) unawaited(toggleTerminalFullscreen());
+      return KeyEventResult.handled;
+    }
     final newWindow =
         keys.isShiftPressed && (physical == PhysicalKeyboardKey.keyN || logical == LogicalKeyboardKey.keyN);
     final palette =
@@ -203,7 +208,10 @@ class _TerminalOnlyScreenState extends ConsumerState<_TerminalOnlyScreen> {
     return GlassToolbarGroup(
       key: const ValueKey('terminal-only-toolbar'),
       children: [
-        if (ref.read(terminalTabsProvider).active case final tab?) TerminalEncodingButton(tab: tab),
+        if (ref.read(terminalTabsProvider).active case final tab?) ...[
+          TerminalFindButton(tab: tab),
+          TerminalEncodingButton(tab: tab),
+        ],
         GlassIconButton(
           key: const ValueKey('glass-tab-add'),
           icon: Icons.add_rounded,

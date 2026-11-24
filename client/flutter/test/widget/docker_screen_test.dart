@@ -48,6 +48,18 @@ class _Docker extends MockDockerService {
 
 class _ObservedDocker extends _Docker implements DockerObservationService {
   @override
+  Future<List<DockerJson>> networks(String sessionId) async => [
+    {
+      'id': 'a123',
+      'name': 'test-net',
+      'driver': 'bridge',
+      'scope': 'local',
+      'ranges': [
+        {'subnet': '172.28.0.0/16', 'gateway': '172.28.0.1'},
+      ],
+    },
+  ];
+  @override
   Future<List<DockerImage>> images(String sessionId) async => [
     if (removed.isEmpty)
       DockerImage.fromJson({
@@ -382,6 +394,20 @@ void main() {
     expect(service.removed, [('fixture', 'sha256:abcd', null)]);
     expect(name, findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('main engine inventory lists images and networks including empty networks', (tester) async {
+    await _pump(tester, service: _ObservedDocker());
+    await _connectLocal(tester);
+    await tapKey(tester, 'docker-view-images');
+    expect(find.text('registry.example/project/server'), findsOneWidget);
+    await tapKey(tester, 'docker-view-networks');
+    await tester.tap(find.text('test-net'));
+    await settle(tester);
+    expect(find.textContaining('172.28.0.1'), findsOneWidget);
+    expect(find.text('Connected containers (0)'), findsOneWidget);
+    await tapKey(tester, 'docker-view-containers');
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('resource and process cards show the sample and removal is last', (tester) async {

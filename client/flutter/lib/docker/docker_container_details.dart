@@ -448,6 +448,7 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                                 child: DbDocumentView(
                                   key: ValueKey(full == null ? 'docker-json-masked-view' : 'docker-json-full-view'),
                                   document: shown,
+                                  textStyle: tokens.typography.mono.copyWith(fontSize: 10.5, height: 1.35),
                                   rawText: json,
                                   onCopySecret: full == null
                                       ? null

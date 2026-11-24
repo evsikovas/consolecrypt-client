@@ -33,6 +33,7 @@ final class TerminalTab {
   int renderGeneration = 0;
   TerminalEncoding encoding = TerminalEncoding.utf8;
   bool encodingRejected = false;
+  bool findOpen = false;
 
   SessionConnectionState state = SessionConnectionState.connecting;
 
@@ -432,6 +433,12 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     _touch();
   }
 
+  void showFind(TerminalTab tab, bool open) {
+    if (!_open.contains(tab)) return;
+    tab.findOpen = open;
+    _touch();
+  }
+
   void setEncoding(TerminalTab tab, TerminalEncoding encoding) {
     if (!_open.contains(tab)) return;
     tab.encoding = encoding;
@@ -594,12 +601,11 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   /// place to its first pane; any other tab leaves the strip.
   Future<void> close(TerminalTab tab) async {
     if (!_open.remove(tab)) return;
-    tab._metrics.dispose();
     tab._quiet?.cancel();
     _invalidateInput(tab);
-    await tab._output?.cancel();
-    await tab._events?.cancel();
-    if (_disposed) return _service.close(tab.sessionId);
+    // Remove the pane synchronously before any listeners can see disposed metrics.
+    final output = tab._output?.cancel();
+    final events = tab._events?.cancel();
     final owner = tab.owner;
     if (owner != null) {
       final index = owner.allPanes.indexOf(tab);
@@ -627,6 +633,9 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
       final tabs = [...state.tabs]..remove(tab);
       state = state.copyWith(tabs: tabs, activeIndex: state.activeIndex.clamp(0, tabs.isEmpty ? 0 : tabs.length - 1));
     }
+    tab._metrics.dispose();
+    await output;
+    await events;
     await _service.close(tab.sessionId);
   }
 

@@ -45,6 +45,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get terminalEncodingCentralEuropean => '中欧';
 
   @override
+  String get terminalFindText => '在终端中查找';
+
+  @override
+  String get dockerNetworkContainers => '已连接的容器';
+
+  @override
+  String get dockerNetworkEmpty => '未找到网络';
+
+  @override
   String get terminalEncodingCyrillic => '西里尔文';
 
   @override

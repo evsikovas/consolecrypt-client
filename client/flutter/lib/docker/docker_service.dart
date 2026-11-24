@@ -465,6 +465,7 @@ final class DockerImage {
 }
 
 abstract interface class DockerObservationService {
+  Future<List<DockerJson>> networks(String sessionId);
   Future<DockerJson> telemetry(String sessionId, String containerId);
   Future<List<DockerImage>> images(String sessionId);
   Future<bool> removeImage(String sessionId, String id, {String? tag});

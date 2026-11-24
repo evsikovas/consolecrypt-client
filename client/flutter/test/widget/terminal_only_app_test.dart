@@ -37,6 +37,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.widget<TerminalPane>(find.byType(TerminalPane)).tab.target.label, 'zsh');
+    await tapKey(tester, 'terminal-find-button');
+    expect(find.byKey(const ValueKey('terminal-find-input')), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('terminal-find-input')), findsNothing);
 
     for (final (key, physicalKey) in [
       (LogicalKeyboardKey.keyK, PhysicalKeyboardKey.keyK),

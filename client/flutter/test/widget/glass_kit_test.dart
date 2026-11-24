@@ -67,6 +67,18 @@ List<RenderBackdropFilter> _liveBackdrops() => [
 Rect _globalRect(RenderBox box) => MatrixUtils.transformRect(box.getTransformTo(null), Offset.zero & box.size);
 
 void main() {
+  testWidgets('standard icon and text buttons use the same height', (tester) async {
+    await pumpGlass(
+      tester,
+      Row(
+        children: [
+          GlassButton(label: 'Refresh', onPressed: () {}),
+          GlassIconButton(icon: Icons.refresh, tooltip: 'Refresh', onPressed: () {}),
+        ],
+      ),
+    );
+    expect(tester.getSize(find.byType(GlassButton)).height, tester.getSize(find.byType(GlassIconButton)).height);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   group('every kit component builds', () {
     final themes = [
       (Brightness.light, false),

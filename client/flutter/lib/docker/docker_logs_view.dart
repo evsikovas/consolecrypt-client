@@ -172,7 +172,7 @@ class _DockerLogsViewState extends ConsumerState<DockerLogsView> with WidgetsBin
     final p = tokens.palette;
     final visible = _visible;
     final searching = _find.text.trim().isNotEmpty;
-    final mono = tokens.typography.mono.copyWith(fontSize: 12);
+    final mono = tokens.typography.mono.copyWith(fontSize: 10.5, height: 1.35);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

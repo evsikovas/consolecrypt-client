@@ -45,6 +45,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get terminalEncodingCentralEuropean => 'Центральноевропейская';
 
   @override
+  String get terminalFindText => 'Найти в терминале';
+
+  @override
+  String get dockerNetworkContainers => 'Подключённые контейнеры';
+
+  @override
+  String get dockerNetworkEmpty => 'Сети не найдены';
+
+  @override
   String get terminalEncodingCyrillic => 'Кириллица';
 
   @override
