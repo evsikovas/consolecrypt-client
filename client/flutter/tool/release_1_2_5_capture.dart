@@ -1,23 +1,22 @@
 // Capture the released widgets with the mock inventory and an in-memory SSH transport.
 import 'dart:convert';
 import 'dart:io' as io;
-import 'dart:typed_data';
 
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_docker.dart';
+import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
+import 'package:consolecrypt/core/services/terminal_service.dart';
+import 'package:consolecrypt/core/services/tmux_service.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/kubernetes/kube_service.dart';
-import 'package:consolecrypt/core/models/models.dart';
-import 'package:consolecrypt/core/providers.dart';
-import 'package:consolecrypt/core/security/secret_text.dart';
-import 'package:consolecrypt/core/services/terminal_service.dart';
-import 'package:consolecrypt/core/services/tmux_service.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
