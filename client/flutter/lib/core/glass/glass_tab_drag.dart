@@ -1,5 +1,6 @@
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/theme/glass_tokens.dart';
+import 'package:consolecrypt/core/widgets/workspace_draggable.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Drag-to-reorder for one tab of a [GlassTabStrip] or a tab column: drag a
@@ -49,7 +50,7 @@ class GlassTabDrag extends StatelessWidget {
                 ? BorderDirectional(start: before ? edge : BorderSide.none, end: before ? BorderSide.none : edge)
                 : Border(top: before ? edge : BorderSide.none, bottom: before ? BorderSide.none : edge),
           ),
-          child: Draggable<int>(
+          child: WorkspaceDraggable<int>(
             data: index,
             axis: axis,
             feedback: SizedBox(

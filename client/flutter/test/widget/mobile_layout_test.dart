@@ -1,7 +1,11 @@
 import 'package:consolecrypt/ai/terminal_attachment.dart';
+
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/widgets/workspace_draggable.dart';
 import 'package:consolecrypt/sftp/dialogs/quick_look_dialog.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
@@ -15,6 +19,48 @@ void phoneTest(String name, WidgetTesterCallback body) =>
     testWidgets(name, body, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
 void main() {
+  phoneTest('tablet rows scroll with a finger and drag with a mouse', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    int? accepted;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView.builder(
+            controller: scroll,
+            itemExtent: 60,
+            itemCount: 40,
+            itemBuilder: (_, index) => DragTarget<int>(
+              onAcceptWithDetails: (details) => accepted = details.data,
+              builder: (_, candidates, rejected) => WorkspaceDraggable<int>(
+                data: index,
+                feedback: const SizedBox.square(dimension: 30),
+                child: ColoredBox(color: Colors.grey, child: Text('row $index')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.dragFrom(const Offset(100, 200), const Offset(0, -120));
+    await settle(tester);
+    expect(scroll.offset, greaterThan(0));
+    expect(accepted, isNull);
+    scroll.jumpTo(0);
+    await tester.pump();
+    final mouse = await tester.startGesture(const Offset(100, 30), kind: PointerDeviceKind.mouse);
+    await mouse.moveBy(const Offset(0, 30));
+    await tester.pump();
+    await mouse.moveTo(const Offset(100, 150));
+    await tester.pump();
+    await mouse.up();
+    await tester.pump();
+    expect(accepted, 0);
+  });
+
   phoneTest('Android: resizing a connected terminal switches chrome and keeps the session', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);

@@ -302,8 +302,9 @@ final class AppCommandDispatcher {
       case AppCommandId.toggleSidebar:
         // Phones have no sidebar; narrow windows keep it compact (no toggle).
         final narrow = context != null && MediaQuery.sizeOf(context).width < GlassSizes.compactBreakpoint;
-        if (context != null && !AppWindowLayout.isPhone(context) && !narrow)
+        if (context != null && !AppWindowLayout.isPhone(context) && !narrow) {
           _ref.read(sidebarCollapsedProvider.notifier).toggle();
+        }
       case AppCommandId.splitTerminalRight || AppCommandId.splitTerminalDown:
         final tab = _ref.read(terminalTabsProvider).active;
         if (tab != null && router.state.matchedLocation.startsWith(AppRoutes.terminal)) {

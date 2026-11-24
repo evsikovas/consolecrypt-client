@@ -176,7 +176,9 @@ class _ForwardDialogState extends ConsumerState<_ForwardDialog> {
       setState(() => _created = forward);
       ref.invalidate(kubeForwardsProvider(_scope));
       // Desktop: running forwards live in the right panel.
-      if (!AppPlatform.isMobile) ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.forwards);
+      if (mounted && !AppWindowLayout.isPhone(context)) {
+        ref.read(workspaceToolsProvider.notifier).open(WorkspaceTool.forwards);
+      }
     } catch (_) {
       if (_current) setState(() => _failed = true);
     } finally {

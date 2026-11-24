@@ -329,15 +329,17 @@ void main() {
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
-  testWidgets('tablet details retain the wide protected dialog over the resource table', (tester) async {
-    await _pump(tester, _Service(), size: const Size(1024, 900));
+  testWidgets('Android tablet opens the same resource inspector as a desktop window', (tester) async {
+    await _pump(tester, _Service(), size: const Size(1280, 900));
     await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
     await settle(tester);
     final details = find.byKey(const ValueKey('kube-resource-details'));
-    expect(ModalRoute.of(tester.element(details)), isA<PopupRoute<bool>>());
-    expect(tester.getSize(details).width, lessThan(1024));
-    expect(tester.getSize(details).width, greaterThan(700));
-    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('kube-mobile-navigation')), findsNothing);
+    expect(find.byKey(const ValueKey('kube-resource-demo-pod')), findsOneWidget);
+    expect(tester.getSize(details).width, inInclusiveRange(380, 800));
+    await tapKey(tester, 'kube-close-details');
+    expect(details, findsNothing);
+    expect(find.byKey(const ValueKey('kube-resource-demo-pod')), findsOneWidget);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
   testWidgets('mobile Flux swipe opens explicit review and never submits by itself', (tester) async {
@@ -1154,7 +1156,7 @@ void main() {
 
   testWidgets('port forward appears in cluster panel and stop revokes exact native identity', (tester) async {
     final service = _ForwardService();
-    await _pump(tester, service);
+    await _pump(tester, service, size: const Size(480, 900));
     await tester.tap(find.byKey(const ValueKey('kube-resource-demo-pod')));
     await settle(tester);
     await tester.tap(find.byKey(const ValueKey('kube-pod-forward')));
@@ -1571,7 +1573,7 @@ void main() {
           ...List.generate(9999, (i) => _row('pod-${i.toString().padLeft(5, '0')}')),
         ]),
       ]);
-    await _pump(tester, service);
+    await _pump(tester, service, size: const Size(480, 900));
     expect(service.requests.last.continueToken, 'next-page');
     expect(service.watches, hasLength(1));
     expect(service.watchVersions, ['10']);
@@ -1747,12 +1749,13 @@ void main() {
 
   testWidgets('cluster-scoped kind omits namespace and stale page is ignored', (tester) async {
     final service = _Service();
-    await _pump(tester, service);
+    await _pump(tester, service, size: const Size(480, 900));
     final pending = Completer<KubeResourcePage>();
     service.listPending = pending;
     await tester.tap(find.byKey(const ValueKey('kube-refresh-resources')));
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('kube-kind')));
+    await tapKey(tester, 'kube-filters-expand');
+    await tapKey(tester, 'kube-kind');
     await settle(tester);
     service.listPending = null;
     service.pages.add(_page([_row('node-current')]));
