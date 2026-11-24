@@ -86,6 +86,9 @@ class _TerminalFindBarState extends State<TerminalFindBar> {
   void initState() {
     super.initState();
     _terminal.addListener(_output);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _field.requestFocus();
+    });
   }
 
   void _output() {

@@ -557,9 +557,11 @@ class _EdgeFadeScrollState extends State<_EdgeFadeScroll> {
     return LayoutBuilder(
       builder: (context, constraints) {
         _availableWidth = constraints.maxWidth;
+        // A narrow track needs room for the tab itself. It still scrolls by swipe or wheel.
+        final showControls = _overflow && _availableWidth >= GlassSizes.tabMinWidth * 2;
         return Row(
           children: [
-            if (_overflow)
+            if (showControls)
               GlassIconButton(
                 key: const ValueKey('glass-tabs-scroll-left'),
                 icon: Icons.chevron_left_rounded,
@@ -569,7 +571,7 @@ class _EdgeFadeScrollState extends State<_EdgeFadeScroll> {
                 onPressed: _fadeStart ? () => _page(-1) : null,
               ),
             Expanded(key: const ValueKey('glass-tabs-viewport'), child: scroll),
-            if (_overflow)
+            if (showControls)
               GlassIconButton(
                 key: const ValueKey('glass-tabs-scroll-right'),
                 icon: Icons.chevron_right_rounded,
@@ -578,7 +580,7 @@ class _EdgeFadeScrollState extends State<_EdgeFadeScroll> {
                 size: GlassSizes.tab,
                 onPressed: _fadeEnd ? () => _page(1) : null,
               ),
-            if (_overflow)
+            if (showControls)
               Tooltip(
                 message: strings.openTerminalTabs(widget.children.length),
                 excludeFromSemantics: true,
