@@ -9,6 +9,10 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/mock/mock_docker.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
+import 'package:consolecrypt/kubernetes/kube_manifest_service.dart';
+import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
@@ -22,6 +26,22 @@ import 'package:material_ui/material_ui.dart';
 
 import '../test/helpers/automation_ui_proof.dart';
 import '../test/helpers/test_app.dart';
+import 'kube_capture_support.dart';
+
+class _DemoCluster extends Fake implements KubeService, KubeBrowserService, KubeManifestService {
+  @override
+  Stream<void> changes() => const Stream.empty();
+  @override
+  Future<List<KubeConnection>> inventory() async => guideKubeConnections;
+  @override
+  Future<KubeSession> connect(String contextId) async => GuideKubeService.session;
+  @override
+  Future<List<KubeResourceKind>> discover(String sessionId) async => [];
+  @override
+  Future<List<String>> namespaces(String sessionId) async => ['shop'];
+  @override
+  Future<void> disconnect(String sessionId) async {}
+}
 
 class _DemoTransport extends Fake implements TerminalService, TcpdumpService, TmuxService {
   @override
@@ -154,6 +174,7 @@ void main() {
             devicesProvider.overrideWith((ref) => const Stream.empty()),
             terminalServiceProvider.overrideWithValue(_DemoTransport()),
             if (!android) dockerServiceProvider.overrideWithValue(_DemoEngine()),
+            if (!android) kubeServiceProvider.overrideWithValue(_DemoCluster()),
           ],
         );
         final context = tester.element(find.byType(Navigator).first);
@@ -195,6 +216,9 @@ void main() {
           await tester.tap(find.text('shop-api-1').first);
           await settle(tester);
           await tapKey(tester, 'docker-details-kubernetes');
+          await tapKey(tester, 'docker-kube-context');
+          await tester.tap(find.text(guideKubeConnections.first.name).last);
+          await settle(tester);
           await tapKey(tester, 'registry-picker-null');
           await tester.tap(find.text('Build Hub · docker.io').last);
           await settle(tester);
@@ -202,8 +226,9 @@ void main() {
           await enterKey(tester, 'registry-remote-folder', '/srv/shop-api');
           final platform = find.text('linux/arm64');
           expect(platform, findsOneWidget);
-          await tester.ensureVisible(platform);
+          await Scrollable.ensureVisible(tester.element(platform), alignment: 0.76);
           await settle(tester);
+          expect(find.byKey(const ValueKey('docker-kube-error')), findsNothing);
           await shot('docker-kube-wizard');
         }
         expect(tester.takeException(), isNull);
