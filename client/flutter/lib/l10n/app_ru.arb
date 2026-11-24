@@ -11388,5 +11388,17 @@
   "captureInstall": "Установить tcpdump",
   "captureInstallReview": "Проверьте команду в терминале на {host} и нажмите Enter для установки.",
   "captureManualInstall": "Установите tcpdump через менеджер пакетов этого хоста и запустите захват снова.",
-  "captureSudo": "Повторить с беспарольным sudo"
+  "captureSudo": "Повторить с беспарольным sudo",
+  "tmuxTitle": "Сессии tmux",
+  "tmuxCount": "Сессий: {count}",
+  "tmuxCounts": "Окна: {windows} · Клиенты: {clients}",
+  "tmuxActivity": "Последняя активность: {time}",
+  "tmuxAttach": "Войти в сессию",
+  "tmuxDetach": "Отсоединиться",
+  "tmuxCreate": "Создать сессию",
+  "tmuxKill": "Завершить сессию",
+  "tmuxConfirmKill": "Завершить сессию «{name}» и остановить её процессы?",
+  "tmuxEmpty": "На этом хосте пока нет сессий tmux",
+  "tmuxError": "Не удалось выполнить действие в tmux. Обновите список и попробуйте ещё раз.",
+  "tmuxNameHint": "Используйте буквы, цифры, пробелы, дефис или подчёркивание."
 }

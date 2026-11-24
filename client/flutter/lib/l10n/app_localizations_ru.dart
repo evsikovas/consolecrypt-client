@@ -20033,4 +20033,48 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get captureSudo => 'Повторить с беспарольным sudo';
+
+  @override
+  String get tmuxTitle => 'Сессии tmux';
+
+  @override
+  String tmuxCount(int count) {
+    return 'Сессий: $count';
+  }
+
+  @override
+  String tmuxCounts(int windows, int clients) {
+    return 'Окна: $windows · Клиенты: $clients';
+  }
+
+  @override
+  String tmuxActivity(String time) {
+    return 'Последняя активность: $time';
+  }
+
+  @override
+  String get tmuxAttach => 'Войти в сессию';
+
+  @override
+  String get tmuxDetach => 'Отсоединиться';
+
+  @override
+  String get tmuxCreate => 'Создать сессию';
+
+  @override
+  String get tmuxKill => 'Завершить сессию';
+
+  @override
+  String tmuxConfirmKill(String name) {
+    return 'Завершить сессию «$name» и остановить её процессы?';
+  }
+
+  @override
+  String get tmuxEmpty => 'На этом хосте пока нет сессий tmux';
+
+  @override
+  String get tmuxError => 'Не удалось выполнить действие в tmux. Обновите список и попробуйте ещё раз.';
+
+  @override
+  String get tmuxNameHint => 'Используйте буквы, цифры, пробелы, дефис или подчёркивание.';
 }

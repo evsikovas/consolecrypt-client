@@ -5763,5 +5763,17 @@
   "captureInstall": "安装 tcpdump",
   "captureInstallReview": "请在 {host} 的终端中检查命令，按 Enter 安装。",
   "captureManualInstall": "请使用此主机的包管理器安装 tcpdump，然后重新开始抓包。",
-  "captureSudo": "使用免密 sudo 重试"
+  "captureSudo": "使用免密 sudo 重试",
+  "tmuxTitle": "tmux 会话",
+  "tmuxCount": "{count} 个会话",
+  "tmuxCounts": "窗口：{windows} · 客户端：{clients}",
+  "tmuxActivity": "上次活动：{time}",
+  "tmuxAttach": "连接会话",
+  "tmuxDetach": "分离会话",
+  "tmuxCreate": "新建会话",
+  "tmuxKill": "终止会话",
+  "tmuxConfirmKill": "终止“{name}”及其中的进程？",
+  "tmuxEmpty": "此主机暂无 tmux 会话",
+  "tmuxError": "tmux 操作失败。请刷新列表后重试。",
+  "tmuxNameHint": "请使用字母、数字、空格、连字符或下划线。"
 }

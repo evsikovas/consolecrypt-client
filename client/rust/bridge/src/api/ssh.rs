@@ -170,6 +170,10 @@ pub async fn terminal_write(terminal_id: String, data: Vec<u8>) -> Result<(), Br
     with_core(move |c| async move { Ok(c.terminal_write(terminal_id, data).await?) }).await
 }
 
+pub async fn terminal_tmux(terminal_id: String, request_json: String) -> Result<String, BridgeError> {
+    with_core(move |c| async move { to_json(&c.terminal_tmux(terminal_id, request_json).await?) }).await
+}
+
 pub async fn terminal_command_history(terminal_id: String) -> Result<Vec<String>, BridgeError> {
     with_core(move |c| async move { Ok(c.terminal_command_history(terminal_id).await?) }).await
 }

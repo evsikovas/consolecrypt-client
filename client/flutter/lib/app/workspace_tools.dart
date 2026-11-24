@@ -20,13 +20,14 @@ import 'package:consolecrypt/snippets/snippets_screen.dart';
 import 'package:consolecrypt/terminal/host_metrics_panel.dart';
 import 'package:consolecrypt/terminal/session_tools.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:consolecrypt/terminal/tmux_panel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 List<WorkspaceTool> get _generalTools => [
   for (final tool in WorkspaceTool.values)
-    if (!const {WorkspaceTool.server, WorkspaceTool.docker, WorkspaceTool.history}.contains(tool) &&
+    if (!const {WorkspaceTool.server, WorkspaceTool.docker, WorkspaceTool.tmux, WorkspaceTool.history}.contains(tool) &&
         (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled))
       tool,
 ];
@@ -39,6 +40,7 @@ String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (too
   WorkspaceTool.server => l.hostMetricsTitle,
   WorkspaceTool.history => l.settingsCommandHistoryLabel,
   WorkspaceTool.docker => l.dockerTitle,
+  WorkspaceTool.tmux => l.tmuxTitle,
 };
 
 Widget _toolIcon(WorkspaceTool tool) => switch (tool) {
@@ -47,6 +49,7 @@ Widget _toolIcon(WorkspaceTool tool) => switch (tool) {
   WorkspaceTool.ai => const AppSymbolIcon(AppSymbol.ai),
   WorkspaceTool.forwards => const AppSymbolIcon(AppSymbol.tunnels),
   WorkspaceTool.history => const Icon(Icons.history_rounded, size: 18),
+  WorkspaceTool.tmux => const Icon(Icons.layers_outlined, size: 18),
   WorkspaceTool.docker => const Icon(ToolIcons.docker, size: 18),
   WorkspaceTool.server => const Icon(Icons.show_chart_rounded, size: GlassSizes.iconToolbar),
 };
@@ -90,6 +93,8 @@ class WorkspaceToolRail extends ConsumerWidget {
               ..._generalTools,
               if (history) WorkspaceTool.history,
               if (dockerHere) WorkspaceTool.docker,
+              if (tab != null && ref.watch(tmuxVersionProvider(tab.tmuxParent ?? tab)).value != null)
+                WorkspaceTool.tmux,
               if (tab != null) WorkspaceTool.server,
             ]) ...[
               GlassSidebarItem(
@@ -158,6 +163,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
     final tools = [
       if (active?.hasCommandHistory == true) WorkspaceTool.history,
       if (tab != null && dockerEnabled && ref.watch(sessionHasDockerProvider(tab)).value == true) WorkspaceTool.docker,
+      if (tab != null && ref.watch(tmuxVersionProvider(tab.tmuxParent ?? tab)).value != null) WorkspaceTool.tmux,
       if (tab != null) WorkspaceTool.server,
     ];
     if (selected != null && !_generalTools.contains(selected) && !tools.contains(selected)) {
@@ -225,6 +231,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                 selected: selected == tool,
                                 icon: switch (tool) {
                                   WorkspaceTool.docker => ToolIcons.docker,
+                                  WorkspaceTool.tmux => Icons.layers_outlined,
                                   WorkspaceTool.history => Icons.history_rounded,
                                   _ => Icons.show_chart_rounded,
                                 },
@@ -268,6 +275,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                             WorkspaceTool.forwards => const WorkspaceForwardsPanel(),
                                             WorkspaceTool.server ||
                                             WorkspaceTool.history ||
+                                            WorkspaceTool.tmux ||
                                             WorkspaceTool.docker => const SizedBox.shrink(),
                                           },
                                   ),
@@ -282,7 +290,12 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                 history: tab.hostMetrics,
                               ),
                             if (selected == WorkspaceTool.history && active != null && tools.contains(selected))
-                              SessionHistoryPanel(key: ValueKey(active.sessionId), tab: active),
+                              SessionHistoryPanel(key: ValueKey(active.sessionId), tab: active.tmuxParent ?? active),
+                            if (selected == WorkspaceTool.tmux && tab != null && tools.contains(selected))
+                              TmuxPanel(
+                                key: ValueKey((tab.tmuxParent ?? tab).sessionId),
+                                parent: tab.tmuxParent ?? tab,
+                              ),
                             if (selected == WorkspaceTool.docker && tab != null && tools.contains(selected))
                               SessionDockerPanel(key: ValueKey(tab.sessionId), tab: tab),
                           ],

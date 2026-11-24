@@ -18883,4 +18883,48 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get captureSudo => '使用免密 sudo 重试';
+
+  @override
+  String get tmuxTitle => 'tmux 会话';
+
+  @override
+  String tmuxCount(int count) {
+    return '$count 个会话';
+  }
+
+  @override
+  String tmuxCounts(int windows, int clients) {
+    return '窗口：$windows · 客户端：$clients';
+  }
+
+  @override
+  String tmuxActivity(String time) {
+    return '上次活动：$time';
+  }
+
+  @override
+  String get tmuxAttach => '连接会话';
+
+  @override
+  String get tmuxDetach => '分离会话';
+
+  @override
+  String get tmuxCreate => '新建会话';
+
+  @override
+  String get tmuxKill => '终止会话';
+
+  @override
+  String tmuxConfirmKill(String name) {
+    return '终止“$name”及其中的进程？';
+  }
+
+  @override
+  String get tmuxEmpty => '此主机暂无 tmux 会话';
+
+  @override
+  String get tmuxError => 'tmux 操作失败。请刷新列表后重试。';
+
+  @override
+  String get tmuxNameHint => '请使用字母、数字、空格、连字符或下划线。';
 }

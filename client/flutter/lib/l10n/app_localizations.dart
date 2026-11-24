@@ -34680,6 +34680,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry with passwordless sudo'**
   String get captureSudo;
+
+  /// Terminal tmux panel: tmux sessions
+  ///
+  /// In en, this message translates to:
+  /// **'tmux sessions'**
+  String get tmuxTitle;
+
+  /// Terminal tmux panel: Sessions: {count}
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions: {count}'**
+  String tmuxCount(int count);
+
+  /// Terminal tmux panel: Windows: {windows} · Clients: {clients}
+  ///
+  /// In en, this message translates to:
+  /// **'Windows: {windows} · Clients: {clients}'**
+  String tmuxCounts(int windows, int clients);
+
+  /// Terminal tmux panel: Last active: {time}
+  ///
+  /// In en, this message translates to:
+  /// **'Last active: {time}'**
+  String tmuxActivity(String time);
+
+  /// Terminal tmux panel: Attach to session
+  ///
+  /// In en, this message translates to:
+  /// **'Attach to session'**
+  String get tmuxAttach;
+
+  /// Terminal tmux panel: Detach from session
+  ///
+  /// In en, this message translates to:
+  /// **'Detach from session'**
+  String get tmuxDetach;
+
+  /// Terminal tmux panel: Create session
+  ///
+  /// In en, this message translates to:
+  /// **'Create session'**
+  String get tmuxCreate;
+
+  /// Terminal tmux panel: End session
+  ///
+  /// In en, this message translates to:
+  /// **'End session'**
+  String get tmuxKill;
+
+  /// Terminal tmux panel: End “{name}” and stop its processes?
+  ///
+  /// In en, this message translates to:
+  /// **'End “{name}” and stop its processes?'**
+  String tmuxConfirmKill(String name);
+
+  /// Terminal tmux panel: No tmux sessions on this host
+  ///
+  /// In en, this message translates to:
+  /// **'No tmux sessions on this host'**
+  String get tmuxEmpty;
+
+  /// Terminal tmux panel: Couldn’t complete the tmux operation. Refresh the list and try again.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t complete the tmux operation. Refresh the list and try again.'**
+  String get tmuxError;
+
+  /// Terminal tmux panel: Use letters, numbers, spaces, dashes or underscores.
+  ///
+  /// In en, this message translates to:
+  /// **'Use letters, numbers, spaces, dashes or underscores.'**
+  String get tmuxNameHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

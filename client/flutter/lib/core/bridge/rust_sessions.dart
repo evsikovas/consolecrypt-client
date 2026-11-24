@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
+import 'package:consolecrypt/core/services/tmux_service.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:consolecrypt/src/rust/api/app.dart' as rs_app;
 import 'package:consolecrypt/src/rust/api/docker.dart' as rs_docker;
@@ -63,6 +64,7 @@ final class RustTerminalService
     implements
         TerminalService,
         LocalTerminalService,
+        TmuxService,
         KubernetesTerminalService,
         DockerTerminalService,
         TerminalHistoryReader,
@@ -186,6 +188,55 @@ final class RustTerminalService
         shell: metadata['shell'] as String,
       ),
     );
+    return _adoptRuntime(runtimeId, target, size);
+  }
+
+  Future<Json> _tmux(TerminalSessionId parent, String action, [Map<String, Object> fields = const {}]) async {
+    final session = _session(parent);
+    final id = session.rustId;
+    if (session.target is! SshTerminalTarget || !session.connected || session.closed || id == null) {
+      throw const AppException(AppErrorCode.notFound, 'SSH session closed', reason: AppErrorReason.sessionClosed);
+    }
+    return decodeObject(
+      await guard(() => rs_ssh.terminalTmux(terminalId: id, requestJson: jsonEncode({'action': action, ...fields}))),
+    );
+  }
+
+  @override
+  Future<String?> tmuxVersion(TerminalSessionId parent) async => (await _tmux(parent, 'probe'))['version'] as String?;
+
+  @override
+  Future<List<TmuxSession>> tmuxSessions(TerminalSessionId parent) async =>
+      ((await _tmux(parent, 'list'))['sessions'] as List).cast<Json>().map(TmuxSession.fromJson).toList();
+
+  @override
+  Future<void> createTmux(TerminalSessionId parent, String name) async {
+    await _tmux(parent, 'create', {'name': name});
+  }
+
+  @override
+  Future<void> renameTmux(TerminalSessionId parent, TmuxSession session, String name) async {
+    await _tmux(parent, 'rename', {'session': session.identity, 'name': name});
+  }
+
+  @override
+  Future<void> killTmux(TerminalSessionId parent, TmuxSession session) async {
+    await _tmux(parent, 'kill', {'session': session.identity});
+  }
+
+  @override
+  Future<TerminalSessionHandle> attachTmux(TerminalSessionId parent, TmuxSession session) async {
+    final source = _session(parent);
+    final original = source.rustId;
+    final runtimeId = (await _tmux(parent, 'attach', {'session': session.identity}))['terminal'] as String;
+    if (source.closed || source.rustId != original || !source.connected) {
+      await _closeRust(runtimeId);
+      throw const AppException(AppErrorCode.notFound, 'SSH session closed', reason: AppErrorReason.sessionClosed);
+    }
+    return (await _adoptRuntime(runtimeId, source.target, source.size)).handle;
+  }
+
+  Future<RuntimeTerminalAttachment> _adoptRuntime(String runtimeId, TerminalTarget target, TerminalSize size) async {
     final session = _Session(TerminalSessionId.generate(), target, size)
       ..rustId = runtimeId
       ..connected = true

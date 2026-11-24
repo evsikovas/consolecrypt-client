@@ -19855,4 +19855,48 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get captureSudo => 'Reintentar con sudo sin contraseña';
+
+  @override
+  String get tmuxTitle => 'Sesiones tmux';
+
+  @override
+  String tmuxCount(int count) {
+    return 'Sesiones: $count';
+  }
+
+  @override
+  String tmuxCounts(int windows, int clients) {
+    return 'Ventanas: $windows · Clientes: $clients';
+  }
+
+  @override
+  String tmuxActivity(String time) {
+    return 'Última actividad: $time';
+  }
+
+  @override
+  String get tmuxAttach => 'Entrar en la sesión';
+
+  @override
+  String get tmuxDetach => 'Desconectarse de la sesión';
+
+  @override
+  String get tmuxCreate => 'Crear sesión';
+
+  @override
+  String get tmuxKill => 'Finalizar sesión';
+
+  @override
+  String tmuxConfirmKill(String name) {
+    return '¿Finalizar «$name» y detener sus procesos?';
+  }
+
+  @override
+  String get tmuxEmpty => 'No hay sesiones tmux en este equipo';
+
+  @override
+  String get tmuxError => 'No se pudo completar la operación en tmux. Actualiza la lista e inténtalo de nuevo.';
+
+  @override
+  String get tmuxNameHint => 'Usa letras, números, espacios, guiones o guiones bajos.';
 }

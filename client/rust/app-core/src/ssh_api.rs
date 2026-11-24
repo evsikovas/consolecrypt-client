@@ -14,6 +14,8 @@ use tokio::sync::{Mutex, broadcast, mpsc};
 
 #[path = "ssh_history.rs"]
 mod history;
+#[path = "ssh_tmux.rs"]
+mod tmux;
 
 fn parse_terminal_id(s: &str) -> AppResult<TerminalId> {
     uuid::Uuid::parse_str(s.trim()).map_err(|_| AppError::invalid("terminal_id", "not a valid id"))

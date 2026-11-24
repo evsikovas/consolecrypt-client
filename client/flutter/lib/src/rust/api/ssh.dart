@@ -36,6 +36,9 @@ Stream<TerminalFrame> terminalAttach({required String terminalId}) =>
 Future<void> terminalWrite({required String terminalId, required List<int> data}) =>
     RustLib.instance.api.crateApiSshTerminalWrite(terminalId: terminalId, data: data);
 
+Future<String> terminalTmux({required String terminalId, required String requestJson}) =>
+    RustLib.instance.api.crateApiSshTerminalTmux(terminalId: terminalId, requestJson: requestJson);
+
 Future<List<String>> terminalCommandHistory({required String terminalId}) =>
     RustLib.instance.api.crateApiSshTerminalCommandHistory(terminalId: terminalId);
 

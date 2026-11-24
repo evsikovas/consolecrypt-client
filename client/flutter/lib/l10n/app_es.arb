@@ -5763,5 +5763,17 @@
   "captureInstall": "Instalar tcpdump",
   "captureInstallReview": "Revisa el comando en el terminal de {host} y pulsa Intro para instalar.",
   "captureManualInstall": "Instala tcpdump con el gestor de paquetes del equipo y vuelve a iniciar la captura.",
-  "captureSudo": "Reintentar con sudo sin contraseña"
+  "captureSudo": "Reintentar con sudo sin contraseña",
+  "tmuxTitle": "Sesiones tmux",
+  "tmuxCount": "Sesiones: {count}",
+  "tmuxCounts": "Ventanas: {windows} · Clientes: {clients}",
+  "tmuxActivity": "Última actividad: {time}",
+  "tmuxAttach": "Entrar en la sesión",
+  "tmuxDetach": "Desconectarse de la sesión",
+  "tmuxCreate": "Crear sesión",
+  "tmuxKill": "Finalizar sesión",
+  "tmuxConfirmKill": "¿Finalizar «{name}» y detener sus procesos?",
+  "tmuxEmpty": "No hay sesiones tmux en este equipo",
+  "tmuxError": "No se pudo completar la operación en tmux. Actualiza la lista e inténtalo de nuevo.",
+  "tmuxNameHint": "Usa letras, números, espacios, guiones o guiones bajos."
 }

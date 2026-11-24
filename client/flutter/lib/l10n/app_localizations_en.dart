@@ -19697,4 +19697,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get captureSudo => 'Retry with passwordless sudo';
+
+  @override
+  String get tmuxTitle => 'tmux sessions';
+
+  @override
+  String tmuxCount(int count) {
+    return 'Sessions: $count';
+  }
+
+  @override
+  String tmuxCounts(int windows, int clients) {
+    return 'Windows: $windows · Clients: $clients';
+  }
+
+  @override
+  String tmuxActivity(String time) {
+    return 'Last active: $time';
+  }
+
+  @override
+  String get tmuxAttach => 'Attach to session';
+
+  @override
+  String get tmuxDetach => 'Detach from session';
+
+  @override
+  String get tmuxCreate => 'Create session';
+
+  @override
+  String get tmuxKill => 'End session';
+
+  @override
+  String tmuxConfirmKill(String name) {
+    return 'End “$name” and stop its processes?';
+  }
+
+  @override
+  String get tmuxEmpty => 'No tmux sessions on this host';
+
+  @override
+  String get tmuxError => 'Couldn’t complete the tmux operation. Refresh the list and try again.';
+
+  @override
+  String get tmuxNameHint => 'Use letters, numbers, spaces, dashes or underscores.';
 }

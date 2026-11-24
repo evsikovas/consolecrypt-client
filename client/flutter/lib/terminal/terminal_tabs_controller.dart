@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
+import 'package:consolecrypt/core/services/tmux_service.dart';
 import 'package:consolecrypt/teams/team_providers.dart';
 import 'package:consolecrypt/terminal/terminal_encoding.dart';
 import 'package:consolecrypt/terminal/terminal_minimal_mode.dart';
@@ -24,7 +25,7 @@ final class TerminalTab {
 
   final TerminalSessionId sessionId;
   final _metrics = TerminalHostMetrics();
-  ValueListenable<HostMetricsHistory> get hostMetrics => _metrics;
+  ValueListenable<HostMetricsHistory> get hostMetrics => tmuxParent?._metrics ?? _metrics;
   final TerminalTarget target;
   Host? get host => target.sshHost;
   bool get isLocal => target is LocalTerminalTarget;
@@ -48,6 +49,8 @@ final class TerminalTab {
   String title;
 
   /// Name chosen by the user; wins over titles set by the remote shell.
+  TerminalTab? tmuxParent;
+  TmuxSession? tmuxSession;
   String? customTitle;
   String get displayTitle => customTitle ?? _shellTitle(title);
 
@@ -221,7 +224,12 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   void _updateMetrics(TerminalTab tab) {
     final host = tab.host;
     final reader = _service;
-    if (_metricsUnlocked && tab.isConnected && !tab.exited && host != null && reader is HostMetricsReader) {
+    if (_metricsUnlocked &&
+        tab.tmuxParent == null &&
+        tab.isConnected &&
+        !tab.exited &&
+        host != null &&
+        reader is HostMetricsReader) {
       tab._metrics.start(host, tab.sessionId, reader as HostMetricsReader);
     } else {
       tab._metrics.stop();
@@ -250,6 +258,40 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
       throw const AppException(AppErrorCode.notFound, 'Session closed', reason: AppErrorReason.sessionClosed);
     }
     return openHandle(target: attachment.target, handle: attachment.handle);
+  }
+
+  Future<void> attachTmux(TerminalTab from, TmuxSession session) async {
+    final parent = from.tmuxParent ?? from;
+    if (!_open.contains(parent) || !parent.isConnected || state.active != from) return;
+    final generation = _generation;
+    final service = _service as TmuxService;
+    final handle = await service.attachTmux(parent.sessionId, session);
+    if (_disposed ||
+        generation != _generation ||
+        state.active != from ||
+        !_open.contains(parent) ||
+        !parent.isConnected) {
+      await _service.close(handle.id);
+      return;
+    }
+    final tab = _adopt(parent.target, handle)
+      ..tmuxParent = parent
+      ..tmuxSession = session
+      ..customTitle = 'tmux · ${session.name}'
+      ..state = SessionConnectionState.connected;
+    final tabs = [...state.tabs, tab];
+    state = state.copyWith(tabs: tabs, activeIndex: tabs.length - 1);
+    if (from.tmuxParent != null) await close(from);
+  }
+
+  Future<void> detachTmux(TerminalTab tab) async {
+    final parent = tab.tmuxParent;
+    if (parent == null || !_open.contains(tab)) return;
+    if (state.active == tab && _open.contains(parent)) {
+      activate(state.tabs.indexOf(parent.owner ?? parent));
+      focusPane(parent);
+    }
+    await close(tab);
   }
 
   /// Adopt an already opened, profile-owned native handle without reconnecting
@@ -425,7 +467,11 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
         tab.passwordPrompt = event;
       case TerminalTitleChanged(:final title):
         tab.title = title;
-      case TerminalExited():
+      case TerminalExited(:final exitCode):
+        if (tab.tmuxParent != null && exitCode == 0) {
+          unawaited(detachTmux(tab));
+          return;
+        }
         tab.exited = true;
         if (!_watched(tab)) tab.attention = true;
     }
@@ -604,8 +650,9 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     tab._quiet?.cancel();
     _invalidateInput(tab);
     // Remove the pane synchronously before any listeners can see disposed metrics.
-    final output = tab._output?.cancel();
-    final events = tab._events?.cancel();
+    // An idle or paused output producer can finish cancellation only after the PTY closes.
+    unawaited(tab._output?.cancel());
+    unawaited(tab._events?.cancel());
     final owner = tab.owner;
     if (owner != null) {
       final index = owner.allPanes.indexOf(tab);
@@ -631,11 +678,16 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
       state = state.copyWith(tabs: tabs);
     } else {
       final tabs = [...state.tabs]..remove(tab);
-      state = state.copyWith(tabs: tabs, activeIndex: state.activeIndex.clamp(0, tabs.isEmpty ? 0 : tabs.length - 1));
+      final active = state.activeTab;
+      final next = active != null && tabs.contains(active)
+          ? tabs.indexOf(active)
+          : state.activeIndex.clamp(0, tabs.isEmpty ? 0 : tabs.length - 1);
+      state = state.copyWith(tabs: tabs, activeIndex: next);
+    }
+    for (final child in _open.where((child) => child.tmuxParent == tab).toList()) {
+      await close(child);
     }
     tab._metrics.dispose();
-    await output;
-    await events;
     await _service.close(tab.sessionId);
   }
 
@@ -666,8 +718,9 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   Future<TerminalTab> duplicate(TerminalTab tab) => openTarget(tab.target);
 
   Future<void> closeOthers(TerminalTab keep) async {
+    final source = keep.tmuxParent;
     for (final tab in [...state.tabs]) {
-      if (!identical(tab, keep)) await closeTab(tab);
+      if (tab != keep && tab != (source?.owner ?? source)) await closeTab(tab);
     }
     final index = state.tabs.indexOf(keep);
     if (index >= 0) activate(index);

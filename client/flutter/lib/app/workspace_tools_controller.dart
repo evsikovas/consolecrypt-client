@@ -4,7 +4,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum WorkspaceTool { snippets, notes, ai, forwards, server, docker, history }
+enum WorkspaceTool { snippets, notes, ai, forwards, server, docker, tmux, history }
 
 final activeSshTerminalProvider = Provider<TerminalTab?>(
   (ref) => ref.watch(

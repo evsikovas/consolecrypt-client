@@ -24744,5 +24744,76 @@
   "captureSudo": "Retry with passwordless sudo",
   "@captureSudo": {
     "description": "Packet capture workspace. Retry with passwordless sudo"
+  },
+  "tmuxTitle": "tmux sessions",
+  "@tmuxTitle": {
+    "description": "Terminal tmux panel: tmux sessions"
+  },
+  "tmuxCount": "Sessions: {count}",
+  "@tmuxCount": {
+    "description": "Terminal tmux panel: Sessions: {count}",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tmuxCounts": "Windows: {windows} · Clients: {clients}",
+  "@tmuxCounts": {
+    "description": "Terminal tmux panel: Windows: {windows} · Clients: {clients}",
+    "placeholders": {
+      "windows": {
+        "type": "int"
+      },
+      "clients": {
+        "type": "int"
+      }
+    }
+  },
+  "tmuxActivity": "Last active: {time}",
+  "@tmuxActivity": {
+    "description": "Terminal tmux panel: Last active: {time}",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tmuxAttach": "Attach to session",
+  "@tmuxAttach": {
+    "description": "Terminal tmux panel: Attach to session"
+  },
+  "tmuxDetach": "Detach from session",
+  "@tmuxDetach": {
+    "description": "Terminal tmux panel: Detach from session"
+  },
+  "tmuxCreate": "Create session",
+  "@tmuxCreate": {
+    "description": "Terminal tmux panel: Create session"
+  },
+  "tmuxKill": "End session",
+  "@tmuxKill": {
+    "description": "Terminal tmux panel: End session"
+  },
+  "tmuxConfirmKill": "End “{name}” and stop its processes?",
+  "@tmuxConfirmKill": {
+    "description": "Terminal tmux panel: End “{name}” and stop its processes?",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tmuxEmpty": "No tmux sessions on this host",
+  "@tmuxEmpty": {
+    "description": "Terminal tmux panel: No tmux sessions on this host"
+  },
+  "tmuxError": "Couldn’t complete the tmux operation. Refresh the list and try again.",
+  "@tmuxError": {
+    "description": "Terminal tmux panel: Couldn’t complete the tmux operation. Refresh the list and try again."
+  },
+  "tmuxNameHint": "Use letters, numbers, spaces, dashes or underscores.",
+  "@tmuxNameHint": {
+    "description": "Terminal tmux panel: Use letters, numbers, spaces, dashes or underscores."
   }
 }
