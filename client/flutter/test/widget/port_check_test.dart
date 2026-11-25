@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:consolecrypt/app/app.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/hosts/host_picker.dart';
 import 'package:consolecrypt/port_check/port_check_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,5 +77,73 @@ void main() {
     await settle(tester);
     expect(calls.last, (inventories.single.$1, '127.0.0.1', 5353, true));
     expect(find.text('53/UDP'), findsOneWidget);
+  });
+
+  testWidgets('one destination field accepts saved or typed hosts and reports actual progress', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final inventory = Completer<List<int>>();
+    final probe = Completer<String>();
+    final destinations = <String?>[];
+    await pumpApp(
+      tester,
+      backend,
+      size: const Size(430, 860),
+      overrides: [
+        listeningPortsProvider.overrideWithValue(({hostId, required low, required high, required udp}) {
+          destinations.add(hostId);
+          return inventory.future;
+        }),
+        checkPortProvider.overrideWithValue(({sourceId, required host, required port, required udp}) => probe.future),
+      ],
+    );
+    final container = ProviderScope.containerOf(tester.element(find.byType(ConsoleCryptApp)));
+    container.read(routerProvider).go(AppRoutes.portCheck);
+    await settle(tester);
+    final field = find.byKey(const ValueKey('port-check-host'));
+    final picker = find.byKey(const ValueKey('port-check-pick-destination'));
+    expect(find.ancestor(of: picker, matching: find.byType(GlassField)), findsOneWidget);
+    await tapKey(tester, 'port-check-pick-destination');
+    final option = find.descendant(of: find.byType(HostPickerDialog), matching: find.byType(ListTile)).first;
+    final address = (tester.widget<ListTile>(option).subtitle! as Text).data!;
+    await tester.tap(option);
+    await settle(tester);
+    expect(tester.widget<TextField>(field).controller!.text, address);
+    final selected = (await container.read(hostsProvider.future)).firstWhere((h) => h.address == address);
+    expect(find.widgetWithText(GlassButton, selected.name), findsNothing);
+    await tester.enterText(find.byKey(const ValueKey('port-check-number')), '22-1000');
+    final submit = find.byKey(const ValueKey('port-check-submit'));
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
+    await tester.pump();
+    expect(destinations, [selected.id.value]);
+    expect(find.text('Reading TCP sockets on the destination…'), findsOneWidget);
+    expect(tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator)).value, isNull);
+    inventory.complete([22, 443]);
+    await settle(tester);
+    final check22 = find.descendant(of: find.widgetWithText(ListTile, '22/TCP'), matching: find.byType(IconButton));
+    await tester.ensureVisible(check22);
+    await tester.tap(check22);
+    await tester.pump();
+    expect(find.text('Checking port 22…'), findsOneWidget);
+    expect(find.text('Checked 0 of 2 ports'), findsOneWidget);
+    probe.complete('connected');
+    await settle(tester);
+    expect(find.text('Checked 1 of 2 ports'), findsOneWidget);
+    expect(tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator)).value, 0.5);
+    await tester.tap(check22);
+    await settle(tester);
+    expect(find.text('Checked 1 of 2 ports'), findsOneWidget);
+    final check443 = find.descendant(of: find.widgetWithText(ListTile, '443/TCP'), matching: find.byType(IconButton));
+    await tester.ensureVisible(check443);
+    await tester.tap(check443);
+    await settle(tester);
+    expect(find.text('Checked 2 of 2 ports'), findsOneWidget);
+    await tester.ensureVisible(field);
+    await tester.enterText(field, '127.0.0.1');
+    await tapKey(tester, 'port-check-submit');
+    expect(destinations, [selected.id.value, null]);
+    expect(find.text('Checked 2 of 2 ports'), findsNothing);
   });
 }

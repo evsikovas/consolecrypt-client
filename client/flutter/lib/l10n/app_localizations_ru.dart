@@ -52,6 +52,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get portCheckChooseTarget => 'Выбрать хост назначения';
 
   @override
+  String get portCheckResolving => 'Определяем хост назначения…';
+
+  @override
+  String portCheckReading(String protocol) {
+    return 'Читаем список сокетов $protocol на хосте…';
+  }
+
+  @override
+  String portCheckChecking(int port) {
+    return 'Проверяем порт $port…';
+  }
+
+  @override
+  String portCheckCompleted(int done, int total) {
+    return 'Проверено портов: $done из $total';
+  }
+
+  @override
   String get portCheckEmpty => 'В этом диапазоне хост не сообщил ни об одном сокете выбранного протокола.';
 
   @override

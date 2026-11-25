@@ -77,6 +77,8 @@ class PortCheckScreen extends ConsumerStatefulWidget {
   ConsumerState<PortCheckScreen> createState() => _PortCheckScreenState();
 }
 
+enum _Activity { resolvingDestination, readingSockets, checkingPort }
+
 class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
   final host = TextEditingController();
   final port = TextEditingController(text: '443');
@@ -87,7 +89,10 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
   static const pageSize = 12;
   int offset = 0;
   bool needsHost = false;
-  bool remote = false, udp = false, busy = false, validated = false;
+  bool remote = false, udp = false, validated = false;
+  _Activity? activity;
+  int? checkingPort;
+  bool get busy => activity != null;
   int generation = 0;
   String? status;
   Object? error;
@@ -111,7 +116,9 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
 
   void clearProfile() => setState(() {
     generation++;
-    busy = remote = udp = false;
+    activity = null;
+    checkingPort = null;
+    remote = udp = false;
     source = null;
     inventoryHost = null;
     host.clear();
@@ -132,7 +139,7 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
 
   Future<void> chooseDestination() async {
     final current = generation;
-    final chosen = await showHostPicker(context);
+    final chosen = await showHostPicker(context, title: context.l10n.portCheckChooseTarget);
     if (!mounted || current != generation || chosen == null || busy) return;
     setState(() {
       clearResult();
@@ -166,7 +173,8 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
     if (busy || !(listeners?.contains(number) ?? false)) return;
     final current = ++generation;
     setState(() {
-      busy = true;
+      activity = _Activity.checkingPort;
+      checkingPort = number;
       error = null;
     });
     try {
@@ -180,7 +188,16 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
     } catch (e) {
       if (mounted && generation == current) setState(() => error = e);
     } finally {
-      if (mounted && generation == current) setState(() => busy = false);
+      finishActivity(current);
+    }
+  }
+
+  void finishActivity(int current) {
+    if (mounted && generation == current) {
+      setState(() {
+        activity = null;
+        checkingPort = null;
+      });
     }
   }
 
@@ -193,15 +210,20 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
     });
     if (!validPortHost(address) || interval == null) return;
     final current = ++generation;
-    setState(() => busy = true);
+    final range = interval.low != interval.high;
+    setState(() {
+      activity = range ? _Activity.resolvingDestination : _Activity.checkingPort;
+      checkingPort = range ? null : interval.low;
+    });
     try {
-      if (interval.low != interval.high) {
+      if (range) {
         final destination = await inventoryFor(address);
         if (!mounted || generation != current) return;
         if (destination == null) {
           setState(() => needsHost = true);
           return;
         }
+        setState(() => activity = _Activity.readingSockets);
         final ports = await ref.read(listeningPortsProvider)(
           hostId: destination.hostId,
           low: interval.low,
@@ -221,7 +243,7 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
     } catch (e) {
       if (mounted && generation == current) setState(() => error = e);
     } finally {
-      if (mounted && generation == current) setState(() => busy = false);
+      finishActivity(current);
     }
   }
 
@@ -234,6 +256,12 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
     final l = context.l10n;
     final interval = parsePortInterval(port.text);
     final range = interval != null && interval.low != interval.high;
+    final activityText = switch (activity) {
+      _Activity.resolvingDestination => l.portCheckResolving,
+      _Activity.readingSockets => l.portCheckReading(udp ? 'UDP' : 'TCP'),
+      _Activity.checkingPort => l.portCheckChecking(checkingPort!),
+      null => null,
+    };
     return PageScaffold(
       title: l.portCheckTitle,
       subtitle: l.portCheckSubtitle,
@@ -283,7 +311,18 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
               enabled: !busy,
               semanticLabel: l.portCheckTarget,
               placeholder: 'localhost',
-              errorText: validated && !validPortHost(host.text.trim()) ? l.portCheckBadHost : null,
+              trailing: GlassIconButton(
+                key: const ValueKey('port-check-pick-destination'),
+                tooltip: l.portCheckChooseTarget,
+                icon: Icons.dns_rounded,
+                style: GlassIconButtonStyle.plain,
+                onPressed: busy ? null : chooseDestination,
+              ),
+              errorText: needsHost
+                  ? l.portCheckNeedsTarget
+                  : validated && !validPortHost(host.text.trim())
+                  ? l.portCheckBadHost
+                  : null,
               onChanged: (_) => setState(() {
                 inventoryHost = null;
                 clearResult();
@@ -341,30 +380,32 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
                 ),
               ],
             ),
-            if (range) ...[
-              const SizedBox(height: 12),
-              Text(needsHost ? l.portCheckNeedsTarget : l.portCheckRangeHelp),
-              GlassButton(
-                icon: Icons.dns_rounded,
-                label: inventoryHost?.name ?? l.portCheckChooseTarget,
-                onPressed: busy ? null : chooseDestination,
-              ),
-            ],
+            if (range) ...[const SizedBox(height: 12), Text(l.portCheckRangeHelp)],
             if (udp) Padding(padding: const EdgeInsets.only(top: 12), child: Text(l.portCheckUdpHelp)),
             const SizedBox(height: 20),
             GlassButton.prominent(
               key: const ValueKey('port-check-submit'),
               icon: Icons.settings_ethernet_rounded,
-              label: busy
-                  ? l.portCheckRunning
-                  : range
-                  ? l.portCheckList
-                  : l.portCheckAction,
+              label: range ? l.portCheckList : l.portCheckAction,
               onPressed: busy || remote && source == null ? null : check,
             ),
+            if (activityText != null) ...[
+              const SizedBox(height: 12),
+              Semantics(liveRegion: true, child: Text(activityText)),
+              const SizedBox(height: 6),
+              const LinearProgressIndicator(minHeight: 3),
+            ],
             if (listeners case final ports?) ...[
               const SizedBox(height: 16),
               Text(ports.isEmpty ? l.portCheckEmpty : l.portCheckFound(ports.length)),
+              if (ports.isNotEmpty && (checkingPort != null || checked.isNotEmpty)) ...[
+                const SizedBox(height: 6),
+                Semantics(liveRegion: true, child: Text(l.portCheckCompleted(checked.length, ports.length))),
+                if (!busy) ...[
+                  const SizedBox(height: 6),
+                  LinearProgressIndicator(value: checked.length / ports.length, minHeight: 3),
+                ],
+              ],
               for (final number in ports.skip(offset).take(pageSize))
                 ListTile(
                   contentPadding: EdgeInsets.zero,

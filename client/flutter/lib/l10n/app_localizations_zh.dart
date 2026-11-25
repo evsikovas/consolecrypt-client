@@ -49,6 +49,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get portCheckChooseTarget => '选择目标主机';
 
   @override
+  String get portCheckResolving => '正在确定目标主机…';
+
+  @override
+  String portCheckReading(String protocol) {
+    return '正在读取目标主机的 $protocol 套接字…';
+  }
+
+  @override
+  String portCheckChecking(int port) {
+    return '正在检查端口 $port…';
+  }
+
+  @override
+  String portCheckCompleted(int done, int total) {
+    return '已检查 $done/$total 个端口';
+  }
+
+  @override
   String get portCheckEmpty => '目标主机在该范围内未报告此协议的套接字。';
 
   @override

@@ -52,6 +52,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get portCheckChooseTarget => 'Elegir host de destino';
 
   @override
+  String get portCheckResolving => 'Identificando el host de destino…';
+
+  @override
+  String portCheckReading(String protocol) {
+    return 'Leyendo los sockets $protocol del destino…';
+  }
+
+  @override
+  String portCheckChecking(int port) {
+    return 'Comprobando el puerto $port…';
+  }
+
+  @override
+  String portCheckCompleted(int done, int total) {
+    return 'Puertos comprobados: $done de $total';
+  }
+
+  @override
   String get portCheckEmpty => 'El host no ha indicado ningún socket de este protocolo en el intervalo.';
 
   @override

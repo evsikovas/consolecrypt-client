@@ -172,6 +172,30 @@ abstract class AppLocalizations {
   /// **'Choose destination host'**
   String get portCheckChooseTarget;
 
+  /// Progress while locating the host for the socket table
+  ///
+  /// In en, this message translates to:
+  /// **'Finding the destination host…'**
+  String get portCheckResolving;
+
+  /// Progress while waiting for the socket table
+  ///
+  /// In en, this message translates to:
+  /// **'Reading {protocol} sockets on the destination…'**
+  String portCheckReading(String protocol);
+
+  /// Progress for one connectivity check
+  ///
+  /// In en, this message translates to:
+  /// **'Checking port {port}…'**
+  String portCheckChecking(int port);
+
+  /// Number of distinct ports tested in the current socket list
+  ///
+  /// In en, this message translates to:
+  /// **'Checked {done} of {total} ports'**
+  String portCheckCompleted(int done, int total);
+
   /// Empty result for the selected port interval
   ///
   /// In en, this message translates to:
