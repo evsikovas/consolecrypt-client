@@ -8,11 +8,11 @@ ConsoleCrypt is an open-source client for administering servers. Open an SSH ter
 
 ![An SSH session with CPU, memory and network monitoring alongside the terminal. The host uses demo data.](https://raw.githubusercontent.com/evsikovas/consolecrypt-docs/main/assets/guide/terminal-ssh-metrics-en.png)
 
-## What changed in 1.2.3
+## What changed in 1.2.5
 
-Host details now open below the list. KeePass groups, entries and fields have their own panes. Drag the divider to give Docker container details more room, or remove an entire Compose project and choose which resources to clean up. SSH tunnels and Docker or Kubernetes port forwards are listed separately. The sync screen shows changes waiting to be sent.
+Use TCPdump to inspect traffic between two hosts and open an individual packet. Manage tmux sessions, search output and choose server metrics in the SSH terminal. Build and publish amd64 and arm64 images for Kubernetes from a computer or an SSH host. Wide Android windows show the sidebar and workspace panes.
 
-[1.2.3 release notes](docs/public/RELEASE_1_2_3.md#english) · [All releases](https://github.com/evsikovas/consolecrypt-client/releases)
+[1.2.5 release notes](docs/public/RELEASE_1_2_5.md#english) · [All releases](https://github.com/evsikovas/consolecrypt-client/releases)
 
 ## Installation
 
@@ -24,7 +24,7 @@ Host details now open below the list. KeePass groups, entries and fields have th
 | Android 11+ · ARM64 | Install the direct APK or use [RuStore](https://www.rustore.ru/catalog/app/io.consolecrypt.consolecrypt). The release also includes a separate APK and AAB for the store. |
 | iOS Simulator | Open the universal Simulator ZIP on a Mac with Xcode. This package runs only in Simulator. |
 
-To verify a download, compare its SHA-256 checksum with the entry for that filename. [SHA-256 checksums for 1.2.3](https://github.com/evsikovas/consolecrypt-client/releases/download/v1.2.3/SHA256SUMS-1.2.3.txt).
+To verify a download, compare its SHA-256 checksum with the entry for that filename. [SHA-256 checksums for 1.2.5](https://github.com/evsikovas/consolecrypt-client/releases/download/v1.2.5/SHA256SUMS-1.2.5.txt).
 
 ## First connection
 

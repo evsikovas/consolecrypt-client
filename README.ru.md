@@ -8,11 +8,11 @@ ConsoleCrypt — клиент с открытым исходным кодом д
 
 ![SSH-сеанс и панель мониторинга процессора, памяти и сети. На снимке демонстрационный хост.](https://raw.githubusercontent.com/evsikovas/consolecrypt-docs/main/assets/guide/terminal-ssh-metrics-ru.png)
 
-## Что изменилось в 1.2.3
+## Что изменилось в 1.2.5
 
-Сведения о хосте открываются под списком. В KeePass группы, записи и поля разнесены по панелям. В Docker можно перетащить разделитель, чтобы расширить сведения о контейнере, или удалить весь Compose-проект и выбрать ресурсы для очистки. SSH-туннели и пробросы портов Docker и Kubernetes показаны в отдельных списках. На экране синхронизации видны изменения, ожидающие отправки.
+Посмотрите трафик между двумя хостами с помощью TCPdump и откройте нужный пакет. В SSH-терминале доступны сессии tmux, поиск и настраиваемые показатели сервера. Мастер Docker умеет собирать и публиковать образы amd64 и arm64 для Kubernetes с компьютера или SSH-сервера. В широком окне Android доступны боковая навигация и рабочие панели.
 
-[Примечания к выпуску 1.2.3](docs/public/RELEASE_1_2_3.md#русский) · [Все выпуски](https://github.com/evsikovas/consolecrypt-client/releases)
+[Примечания к выпуску 1.2.5](docs/public/RELEASE_1_2_5.md#русский) · [Все выпуски](https://github.com/evsikovas/consolecrypt-client/releases)
 
 ## Установка
 
@@ -24,7 +24,7 @@ ConsoleCrypt — клиент с открытым исходным кодом д
 | Android 11+ · ARM64 | Установите APK напрямую или скачайте приложение из [RuStore](https://www.rustore.ru/catalog/app/io.consolecrypt.consolecrypt). В выпуске также есть отдельные APK и AAB для магазина. |
 | iOS Simulator | Распакуйте универсальный ZIP для Simulator на Mac с Xcode. Пакет предназначен только для симулятора. |
 
-Для проверки загрузки сравните SHA-256 файла со значением напротив его имени. [Контрольные суммы для 1.2.3](https://github.com/evsikovas/consolecrypt-client/releases/download/v1.2.3/SHA256SUMS-1.2.3.txt).
+Для проверки загрузки сравните SHA-256 файла со значением напротив его имени. [Контрольные суммы для 1.2.5](https://github.com/evsikovas/consolecrypt-client/releases/download/v1.2.5/SHA256SUMS-1.2.5.txt).
 
 ## Первое подключение
 

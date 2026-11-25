@@ -8,11 +8,11 @@ ConsoleCrypt 是一款开源的服务器管理客户端。你可以在同一个�
 
 ![SSH 终端旁的监控面板显示 CPU、内存和网络数据。图中使用的是演示主机。](https://raw.githubusercontent.com/evsikovas/consolecrypt-docs/main/assets/guide/terminal-ssh-metrics-zh.png)
 
-## 1.2.3 版有哪些变化
+## 1.2.5 版有哪些变化
 
-点击主机的信息按钮，即可在列表下方查看连接详情。KeePass 将分组、条目和字段分栏显示。在 Docker 中，可以拖动分隔线调整容器详情面板的宽度，也可以删除整个 Compose 项目并选择要清理的资源。SSH 隧道与 Docker、Kubernetes 端口转发分别列出。同步页面会显示哪些更改正在等待发送。
+使用 TCPdump 查看两台主机之间的流量及单个数据包。在 SSH 终端中管理 tmux 会话、搜索输出并自定义服务器指标。可在本机或 SSH 主机上为 Kubernetes 构建并发布 amd64 和 arm64 镜像。Android 宽窗口支持侧边导航和工作窗格。
 
-[1.2.3 发行说明](docs/public/RELEASE_1_2_3.md#简体中文) · [历史版本](https://github.com/evsikovas/consolecrypt-client/releases)
+[1.2.5 发行说明](docs/public/RELEASE_1_2_5.md#简体中文) · [历史版本](https://github.com/evsikovas/consolecrypt-client/releases)
 
 ## 安装
 
@@ -24,7 +24,7 @@ ConsoleCrypt 是一款开源的服务器管理客户端。你可以在同一个�
 | Android 11 及以上 · ARM64 | 可以直接安装 APK，也可以从 [RuStore](https://www.rustore.ru/catalog/app/io.consolecrypt.consolecrypt) 下载。发行文件中还包含商店专用的 APK 和 AAB。 |
 | iOS Simulator | 在安装了 Xcode 的 Mac 上解压通用 ZIP。此包仅供模拟器使用。 |
 
-下载后，计算文件的 SHA-256 校验值，并与清单中同名文件的值进行比对。 [1.2.3 版 SHA-256 校验清单](https://github.com/evsikovas/consolecrypt-client/releases/download/v1.2.3/SHA256SUMS-1.2.3.txt)。
+下载后，计算文件的 SHA-256 校验值，并与清单中同名文件的值进行比对。 [1.2.5 版 SHA-256 校验清单](https://github.com/evsikovas/consolecrypt-client/releases/download/v1.2.5/SHA256SUMS-1.2.5.txt)。
 
 ## 首次连接
 

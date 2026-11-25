@@ -8,11 +8,11 @@ ConsoleCrypt es un cliente de código abierto para administrar servidores. Desde
 
 ![Sesión SSH con un panel que muestra el uso de CPU y memoria y el tráfico de red. El servidor contiene datos de ejemplo.](https://raw.githubusercontent.com/evsikovas/consolecrypt-docs/main/assets/guide/terminal-ssh-metrics-es.png)
 
-## Novedades de la versión 1.2.3
+## Novedades de la versión 1.2.5
 
-Los detalles del host se abren debajo de la lista. En KeePass, los grupos, las entradas y sus campos se muestran en paneles independientes. En Docker puedes arrastrar el separador para ampliar los detalles del contenedor o eliminar un proyecto entero de Compose y elegir qué recursos borrar. Los túneles SSH y los reenvíos de puertos de Docker y Kubernetes tienen listas separadas. La pantalla de sincronización muestra los cambios pendientes de envío.
+Consulta el tráfico entre dos hosts con TCPdump y examina cada paquete. Gestiona sesiones tmux, busca texto y elige indicadores del servidor desde el terminal SSH. Compila y publica imágenes amd64 y arm64 para Kubernetes desde un equipo o un host SSH. En ventanas anchas de Android aparecen la navegación lateral y los paneles de trabajo.
 
-[Notas de la versión 1.2.3](docs/public/RELEASE_1_2_3.md#español) · [Historial de versiones](https://github.com/evsikovas/consolecrypt-client/releases)
+[Notas de la versión 1.2.5](docs/public/RELEASE_1_2_5.md#español) · [Historial de versiones](https://github.com/evsikovas/consolecrypt-client/releases)
 
 ## Instalación
 
@@ -24,7 +24,7 @@ Los detalles del host se abren debajo de la lista. En KeePass, los grupos, las e
 | Android 11 o posterior · ARM64 | Instala el APK directamente o descarga la aplicación desde [RuStore](https://www.rustore.ru/catalog/app/io.consolecrypt.consolecrypt). La versión también incluye un APK y un AAB específicos para la tienda. |
 | iOS Simulator | Extrae el ZIP universal en un Mac con Xcode. Este paquete se ejecuta solo en el simulador. |
 
-Para verificar la descarga, compara la suma SHA-256 del archivo con la que aparece junto a su nombre. [Sumas SHA-256 de la versión 1.2.3](https://github.com/evsikovas/consolecrypt-client/releases/download/v1.2.3/SHA256SUMS-1.2.3.txt).
+Para verificar la descarga, compara la suma SHA-256 del archivo con la que aparece junto a su nombre. [Sumas SHA-256 de la versión 1.2.5](https://github.com/evsikovas/consolecrypt-client/releases/download/v1.2.5/SHA256SUMS-1.2.5.txt).
 
 ## Primera conexión
 
