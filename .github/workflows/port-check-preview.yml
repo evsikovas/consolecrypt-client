@@ -13,7 +13,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 240
     env:
-      CC_BUILD_NUMBER: '93020'
+      CC_BUILD_NUMBER: '93021'
       CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
       CARGO_BUILD_JOBS: '3'
     steps:
@@ -74,5 +74,5 @@ jobs:
           retention-days: 7
           compression-level: 0
           path: |
-            dist/macos/ConsoleCrypt-1.2.5+93020-macos-universal.dmg
+            dist/macos/ConsoleCrypt-1.2.5+93021-macos-universal.dmg
             dist/macos/SHA256SUMS-macos.txt

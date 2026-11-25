@@ -10533,8 +10533,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dockerNoVolumes => 'No hay volúmenes en este motor.';
 
   @override
+  String get workspaceForwardsEmptyTitle => 'No hay redirecciones de puertos activas';
+
+  @override
   String get workspaceForwardsEmptyHelp =>
-      'Avanzar un puerto de una cápsula Kubernetes o un contenedor Docker; correr hacia adelante se muestran aquí.';
+      'Para redirigir un puerto, abre un pod de Kubernetes o un contenedor de Docker.';
 
   @override
   String shellAiDeviceIdle(String model) {

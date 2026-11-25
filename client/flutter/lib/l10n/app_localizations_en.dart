@@ -10,7 +10,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get systemdTitle => 'System services';
+  String get systemdTitle => 'systemd services';
 
   @override
   String get systemdSearch => 'Find a service';
@@ -10444,8 +10444,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dockerNoVolumes => 'No volumes on this engine.';
 
   @override
-  String get workspaceForwardsEmptyHelp =>
-      'Forward a port from a Kubernetes pod or a Docker container; running forwards show here.';
+  String get workspaceForwardsEmptyTitle => 'No active port forwards';
+
+  @override
+  String get workspaceForwardsEmptyHelp => 'To forward a port, open a Kubernetes pod or a Docker container.';
 
   @override
   String shellAiDeviceIdle(String model) {

@@ -1,32 +1,52 @@
+import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/app/router.dart';
+import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/hosts/systemd_services.dart';
+import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart' show Size;
+import 'package:material_ui/material_ui.dart';
 
 import '../helpers/test_app.dart';
 
 void main() {
-  testWidgets('compact host card opens services and explains when systemd is unavailable', (tester) async {
+  testWidgets('SSH session tools follow the selected host and explain when systemd is unavailable', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
     await pumpApp(
       tester,
       backend,
-      size: const Size(390, 800),
+      size: AppPlatform.isMobile ? const Size(390, 800) : const Size(1440, 900),
       overrides: [
-        systemdRequestProvider.overrideWithValue((_, operation) async {
+        systemdRequestProvider.overrideWithValue((host, operation) async {
           expect(operation, {'action': 'list'});
+          if (host.name == 'raspberry-pi') {
+            return {'status': 0, 'output': 'pi.service loaded active running Pi', 'diagnostic': ''};
+          }
           return {'status': 69, 'output': '', 'diagnostic': ''};
         }),
       ],
     );
     await enterKey(tester, 'hosts-search', 'prod-web');
-    await tapKey(tester, 'host-menu-prod-web-1');
-    await tester.tap(find.text('System services'));
-    await settle(tester);
+    final entry = AppPlatform.isMobile ? 'terminal-tool-systemd' : 'nav-systemd';
+    expect(find.byKey(ValueKey(entry)), findsNothing);
+    await tapKey(tester, 'connect-prod-web-1');
+    await tapKey(tester, entry);
     expect(find.text('This host does not have a running systemd system manager.'), findsOneWidget);
     expect(find.text('Restart'), findsNothing);
-  });
+    final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final tabs = container.read(terminalTabsProvider.notifier);
+    await tabs.open(backend.inventory.currentHosts.firstWhere((h) => h.name == 'raspberry-pi'));
+    await settle(tester);
+    expect(find.text('pi.service'), findsOneWidget);
+    expect(find.text('This host does not have a running systemd system manager.'), findsNothing);
+    container.read(routerProvider).go(AppRoutes.hosts);
+    await settle(tester);
+    expect(container.read(workspaceToolsProvider).selected, isNull);
+    expect(find.byType(SystemServicesPanel), findsNothing);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.android, TargetPlatform.iOS}));
 
   testWidgets('host services open the selected journal and restart only after confirmation', (tester) async {
     final backend = testBackend();
@@ -52,8 +72,8 @@ void main() {
       ],
     );
     await enterKey(tester, 'hosts-search', 'prod-web');
-    await tapKey(tester, 'inspect-prod-web-1');
-    await tapKey(tester, 'host-inspector-systemd');
+    await tapKey(tester, 'connect-prod-web-1');
+    await tapKey(tester, 'nav-systemd');
     await tester.tap(find.text('demo.service'));
     await settle(tester);
     expect(find.text('log entry #1'), findsOneWidget);
@@ -76,5 +96,5 @@ void main() {
     });
     expect(find.text('Service restarted.'), findsOneWidget);
     expect(find.text('log entry #2'), findsOneWidget);
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 }

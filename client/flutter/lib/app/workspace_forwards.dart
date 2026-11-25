@@ -39,7 +39,7 @@ class WorkspaceForwardsPanel extends ConsumerWidget {
         if (kube.isEmpty && dockerForwards.isEmpty)
           EmptyState(
             icon: Icons.swap_horiz_rounded,
-            title: l.kubeNoForwards,
+            title: l.workspaceForwardsEmptyTitle,
             message: l.workspaceForwardsEmptyHelp,
             compact: true,
           ),

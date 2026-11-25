@@ -27,9 +27,6 @@ final systemdRequestProvider = Provider<SystemdRequest>(
       ),
 );
 
-Future<void> openSystemServices(BuildContext context, Host host) =>
-    showAppDialog<void>(context, builder: (_) => _SystemServices(host: host));
-
 typedef _Unit = ({String name, String state, String description});
 final _unitLine = RegExp(r'^(\S+\.service)\s+\S+\s+(\S+)\s+(\S+)(?:\s+(.*))?$');
 
@@ -47,15 +44,15 @@ String? _failure(AppLocalizations l, Json reply, {bool listing = false}) {
   return diagnostic.isEmpty ? l.systemdFailure : [l.systemdFailure, diagnostic].join('\n');
 }
 
-class _SystemServices extends ConsumerStatefulWidget {
-  const _SystemServices({required this.host});
+class SystemServicesPanel extends ConsumerStatefulWidget {
+  const SystemServicesPanel({required this.host, super.key});
   final Host host;
 
   @override
-  ConsumerState<_SystemServices> createState() => _SystemServicesState();
+  ConsumerState<SystemServicesPanel> createState() => _SystemServicesState();
 }
 
-class _SystemServicesState extends ConsumerState<_SystemServices> {
+class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
   final search = TextEditingController();
   late final profile = ref.read(activeProfileProvider)?.id;
   late Future<Json> services;
@@ -145,116 +142,116 @@ class _SystemServicesState extends ConsumerState<_SystemServices> {
       return const SizedBox.shrink();
     }
     final unit = selected;
-    return GlassDialog(
-      title: [l.systemdTitle, widget.host.name].join(' · '),
-      width: 760,
-      primaryAction: GlassButton(label: l.commonClose, onPressed: () => closeDialog<void>(context)),
-      content: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .58,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                if (unit != null)
-                  GlassIconButton(
-                    tooltip: l.commonBack,
-                    icon: Icons.arrow_back_rounded,
-                    onPressed: restarting
-                        ? null
-                        : () => setState(() {
-                            selected = null;
-                            journal = null;
-                            notice = null;
-                          }),
-                  ),
-                Expanded(
-                  child: unit == null
-                      ? GlassField(
-                          controller: search,
-                          search: true,
-                          placeholder: l.systemdSearch,
-                          onChanged: (_) => setState(() {}),
-                        )
-                      : SelectableText(unit.name, style: t.typography.bodyEmph),
-                ),
+    return Padding(
+      padding: const EdgeInsets.all(GlassSpacing.s12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(widget.host.name, style: t.typography.bodyEmph),
+          const SizedBox(height: GlassSpacing.s8),
+          Row(
+            children: [
+              if (unit != null)
                 GlassIconButton(
-                  tooltip: l.devicesRefresh,
-                  icon: Icons.refresh_rounded,
-                  onPressed: restarting ? null : refresh,
+                  tooltip: l.commonBack,
+                  icon: Icons.arrow_back_rounded,
+                  onPressed: restarting
+                      ? null
+                      : () => setState(() {
+                          selected = null;
+                          journal = null;
+                          notice = null;
+                        }),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: FutureBuilder<Json>(
-                future: services,
-                builder: (context, snapshot) {
-                  final failure = snapshot.hasError
-                      ? errorMessage(l, snapshot.error!)
-                      : snapshot.hasData
-                      ? _failure(l, snapshot.requireData, listing: true)
-                      : null;
-                  final units = snapshot.hasData
-                      ? _units(snapshot.requireData['output'] as String? ?? '')
-                      : const <_Unit>[];
-                  if (unit != null) {
-                    final latest = units.where((u) => u.name == unit.name).firstOrNull;
-                    return ListView(
-                      primary: false,
-                      children: [
-                        if (latest != null) ...[
-                          if (latest.description.isNotEmpty) Text(latest.description),
-                          Text(latest.state, style: t.typography.caption),
-                        ],
-                        if (failure != null) SelectableText(failure),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: GlassButton(
-                            icon: Icons.restart_alt_rounded,
-                            label: l.dockerActionRestart,
-                            onPressed: restarting || latest == null ? null : () => restart(unit),
-                          ),
-                        ),
-                        if (restarting) const LinearProgressIndicator(),
-                        if (notice case final message?) SelectableText(message),
-                        const Divider(height: 24),
-                        Text(l.systemdJournal, style: t.typography.bodyEmph),
-                        const SizedBox(height: 8),
-                        FutureBuilder<Json>(
-                          future: journal,
-                          builder: (context, logs) {
-                            if (logs.connectionState != ConnectionState.done) return const LinearProgressIndicator();
-                            if (logs.hasError) return SelectableText(errorMessage(l, logs.error!));
-                            final reply = logs.requireData;
-                            final error = _failure(l, reply);
-                            if (error != null) return SelectableText(error);
-                            final output = (reply['output'] as String).trimRight();
-                            final hint = (reply['diagnostic'] as String? ?? '').trim();
-                            return SelectableText(
-                              [
-                                if (hint.isNotEmpty) hint,
-                                output.isEmpty || output == '-- No entries --' ? l.systemdNoEntries : output,
-                              ].join('\n'),
-                              style: t.typography.callout.copyWith(fontFamily: 'monospace'),
-                            );
-                          },
-                        ),
+              Expanded(
+                child: unit == null
+                    ? GlassField(
+                        controller: search,
+                        search: true,
+                        placeholder: l.systemdSearch,
+                        onChanged: (_) => setState(() {}),
+                      )
+                    : SelectableText(unit.name, style: t.typography.bodyEmph),
+              ),
+              GlassIconButton(
+                tooltip: l.devicesRefresh,
+                icon: Icons.refresh_rounded,
+                onPressed: restarting ? null : refresh,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: FutureBuilder<Json>(
+              future: services,
+              builder: (context, snapshot) {
+                final failure = snapshot.hasError
+                    ? errorMessage(l, snapshot.error!)
+                    : snapshot.hasData
+                    ? _failure(l, snapshot.requireData, listing: true)
+                    : null;
+                final units = snapshot.hasData
+                    ? _units(snapshot.requireData['output'] as String? ?? '')
+                    : const <_Unit>[];
+                if (unit != null) {
+                  final latest = units.where((u) => u.name == unit.name).firstOrNull;
+                  return ListView(
+                    primary: false,
+                    children: [
+                      if (latest != null) ...[
+                        if (latest.description.isNotEmpty) Text(latest.description),
+                        Text(latest.state, style: t.typography.caption),
                       ],
-                    );
-                  }
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (failure != null) return SingleChildScrollView(child: SelectableText(failure));
-                  final query = search.text.trim().toLowerCase();
-                  final filtered = units
-                      .where((u) => [u.name, u.description].any((s) => s.toLowerCase().contains(query)))
-                      .toList();
-                  if (filtered.isEmpty) return Center(child: Text(l.systemdEmpty));
-                  return ListView.builder(
-                    key: const PageStorageKey('systemd-list'),
+                      if (failure != null) SelectableText(failure),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: GlassButton(
+                          icon: Icons.restart_alt_rounded,
+                          label: l.dockerActionRestart,
+                          onPressed: restarting || latest == null ? null : () => restart(unit),
+                        ),
+                      ),
+                      if (restarting) const LinearProgressIndicator(),
+                      if (notice case final message?) SelectableText(message),
+                      const Divider(height: 24),
+                      Text(l.systemdJournal, style: t.typography.bodyEmph),
+                      const SizedBox(height: 8),
+                      FutureBuilder<Json>(
+                        future: journal,
+                        builder: (context, logs) {
+                          if (logs.connectionState != ConnectionState.done) return const LinearProgressIndicator();
+                          if (logs.hasError) return SelectableText(errorMessage(l, logs.error!));
+                          final reply = logs.requireData;
+                          final error = _failure(l, reply);
+                          if (error != null) return SelectableText(error);
+                          final output = (reply['output'] as String).trimRight();
+                          final hint = (reply['diagnostic'] as String? ?? '').trim();
+                          return SelectableText(
+                            [
+                              if (hint.isNotEmpty) hint,
+                              output.isEmpty || output == '-- No entries --' ? l.systemdNoEntries : output,
+                            ].join('\n'),
+                            style: t.typography.callout.copyWith(fontFamily: 'monospace'),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                }
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (failure != null) return SingleChildScrollView(child: SelectableText(failure));
+                final query = search.text.trim().toLowerCase();
+                final filtered = units
+                    .where((u) => [u.name, u.description].any((s) => s.toLowerCase().contains(query)))
+                    .toList();
+                if (filtered.isEmpty) return Center(child: Text(l.systemdEmpty));
+                return Material(
+                  type: MaterialType.transparency,
+                  child: ListView.builder(
+                    key: PageStorageKey(('systemd-list', widget.host.id)),
                     primary: false,
                     itemCount: filtered.length,
                     itemBuilder: (_, index) {
@@ -266,12 +263,12 @@ class _SystemServicesState extends ConsumerState<_SystemServices> {
                         onTap: () => open(u),
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

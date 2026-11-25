@@ -10669,8 +10669,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dockerNoVolumes => 'Томов на этом движке нет.';
 
   @override
-  String get workspaceForwardsEmptyHelp =>
-      'Пробросьте порт пода Kubernetes или контейнера Docker — активные пробросы появятся здесь.';
+  String get workspaceForwardsEmptyTitle => 'Нет активных пробросов портов';
+
+  @override
+  String get workspaceForwardsEmptyHelp => 'Чтобы пробросить порт, откройте под Kubernetes или контейнер Docker.';
 
   @override
   String shellAiDeviceIdle(String model) {

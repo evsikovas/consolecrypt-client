@@ -6,7 +6,7 @@ import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/sidebar_state.dart';
 import 'package:consolecrypt/app/theme.dart';
-import 'package:consolecrypt/app/workspace_tools.dart' show MobileSessionActions;
+import 'package:consolecrypt/app/workspace_tools.dart' show MobileSessionActions, SessionToolButton;
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -579,7 +579,10 @@ class _SessionToolbar extends ConsumerWidget {
         if (AppPlatform.isAndroid && !AppWindowLayout.isPhone(context)) const _TerminalKeyboardButton(),
         TerminalEncodingButton(tab: tab),
         if (minimal) _MinimalTerminalMenu(tab: tab),
-        if (minimal && ref.watch(activeSshTerminalProvider) != null) const _ServerMetricsButton(),
+        if (minimal && ref.watch(activeSshTerminalProvider) != null) ...[
+          const _ServerMetricsButton(),
+          const SessionToolButton(tool: WorkspaceTool.systemd, inTerminal: true),
+        ],
         if (!minimal) ...[
           GlassIconButton(
             key: const ValueKey('terminal-snippets'),

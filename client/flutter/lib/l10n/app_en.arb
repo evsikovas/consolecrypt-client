@@ -1,5 +1,5 @@
 {
-  "systemdTitle": "System services",
+  "systemdTitle": "systemd services",
   "systemdSearch": "Find a service",
   "systemdEmpty": "No matching services",
   "systemdJournal": "Journal · last 200 entries",
@@ -13589,7 +13589,11 @@
   "@dockerNoVolumes": {
     "description": "Empty volumes view."
   },
-  "workspaceForwardsEmptyHelp": "Forward a port from a Kubernetes pod or a Docker container; running forwards show here.",
+  "workspaceForwardsEmptyTitle": "No active port forwards",
+  "@workspaceForwardsEmptyTitle": {
+    "description": "Empty title for port forwards across all supported sources."
+  },
+  "workspaceForwardsEmptyHelp": "To forward a port, open a Kubernetes pod or a Docker container.",
   "@workspaceForwardsEmptyHelp": {
     "description": "Empty shared port-forwards panel."
   },

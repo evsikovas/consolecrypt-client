@@ -10083,7 +10083,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dockerNoVolumes => '引擎上没有卷';
 
   @override
-  String get workspaceForwardsEmptyHelp => '从一个Kubernetes吊舱或一个Docker容器前移一个端口;运行前移显示在此.';
+  String get workspaceForwardsEmptyTitle => '没有活动的端口转发';
+
+  @override
+  String get workspaceForwardsEmptyHelp => '要转发端口，请打开 Kubernetes Pod 或 Docker 容器。';
 
   @override
   String shellAiDeviceIdle(String model) {

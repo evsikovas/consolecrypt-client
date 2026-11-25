@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
+import 'package:consolecrypt/hosts/systemd_services.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_host.dart';
 import 'package:consolecrypt/kubernetes/kube_ai_panel.dart';
 import 'package:consolecrypt/kubernetes/kube_forward_panel.dart';
@@ -27,7 +28,13 @@ import 'package:material_ui/material_ui.dart';
 
 List<WorkspaceTool> get _generalTools => [
   for (final tool in WorkspaceTool.values)
-    if (!const {WorkspaceTool.server, WorkspaceTool.docker, WorkspaceTool.tmux, WorkspaceTool.history}.contains(tool) &&
+    if (!const {
+          WorkspaceTool.server,
+          WorkspaceTool.systemd,
+          WorkspaceTool.docker,
+          WorkspaceTool.tmux,
+          WorkspaceTool.history,
+        }.contains(tool) &&
         (tool != WorkspaceTool.forwards || kubernetesEnabled || dockerEnabled))
       tool,
 ];
@@ -38,6 +45,7 @@ String workspaceToolLabel(AppLocalizations l, WorkspaceTool tool) => switch (too
   WorkspaceTool.ai => l.navAiChat,
   WorkspaceTool.forwards => l.navPortForwards,
   WorkspaceTool.server => l.hostMetricsTitle,
+  WorkspaceTool.systemd => l.systemdTitle,
   WorkspaceTool.history => l.settingsCommandHistoryLabel,
   WorkspaceTool.docker => l.dockerTitle,
   WorkspaceTool.tmux => l.tmuxTitle,
@@ -49,7 +57,7 @@ List<WorkspaceTool> _sessionTools(WidgetRef ref) {
     if (ref.watch(terminalTabsProvider).active?.hasCommandHistory == true) WorkspaceTool.history,
     if (tab != null && dockerEnabled && ref.watch(sessionHasDockerProvider(tab)).value == true) WorkspaceTool.docker,
     if (tab != null && ref.watch(tmuxVersionProvider(tab.tmuxParent ?? tab)).value != null) WorkspaceTool.tmux,
-    if (tab != null) WorkspaceTool.server,
+    if (tab != null) ...[WorkspaceTool.server, WorkspaceTool.systemd],
   ];
 }
 
@@ -61,13 +69,13 @@ class MobileSessionActions extends ConsumerWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       for (final tool in _sessionTools(ref))
-        if (tool != WorkspaceTool.server) _SessionToolButton(tool: tool, inTerminal: true),
+        if (tool != WorkspaceTool.server) SessionToolButton(tool: tool, inTerminal: true),
     ],
   );
 }
 
-class _SessionToolButton extends ConsumerWidget {
-  const _SessionToolButton({required this.tool, this.inTerminal = false});
+class SessionToolButton extends ConsumerWidget {
+  const SessionToolButton({required this.tool, this.inTerminal = false, super.key});
   final WorkspaceTool tool;
   final bool inTerminal;
 
@@ -79,6 +87,7 @@ class _SessionToolButton extends ConsumerWidget {
       WorkspaceTool.docker => ToolIcons.docker,
       WorkspaceTool.tmux => Icons.layers_outlined,
       WorkspaceTool.history => Icons.history_rounded,
+      WorkspaceTool.systemd => Icons.settings_applications_outlined,
       _ => Icons.show_chart_rounded,
     },
     tooltip: workspaceToolLabel(context.l10n, tool),
@@ -98,6 +107,7 @@ Widget _toolIcon(WorkspaceTool tool) => switch (tool) {
   WorkspaceTool.tmux => const Icon(Icons.layers_outlined, size: 18),
   WorkspaceTool.docker => const Icon(ToolIcons.docker, size: 18),
   WorkspaceTool.server => const Icon(Icons.show_chart_rounded, size: GlassSizes.iconToolbar),
+  WorkspaceTool.systemd => const Icon(Icons.settings_applications_outlined, size: GlassSizes.iconToolbar),
 };
 
 /// Small permanent rail on the right: helpers never replace the workspace.
@@ -130,7 +140,9 @@ class WorkspaceToolRail extends ConsumerWidget {
         tint: integrated ? GlassTokens.of(context).surfaces.contentSolid : null,
         shadows: !integrated,
         padding: const EdgeInsets.symmetric(horizontal: GlassSpacing.s2, vertical: GlassSpacing.s8),
-        child: Column(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          primary: false,
           children: [
             for (final tool in [..._generalTools, if (branch == ShellBranch.terminal) ..._sessionTools(ref)]) ...[
               GlassSidebarItem(
@@ -257,7 +269,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                             ),
                           ],
                           if (widget.integrated && !mobileTools)
-                            for (final tool in tools) _SessionToolButton(tool: tool),
+                            for (final tool in tools) SessionToolButton(tool: tool),
                           GlassIconButton(
                             key: const ValueKey('workspace-tools-close'),
                             icon: widget.integrated && !AppWindowLayout.isPhone(context)
@@ -273,7 +285,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                     if (mobileTools)
                       Wrap(
                         spacing: GlassSpacing.s4,
-                        children: [for (final tool in tools) _SessionToolButton(tool: tool)],
+                        children: [for (final tool in tools) SessionToolButton(tool: tool)],
                       ),
                     Expanded(
                       child: ColoredBox(
@@ -296,6 +308,7 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                                             WorkspaceTool.notes => NotesPanel(branch: widget.branch),
                                             WorkspaceTool.forwards => const WorkspaceForwardsPanel(),
                                             WorkspaceTool.server ||
+                                            WorkspaceTool.systemd ||
                                             WorkspaceTool.history ||
                                             WorkspaceTool.tmux ||
                                             WorkspaceTool.docker => const SizedBox.shrink(),
@@ -313,6 +326,8 @@ class _WorkspaceToolPanelState extends ConsumerState<WorkspaceToolPanel> {
                               ),
                             if (selected == WorkspaceTool.history && active != null && tools.contains(selected))
                               SessionHistoryPanel(key: ValueKey(active.sessionId), tab: active.tmuxParent ?? active),
+                            if (selected == WorkspaceTool.systemd && tab != null)
+                              SystemServicesPanel(key: ValueKey(tab.sessionId), host: tab.host!),
                             if (selected == WorkspaceTool.tmux && tab != null && tools.contains(selected))
                               TmuxPanel(
                                 key: ValueKey((tab.tmuxParent ?? tab).sessionId),

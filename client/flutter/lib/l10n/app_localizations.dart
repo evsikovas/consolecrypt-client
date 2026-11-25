@@ -97,7 +97,7 @@ abstract class AppLocalizations {
   /// Host action that opens systemd services
   ///
   /// In en, this message translates to:
-  /// **'System services'**
+  /// **'systemd services'**
   String get systemdTitle;
 
   /// Search field in the system service list
@@ -18856,10 +18856,16 @@ abstract class AppLocalizations {
   /// **'No volumes on this engine.'**
   String get dockerNoVolumes;
 
+  /// Empty title for port forwards across all supported sources.
+  ///
+  /// In en, this message translates to:
+  /// **'No active port forwards'**
+  String get workspaceForwardsEmptyTitle;
+
   /// Empty shared port-forwards panel.
   ///
   /// In en, this message translates to:
-  /// **'Forward a port from a Kubernetes pod or a Docker container; running forwards show here.'**
+  /// **'To forward a port, open a Kubernetes pod or a Docker container.'**
   String get workspaceForwardsEmptyHelp;
 
   /// Sidebar AI indicator tooltip for the built-in model state.

@@ -12,6 +12,16 @@ import 'package:xterm/xterm.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  testWidgets('shared port forwards use a source-neutral empty heading', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend, locale: AppLocale.ru);
+    await tapKey(tester, 'nav-forwards');
+    expect(find.text('Нет активных пробросов портов'), findsOneWidget);
+    expect(find.text('Чтобы пробросить порт, откройте под Kubernetes или контейнер Docker.'), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   for (final style in WorkspacePanelStyle.values) {
     testWidgets(
       '${style.name}: right tools preserve the terminal, chat draft and snippet search across toggles and resizing',
