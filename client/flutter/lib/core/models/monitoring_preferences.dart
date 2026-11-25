@@ -1,25 +1,38 @@
 /// Device-local dashboard selection. Only inventory IDs are persisted.
 final class MonitoringPreferences {
-  const MonitoringPreferences({this.hosts = const {}, this.groups = const {}, this.seconds = 30, this.percent = false});
+  const MonitoringPreferences({
+    this.hosts = const {},
+    this.groups = const {},
+    this.seconds = 30,
+    this.percent = false,
+    this.minimal = false,
+  });
 
   final Set<String> hosts, groups;
   static const intervals = [0, 15, 30, 60, 300];
   final int seconds;
-  final bool percent;
+  final bool percent, minimal;
 
-  MonitoringPreferences copyWith({Set<String>? hosts, Set<String>? groups, int? seconds, bool? percent}) =>
-      MonitoringPreferences(
-        hosts: hosts ?? this.hosts,
-        groups: groups ?? this.groups,
-        seconds: seconds ?? this.seconds,
-        percent: percent ?? this.percent,
-      );
+  MonitoringPreferences copyWith({
+    Set<String>? hosts,
+    Set<String>? groups,
+    int? seconds,
+    bool? percent,
+    bool? minimal,
+  }) => MonitoringPreferences(
+    hosts: hosts ?? this.hosts,
+    groups: groups ?? this.groups,
+    seconds: seconds ?? this.seconds,
+    percent: percent ?? this.percent,
+    minimal: minimal ?? this.minimal,
+  );
 
   Map<String, Object?> toJson() => {
     'hosts': hosts.toList(),
     'groups': groups.toList(),
     'seconds': seconds,
     'percent': percent,
+    'minimal': minimal,
   };
 
   static Map<String, MonitoringPreferences> profilesFromJson(Object? value) {
@@ -34,6 +47,7 @@ final class MonitoringPreferences {
                 groups: ids(fields['groups']),
                 seconds: intervals.contains(fields['seconds']) ? fields['seconds'] as int : 30,
                 percent: fields['percent'] == true,
+                minimal: fields['minimal'] == true,
               ),
     };
   }

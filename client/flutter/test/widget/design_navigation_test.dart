@@ -117,7 +117,7 @@ void main() {
     await tapKey(tester, 'settings-section-2');
     expect(find.text('Оформление').hitTestable(), findsNWidgets(2));
     await captureAutomationWorkspace(tester, 'design-settings-windows');
-    await tapKey(tester, 'settings-section-6');
+    await tapKey(tester, 'settings-section-7');
     expect(find.text('О программе').hitTestable(), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));

@@ -1,5 +1,9 @@
 import 'package:consolecrypt/automation/ansible_editor_folding.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:re_highlight/languages/all.dart';
+import 'package:re_highlight/re_highlight.dart';
+import 'package:re_highlight/styles/atom-one-dark.dart';
+import 'package:re_highlight/styles/atom-one-light.dart';
 
 enum AnsibleTokenKind {
   key,
@@ -227,11 +231,36 @@ TextSpan ansibleSyntaxSpan(String text, TextStyle? style, ColorScheme colors, {b
 class AnsibleSyntaxController extends TextEditingController {
   AnsibleSyntaxController({super.text});
   bool highlight = true;
+  String? language = 'yaml';
+  static final _grammars = Highlight()..registerLanguages(builtinAllLanguages);
+  (String, String, Brightness, TextStyle?)? _last;
+  TextSpan? _span;
+
+  @override
+  void dispose() {
+    _span = null;
+    _last = null;
+    super.dispose();
+  }
+
   @override
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
     if (withComposing && value.isComposingRangeValid && !value.composing.isCollapsed) {
       return super.buildTextSpan(context: context, style: style, withComposing: withComposing);
     }
-    return ansibleSyntaxSpan(text, style, Theme.of(context).colorScheme, enabled: highlight);
+    final lang = language, theme = Theme.of(context);
+    if (!highlight || lang == null || text.length > 200000) return TextSpan(text: text, style: style);
+    if (lang == 'yaml' || lang == 'jinja') return ansibleSyntaxSpan(text, style, theme.colorScheme);
+    final key = (text, lang, theme.brightness, style);
+    if (key != _last) {
+      final renderer = TextSpanRenderer(
+        style,
+        theme.brightness == Brightness.dark ? atomOneDarkTheme : atomOneLightTheme,
+      );
+      _grammars.highlight(code: text, language: lang).render(renderer);
+      _span = renderer.span;
+      _last = key;
+    }
+    return _span ?? TextSpan(text: text, style: style);
   }
 }

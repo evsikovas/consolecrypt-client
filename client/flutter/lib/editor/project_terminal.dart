@@ -1,7 +1,7 @@
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
-import 'package:consolecrypt/terminal/terminal_pane.dart';
+import 'package:consolecrypt/terminal/terminal_screen.dart' show TerminalSessionPane;
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:consolecrypt/terminal/terminal_target_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,8 +9,9 @@ import 'package:material_ui/material_ui.dart';
 
 /// Owns a separate tab controller so an editor PTY has exactly one terminal view.
 class ProjectTerminal extends ConsumerStatefulWidget {
-  const ProjectTerminal({required this.directory, required this.child, super.key});
+  const ProjectTerminal({required this.directory, required this.child, this.host, super.key});
   final String directory;
+  final Host? host;
   final Widget child;
   @override
   ConsumerState<ProjectTerminal> createState() => _ProjectTerminalState();
@@ -22,11 +23,22 @@ class _ProjectTerminalState extends ConsumerState<ProjectTerminal> {
     if (opening) return;
     setState(() => opening = true);
     try {
-      final target = await showTerminalTargetPicker(context, localOnly: true);
-      if (!mounted || target is! LocalTerminalTarget) return;
-      await ref
-          .read(terminalTabsProvider.notifier)
-          .openTarget(LocalTerminalTarget(target.profile, directory: widget.directory));
+      final tabs = ref.read(terminalTabsProvider.notifier), host = widget.host;
+      if (host == null) {
+        final target = await showTerminalTargetPicker(context, localOnly: true);
+        if (!mounted || target is! LocalTerminalTarget) return;
+        await tabs.openTarget(LocalTerminalTarget(target.profile, directory: widget.directory));
+      } else {
+        final directory = widget.directory;
+        // A terminal interprets control bytes as keys, even inside shell quotes.
+        if (!directory.startsWith('/') || RegExp(r'[\x00-\x1f\x7f-\x9f]').hasMatch(directory)) {
+          throw FormatException(context.l10n.editorOutside);
+        }
+        final tab = await tabs.openTarget(SshTerminalTarget(host));
+        if (!mounted) return;
+        final quoted = directory.replaceAll("'", "'\\''");
+        tabs.runInTab(tab, "cd '$quoted'");
+      }
       if (mounted) setState(() => visible = true);
     } catch (error) {
       if (mounted) showSnack(context, error.toString(), error: true);
@@ -73,7 +85,7 @@ class _ProjectTerminalState extends ConsumerState<ProjectTerminal> {
                                 },
                                 child: Text(
                                   tab.target.label,
-                                  style: TextStyle(fontWeight: selected == tab ? FontWeight.bold : FontWeight.normal),
+                                  style: TextStyle(fontWeight: selected == tab ? FontWeight.w600 : FontWeight.normal),
                                 ),
                               ),
                               IconButton(
@@ -103,9 +115,7 @@ class _ProjectTerminalState extends ConsumerState<ProjectTerminal> {
                 children: [
                   if (selected.message != null && !selected.isConnected)
                     Text(selected.message!, maxLines: 2, overflow: TextOverflow.ellipsis),
-                  Expanded(
-                    child: TerminalPane(key: ValueKey(selected.sessionId), tab: selected),
-                  ),
+                  Expanded(child: TerminalSessionPane(pane: selected, active: true)),
                 ],
               ),
             ),

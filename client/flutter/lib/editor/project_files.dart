@@ -6,13 +6,32 @@ import 'package:path/path.dart' as p;
 
 enum EditorIssue implements Exception { unsupported, changed, outside, gitMissing }
 
-const _limit = 4 * 1024 * 1024;
+const editorFileLimit = 4 * 1024 * 1024;
 
-class ProjectFiles {
-  ProjectFiles._(this.root);
+typedef ProjectEntry = ({String path, bool directory});
+
+abstract class ProjectFiles {
+  ProjectFiles(this.root, this.paths);
   final String root;
+  final p.Context paths;
+  static Future<LocalProjectFiles> open(String path) async =>
+      LocalProjectFiles(await Directory(path).resolveSymbolicLinks());
+  Future<List<ProjectEntry>> children(String path);
+  Future<String> createPath(String path);
+  Future<ProjectText> read(String path);
+  Future<ProjectText> save(ProjectText original, String text);
+  Future<ProjectBranches?> branches();
+  Future<void> close() async {}
+}
 
-  static Future<ProjectFiles> open(String path) async => ProjectFiles._(await Directory(path).resolveSymbolicLinks());
+class LocalProjectFiles extends ProjectFiles {
+  LocalProjectFiles(String root) : super(root, p.context);
+
+  @override
+  Future<ProjectBranches?> branches() => ProjectBranches.read(root);
+
+  @override
+  Future<String> createPath(String path) async => (await create(path)).path;
 
   Future<void> _check(String path) async {
     if (!p.equals(path, root) && !p.isWithin(root, path)) throw EditorIssue.outside;
@@ -20,7 +39,8 @@ class ProjectFiles {
     if (!p.equals(path, resolved)) throw EditorIssue.outside;
   }
 
-  Future<List<FileSystemEntity>> children(String path) async {
+  @override
+  Future<List<ProjectEntry>> children(String path) async {
     await _check(path);
     final entries = await Directory(path)
         .list(followLinks: false)
@@ -30,7 +50,7 @@ class ProjectFiles {
       if ((a is Directory) != (b is Directory)) return a is Directory ? -1 : 1;
       return p.basename(a.path).toLowerCase().compareTo(p.basename(b.path).toLowerCase());
     });
-    return entries;
+    return [for (final entry in entries) (path: entry.path, directory: entry is Directory)];
   }
 
   Future<File> create(String path) async {
@@ -39,28 +59,25 @@ class ProjectFiles {
     return File(path).create(exclusive: true);
   }
 
+  @override
   Future<ProjectText> read(String path) async {
     await _check(path);
     final handle = await File(path).open();
     late Uint8List bytes;
     try {
-      bytes = await handle.read(_limit + 1);
+      bytes = await handle.read(editorFileLimit + 1);
     } finally {
       await handle.close();
     }
-    if (bytes.length > _limit || bytes.contains(0)) throw EditorIssue.unsupported;
-    try {
-      return ProjectText(path, bytes, utf8.decode(bytes));
-    } on FormatException {
-      throw EditorIssue.unsupported;
-    }
+    return ProjectText.decode(path, bytes);
   }
 
+  @override
   Future<ProjectText> save(ProjectText original, String text) async {
     final file = File(original.path);
     await _check(file.path);
     final bytes = original.encode(text);
-    if (bytes.length > _limit) throw EditorIssue.unsupported;
+    if (bytes.length > editorFileLimit) throw EditorIssue.unsupported;
     final temporary = await file.parent.createTemp('.consolecrypt-editor-');
     try {
       final staged = await file.copy(p.join(temporary.path, 'content'));
@@ -76,6 +93,14 @@ class ProjectFiles {
 }
 
 class ProjectText {
+  factory ProjectText.decode(String path, Uint8List bytes) {
+    if (bytes.length > editorFileLimit || bytes.contains(0)) throw EditorIssue.unsupported;
+    try {
+      return ProjectText(path, bytes, utf8.decode(bytes));
+    } on FormatException {
+      throw EditorIssue.unsupported;
+    }
+  }
   ProjectText(this.path, this.bytes, this.original);
   final String path, original;
   final Uint8List bytes;
@@ -119,8 +144,12 @@ class ProjectBranches {
     final current = head.exitCode == 0
         ? head.stdout.toString().trim()
         : (await git(['rev-parse', '--short', 'HEAD'])).stdout.toString().trim();
+    return parse(current, const LineSplitter().convert(refs.stdout.toString()), symbolic: head.exitCode == 0);
+  }
+
+  static ProjectBranches parse(String current, Iterable<String> refs, {required bool symbolic}) {
     final local = <String>[], remote = <String>[];
-    for (final line in const LineSplitter().convert(refs.stdout.toString())) {
+    for (final line in refs) {
       final fields = line.split('\t');
       if (fields.length != 2 || fields[1].isNotEmpty) continue;
       final ref = fields.first;
@@ -128,7 +157,7 @@ class ProjectBranches {
       if (ref.startsWith('refs/remotes/')) remote.add(ref.substring('refs/remotes/'.length));
     }
     // A freshly initialized repository has a symbolic HEAD before its first commit.
-    if (head.exitCode == 0 && !local.contains(current)) local.add(current);
+    if (symbolic && !local.contains(current)) local.add(current);
     return ProjectBranches(current, local, remote);
   }
 }

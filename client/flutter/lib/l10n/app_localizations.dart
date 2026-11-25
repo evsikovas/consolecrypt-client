@@ -1330,6 +1330,42 @@ abstract class AppLocalizations {
   /// **'Check the saved SSH credentials for this host, then refresh.'**
   String get monitorAuthHint;
 
+  /// Short system disk usage label on a minimal monitoring card
+  ///
+  /// In en, this message translates to:
+  /// **'Disk'**
+  String get monitorDiskShort;
+
+  /// Monitoring toolbar tooltip to show only the essential host metrics
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to minimal view'**
+  String get monitorMinimal;
+
+  /// Monitoring toolbar tooltip to restore detailed host cards
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to detailed view'**
+  String get monitorDetailed;
+
+  /// Open SSH folder
+  ///
+  /// In en, this message translates to:
+  /// **'Open SSH folder'**
+  String get editorOpenSsh;
+
+  /// Project folder
+  ///
+  /// In en, this message translates to:
+  /// **'Project folder'**
+  String get editorProjectFolder;
+
+  /// Editor font preview
+  ///
+  /// In en, this message translates to:
+  /// **'Editor font preview'**
+  String get editorFontPreview;
+
   /// Local project editor: Editor
   ///
   /// In en, this message translates to:

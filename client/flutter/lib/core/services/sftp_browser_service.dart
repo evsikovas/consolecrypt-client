@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_browser.dart';
@@ -70,6 +71,10 @@ abstract interface class SftpBrowserService {
   /// (Quick Look). Never touches the local disk. Core: `SftpClient::download_to`
   /// with a bounded in-memory writer that stops after [maxBytes].
   Future<SftpPreview> readPreview(SftpSessionId session, String path, {int maxBytes = defaultPreviewBytes});
+
+  /// Compare the opened SHA-256 revision and atomically replace a regular text file.
+  Future<bool> saveEditorFile(SftpSessionId session, String path, String digest, Uint8List bytes);
+  Future<String?> editorGitRefs(SftpSessionId session, String directory);
 
   // Transfers --------------------------------------------------------------------
 
@@ -244,6 +249,12 @@ final class SftpBrowserFallback implements SftpBrowserService {
     String path, {
     int maxBytes = SftpBrowserService.defaultPreviewBytes,
   }) async => _unsupported('preview');
+
+  @override
+  Future<bool> saveEditorFile(SftpSessionId session, String path, String digest, Uint8List bytes) async =>
+      _unsupported('editor save');
+  @override
+  Future<String?> editorGitRefs(SftpSessionId session, String directory) async => _unsupported('Git');
 
   @override
   Future<List<TransferId>> uploadItems(SftpSessionId session, List<String> localPaths, String remoteDirectory) async =>

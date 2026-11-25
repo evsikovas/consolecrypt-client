@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 
 void main() {
   late Directory root;
-  late ProjectFiles project;
+  late LocalProjectFiles project;
   setUp(() async {
     root = await Directory.systemTemp.createTemp('consolecrypt editor ');
     project = await ProjectFiles.open(root.path);

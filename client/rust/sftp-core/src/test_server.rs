@@ -372,7 +372,9 @@ impl Handler for LocalFsServer {
     async fn realpath(&mut self, id: u32, path: String) -> Result<Name, Self::Error> {
         let p = self.resolve(&path)?;
         let rel = p.strip_prefix(&self.root).unwrap_or(Path::new(""));
-        let s = format!("/{}", rel.to_string_lossy());
+        // SFTP always returns slash-separated paths, including when hosted on Windows.
+        let parts: Vec<_> = rel.iter().map(|part| part.to_string_lossy()).collect();
+        let s = format!("/{}", parts.join("/"));
         Ok(Name {
             id,
             files: vec![File::dummy(s)],

@@ -697,6 +697,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get monitorAuthHint => 'Comprueba las credenciales SSH guardadas para este host y actualiza la tarjeta.';
 
   @override
+  String get monitorDiskShort => 'Disco';
+
+  @override
+  String get monitorMinimal => 'Cambiar a la vista mínima';
+
+  @override
+  String get monitorDetailed => 'Cambiar a la vista detallada';
+
+  @override
+  String get editorOpenSsh => 'Abrir carpeta por SSH';
+
+  @override
+  String get editorProjectFolder => 'Carpeta del proyecto';
+
+  @override
+  String get editorFontPreview => 'Vista previa de la fuente';
+
+  @override
   String get editorTitle => 'Editor';
 
   @override

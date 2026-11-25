@@ -36,6 +36,18 @@ Future<void> sftpCreateFile({required String sftpId, required String path}) =>
 Future<void> sftpDuplicate({required String sftpId, required String from, required String to}) =>
     RustLib.instance.api.crateApiSftpSftpDuplicate(sftpId: sftpId, from: from, to: to);
 
+/// Replace the editor's text only while the opened revision still matches.
+Future<bool> sftpEditorSave({
+  required String sftpId,
+  required String path,
+  required String digest,
+  required List<int> data,
+}) => RustLib.instance.api.crateApiSftpSftpEditorSave(sftpId: sftpId, path: path, digest: digest, data: data);
+
+/// Read branch metadata through the SSH connection that owns this SFTP session.
+Future<String?> sftpEditorGit({required String sftpId, required String directory}) =>
+    RustLib.instance.api.crateApiSftpSftpEditorGit(sftpId: sftpId, directory: directory);
+
 /// At most `max_bytes` (≤ 8 MiB) from the start of a regular file.
 Future<SftpPreview> sftpReadPreview({required String sftpId, required String path, required int maxBytes}) =>
     RustLib.instance.api.crateApiSftpSftpReadPreview(sftpId: sftpId, path: path, maxBytes: maxBytes);

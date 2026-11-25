@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:consolecrypt/automation/ansible_editor_controller.dart';
-import 'package:consolecrypt/automation/ansible_editor_folding.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -29,10 +29,20 @@ class AnsibleCodeEditor extends StatefulWidget {
     this.focusNode,
     this.foldTooltip,
     this.limitMessage,
+    this.fontSize,
+    this.fontFamily,
+    this.fontFallback,
+    this.onZoom,
+    this.maxBytes = 1024 * 1024,
   });
   final TextEditingController controller;
   final bool readOnly, showLineNumbers, enableFolding, highlightSyntax;
   final String? path, limitMessage;
+  final double? fontSize;
+  final String? fontFamily;
+  final List<String>? fontFallback;
+  final ValueChanged<double>? onZoom;
+  final int maxBytes;
   final Key fieldKey;
   final FocusNode? focusNode;
   final AnsibleEditorViewController? viewController;
@@ -47,7 +57,8 @@ class AnsibleCodeEditor extends StatefulWidget {
 }
 
 class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
-  double fontSize = 13;
+  double standaloneSize = 13;
+  double get fontSize => widget.fontSize ?? standaloneSize;
   late AnsibleEditorDocument document;
   final vertical = ScrollController(), horizontal = ScrollController();
   final ownFocus = FocusNode();
@@ -58,8 +69,12 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
   }
 
   void _create() {
-    document = AnsibleEditorDocument(widget.controller, readOnly: widget.readOnly, onChanged: widget.onChanged)
-      ..addListener(_changed);
+    document = AnsibleEditorDocument(
+      widget.controller,
+      maxBytes: widget.maxBytes,
+      readOnly: widget.readOnly,
+      onChanged: widget.onChanged,
+    )..addListener(_changed);
     widget.viewController?.attach(document);
   }
 
@@ -176,28 +191,46 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
     return AdaptiveTextSelectionToolbar.buttonItems(anchors: state.contextMenuAnchors, buttonItems: items);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final tokens = GlassTokens.of(context);
-    final style = tokens.typography.mono.copyWith(fontSize: fontSize, height: 1.5);
-    final lineHeight = MediaQuery.textScalerOf(context).scale(fontSize) * 1.5;
-    document.display.highlight = widget.highlightSyntax;
+  (String, TextStyle, TextScaler)? _measured;
+  double _width = 0;
+
+  double _textWidth(TextStyle style, TextScaler scaler) {
+    final text = document.display.text;
+    final measurement = (text, style, scaler);
+    if (measurement == _measured) return _width;
     final double contentWidth;
-    if (document.display.text.length > 200000) {
+    if (text.length > 200000) {
       // Avoid a second paragraph layout for the large-file plain-text path.
       // Conservative width prevents wrapping; EditableText owns actual layout.
-      final longest = ansibleSourceLines(document.display.text)
-          .fold<int>(0, (max, line) => math.max(max, line.text.length));
-      contentWidth = longest * MediaQuery.textScalerOf(context).scale(fontSize) * 1.2 + 32;
+      final longest = document.projection.sourceLines.fold<int>(0, (max, line) => math.max(max, line.text.length));
+      contentWidth = longest * scaler.scale(fontSize) * 1.2 + 32;
     } else {
       final metrics = TextPainter(
-        text: TextSpan(text: document.display.text, style: style),
+        text: TextSpan(text: text, style: style),
         textDirection: TextDirection.ltr,
-        textScaler: MediaQuery.textScalerOf(context),
+        textScaler: scaler,
       )..layout();
       contentWidth = metrics.width + 32;
       metrics.dispose();
     }
+    _measured = measurement;
+    return _width = contentWidth;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = GlassTokens.of(context);
+    final style = tokens.typography.mono.copyWith(
+      fontSize: fontSize,
+      fontFamily: widget.fontFamily,
+      fontFamilyFallback: widget.fontFallback,
+      height: 1.5,
+    );
+    final lineHeight = MediaQuery.textScalerOf(context).scale(fontSize) * 1.5;
+    document.display
+      ..highlight = widget.highlightSyntax
+      ..language = widget.path == null ? 'yaml' : editorLanguage(widget.path!);
+    final contentWidth = _textWidth(style, MediaQuery.textScalerOf(context));
     final digits = math.max(2, '${document.projection.sourceLines.length}'.length);
     final gutterWidth =
         (widget.showLineNumbers ? digits * MediaQuery.textScalerOf(context).scale(fontSize) * .75 + 12 : 0) +
@@ -206,7 +239,11 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
       _EditorZoomIntent: CallbackAction<_EditorZoomIntent>(
         onInvoke: (intent) {
           final next = (fontSize + intent.delta).clamp(8.0, 32.0);
-          if (next != fontSize) setState(() => fontSize = next);
+          if (widget.onZoom case final zoom?) {
+            zoom(intent.delta);
+          } else if (next != fontSize) {
+            setState(() => standaloneSize = next);
+          }
           return null;
         },
       ),
@@ -265,14 +302,29 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
                       if (gutterWidth > 0)
                         SizedBox(
                           width: gutterWidth.toDouble(),
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 8),
-                            child: Column(
-                              children: [
-                                for (var i = 0; i < document.projection.lineNumbers.length; i++)
-                                  _gutter(context, i, lineHeight, style),
-                              ],
-                            ),
+                          height: document.projection.lineNumbers.length * lineHeight + 16,
+                          child: AnimatedBuilder(
+                            animation: vertical,
+                            builder: (context, _) {
+                              final count = document.projection.lineNumbers.length;
+                              final offset = vertical.hasClients ? vertical.offset : 0.0;
+                              final first = ((offset - 8) / lineHeight).floor().clamp(0, count);
+                              final end = (first + (bounds.maxHeight / lineHeight).ceil() + 2).clamp(first, count);
+                              return Stack(
+                                children: [
+                                  Positioned(
+                                    top: 8 + first * lineHeight,
+                                    left: 0,
+                                    right: 0,
+                                    child: Column(
+                                      children: [
+                                        for (var i = first; i < end; i++) _gutter(context, i, lineHeight, style),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ),
                       Expanded(

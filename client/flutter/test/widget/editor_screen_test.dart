@@ -1,19 +1,62 @@
 import 'dart:io';
 
+import 'package:consolecrypt/automation/ansible_code_editor.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/editor_screen.dart';
+import 'package:consolecrypt/editor/ssh_folder_picker.dart';
+import 'package:consolecrypt/editor/workspace_code_editor.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
-import 'package:re_editor/re_editor.dart';
 
 import '../helpers/automation_ui_proof.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  testWidgets('opens a saved SSH host, saves a file and starts a terminal for its directory', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final host = backend.inventory.currentHosts.firstWhere((h) => h.name == 'prod-web-1');
+    await pumpApp(tester, backend);
+    await tapKey(tester, 'nav-editor');
+    await tester.tap(find.text('Open SSH folder'));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('host-picker')), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('host-picker-search')), host.name);
+    await settle(tester);
+    await tapKey(tester, 'pick-prod-web-1');
+    final picker = tester.widget<SshFolderPicker>(find.byType(SshFolderPicker));
+    await tester.tap(find.widgetWithText(FilledButton, 'Open'));
+    await settle(tester);
+    await tester.ensureVisible(find.text('notes.txt'));
+    await tester.tap(find.text('notes.txt'));
+    await settle(tester);
+    final field = find.byKey(ValueKey('${picker.home}/notes.txt'));
+    await tester.enterText(field, 'Changed on the server.');
+    await settle(tester);
+    final scope = find.byType(EditorScreen);
+    await tester.tap(find.descendant(of: scope, matching: find.byTooltip('Save')));
+    await settle(tester);
+    final saved = await backend.sftpBrowser.readPreview(picker.session, '${picker.home}/notes.txt');
+    expect(String.fromCharCodes(saved.bytes), 'Changed on the server.');
+    await tester.tap(find.descendant(of: scope, matching: find.text('Terminal')).last);
+    await settle(tester);
+    final trust = find.byKey(const ValueKey('accept-host-key'));
+    if (trust.evaluate().isNotEmpty) {
+      await tester.tap(trust);
+      await settle(tester);
+    }
+    final pane = tester.widget<TerminalPane>(find.descendant(of: scope, matching: find.byType(TerminalPane)));
+    expect((pane.tab.target as SshTerminalTarget).host.id, host.id);
+    expect(pane.tab.isConnected, isTrue);
+    expect(pane.tab.terminal.buffer.getText(), contains("cd '${picker.home}'"));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   testWidgets('Редактор opens a project, edits a tab and launches the selected shell below the file', (tester) async {
     final scratch = Directory.systemTemp.createTempSync('cc-editor-');
     final root = Directory(p.join(scratch.path, 'service-api'))..createSync();
@@ -55,10 +98,21 @@ void main() {
     await tester.tap(inside(find.text('Открыть папку')));
     await waitFor(() => inside(find.text('server.py')).evaluate().isNotEmpty);
     await tester.tap(inside(find.text('server.py')));
-    await waitFor(() => inside(find.byType(CodeEditor)).evaluate().isNotEmpty);
-    CodeEditor code() => tester.widget<CodeEditor>(inside(find.byType(CodeEditor)));
-    expect(code().style!.codeTheme!.languages, contains('python'));
-    code().controller!.text = 'def run(port):\n    return port + 1\n';
+    await waitFor(() => inside(find.byType(WorkspaceCodeEditor)).hitTestable().evaluate().isNotEmpty);
+    WorkspaceCodeEditor code() =>
+        tester.widget<WorkspaceCodeEditor>(inside(find.byType(WorkspaceCodeEditor)).hitTestable());
+    expect(editorLanguage(code().path!), 'python');
+    final surface = find
+        .descendant(of: inside(find.byType(AnsibleCodeEditor)), matching: find.byType(TextField))
+        .hitTestable();
+    await tester.tap(surface);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.equal);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    expect(settings.currentLocal.editorFontSize, 15);
+    expect(tester.widget<TextField>(surface).style!.fontSize, 15);
+    await tester.enterText(surface, 'def run(port):\n    return port + 1\n');
     await settle(tester);
     expect(inside(find.text('• server.py')), findsOneWidget);
     await tester.tap(inside(find.byTooltip('Сохранить')));
@@ -66,10 +120,10 @@ void main() {
     expect(file.readAsStringSync(), contains('port + 1'));
     await tester.tap(inside(find.text('config.yaml')));
     await waitFor(() => inside(find.text('config.yaml')).evaluate().length >= 2);
-    expect(code().style!.codeTheme!.languages, contains('yaml'));
+    expect(editorLanguage(code().path!), 'yaml');
     await tester.tap(inside(find.text('server.py')).last);
     await settle(tester);
-    expect(code().controller!.text, contains('port + 1'));
+    expect(code().controller.text, contains('port + 1'));
     await tester.tap(inside(find.text('Терминал')).last);
     await settle(tester);
     await tapKey(tester, 'pick-local-windows:cmd');
@@ -79,7 +133,7 @@ void main() {
     expect(parent.read(terminalTabsProvider).tabs, isEmpty);
     expect(
       tester.getTopLeft(inside(find.byType(TerminalPane))).dy,
-      greaterThanOrEqualTo(tester.getBottomLeft(inside(find.byType(CodeEditor))).dy),
+      greaterThanOrEqualTo(tester.getBottomLeft(inside(find.byType(WorkspaceCodeEditor)).hitTestable()).dy),
     );
     await waitFor(() => inside(find.text('main')).evaluate().isNotEmpty);
     for (var i = 0; i < 5; i++) {
@@ -92,14 +146,14 @@ void main() {
     expect(find.text('main'), findsNWidgets(2));
     await tester.tap(find.widgetWithText(TextButton, 'Закрыть'));
     await settle(tester);
-    code().controller!.text = 'unsaved edit';
+    await tester.enterText(surface, 'unsaved edit');
     await settle(tester);
     final tab = find.ancestor(of: inside(find.text('• server.py')), matching: find.byType(Row)).first;
     await tester.tap(find.descendant(of: tab, matching: find.byType(IconButton)).first);
     await settle(tester);
     expect(find.text('Несохранённые файлы'), findsOneWidget);
     await tapKey(tester, 'confirm-cancel');
-    expect(code().controller!.text, 'unsaved edit');
+    expect(code().controller.text, 'unsaved edit');
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 }

@@ -1,37 +1,38 @@
 import 'dart:async';
 
-import 'package:consolecrypt/app/platform.dart';
+import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/project_files.dart';
 import 'package:consolecrypt/editor/project_terminal.dart';
 import 'package:consolecrypt/editor/project_tree.dart';
+import 'package:consolecrypt/editor/ssh_folder_picker.dart';
+import 'package:consolecrypt/editor/ssh_project.dart';
+import 'package:consolecrypt/editor/workspace_code_editor.dart';
+import 'package:consolecrypt/hosts/host_picker.dart';
+import 'package:consolecrypt/sftp/sftp_providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:path/path.dart' as p;
-import 'package:re_editor/re_editor.dart';
-import 'package:re_highlight/languages/all.dart';
-import 'package:re_highlight/styles/atom-one-dark.dart';
-import 'package:re_highlight/styles/atom-one-light.dart';
 
 final editorFolderPickerProvider = Provider<Future<String?> Function()>((ref) => getDirectoryPath);
 
 class _Document {
-  _Document(this.source) : controller = CodeLineEditingController.fromText(source.text) {
-    saved = controller.codeLines;
-  }
+  _Document(this.source, this.name) : controller = TextEditingController(text: source.text), saved = source.text;
   ProjectText source;
-  final CodeLineEditingController controller;
-  late CodeLines saved;
+  final String name;
+  final TextEditingController controller;
+  String saved;
   bool dirty = false;
-  String get name => p.basename(source.path);
 }
 
 String _errorMessage(AppLocalizations l, Object error) => switch (error) {
+  AppException() => errorMessage(l, error),
   EditorIssue.changed => l.editorChanged,
   EditorIssue.unsupported => l.editorUnsupported,
   EditorIssue.gitMissing => l.editorNoGitTool,
@@ -82,7 +83,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   void _refresh() {
     setState(() {
       revision++;
-      branches = ProjectBranches.read(project!.root);
+      branches = project!.branches();
     });
   }
 
@@ -90,8 +91,40 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     final path = await ref.read(editorFolderPickerProvider)();
     if (!mounted || path == null) return;
     final next = await ProjectFiles.open(path);
-    if (!mounted || (project != null && p.equals(project!.root, next.root))) return;
-    if (!await _discard(documents.values) || !mounted) return;
+    await _switchProject(next);
+  });
+
+  Future<void> _remoteProject() => _run(() async {
+    final host = await showHostPicker(context, title: context.l10n.editorOpenSsh);
+    if (!mounted || host == null) return;
+    final sftp = ref.read(sftpServiceProvider), browser = ref.read(sftpBrowserServiceProvider);
+    final session = await sftp.connect(host.id);
+    var adopted = false;
+    try {
+      final home = await sftp.remoteHome(session);
+      if (!mounted) return;
+      final root = await showDialog<String>(
+        context: context,
+        builder: (_) => SshFolderPicker(host: host.name, home: home, session: session, browser: browser),
+      );
+      if (!mounted || root == null) return;
+      final next = SshProject(root, host, session, sftp, browser);
+      adopted = await _switchProject(next);
+    } finally {
+      if (!adopted) await sftp.disconnect(session);
+    }
+  });
+
+  Future<bool> _switchProject(ProjectFiles next) async {
+    final previous = project;
+    if (!mounted ||
+        previous != null &&
+            previous.runtimeType == next.runtimeType &&
+            next.paths.equals(previous.root, next.root) &&
+            (next is! SshProject || previous is SshProject && previous.host.id == next.host.id)) {
+      return false;
+    }
+    if (!await _discard(documents.values) || !mounted) return false;
     final old = documents.values.toList();
     setState(() {
       documents.clear();
@@ -105,10 +138,12 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
         doc.controller.dispose();
       }
     });
-  });
+    if (previous != null) unawaited(previous.close());
+    return true;
+  }
 
   Future<void> _open(String path) async {
-    final doc = documents[path] ?? _Document(await project!.read(path));
+    final doc = documents[path] ?? _Document(await project!.read(path), project!.paths.basename(path));
     if (!mounted) {
       if (!documents.containsKey(path)) doc.controller.dispose();
       return;
@@ -121,24 +156,34 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   }
 
   Future<void> _newFile() => _run(() async {
-    final location = await getSaveLocation(initialDirectory: project!.root);
-    if (!mounted || location == null) return;
-    final file = await project!.create(location.path);
+    final current = project!;
+    final String path;
+    if (current is SshProject) {
+      final name = await showTextInputDialog(context, title: context.l10n.editorNew, label: context.l10n.commonName);
+      if (!mounted || name == null) return;
+      if (name.isEmpty || name.contains('/') || name == '.' || name == '..') throw EditorIssue.outside;
+      path = current.paths.join(current.root, name);
+    } else {
+      final location = await getSaveLocation(initialDirectory: current.root);
+      if (!mounted || location == null) return;
+      path = location.path;
+    }
+    final file = await current.createPath(path);
     if (!mounted) return;
     _refresh();
-    await _open(file.path);
+    await _open(file);
   });
 
   Future<void> _save() => _run(() async {
     final doc = active;
     if (doc == null || !doc.dirty) return;
-    final lines = doc.controller.codeLines;
-    final result = await project!.save(doc.source, doc.controller.text);
+    final text = doc.controller.text;
+    final result = await project!.save(doc.source, text);
     if (!mounted) return;
     setState(() {
       doc.source = result;
-      doc.saved = lines;
-      doc.dirty = !doc.controller.codeLines.equals(lines);
+      doc.saved = text;
+      doc.dirty = doc.controller.text != text;
     });
   });
 
@@ -200,6 +245,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
   @override
   void dispose() {
+    final current = project;
+    if (current != null) unawaited(current.close());
     for (final doc in documents.values) {
       doc.controller.dispose();
     }
@@ -212,7 +259,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     final current = project;
     Widget choose() => TextButton.icon(
       onPressed: busy ? null : _project,
-      icon: const Icon(Icons.folder_open_outlined, size: 19),
+      icon: const Icon(Icons.folder_open_outlined, size: 18),
       label: Text(l.editorOpen),
     );
     if (current == null) {
@@ -225,8 +272,19 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             Text(l.editorTitle, style: theme.textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(l.editorStart),
-            const SizedBox(height: 14),
-            choose(),
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              children: [
+                choose(),
+                TextButton.icon(
+                  onPressed: busy ? null : _remoteProject,
+                  icon: const Icon(Icons.dns_outlined, size: 18),
+                  label: Text(l.editorOpenSsh),
+                ),
+              ],
+            ),
           ],
         ),
       );
@@ -235,7 +293,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       builder: (context, box) {
         final compact = box.maxWidth < 650;
         final tree = ProjectTree(
-          key: ValueKey(current.root),
+          key: ObjectKey(current),
           project: current,
           active: active?.source.path,
           revision: revision,
@@ -244,7 +302,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
         return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: Row(
                 children: [
                   if (compact)
@@ -255,7 +313,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                     ),
                   Expanded(
                     child: Text(
-                      l.editorTitle,
+                      current is SshProject ? current.host.name : l.editorTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium,
@@ -269,6 +327,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                       onPressed: busy ? null : _project,
                       icon: const Icon(Icons.folder_open_outlined),
                     ),
+                  IconButton(
+                    tooltip: l.editorOpenSsh,
+                    onPressed: busy ? null : _remoteProject,
+                    icon: const Icon(Icons.dns_outlined, size: 18),
+                  ),
                   IconButton(
                     tooltip: l.editorNew,
                     onPressed: busy ? null : _newFile,
@@ -300,9 +363,13 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                       fit: StackFit.expand,
                       children: [
                         ProviderScope(
-                          key: ValueKey(current.root),
+                          key: ObjectKey(current),
                           overrides: _terminalOverrides,
-                          child: ProjectTerminal(directory: current.root, child: _codeArea(l, theme)),
+                          child: ProjectTerminal(
+                            directory: current.root,
+                            host: current is SshProject ? current.host : null,
+                            child: _codeArea(l, theme),
+                          ),
                         ),
                         if (compact && showTree) Material(color: theme.colorScheme.surface, child: tree),
                       ],
@@ -313,12 +380,14 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             ),
             const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
                   Expanded(
                     child: Text(
-                      active == null ? p.basename(current.root) : p.relative(active!.source.path, from: current.root),
+                      active == null
+                          ? current.paths.basename(current.root)
+                          : current.paths.relative(active!.source.path, from: current.root),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -354,7 +423,6 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   Widget _codeArea(AppLocalizations l, ThemeData theme) {
     final doc = active;
     if (doc == null) return Center(child: Text(l.editorPick));
-    final lang = editorLanguage(doc.name), mode = builtinAllLanguages[lang];
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyS, control: true): _save,
@@ -363,13 +431,14 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       child: Column(
         children: [
           SizedBox(
-            height: 38,
+            height: 36,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
                 for (final item in documents.values)
                   DecoratedBox(
                     decoration: BoxDecoration(
+                      color: item == doc ? theme.colorScheme.surface : Colors.transparent,
                       border: Border(
                         bottom: BorderSide(
                           color: item == doc ? theme.colorScheme.primary : Colors.transparent,
@@ -380,6 +449,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                     child: Row(
                       children: [
                         TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: item == doc
+                                ? theme.colorScheme.onSurface
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
                           onPressed: () => setState(() => active = item),
                           child: Tooltip(message: item.source.path, child: Text((item.dirty ? '• ' : '') + item.name)),
                         ),
@@ -395,31 +469,28 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             ),
           ),
           Expanded(
-            child: CodeEditor(
-              key: ValueKey(doc.source.path),
-              controller: doc.controller,
-              wordWrap: false,
-              padding: const EdgeInsets.fromLTRB(8, 10, 12, 12),
-              style: CodeEditorStyle(
-                fontFamily: AppPlatform.monospaceFamily,
-                fontFamilyFallback: AppPlatform.monospaceFallback,
-                fontSize: 14,
-                fontHeight: 1.45,
-                textColor: theme.colorScheme.onSurface,
-                backgroundColor: theme.colorScheme.surface,
-                codeTheme: mode == null || lang == null
-                    ? null
-                    : CodeHighlightTheme(
-                        languages: {lang: CodeHighlightThemeMode(mode: mode)},
-                        theme: theme.brightness == Brightness.dark ? atomOneDarkTheme : atomOneLightTheme,
-                      ),
-              ),
-              indicatorBuilder: (context, controller, chunks, notifier) =>
-                  DefaultCodeLineNumber(controller: controller, notifier: notifier),
-              onChanged: (value) {
-                final dirty = !value.codeLines.equals(doc.saved);
-                if (dirty != doc.dirty) setState(() => doc.dirty = dirty);
-              },
+            child: IndexedStack(
+              index: documents.values.toList().indexOf(doc),
+              sizing: StackFit.expand,
+              children: [
+                for (final item in documents.values)
+                  WorkspaceCodeEditor(
+                    key: ObjectKey(item),
+                    fieldKey: ValueKey(item.source.path),
+                    path: item.name,
+                    controller: item.controller,
+                    maxBytes: editorFileLimit,
+                    limitMessage: l.editorUnsupported,
+                    onCopySelection: (value) async {
+                      await Clipboard.setData(ClipboardData(text: value));
+                      return true;
+                    },
+                    onChanged: (value) {
+                      final dirty = value != item.saved;
+                      if (dirty != item.dirty) setState(() => item.dirty = dirty);
+                    },
+                  ),
+              ],
             ),
           ),
         ],

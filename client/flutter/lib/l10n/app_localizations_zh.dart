@@ -679,6 +679,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get monitorAuthHint => '请检查此主机已保存的 SSH 凭据，然后刷新。';
 
   @override
+  String get monitorDiskShort => '磁盘';
+
+  @override
+  String get monitorMinimal => '切换到极简视图';
+
+  @override
+  String get monitorDetailed => '切换到详细视图';
+
+  @override
+  String get editorOpenSsh => '打开 SSH 文件夹';
+
+  @override
+  String get editorProjectFolder => '项目文件夹';
+
+  @override
+  String get editorFontPreview => '编辑器字体预览';
+
+  @override
   String get editorTitle => '编辑器';
 
   @override

@@ -21,6 +21,7 @@ import 'package:consolecrypt/settings/appearance_controls.dart';
 import 'package:consolecrypt/settings/cli_settings.dart';
 import 'package:consolecrypt/settings/clipboard_settings.dart';
 import 'package:consolecrypt/settings/device_unlock_settings.dart';
+import 'package:consolecrypt/settings/editor_settings.dart';
 import 'package:consolecrypt/settings/local_ai_settings.dart';
 import 'package:consolecrypt/settings/rdp_mobile_settings.dart';
 import 'package:consolecrypt/settings/screen_capture_settings.dart';
@@ -45,7 +46,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final List<GlobalKey> _anchors = List.generate(7, (_) => GlobalKey());
+  final List<GlobalKey> _anchors = List.generate(8, (_) => GlobalKey());
   int _selected = 0;
 
   void _goTo(int index) {
@@ -64,6 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       (l.settingsAppearanceTitle, Icons.palette_outlined),
       (l.settingsSecurityTitle, Icons.shield_outlined),
       (l.settingsTerminalTitle, Icons.terminal_rounded),
+      (l.editorTitle, Icons.code_rounded),
       (l.settingsShortcutsTitle, Icons.keyboard_outlined),
       (l.settingsAboutTitle, Icons.info_outline_rounded),
     ];
@@ -90,7 +92,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           gap,
           target(4, const _TerminalSection()),
           gap,
-          target(5, const ShortcutSettingsSection()),
+          target(5, const EditorSettingsSection()),
+          gap,
+          target(6, const ShortcutSettingsSection()),
           const SftpSettingsSection(),
           const RdpMobileSettingsSection(),
           gap,
@@ -98,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           gap,
           const UpdateSettingsSection(),
           gap,
-          target(6, const _AboutSection()),
+          target(7, const _AboutSection()),
         ],
       ),
     );
@@ -116,18 +120,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   width: 184,
                   child: ContentSurface(
                     padding: const EdgeInsets.all(GlassSpacing.s8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final (index, (label, icon)) in entries.indexed)
-                          GlassSidebarItem(
-                            key: ValueKey('settings-section-$index'),
-                            label: label,
-                            icon: icon,
-                            selected: _selected == index,
-                            onPressed: () => _goTo(index),
-                          ),
-                      ],
+                    child: SingleChildScrollView(
+                      primary: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final (index, (label, icon)) in entries.indexed)
+                            GlassSidebarItem(
+                              key: ValueKey('settings-section-$index'),
+                              label: label,
+                              icon: icon,
+                              selected: _selected == index,
+                              onPressed: () => _goTo(index),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

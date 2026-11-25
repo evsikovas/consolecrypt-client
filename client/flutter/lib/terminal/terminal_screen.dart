@@ -816,7 +816,7 @@ class _TerminalCard extends ConsumerWidget {
                 children: [
                   for (final tab in state.tabs)
                     tab.panes.isEmpty
-                        ? _PaneView(pane: tab, active: identical(tab, state.activeTab))
+                        ? TerminalSessionPane(pane: tab, active: identical(tab, state.activeTab))
                         : _SplitPanes(
                             key: ValueKey('terminal-split-${tab.sessionId.value}'),
                             tab: tab,
@@ -845,8 +845,8 @@ class _TerminalCard extends ConsumerWidget {
 
 /// One session with its connect-time prompt docked at the top (the
 /// unknown host key or the password); the prompt takes the keyboard.
-class _PaneView extends StatelessWidget {
-  const _PaneView({required this.pane, required this.active});
+class TerminalSessionPane extends StatelessWidget {
+  const TerminalSessionPane({required this.pane, required this.active, super.key});
 
   final TerminalTab pane;
   final bool active;
@@ -996,7 +996,7 @@ class _SplitPanes extends ConsumerWidget {
                       ),
                     ),
                     Expanded(
-                      child: _PaneView(pane: pane, active: current && focused),
+                      child: TerminalSessionPane(pane: pane, active: current && focused),
                     ),
                   ],
                 ),

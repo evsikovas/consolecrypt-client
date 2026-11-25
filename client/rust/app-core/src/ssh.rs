@@ -432,7 +432,7 @@ struct SftpEntry {
     /// Host the session is connected to (edit sessions, transfers).
     host_id: ObjectId,
     /// Keeps the shared SSH connection alive (`None` for test clients).
-    _session: Option<Arc<SshSession>>,
+    session: Option<Arc<SshSession>>,
 }
 
 /// A prepared interactive OpenSSH session (CLI): run `program args` with
@@ -454,6 +454,7 @@ pub(crate) struct SshRuntime {
     pub tunnels: Arc<TunnelManager>,
     pool: tokio::sync::Mutex<HashMap<ObjectId, (ConnectionPlan, Arc<SshSession>)>>,
     sftp: tokio::sync::Mutex<HashMap<String, SftpEntry>>,
+    pub(crate) editor_save_commit: tokio::sync::Mutex<()>,
     openssh: std::sync::Mutex<HashMap<String, OpenSshPrepared>>,
 }
 
@@ -539,6 +540,7 @@ impl SshRuntime {
             tunnels,
             pool: tokio::sync::Mutex::new(HashMap::new()),
             sftp: tokio::sync::Mutex::new(HashMap::new()),
+            editor_save_commit: tokio::sync::Mutex::new(()),
             openssh: std::sync::Mutex::new(HashMap::new()),
         }
     }
@@ -702,10 +704,15 @@ impl SshRuntime {
             SftpEntry {
                 client: Arc::new(client),
                 host_id,
-                _session: session,
+                session,
             },
         );
         id
+    }
+
+    pub(crate) async fn sftp_transport(&self, id: &str) -> AppResult<Arc<SshSession>> {
+        self.sftp.lock().await.get(id).and_then(|entry| entry.session.clone())
+            .ok_or_else(|| AppError::not_found("SFTP transport", id))
     }
 
     /// Host of an SFTP session.

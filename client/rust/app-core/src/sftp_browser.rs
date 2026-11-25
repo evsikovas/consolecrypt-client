@@ -371,6 +371,113 @@ impl AppCore {
         })
     }
 
+    /// Stage an exclusive sibling, then verify the base revision just before rename.
+    pub async fn sftp_editor_save(
+        &self,
+        id: String,
+        path: String,
+        digest: String,
+        data: Vec<u8>,
+    ) -> AppResult<bool> {
+        use sha2::{Digest, Sha256};
+        const LIMIT: usize = 4 * 1024 * 1024;
+        let path = remote_path_arg("path", &path)?;
+        if data.len() > LIMIT
+            || digest.len() != 64
+            || !digest.bytes().all(|b| b.is_ascii_hexdigit())
+        {
+            return Err(AppError::invalid("file", "invalid editor revision or size"));
+        }
+        let (_, unlocked) = self.unlocked().await?;
+        let c = unlocked.ssh.sftp(&id).await?;
+        let entry = c.lstat(&path).await?;
+        if entry.kind != EntryKind::File || c.canonicalize(&path).await? != path {
+            return Err(AppError::invalid("path", "expected a regular file"));
+        }
+        let mode = entry
+            .permissions
+            .ok_or_else(|| AppError::Unsupported("file permissions unavailable".into()))?;
+        if mode & 0o7000 != 0 {
+            return Err(AppError::Unsupported(
+                "cannot replace a file with special permission bits".into(),
+            ));
+        }
+        let parent = path
+            .rsplit_once('/')
+            .ok_or_else(|| AppError::invalid("path", "expected an absolute path"))?
+            .0;
+        let tmp = format!("{parent}/.consolecrypt-editor-{}", uuid::Uuid::new_v4());
+        c.create_exclusive_with(&tmp, 0o600, &data).await?;
+        let result = async {
+            let staged = c.lstat(&tmp).await?;
+            // Order revision checks and commits from concurrent editors in this profile.
+            let _commit = unlocked.ssh.editor_save_commit.lock().await;
+            let current = c.lstat(&path).await?;
+            if current.kind != EntryKind::File
+                || current.size > LIMIT as u64
+                || current.permissions != entry.permissions
+                || current.uid != entry.uid
+                || current.gid != entry.gid
+                || c.canonicalize(&path).await? != path
+            {
+                return Ok(false);
+            }
+            if staged.uid != current.uid || staged.gid != current.gid {
+                return Err(AppError::Unsupported(
+                    "cannot preserve the file owner and group".into(),
+                ));
+            }
+            let (bytes, total) = c.read_head(&path, LIMIT as u64 + 1).await?;
+            if total > LIMIT as u64 || hex::encode(Sha256::digest(bytes)) != digest {
+                return Ok(false);
+            }
+            c.chmod(&tmp, mode & 0o777).await?;
+            if c.supports_posix_rename() {
+                c.posix_rename(&tmp, &path).await?;
+            } else {
+                // A v3 server may reject overwrite. Leave the original intact in that case.
+                c.rename(&tmp, &path).await?;
+            }
+            Ok(true)
+        }
+        .await;
+        if !matches!(result, Ok(true)) {
+            let _ = c.remove_file(&tmp).await;
+        }
+        result
+    }
+
+    pub async fn sftp_editor_git(
+        &self,
+        id: String,
+        directory: String,
+    ) -> AppResult<Option<String>> {
+        let path = remote_path_arg("path", &directory)?;
+        let (_, unlocked) = self.unlocked().await?;
+        let session = unlocked.ssh.sftp_transport(&id).await?;
+        let command = format!(
+            "cd '{}' || exit 1; export LC_ALL=C GIT_OPTIONAL_LOCKS=0; command -v git >/dev/null || exit 127; git rev-parse --git-dir >/dev/null 2>&1 || exit 3; (git symbolic-ref -q HEAD || git rev-parse --short HEAD) && git for-each-ref --format='%(refname)%09%(symref)' refs/heads refs/remotes",
+            path.replace('\'', "'\\''")
+        );
+        let output = session
+            .exec_bounded(
+                &command,
+                1024 * 1024,
+                tokio::time::sleep(std::time::Duration::from_secs(15)),
+            )
+            .await?
+            .ok_or(AppError::Cancelled)?;
+        match output.exit_status {
+            Some(0) => Ok(Some(output.stdout_lossy())),
+            Some(3) => Ok(None),
+            Some(127) => Err(AppError::Unsupported("Git is unavailable".into())),
+            _ => Err(AppError::invalid(
+                "git",
+                "could not read repository branches",
+            )),
+        }
+    }
+
     // ---- transfer jobs ---------------------------------------------------------
 
     /// Queue an upload (`local_path` → `remote_path`) or download

@@ -691,6 +691,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get monitorAuthHint => 'Check the saved SSH credentials for this host, then refresh.';
 
   @override
+  String get monitorDiskShort => 'Disk';
+
+  @override
+  String get monitorMinimal => 'Switch to minimal view';
+
+  @override
+  String get monitorDetailed => 'Switch to detailed view';
+
+  @override
+  String get editorOpenSsh => 'Open SSH folder';
+
+  @override
+  String get editorProjectFolder => 'Project folder';
+
+  @override
+  String get editorFontPreview => 'Editor font preview';
+
+  @override
   String get editorTitle => 'Editor';
 
   @override

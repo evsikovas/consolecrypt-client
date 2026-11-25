@@ -845,6 +845,37 @@ Future<ProviderContainer> _open(
 }
 
 void main() {
+  testWidgets('project automation uses the Editor font settings and saves keyboard zoom', (tester) async {
+    final container = await _open(tester, _MenuProjects());
+    final settings = container.read(settingsServiceProvider);
+    container.read(routerProvider).go(AppRoutes.settings);
+    await settle(tester);
+    await tapKey(tester, 'settings-section-5');
+    await tapKey(tester, 'editor-font-family');
+    await tester.tap(find.text('Consolas').hitTestable().last);
+    await settle(tester);
+    final slider = find.byKey(const ValueKey('editor-font-size'));
+    await tester.ensureVisible(slider);
+    await tester.tap(slider);
+    await settle(tester);
+    final selectedSize = settings.currentLocal.editorFontSize;
+    expect(selectedSize, isNot(14));
+    expect(settings.currentLocal.editorFontFamily, 'Consolas');
+    container.read(routerProvider).go(AppRoutes.automation);
+    await settle(tester);
+    await tapKey(tester, 'automation-file-playbook.yml');
+    final field = find.byKey(const ValueKey('automation-editor'));
+    expect(tester.widget<TextField>(field).style!.fontSize, selectedSize);
+    expect(tester.widget<TextField>(field).style!.fontFamily, 'Consolas');
+    await tester.tap(field);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.minus);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await settle(tester);
+    expect(settings.currentLocal.editorFontSize, selectedSize - 1);
+    expect(tester.widget<TextField>(field).style!.fontSize, selectedSize - 1);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   for (final scenario in [
     (size: const Size(1500, 1050), scale: 1.0),
     (size: const Size(460, 950), scale: 1.0),

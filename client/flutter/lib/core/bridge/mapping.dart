@@ -866,6 +866,8 @@ Json localSettingsToJson(LocalSettings s) => {
   'update_feed_issued_at': s.updateFeedIssuedAt?.toUtc().toIso8601String(),
   'prefer_device_local_ai': s.preferDeviceLocalAi,
   'rdp_mobile': s.rdpMobile.toJson(),
+  'editor_font_size': s.editorFontSize,
+  'editor_font_family': s.editorFontFamily,
   'terminal_font_size': s.terminalFontSize,
   'terminal_font_family': s.terminalFontFamily,
   'terminal_tab_subtitle': s.terminalTabSubtitle.name,
@@ -954,6 +956,16 @@ LocalSettings localSettingsFromJson(Json j) {
     preferDeviceLocalAi: j['prefer_device_local_ai'] != false,
     rdpMobile: RdpMobileSettings.fromJson(j['rdp_mobile']),
     sftpDefaultEditor: _appRefFromJson(j['sftp_default_editor']),
+    editorFontSize: switch (j['editor_font_size']) {
+      final num size when size.isFinite => size.toDouble().clamp(
+        LocalSettings.editorMinFontSize, LocalSettings.editorMaxFontSize,
+      ),
+      _ => d.editorFontSize,
+    },
+    editorFontFamily: switch (j['editor_font_family']) {
+      final String name when name.trim().isNotEmpty && name.length <= 120 => name.trim(),
+      _ => null,
+    },
     terminalFontSize: (j['terminal_font_size'] as num?)?.toDouble() ?? d.terminalFontSize,
     terminalFontFamily: switch ((j['terminal_font_family'] is String ? j['terminal_font_family'] as String : null)
         ?.trim()) {

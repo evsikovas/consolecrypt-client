@@ -94,6 +94,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> with Widget
       selection: selection,
       reader: ref.watch(dashboardMetricsProvider),
       onInterval: (v) => save(profile, (p) => p.copyWith(seconds: v)),
+      onMinimal: (v) => save(profile, (p) => p.copyWith(minimal: v)),
       onPercent: (v) => save(profile, (p) => p.copyWith(percent: v)),
       choose: () async {
         final changed = await showAppDialog<MonitoringPreferences>(
@@ -115,13 +116,14 @@ class _Dashboard extends StatefulWidget {
     required this.choose,
     required this.onInterval,
     required this.onPercent,
+    required this.onMinimal,
   });
   final MonitoringInventory inventory;
   final MonitoringPreferences selection;
   final DashboardMetricsReader reader;
   final VoidCallback choose;
   final ValueChanged<int> onInterval;
-  final ValueChanged<bool> onPercent;
+  final ValueChanged<bool> onPercent, onMinimal;
   @override
   State<_Dashboard> createState() => _DashboardState();
 }
@@ -184,11 +186,19 @@ class _DashboardState extends State<_Dashboard> {
               },
             ),
           ),
-          FilterChip(
-            label: const Text('%'),
-            tooltip: l.monitorPercent,
-            selected: prefs.percent,
-            onSelected: widget.onPercent,
+          if (!prefs.minimal)
+            FilterChip(
+              label: const Text('%'),
+              tooltip: l.monitorPercent,
+              selected: prefs.percent,
+              onSelected: widget.onPercent,
+            ),
+          GlassIconButton(
+            key: const ValueKey('monitor-minimal'),
+            icon: Icons.density_small_rounded,
+            selected: prefs.minimal,
+            tooltip: prefs.minimal ? l.monitorDetailed : l.monitorMinimal,
+            onPressed: () => widget.onMinimal(!prefs.minimal),
           ),
           GlassIconButton(
             icon: Icons.refresh_rounded,
@@ -231,8 +241,9 @@ class _DashboardState extends State<_Dashboard> {
                     if (!collapsed.contains(group))
                       LayoutBuilder(
                         builder: (context, box) {
-                          const spacing = 12.0;
-                          final minWidth = MediaQuery.textScalerOf(context).scale(14) / 14 * 280;
+                          const spacing = 8.0;
+                          final minWidth =
+                              MediaQuery.textScalerOf(context).scale(14) / 14 * (prefs.minimal ? 308 : 248);
                           final columns = ((box.maxWidth + spacing) / (minWidth + spacing)).floor().clamp(1, 100);
                           final width = (box.maxWidth - spacing * (columns - 1)) / columns;
                           return Wrap(
@@ -247,6 +258,7 @@ class _DashboardState extends State<_Dashboard> {
                                     host: host,
                                     reading: poller.readings[host.id],
                                     percent: prefs.percent,
+                                    minimal: prefs.minimal,
                                   ),
                                 ),
                             ],

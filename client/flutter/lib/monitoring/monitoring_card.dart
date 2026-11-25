@@ -9,10 +9,16 @@ import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
 class MonitoringCard extends StatelessWidget {
-  const MonitoringCard({super.key, required this.host, required this.reading, required this.percent});
+  const MonitoringCard({
+    super.key,
+    required this.host,
+    required this.reading,
+    required this.percent,
+    this.minimal = false,
+  });
   final Host host;
   final MonitorReading? reading;
-  final bool percent;
+  final bool percent, minimal;
 
   @override
   Widget build(BuildContext context) {
@@ -30,29 +36,89 @@ class MonitoringCard extends StatelessWidget {
         : sample == null
         ? l.hostMetricsConnecting
         : l.monitorAvailable;
+    final statusDot = Tooltip(
+      message: state,
+      child: Icon(
+        Icons.circle,
+        size: 8,
+        color: error != null
+            ? colors.error
+            : sample == null
+            ? tokens.secondaryLabel
+            : tokens.palette.success,
+      ),
+    );
+    final diagnostic = error == null
+        ? null
+        : switch (error) {
+            AppException(code: AppErrorCode.hostKeyRejected) => l.monitorTrustHint,
+            AppException(code: AppErrorCode.authFailed || AppErrorCode.cancelled) => l.monitorAuthHint,
+            _ => hostMetricsErrorMessage(l, error),
+          };
+    if (minimal) {
+      return GlassPanel(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    statusDot,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Tooltip(
+                        message: host.address,
+                        child: Text(host.name, overflow: TextOverflow.ellipsis, style: tokens.typography.bodyEmph),
+                      ),
+                    ),
+                  ],
+                ),
+                if (sample != null)
+                  for (final (label, description, ratio, value) in [
+                    ('CPU', l.hostMetricsCpu, sample.cpu, percentage(sample.cpu)),
+                    ('RAM', l.hostMetricsRam, sample.memoryPercent, percentage(sample.memoryPercent)),
+                    (l.monitorDiskShort, l.hostMetricsDisk, sample.diskPercent, percentage(sample.diskPercent)),
+                  ])
+                    Tooltip(
+                      message: description,
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '$label ',
+                              style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
+                            ),
+                            TextSpan(
+                              text: value,
+                              style: tokens.typography.callout.copyWith(color: _usageColor(tokens, ratio)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                if (sample == null && diagnostic == null) Text(state, style: tokens.typography.caption),
+              ],
+            ),
+            if (diagnostic != null) Text(diagnostic, style: tokens.typography.caption.copyWith(color: colors.error)),
+          ],
+        ),
+      );
+    }
     return GlassPanel(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 4, right: 9),
-                child: Tooltip(
-                  message: state,
-                  child: Icon(
-                    Icons.circle,
-                    size: 10,
-                    color: error != null
-                        ? colors.error
-                        : sample == null
-                        ? tokens.secondaryLabel
-                        : tokens.palette.success,
-                  ),
-                ),
-              ),
+              Padding(padding: const EdgeInsets.only(top: 4, right: 9), child: statusDot),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,15 +130,11 @@ class MonitoringCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Text(switch (error) {
-                AppException(code: AppErrorCode.hostKeyRejected) => l.monitorTrustHint,
-                AppException(code: AppErrorCode.authFailed || AppErrorCode.cancelled) => l.monitorAuthHint,
-                _ => hostMetricsErrorMessage(l, error),
-              }, style: tokens.typography.caption.copyWith(color: colors.error)),
+              child: Text(diagnostic!, style: tokens.typography.caption.copyWith(color: colors.error)),
             ),
           if (sample == null && error == null) Text(l.hostMetricsConnecting, style: tokens.typography.caption),
           if (sample != null) ...[
@@ -97,7 +159,7 @@ class MonitoringCard extends StatelessWidget {
               value: usage(sample.diskUsed, sample.diskTotal, sample.diskPercent),
               ratio: sample.diskPercent,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             DefaultTextStyle(
               style: tokens.typography.caption.copyWith(color: tokens.secondaryLabel),
               child: Wrap(
@@ -138,14 +200,14 @@ class _Metric extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = GlassTokens.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 1),
       child: Semantics(
         label: '$description $value',
         excludeSemantics: true,
         child: Row(
           children: [
-            Expanded(
-              flex: 3,
+            ConstrainedBox(
+              constraints: BoxConstraints(minWidth: MediaQuery.textScalerOf(context).scale(26)),
               child: Tooltip(
                 message: description,
                 child: Text(label, style: tokens.typography.callout.copyWith(color: tokens.secondaryLabel)),
@@ -154,19 +216,23 @@ class _Metric extends StatelessWidget {
             const SizedBox(width: 8),
             if (ratio case final usage?) ...[
               Expanded(
-                flex: 4,
+                flex: 2,
                 child: LinearProgressIndicator(
                   value: (usage / 100).clamp(0, 1),
                   minHeight: 4,
                   borderRadius: BorderRadius.circular(2),
-                  color: tokens.palette.accent,
+                  color: _usageColor(tokens, ratio),
                 ),
               ),
               const SizedBox(width: 8),
             ],
             Expanded(
-              flex: ratio == null ? 10 : 6,
-              child: Text(value, textAlign: TextAlign.end, style: tokens.typography.callout),
+              flex: 5,
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                style: tokens.typography.callout.copyWith(color: _usageColor(tokens, ratio)),
+              ),
             ),
           ],
         ),
@@ -174,3 +240,10 @@ class _Metric extends StatelessWidget {
     );
   }
 }
+
+Color _usageColor(GlassTokens tokens, double? percent) => switch (percent) {
+  null => tokens.secondaryLabel,
+  <= 40 => tokens.palette.success,
+  <= 90 => tokens.palette.warning,
+  _ => tokens.palette.danger,
+};

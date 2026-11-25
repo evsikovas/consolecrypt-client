@@ -9,6 +9,7 @@ import 'package:consolecrypt/core/mock/mock_sftp_service.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
+import 'package:crypto/crypto.dart';
 
 /// State of one simulated edit session. The mock does not keep file bytes:
 /// "local versions" count simulated saves, the base version is the remote
@@ -169,6 +170,20 @@ final class MockSftpBrowserService implements SftpBrowserService, SftpBrowserDeb
     }
     return SftpPreview(path: path, bytes: mockGeneratedContent(node, maxBytes), totalSize: node.size);
   }
+
+  @override
+  Future<bool> saveEditorFile(SftpSessionId session, String path, String digest, Uint8List bytes) async {
+    _checkAccess(session, path, list: false);
+    final node = mockResolve(_root(session), path, followLast: false);
+    if (node == null) throw _notFound(path);
+    if (!node.isFile || digest != sha256.convert(mockGeneratedContent(node, node.size)).toString()) return false;
+    node.content = Uint8List.fromList(bytes);
+    node.touch();
+    return true;
+  }
+
+  @override
+  Future<String?> editorGitRefs(SftpSessionId session, String directory) async => null;
 
   // Transfers --------------------------------------------------------------------
 

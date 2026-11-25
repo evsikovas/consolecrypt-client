@@ -695,6 +695,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get monitorAuthHint => 'Проверьте сохранённые учётные данные SSH этого хоста и обновите карточку.';
 
   @override
+  String get monitorDiskShort => 'Диск';
+
+  @override
+  String get monitorMinimal => 'Включить минимальный вид';
+
+  @override
+  String get monitorDetailed => 'Включить подробный вид';
+
+  @override
+  String get editorOpenSsh => 'Открыть папку по SSH';
+
+  @override
+  String get editorProjectFolder => 'Каталог проекта';
+
+  @override
+  String get editorFontPreview => 'Предпросмотр шрифта редактора';
+
+  @override
   String get editorTitle => 'Редактор';
 
   @override

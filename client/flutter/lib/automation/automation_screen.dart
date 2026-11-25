@@ -8,7 +8,6 @@ import 'package:consolecrypt/app/critical_notice_providers.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
-import 'package:consolecrypt/automation/ansible_code_editor.dart';
 import 'package:consolecrypt/automation/automation_ai_dialog.dart';
 import 'package:consolecrypt/automation/automation_ai_draft.dart';
 import 'package:consolecrypt/automation/automation_ai_draft_errors.dart';
@@ -51,6 +50,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/editor/workspace_code_editor.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_editor.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_syntax.dart';
 import 'package:flutter/foundation.dart';
@@ -2946,7 +2946,9 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                   child: AutomationSecretView(
                                     key: ValueKey('secrets-${project?.id}-${file?.path ?? newPath}'),
                                     controller: editor,
-                                    builder: (display, masked) => AnsibleCodeEditor(
+                                    builder: (display, masked) => WorkspaceCodeEditor(
+                                      fieldKey: const ValueKey('automation-editor'),
+                                      maxBytes: 1024 * 1024,
                                       key: ObjectKey(display),
                                       controller: display,
                                       onCopySelection: _copyEditorSelection,

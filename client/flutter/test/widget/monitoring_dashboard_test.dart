@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/monitoring_preferences.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
+import 'package:consolecrypt/monitoring/monitoring_card.dart';
 import 'package:consolecrypt/monitoring/monitoring_inventory.dart';
 import 'package:consolecrypt/monitoring/monitoring_poller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,6 +32,68 @@ class _SlowReader implements DashboardMetricsReader {
 HostMetricsSample _sample() => HostMetricsSample.fromJson({'timestampMs': 0, 'uptimeSeconds': 123});
 
 void main() {
+  testWidgets('numeric thresholds match in both views at 40, 90 and 91 percent', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend);
+    final ctx = tester.element(find.byType(Navigator).first);
+    final tokens = GlassTokens.of(ctx);
+    final host = backend.inventory.currentHosts.first;
+    final sample = HostMetricsSample.fromJson({
+      'timestampMs': 0,
+      'uptimeSeconds': 0,
+      'cpuPercent': 40,
+      'memoryTotal': 100,
+      'memoryUsed': 90,
+      'diskTotal': 100,
+      'diskUsed': 91,
+    });
+    final overlay = Overlay.of(tester.element(find.byType(Scaffold).last));
+    for (final minimal in [false, true]) {
+      final entry = OverlayEntry(
+        builder: (context) => Align(
+          alignment: Alignment.center,
+          child: Material(
+            child: SizedBox(
+              width: 310,
+              child: MonitoringCard(
+                host: host,
+                reading: (sample: sample, error: null),
+                percent: true,
+                minimal: minimal,
+              ),
+            ),
+          ),
+        ),
+      );
+      overlay.insert(entry);
+      await tester.pump();
+      final rows = tester.widgetList<Text>(
+        find.descendant(of: find.byType(MonitoringCard), matching: find.byType(Text)),
+      );
+      for (final (value, color) in [
+        ('40%', tokens.palette.success),
+        ('90%', tokens.palette.warning),
+        ('91%', tokens.palette.danger),
+      ]) {
+        if (minimal) {
+          final valueSpan = rows
+              .map((r) => r.textSpan)
+              .whereType<TextSpan>()
+              .expand((s) => s.children ?? const <InlineSpan>[])
+              .whereType<TextSpan>()
+              .singleWhere((s) => s.text == value);
+          expect(valueSpan.style!.color, color);
+        } else {
+          expect(rows.singleWhere((r) => r.data == value).style!.color, color);
+        }
+      }
+      entry.remove();
+      entry.dispose();
+      await tester.pump();
+    }
+  });
   testWidgets('Russian dashboard shows latest sample and restores saved hosts', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
@@ -55,6 +119,15 @@ void main() {
     await settle(tester);
     expect(find.byKey(ValueKey(second.id)), findsOneWidget);
     await captureAutomationWorkspace(tester, 'monitoring-hosts-ru');
+    final mode = find.byKey(const ValueKey('monitor-minimal'));
+    expect(find.descendant(of: mode, matching: find.byType(Text)), findsNothing);
+    expect(find.byTooltip('Включить минимальный вид'), findsOneWidget);
+    final detailedHeight = tester.getSize(find.byKey(ValueKey(second.id))).height;
+    await tapKey(tester, 'monitor-minimal');
+    expect(settings.currentLocal.monitoringByProfile[active.id.value]!.minimal, isTrue);
+    expect(find.byTooltip('Включить подробный вид'), findsOneWidget);
+    expect(tester.getSize(find.byKey(ValueKey(second.id))).height, lessThan(detailedHeight));
+    await captureAutomationWorkspace(tester, 'monitoring-minimal-ru');
     container.read(routerProvider).go(AppRoutes.hosts);
     await settle(tester);
   });
@@ -71,13 +144,19 @@ void main() {
       protocol: HostProtocol.rdp,
       groupId: root.id,
     );
-    final selection = MonitoringPreferences(hosts: {one.id.value}, groups: {root.id.value}, seconds: 60, percent: true);
+    final selection = MonitoringPreferences(
+      hosts: {one.id.value},
+      groups: {root.id.value},
+      seconds: 60,
+      percent: true,
+      minimal: true,
+    );
     final restored = localSettingsFromJson(
       localSettingsToJson(LocalSettings(monitoringByProfile: {'profile-a': selection})),
     );
     final prefs = restored.monitoringByProfile['profile-a']!;
     expect(restored.monitoringByProfile['profile-b'], isNull);
-    expect((prefs.seconds, prefs.percent), (60, true));
+    expect((prefs.seconds, prefs.percent, prefs.minimal), (60, true, true));
     expect(MonitoringInventory([one, rdp], [child, root]).resolve(prefs), [one]);
     expect(MonitoringInventory([one, two, rdp], [root, child]).resolve(prefs), [one, two]);
   });
@@ -161,6 +240,14 @@ void main() {
       }
       await tester.tap(find.byTooltip('Show memory and disk usage as percentages'));
       await settle(tester);
+      expect(find.descendant(of: first, matching: find.text('38%')), findsOneWidget);
+      await tapKey(tester, 'monitor-minimal');
+      final compact = tester.getRect(first);
+      expect(compact.height, lessThan(a.height));
+      expect(compact.left, greaterThanOrEqualTo(0));
+      expect(compact.right, lessThanOrEqualTo(size.width));
+      expect(find.descendant(of: first, matching: find.byType(LinearProgressIndicator)), findsNothing);
+      await tapKey(tester, 'monitor-minimal');
       expect(find.descendant(of: first, matching: find.text('38%')), findsOneWidget);
       container.read(routerProvider).go(AppRoutes.hosts);
       await settle(tester);

@@ -13,6 +13,7 @@ String? editorLanguage(String path) {
   if (name == 'cmakelists.txt') return 'cmake';
   if ({'.bashrc', '.zshrc', '.profile'}.contains(name)) return 'bash';
   final ext = p.extension(name).replaceFirst('.', '');
+  if (const {'j2', 'jinja', 'jinja2'}.contains(ext)) return 'jinja';
   const aliases = {
     'py': 'python',
     'pyi': 'python',

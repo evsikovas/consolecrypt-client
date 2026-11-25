@@ -90,6 +90,43 @@ fn write(p: &Path, data: &[u8]) {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn editor_saves_a_revision_and_refuses_a_stale_buffer() {
+    use sha2::{Digest, Sha256};
+    let f = fixture().await;
+    let target = f.remote_root.join("project/playbook.yaml");
+    write(&target, b"original");
+    let save = |digest, data: &[u8]| {
+        f.app.sftp_editor_save(
+            f.sftp.clone(),
+            "/project/playbook.yaml".into(),
+            digest,
+            data.to_vec(),
+        )
+    };
+    let digest = hex::encode(Sha256::digest(b"original"));
+    assert!(save(digest.clone(), b"replacement").await.unwrap());
+    assert!(!save(digest, b"stale").await.unwrap());
+    assert_eq!(std::fs::read(&target).unwrap(), b"replacement");
+    let base = hex::encode(Sha256::digest(b"replacement"));
+    let (a, b) = tokio::join!(save(base.clone(), b"first"), save(base, b"second"));
+    let (a, b) = (a.unwrap(), b.unwrap());
+    assert_ne!(a, b);
+    assert_eq!(
+        std::fs::read(&target).unwrap(),
+        if a {
+            b"first".as_slice()
+        } else {
+            b"second".as_slice()
+        }
+    );
+    assert_eq!(
+        std::fs::read_dir(target.parent().unwrap()).unwrap().count(),
+        1
+    );
+    f.app.sftp_close(f.sftp).await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn browse_stat_resolve_create_duplicate_preview() {
     let f = fixture().await;
     let (app, sftp) = (&f.app, f.sftp.clone());

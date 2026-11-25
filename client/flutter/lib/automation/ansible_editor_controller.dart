@@ -14,13 +14,19 @@ class _History {
 /// and fold operations never become source/save bytes. Dispose on mask/source
 /// controller identity changes; no history survives that security boundary.
 class AnsibleEditorDocument extends ChangeNotifier {
-  AnsibleEditorDocument(TextEditingController source, {this.readOnly = false, this.onChanged}) : _source = source {
+  AnsibleEditorDocument(
+    TextEditingController source, {
+    this.readOnly = false,
+    this.maxBytes = 1024 * 1024,
+    this.onChanged,
+  }) : _source = source {
     _lastSource = source.value;
     projection = AnsibleProjection(source.text, const [], const {});
     _rebuild();
     source.addListener(_external);
     display.addListener(_displayChanged);
   }
+  final int maxBytes;
   TextEditingController? _source;
   TextEditingController get source => _source!;
   final display = AnsibleSyntaxController();
@@ -260,7 +266,7 @@ class AnsibleEditorDocument extends ChangeNotifier {
 
   bool _apply(int start, int end, String insert, {TextSelection? selection, TextRange composing = TextRange.empty}) {
     final text = source.text.replaceRange(start, end, insert);
-    if (text.length > 1024 * 1024 || utf8.encode(text).length > 1024 * 1024) {
+    if (text.length > maxBytes || utf8.encode(text).length > maxBytes) {
       editRejected = true;
       _rebuild();
       notifyListeners();

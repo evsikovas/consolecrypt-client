@@ -1,9 +1,6 @@
-import 'dart:io';
-
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/editor/project_files.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:path/path.dart' as p;
 
 class ProjectTree extends StatefulWidget {
   const ProjectTree({
@@ -23,7 +20,7 @@ class ProjectTree extends StatefulWidget {
 
 class _ProjectTreeState extends State<ProjectTree> {
   final expanded = <String>{};
-  final contents = <String, List<FileSystemEntity>>{};
+  final contents = <String, List<ProjectEntry>>{};
   final loading = <String>{};
   final errors = <String, String>{};
   int generation = 0;
@@ -64,8 +61,8 @@ class _ProjectTreeState extends State<ProjectTree> {
   }
 
   Iterable<(String, int, bool)> _rows(String path, int depth) sync* {
-    for (final entry in contents[path] ?? const <FileSystemEntity>[]) {
-      final folder = entry is Directory;
+    for (final entry in contents[path] ?? const <ProjectEntry>[]) {
+      final folder = entry.directory;
       yield (entry.path, depth, folder);
       if (folder && expanded.contains(entry.path)) yield* _rows(entry.path, depth + 1);
     }
@@ -80,11 +77,11 @@ class _ProjectTreeState extends State<ProjectTree> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 8, 10),
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
           child: Tooltip(
             message: root,
             child: Text(
-              p.basename(root).isEmpty ? root : p.basename(root),
+              widget.project.paths.basename(root).isEmpty ? root : widget.project.paths.basename(root),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleSmall,
@@ -122,22 +119,28 @@ class _ProjectTreeState extends State<ProjectTree> {
                     });
                   },
                   child: Padding(
-                    padding: EdgeInsets.only(left: 8 + (depth.clamp(0, 8)) * 10.0, right: 8),
+                    padding: EdgeInsetsDirectional.only(start: 8 + (depth.clamp(0, 8)) * 12.0, end: 8),
                     child: Row(
                       children: [
                         SizedBox(
                           width: 16,
                           child: folder
-                              ? Icon(expanded.contains(path) ? Icons.expand_more : Icons.chevron_right, size: 15)
+                              ? Icon(expanded.contains(path) ? Icons.expand_more : Icons.chevron_right, size: 16)
                               : null,
                         ),
                         Icon(
                           folder ? Icons.folder_outlined : Icons.description_outlined,
                           size: 16,
-                          color: folder ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                          color: selected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 7),
-                        Expanded(child: Text(p.basename(path), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.project.paths.basename(path),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   ),

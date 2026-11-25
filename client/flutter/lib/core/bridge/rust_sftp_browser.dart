@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
@@ -96,6 +97,14 @@ final class RustSftpBrowserService implements SftpBrowserService {
     final p = await guard(() => rs_sftp.sftpReadPreview(sftpId: session.value, path: path, maxBytes: maxBytes));
     return SftpPreview(path: p.path, bytes: p.data, totalSize: p.totalSize);
   }
+
+  @override
+  Future<bool> saveEditorFile(SftpSessionId session, String path, String digest, Uint8List bytes) =>
+      guard(() => rs_sftp.sftpEditorSave(sftpId: session.value, path: path, digest: digest, data: bytes));
+
+  @override
+  Future<String?> editorGitRefs(SftpSessionId session, String directory) =>
+      guard(() => rs_sftp.sftpEditorGit(sftpId: session.value, directory: directory));
 
   // Transfers --------------------------------------------------------------------
 

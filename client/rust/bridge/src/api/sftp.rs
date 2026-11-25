@@ -91,6 +91,25 @@ pub async fn sftp_duplicate(sftp_id: String, from: String, to: String) -> Result
     with_core(move |c| async move { Ok(c.sftp_duplicate(sftp_id, from, to).await?) }).await
 }
 
+/// Replace the editor's text only while the opened revision still matches.
+pub async fn sftp_editor_save(
+    sftp_id: String,
+    path: String,
+    digest: String,
+    data: Vec<u8>,
+) -> Result<bool, BridgeError> {
+    with_core(move |c| async move { Ok(c.sftp_editor_save(sftp_id, path, digest, data).await?) })
+        .await
+}
+
+/// Read branch metadata through the SSH connection that owns this SFTP session.
+pub async fn sftp_editor_git(
+    sftp_id: String,
+    directory: String,
+) -> Result<Option<String>, BridgeError> {
+    with_core(move |c| async move { Ok(c.sftp_editor_git(sftp_id, directory).await?) }).await
+}
+
 /// At most `max_bytes` (≤ 8 MiB) from the start of a regular file.
 pub async fn sftp_read_preview(
     sftp_id: String,
