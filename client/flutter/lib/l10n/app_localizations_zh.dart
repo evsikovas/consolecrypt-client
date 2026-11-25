@@ -673,6 +673,41 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get monitorTrustHint => '请在终端中打开此主机以验证 SSH 密钥，然后刷新。';
+
+  @override
+  String get monitorAuthHint => '请检查此主机已保存的 SSH 凭据，然后刷新。';
+
+  @override
+  String get monitorChoose => '选择主机或组';
+
+  @override
+  String get monitorSearch => '搜索主机或组';
+
+  @override
+  String get monitorEmpty => '尚未选择监控主机';
+
+  @override
+  String get monitorEmptyHint => '点击“+ 主机”选择 Linux 服务器或整个主机组。';
+
+  @override
+  String get monitorManual => '手动刷新';
+
+  @override
+  String monitorInterval(int seconds) {
+    return '每 $seconds 秒';
+  }
+
+  @override
+  String get monitorPercent => '以百分比显示内存和磁盘使用量';
+
+  @override
+  String get monitorAvailable => '可用';
+
+  @override
+  String get monitorLoad => '负载';
+
+  @override
   String get hostMetricsTitle => '监控';
 
   @override

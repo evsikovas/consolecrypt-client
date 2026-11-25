@@ -1,7 +1,6 @@
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
-import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
@@ -31,7 +30,7 @@ class HostMetricsPanel extends StatelessWidget {
           spacing: GlassSpacing.s12,
           children: [
             if (sample == null && hostName != null) Text(hostName!, style: tokens.typography.bodyEmph),
-            if (error != null) InfoBanner(message: _readError(l, error), tone: BannerTone.warning),
+            if (error != null) InfoBanner(message: hostMetricsErrorMessage(l, error), tone: BannerTone.warning),
             if (sample == null && error == null) ...[const LinearProgressIndicator(), Text(l.hostMetricsConnecting)],
             if (sample != null) ...[
               _systemDetails(context, l, sample),
@@ -47,16 +46,6 @@ class HostMetricsPanel extends StatelessWidget {
     },
   );
 
-  String _readError(AppLocalizations l, AppException error) {
-    if (error.args['field'] != 'host_metrics') return errorMessage(l, error);
-    return switch (error.args['rule']) {
-      'host_metrics_linux_only' => l.hostMetricsLinuxOnly,
-      'host_metrics_ssh_backend' => l.hostMetricsNativeOnly,
-      'host_metrics_host_changed' => l.hostMetricsChanged,
-      'host_metrics_session_closed' => l.hostMetricsConnectSsh,
-      _ => l.hostMetricsReadFailed,
-    };
-  }
 
   Widget _charts(BuildContext context, AppLocalizations l, List<HostMetricsSample> history, HostMetricsSample latest) {
     final colors = Theme.of(context).colorScheme;

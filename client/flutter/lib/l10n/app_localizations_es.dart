@@ -691,6 +691,41 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get monitorTrustHint => 'Abre el host en Terminal para verificar su clave SSH y actualiza la tarjeta.';
+
+  @override
+  String get monitorAuthHint => 'Comprueba las credenciales SSH guardadas para este host y actualiza la tarjeta.';
+
+  @override
+  String get monitorChoose => 'Elegir hosts o grupos';
+
+  @override
+  String get monitorSearch => 'Buscar un host o grupo';
+
+  @override
+  String get monitorEmpty => 'No hay hosts seleccionados';
+
+  @override
+  String get monitorEmptyHint => 'Pulsa «+ Hosts» para elegir servidores Linux o un grupo completo.';
+
+  @override
+  String get monitorManual => 'Actualización manual';
+
+  @override
+  String monitorInterval(int seconds) {
+    return 'Cada $seconds s';
+  }
+
+  @override
+  String get monitorPercent => 'Mostrar el uso de memoria y disco en porcentajes';
+
+  @override
+  String get monitorAvailable => 'Disponible';
+
+  @override
+  String get monitorLoad => 'Carga';
+
+  @override
   String get hostMetricsTitle => 'Monitorización';
 
   @override

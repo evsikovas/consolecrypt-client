@@ -72,6 +72,7 @@ final class RustTerminalService
         DockerTerminalService,
         TerminalHistoryReader,
         HostMetricsReader,
+        DashboardMetricsReader,
         RuntimeTerminalService {
   RustTerminalService(RustBackend hub) : _hub = hub {
     hub.onPrompt = _routePrompt;
@@ -117,10 +118,19 @@ final class RustTerminalService
   @override
   Stream<HostMetricsSample> watchHost(Host host, TerminalSessionId sessionId, String operationId) async* {
     final nativeId = connectedSshRuntimeId(sessionId, host.id);
+    if (nativeId == null) throw const AppException(AppErrorCode.notFound, 'SSH session unavailable');
+    yield* _metrics(host, operationId, {'terminalId': nativeId});
+  }
+
+  @override
+  Future<HostMetricsSample> sampleHost(Host host, String operationId) =>
+      _metrics(host, operationId, {'mode': 'dashboard'}).single;
+
+  Stream<HostMetricsSample> _metrics(Host host, String operationId, Json target) async* {
     final scope = _hub?.runtimeNoticeEvents.currentScope.scope;
-    if (nativeId == null || scope == null) throw const AppException(AppErrorCode.notFound, 'SSH session unavailable');
+    if (scope == null) throw const AppException(AppErrorCode.notFound, 'SSH session unavailable');
     final request = jsonEncode({
-      'terminalId': nativeId,
+      ...target,
       'operationId': operationId,
       'hostId': host.id.value,
       'hostUpdatedAtMs': host.updatedAt.millisecondsSinceEpoch,

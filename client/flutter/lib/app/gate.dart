@@ -91,6 +91,7 @@ abstract final class AppRoutes {
   static const databases = '/databases';
   static const tcpdump = '/tcpdump';
   static const portCheck = '/port-check';
+  static const monitoring = '/monitoring';
   static const docker = '/docker';
 
   /// Profile-creation routes, reachable from every stage ("Add profile").
@@ -119,6 +120,7 @@ abstract final class AppRoutes {
     docker,
     tcpdump,
     portCheck,
+    monitoring,
   ];
 }
 

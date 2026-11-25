@@ -685,6 +685,41 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get monitorTrustHint => 'Open this host in Terminal to verify its SSH key, then refresh.';
+
+  @override
+  String get monitorAuthHint => 'Check the saved SSH credentials for this host, then refresh.';
+
+  @override
+  String get monitorChoose => 'Choose hosts or groups';
+
+  @override
+  String get monitorSearch => 'Find a host or group';
+
+  @override
+  String get monitorEmpty => 'No hosts to monitor';
+
+  @override
+  String get monitorEmptyHint => 'Use + Hosts to choose Linux servers or an entire host group.';
+
+  @override
+  String get monitorManual => 'Manual refresh';
+
+  @override
+  String monitorInterval(int seconds) {
+    return 'Every $seconds s';
+  }
+
+  @override
+  String get monitorPercent => 'Show memory and disk usage as percentages';
+
+  @override
+  String get monitorAvailable => 'Available';
+
+  @override
+  String get monitorLoad => 'Load';
+
+  @override
   String get hostMetricsTitle => 'Monitoring';
 
   @override

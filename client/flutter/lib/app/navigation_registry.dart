@@ -44,6 +44,7 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
   ShellBranch.docker => l.dockerTitle,
   ShellBranch.tcpdump => l.captureTitle,
   ShellBranch.portCheck => l.portCheckTitle,
+  ShellBranch.monitoring => l.hostMetricsTitle,
 };
 
 const navigationSections = [
@@ -58,6 +59,7 @@ const navigationSections = [
   if (kubernetesEnabled) NavigationSection(ShellBranch.kubernetes, ToolIcons.kubernetes),
   if (databasesEnabled) NavigationSection(ShellBranch.databases, Icons.storage_rounded),
   if (dockerEnabled) NavigationSection(ShellBranch.docker, ToolIcons.docker),
+  NavigationSection(ShellBranch.monitoring, Icons.monitor_heart_outlined),
   NavigationSection(ShellBranch.tcpdump, ToolIcons.tcpdump),
   NavigationSection(ShellBranch.portCheck, Icons.settings_ethernet_rounded),
   NavigationSection(ShellBranch.sftp, Icons.folder_copy_rounded),
@@ -97,6 +99,7 @@ Widget navigationSectionIcon(NavigationSection item) =>
       ShellBranch.automation,
       ShellBranch.tcpdump,
       ShellBranch.portCheck,
+      ShellBranch.monitoring,
     }.contains(item.branch)
     ? Icon(item.icon)
     : AppSymbolIcon(AppSymbol.values.byName(item.branch.name));
@@ -116,6 +119,7 @@ String navigationBranchRoute(ShellBranch branch) => switch (branch) {
   ShellBranch.docker => AppRoutes.docker,
   ShellBranch.tcpdump => AppRoutes.tcpdump,
   ShellBranch.portCheck => AppRoutes.portCheck,
+  ShellBranch.monitoring => AppRoutes.monitoring,
   ShellBranch.sftp => AppRoutes.sftp,
   ShellBranch.tunnels => AppRoutes.tunnels,
   ShellBranch.devices => AppRoutes.devices,

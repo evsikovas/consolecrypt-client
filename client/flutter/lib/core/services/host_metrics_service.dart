@@ -4,6 +4,11 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:flutter/foundation.dart';
 
+abstract interface class DashboardMetricsReader {
+  Future<HostMetricsSample> sampleHost(Host host, String operationId);
+  Future<void> cancelHostWatch(String operationId);
+}
+
 abstract interface class HostMetricsReader {
   Stream<HostMetricsSample> watchHost(Host host, TerminalSessionId sessionId, String operationId);
   Future<void> cancelHostWatch(String operationId);

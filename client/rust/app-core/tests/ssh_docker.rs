@@ -148,8 +148,24 @@ async fn host_metrics_sample_on_the_connected_ssh_transport_leaves_pty_untouched
         )
         .await
         .unwrap();
-    let term = app.open_terminal(host.id.clone(), 80, 24).await.unwrap();
     let scope = app.list_profiles().await.unwrap().pop().unwrap();
+    let mut dashboard = serde_json::json!({
+        "mode": "dashboard", "operationId": uuid::Uuid::new_v4(), "hostId": host.id,
+        "hostUpdatedAtMs": host.updated_at_ms, "profileId": scope.id, "notificationScopeId": "old-unlock"
+    });
+    assert!(app.host_metrics_watch(&dashboard.to_string(), |_| panic!("wrong scope")).await.is_err());
+    dashboard["notificationScopeId"] = serde_json::json!(scope.notification_scope_id);
+    let mut readings = Vec::new();
+    app.host_metrics_watch(&dashboard.to_string(), |sample| {
+        readings.push(sample);
+        true
+    }).await.unwrap();
+    assert_eq!(readings.len(), 1);
+    let snapshot = &readings[0];
+    assert!((0.0..=100.0).contains(&snapshot["cpuPercent"].as_f64().unwrap()));
+    assert!(snapshot["loadAverage"].is_string() && snapshot["logicalCpus"].as_u64().unwrap() > 0);
+    assert!(snapshot["diskTotal"].as_u64().unwrap() > 0);
+    let term = app.open_terminal(host.id.clone(), 80, 24).await.unwrap();
     let request = serde_json::json!({
         "operationId": uuid::Uuid::new_v4(), "hostId": host.id, "terminalId": term.id,
         "hostUpdatedAtMs": host.updated_at_ms, "profileId": scope.id, "notificationScopeId": scope.notification_scope_id.unwrap()

@@ -1318,6 +1318,72 @@ abstract class AppLocalizations {
   /// **'Added {added}. Skipped {skipped}.'**
   String keepassExchangeResult(int added, int skipped);
 
+  /// How to verify a host key before collecting dashboard metrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Open this host in Terminal to verify its SSH key, then refresh.'**
+  String get monitorTrustHint;
+
+  /// How to resolve an SSH authentication error on the dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the saved SSH credentials for this host, then refresh.'**
+  String get monitorAuthHint;
+
+  /// Host monitoring dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose hosts or groups'**
+  String get monitorChoose;
+
+  /// Host monitoring dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a host or group'**
+  String get monitorSearch;
+
+  /// Host monitoring dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'No hosts to monitor'**
+  String get monitorEmpty;
+
+  /// Host monitoring dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Use + Hosts to choose Linux servers or an entire host group.'**
+  String get monitorEmptyHint;
+
+  /// Host monitoring dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual refresh'**
+  String get monitorManual;
+
+  /// Host monitoring dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {seconds} s'**
+  String monitorInterval(int seconds);
+
+  /// Host monitoring dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Show memory and disk usage as percentages'**
+  String get monitorPercent;
+
+  /// Host monitoring dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get monitorAvailable;
+
+  /// Host monitoring dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Load'**
+  String get monitorLoad;
+
   /// Live SSH host metrics label.
   ///
   /// In en, this message translates to:

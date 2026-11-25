@@ -487,6 +487,18 @@ pub(crate) fn os_user() -> Option<String> {
 }
 
 impl SshRuntime {
+    /// Periodic dashboard refreshes use saved credentials and the configured host-key
+    /// policy. A probe cannot open a password or trust prompt over another workspace.
+    pub(crate) fn dashboard_connector(&self) -> SshConnector {
+        let prompts = Arc::new(PromptBroker::new(std::time::Duration::ZERO));
+        let resolver = Arc::new(VaultCredentialResolver {
+            writer: self.resolver.writer.clone(),
+            prompts: prompts.clone(),
+        });
+        SshConnector::new(resolver, self.known_hosts.clone(), Arc::new(BrokerHostKeyPrompt { prompts }))
+            .with_options(self.connector.options().clone())
+    }
+
     pub(crate) fn new(
         writer: VaultWriter,
         prompts: Arc<PromptBroker>,

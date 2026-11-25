@@ -689,6 +689,41 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get monitorTrustHint => 'Откройте хост в терминале, проверьте его SSH-ключ и обновите карточку.';
+
+  @override
+  String get monitorAuthHint => 'Проверьте сохранённые учётные данные SSH этого хоста и обновите карточку.';
+
+  @override
+  String get monitorChoose => 'Выбор хостов и групп';
+
+  @override
+  String get monitorSearch => 'Найти хост или группу';
+
+  @override
+  String get monitorEmpty => 'Хосты для мониторинга не выбраны';
+
+  @override
+  String get monitorEmptyHint => 'Нажмите «+ Хосты», чтобы выбрать Linux-серверы или целую группу.';
+
+  @override
+  String get monitorManual => 'Вручную';
+
+  @override
+  String monitorInterval(int seconds) {
+    return 'Каждые $seconds с';
+  }
+
+  @override
+  String get monitorPercent => 'Показывать память и диск в процентах';
+
+  @override
+  String get monitorAvailable => 'Доступен';
+
+  @override
+  String get monitorLoad => 'Нагрузка';
+
+  @override
   String get hostMetricsTitle => 'Мониторинг';
 
   @override

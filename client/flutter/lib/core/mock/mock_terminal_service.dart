@@ -8,12 +8,26 @@ import 'package:consolecrypt/core/mock/mock_inventory_service.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
+import 'package:consolecrypt/core/services/host_metrics_service.dart';
 
 /// Simulated SSH shell. Honours host-key policies against the mock known
 /// hosts (unknown → prompt, changed → hard failure), supports a few
 /// commands, `simulate-drop` (network drop → reconnect banner) and `exit`.
-final class MockTerminalService implements TerminalService, LocalTerminalService, DockerTerminalService {
+final class MockTerminalService implements TerminalService, LocalTerminalService, DockerTerminalService, DashboardMetricsReader {
   MockTerminalService(this._config, this._inventory);
+
+  @override
+  Future<HostMetricsSample> sampleHost(Host host, String operationId) async {
+    if (_inventory.hostById(host.id) == null) throw const AppException(AppErrorCode.notFound, 'Unknown host');
+    return HostMetricsSample.fromJson({
+      'timestampMs': DateTime.now().millisecondsSinceEpoch, 'cpuPercent': 17, 'uptimeSeconds': 42000,
+      'logicalCpus': 4, 'loadAverage': '0.25 / 0.42 / 0.38',
+      'memoryUsed': 3 << 30, 'memoryTotal': 8 << 30, 'diskUsed': 24 << 30, 'diskTotal': 96 << 30,
+    });
+  }
+
+  @override
+  Future<void> cancelHostWatch(String operationId) async {}
 
   final MockConfig _config;
   final MockInventoryService _inventory;

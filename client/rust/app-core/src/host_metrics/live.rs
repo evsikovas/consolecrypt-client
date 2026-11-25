@@ -36,6 +36,15 @@ awk 'NR == 1 { print "uptime", $1; exit }' /proc/uptime
 awk -F: 'NR > 2 { n=$1; gsub(/^[[:space:]]+|[[:space:]]+$/, "", n); if (n != "lo") { s=$2; sub(/^[[:space:]]+/, "", s); c=split(s, v, /[[:space:]]+/); if (c >= 16) print "net", n, v[1], v[9] } }' /proc/net/dev
 "#;
 
+mod dashboard;
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum MetricsRequest {
+    Terminal(Request),
+    Dashboard(dashboard::DashboardRequest),
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Request {
@@ -230,8 +239,14 @@ impl AppCore {
         if raw.len() > 1024 {
             return Err(invalid("invalid host metrics request"));
         }
-        let request: Request =
-            serde_json::from_str(raw).map_err(|_| invalid("invalid host metrics request"))?;
+        let request =
+            match serde_json::from_str(raw).map_err(|_| invalid("invalid host metrics request"))? {
+                MetricsRequest::Terminal(request) => request,
+                MetricsRequest::Dashboard(request) => {
+                    emit(self.host_metrics_dashboard(request).await?);
+                    return Ok(());
+                }
+            };
         let host_id = crate::dto::parse_id("host_id", &request.host_id)?;
         let (owner, unlock) = self.unlocked().await?;
         let original = Arc::downgrade(&unlock);
@@ -278,8 +293,10 @@ impl AppCore {
         drop(unlock);
         drop(owner);
         // Use the same socket and permission rules as the Docker workspace, including rootless engines.
-        let read = format!("{READ}\ncase \"$({})\" in 'ok '*) echo 'docker 1';; esac\n",
-            crate::docker_runtime::SOCKET_PROBE);
+        let read = format!(
+            "{READ}\ncase \"$({})\" in 'ok '*) echo 'docker 1';; esac\n",
+            crate::docker_runtime::SOCKET_PROBE
+        );
         let mut last: Option<(Instant, Snapshot)> = None;
         let closed = terminals.wait_closed(request.terminal_id);
         tokio::pin!(closed);

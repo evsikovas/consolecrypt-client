@@ -10,6 +10,7 @@ library;
 import 'dart:convert';
 
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/models/monitoring_preferences.dart';
 import 'package:consolecrypt/core/models/navigation.dart';
 import 'package:consolecrypt/core/models/rdp_mobile.dart';
 import 'package:consolecrypt/core/models/saved_forward.dart';
@@ -876,6 +877,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'terminal_tab_placement': s.terminalTabPlacement.name,
   'terminal_tab_column_width': s.terminalTabColumnWidth,
   'terminal_tab_column_collapsed': s.terminalTabColumnCollapsed,
+  'monitoring_by_profile': {for (final entry in s.monitoringByProfile.entries) entry.key: entry.value.toJson()},
   'navigation_by_profile': {for (final entry in s.navigationByProfile.entries) entry.key: entry.value.toJson()},
   'sidebar_collapsed': s.sidebarCollapsed,
   'sidebar_collapsed_beside_tabs': s.sidebarCollapsedBesideTabs,
@@ -991,6 +993,7 @@ LocalSettings localSettingsFromJson(Json j) {
       _ => d.terminalTabColumnWidth,
     },
     terminalTabColumnCollapsed: j['terminal_tab_column_collapsed'] == true,
+    monitoringByProfile: MonitoringPreferences.profilesFromJson(j['monitoring_by_profile']),
     navigationByProfile: NavigationPreferences.profilesFromJson(j['navigation_by_profile']),
     sidebarCollapsed: j['sidebar_collapsed'] == true,
     sidebarCollapsedBesideTabs: switch (j['sidebar_collapsed_beside_tabs']) {

@@ -46,6 +46,17 @@ import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 
 /// Localized, user-presentable text for any error surfaced by a service call.
+String hostMetricsErrorMessage(AppLocalizations l, Object error) {
+  if (error is! AppException || error.args['field'] != 'host_metrics') return errorMessage(l, error);
+  return switch (error.args['rule']) {
+    'host_metrics_linux_only' => l.hostMetricsLinuxOnly,
+    'host_metrics_ssh_backend' => l.hostMetricsNativeOnly,
+    'host_metrics_host_changed' => l.hostMetricsChanged,
+    'host_metrics_session_closed' => l.hostMetricsConnectSsh,
+    _ => l.hostMetricsReadFailed,
+  };
+}
+
 String errorMessage(AppLocalizations l, Object error) => switch (error) {
   AppException(:final args) when args['field'] == 'automation_runner' &&
       args['rule'] == 'setup_macos_python_missing' => l.automationMacRunnerPython,
