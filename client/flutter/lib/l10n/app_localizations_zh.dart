@@ -10,6 +10,78 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get portCheckTitle => '端口检测';
+
+  @override
+  String get portCheckSubtitle => '从此设备或已保存的 SSH 服务器检测 TCP 或 UDP 端口。';
+
+  @override
+  String get portCheckLocal => '此设备';
+
+  @override
+  String get portCheckRemote => 'SSH 服务器';
+
+  @override
+  String get portCheckSource => '检测源';
+
+  @override
+  String get portCheckTarget => '目标（主机名或 IP）';
+
+  @override
+  String get portCheckChoose => '选择服务器';
+
+  @override
+  String get portCheckPort => '端口（1–65535）';
+
+  @override
+  String get portCheckAction => '检测端口';
+
+  @override
+  String get portCheckRemoteHelp => 'SSH 服务器需要 Python 3 和 POSIX shell。目标地址在该服务器上解析。';
+
+  @override
+  String get portCheckUdpHelp => '发送一个包含单个零字节的 UDP 数据报，最多等待 5 秒。';
+
+  @override
+  String get portCheckRunning => '正在检测…';
+
+  @override
+  String get portCheckConnected => 'TCP 连接已建立';
+
+  @override
+  String get portCheckReply => '已收到 UDP 响应';
+
+  @override
+  String get portCheckRefused => '连接被拒绝';
+
+  @override
+  String get portCheckNoReply => '未收到 UDP 响应。开放的端口也可能不响应。';
+
+  @override
+  String get portCheckTimeout => '连接超时';
+
+  @override
+  String get portCheckDns => '无法解析目标地址';
+
+  @override
+  String get portCheckUnreachable => '网络或主机不可达';
+
+  @override
+  String get portCheckSocketError => '套接字错误。请检查地址和网络设置。';
+
+  @override
+  String get portCheckPython => 'SSH 服务器上未找到 Python 3';
+
+  @override
+  String get portCheckRemoteError => 'SSH 服务器未能完成检测';
+
+  @override
+  String get portCheckBadHost => '请输入一个主机名或 IPv4/IPv6 地址';
+
+  @override
+  String get portCheckProtocol => '协议';
+
+  @override
   String registryBuildOnSsh(String host) {
     return '通过 SSH 在 $host 上构建';
   }

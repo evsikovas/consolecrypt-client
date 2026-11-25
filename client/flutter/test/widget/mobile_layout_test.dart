@@ -189,6 +189,7 @@ void main() {
         AppRoutes.databases,
         AppRoutes.docker,
         AppRoutes.tcpdump,
+        AppRoutes.portCheck,
         AppRoutes.passwords,
         AppRoutes.externalVault,
         AppRoutes.automation,

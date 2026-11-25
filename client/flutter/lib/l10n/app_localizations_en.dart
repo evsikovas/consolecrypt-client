@@ -10,6 +10,79 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get portCheckTitle => 'Port check';
+
+  @override
+  String get portCheckSubtitle => 'Test a TCP or UDP port from this device or a saved SSH server.';
+
+  @override
+  String get portCheckLocal => 'This device';
+
+  @override
+  String get portCheckRemote => 'SSH server';
+
+  @override
+  String get portCheckSource => 'Check from';
+
+  @override
+  String get portCheckTarget => 'Destination (hostname or IP)';
+
+  @override
+  String get portCheckChoose => 'Choose server';
+
+  @override
+  String get portCheckPort => 'Port (1–65535)';
+
+  @override
+  String get portCheckAction => 'Check port';
+
+  @override
+  String get portCheckRemoteHelp =>
+      'The SSH server needs Python 3 and a POSIX shell. The address is resolved on that server.';
+
+  @override
+  String get portCheckUdpHelp => 'Sends one UDP datagram containing a zero byte and waits up to 5 seconds for a reply.';
+
+  @override
+  String get portCheckRunning => 'Checking…';
+
+  @override
+  String get portCheckConnected => 'TCP connection established';
+
+  @override
+  String get portCheckReply => 'UDP reply received';
+
+  @override
+  String get portCheckRefused => 'The connection was refused';
+
+  @override
+  String get portCheckNoReply => 'No UDP reply. An open port can also stay silent.';
+
+  @override
+  String get portCheckTimeout => 'Connection timed out';
+
+  @override
+  String get portCheckDns => 'Could not resolve the destination address';
+
+  @override
+  String get portCheckUnreachable => 'The network or host is unreachable';
+
+  @override
+  String get portCheckSocketError => 'Socket error. Check the address and network settings.';
+
+  @override
+  String get portCheckPython => 'Python 3 was not found on the SSH server';
+
+  @override
+  String get portCheckRemoteError => 'The SSH server could not complete the check';
+
+  @override
+  String get portCheckBadHost => 'Enter one hostname or IPv4/IPv6 address';
+
+  @override
+  String get portCheckProtocol => 'Protocol';
+
+  @override
   String registryBuildOnSsh(String host) {
     return 'Build on $host over SSH';
   }

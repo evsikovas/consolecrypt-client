@@ -10,6 +10,80 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get portCheckTitle => 'Comprobar puerto';
+
+  @override
+  String get portCheckSubtitle =>
+      'Comprueba un puerto TCP o UDP desde este dispositivo o desde un servidor SSH guardado.';
+
+  @override
+  String get portCheckLocal => 'Este dispositivo';
+
+  @override
+  String get portCheckRemote => 'Servidor SSH';
+
+  @override
+  String get portCheckSource => 'Comprobar desde';
+
+  @override
+  String get portCheckTarget => 'Destino (nombre de host o IP)';
+
+  @override
+  String get portCheckChoose => 'Elegir servidor';
+
+  @override
+  String get portCheckPort => 'Puerto (1–65535)';
+
+  @override
+  String get portCheckAction => 'Comprobar puerto';
+
+  @override
+  String get portCheckRemoteHelp =>
+      'El servidor SSH necesita Python 3 y un shell POSIX. El destino se resuelve en ese servidor.';
+
+  @override
+  String get portCheckUdpHelp => 'Envía un datagrama UDP con un byte nulo y espera hasta 5 segundos por una respuesta.';
+
+  @override
+  String get portCheckRunning => 'Comprobando…';
+
+  @override
+  String get portCheckConnected => 'Conexión TCP establecida';
+
+  @override
+  String get portCheckReply => 'Respuesta UDP recibida';
+
+  @override
+  String get portCheckRefused => 'Se rechazó la conexión';
+
+  @override
+  String get portCheckNoReply => 'Sin respuesta UDP. Un puerto abierto también puede guardar silencio.';
+
+  @override
+  String get portCheckTimeout => 'Se agotó el tiempo de conexión';
+
+  @override
+  String get portCheckDns => 'No se pudo resolver la dirección de destino';
+
+  @override
+  String get portCheckUnreachable => 'No se puede alcanzar la red o el host';
+
+  @override
+  String get portCheckSocketError => 'Error de socket. Comprueba la dirección y la configuración de red.';
+
+  @override
+  String get portCheckPython => 'No se encontró Python 3 en el servidor SSH';
+
+  @override
+  String get portCheckRemoteError => 'El servidor SSH no pudo completar la comprobación';
+
+  @override
+  String get portCheckBadHost => 'Introduce un nombre de host o una dirección IPv4/IPv6';
+
+  @override
+  String get portCheckProtocol => 'Protocolo';
+
+  @override
   String registryBuildOnSsh(String host) {
     return 'Compilar en $host por SSH';
   }

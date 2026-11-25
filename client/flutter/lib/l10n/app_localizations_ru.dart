@@ -10,6 +10,81 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get portCheckTitle => 'Проверка порта';
+
+  @override
+  String get portCheckSubtitle =>
+      'Проверьте доступность TCP- или UDP-порта с этого устройства или с сохранённого SSH-сервера.';
+
+  @override
+  String get portCheckLocal => 'Это устройство';
+
+  @override
+  String get portCheckRemote => 'SSH-сервер';
+
+  @override
+  String get portCheckSource => 'Откуда проверять';
+
+  @override
+  String get portCheckTarget => 'Адрес назначения (имя хоста или IP)';
+
+  @override
+  String get portCheckChoose => 'Выбрать сервер';
+
+  @override
+  String get portCheckPort => 'Порт (1–65535)';
+
+  @override
+  String get portCheckAction => 'Проверить порт';
+
+  @override
+  String get portCheckRemoteHelp =>
+      'На SSH-сервере нужны Python 3 и POSIX-оболочка. Адрес назначения определяется на этом сервере.';
+
+  @override
+  String get portCheckUdpHelp =>
+      'Отправляется одна UDP-датаграмма с нулевым байтом. Время ожидания ответа — до 5 секунд.';
+
+  @override
+  String get portCheckRunning => 'Идёт проверка…';
+
+  @override
+  String get portCheckConnected => 'TCP-соединение установлено';
+
+  @override
+  String get portCheckReply => 'Получен ответ по UDP';
+
+  @override
+  String get portCheckRefused => 'Соединение отклонено';
+
+  @override
+  String get portCheckNoReply => 'Ответа по UDP нет. Открытый порт тоже может не ответить.';
+
+  @override
+  String get portCheckTimeout => 'Время ожидания соединения истекло';
+
+  @override
+  String get portCheckDns => 'Не удалось определить адрес назначения';
+
+  @override
+  String get portCheckUnreachable => 'Сеть или узел недоступны';
+
+  @override
+  String get portCheckSocketError => 'Ошибка сокета. Проверьте адрес и настройки сети.';
+
+  @override
+  String get portCheckPython => 'На SSH-сервере не найден Python 3';
+
+  @override
+  String get portCheckRemoteError => 'SSH-сервер не смог завершить проверку';
+
+  @override
+  String get portCheckBadHost => 'Введите одно имя хоста или адрес IPv4/IPv6';
+
+  @override
+  String get portCheckProtocol => 'Протокол';
+
+  @override
   String registryBuildOnSsh(String host) {
     return 'Собрать на $host по SSH';
   }

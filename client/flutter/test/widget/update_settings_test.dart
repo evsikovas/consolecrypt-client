@@ -15,6 +15,32 @@ import 'package:material_ui/material_ui.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  testWidgets('opens only the selected HTTP link in a release description', (tester) async {
+    final opened = <Uri>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          updateOpenUrlProvider.overrideWithValue((uri) async {
+            opened.add(uri);
+            return true;
+          }),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: ReleaseNotesText(
+              'Release 1.2.5: https://example.org/releases/v1.2.5. (https://example.org/notes) file:///local',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('https://example.org/releases/v1.2.5'));
+    await tester.tap(find.text('https://example.org/notes'));
+    expect(opened.map((uri) => uri.toString()), ['https://example.org/releases/v1.2.5', 'https://example.org/notes']);
+  });
   for (final language in ['en', 'ru']) {
     testWidgets('Linux $language explains package updates without unsupported updater controls', (tester) async {
       final backend = testBackend();

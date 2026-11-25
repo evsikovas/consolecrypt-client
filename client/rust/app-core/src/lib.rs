@@ -259,6 +259,7 @@ mod snippets;
 mod ssh;
 
 mod ssh_api;
+mod port_check;
 
 mod ssh_config_import;
 

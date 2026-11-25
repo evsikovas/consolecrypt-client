@@ -119,6 +119,56 @@ String updateErrorMessage(AppLocalizations l, UpdateState state) => switch (stat
   _ => l.updateFailedHelp,
 };
 
+class ReleaseNotesText extends ConsumerWidget {
+  const ReleaseNotesText(this.notes, {super.key});
+  final String notes;
+
+  static final _links = RegExp(r'''https?://[^\s<>"'«»]+''', caseSensitive: false);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spans = <InlineSpan>[];
+    var start = 0;
+    for (final match in _links.allMatches(notes)) {
+      var label = match[0]!.replaceFirst(RegExp(r'[.,!?:;。，！；：]+$'), '');
+      while (label.endsWith(')') && ')'.allMatches(label).length > '('.allMatches(label).length) {
+        label = label.substring(0, label.length - 1);
+      }
+      final url = Uri.tryParse(label);
+      if (url == null || url.host.isEmpty || url.userInfo.isNotEmpty || label.contains(r'\')) continue;
+      spans.add(TextSpan(text: notes.substring(start, match.start)));
+      spans.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: Semantics(
+            link: true,
+            child: InkWell(
+              onTap: () async {
+                final failure = context.l10n.updateErrorBrowser(label);
+                try {
+                  if (await ref.read(updateOpenUrlProvider)(url)) return;
+                } on Exception {
+                  // Report launch failure without interrupting the download.
+                }
+                if (context.mounted) showSnack(context, failure, error: true);
+              },
+              child: Text(
+                label,
+                style: TextStyle(color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.underline),
+              ),
+            ),
+          ),
+        ),
+      );
+      start = match.start + label.length;
+    }
+    if (spans.isEmpty) return Text(notes);
+    spans.add(TextSpan(text: notes.substring(start)));
+    return Text.rich(TextSpan(children: spans));
+  }
+}
+
 class UpdateSettingsSection extends ConsumerWidget {
   const UpdateSettingsSection({super.key});
   @override
@@ -201,7 +251,7 @@ class UpdateSettingsSection extends ConsumerWidget {
                 settings.updateLocal(settings.currentLocal.copyWith(checkUpdatesAutomatically: value)),
           ),
           Text(updateStatus(l, state), key: const ValueKey('updates-status')),
-          if (notes.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(notes)),
+          if (notes.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: ReleaseNotesText(notes)),
           if (state.phase == UpdatePhase.downloading)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),

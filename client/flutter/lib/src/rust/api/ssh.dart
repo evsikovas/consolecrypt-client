@@ -25,6 +25,10 @@ Future<String> terminalOpen({required String hostId, required int cols, required
 Future<String> terminalOpenTcpdump({required String hostId, String? peerId, required bool sudo}) =>
     RustLib.instance.api.crateApiSshTerminalOpenTcpdump(hostId: hostId, peerId: peerId, sudo: sudo);
 
+/// Check one service from this device or from a saved SSH host.
+Future<String> portCheck({String? sourceId, required String host, required int port, required bool udp}) =>
+    RustLib.instance.api.crateApiSshPortCheck(sourceId: sourceId, host: host, port: port, udp: udp);
+
 /// Device-local shell profiles. Executables and argv remain owned by Rust.
 Future<String> terminalLocalProfiles() => RustLib.instance.api.crateApiSshTerminalLocalProfiles();
 

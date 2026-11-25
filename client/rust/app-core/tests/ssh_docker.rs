@@ -17,6 +17,35 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn port_check_runs_on_the_selected_ssh_host() {
+    if !testing::enabled() {
+        return;
+    }
+    let tb = tokio::task::spawn_blocking(|| SshTestbed::start(false)).await.unwrap().unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let app = app_with(tmp.path(), memory_store(), false);
+    app.create_local_profile("Port check IT".into(), PASSPHRASE.into()).await.unwrap();
+    let mut source = host("source", "127.0.0.1", None);
+    source.port = Some(tb.bastion1_port);
+    source.username = Some(tb.secrets.user.clone());
+    source.host_key_policy = HostKeyPolicy::AcceptNew;
+    let saved = app.save_host_with_auth(source, HostAuth::InlinePassword {
+        password: Some(tb.secrets.password.expose_secret().to_owned()),
+    }).await.unwrap();
+    let check = |port, udp| app.port_check(Some(saved.id.clone()), "127.0.0.1".into(), port, udp);
+    if tb.exec_in(&tb.bastion1, "command -v python3").is_err() {
+        assert_eq!(check(22, false).await.unwrap(), "no_python");
+        tb.exec_in(&tb.bastion1, "apk add --no-cache python3").unwrap();
+    }
+    assert_eq!(check(22, false).await.unwrap(), "connected");
+    assert_eq!(check(1, false).await.unwrap(), "refused");
+    let port = tb.exec_in(&tb.bastion1, r#"python3 -c 'import socket; s=socket.socket(type=socket.SOCK_DGRAM); s.bind(("127.0.0.1",0)); print(s.getsockname()[1],flush=True); s.settimeout(15); data,peer=s.recvfrom(1); s.sendto(data,peer)' </dev/null >/tmp/cc-port-check-test 2>/dev/null &
+for i in 1 2 3 4 5; do test -s /tmp/cc-port-check-test && break; sleep 1; done
+cat /tmp/cc-port-check-test"#).unwrap();
+    assert_eq!(check(port.trim().parse().unwrap(), true).await.unwrap(), "reply");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn host_metrics_sample_on_the_connected_ssh_transport_leaves_pty_untouched() {
     if !testing::enabled() {
         return;

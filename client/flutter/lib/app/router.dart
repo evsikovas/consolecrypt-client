@@ -25,6 +25,7 @@ import 'package:consolecrypt/sftp/sftp_screen.dart';
 import 'package:consolecrypt/sharing/sharing_screen.dart';
 import 'package:consolecrypt/sync/sync_screen.dart';
 import 'package:consolecrypt/tcpdump/tcpdump_screen.dart';
+import 'package:consolecrypt/port_check/port_check_screen.dart';
 import 'package:consolecrypt/terminal/terminal_screen.dart';
 import 'package:consolecrypt/tunnels/tunnels_screen.dart';
 import 'package:consolecrypt/vault/approval_wait_screen.dart';
@@ -60,6 +61,7 @@ enum ShellBranch {
   passwords,
   automation,
   tcpdump,
+  portCheck,
 }
 
 Page<void> _page(Widget child) => NoTransitionPage<void>(
@@ -165,6 +167,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           _branch(AppRoutes.automation, const AutomationScreen()),
           _branch(AppRoutes.tcpdump, const TcpdumpScreen()),
+          _branch(AppRoutes.portCheck, const PortCheckScreen()),
         ],
       ),
     ],

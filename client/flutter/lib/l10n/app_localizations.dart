@@ -94,6 +94,150 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Single-port connectivity check: Port check
+  ///
+  /// In en, this message translates to:
+  /// **'Port check'**
+  String get portCheckTitle;
+
+  /// Single-port connectivity check: Test a TCP or UDP port from this device or a saved SSH server.
+  ///
+  /// In en, this message translates to:
+  /// **'Test a TCP or UDP port from this device or a saved SSH server.'**
+  String get portCheckSubtitle;
+
+  /// Single-port connectivity check: This device
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get portCheckLocal;
+
+  /// Single-port connectivity check: SSH server
+  ///
+  /// In en, this message translates to:
+  /// **'SSH server'**
+  String get portCheckRemote;
+
+  /// Single-port connectivity check: Check from
+  ///
+  /// In en, this message translates to:
+  /// **'Check from'**
+  String get portCheckSource;
+
+  /// Single-port connectivity check: Destination (hostname or IP)
+  ///
+  /// In en, this message translates to:
+  /// **'Destination (hostname or IP)'**
+  String get portCheckTarget;
+
+  /// Single-port connectivity check: Choose server
+  ///
+  /// In en, this message translates to:
+  /// **'Choose server'**
+  String get portCheckChoose;
+
+  /// Single-port connectivity check: Port (1–65535)
+  ///
+  /// In en, this message translates to:
+  /// **'Port (1–65535)'**
+  String get portCheckPort;
+
+  /// Single-port connectivity check: Check port
+  ///
+  /// In en, this message translates to:
+  /// **'Check port'**
+  String get portCheckAction;
+
+  /// Single-port connectivity check: The SSH server needs Python 3 and a POSIX shell. The address is resolved on that server.
+  ///
+  /// In en, this message translates to:
+  /// **'The SSH server needs Python 3 and a POSIX shell. The address is resolved on that server.'**
+  String get portCheckRemoteHelp;
+
+  /// Single-port connectivity check: Sends one UDP datagram containing a zero byte and waits up to 5 seconds for a reply.
+  ///
+  /// In en, this message translates to:
+  /// **'Sends one UDP datagram containing a zero byte and waits up to 5 seconds for a reply.'**
+  String get portCheckUdpHelp;
+
+  /// Single-port connectivity check: Checking…
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get portCheckRunning;
+
+  /// Single-port connectivity check: TCP connection established
+  ///
+  /// In en, this message translates to:
+  /// **'TCP connection established'**
+  String get portCheckConnected;
+
+  /// Single-port connectivity check: UDP reply received
+  ///
+  /// In en, this message translates to:
+  /// **'UDP reply received'**
+  String get portCheckReply;
+
+  /// Single-port connectivity check: The connection was refused
+  ///
+  /// In en, this message translates to:
+  /// **'The connection was refused'**
+  String get portCheckRefused;
+
+  /// Single-port connectivity check: No UDP reply. An open port can also stay silent.
+  ///
+  /// In en, this message translates to:
+  /// **'No UDP reply. An open port can also stay silent.'**
+  String get portCheckNoReply;
+
+  /// Single-port connectivity check: Connection timed out
+  ///
+  /// In en, this message translates to:
+  /// **'Connection timed out'**
+  String get portCheckTimeout;
+
+  /// Single-port connectivity check: Could not resolve the destination address
+  ///
+  /// In en, this message translates to:
+  /// **'Could not resolve the destination address'**
+  String get portCheckDns;
+
+  /// Single-port connectivity check: The network or host is unreachable
+  ///
+  /// In en, this message translates to:
+  /// **'The network or host is unreachable'**
+  String get portCheckUnreachable;
+
+  /// Single-port connectivity check: Socket error. Check the address and network settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Socket error. Check the address and network settings.'**
+  String get portCheckSocketError;
+
+  /// Single-port connectivity check: Python 3 was not found on the SSH server
+  ///
+  /// In en, this message translates to:
+  /// **'Python 3 was not found on the SSH server'**
+  String get portCheckPython;
+
+  /// Single-port connectivity check: The SSH server could not complete the check
+  ///
+  /// In en, this message translates to:
+  /// **'The SSH server could not complete the check'**
+  String get portCheckRemoteError;
+
+  /// Single-port connectivity check: Enter one hostname or IPv4/IPv6 address
+  ///
+  /// In en, this message translates to:
+  /// **'Enter one hostname or IPv4/IPv6 address'**
+  String get portCheckBadHost;
+
+  /// Single-port connectivity check: Protocol
+  ///
+  /// In en, this message translates to:
+  /// **'Protocol'**
+  String get portCheckProtocol;
+
   /// Build mode for the selected remote Docker engine
   ///
   /// In en, this message translates to:
