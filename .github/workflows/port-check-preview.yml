@@ -54,7 +54,14 @@ jobs:
           for binary in ConsoleCrypt.app/Contents/MacOS/ConsoleCrypt \
                         ConsoleCrypt.app/Contents/Frameworks/cc_bridge.framework/Versions/A/cc_bridge \
                         ConsoleCrypt.app/Contents/Helpers/consolecrypt-cli; do
-            lipo "$binary" -verify_arch arm64 x86_64
+            architectures=$(lipo -archs "$binary")
+            echo "$binary: $architectures"
+            for architecture in arm64 x86_64; do
+              if [[ " $architectures " != *" $architecture "* ]]; then
+                echo "Missing $architecture in $binary" >&2
+                exit 1
+              fi
+            done
           done
           hdiutil verify ConsoleCrypt.dmg
           package="ConsoleCrypt-$version-macos-universal.dmg"
