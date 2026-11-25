@@ -22,14 +22,24 @@ case "$(uname -s)" in
     ;;
   Darwin|FreeBSD)
     sockets=$(/usr/bin/env netstat -an -p "$proto") || exit 1
-    printf '%s\n' "$sockets" | awk -v proto="$proto" -v low="$low" -v high="$high" '
+    ports=$(printf '%s\n' "$sockets" | awk -v proto="$proto" -v low="$low" -v high="$high" '
       index($1, proto) == 1 && ((proto == "tcp" && $6 == "LISTEN") || (proto == "udp" && $5 == "*.*")) {
         n = split($4, a, /\./)
         if (a[n] ~ /^[0-9]+$/) {
           p = a[n] + 0
           if (p >= low && p <= high && !seen[p]++) print p
         }
-      }'
+      }')
+    if [ -n "$ports" ]; then
+      printf '%s\n' "$ports"
+    elif command -v lsof >/dev/null 2>&1; then
+      if [ "$proto" = tcp ]; then set -- -a -iTCP -sTCP:LISTEN; else set -- -iUDP; fi
+      lsof -nP -Fn "$@" 2>/dev/null | awk -v low="$low" -v high="$high" '
+        /^n/ && !/->/ && match($0, /:[0-9]+$/) {
+          p = substr($0, RSTART + 1) + 0
+          if (p >= low && p <= high && !seen[p]++) print p
+        }'
+    fi
     ;;
   *) exit 69 ;;
 esac

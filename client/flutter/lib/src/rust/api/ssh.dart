@@ -25,6 +25,14 @@ Future<String> terminalOpen({required String hostId, required int cols, required
 Future<String> terminalOpenTcpdump({required String hostId, String? peerId, required bool sudo}) =>
     RustLib.instance.api.crateApiSshTerminalOpenTcpdump(hostId: hostId, peerId: peerId, sudo: sudo);
 
+/// Inspect system services and run an explicitly confirmed restart on a saved SSH host.
+Future<String> hostSystemd({required String hostId, required int hostUpdatedAtMs, required String requestJson}) =>
+    RustLib.instance.api.crateApiSshHostSystemd(
+      hostId: hostId,
+      hostUpdatedAtMs: hostUpdatedAtMs,
+      requestJson: requestJson,
+    );
+
 /// Check one service from this device or from a saved SSH host.
 Future<String> portCheck({String? sourceId, required String host, required int port, required bool udp}) =>
     RustLib.instance.api.crateApiSshPortCheck(sourceId: sourceId, host: host, port: port, udp: udp);

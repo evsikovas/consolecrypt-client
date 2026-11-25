@@ -10,7 +10,42 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get portCheckTitle => 'Port check';
+  String get systemdTitle => 'System services';
+
+  @override
+  String get systemdSearch => 'Find a service';
+
+  @override
+  String get systemdEmpty => 'No matching services';
+
+  @override
+  String get systemdJournal => 'Journal · last 200 entries';
+
+  @override
+  String get systemdNoEntries => 'No entries visible to this SSH account.';
+
+  @override
+  String systemdConfirm(String unit, String host) {
+    return 'Restart $unit on $host? The service may be briefly unavailable.';
+  }
+
+  @override
+  String get systemdSudo => 'Use sudo (passwordless)';
+
+  @override
+  String get systemdRestarted => 'Service restarted.';
+
+  @override
+  String get systemdFailure => 'The server could not complete the operation.';
+
+  @override
+  String get systemdTimedOut => 'The server did not reply in time. Refresh to check the service state.';
+
+  @override
+  String get systemdUnavailable => 'This host does not have a running systemd system manager.';
+
+  @override
+  String get portCheckTitle => 'Port scanner';
 
   @override
   String get portCheckSubtitle => 'Test a TCP or UDP port from this device or a saved SSH server.';

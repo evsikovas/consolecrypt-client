@@ -94,10 +94,76 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
-  /// Single-port connectivity check: Port check
+  /// Host action that opens systemd services
   ///
   /// In en, this message translates to:
-  /// **'Port check'**
+  /// **'System services'**
+  String get systemdTitle;
+
+  /// Search field in the system service list
+  ///
+  /// In en, this message translates to:
+  /// **'Find a service'**
+  String get systemdSearch;
+
+  /// Empty or filtered system service list
+  ///
+  /// In en, this message translates to:
+  /// **'No matching services'**
+  String get systemdEmpty;
+
+  /// Heading above the selected service journal
+  ///
+  /// In en, this message translates to:
+  /// **'Journal · last 200 entries'**
+  String get systemdJournal;
+
+  /// Journal contains no entries visible to the SSH user
+  ///
+  /// In en, this message translates to:
+  /// **'No entries visible to this SSH account.'**
+  String get systemdNoEntries;
+
+  /// Confirmation for restarting one named system service on a host
+  ///
+  /// In en, this message translates to:
+  /// **'Restart {unit} on {host}? The service may be briefly unavailable.'**
+  String systemdConfirm(String unit, String host);
+
+  /// Option in the restart confirmation dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Use sudo (passwordless)'**
+  String get systemdSudo;
+
+  /// Successful service restart
+  ///
+  /// In en, this message translates to:
+  /// **'Service restarted.'**
+  String get systemdRestarted;
+
+  /// Remote service command failed
+  ///
+  /// In en, this message translates to:
+  /// **'The server could not complete the operation.'**
+  String get systemdFailure;
+
+  /// Service command timed out with unknown result
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not reply in time. Refresh to check the service state.'**
+  String get systemdTimedOut;
+
+  /// Host has no running systemd manager
+  ///
+  /// In en, this message translates to:
+  /// **'This host does not have a running systemd system manager.'**
+  String get systemdUnavailable;
+
+  /// Port scanner page title and navigation label
+  ///
+  /// In en, this message translates to:
+  /// **'Port scanner'**
   String get portCheckTitle;
 
   /// Single-port connectivity check: Test a TCP or UDP port from this device or a saved SSH server.

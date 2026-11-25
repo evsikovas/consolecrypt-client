@@ -10,7 +10,42 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
-  String get portCheckTitle => 'Comprobar puerto';
+  String get systemdTitle => 'Servicios de systemd';
+
+  @override
+  String get systemdSearch => 'Buscar un servicio';
+
+  @override
+  String get systemdEmpty => 'No se encontraron servicios';
+
+  @override
+  String get systemdJournal => 'Diario · últimas 200 entradas';
+
+  @override
+  String get systemdNoEntries => 'No hay entradas visibles para esta cuenta SSH.';
+
+  @override
+  String systemdConfirm(String unit, String host) {
+    return '¿Reiniciar $unit en $host? El servicio podría dejar de estar disponible brevemente.';
+  }
+
+  @override
+  String get systemdSudo => 'Usar sudo sin contraseña';
+
+  @override
+  String get systemdRestarted => 'Servicio reiniciado.';
+
+  @override
+  String get systemdFailure => 'El servidor no pudo completar la operación.';
+
+  @override
+  String get systemdTimedOut => 'El servidor no respondió a tiempo. Actualiza para comprobar el estado del servicio.';
+
+  @override
+  String get systemdUnavailable => 'El gestor del sistema systemd no está activo en este host.';
+
+  @override
+  String get portCheckTitle => 'Escáner de puertos';
 
   @override
   String get portCheckSubtitle =>

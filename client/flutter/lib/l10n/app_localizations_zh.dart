@@ -10,7 +10,42 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get portCheckTitle => '端口检测';
+  String get systemdTitle => 'systemd 服务';
+
+  @override
+  String get systemdSearch => '搜索服务';
+
+  @override
+  String get systemdEmpty => '未找到服务';
+
+  @override
+  String get systemdJournal => '日志 · 最近 200 条';
+
+  @override
+  String get systemdNoEntries => '此 SSH 账户没有可见的日志条目。';
+
+  @override
+  String systemdConfirm(String unit, String host) {
+    return '要在 $host 上重启 $unit 吗？服务可能会暂时不可用。';
+  }
+
+  @override
+  String get systemdSudo => '使用免密 sudo';
+
+  @override
+  String get systemdRestarted => '服务已重启。';
+
+  @override
+  String get systemdFailure => '服务器未能完成操作。';
+
+  @override
+  String get systemdTimedOut => '服务器响应超时。请刷新以检查服务状态。';
+
+  @override
+  String get systemdUnavailable => '此主机上没有正在运行的 systemd 系统管理器。';
+
+  @override
+  String get portCheckTitle => '端口扫描器';
 
   @override
   String get portCheckSubtitle => '从此设备或已保存的 SSH 服务器检测 TCP 或 UDP 端口。';

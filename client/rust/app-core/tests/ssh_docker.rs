@@ -17,6 +17,52 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn systemd_requests_reach_only_the_selected_test_service() {
+    if !testing::enabled() {
+        return;
+    }
+    let tb = tokio::task::spawn_blocking(|| SshTestbed::start(false)).await.unwrap().unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let app = app_with(tmp.path(), memory_store(), false);
+    app.create_local_profile("Systemd IT".into(), PASSPHRASE.into()).await.unwrap();
+    let mut source = host("services", "127.0.0.1", None);
+    source.port = Some(tb.bastion1_port);
+    source.username = Some(tb.secrets.user.clone());
+    source.host_key_policy = HostKeyPolicy::AcceptNew;
+    let saved = app.save_host_with_auth(source, HostAuth::InlinePassword {
+        password: Some(tb.secrets.password.expose_secret().to_owned()),
+    }).await.unwrap();
+    let run = |req: serde_json::Value| app.host_systemd(saved.id.clone(), saved.updated_at_ms, req.to_string());
+    let list = serde_json::json!({"action":"list"});
+    assert_eq!(run(list.clone()).await.unwrap()["status"], 69);
+    // This sshd container has no system manager. The stand-ins verify the argv
+    // received over real SSH, and expose a log entry only after a restart.
+    tb.exec_in(&tb.bastion1, r#"set -eu
+mkdir -p /run/systemd/system
+cat >/usr/local/bin/systemctl <<'EOF'
+#!/bin/sh
+case "$*" in
+'--no-pager --no-legend --plain --full list-units --all --type=service') echo 'demo.service loaded active running Demo' ;;
+'--no-ask-password restart -- demo.service') echo restarted >> /tmp/cc-demo-service-log ;;
+*) exit 1 ;;
+esac
+EOF
+cat >/usr/local/bin/journalctl <<'EOF'
+#!/bin/sh
+[ "$*" = '--no-pager --output=short-iso -n 200 --unit=demo.service' ] || exit 1
+[ ! -e /tmp/cc-demo-service-log ] || cat /tmp/cc-demo-service-log
+EOF
+chmod +x /usr/local/bin/systemctl /usr/local/bin/journalctl"#).unwrap();
+    assert_eq!(run(list).await.unwrap()["output"], "demo.service loaded active running Demo\n");
+    let journal = serde_json::json!({"action":"journal","unit":"demo.service"});
+    assert_eq!(run(journal.clone()).await.unwrap()["output"], "");
+    let restart = serde_json::json!({"action":"restart","unit":"demo.service","sudo":false});
+    assert!(app.host_systemd(saved.id.clone(), saved.updated_at_ms - 1, restart.to_string()).await.is_err());
+    assert_eq!(run(restart).await.unwrap()["status"], 0);
+    assert_eq!(run(journal).await.unwrap()["output"], "restarted\n");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn port_check_runs_on_the_selected_ssh_host() {
     if !testing::enabled() {
         return;

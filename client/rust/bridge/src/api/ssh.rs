@@ -119,6 +119,11 @@ pub async fn terminal_open_tcpdump(host_id: String, peer_id: Option<String>, sud
     with_core(move |c| async move { to_json(&c.open_tcpdump(host_id, peer_id, sudo).await?) }).await
 }
 
+/// Inspect system services and run an explicitly confirmed restart on a saved SSH host.
+pub async fn host_systemd(host_id: String, host_updated_at_ms: i64, request_json: String) -> Result<String, BridgeError> {
+    with_core(move |core| async move { to_json(&core.host_systemd(host_id, host_updated_at_ms, request_json).await?) }).await
+}
+
 /// Check one service from this device or from a saved SSH host.
 pub async fn port_check(source_id: Option<String>, host: String, port: u16, udp: bool) -> Result<String, BridgeError> {
     with_core(move |core| async move { Ok(core.port_check(source_id, host, port, udp).await?.to_owned()) }).await

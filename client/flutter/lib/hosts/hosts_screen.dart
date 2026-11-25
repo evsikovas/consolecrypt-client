@@ -13,6 +13,7 @@ import 'package:consolecrypt/core/widgets/workspace_sections.dart';
 import 'package:consolecrypt/groups/group_dialogs.dart';
 import 'package:consolecrypt/groups/group_tree.dart';
 import 'package:consolecrypt/hosts/inventory_navigation.dart';
+import 'package:consolecrypt/hosts/systemd_services.dart';
 import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:consolecrypt/rdp/rdp_launcher.dart';
@@ -702,6 +703,7 @@ enum _HostAction {
   notes,
   group,
   sftp,
+  systemd,
   edit,
   share,
   refreshShared,
@@ -774,6 +776,13 @@ class _HostInspector extends ConsumerWidget {
                             await ref.read(sftpControllerProvider.notifier).connect(host);
                             if (context.mounted) context.go(AppRoutes.sftp);
                           },
+                        ),
+                      if (!host.isRdp)
+                        GlassButton(
+                          key: const ValueKey('host-inspector-systemd'),
+                          label: l.systemdTitle,
+                          icon: Icons.settings_applications_outlined,
+                          onPressed: () => openSystemServices(context, host),
                         ),
                       GlassButton(
                         key: const ValueKey('host-inspector-edit'),
@@ -968,6 +977,12 @@ class _HostTile extends ConsumerWidget {
             const GlassMenuDivider(),
             if (!host.isRdp)
               GlassMenuItem(value: _HostAction.sftp, label: l10n.hostsOpenSftp, icon: Icons.folder_copy_rounded),
+            if (!host.isRdp)
+              GlassMenuItem(
+                value: _HostAction.systemd,
+                label: l10n.systemdTitle,
+                icon: Icons.settings_applications_outlined,
+              ),
             if (ref.watch(activeProfileProvider)?.isSynced == true)
               GlassMenuItem(value: _HostAction.share, label: l10n.sharingPublish, icon: Icons.share_outlined),
             GlassMenuItem(
@@ -1029,6 +1044,8 @@ class _HostTile extends ConsumerWidget {
                 await connect();
               case _HostAction.notes:
                 showHostNotes(ref, host);
+              case _HostAction.systemd:
+                await openSystemServices(context, host);
               case _HostAction.share:
                 if (host.isRdp) {
                   await showSharingRdpHost(context, hostId: host.id.value);

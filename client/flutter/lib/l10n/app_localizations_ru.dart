@@ -10,7 +10,42 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
-  String get portCheckTitle => 'Проверка порта';
+  String get systemdTitle => 'Службы systemd';
+
+  @override
+  String get systemdSearch => 'Найти службу';
+
+  @override
+  String get systemdEmpty => 'Службы не найдены';
+
+  @override
+  String get systemdJournal => 'Журнал · последние 200 записей';
+
+  @override
+  String get systemdNoEntries => 'Этой учётной записи SSH пока не видно записей журнала.';
+
+  @override
+  String systemdConfirm(String unit, String host) {
+    return 'Перезапустить $unit на $host? Во время перезапуска служба может быть недоступна.';
+  }
+
+  @override
+  String get systemdSudo => 'Использовать sudo без пароля';
+
+  @override
+  String get systemdRestarted => 'Служба перезапущена.';
+
+  @override
+  String get systemdFailure => 'Серверу не удалось выполнить операцию.';
+
+  @override
+  String get systemdTimedOut => 'Сервер не ответил вовремя. Обновите данные, чтобы проверить состояние службы.';
+
+  @override
+  String get systemdUnavailable => 'На этом хосте системный менеджер systemd не запущен.';
+
+  @override
+  String get portCheckTitle => 'Сканер портов';
 
   @override
   String get portCheckSubtitle =>
