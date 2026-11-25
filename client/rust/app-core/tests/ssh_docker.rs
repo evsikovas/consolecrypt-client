@@ -43,23 +43,27 @@ cat >/usr/local/bin/systemctl <<'EOF'
 #!/bin/sh
 case "$*" in
 '--no-pager --no-legend --plain --full list-units --all --type=service') echo 'demo.service loaded active running Demo' ;;
+'--no-pager show --property=FragmentPath --value -- demo.service') echo /etc/systemd/system/demo.service ;;
+'--no-pager cat -- demo.service') echo '[Service]' ;;
 '--no-ask-password restart -- demo.service') echo restarted >> /tmp/cc-demo-service-log ;;
 *) exit 1 ;;
 esac
 EOF
 cat >/usr/local/bin/journalctl <<'EOF'
 #!/bin/sh
-[ "$*" = '--no-pager --output=short-iso -n 200 --unit=demo.service' ] || exit 1
-[ ! -e /tmp/cc-demo-service-log ] || cat /tmp/cc-demo-service-log
+[ "$*" = '--no-pager --all --output=json --output-fields=MESSAGE,PRIORITY,SYSLOG_IDENTIFIER,_COMM,_PID -n 200 --unit=demo.service' ] || exit 1
+[ ! -e /tmp/cc-demo-service-log ] || echo '{"MESSAGE":"restarted","PRIORITY":"5"}'
 EOF
 chmod +x /usr/local/bin/systemctl /usr/local/bin/journalctl"#).unwrap();
     assert_eq!(run(list).await.unwrap()["output"], "demo.service loaded active running Demo\n");
     let journal = serde_json::json!({"action":"journal","unit":"demo.service"});
+    assert_eq!(run(serde_json::json!({"action":"unit_path","unit":"demo.service"})).await.unwrap()["output"], "/etc/systemd/system/demo.service\n");
+    assert_eq!(run(serde_json::json!({"action":"unit_text","unit":"demo.service"})).await.unwrap()["output"], "[Service]\n");
     assert_eq!(run(journal.clone()).await.unwrap()["output"], "");
     let restart = serde_json::json!({"action":"restart","unit":"demo.service","sudo":false});
     assert!(app.host_systemd(saved.id.clone(), saved.updated_at_ms - 1, restart.to_string()).await.is_err());
     assert_eq!(run(restart).await.unwrap()["status"], 0);
-    assert_eq!(run(journal).await.unwrap()["output"], "restarted\n");
+    assert_eq!(run(journal).await.unwrap()["output"], "{\"MESSAGE\":\"restarted\",\"PRIORITY\":\"5\"}\n");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

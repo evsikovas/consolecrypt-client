@@ -10,6 +10,72 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String get systemdOriginal => 'Исходное сообщение';
+
+  @override
+  String get systemdFilter => 'Состояние службы';
+
+  @override
+  String get systemdAll => 'Все состояния';
+
+  @override
+  String get systemdRunning => 'Работающие';
+
+  @override
+  String get systemdActive => 'Активные';
+
+  @override
+  String get systemdInactive => 'Неактивные';
+
+  @override
+  String get systemdFailed => 'Со сбоем';
+
+  @override
+  String get systemdChanging => 'Меняют состояние';
+
+  @override
+  String get systemdSort => 'Сортировка служб';
+
+  @override
+  String get systemdSortName => 'Имя А–Я';
+
+  @override
+  String get systemdSortReverse => 'Имя Я–А';
+
+  @override
+  String get systemdSortState => 'Сначала со сбоем';
+
+  @override
+  String get systemdUnitPath => 'Путь к unit-файлу';
+
+  @override
+  String get systemdNoUnitPath => 'Unit-файл на диске отсутствует';
+
+  @override
+  String get systemdReadUnit => 'Прочитать unit-файл';
+
+  @override
+  String get systemdHideUnit => 'Свернуть unit-файл';
+
+  @override
+  String get systemdLogSearch => 'Найти в журнале';
+
+  @override
+  String get systemdErrors => 'Ошибки';
+
+  @override
+  String get systemdWarnings => 'Предупреждения';
+
+  @override
+  String get systemdInformation => 'Информация';
+
+  @override
+  String get systemdDebug => 'Отладка';
+
+  @override
+  String get systemdNoMatchingLogs => 'Нет записей по этому фильтру';
+
+  @override
   String get systemdTitle => 'Службы systemd';
 
   @override

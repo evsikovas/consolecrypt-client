@@ -8,6 +8,8 @@ use tokio::time::{sleep, timeout};
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 enum Operation {
     List,
+    UnitPath { unit: String },
+    UnitText { unit: String },
     Journal { unit: String },
     Restart { unit: String, sudo: bool },
 }
@@ -37,8 +39,16 @@ impl Operation {
             Self::List => {
                 return Ok("command -v systemctl >/dev/null && test -d /run/systemd/system || exit 69; LC_ALL=C SYSTEMD_COLORS=0 SYSTEMD_URLIFY=0 systemctl --no-pager --no-legend --plain --full list-units --all --type=service".into());
             }
+            Self::UnitPath { unit } => format!(
+                "systemctl --no-pager show --property=FragmentPath --value -- '{}'",
+                service_name(unit)?
+            ),
+            Self::UnitText { unit } => format!(
+                "systemctl --no-pager cat -- '{}'",
+                service_name(unit)?
+            ),
             Self::Journal { unit } => format!(
-                "journalctl --no-pager --output=short-iso -n 200 --unit='{}'",
+                "journalctl --no-pager --all --output=json --output-fields=MESSAGE,PRIORITY,SYSLOG_IDENTIFIER,_COMM,_PID -n 200 --unit='{}'",
                 service_name(unit)?
             ),
             Self::Restart { unit, sudo } => {
@@ -83,8 +93,13 @@ impl AppCore {
                 } else {
                     20
                 };
+                let output_limit = if matches!(operation, Operation::Journal { .. }) {
+                    4 * 1024 * 1024
+                } else {
+                    1024 * 1024
+                };
                 let result = ssh
-                    .exec_bounded(&command, 1024 * 1024, sleep(Duration::from_secs(limit)))
+                    .exec_bounded(&command, output_limit, sleep(Duration::from_secs(limit)))
                     .await;
                 let _ = timeout(Duration::from_secs(1), ssh.disconnect()).await;
                 Ok(match result? {

@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/hosts/systemd_services.dart';
+import 'package:consolecrypt/hosts/systemd_journal.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +14,27 @@ import 'package:material_ui/material_ui.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  test('parses journald metadata and Docker messages without losing the original record', () {
+    const raw = r'level=error msg="[resolver] failed to query external DNS server" error="read udp: i/o timeout"';
+    final entry = ServiceLogEntry.parse(
+      jsonEncode({
+        '__REALTIME_TIMESTAMP': '1600000000123456',
+        'PRIORITY': '6',
+        'SYSLOG_IDENTIFIER': 'dockerd',
+        '_PID': '1522',
+        'MESSAGE': raw,
+      }),
+    );
+    expect(entry.level, 3);
+    expect(entry.summary, '[resolver] failed to query external DNS server');
+    expect(entry.process, 'dockerd[1522]');
+    expect(entry.time!.microsecondsSinceEpoch, 1600000000123456);
+    expect(entry.raw, raw);
+    expect(entry.fields['error'], 'read udp: i/o timeout');
+    expect(ServiceLogEntry.parse('{"PRIORITY":"4","MESSAGE":[65,10,66]}').summary, 'A\nB');
+    expect(ServiceLogEntry.parse('plain text').summary, 'plain text');
+    expect(ServiceLogEntry.parse(jsonEncode({'MESSAGE': '{"level":"debug","message":"result"}'})).level, 7);
+  });
   testWidgets('SSH session tools follow the selected host and explain when systemd is unavailable', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
@@ -62,8 +86,13 @@ void main() {
           expect(host.name, 'prod-web-1');
           operations.add(request);
           final output = switch (request['action']) {
-            'list' => 'demo.service loaded active running Example\nother.service loaded inactive dead Other unit\n',
-            'journal' => 'log entry #${++journalReads}',
+            'list' => 'demo.service loaded active running Example\nother.service loaded inactive dead Other unit\nzeta.service loaded failed failed Failed unit\n',
+            'unit_path' => '/etc/systemd/system/demo.service',
+            'unit_text' => '# /etc/systemd/system/demo.service\n[Service]\nExecStart=/opt/demo\n# /etc/systemd/system/demo.service.d/override.conf',
+            'journal' => [
+              jsonEncode({'PRIORITY': '6', 'MESSAGE': 'log entry #${++journalReads}'}),
+              jsonEncode({'PRIORITY': '6', 'MESSAGE': 'level=error msg="DNS timeout" error="resolver unreachable"'}),
+            ].join('\n'),
             'restart' => '',
             _ => throw StateError('Unexpected action'),
           };
@@ -74,10 +103,39 @@ void main() {
     await enterKey(tester, 'hosts-search', 'prod-web');
     await tapKey(tester, 'connect-prod-web-1');
     await tapKey(tester, 'nav-systemd');
+    await tapKey(tester, 'systemd-sort');
+    await tester.tap(find.text('State · failed first'));
+    await settle(tester);
+    expect(tester.getTopLeft(find.text('zeta.service')).dy, lessThan(tester.getTopLeft(find.text('demo.service')).dy));
+    await tapKey(tester, 'systemd-filter');
+    await tester.tap(find.text('Running'));
+    await settle(tester);
+    expect(find.text('other.service'), findsNothing);
+    expect(find.text('zeta.service'), findsNothing);
     await tester.tap(find.text('demo.service'));
     await settle(tester);
     expect(find.text('log entry #1'), findsOneWidget);
     expect(operations.last, {'action': 'journal', 'unit': 'demo.service'});
+    expect(find.text('/etc/systemd/system/demo.service'), findsOneWidget);
+    expect(operations.where((op) => op['action'] == 'unit_text'), isEmpty);
+    await tester.tap(find.text('Read unit file'));
+    await settle(tester);
+    expect(find.textContaining('demo.service.d/override.conf'), findsOneWidget);
+    await tester.tap(find.text('Hide unit file'));
+    await settle(tester);
+    await tapKey(tester, 'systemd-log-level');
+    await tester.tap(find.text('Errors'));
+    await settle(tester);
+    expect(find.text('log entry #1'), findsNothing);
+    await tester.tap(find.text('DNS timeout'));
+    await settle(tester);
+    expect(find.text('level=error msg="DNS timeout" error="resolver unreachable"'), findsOneWidget);
+    await enterKey(tester, 'systemd-log-search', 'no such message');
+    expect(find.text('No matching journal entries'), findsOneWidget);
+    await enterKey(tester, 'systemd-log-search', '');
+    await tapKey(tester, 'systemd-log-level');
+    await tester.tap(find.text('All levels').last);
+    await settle(tester);
 
     await tester.tap(find.text('Restart'));
     await settle(tester);

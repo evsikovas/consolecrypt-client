@@ -94,6 +94,138 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Original application message in a journal entry
+  ///
+  /// In en, this message translates to:
+  /// **'Original message'**
+  String get systemdOriginal;
+
+  /// SSH systemd panel: Service state
+  ///
+  /// In en, this message translates to:
+  /// **'Service state'**
+  String get systemdFilter;
+
+  /// SSH systemd panel: All states
+  ///
+  /// In en, this message translates to:
+  /// **'All states'**
+  String get systemdAll;
+
+  /// SSH systemd panel: Running
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get systemdRunning;
+
+  /// SSH systemd panel: Active
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get systemdActive;
+
+  /// SSH systemd panel: Inactive
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get systemdInactive;
+
+  /// SSH systemd panel: Failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get systemdFailed;
+
+  /// SSH systemd panel: Changing state
+  ///
+  /// In en, this message translates to:
+  /// **'Changing state'**
+  String get systemdChanging;
+
+  /// SSH systemd panel: Sort services
+  ///
+  /// In en, this message translates to:
+  /// **'Sort services'**
+  String get systemdSort;
+
+  /// SSH systemd panel: Name A–Z
+  ///
+  /// In en, this message translates to:
+  /// **'Name A–Z'**
+  String get systemdSortName;
+
+  /// SSH systemd panel: Name Z–A
+  ///
+  /// In en, this message translates to:
+  /// **'Name Z–A'**
+  String get systemdSortReverse;
+
+  /// SSH systemd panel: State · failed first
+  ///
+  /// In en, this message translates to:
+  /// **'State · failed first'**
+  String get systemdSortState;
+
+  /// SSH systemd panel: Unit file
+  ///
+  /// In en, this message translates to:
+  /// **'Unit file'**
+  String get systemdUnitPath;
+
+  /// SSH systemd panel: No unit file on disk
+  ///
+  /// In en, this message translates to:
+  /// **'No unit file on disk'**
+  String get systemdNoUnitPath;
+
+  /// SSH systemd panel: Read unit file
+  ///
+  /// In en, this message translates to:
+  /// **'Read unit file'**
+  String get systemdReadUnit;
+
+  /// SSH systemd panel: Hide unit file
+  ///
+  /// In en, this message translates to:
+  /// **'Hide unit file'**
+  String get systemdHideUnit;
+
+  /// SSH systemd panel: Search journal
+  ///
+  /// In en, this message translates to:
+  /// **'Search journal'**
+  String get systemdLogSearch;
+
+  /// SSH systemd panel: Errors
+  ///
+  /// In en, this message translates to:
+  /// **'Errors'**
+  String get systemdErrors;
+
+  /// SSH systemd panel: Warnings
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get systemdWarnings;
+
+  /// SSH systemd panel: Information
+  ///
+  /// In en, this message translates to:
+  /// **'Information'**
+  String get systemdInformation;
+
+  /// SSH systemd panel: Debug
+  ///
+  /// In en, this message translates to:
+  /// **'Debug'**
+  String get systemdDebug;
+
+  /// SSH systemd panel: No matching journal entries
+  ///
+  /// In en, this message translates to:
+  /// **'No matching journal entries'**
+  String get systemdNoMatchingLogs;
+
   /// Host action that opens systemd services
   ///
   /// In en, this message translates to:

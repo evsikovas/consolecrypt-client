@@ -10,6 +10,72 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String get systemdOriginal => 'Mensaje original';
+
+  @override
+  String get systemdFilter => 'Estado del servicio';
+
+  @override
+  String get systemdAll => 'Todos los estados';
+
+  @override
+  String get systemdRunning => 'En ejecución';
+
+  @override
+  String get systemdActive => 'Activos';
+
+  @override
+  String get systemdInactive => 'Inactivos';
+
+  @override
+  String get systemdFailed => 'Fallidos';
+
+  @override
+  String get systemdChanging => 'En transición';
+
+  @override
+  String get systemdSort => 'Ordenar servicios';
+
+  @override
+  String get systemdSortName => 'Nombre A–Z';
+
+  @override
+  String get systemdSortReverse => 'Nombre Z–A';
+
+  @override
+  String get systemdSortState => 'Fallidos primero';
+
+  @override
+  String get systemdUnitPath => 'Archivo de unidad';
+
+  @override
+  String get systemdNoUnitPath => 'No hay archivo de unidad en disco';
+
+  @override
+  String get systemdReadUnit => 'Ver archivo de unidad';
+
+  @override
+  String get systemdHideUnit => 'Ocultar archivo de unidad';
+
+  @override
+  String get systemdLogSearch => 'Buscar en el diario';
+
+  @override
+  String get systemdErrors => 'Errores';
+
+  @override
+  String get systemdWarnings => 'Avisos';
+
+  @override
+  String get systemdInformation => 'Información';
+
+  @override
+  String get systemdDebug => 'Depuración';
+
+  @override
+  String get systemdNoMatchingLogs => 'No hay entradas que coincidan';
+
+  @override
   String get systemdTitle => 'Servicios de systemd';
 
   @override

@@ -10,6 +10,72 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get systemdOriginal => 'Original message';
+
+  @override
+  String get systemdFilter => 'Service state';
+
+  @override
+  String get systemdAll => 'All states';
+
+  @override
+  String get systemdRunning => 'Running';
+
+  @override
+  String get systemdActive => 'Active';
+
+  @override
+  String get systemdInactive => 'Inactive';
+
+  @override
+  String get systemdFailed => 'Failed';
+
+  @override
+  String get systemdChanging => 'Changing state';
+
+  @override
+  String get systemdSort => 'Sort services';
+
+  @override
+  String get systemdSortName => 'Name A–Z';
+
+  @override
+  String get systemdSortReverse => 'Name Z–A';
+
+  @override
+  String get systemdSortState => 'State · failed first';
+
+  @override
+  String get systemdUnitPath => 'Unit file';
+
+  @override
+  String get systemdNoUnitPath => 'No unit file on disk';
+
+  @override
+  String get systemdReadUnit => 'Read unit file';
+
+  @override
+  String get systemdHideUnit => 'Hide unit file';
+
+  @override
+  String get systemdLogSearch => 'Search journal';
+
+  @override
+  String get systemdErrors => 'Errors';
+
+  @override
+  String get systemdWarnings => 'Warnings';
+
+  @override
+  String get systemdInformation => 'Information';
+
+  @override
+  String get systemdDebug => 'Debug';
+
+  @override
+  String get systemdNoMatchingLogs => 'No matching journal entries';
+
+  @override
   String get systemdTitle => 'systemd services';
 
   @override

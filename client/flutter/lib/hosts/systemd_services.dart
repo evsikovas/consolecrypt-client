@@ -8,9 +8,13 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/hosts/systemd_journal.dart';
 import 'package:consolecrypt/src/rust/api/ssh.dart' as ssh;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:intl/intl.dart';
+
+part 'systemd_journal_view.dart';
 
 typedef SystemdRequest = Future<Json> Function(Host host, Json operation);
 
@@ -27,13 +31,19 @@ final systemdRequestProvider = Provider<SystemdRequest>(
       ),
 );
 
-typedef _Unit = ({String name, String state, String description});
+typedef _Unit = ({String name, String active, String sub, String description});
+typedef _Journal = ({Json reply, List<ServiceLogEntry> entries});
+
+enum _ServiceFilter { all, running, active, inactive, failed, changing }
+
+enum _ServiceSort { name, reverseName, state }
+
 final _unitLine = RegExp(r'^(\S+\.service)\s+\S+\s+(\S+)\s+(\S+)(?:\s+(.*))?$');
 
 List<_Unit> _units(String output) => [
   for (final line in const LineSplitter().convert(output))
     if (_unitLine.firstMatch(line.trim()) case final m?)
-      (name: m[1]!, state: [m[2]!, m[3]!].join(' · '), description: m[4] ?? ''),
+      (name: m[1]!, active: m[2]!, sub: m[3]!, description: m[4] ?? ''),
 ];
 
 String? _failure(AppLocalizations l, Json reply, {bool listing = false}) {
@@ -56,7 +66,10 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
   final search = TextEditingController();
   late final profile = ref.read(activeProfileProvider)?.id;
   late Future<Json> services;
-  Future<Json>? journal;
+  Future<_Journal>? journal;
+  Future<Json>? path, contents;
+  _ServiceFilter filter = _ServiceFilter.all;
+  _ServiceSort sort = _ServiceSort.name;
   _Unit? selected;
   String? notice;
   bool restarting = false;
@@ -75,14 +88,18 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
 
   Future<Json> request(Json operation) => ref.read(systemdRequestProvider)(widget.host, operation);
 
+  Future<_Journal> readJournal(_Unit unit) async {
+    final reply = await request({'action': 'journal', 'unit': unit.name});
+    return (reply: reply, entries: ServiceLogEntry.parseOutput(reply['output'] as String? ?? ''));
+  }
+
   void refresh() {
     setState(() {
       services = request({'action': 'list'});
       if (selected case final unit?) {
-        journal = services.then((_) {
-          if (!mounted || !inProfile || selected != unit) return <String, Object?>{};
-          return request({'action': 'journal', 'unit': unit.name});
-        });
+        path = request({'action': 'unit_path', 'unit': unit.name});
+        if (contents != null) contents = request({'action': 'unit_text', 'unit': unit.name});
+        journal = readJournal(unit);
       }
     });
   }
@@ -91,7 +108,9 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
     setState(() {
       selected = unit;
       notice = null;
-      journal = request({'action': 'journal', 'unit': unit.name});
+      contents = null;
+      path = request({'action': 'unit_path', 'unit': unit.name});
+      journal = readJournal(unit);
     });
   }
 
@@ -160,6 +179,8 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                       : () => setState(() {
                           selected = null;
                           journal = null;
+                          path = null;
+                          contents = null;
                           notice = null;
                         }),
                 ),
@@ -181,6 +202,46 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
             ],
           ),
           const SizedBox(height: 8),
+          if (unit == null) ...[
+            Wrap(
+              spacing: GlassSpacing.s6,
+              runSpacing: GlassSpacing.s4,
+              children: [
+                GlassSelect<_ServiceFilter>(
+                  key: const ValueKey('systemd-filter'),
+                  semanticLabel: l.systemdFilter,
+                  value: filter,
+                  items: [
+                    for (final f in _ServiceFilter.values)
+                      GlassSelectItem(
+                        value: f,
+                        label: switch (f) {
+                          _ServiceFilter.all => l.systemdAll,
+                          _ServiceFilter.running => l.systemdRunning,
+                          _ServiceFilter.active => l.systemdActive,
+                          _ServiceFilter.inactive => l.systemdInactive,
+                          _ServiceFilter.failed => l.systemdFailed,
+                          _ServiceFilter.changing => l.systemdChanging,
+                        },
+                      ),
+                  ],
+                  onChanged: (v) => setState(() => filter = v),
+                ),
+                GlassSelect<_ServiceSort>(
+                  key: const ValueKey('systemd-sort'),
+                  value: sort,
+                  semanticLabel: l.systemdSort,
+                  items: [
+                    GlassSelectItem(value: _ServiceSort.name, label: l.systemdSortName),
+                    GlassSelectItem(value: _ServiceSort.reverseName, label: l.systemdSortReverse),
+                    GlassSelectItem(value: _ServiceSort.state, label: l.systemdSortState),
+                  ],
+                  onChanged: (v) => setState(() => sort = v),
+                ),
+              ],
+            ),
+            const SizedBox(height: GlassSpacing.s6),
+          ],
           Expanded(
             child: FutureBuilder<Json>(
               future: services,
@@ -195,47 +256,56 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                     : const <_Unit>[];
                 if (unit != null) {
                   final latest = units.where((u) => u.name == unit.name).firstOrNull;
-                  return ListView(
+                  return CustomScrollView(
                     primary: false,
-                    children: [
-                      if (latest != null) ...[
-                        if (latest.description.isNotEmpty) Text(latest.description),
-                        Text(latest.state, style: t.typography.caption),
-                      ],
-                      if (failure != null) SelectableText(failure),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: GlassButton(
-                          icon: Icons.restart_alt_rounded,
-                          label: l.dockerActionRestart,
-                          onPressed: restarting || latest == null ? null : () => restart(unit),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (latest != null) ...[
+                              if (latest.description.isNotEmpty) Text(latest.description),
+                              Text('${latest.active} · ${latest.sub}', style: t.typography.caption),
+                            ],
+                            if (failure != null) SelectableText(failure),
+                            const SizedBox(height: GlassSpacing.s8),
+                            Text(l.systemdUnitPath, style: t.typography.caption.copyWith(color: t.secondaryLabel)),
+                            _UnitOutput(future: path!, empty: l.systemdNoUnitPath),
+                            const SizedBox(height: GlassSpacing.s8),
+                            Wrap(
+                              spacing: GlassSpacing.s8,
+                              runSpacing: GlassSpacing.s4,
+                              children: [
+                                GlassButton(
+                                  icon: Icons.description_outlined,
+                                  label: contents == null ? l.systemdReadUnit : l.systemdHideUnit,
+                                  onPressed: () => setState(() {
+                                    contents = contents == null
+                                        ? request({'action': 'unit_text', 'unit': unit.name})
+                                        : null;
+                                  }),
+                                ),
+                                GlassButton(
+                                  icon: Icons.restart_alt_rounded,
+                                  label: l.dockerActionRestart,
+                                  onPressed: restarting || latest == null ? null : () => restart(unit),
+                                ),
+                              ],
+                            ),
+                            if (contents case final future?)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s8),
+                                child: _UnitOutput(future: future, empty: l.systemdNoUnitPath),
+                              ),
+                            if (restarting) const LinearProgressIndicator(),
+                            if (notice case final message?) SelectableText(message),
+                            const Divider(height: 24),
+                            Text(l.systemdJournal, style: t.typography.bodyEmph),
+                            const SizedBox(height: 8),
+                          ],
                         ),
                       ),
-                      if (restarting) const LinearProgressIndicator(),
-                      if (notice case final message?) SelectableText(message),
-                      const Divider(height: 24),
-                      Text(l.systemdJournal, style: t.typography.bodyEmph),
-                      const SizedBox(height: 8),
-                      FutureBuilder<Json>(
-                        future: journal,
-                        builder: (context, logs) {
-                          if (logs.connectionState != ConnectionState.done) return const LinearProgressIndicator();
-                          if (logs.hasError) return SelectableText(errorMessage(l, logs.error!));
-                          final reply = logs.requireData;
-                          final error = _failure(l, reply);
-                          if (error != null) return SelectableText(error);
-                          final output = (reply['output'] as String).trimRight();
-                          final hint = (reply['diagnostic'] as String? ?? '').trim();
-                          return SelectableText(
-                            [
-                              if (hint.isNotEmpty) hint,
-                              output.isEmpty || output == '-- No entries --' ? l.systemdNoEntries : output,
-                            ].join('\n'),
-                            style: t.typography.callout.copyWith(fontFamily: 'monospace'),
-                          );
-                        },
-                      ),
+                      _JournalSection(key: ValueKey(unit.name), journal: journal!),
                     ],
                   );
                 }
@@ -245,8 +315,31 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                 if (failure != null) return SingleChildScrollView(child: SelectableText(failure));
                 final query = search.text.trim().toLowerCase();
                 final filtered = units
+                    .where(
+                      (u) => switch (filter) {
+                        _ServiceFilter.all => true,
+                        _ServiceFilter.running => u.sub == 'running',
+                        _ServiceFilter.active => u.active == 'active',
+                        _ServiceFilter.inactive => u.active == 'inactive',
+                        _ServiceFilter.failed => u.active == 'failed',
+                        _ServiceFilter.changing => const {
+                          'activating',
+                          'deactivating',
+                          'reloading',
+                          'refreshing',
+                        }.contains(u.active),
+                      },
+                    )
                     .where((u) => [u.name, u.description].any((s) => s.toLowerCase().contains(query)))
                     .toList();
+                filtered.sort((a, b) {
+                  if (sort == _ServiceSort.state) {
+                    if ((a.active == 'failed') != (b.active == 'failed')) return a.active == 'failed' ? -1 : 1;
+                    final group = a.active.compareTo(b.active);
+                    if (group != 0) return group;
+                  }
+                  return sort == _ServiceSort.reverseName ? b.name.compareTo(a.name) : a.name.compareTo(b.name);
+                });
                 if (filtered.isEmpty) return Center(child: Text(l.systemdEmpty));
                 return Material(
                   type: MaterialType.transparency,
@@ -258,7 +351,7 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                       final u = filtered[index];
                       return ListTile(
                         title: Text(u.name),
-                        subtitle: Text(u.state),
+                        subtitle: Text('${u.active} · ${u.sub}'),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => open(u),
                       );

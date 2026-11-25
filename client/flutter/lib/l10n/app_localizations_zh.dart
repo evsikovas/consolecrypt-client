@@ -10,6 +10,72 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get systemdOriginal => '原始消息';
+
+  @override
+  String get systemdFilter => '服务状态';
+
+  @override
+  String get systemdAll => '所有状态';
+
+  @override
+  String get systemdRunning => '运行中';
+
+  @override
+  String get systemdActive => '已激活';
+
+  @override
+  String get systemdInactive => '未激活';
+
+  @override
+  String get systemdFailed => '失败';
+
+  @override
+  String get systemdChanging => '状态变化中';
+
+  @override
+  String get systemdSort => '服务排序';
+
+  @override
+  String get systemdSortName => '名称升序';
+
+  @override
+  String get systemdSortReverse => '名称降序';
+
+  @override
+  String get systemdSortState => '失败优先';
+
+  @override
+  String get systemdUnitPath => '单元文件';
+
+  @override
+  String get systemdNoUnitPath => '磁盘上没有单元文件';
+
+  @override
+  String get systemdReadUnit => '查看单元文件';
+
+  @override
+  String get systemdHideUnit => '收起单元文件';
+
+  @override
+  String get systemdLogSearch => '搜索日志';
+
+  @override
+  String get systemdErrors => '错误';
+
+  @override
+  String get systemdWarnings => '警告';
+
+  @override
+  String get systemdInformation => '信息';
+
+  @override
+  String get systemdDebug => '调试';
+
+  @override
+  String get systemdNoMatchingLogs => '没有匹配的日志记录';
+
+  @override
   String get systemdTitle => 'systemd 服务';
 
   @override
