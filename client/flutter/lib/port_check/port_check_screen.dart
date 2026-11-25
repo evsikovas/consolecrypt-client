@@ -25,6 +25,29 @@ final checkPortProvider = Provider<CheckPort>(
           guard(() => ssh.portCheck(sourceId: sourceId, host: host, port: port, udp: udp)),
 );
 
+typedef ReadListeningPorts = Future<List<int>> Function({
+  String? hostId,
+  required int low,
+  required int high,
+  required bool udp,
+});
+final listeningPortsProvider = Provider<ReadListeningPorts>(
+  (ref) =>
+      ({hostId, required low, required high, required udp}) =>
+          guard(() => ssh.listeningPorts(hostId: hostId, low: low, high: high, udp: udp)),
+);
+
+({int low, int high})? parsePortInterval(String text) {
+  final match = RegExp(r'^(\d{1,5})(?:\s*[-–—]\s*(\d{1,5}))?$').firstMatch(text.trim());
+  if (match == null) return null;
+  final low = int.parse(match[1]!);
+  final high = int.parse(match[2] ?? match[1]!);
+  return low >= 1 && low <= high && high <= 65535 ? (low: low, high: high) : null;
+}
+
+String _bareHost(String value) =>
+    value.startsWith('[') && value.endsWith(']') ? value.substring(1, value.length - 1) : value;
+
 bool validPortHost(String host) {
   if (InternetAddress.tryParse(host) != null) return true;
   if (host.startsWith('[') && host.endsWith(']')) {
@@ -58,6 +81,12 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
   final host = TextEditingController();
   final port = TextEditingController(text: '443');
   Host? source;
+  Host? inventoryHost;
+  List<int>? listeners;
+  final checked = <int, String>{};
+  static const pageSize = 12;
+  int offset = 0;
+  bool needsHost = false;
   bool remote = false, udp = false, busy = false, validated = false;
   int generation = 0;
   String? status;
@@ -74,12 +103,17 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
     status = null;
     error = null;
     validated = false;
+    needsHost = false;
+    listeners = null;
+    checked.clear();
+    offset = 0;
   }
 
   void clearProfile() => setState(() {
     generation++;
     busy = remote = udp = false;
     source = null;
+    inventoryHost = null;
     host.clear();
     port.text = '443';
     clearResult();
@@ -96,21 +130,91 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
     }
   }
 
+  Future<void> chooseDestination() async {
+    final current = generation;
+    final chosen = await showHostPicker(context);
+    if (!mounted || current != generation || chosen == null || busy) return;
+    setState(() {
+      clearResult();
+      inventoryHost = chosen;
+      host.text = chosen.address;
+    });
+  }
+
+  // Loopback always refers to the source of the connection check.
+  Future<({String? hostId})?> inventoryFor(String address) async {
+    if (inventoryHost case final selected?) return (hostId: selected.id.value);
+    final bare = _bareHost(address).toLowerCase();
+    final ip = InternetAddress.tryParse(bare);
+    if (ip?.isLoopback == true || bare == 'localhost' || bare == 'localhost.') {
+      return (hostId: remote ? source!.id.value : null);
+    }
+    final saved = await ref.read(hostsProvider.future);
+    final matches = saved.where((h) => h.protocol == HostProtocol.ssh && _bareHost(h.address).toLowerCase() == bare);
+    if (matches.length == 1) return (hostId: matches.single.id.value);
+    if (matches.isNotEmpty) return null;
+    if (ip != null) {
+      final interfaces = await NetworkInterface.list();
+      if (interfaces.any((i) => i.addresses.contains(ip))) return (hostId: null);
+    } else if (bare == Platform.localHostname.toLowerCase()) {
+      return (hostId: null);
+    }
+    return null;
+  }
+
+  Future<void> checkListener(int number) async {
+    if (busy || !(listeners?.contains(number) ?? false)) return;
+    final current = ++generation;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final result = await ref.read(checkPortProvider)(
+        sourceId: remote ? source!.id.value : null,
+        host: host.text.trim(),
+        port: number,
+        udp: udp,
+      );
+      if (mounted && generation == current) setState(() => checked[number] = result);
+    } catch (e) {
+      if (mounted && generation == current) setState(() => error = e);
+    } finally {
+      if (mounted && generation == current) setState(() => busy = false);
+    }
+  }
+
   Future<void> check() async {
     if (busy || remote && source == null) return;
-    final address = host.text.trim(), number = int.tryParse(port.text.trim());
+    final address = host.text.trim(), interval = parsePortInterval(port.text);
     setState(() {
       clearResult();
       validated = true;
     });
-    if (!validPortHost(address) || number == null || number < 1 || number > 65535) return;
+    if (!validPortHost(address) || interval == null) return;
     final current = ++generation;
     setState(() => busy = true);
     try {
+      if (interval.low != interval.high) {
+        final destination = await inventoryFor(address);
+        if (!mounted || generation != current) return;
+        if (destination == null) {
+          setState(() => needsHost = true);
+          return;
+        }
+        final ports = await ref.read(listeningPortsProvider)(
+          hostId: destination.hostId,
+          low: interval.low,
+          high: interval.high,
+          udp: udp,
+        );
+        if (mounted && generation == current) setState(() => listeners = ports);
+        return;
+      }
       final result = await ref.read(checkPortProvider)(
         sourceId: remote ? source!.id.value : null,
         host: address,
-        port: number,
+        port: interval.low,
         udp: udp,
       );
       if (mounted && generation == current) setState(() => status = result);
@@ -128,7 +232,8 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
       if (stage != AppStage.unlocked) clearProfile();
     });
     final l = context.l10n;
-    final number = int.tryParse(port.text.trim()) ?? 0;
+    final interval = parsePortInterval(port.text);
+    final range = interval != null && interval.low != interval.high;
     return PageScaffold(
       title: l.portCheckTitle,
       subtitle: l.portCheckSubtitle,
@@ -179,7 +284,10 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
               semanticLabel: l.portCheckTarget,
               placeholder: 'localhost',
               errorText: validated && !validPortHost(host.text.trim()) ? l.portCheckBadHost : null,
-              onChanged: (_) => setState(clearResult),
+              onChanged: (_) => setState(() {
+                inventoryHost = null;
+                clearResult();
+              }),
               onSubmitted: (_) => check(),
             ),
             const SizedBox(height: 16),
@@ -188,7 +296,7 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
               runSpacing: 12,
               children: [
                 SizedBox(
-                  width: 160,
+                  width: 200,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -198,9 +306,10 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
                         fieldKey: const ValueKey('port-check-number'),
                         controller: port,
                         enabled: !busy,
-                        keyboardType: TextInputType.number,
+                        keyboardType: TextInputType.text,
+                        placeholder: '443 / 22-10000',
                         semanticLabel: l.portCheckPort,
-                        errorText: validated && (number < 1 || number > 65535) ? l.portCheckPort : null,
+                        errorText: validated && interval == null ? l.portCheckInvalidInterval : null,
                         onChanged: (_) => setState(clearResult),
                         onSubmitted: (_) => check(),
                       ),
@@ -232,14 +341,58 @@ class _PortCheckScreenState extends ConsumerState<PortCheckScreen> {
                 ),
               ],
             ),
+            if (range) ...[
+              const SizedBox(height: 12),
+              Text(needsHost ? l.portCheckNeedsTarget : l.portCheckRangeHelp),
+              GlassButton(
+                icon: Icons.dns_rounded,
+                label: inventoryHost?.name ?? l.portCheckChooseTarget,
+                onPressed: busy ? null : chooseDestination,
+              ),
+            ],
             if (udp) Padding(padding: const EdgeInsets.only(top: 12), child: Text(l.portCheckUdpHelp)),
             const SizedBox(height: 20),
             GlassButton.prominent(
               key: const ValueKey('port-check-submit'),
               icon: Icons.settings_ethernet_rounded,
-              label: busy ? l.portCheckRunning : l.portCheckAction,
+              label: busy
+                  ? l.portCheckRunning
+                  : range
+                  ? l.portCheckList
+                  : l.portCheckAction,
               onPressed: busy || remote && source == null ? null : check,
             ),
+            if (listeners case final ports?) ...[
+              const SizedBox(height: 16),
+              Text(ports.isEmpty ? l.portCheckEmpty : l.portCheckFound(ports.length)),
+              for (final number in ports.skip(offset).take(pageSize))
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('$number/${udp ? 'UDP' : 'TCP'}'),
+                  subtitle: checked.containsKey(number) ? Text(_statusText(l, checked[number]!)) : null,
+                  trailing: IconButton(
+                    tooltip: l.portCheckAction,
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    onPressed: busy ? null : () => checkListener(number),
+                  ),
+                ),
+              if (ports.length > pageSize)
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: MaterialLocalizations.of(context).previousPageTooltip,
+                      icon: const Icon(Icons.chevron_left),
+                      onPressed: offset == 0 ? null : () => setState(() => offset -= pageSize),
+                    ),
+                    Text('${offset + 1}–${(offset + pageSize).clamp(0, ports.length)} / ${ports.length}'),
+                    IconButton(
+                      tooltip: MaterialLocalizations.of(context).nextPageTooltip,
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: offset + pageSize >= ports.length ? null : () => setState(() => offset += pageSize),
+                    ),
+                  ],
+                ),
+            ],
             if (status != null || error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 16),

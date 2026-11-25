@@ -32,7 +32,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String get portCheckChoose => 'Выбрать сервер';
 
   @override
-  String get portCheckPort => 'Порт (1–65535)';
+  String get portCheckPort => 'Порт или диапазон';
+
+  @override
+  String get portCheckInvalidInterval => 'Введите порт (1–65535) или диапазон, например 22-10000.';
+
+  @override
+  String get portCheckList => 'Показать порты';
+
+  @override
+  String get portCheckRangeHelp =>
+      'Показывает сокеты на целевом хосте. Нажмите ▶ рядом с портом, чтобы проверить его с выбранного источника.';
+
+  @override
+  String get portCheckNeedsTarget =>
+      'Для просмотра сокетов выберите сохранённый SSH-хост назначения или укажите адрес этого устройства.';
+
+  @override
+  String get portCheckChooseTarget => 'Выбрать хост назначения';
+
+  @override
+  String get portCheckEmpty => 'В этом диапазоне хост не сообщил ни об одном сокете выбранного протокола.';
+
+  @override
+  String portCheckFound(int count) {
+    return 'Портов в диапазоне: $count';
+  }
 
   @override
   String get portCheckAction => 'Проверить порт';

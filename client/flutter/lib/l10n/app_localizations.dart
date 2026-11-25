@@ -139,8 +139,50 @@ abstract class AppLocalizations {
   /// Single-port connectivity check: Port (1–65535)
   ///
   /// In en, this message translates to:
-  /// **'Port (1–65535)'**
+  /// **'Port or range'**
   String get portCheckPort;
+
+  /// Port interval validation error
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a port (1–65535) or a range such as 22-10000.'**
+  String get portCheckInvalidInterval;
+
+  /// Read the destination socket table
+  ///
+  /// In en, this message translates to:
+  /// **'Show ports'**
+  String get portCheckList;
+
+  /// How to check the services listed in the interval
+  ///
+  /// In en, this message translates to:
+  /// **'Lists sockets on the destination. Use ▶ next to a port to test it from the selected source.'**
+  String get portCheckRangeHelp;
+
+  /// Shown when the destination has no matching SSH host
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a saved SSH destination or enter this device’s address to read its socket table.'**
+  String get portCheckNeedsTarget;
+
+  /// Choose the destination SSH host
+  ///
+  /// In en, this message translates to:
+  /// **'Choose destination host'**
+  String get portCheckChooseTarget;
+
+  /// Empty result for the selected port interval
+  ///
+  /// In en, this message translates to:
+  /// **'The host reported no sockets for this protocol in the range.'**
+  String get portCheckEmpty;
+
+  /// Number of ports in the interval
+  ///
+  /// In en, this message translates to:
+  /// **'Ports in range: {count}'**
+  String portCheckFound(int count);
 
   /// Single-port connectivity check: Check port
   ///

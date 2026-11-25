@@ -10,16 +10,30 @@ import 'package:material_ui/material_ui.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  test('parses inclusive intervals, pasted dashes and boundary values', () {
+    expect(parsePortInterval(' 22 - 10000 '), (low: 22, high: 10000));
+    expect(parsePortInterval('1–65535'), (low: 1, high: 65535));
+    expect(parsePortInterval('443'), (low: 443, high: 443));
+    for (final value in ['0', '1-65536', '90-80', '22-', '-22', '22 25', '1-2-3']) {
+      expect(parsePortInterval(value), isNull, reason: value);
+    }
+  });
+
   testWidgets('checks one endpoint from this device or the selected SSH server', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
     final calls = <(String?, String, int, bool)>[];
+    final inventories = <(String?, int, int, bool)>[];
     await pumpApp(
       tester,
       backend,
       size: const Size(1200, 900),
       overrides: [
+        listeningPortsProvider.overrideWithValue(({hostId, required low, required high, required udp}) async {
+          inventories.add((hostId, low, high, udp));
+          return [53, 5353];
+        }),
         checkPortProvider.overrideWithValue(({sourceId, required host, required port, required udp}) async {
           calls.add((sourceId, host, port, udp));
           return udp ? 'no_reply' : 'connected';
@@ -49,5 +63,15 @@ void main() {
     expect(calls.last.$1, isNotNull);
     expect(calls.last, (calls.last.$1, '127.0.0.1', 53, true));
     expect(find.text('No UDP reply. An open port can also stay silent.'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('port-check-number')), '22-10000');
+    await tapKey(tester, 'port-check-submit');
+    expect(inventories.single, (calls.last.$1, 22, 10000, true));
+    expect(find.text('5353/UDP'), findsOneWidget);
+    final row = find.widgetWithText(ListTile, '5353/UDP');
+    await tester.ensureVisible(row);
+    await tester.tap(find.descendant(of: row, matching: find.byType(IconButton)));
+    await settle(tester);
+    expect(calls.last, (inventories.single.$1, '127.0.0.1', 5353, true));
+    expect(find.text('53/UDP'), findsOneWidget);
   });
 }

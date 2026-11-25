@@ -31,7 +31,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get portCheckChoose => '选择服务器';
 
   @override
-  String get portCheckPort => '端口（1–65535）';
+  String get portCheckPort => '端口或范围';
+
+  @override
+  String get portCheckInvalidInterval => '请输入 1–65535 之间的端口，或输入范围，例如 22-10000。';
+
+  @override
+  String get portCheckList => '显示端口';
+
+  @override
+  String get portCheckRangeHelp => '显示目标主机上的套接字。点击端口旁的 ▶ 即可从所选来源测试连接。';
+
+  @override
+  String get portCheckNeedsTarget => '请选择已保存的 SSH 目标主机，或输入本设备地址以读取其套接字列表。';
+
+  @override
+  String get portCheckChooseTarget => '选择目标主机';
+
+  @override
+  String get portCheckEmpty => '目标主机在该范围内未报告此协议的套接字。';
+
+  @override
+  String portCheckFound(int count) {
+    return '范围内的端口数：$count';
+  }
 
   @override
   String get portCheckAction => '检测端口';

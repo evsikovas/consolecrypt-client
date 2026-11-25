@@ -33,6 +33,7 @@ async fn port_check_runs_on_the_selected_ssh_host() {
         password: Some(tb.secrets.password.expose_secret().to_owned()),
     }).await.unwrap();
     let check = |port, udp| app.port_check(Some(saved.id.clone()), "127.0.0.1".into(), port, udp);
+    assert_eq!(app.listening_ports(Some(saved.id.clone()), 21, 22, false).await.unwrap(), vec![22]);
     if tb.exec_in(&tb.bastion1, "command -v python3").is_err() {
         assert_eq!(check(22, false).await.unwrap(), "no_python");
         tb.exec_in(&tb.bastion1, "apk add --no-cache python3").unwrap();
@@ -42,7 +43,9 @@ async fn port_check_runs_on_the_selected_ssh_host() {
     let port = tb.exec_in(&tb.bastion1, r#"python3 -c 'import socket; s=socket.socket(type=socket.SOCK_DGRAM); s.bind(("127.0.0.1",0)); print(s.getsockname()[1],flush=True); s.settimeout(15); data,peer=s.recvfrom(1); s.sendto(data,peer)' </dev/null >/tmp/cc-port-check-test 2>/dev/null &
 for i in 1 2 3 4 5; do test -s /tmp/cc-port-check-test && break; sleep 1; done
 cat /tmp/cc-port-check-test"#).unwrap();
-    assert_eq!(check(port.trim().parse().unwrap(), true).await.unwrap(), "reply");
+    let port = port.trim().parse().unwrap();
+    assert_eq!(app.listening_ports(Some(saved.id.clone()), port, port, true).await.unwrap(), vec![port]);
+    assert_eq!(check(port, true).await.unwrap(), "reply");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

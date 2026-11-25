@@ -13,7 +13,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 240
     env:
-      CC_BUILD_NUMBER: '93016'
+      CC_BUILD_NUMBER: '93017'
       CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
       CARGO_BUILD_JOBS: '3'
     steps:
@@ -23,6 +23,21 @@ jobs:
           persist-credentials: false
       - name: Load the native toolchain
         run: source client/scripts/ci-macos-tools.sh --xcode
+      - name: Check macOS TCP and UDP socket tables
+        run: |
+          python3 - <<'PY'
+          import socket
+          import subprocess
+          for kind, protocol in [(socket.SOCK_STREAM, "tcp"), (socket.SOCK_DGRAM, "udp")]:
+              with socket.socket(type=kind) as service:
+                  service.bind(("127.0.0.1", 0))
+                  if protocol == "tcp":
+                      service.listen()
+                  port = str(service.getsockname()[1])
+                  output = subprocess.check_output(["/bin/sh", "client/rust/app-core/src/listening_ports.sh",
+                                                    protocol, port, port], text=True)
+                  assert output.splitlines() == [port], (protocol, port, output)
+          PY
       - name: Build and verify the universal disk image
         shell: bash
         run: |
@@ -49,5 +64,5 @@ jobs:
           retention-days: 7
           compression-level: 0
           path: |
-            dist/macos/ConsoleCrypt-1.2.5+93016-macos-universal.dmg
+            dist/macos/ConsoleCrypt-1.2.5+93017-macos-universal.dmg
             dist/macos/SHA256SUMS-macos.txt

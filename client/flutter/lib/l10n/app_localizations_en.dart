@@ -31,7 +31,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get portCheckChoose => 'Choose server';
 
   @override
-  String get portCheckPort => 'Port (1–65535)';
+  String get portCheckPort => 'Port or range';
+
+  @override
+  String get portCheckInvalidInterval => 'Enter a port (1–65535) or a range such as 22-10000.';
+
+  @override
+  String get portCheckList => 'Show ports';
+
+  @override
+  String get portCheckRangeHelp =>
+      'Lists sockets on the destination. Use ▶ next to a port to test it from the selected source.';
+
+  @override
+  String get portCheckNeedsTarget =>
+      'Choose a saved SSH destination or enter this device’s address to read its socket table.';
+
+  @override
+  String get portCheckChooseTarget => 'Choose destination host';
+
+  @override
+  String get portCheckEmpty => 'The host reported no sockets for this protocol in the range.';
+
+  @override
+  String portCheckFound(int count) {
+    return 'Ports in range: $count';
+  }
 
   @override
   String get portCheckAction => 'Check port';

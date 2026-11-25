@@ -124,6 +124,11 @@ pub async fn port_check(source_id: Option<String>, host: String, port: u16, udp:
     with_core(move |core| async move { Ok(core.port_check(source_id, host, port, udp).await?.to_owned()) }).await
 }
 
+/// Numeric ports reported by the destination's socket table, inclusive.
+pub async fn listening_ports(host_id: Option<String>, low: u16, high: u16, udp: bool) -> Result<Vec<u16>, BridgeError> {
+    with_core(move |core| async move { Ok(core.listening_ports(host_id, low, high, udp).await?) }).await
+}
+
 /// Device-local shell profiles. Executables and argv remain owned by Rust.
 pub async fn terminal_local_profiles() -> Result<String, BridgeError> {
     if let Some(terminals) = TERMINAL_ONLY.get() {
