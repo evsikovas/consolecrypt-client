@@ -88,6 +88,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get systemdJournal => 'Diario · últimas 200 entradas';
 
   @override
+  String get systemdFollowJournal => 'Seguir el diario';
+
+  @override
+  String systemdFollowJournalHint(String unit) {
+    return 'Mostrar las nuevas entradas del diario de $unit a medida que llegan.';
+  }
+
+  @override
   String get systemdNoEntries => 'No hay entradas visibles para esta cuenta SSH.';
 
   @override

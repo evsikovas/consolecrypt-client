@@ -73,6 +73,50 @@ void main() {
     expect(find.byType(SystemServicesPanel), findsNothing);
   }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.android, TargetPlatform.iOS}));
 
+  testWidgets('journal follow stays beside its heading while reading a long log', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(
+      tester,
+      backend,
+      size: AppPlatform.isMobile ? const Size(360, 800) : const Size(1440, 900),
+      overrides: [
+        systemdRequestProvider.overrideWithValue(
+          (_, request) async => {
+            'status': 0,
+            'output': switch (request['action']) {
+              'list' => 'demo.service loaded active running Example service',
+              'journal' => List.generate(200, (i) => 'Entry $i').join('\n'),
+              _ => '/etc/systemd/system/demo.service',
+            },
+          },
+        ),
+      ],
+    );
+    await enterKey(tester, 'hosts-search', 'prod-web');
+    await tapKey(tester, 'connect-prod-web-1');
+    await tapKey(tester, AppPlatform.isMobile ? 'terminal-tool-systemd' : 'nav-systemd');
+    await tester.tap(find.text('demo.service'));
+    await settle(tester);
+    final panel = find.byType(SystemServicesPanel);
+    final back = find.descendant(of: panel, matching: find.byTooltip('Back'));
+    expect(tester.getTopLeft(find.text('demo.service')).dx - tester.getTopRight(back).dx, greaterThanOrEqualTo(12));
+    final follow = find.byKey(const ValueKey('systemd-journal-follow'));
+    expect(find.descendant(of: find.byType(PinnedHeaderSliver), matching: follow), findsOneWidget);
+    expect(find.byTooltip('Show new journal entries for demo.service as they arrive.'), findsOneWidget);
+    final scroll = tester.widget<CustomScrollView>(find.descendant(of: panel, matching: find.byType(CustomScrollView)));
+    scroll.controller!.jumpTo(1600);
+    await settle(tester);
+    expect(follow.hitTestable(), findsOneWidget);
+    await tester.tap(follow);
+    await settle(tester);
+    expect(tester.widget<FilterChip>(follow).selected, isTrue);
+    await tester.tap(follow);
+    await settle(tester);
+    expect(tester.widget<FilterChip>(follow).selected, isFalse);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.android}));
+
   testWidgets('follow refreshes only the selected journal and ignores late replies after pause', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);

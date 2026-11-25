@@ -25,6 +25,8 @@
   "systemdSearch": "Buscar un servicio",
   "systemdEmpty": "No se encontraron servicios",
   "systemdJournal": "Diario · últimas 200 entradas",
+  "systemdFollowJournal": "Seguir el diario",
+  "systemdFollowJournalHint": "Mostrar las nuevas entradas del diario de {unit} a medida que llegan.",
   "systemdNoEntries": "No hay entradas visibles para esta cuenta SSH.",
   "systemdConfirm": "¿Reiniciar {unit} en {host}? El servicio podría dejar de estar disponible brevemente.",
   "systemdSudo": "Usar sudo sin contraseña",

@@ -88,6 +88,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get systemdJournal => 'Журнал · последние 200 записей';
 
   @override
+  String get systemdFollowJournal => 'Следить за журналом';
+
+  @override
+  String systemdFollowJournalHint(String unit) {
+    return 'Показывать новые записи службы $unit по мере поступления.';
+  }
+
+  @override
   String get systemdNoEntries => 'Этой учётной записи SSH пока не видно записей журнала.';
 
   @override

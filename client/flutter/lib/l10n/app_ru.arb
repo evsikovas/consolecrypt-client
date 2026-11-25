@@ -25,6 +25,8 @@
   "systemdSearch": "Найти службу",
   "systemdEmpty": "Службы не найдены",
   "systemdJournal": "Журнал · последние 200 записей",
+  "systemdFollowJournal": "Следить за журналом",
+  "systemdFollowJournalHint": "Показывать новые записи службы {unit} по мере поступления.",
   "systemdNoEntries": "Этой учётной записи SSH пока не видно записей журнала.",
   "systemdConfirm": "Перезапустить {unit} на {host}? Во время перезапуска служба может быть недоступна.",
   "systemdSudo": "Использовать sudo без пароля",

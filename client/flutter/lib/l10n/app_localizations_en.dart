@@ -88,6 +88,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get systemdJournal => 'Journal · last 200 entries';
 
   @override
+  String get systemdFollowJournal => 'Follow journal';
+
+  @override
+  String systemdFollowJournalHint(String unit) {
+    return 'Show new journal entries for $unit as they arrive.';
+  }
+
+  @override
   String get systemdNoEntries => 'No entries visible to this SSH account.';
 
   @override

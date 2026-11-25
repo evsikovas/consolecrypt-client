@@ -25,6 +25,8 @@
   "systemdSearch": "搜索服务",
   "systemdEmpty": "未找到服务",
   "systemdJournal": "日志 · 最近 200 条",
+  "systemdFollowJournal": "跟踪日志",
+  "systemdFollowJournalHint": "自动显示 {unit} 的最新日志。",
   "systemdNoEntries": "此 SSH 账户没有可见的日志条目。",
   "systemdConfirm": "要在 {host} 上重启 {unit} 吗？服务可能会暂时不可用。",
   "systemdSudo": "使用免密 sudo",

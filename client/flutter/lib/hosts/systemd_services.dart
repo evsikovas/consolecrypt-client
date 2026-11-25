@@ -265,9 +265,10 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(widget.host.name, style: t.typography.bodyEmph),
-          const SizedBox(height: GlassSpacing.s8),
+          Text(widget.host.name, style: t.typography.callout.copyWith(color: t.secondaryLabel)),
+          const SizedBox(height: GlassSpacing.s12),
           Row(
+            spacing: GlassSpacing.s12,
             children: [
               if (unit != null)
                 GlassIconButton(
@@ -294,15 +295,6 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                       )
                     : SelectableText(unit.name, style: t.typography.bodyEmph),
               ),
-              if (unit != null) ...[
-                const SizedBox(width: GlassSpacing.s4),
-                FilterChip(
-                  key: const ValueKey('systemd-journal-follow'),
-                  label: Text(l.dockerLogsFollow),
-                  selected: following,
-                  onSelected: setFollowing,
-                ),
-              ],
               GlassIconButton(
                 tooltip: l.devicesRefresh,
                 icon: Icons.refresh_rounded,
@@ -310,8 +302,7 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          if (followError != null) SelectableText(followError!),
+          const SizedBox(height: GlassSpacing.s16),
           if (unit == null) ...[
             Wrap(
               spacing: GlassSpacing.s6,
@@ -375,17 +366,24 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             if (latest != null) ...[
-                              if (latest.description.isNotEmpty) Text(latest.description),
-                              Text('${latest.active} · ${latest.sub}', style: t.typography.caption),
+                              if (latest.description.isNotEmpty) ...[
+                                Text(latest.description),
+                                const SizedBox(height: GlassSpacing.s4),
+                              ],
+                              Text(
+                                '${latest.active} · ${latest.sub}',
+                                style: t.typography.caption.copyWith(color: t.secondaryLabel),
+                              ),
                             ],
                             if (failure != null) SelectableText(failure),
-                            const SizedBox(height: GlassSpacing.s8),
+                            const SizedBox(height: GlassSpacing.s12),
                             Text(l.systemdUnitPath, style: t.typography.caption.copyWith(color: t.secondaryLabel)),
+                            const SizedBox(height: GlassSpacing.s4),
                             _UnitOutput(future: path!, empty: l.systemdNoUnitPath),
-                            const SizedBox(height: GlassSpacing.s8),
+                            const SizedBox(height: GlassSpacing.s12),
                             Wrap(
-                              spacing: GlassSpacing.s8,
-                              runSpacing: GlassSpacing.s4,
+                              spacing: GlassSpacing.s12,
+                              runSpacing: GlassSpacing.s8,
                               children: [
                                 GlassButton(
                                   icon: Icons.description_outlined,
@@ -410,12 +408,41 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                               ),
                             if (restarting) const LinearProgressIndicator(),
                             if (notice case final message?) SelectableText(message),
-                            const Divider(height: 24),
-                            Text(l.systemdJournal, style: t.typography.bodyEmph),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: GlassSpacing.s16),
                           ],
                         ),
                       ),
+                      PinnedHeaderSliver(
+                        child: ColoredBox(
+                          color: t.surfaces.contentSolid,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Divider(height: 1),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s12),
+                                child: Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: GlassSpacing.s12,
+                                  runSpacing: GlassSpacing.s8,
+                                  children: [
+                                    Text(l.systemdJournal, style: t.typography.bodyEmph),
+                                    FilterChip(
+                                      key: const ValueKey('systemd-journal-follow'),
+                                      label: Text(l.systemdFollowJournal),
+                                      tooltip: l.systemdFollowJournalHint(unit.name),
+                                      selected: following,
+                                      onSelected: setFollowing,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (followError != null) SliverToBoxAdapter(child: SelectableText(followError!)),
                       _JournalSection(key: ValueKey(unit.name), journal: journal!),
                     ],
                   );

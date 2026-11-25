@@ -250,6 +250,18 @@ abstract class AppLocalizations {
   /// **'Journal · last 200 entries'**
   String get systemdJournal;
 
+  /// Toggle automatic updates in the systemd journal
+  ///
+  /// In en, this message translates to:
+  /// **'Follow journal'**
+  String get systemdFollowJournal;
+
+  /// Tooltip for following the selected service journal
+  ///
+  /// In en, this message translates to:
+  /// **'Show new journal entries for {unit} as they arrive.'**
+  String systemdFollowJournalHint(String unit);
+
   /// Journal contains no entries visible to the SSH user
   ///
   /// In en, this message translates to:

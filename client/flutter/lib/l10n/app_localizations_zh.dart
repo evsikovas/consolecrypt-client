@@ -88,6 +88,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get systemdJournal => '日志 · 最近 200 条';
 
   @override
+  String get systemdFollowJournal => '跟踪日志';
+
+  @override
+  String systemdFollowJournalHint(String unit) {
+    return '自动显示 $unit 的最新日志。';
+  }
+
+  @override
   String get systemdNoEntries => '此 SSH 账户没有可见的日志条目。';
 
   @override
