@@ -1850,7 +1850,12 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateApiSshTerminalOpen({required String hostId, required int cols, required int rows});
 
-  Future<String> crateApiSshTerminalOpenLocal({required String profileId, required int cols, required int rows});
+  Future<String> crateApiSshTerminalOpenLocal({
+    required String profileId,
+    String? directory,
+    required int cols,
+    required int rows,
+  });
 
   Future<String> crateApiSshTerminalOpenTcpdump({required String hostId, String? peerId, required bool sudo});
 
@@ -14716,26 +14721,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "terminal_open", argNames: ["hostId", "cols", "rows"]);
 
   @override
-  Future<String> crateApiSshTerminalOpenLocal({required String profileId, required int cols, required int rows}) {
+  Future<String> crateApiSshTerminalOpenLocal({
+    required String profileId,
+    String? directory,
+    required int cols,
+    required int rows,
+  }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(profileId, serializer);
+          sse_encode_opt_String(directory, serializer);
           sse_encode_u_32(cols, serializer);
           sse_encode_u_32(rows, serializer);
           pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 569, port: port_);
         },
         codec: SseCodec(decodeSuccessData: sse_decode_String, decodeErrorData: sse_decode_bridge_error),
         constMeta: kCrateApiSshTerminalOpenLocalConstMeta,
-        argValues: [profileId, cols, rows],
+        argValues: [profileId, directory, cols, rows],
         apiImpl: this,
       ),
     );
   }
 
   TaskConstMeta get kCrateApiSshTerminalOpenLocalConstMeta =>
-      const TaskConstMeta(debugName: "terminal_open_local", argNames: ["profileId", "cols", "rows"]);
+      const TaskConstMeta(debugName: "terminal_open_local", argNames: ["profileId", "directory", "cols", "rows"]);
 
   @override
   Future<String> crateApiSshTerminalOpenTcpdump({required String hostId, String? peerId, required bool sudo}) {

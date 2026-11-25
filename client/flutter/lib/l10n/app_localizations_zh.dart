@@ -679,6 +679,60 @@ class AppLocalizationsZh extends AppLocalizations {
   String get monitorAuthHint => '请检查此主机已保存的 SSH 凭据，然后刷新。';
 
   @override
+  String get editorTitle => '编辑器';
+
+  @override
+  String get editorOpen => '打开文件夹';
+
+  @override
+  String get editorStart => '打开项目文件夹以编辑文件。';
+
+  @override
+  String get editorPick => '在项目树中选择一个文件。';
+
+  @override
+  String get editorFiles => '文件';
+
+  @override
+  String get editorBranches => 'Git 分支';
+
+  @override
+  String get editorLocal => '本地分支';
+
+  @override
+  String get editorRemote => '远程分支';
+
+  @override
+  String get editorNoGit => '此文件夹不在 Git 仓库中。';
+
+  @override
+  String get editorNoGitTool => '此电脑上无法使用 Git。';
+
+  @override
+  String get editorChanged => '磁盘上的文件已更改。你的编辑仍然保留，请在保存前比较版本。';
+
+  @override
+  String get editorUnsupported => '请选择不超过 4 MiB 的 UTF-8 文本文件。';
+
+  @override
+  String get editorDiscard => '放弃更改';
+
+  @override
+  String get editorUnsaved => '未保存文件';
+
+  @override
+  String get editorPlain => '纯文本';
+
+  @override
+  String get editorNew => '新建文件';
+
+  @override
+  String get editorNoFiles => '空文件夹';
+
+  @override
+  String get editorOutside => '请选择项目文件夹中的文件。';
+
+  @override
   String get monitorChoose => '选择主机或组';
 
   @override

@@ -12,6 +12,7 @@ import 'package:consolecrypt/credentials/credentials_screen.dart';
 import 'package:consolecrypt/db/databases_screen.dart';
 import 'package:consolecrypt/devices/devices_screen.dart';
 import 'package:consolecrypt/docker/docker_screen.dart';
+import 'package:consolecrypt/editor/editor_screen.dart';
 import 'package:consolecrypt/groups/groups_screen.dart';
 import 'package:consolecrypt/hosts/host_editor_screen.dart';
 import 'package:consolecrypt/hosts/hosts_screen.dart';
@@ -64,6 +65,7 @@ enum ShellBranch {
   tcpdump,
   portCheck,
   monitoring,
+  editor,
 }
 
 Page<void> _page(Widget child) => NoTransitionPage<void>(
@@ -171,6 +173,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.tcpdump, const TcpdumpScreen()),
           _branch(AppRoutes.portCheck, const PortCheckScreen()),
           _branch(AppRoutes.monitoring, const MonitoringScreen()),
+          _branch(AppRoutes.editor, const EditorScreen()),
         ],
       ),
     ],

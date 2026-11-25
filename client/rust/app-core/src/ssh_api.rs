@@ -276,11 +276,17 @@ impl AppCore {
         cols: u32,
         rows: u32,
     ) -> AppResult<TerminalInfoDto> {
+        self.open_local_terminal_in(profile_id, cols, rows, None).await
+    }
+
+    pub async fn open_local_terminal_in(
+        &self, profile_id: String, cols: u32, rows: u32, directory: Option<String>,
+    ) -> AppResult<TerminalInfoDto> {
         let (_, u) = self.unlocked().await?;
         let tid = u
             .ssh
             .terminals
-            .open_local(&profile_id, TerminalSize { cols, rows })
+            .open_local_in(&profile_id, TerminalSize { cols, rows }, directory.as_deref().map(std::path::Path::new))
             .await?;
         Ok(u.ssh.terminals.info(tid)?.into())
     }

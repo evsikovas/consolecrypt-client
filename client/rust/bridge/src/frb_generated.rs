@@ -22488,6 +22488,7 @@ fn wire__crate__api__ssh__terminal_open_local_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_profile_id = <String>::sse_decode(&mut deserializer);
+            let api_directory = <Option<String>>::sse_decode(&mut deserializer);
             let api_cols = <u32>::sse_decode(&mut deserializer);
             let api_rows = <u32>::sse_decode(&mut deserializer);
             deserializer.end();
@@ -22496,6 +22497,7 @@ fn wire__crate__api__ssh__terminal_open_local_impl(
                     (move || async move {
                         let output_ok = crate::api::ssh::terminal_open_local(
                             api_profile_id,
+                            api_directory,
                             api_cols,
                             api_rows,
                         )

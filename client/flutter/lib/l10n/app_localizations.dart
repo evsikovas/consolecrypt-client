@@ -1330,6 +1330,114 @@ abstract class AppLocalizations {
   /// **'Check the saved SSH credentials for this host, then refresh.'**
   String get monitorAuthHint;
 
+  /// Local project editor: Editor
+  ///
+  /// In en, this message translates to:
+  /// **'Editor'**
+  String get editorTitle;
+
+  /// Local project editor: Open folder
+  ///
+  /// In en, this message translates to:
+  /// **'Open folder'**
+  String get editorOpen;
+
+  /// Local project editor: Open a project folder to edit its files.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a project folder to edit its files.'**
+  String get editorStart;
+
+  /// Local project editor: Select a file in the project tree.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a file in the project tree.'**
+  String get editorPick;
+
+  /// Local project editor: Files
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get editorFiles;
+
+  /// Local project editor: Git branches
+  ///
+  /// In en, this message translates to:
+  /// **'Git branches'**
+  String get editorBranches;
+
+  /// Local project editor: Local branches
+  ///
+  /// In en, this message translates to:
+  /// **'Local branches'**
+  String get editorLocal;
+
+  /// Local project editor: Remote branches
+  ///
+  /// In en, this message translates to:
+  /// **'Remote branches'**
+  String get editorRemote;
+
+  /// Local project editor: This folder is outside a Git repository.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is outside a Git repository.'**
+  String get editorNoGit;
+
+  /// Local project editor: Git is unavailable on this computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Git is unavailable on this computer.'**
+  String get editorNoGitTool;
+
+  /// Local project editor: This file changed on disk. Your edits are still open. Compare the versions before saving.
+  ///
+  /// In en, this message translates to:
+  /// **'This file changed on disk. Your edits are still open. Compare the versions before saving.'**
+  String get editorChanged;
+
+  /// Local project editor: Open a UTF-8 text file up to 4 MiB.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a UTF-8 text file up to 4 MiB.'**
+  String get editorUnsupported;
+
+  /// Local project editor: Discard edits
+  ///
+  /// In en, this message translates to:
+  /// **'Discard edits'**
+  String get editorDiscard;
+
+  /// Local project editor: Unsaved files
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved files'**
+  String get editorUnsaved;
+
+  /// Local project editor: Plain text
+  ///
+  /// In en, this message translates to:
+  /// **'Plain text'**
+  String get editorPlain;
+
+  /// Local project editor: New file
+  ///
+  /// In en, this message translates to:
+  /// **'New file'**
+  String get editorNew;
+
+  /// Local project editor: Folder is empty
+  ///
+  /// In en, this message translates to:
+  /// **'Folder is empty'**
+  String get editorNoFiles;
+
+  /// Local project editor: Choose a file inside the project folder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file inside the project folder.'**
+  String get editorOutside;
+
   /// Host monitoring dashboard.
   ///
   /// In en, this message translates to:

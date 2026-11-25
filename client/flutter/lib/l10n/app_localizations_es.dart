@@ -697,6 +697,61 @@ class AppLocalizationsEs extends AppLocalizations {
   String get monitorAuthHint => 'Comprueba las credenciales SSH guardadas para este host y actualiza la tarjeta.';
 
   @override
+  String get editorTitle => 'Editor';
+
+  @override
+  String get editorOpen => 'Abrir carpeta';
+
+  @override
+  String get editorStart => 'Abre una carpeta de proyecto para editar sus archivos.';
+
+  @override
+  String get editorPick => 'Elige un archivo del árbol del proyecto.';
+
+  @override
+  String get editorFiles => 'Archivos';
+
+  @override
+  String get editorBranches => 'Ramas de Git';
+
+  @override
+  String get editorLocal => 'Ramas locales';
+
+  @override
+  String get editorRemote => 'Ramas remotas';
+
+  @override
+  String get editorNoGit => 'Esta carpeta está fuera de un repositorio Git.';
+
+  @override
+  String get editorNoGitTool => 'Git no está disponible en este equipo.';
+
+  @override
+  String get editorChanged =>
+      'El archivo cambió en el disco. Tus cambios siguen abiertos. Compara las versiones antes de guardar.';
+
+  @override
+  String get editorUnsupported => 'Elige un archivo UTF-8 de hasta 4 MiB.';
+
+  @override
+  String get editorDiscard => 'Descartar cambios';
+
+  @override
+  String get editorUnsaved => 'Archivos sin guardar';
+
+  @override
+  String get editorPlain => 'Texto sin formato';
+
+  @override
+  String get editorNew => 'Nuevo archivo';
+
+  @override
+  String get editorNoFiles => 'Carpeta vacía';
+
+  @override
+  String get editorOutside => 'Elige un archivo dentro del proyecto.';
+
+  @override
   String get monitorChoose => 'Elegir hosts o grupos';
 
   @override

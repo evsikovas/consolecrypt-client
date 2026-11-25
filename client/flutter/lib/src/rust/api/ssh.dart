@@ -56,8 +56,17 @@ Future<Uint16List> listeningPorts({String? hostId, required int low, required in
 /// Device-local shell profiles. Executables and argv remain owned by Rust.
 Future<String> terminalLocalProfiles() => RustLib.instance.api.crateApiSshTerminalLocalProfiles();
 
-Future<String> terminalOpenLocal({required String profileId, required int cols, required int rows}) =>
-    RustLib.instance.api.crateApiSshTerminalOpenLocal(profileId: profileId, cols: cols, rows: rows);
+Future<String> terminalOpenLocal({
+  required String profileId,
+  String? directory,
+  required int cols,
+  required int rows,
+}) => RustLib.instance.api.crateApiSshTerminalOpenLocal(
+  profileId: profileId,
+  directory: directory,
+  cols: cols,
+  rows: rows,
+);
 
 /// Output of a terminal: the scrollback snapshot as the first `Data` frame,
 /// then live output, ending with `Closed` / `Failed`.

@@ -489,10 +489,19 @@ impl TerminalManager {
         profile_id: &str,
         size: TerminalSize,
     ) -> Result<TerminalId, TerminalError> {
+        self.open_local_in(profile_id, size, None).await
+    }
+
+    pub async fn open_local_in(
+        &self,
+        profile_id: &str,
+        size: TerminalSize,
+        directory: Option<&std::path::Path>,
+    ) -> Result<TerminalId, TerminalError> {
         if self.stopped.load(Ordering::Acquire) {
             return Err(TerminalError::Open("terminal manager is closed".into()));
         }
-        let (profile, opened) = local::open(profile_id, size).await?;
+        let (profile, opened) = local::open_in(profile_id, size, directory).await?;
         let id = uuid::Uuid::new_v4();
         let session = Arc::new(Session {
             background: false,

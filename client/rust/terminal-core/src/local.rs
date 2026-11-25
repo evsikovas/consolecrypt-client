@@ -233,12 +233,38 @@ pub async fn open(
     profile_id: &str,
     size: TerminalSize,
 ) -> Result<(LocalShellProfile, OpenedShell), TerminalError> {
-    let profile = discover(profile_id.starts_with("wsl:"))
+    open_in(profile_id, size, None).await
+}
+
+pub async fn open_in(
+    profile_id: &str,
+    size: TerminalSize,
+    directory: Option<&std::path::Path>,
+) -> Result<(LocalShellProfile, OpenedShell), TerminalError> {
+    let mut profile = discover(profile_id.starts_with("wsl:"))
         .await?
         .profiles
         .into_iter()
         .find(|p| p.info.id == profile_id)
         .ok_or_else(|| TerminalError::Open("local shell profile is unavailable".into()))?;
+    if let Some(directory) = directory {
+        if !directory.is_absolute() || !directory.is_dir() {
+            return Err(TerminalError::Open("project directory is unavailable".into()));
+        }
+        if matches!(profile.info.kind, LocalShellKind::Wsl) {
+            // WSL accepts an absolute Windows path as its own --cd argument.
+            // The discovered profile normally has an explicit --cd ~.
+            let path = directory
+                .to_str()
+                .ok_or_else(|| TerminalError::Open("invalid project path".into()))?;
+            if let Some(index) = profile.args.iter().position(|arg| arg == "--cd") {
+                profile.args[index + 1] = path.to_owned();
+            } else {
+                profile.args.extend(["--cd".to_owned(), path.to_owned()]);
+            }
+        }
+        profile.directory = Some(directory.to_owned());
+    }
     let info = profile.info.clone();
     #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
     {
@@ -1114,6 +1140,29 @@ mod tests {
                 .sum::<usize>(),
             2
         );
+    }
+
+    #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+    #[tokio::test]
+    async fn project_terminal_starts_in_selected_directory() {
+        let root = std::env::temp_dir().join(format!("cc editor & {}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        #[cfg(windows)]
+        let (profile, command) = ("windows:cmd", "echo ok>terminal-cwd.txt\rexit\r");
+        #[cfg(not(windows))]
+        let (profile, command) = (if cfg!(target_os = "macos") { "macos:sh" } else { "linux:sh" }, "echo ok > terminal-cwd.txt; exit\r");
+        let result = async {
+            let (_, mut shell) = open_in(profile, TerminalSize { cols: 80, rows: 24 }, Some(&root)).await.unwrap();
+            shell.channel.writer.write(command).await.unwrap();
+            while let Some(event) = shell.channel.reader.recv().await {
+                if matches!(event, cc_ssh_core::ShellEvent::Closed) { break; }
+            }
+        };
+        let completion = tokio::time::timeout(std::time::Duration::from_secs(15), result).await;
+        let content = std::fs::read_to_string(root.join("terminal-cwd.txt"));
+        std::fs::remove_dir_all(&root).unwrap();
+        completion.unwrap();
+        assert_eq!(content.unwrap().trim(), "ok");
     }
 
     #[cfg(windows)]

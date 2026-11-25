@@ -91,6 +91,7 @@ abstract final class AppRoutes {
   static const databases = '/databases';
   static const tcpdump = '/tcpdump';
   static const portCheck = '/port-check';
+  static const editor = '/editor';
   static const monitoring = '/monitoring';
   static const docker = '/docker';
 
@@ -121,6 +122,7 @@ abstract final class AppRoutes {
     tcpdump,
     portCheck,
     monitoring,
+    editor,
   ];
 }
 

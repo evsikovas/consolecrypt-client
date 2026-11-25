@@ -163,13 +163,13 @@ final class RustTerminalService
   }
 
   @override
-  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size}) async {
+  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size, String? directory}) async {
     final profile =
         _localProfiles[profileId] ?? (await listLocalProfiles()).profiles.where((p) => p.id == profileId).firstOrNull;
     if (profile == null) {
       throw const AppException(AppErrorCode.notFound, 'Local shell is unavailable');
     }
-    return _open(LocalTerminalTarget(profile), size);
+    return _open(LocalTerminalTarget(profile, directory: directory), size);
   }
 
   @override
@@ -332,7 +332,8 @@ final class RustTerminalService
               cols: s.size.columns,
               rows: s.size.rows,
             ),
-            LocalTerminalTarget(:final profile) => rs_ssh.terminalOpenLocal(
+            LocalTerminalTarget(:final profile, :final directory) => rs_ssh.terminalOpenLocal(
+              directory: directory,
               profileId: profile.id,
               cols: s.size.columns,
               rows: s.size.rows,

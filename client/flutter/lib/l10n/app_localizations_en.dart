@@ -691,6 +691,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String get monitorAuthHint => 'Check the saved SSH credentials for this host, then refresh.';
 
   @override
+  String get editorTitle => 'Editor';
+
+  @override
+  String get editorOpen => 'Open folder';
+
+  @override
+  String get editorStart => 'Open a project folder to edit its files.';
+
+  @override
+  String get editorPick => 'Select a file in the project tree.';
+
+  @override
+  String get editorFiles => 'Files';
+
+  @override
+  String get editorBranches => 'Git branches';
+
+  @override
+  String get editorLocal => 'Local branches';
+
+  @override
+  String get editorRemote => 'Remote branches';
+
+  @override
+  String get editorNoGit => 'This folder is outside a Git repository.';
+
+  @override
+  String get editorNoGitTool => 'Git is unavailable on this computer.';
+
+  @override
+  String get editorChanged =>
+      'This file changed on disk. Your edits are still open. Compare the versions before saving.';
+
+  @override
+  String get editorUnsupported => 'Open a UTF-8 text file up to 4 MiB.';
+
+  @override
+  String get editorDiscard => 'Discard edits';
+
+  @override
+  String get editorUnsaved => 'Unsaved files';
+
+  @override
+  String get editorPlain => 'Plain text';
+
+  @override
+  String get editorNew => 'New file';
+
+  @override
+  String get editorNoFiles => 'Folder is empty';
+
+  @override
+  String get editorOutside => 'Choose a file inside the project folder.';
+
+  @override
   String get monitorChoose => 'Choose hosts or groups';
 
   @override

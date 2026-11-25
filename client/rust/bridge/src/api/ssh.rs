@@ -154,6 +154,7 @@ pub async fn terminal_local_profiles() -> Result<String, BridgeError> {
 
 pub async fn terminal_open_local(
     profile_id: String,
+    directory: Option<String>,
     cols: u32,
     rows: u32,
 ) -> Result<String, BridgeError> {
@@ -161,7 +162,7 @@ pub async fn terminal_open_local(
         return state::run(async move { to_json(&terminals.open(&profile_id, cols, rows).await?) }).await;
     }
     with_core(
-        move |c| async move { to_json(&c.open_local_terminal(profile_id, cols, rows).await?) },
+        move |c| async move { to_json(&c.open_local_terminal_in(profile_id, cols, rows, directory).await?) },
     )
     .await
 }

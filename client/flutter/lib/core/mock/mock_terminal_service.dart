@@ -39,7 +39,7 @@ final class MockTerminalService implements TerminalService, LocalTerminalService
   Future<LocalShellProfiles> listLocalProfiles() async => localShellProfiles;
 
   @override
-  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size}) async {
+  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size, String? directory}) async {
     final profile = localShellProfiles.profiles.where((p) => p.id == profileId).firstOrNull;
     if (profile == null) throw const AppException(AppErrorCode.notFound, 'Local shell is unavailable');
     final shell = _MockLocalShell(profile, size);

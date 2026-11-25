@@ -1,5 +1,6 @@
 import 'package:consolecrypt/app/features.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/symbols.dart';
 import 'package:consolecrypt/app/tool_icons.dart';
@@ -45,6 +46,7 @@ String shellBranchLabel(ShellBranch branch, AppLocalizations l) => switch (branc
   ShellBranch.tcpdump => l.captureTitle,
   ShellBranch.portCheck => l.portCheckTitle,
   ShellBranch.monitoring => l.hostMetricsTitle,
+  ShellBranch.editor => l.editorTitle,
 };
 
 const navigationSections = [
@@ -55,6 +57,7 @@ const navigationSections = [
   NavigationSection(ShellBranch.knownHosts, Icons.verified_user_outlined),
   NavigationSection(ShellBranch.sharing, Icons.people_outline_rounded, syncedOnly: true),
   NavigationSection(ShellBranch.terminal, Icons.terminal_rounded),
+  NavigationSection(ShellBranch.editor, Icons.code_rounded),
   NavigationSection(ShellBranch.rdp, ToolIcons.rdp),
   if (kubernetesEnabled) NavigationSection(ShellBranch.kubernetes, ToolIcons.kubernetes),
   if (databasesEnabled) NavigationSection(ShellBranch.databases, Icons.storage_rounded),
@@ -100,6 +103,7 @@ Widget navigationSectionIcon(NavigationSection item) =>
       ShellBranch.tcpdump,
       ShellBranch.portCheck,
       ShellBranch.monitoring,
+      ShellBranch.editor,
     }.contains(item.branch)
     ? Icon(item.icon)
     : AppSymbolIcon(AppSymbol.values.byName(item.branch.name));
@@ -120,6 +124,7 @@ String navigationBranchRoute(ShellBranch branch) => switch (branch) {
   ShellBranch.tcpdump => AppRoutes.tcpdump,
   ShellBranch.portCheck => AppRoutes.portCheck,
   ShellBranch.monitoring => AppRoutes.monitoring,
+  ShellBranch.editor => AppRoutes.editor,
   ShellBranch.sftp => AppRoutes.sftp,
   ShellBranch.tunnels => AppRoutes.tunnels,
   ShellBranch.devices => AppRoutes.devices,
@@ -128,4 +133,5 @@ String navigationBranchRoute(ShellBranch branch) => switch (branch) {
   ShellBranch.settings => AppRoutes.settings,
 };
 
-final availableNavigationSectionsProvider = Provider<List<NavigationSection>>((ref) => navigationSections);
+final availableNavigationSectionsProvider = Provider<List<NavigationSection>>((ref) =>
+    navigationSections.where((item) => item.branch != ShellBranch.editor || !AppPlatform.isMobile).toList());

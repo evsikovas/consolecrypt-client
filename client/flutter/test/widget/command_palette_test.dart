@@ -32,9 +32,9 @@ final class _ObservedTerminal implements TerminalService, LocalTerminalService {
   }
 
   @override
-  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size}) {
+  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size, String? directory}) {
     openedLocal.add(profileId);
-    return (delegate as LocalTerminalService).openLocal(profileId: profileId, size: size);
+    return (delegate as LocalTerminalService).openLocal(profileId: profileId, size: size, directory: directory);
   }
 
   @override

@@ -27,7 +27,8 @@ final class SshTerminalTarget extends TerminalTarget {
 }
 
 final class LocalTerminalTarget extends TerminalTarget {
-  const LocalTerminalTarget(this.profile);
+  const LocalTerminalTarget(this.profile, {this.directory});
+  final String? directory;
   final LocalShellProfile profile;
   @override
   String get label => profile.label;

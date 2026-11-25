@@ -695,6 +695,61 @@ class AppLocalizationsRu extends AppLocalizations {
   String get monitorAuthHint => 'Проверьте сохранённые учётные данные SSH этого хоста и обновите карточку.';
 
   @override
+  String get editorTitle => 'Редактор';
+
+  @override
+  String get editorOpen => 'Открыть папку';
+
+  @override
+  String get editorStart => 'Откройте папку проекта, чтобы редактировать файлы.';
+
+  @override
+  String get editorPick => 'Выберите файл в дереве проекта.';
+
+  @override
+  String get editorFiles => 'Файлы';
+
+  @override
+  String get editorBranches => 'Ветки Git';
+
+  @override
+  String get editorLocal => 'Локальные ветки';
+
+  @override
+  String get editorRemote => 'Удалённые ветки';
+
+  @override
+  String get editorNoGit => 'В этой папке нет репозитория Git.';
+
+  @override
+  String get editorNoGitTool => 'Git недоступен на этом компьютере.';
+
+  @override
+  String get editorChanged =>
+      'Файл изменился на диске. Ваши правки остались во вкладке. Сверьте версии перед сохранением.';
+
+  @override
+  String get editorUnsupported => 'Выберите текстовый файл UTF-8 размером до 4 МиБ.';
+
+  @override
+  String get editorDiscard => 'Отбросить изменения';
+
+  @override
+  String get editorUnsaved => 'Несохранённые файлы';
+
+  @override
+  String get editorPlain => 'Текст';
+
+  @override
+  String get editorNew => 'Новый файл';
+
+  @override
+  String get editorNoFiles => 'Папка пуста';
+
+  @override
+  String get editorOutside => 'Выберите файл внутри папки проекта.';
+
+  @override
   String get monitorChoose => 'Выбор хостов и групп';
 
   @override

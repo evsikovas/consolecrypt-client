@@ -162,7 +162,7 @@ final class _DelayedTerminal implements TerminalService, LocalTerminalService, R
   }
 
   @override
-  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size}) => opened.future;
+  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size, String? directory}) => opened.future;
   @override
   Future<LocalShellProfiles> listLocalProfiles() async => const LocalShellProfiles(profiles: [ubuntu]);
   @override

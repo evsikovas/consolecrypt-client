@@ -51,7 +51,7 @@ abstract interface class ConnectedSshRuntime {
 
 abstract interface class LocalTerminalService {
   Future<LocalShellProfiles> listLocalProfiles();
-  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size});
+  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size, String? directory});
 }
 
 abstract interface class DockerTerminalService {
@@ -84,8 +84,8 @@ extension LocalTerminalCapability on TerminalService {
   Future<TerminalSessionHandle> openTarget({required TerminalTarget target, required TerminalSize size}) =>
       switch (target) {
         SshTerminalTarget(:final host) => open(hostId: host.id, size: size),
-        LocalTerminalTarget(:final profile) when this is LocalTerminalService =>
-          (this as LocalTerminalService).openLocal(profileId: profile.id, size: size),
+        LocalTerminalTarget(:final profile, :final directory) when this is LocalTerminalService =>
+          (this as LocalTerminalService).openLocal(profileId: profile.id, size: size, directory: directory),
         KubernetesTerminalTarget() when this is KubernetesTerminalService =>
           (this as KubernetesTerminalService).openKubernetes(target: target, size: size),
         DockerTerminalTarget() when this is DockerTerminalService => (this as DockerTerminalService).openDocker(
