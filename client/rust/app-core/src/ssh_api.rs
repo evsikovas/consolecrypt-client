@@ -19,7 +19,7 @@ mod tmux;
 #[path = "ssh_tcpdump.rs"]
 mod tcpdump;
 
-fn parse_terminal_id(s: &str) -> AppResult<TerminalId> {
+pub(super) fn parse_terminal_id(s: &str) -> AppResult<TerminalId> {
     uuid::Uuid::parse_str(s.trim()).map_err(|_| AppError::invalid("terminal_id", "not a valid id"))
 }
 

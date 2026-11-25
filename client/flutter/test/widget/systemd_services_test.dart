@@ -1,11 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
-import 'package:consolecrypt/hosts/systemd_services.dart';
 import 'package:consolecrypt/hosts/systemd_journal.dart';
+import 'package:consolecrypt/hosts/systemd_services.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,6 +72,67 @@ void main() {
     expect(container.read(workspaceToolsProvider).selected, isNull);
     expect(find.byType(SystemServicesPanel), findsNothing);
   }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.android, TargetPlatform.iOS}));
+
+  testWidgets('follow refreshes only the selected journal and ignores late replies after pause', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    var reads = 0;
+    final delayed = Completer<Map<String, dynamic>>();
+    Map<String, dynamic> reply(String output) => {'status': 0, 'output': output, 'diagnostic': ''};
+    final first = jsonEncode({'__CURSOR': 'a', 'MESSAGE': 'level=error msg="first" error="details"'});
+    final second = jsonEncode({'__CURSOR': 'b', 'MESSAGE': 'second'});
+    await pumpApp(
+      tester,
+      backend,
+      overrides: [
+        systemdRequestProvider.overrideWithValue((host, request) async {
+          if (request['action'] == 'list') return reply('demo.service loaded active running Example');
+          if (request['action'] == 'unit_path') return reply('/etc/systemd/system/demo.service');
+          expect(request, {
+            'action': 'journal',
+            'unit': 'demo.service',
+            if (reads > 0) 'after_cursor': reads == 1 ? 'a' : 'b',
+          });
+          reads++;
+          return switch (reads) {
+            1 => reply(first),
+            2 => reply(second),
+            3 => delayed.future,
+            _ => reply(second),
+          };
+        }),
+      ],
+    );
+    await enterKey(tester, 'hosts-search', 'prod-web');
+    await tapKey(tester, 'connect-prod-web-1');
+    await tapKey(tester, 'nav-systemd');
+    await tester.tap(find.text('demo.service'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 6));
+    expect(reads, 1);
+    await tester.tap(find.text('first'));
+    await settle(tester);
+    await tapKey(tester, 'systemd-journal-follow');
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(find.text('second'), findsOneWidget);
+    expect(find.textContaining('msg="first"'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump(const Duration(seconds: 6));
+    expect(reads, 3);
+    await tapKey(tester, 'systemd-journal-follow');
+    delayed.complete(reply('stale'));
+    await tester.pump(const Duration(seconds: 6));
+    expect(find.text('stale'), findsNothing);
+    expect(find.text('second'), findsOneWidget);
+    expect(reads, 3);
+    await tapKey(tester, 'systemd-journal-follow');
+    await tester.tap(find.byTooltip('Back').last);
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 6));
+    expect(reads, 3);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('host services open the selected journal and restart only after confirmation', (tester) async {
     final backend = testBackend();

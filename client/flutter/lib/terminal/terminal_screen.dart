@@ -264,7 +264,7 @@ class _TerminalTabs extends ConsumerWidget {
         (placement == TerminalTabPlacement.left || AppWindowLayout.isPhone(context)) &&
         (ref.watch(localSettingsProvider.select((s) => s.value?.terminalTabGrouped)) ?? false);
     String titleFor(TerminalTab tab) =>
-        grouped && tab.customTitle == null && (tab.host?.name.trim().isNotEmpty ?? false)
+        grouped && tab.tmuxParent == null && tab.customTitle == null && (tab.host?.name.trim().isNotEmpty ?? false)
         ? tab.host!.name
         : tab.displayTitle;
     String? subtitleFor(TerminalTab tab) {
@@ -272,11 +272,13 @@ class _TerminalTabs extends ConsumerWidget {
       return subtitle == titleFor(tab) ? null : subtitle;
     }
 
+    final indices = {for (final (i, tab) in state.tabs.indexed) tab: i};
     final tabs = [
       for (final (i, tab) in state.tabs.indexed)
         GlassTab(
           key: ValueKey('tab-${tab.target.label}-$i'),
           title: titleFor(tab),
+          parentIndex: indices[tab.tmuxParent?.owner ?? tab.tmuxParent],
           teamColor: switch (tab.host) {
             final host? => teamColor(teamOf(ref, host.id)?.color),
             null => null,

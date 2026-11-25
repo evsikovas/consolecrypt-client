@@ -44,6 +44,11 @@ abstract interface class TerminalHistoryReader {
   Future<List<String>> commands(TerminalSessionId id);
 }
 
+/// Borrow the SSH transport of a connected native terminal for read-only tools.
+abstract interface class ConnectedSshRuntime {
+  String? connectedSshRuntimeId(TerminalSessionId id, ObjectId hostId);
+}
+
 abstract interface class LocalTerminalService {
   Future<LocalShellProfiles> listLocalProfiles();
   Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size});

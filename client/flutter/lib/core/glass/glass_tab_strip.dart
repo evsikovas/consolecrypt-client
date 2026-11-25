@@ -39,6 +39,7 @@ final class GlassTab {
     this.subtitle,
     this.hostColor,
     this.teamColor,
+    this.parentIndex,
     this.state = GlassTabState.none,
     this.tooltip,
     this.key,
@@ -57,6 +58,9 @@ final class GlassTab {
 
   /// Thin bar in the team colour when the tab's resource belongs to a team.
   final Color? teamColor;
+
+  /// Parent row in the vertical tab tree. The horizontal strip stays flat.
+  final int? parentIndex;
   final GlassTabState state;
 
   /// Carries the connection state as text (colour is never the only cue).

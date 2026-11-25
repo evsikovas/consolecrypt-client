@@ -416,6 +416,35 @@ void main() {
     expect(selected, [1, 2]);
   }, variant: _desktop);
 
+  testWidgets('tmux children stay below their SSH root with and without host folders', (tester) async {
+    const tabs = [
+      GlassTab(title: 'Akita'),
+      GlassTab(title: 'Osaka'),
+      GlassTab(title: 'tmux · build · Osaka', parentIndex: 1),
+      GlassTab(title: 'tmux · main · Akita', parentIndex: 0),
+    ];
+    for (final grouped in [false, true]) {
+      final selected = <int>[];
+      await pumpGlass(
+        tester,
+        GlassTabColumn(
+          tabs: tabs,
+          groups: grouped ? List.filled(4, (id: 'lab', label: 'Lab')) : null,
+          activeIndex: 1,
+          onSelect: selected.add,
+        ),
+      );
+      await settle(tester);
+      Offset pos(int i) => tester.getTopLeft(find.text(tabs[i].title));
+      expect(pos(3).dy, greaterThan(pos(0).dy));
+      expect(pos(3).dy, lessThan(pos(1).dy));
+      expect(pos(2).dy, greaterThan(pos(1).dy));
+      expect(pos(3).dx, greaterThan(pos(0).dx));
+      await tester.tap(find.text(tabs[3].title));
+      expect(selected, [3]);
+    }
+  }, variant: _desktop);
+
   group('tab column keyboard', () {
     Future<(List<int>, List<int>)> pumpColumn(
       WidgetTester tester, {

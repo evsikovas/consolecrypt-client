@@ -48,7 +48,7 @@ class _JournalSectionState extends State<_JournalSection> {
     return FutureBuilder<_Journal>(
       future: widget.journal,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (snapshot.connectionState != ConnectionState.done && !snapshot.hasData) {
           return const SliverToBoxAdapter(child: LinearProgressIndicator());
         }
         if (snapshot.hasError) return SliverToBoxAdapter(child: SelectableText(errorMessage(l, snapshot.error!)));
@@ -126,7 +126,7 @@ class _JournalSectionState extends State<_JournalSection> {
                   _ => t.secondaryLabel,
                 };
                 const labels = ['EMERG', 'ALERT', 'CRIT', 'ERROR', 'WARN', 'NOTICE', 'INFO', 'DEBUG'];
-                final open = identical(expanded, e);
+                final open = identical(expanded, e) || (e.cursor != null && e.cursor == expanded?.cursor);
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

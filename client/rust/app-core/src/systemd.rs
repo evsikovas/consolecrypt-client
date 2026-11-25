@@ -8,10 +8,21 @@ use tokio::time::{sleep, timeout};
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 enum Operation {
     List,
-    UnitPath { unit: String },
-    UnitText { unit: String },
-    Journal { unit: String },
-    Restart { unit: String, sudo: bool },
+    UnitPath {
+        unit: String,
+    },
+    UnitText {
+        unit: String,
+    },
+    Journal {
+        unit: String,
+        terminal: Option<String>,
+        after_cursor: Option<String>,
+    },
+    Restart {
+        unit: String,
+        sudo: bool,
+    },
 }
 
 fn service_name(unit: &str) -> AppResult<&str> {
@@ -43,14 +54,29 @@ impl Operation {
                 "systemctl --no-pager show --property=FragmentPath --value -- '{}'",
                 service_name(unit)?
             ),
-            Self::UnitText { unit } => format!(
-                "systemctl --no-pager cat -- '{}'",
-                service_name(unit)?
-            ),
-            Self::Journal { unit } => format!(
-                "journalctl --no-pager --all --output=json --output-fields=MESSAGE,PRIORITY,SYSLOG_IDENTIFIER,_COMM,_PID -n 200 --unit='{}'",
-                service_name(unit)?
-            ),
+            Self::UnitText { unit } => {
+                format!("systemctl --no-pager cat -- '{}'", service_name(unit)?)
+            }
+            Self::Journal {
+                unit, after_cursor, ..
+            } => {
+                let mut read = format!(
+                    "journalctl --no-pager --all --output=json --output-fields=MESSAGE,PRIORITY,SYSLOG_IDENTIFIER,_COMM,_PID -n 200 --unit='{}'",
+                    service_name(unit)?
+                );
+                if let Some(cursor) = after_cursor {
+                    if cursor.is_empty()
+                        || cursor.len() > 2048
+                        || !cursor.bytes().all(|b| b.is_ascii_graphic())
+                    {
+                        return Err(AppError::invalid("journal", "invalid cursor"));
+                    }
+                    read.push_str(" --after-cursor='");
+                    read.push_str(&cursor.replace('\'', "'\\''"));
+                    read.push('\'');
+                }
+                read
+            }
             Self::Restart { unit, sudo } => {
                 let prefix = if *sudo { "sudo -n -- " } else { "" };
                 format!(
@@ -82,12 +108,6 @@ impl AppCore {
         }
         prepared
             .run(async {
-                let ssh = prepared
-                    .unlocked
-                    .ssh
-                    .connector
-                    .connect(&prepared.plan)
-                    .await?;
                 let limit = if matches!(operation, Operation::Restart { .. }) {
                     120
                 } else {
@@ -98,10 +118,34 @@ impl AppCore {
                 } else {
                     1024 * 1024
                 };
-                let result = ssh
-                    .exec_bounded(&command, output_limit, sleep(Duration::from_secs(limit)))
-                    .await;
-                let _ = timeout(Duration::from_secs(1), ssh.disconnect()).await;
+                let deadline = sleep(Duration::from_secs(limit));
+                let result = if let Operation::Journal {
+                    terminal: Some(id), ..
+                } = &operation
+                {
+                    let terminals = &prepared.unlocked.ssh.terminals;
+                    let id = crate::ssh_api::parse_terminal_id(id)?;
+                    let ssh = terminals
+                        .connected_ssh(id, prepared.plan.host_id)
+                        .ok_or(AppError::Cancelled)?;
+                    ssh.exec_bounded(&command, output_limit, async {
+                        tokio::select! {
+                            _ = deadline => {},
+                            _ = terminals.wait_closed(id) => {},
+                        }
+                    })
+                    .await
+                } else {
+                    let ssh = prepared
+                        .unlocked
+                        .ssh
+                        .connector
+                        .connect(&prepared.plan)
+                        .await?;
+                    let result = ssh.exec_bounded(&command, output_limit, deadline).await;
+                    let _ = timeout(Duration::from_secs(1), ssh.disconnect()).await;
+                    result
+                };
                 Ok(match result? {
                     Some(output) => json!({
                         "status": output.exit_status,

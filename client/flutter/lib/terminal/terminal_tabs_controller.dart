@@ -48,11 +48,17 @@ final class TerminalTab {
   TerminalPasswordPrompt? passwordPrompt;
   String title;
 
-  /// Name chosen by the user; wins over titles set by the remote shell.
   TerminalTab? tmuxParent;
   TmuxSession? tmuxSession;
+
+  /// Name chosen by the user; wins over remote shell and tmux titles.
   String? customTitle;
-  String get displayTitle => customTitle ?? _shellTitle(title);
+  String get displayTitle {
+    final session = tmuxSession;
+    if (session == null) return customTitle ?? _shellTitle(title);
+    final server = target.label.trim().isEmpty ? target.detail : target.label;
+    return customTitle ?? 'tmux · ${session.name} · $server';
+  }
 
   // PowerShell's OSC title can be a POSIX-escaped executable path. Keep
   // useful dynamic titles (directories, commands), shortening only a bare
@@ -167,6 +173,10 @@ final class TerminalTabsState {
   /// The session the user works in: the focused pane of the active tab.
   TerminalTab? get active => activeTab?.focused;
 
+  TerminalTab? attachedTmux(TerminalTab parent, TmuxSession session) => tabs
+      .where((tab) => tab.tmuxParent == parent && session.matches(tab.tmuxSession) && tab.isConnected && !tab.exited)
+      .firstOrNull;
+
   /// Tabs with unseen finished activity.
   int get attentionCount => tabs.where((tab) => tab.anyAttention).length;
 
@@ -262,7 +272,13 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
 
   Future<void> attachTmux(TerminalTab from, TmuxSession session) async {
     final parent = from.tmuxParent ?? from;
-    if (!_open.contains(parent) || !parent.isConnected || state.active != from) return;
+    if (!_open.contains(parent) || !parent.isConnected || parent.exited || state.active != from) return;
+    final existing = state.attachedTmux(parent, session);
+    if (existing != null) {
+      activate(state.tabs.indexOf(existing));
+      focusPane(existing);
+      return;
+    }
     final generation = _generation;
     final service = _service as TmuxService;
     final handle = await service.attachTmux(parent.sessionId, session);
@@ -270,18 +286,30 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
         generation != _generation ||
         state.active != from ||
         !_open.contains(parent) ||
-        !parent.isConnected) {
+        !parent.isConnected ||
+        parent.exited ||
+        state.attachedTmux(parent, session) != null) {
       await _service.close(handle.id);
       return;
     }
     final tab = _adopt(parent.target, handle)
       ..tmuxParent = parent
       ..tmuxSession = session
-      ..customTitle = 'tmux · ${session.name}'
       ..state = SessionConnectionState.connected;
     final tabs = [...state.tabs, tab];
     state = state.copyWith(tabs: tabs, activeIndex: tabs.length - 1);
-    if (from.tmuxParent != null) await close(from);
+  }
+
+  void updateTmuxNames(TerminalTab parent, List<TmuxSession> sessions) {
+    var changed = false;
+    for (final tab in state.tabs.where((tab) => tab.tmuxParent == parent)) {
+      final latest = sessions.where((session) => session.matches(tab.tmuxSession)).firstOrNull;
+      if (latest != null && tab.tmuxSession?.name != latest.name) {
+        tab.tmuxSession = latest;
+        changed = true;
+      }
+    }
+    if (changed) _touch();
   }
 
   Future<void> detachTmux(TerminalTab tab) async {

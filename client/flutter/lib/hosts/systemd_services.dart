@@ -1,35 +1,53 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/workspace_tools_controller.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/services/errors.dart';
+import 'package:consolecrypt/core/services/terminal_service.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/hosts/systemd_journal.dart';
 import 'package:consolecrypt/src/rust/api/ssh.dart' as ssh;
+import 'package:flutter/foundation.dart' show SynchronousFuture;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
+import 'package:material_ui/material_ui.dart';
 
 part 'systemd_journal_view.dart';
 
 typedef SystemdRequest = Future<Json> Function(Host host, Json operation);
 
-final systemdRequestProvider = Provider<SystemdRequest>(
-  (ref) =>
-      (host, operation) async => decodeObject(
-        await guard(
-          () => ssh.hostSystemd(
-            hostId: host.id.value,
-            hostUpdatedAtMs: host.updatedAt.millisecondsSinceEpoch,
-            requestJson: jsonEncode(operation),
-          ),
+final systemdRequestProvider = Provider<SystemdRequest>((ref) {
+  return (host, operation) async {
+    if (operation['action'] == 'journal' && host.backend == SshBackend.native) {
+      final terminal = ref.read(activeSshTerminalProvider);
+      final transport = ref.read(terminalServiceProvider);
+      if (transport is ConnectedSshRuntime) {
+        final parent = terminal?.tmuxParent ?? terminal;
+        final id = parent == null
+            ? null
+            : (transport as ConnectedSshRuntime).connectedSshRuntimeId(parent.sessionId, host.id);
+        if (id == null) throw const AppException(AppErrorCode.notFound, 'SSH session closed');
+        operation = {...operation, 'terminal': id};
+      }
+    }
+    return decodeObject(
+      await guard(
+        () => ssh.hostSystemd(
+          hostId: host.id.value,
+          hostUpdatedAtMs: host.updatedAt.millisecondsSinceEpoch,
+          requestJson: jsonEncode(operation),
         ),
       ),
-);
+    );
+  };
+});
 
 typedef _Unit = ({String name, String active, String sub, String description});
 typedef _Journal = ({Json reply, List<ServiceLogEntry> entries});
@@ -67,6 +85,11 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
   late final profile = ref.read(activeProfileProvider)?.id;
   late Future<Json> services;
   Future<_Journal>? journal;
+  final detailScroll = ScrollController();
+  Timer? followTimer;
+  int followGeneration = 0;
+  bool following = false;
+  String? followError;
   Future<Json>? path, contents;
   _ServiceFilter filter = _ServiceFilter.all;
   _ServiceSort sort = _ServiceSort.name;
@@ -82,15 +105,88 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
 
   @override
   void dispose() {
+    followTimer?.cancel();
+    detailScroll.dispose();
     search.dispose();
     super.dispose();
   }
 
   Future<Json> request(Json operation) => ref.read(systemdRequestProvider)(widget.host, operation);
 
-  Future<_Journal> readJournal(_Unit unit) async {
-    final reply = await request({'action': 'journal', 'unit': unit.name});
-    return (reply: reply, entries: ServiceLogEntry.parseOutput(reply['output'] as String? ?? ''));
+  Future<_Journal> readJournal(_Unit unit, [_Journal? previous]) async {
+    final cursor = previous?.entries.lastOrNull?.cursor;
+    final reply = await request({'action': 'journal', 'unit': unit.name, 'after_cursor': ?cursor});
+    final fresh = ServiceLogEntry.parseOutput(reply['output'] as String? ?? '');
+    if (cursor == null || reply['status'] != 0) return (reply: reply, entries: fresh);
+    if (fresh.isEmpty) return (reply: reply, entries: previous!.entries);
+    final entries = [...previous!.entries, ...fresh];
+    return (reply: reply, entries: entries.length > 200 ? entries.sublist(entries.length - 200) : entries);
+  }
+
+  void scheduleFollow() {
+    followTimer?.cancel();
+    final generation = ++followGeneration;
+    final current = journal;
+    if (!following || current == null) return;
+    void schedule(_Journal? previous) {
+      if (mounted && generation == followGeneration) {
+        followTimer = Timer(const Duration(seconds: 3), () => pollJournal(generation, previous));
+      }
+    }
+
+    // Even a slow initial read or manual refresh must finish before polling.
+    current.then<void>(schedule, onError: (Object _, StackTrace _) => schedule(null));
+  }
+
+  Future<void> pollJournal(int generation, _Journal? previous) async {
+    if (!mounted || generation != followGeneration || !inProfile) return;
+    _Journal? update;
+    String? error;
+    try {
+      // A rotated or vacuumed journal may no longer recognize its cursor.
+      update = await readJournal(selected!, followError == null ? previous : null);
+    } catch (e) {
+      if (mounted) error = errorMessage(context.l10n, e);
+    }
+    if (!mounted || generation != followGeneration || !inProfile) return;
+    if (update != null) error = _failure(context.l10n, update.reply);
+    final atEnd = detailScroll.hasClients && detailScroll.position.extentAfter < 48;
+    setState(() {
+      followError = error;
+      if (error == null && update != null) journal = SynchronousFuture(update);
+    });
+    if (atEnd && error == null) revealLatest();
+    scheduleFollow();
+  }
+
+  void revealLatest([int passes = 3]) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          following &&
+          detailScroll.hasClients &&
+          !detailScroll.position.isScrollingNotifier.value &&
+          detailScroll.position.extentAfter > 0) {
+        detailScroll.jumpTo(detailScroll.position.maxScrollExtent);
+        // Variable-height journal rows get measured as the sliver reaches them.
+        if (passes > 1) revealLatest(passes - 1);
+      }
+    });
+  }
+
+  void stopFollowing() {
+    following = false;
+    followError = null;
+    followTimer?.cancel();
+    followGeneration++;
+  }
+
+  void setFollowing(bool value) {
+    setState(() {
+      following = value;
+      followError = null;
+    });
+    scheduleFollow();
+    if (value) revealLatest();
   }
 
   void refresh() {
@@ -100,6 +196,8 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
         path = request({'action': 'unit_path', 'unit': unit.name});
         if (contents != null) contents = request({'action': 'unit_text', 'unit': unit.name});
         journal = readJournal(unit);
+        followError = null;
+        scheduleFollow();
       }
     });
   }
@@ -107,6 +205,7 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
   void open(_Unit unit) {
     setState(() {
       selected = unit;
+      stopFollowing();
       notice = null;
       contents = null;
       path = request({'action': 'unit_path', 'unit': unit.name});
@@ -178,6 +277,7 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                       ? null
                       : () => setState(() {
                           selected = null;
+                          stopFollowing();
                           journal = null;
                           path = null;
                           contents = null;
@@ -194,6 +294,15 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                       )
                     : SelectableText(unit.name, style: t.typography.bodyEmph),
               ),
+              if (unit != null) ...[
+                const SizedBox(width: GlassSpacing.s4),
+                FilterChip(
+                  key: const ValueKey('systemd-journal-follow'),
+                  label: Text(l.dockerLogsFollow),
+                  selected: following,
+                  onSelected: setFollowing,
+                ),
+              ],
               GlassIconButton(
                 tooltip: l.devicesRefresh,
                 icon: Icons.refresh_rounded,
@@ -202,6 +311,7 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
             ],
           ),
           const SizedBox(height: 8),
+          if (followError != null) SelectableText(followError!),
           if (unit == null) ...[
             Wrap(
               spacing: GlassSpacing.s6,
@@ -257,6 +367,7 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                 if (unit != null) {
                   final latest = units.where((u) => u.name == unit.name).firstOrNull;
                   return CustomScrollView(
+                    controller: detailScroll,
                     primary: false,
                     slivers: [
                       SliverToBoxAdapter(

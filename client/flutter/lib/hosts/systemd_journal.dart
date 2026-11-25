@@ -8,9 +8,11 @@ class ServiceLogEntry {
     required this.fields,
     this.level,
     this.process = '',
+    this.cursor,
     this.time,
   });
   final String raw, summary, process;
+  final String? cursor;
   final Map<String, String> fields;
   final int? level;
   final DateTime? time;
@@ -80,6 +82,7 @@ class ServiceLogEntry {
     final micros = int.tryParse(_text(record?['__REALTIME_TIMESTAMP']));
     return ServiceLogEntry(
       raw: raw,
+      cursor: record?['__CURSOR'] is String ? record!['__CURSOR'] as String : null,
       summary: message.isNotEmpty
           ? message
           : error.isNotEmpty

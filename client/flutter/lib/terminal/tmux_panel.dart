@@ -90,9 +90,6 @@ class _TmuxPanelState extends ConsumerState<TmuxPanel> {
       await service.createTmux(widget.parent.sessionId, name);
     } else {
       await service.renameTmux(widget.parent.sessionId, session, name);
-      if (mounted && session.matches(tab.tmuxSession)) {
-        ref.read(terminalTabsProvider.notifier).rename(tab, 'tmux · $name');
-      }
     }
   });
 
@@ -125,7 +122,13 @@ class _TmuxPanelState extends ConsumerState<TmuxPanel> {
     final parent = widget.parent;
     final version = ref.watch(tmuxVersionProvider(parent)).value ?? 'tmux';
     final rows = ref.watch(_sessions(parent));
-    final tab = ref.watch(terminalTabsProvider.select((s) => s.active));
+    ref.listen(_sessions(parent), (_, next) {
+      if (!next.isLoading && next.hasValue) {
+        ref.read(terminalTabsProvider.notifier).updateTmuxNames(parent, next.requireValue);
+      }
+    });
+    final tabs = ref.watch(terminalTabsProvider);
+    final tab = tabs.active;
     final date = MaterialLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -170,7 +173,7 @@ class _TmuxPanelState extends ConsumerState<TmuxPanel> {
                     separatorBuilder: (_, _) => const SizedBox(height: 6),
                     itemBuilder: (context, i) {
                       final entry = entries[i];
-                      final attached = entry.matches(tab?.tmuxSession);
+                      final attached = tabs.attachedTmux(parent, entry);
                       final activity =
                           '${date.formatShortDate(entry.activity)} ${date.formatTimeOfDay(TimeOfDay.fromDateTime(entry.activity))}';
                       return GlassPanel(
@@ -183,7 +186,7 @@ class _TmuxPanelState extends ConsumerState<TmuxPanel> {
                                 Icon(
                                   Icons.layers_outlined,
                                   size: 17,
-                                  color: attached ? Theme.of(context).colorScheme.primary : null,
+                                  color: attached != null ? Theme.of(context).colorScheme.primary : null,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
@@ -194,15 +197,23 @@ class _TmuxPanelState extends ConsumerState<TmuxPanel> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                _button(
-                                  attached ? Icons.logout_rounded : Icons.terminal_rounded,
-                                  attached ? l.tmuxDetach : l.tmuxAttach,
-                                  () => _perform(
-                                    (current, _) => attached
-                                        ? ref.read(terminalTabsProvider.notifier).detachTmux(current)
-                                        : ref.read(terminalTabsProvider.notifier).attachTmux(current, entry),
+                                if (attached == null || attached != tab)
+                                  _button(
+                                    attached == null ? Icons.terminal_rounded : Icons.tab_rounded,
+                                    attached == null ? l.tmuxAttach : l.commonOpen,
+                                    () => _perform(
+                                      (current, _) =>
+                                          ref.read(terminalTabsProvider.notifier).attachTmux(current, entry),
+                                    ),
                                   ),
-                                ),
+                                if (attached != null)
+                                  _button(
+                                    Icons.logout_rounded,
+                                    l.tmuxDetach,
+                                    () => _perform(
+                                      (_, _) => ref.read(terminalTabsProvider.notifier).detachTmux(attached),
+                                    ),
+                                  ),
                                 _button(Icons.edit_outlined, l.commonRename, () => _name(entry)),
                                 _button(
                                   Icons.delete_outline_rounded,

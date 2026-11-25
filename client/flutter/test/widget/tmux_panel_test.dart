@@ -74,12 +74,16 @@ class _Sessions extends Fake implements TerminalService, TmuxService {
 }
 
 void main() {
-  testWidgets('tmux switches only its own client and confirms termination', (tester) async {
+  testWidgets('tmux keeps sibling clients attached and focuses their existing tabs', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
     await backend.debugSignInDemoAndUnlock();
     final service = _Sessions();
     final mobile = AppPlatform.isMobile;
+    final settings = backend.services.settings;
+    await settings.updateLocal(
+      settings.currentLocal.copyWith(terminalTabPlacement: TerminalTabPlacement.left, terminalTabGrouped: true),
+    );
     await pumpApp(
       tester,
       backend,
@@ -104,17 +108,39 @@ void main() {
     await button('Attach to session');
     final second = container.read(terminalTabsProvider).active!;
     expect(second.tmuxSession!.name, 'build');
-    expect(service.closed, [first.sessionId]);
+    expect(service.closed, isEmpty);
+    expect(container.read(terminalTabsProvider).tabs, [root, first, second]);
+    expect(first.displayTitle, 'tmux · main · staging-web');
+    expect(second.displayTitle, 'tmux · build · staging-web');
+    if (!mobile) {
+      final column = find.byKey(const ValueKey('terminal-tab-column'));
+      final parentTitle = find.descendant(of: column, matching: find.text('staging-web'));
+      final childTitle = find.descendant(of: column, matching: find.text(first.displayTitle));
+      expect(tester.getTopLeft(childTitle).dx, greaterThan(tester.getTopLeft(parentTitle).dx));
+      expect(tester.getTopLeft(childTitle).dy, greaterThan(tester.getTopLeft(parentTitle).dy));
+    }
+    await button('Open');
+    expect(container.read(terminalTabsProvider).active, same(first));
+    expect(container.read(terminalTabsProvider).tabs.length, 3);
+    expect(service.closed, isEmpty);
+    await button('Open');
+    expect(container.read(terminalTabsProvider).active, same(second));
     await button('Detach from session');
     expect(container.read(terminalTabsProvider).active, same(root));
-    expect(service.closed, [first.sessionId, second.sessionId]);
+    expect(service.closed, [second.sessionId]);
+    expect(container.read(terminalTabsProvider).tabs, [root, first]);
+    await button('Rename');
+    await enterKey(tester, 'text-input-dialog-field', 'main-renamed');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    expect(first.displayTitle, 'tmux · main-renamed · staging-web');
     expect(service.parents.toSet(), {root.sessionId});
     await button('End session', last: true);
     await tapKey(tester, 'confirm-cancel');
     expect(service.rows.length, 2);
     await button('End session', last: true);
     await tapKey(tester, 'confirm-ok');
-    expect(service.rows, {1: 'main'});
+    expect(service.rows, {1: 'main-renamed'});
     await button('Create session');
     await enterKey(tester, 'text-input-dialog-field', 'worker');
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -125,6 +151,10 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await settle(tester);
     expect(find.text('deploy'), findsOneWidget);
+    await container.read(terminalTabsProvider.notifier).close(root);
+    await settle(tester);
+    expect(container.read(terminalTabsProvider).tabs, isEmpty);
+    expect(service.closed, containsAll([root.sessionId, first.sessionId, second.sessionId]));
     expect(tester.takeException(), isNull);
   }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.android, TargetPlatform.iOS}));
 }

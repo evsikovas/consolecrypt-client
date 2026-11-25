@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 /// Second line of a terminal tab: the host's list name (or its address when
 /// it has none), its address / this computer's network name, or nothing.
 String? terminalTabSubtitle(BuildContext context, TerminalTab tab, TerminalTabSubtitle mode) {
+  if (tab.tmuxParent != null && tab.customTitle == null && mode == TerminalTabSubtitle.name) return null;
   final host = tab.host;
   String? text = switch (mode) {
     TerminalTabSubtitle.off => null,

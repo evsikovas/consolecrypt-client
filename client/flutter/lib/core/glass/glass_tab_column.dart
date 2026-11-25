@@ -206,14 +206,29 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
     final menu = widget.onContextMenu;
     final groups = folded ? null : widget.groups;
     assert(groups == null || groups.length == widget.tabs.length);
+    final children = <int?, List<int>>{};
+    for (final (i, tab) in widget.tabs.indexed) {
+      (children[tab.parentIndex] ??= []).add(i);
+    }
+    final depth = List.filled(widget.tabs.length, 0);
+    final order = <int>[];
+    void visit(int? parent, int level) {
+      for (final i in children[parent] ?? const <int>[]) {
+        order.add(i);
+        depth[i] = level;
+        visit(i, level + 1);
+      }
+    }
+
+    visit(null, 0);
     final members = <String, List<int>>{};
     if (groups != null) {
-      for (final (i, group) in groups.indexed) {
-        (members[group.id] ??= []).add(i);
+      for (final i in order) {
+        (members[groups[i].id] ??= []).add(i);
       }
     }
     final visible = groups == null
-        ? List<int>.generate(widget.tabs.length, (i) => i)
+        ? order
         : [
             for (final entry in members.entries)
               if (!_closedGroups.contains(entry.key)) ...entry.value,
@@ -223,13 +238,18 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
     }
 
     void move(int from, int to) {
-      if (groups == null || groups[from].id == groups[to].id) widget.onReorder?.call(from, to);
+      if (widget.tabs[from].parentIndex == widget.tabs[to].parentIndex &&
+          (groups == null || groups[from].id == groups[to].id)) {
+        widget.onReorder?.call(from, to);
+      }
     }
 
     void moveRelative(int i, int delta) {
-      final order = groups == null ? visible : members[groups[i].id]!;
-      final to = order.indexOf(i) + delta;
-      if (to >= 0 && to < order.length) move(i, order[to]);
+      final siblings = children[widget.tabs[i].parentIndex]!
+          .where((j) => groups == null || groups[i].id == groups[j].id)
+          .toList();
+      final to = siblings.indexOf(i) + delta;
+      if (to >= 0 && to < siblings.length) move(i, siblings[to]);
     }
 
     final rows = [
@@ -271,6 +291,7 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
                   folded: folded,
                   twoLines: twoLines,
                   grouped: groups != null,
+                  depth: depth[i],
                   focusNode: _focusNodes[i],
                   onSelect: () => widget.onSelect(i),
                   onClose: widget.onClose == null ? null : () => widget.onClose!(i),
@@ -332,7 +353,7 @@ class _GlassTabColumnState extends State<GlassTabColumn> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: groups == null
-                          ? rows
+                          ? [for (final i in order) rows[i]]
                           : [
                               for (final entry in members.entries) ...[
                                 Semantics(
@@ -449,6 +470,7 @@ class _ColumnTab extends StatelessWidget {
     required this.folded,
     required this.twoLines,
     required this.grouped,
+    required this.depth,
     required this.focusNode,
     required this.onSelect,
     this.onClose,
@@ -460,6 +482,7 @@ class _ColumnTab extends StatelessWidget {
   final bool folded;
   final bool twoLines;
   final bool grouped;
+  final int depth;
   final FocusNode focusNode;
   final VoidCallback onSelect;
   final VoidCallback? onClose;
@@ -478,7 +501,7 @@ class _ColumnTab extends StatelessWidget {
           );
     final title = Text(
       tab.title,
-      maxLines: 1,
+      maxLines: depth > 0 && tab.subtitle == null ? 2 : 1,
       overflow: TextOverflow.ellipsis,
       style: tokens.typography.bodyEmph.copyWith(color: p.label),
     );
@@ -497,11 +520,11 @@ class _ColumnTab extends StatelessWidget {
             ],
           )
         : Padding(
-            padding: const EdgeInsetsDirectional.only(start: GlassSpacing.s8, end: GlassSpacing.s4),
+            padding: EdgeInsetsDirectional.only(start: GlassSpacing.s8 + depth.clamp(0, 3) * 14, end: GlassSpacing.s4),
             child: Row(
               children: [
                 if (teamBar != null) ...[teamBar, const SizedBox(width: GlassSpacing.s4)],
-                if (grouped)
+                if (grouped || depth > 0)
                   SizedBox(
                     width: 23,
                     height: 23,
@@ -509,7 +532,7 @@ class _ColumnTab extends StatelessWidget {
                       children: [
                         Center(
                           child: Icon(
-                            Icons.dns_outlined,
+                            depth > 0 ? Icons.layers_outlined : Icons.dns_outlined,
                             size: 18,
                             color: active ? Theme.of(context).colorScheme.primary : tokens.secondaryLabel,
                           ),
@@ -576,7 +599,7 @@ class _ColumnTab extends StatelessWidget {
             ),
             child: SizedBox(
               width: double.infinity,
-              height: folded ? 36 : (twoLines ? 44 : GlassSizes.sidebarRow),
+              height: folded ? 36 : (twoLines || depth > 0 ? 44 : GlassSizes.sidebarRow),
               child: content,
             ),
           ),
@@ -584,7 +607,7 @@ class _ColumnTab extends StatelessWidget {
       },
     );
     // Folded rows carry the title in the tooltip; expanded rows the state.
-    final tooltip = folded ? [tab.title, ?tab.subtitle, ?tab.tooltip].join('\n') : tab.tooltip;
+    final tooltip = folded || depth > 0 ? [tab.title, ?tab.subtitle, ?tab.tooltip].join('\n') : tab.tooltip;
     if (tooltip != null) row = Tooltip(message: tooltip, child: row);
     if (tab.attention && !active) row = _AttentionPulse(shape: shape, child: row);
     return Padding(padding: const EdgeInsets.symmetric(vertical: 1), child: row);

@@ -51,7 +51,12 @@ esac
 EOF
 cat >/usr/local/bin/journalctl <<'EOF'
 #!/bin/sh
-[ "$*" = '--no-pager --all --output=json --output-fields=MESSAGE,PRIORITY,SYSLOG_IDENTIFIER,_COMM,_PID -n 200 --unit=demo.service' ] || exit 1
+base='--no-pager --all --output=json --output-fields=MESSAGE,PRIORITY,SYSLOG_IDENTIFIER,_COMM,_PID -n 200 --unit=demo.service'
+if [ "$*" = "$base --after-cursor=s=test;i=1" ]; then
+  echo '{"__CURSOR":"s=test;i=2","MESSAGE":"new entry"}'
+  exit 0
+fi
+[ "$*" = "$base" ] || exit 1
 [ ! -e /tmp/cc-demo-service-log ] || echo '{"MESSAGE":"restarted","PRIORITY":"5"}'
 EOF
 chmod +x /usr/local/bin/systemctl /usr/local/bin/journalctl"#).unwrap();
@@ -64,6 +69,12 @@ chmod +x /usr/local/bin/systemctl /usr/local/bin/journalctl"#).unwrap();
     assert!(app.host_systemd(saved.id.clone(), saved.updated_at_ms - 1, restart.to_string()).await.is_err());
     assert_eq!(run(restart).await.unwrap()["status"], 0);
     assert_eq!(run(journal).await.unwrap()["output"], "{\"MESSAGE\":\"restarted\",\"PRIORITY\":\"5\"}\n");
+    let term = app.open_terminal(saved.id.clone(), 80, 24).await.unwrap();
+    let follow = serde_json::json!({"action":"journal","unit":"demo.service","terminal":term.id,"after_cursor":"s=test;i=1"});
+    assert_eq!(run(follow.clone()).await.unwrap()["output"], "{\"__CURSOR\":\"s=test;i=2\",\"MESSAGE\":\"new entry\"}\n");
+    assert_eq!(app.terminal_info(term.id.clone()).await.unwrap().status, TerminalStatusDto::Connected);
+    app.close_terminal(term.id).await.unwrap();
+    assert!(run(follow).await.is_err());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

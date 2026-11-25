@@ -64,6 +64,7 @@ final class _Session {
 final class RustTerminalService
     implements
         TerminalService,
+        ConnectedSshRuntime,
         TcpdumpService,
         LocalTerminalService,
         TmuxService,
@@ -107,6 +108,7 @@ final class RustTerminalService
     return _open(SshTerminalTarget(host), const TerminalSize(240, 24), capture: (peerId: peerId, sudo: sudo));
   }
 
+  @override
   String? connectedSshRuntimeId(TerminalSessionId id, ObjectId hostId) {
     final session = _sessions[id];
     return session != null && session.connected && !session.closed && session.hostId == hostId ? session.rustId : null;
