@@ -63,6 +63,8 @@ dependencies:
   yaml: ^3.1.4
   # Open explicitly selected documentation and GitOps commit links (BSD-3-Clause).
   url_launcher: ^6.3.3
+  # Parse website titles and descriptions without rendering remote markup.
+  html: ^0.15.6
   # Recovery Kit print / "Save as PDF" through the system print dialog
   # (Apache-2.0; DavBfr). EXACT pin: its native layoutPdf paths were checked
   # to print from memory on Android, iOS, macOS, Windows and Linux (memfd) —

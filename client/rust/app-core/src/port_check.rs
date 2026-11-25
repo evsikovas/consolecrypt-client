@@ -81,6 +81,55 @@ async fn local(host: &str, port: u16, udp: bool) -> &'static str {
 }
 
 impl AppCore {
+    /// Request a single HTTP(S) root page from the selected SSH source.
+    pub async fn remote_web_preview(
+        &self,
+        source_id: String,
+        host: String,
+        port: u16,
+        https: bool,
+    ) -> AppResult<String> {
+        let host =
+            destination(&host).ok_or_else(|| AppError::invalid("host", "invalid destination"))?;
+        if port == 0 {
+            return Err(AppError::invalid("port", "invalid port"));
+        }
+        let script = include_str!("port_web_preview.py")
+            .replace("\r\n", "\n")
+            .replace('\'', "'\\''");
+        let scheme = if https { "https" } else { "http" };
+        let command = format!(
+            "command -v python3 >/dev/null || exit 127; exec python3 -c '{script}' '{host}' {port} {scheme}"
+        );
+        let prepared = self.sharing_prepare_connection(&source_id).await?;
+        prepared
+            .run(async {
+                let ssh = prepared
+                    .unlocked
+                    .ssh
+                    .connector
+                    .connect(&prepared.plan)
+                    .await?;
+                let response = ssh
+                    .exec_bounded(
+                        &command,
+                        48 * 1024,
+                        tokio::time::sleep(Duration::from_secs(10)),
+                    )
+                    .await;
+                let _ = timeout(Duration::from_secs(1), ssh.disconnect()).await;
+                let Some(out) = response? else {
+                    return Ok(r#"{"error":"timeout"}"#.into());
+                };
+                Ok(match out.exit_status {
+                    Some(0) => out.stdout_lossy().trim().to_owned(),
+                    Some(127) => r#"{"error":"no_python"}"#.into(),
+                    _ => r#"{"error":"no_response"}"#.into(),
+                })
+            })
+            .await
+    }
+
     pub async fn port_check(
         &self,
         source_id: Option<String>,

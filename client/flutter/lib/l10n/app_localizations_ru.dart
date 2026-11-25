@@ -41,8 +41,50 @@ class AppLocalizationsRu extends AppLocalizations {
   String get portCheckList => 'Показать порты';
 
   @override
-  String get portCheckRangeHelp =>
-      'Показывает сокеты на целевом хосте. Нажмите ▶ рядом с портом, чтобы проверить его с выбранного источника.';
+  String get portCheckRangeHelp => 'Нажмите на порт, чтобы проверить соединение и посмотреть сведения о службе.';
+
+  @override
+  String portTypicalService(String service) {
+    return 'Обычное назначение порта: $service';
+  }
+
+  @override
+  String portOwner(String names) {
+    return 'Порт слушает: $names';
+  }
+
+  @override
+  String get portOwnerUnavailable => 'Имя процесса недоступно с текущими правами или средствами системы.';
+
+  @override
+  String get portOwnerReading => 'Узнаём имя процесса…';
+
+  @override
+  String get portReasonRefused =>
+      'Хост отклонил соединение. Служба может слушать другой адрес, либо подключение отклоняет межсетевой экран.';
+
+  @override
+  String get portReasonUnreachable =>
+      'Проверьте маршрут от выбранного источника и правила межсетевого экрана для этого порта.';
+
+  @override
+  String get portWebsite => 'Веб-сервис';
+
+  @override
+  String get portWebsiteReading => 'Читаем главную страницу…';
+
+  @override
+  String get portWebsiteTls => 'Не удалось установить доверенное TLS-соединение.';
+
+  @override
+  String get portWebsiteUnavailable => 'Служба не вернула веб-ответ по этому протоколу.';
+
+  @override
+  String get portRemoteLoopback =>
+      'Этот адрес доступен внутри SSH-сервера. Чтобы открыть его на этом устройстве, используйте проброс порта.';
+
+  @override
+  String get portBrowserFailed => 'Не удалось открыть браузер. Можно скопировать адрес выше.';
 
   @override
   String get portCheckNeedsTarget =>

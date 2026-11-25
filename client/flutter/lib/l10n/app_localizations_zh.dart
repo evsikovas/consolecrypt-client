@@ -40,7 +40,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get portCheckList => '显示端口';
 
   @override
-  String get portCheckRangeHelp => '显示目标主机上的套接字。点击端口旁的 ▶ 即可从所选来源测试连接。';
+  String get portCheckRangeHelp => '点击端口以测试连接并查看服务详情。';
+
+  @override
+  String portTypicalService(String service) {
+    return '此端口的常见用途：$service';
+  }
+
+  @override
+  String portOwner(String names) {
+    return '监听进程：$names';
+  }
+
+  @override
+  String get portOwnerUnavailable => '当前权限或系统工具无法获取进程名称。';
+
+  @override
+  String get portOwnerReading => '正在读取进程名称…';
+
+  @override
+  String get portReasonRefused => '目标拒绝了连接。服务可能监听其他地址，也可能是防火墙拒绝了连接。';
+
+  @override
+  String get portReasonUnreachable => '请检查从所选来源到目标的路由和此端口的防火墙规则。';
+
+  @override
+  String get portWebsite => 'Web 服务';
+
+  @override
+  String get portWebsiteReading => '正在读取首页…';
+
+  @override
+  String get portWebsiteTls => '无法建立可信的 TLS 连接。';
+
+  @override
+  String get portWebsiteUnavailable => '此服务未通过该协议返回可读的 Web 响应。';
+
+  @override
+  String get portRemoteLoopback => '此地址仅在 SSH 服务器本地可用。请通过端口转发在本设备上打开。';
+
+  @override
+  String get portBrowserFailed => '无法打开浏览器。你可以复制上面的地址。';
 
   @override
   String get portCheckNeedsTarget => '请选择已保存的 SSH 目标主机，或输入本设备地址以读取其套接字列表。';

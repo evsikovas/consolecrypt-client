@@ -29,6 +29,18 @@ Future<String> terminalOpenTcpdump({required String hostId, String? peerId, requ
 Future<String> portCheck({String? sourceId, required String host, required int port, required bool udp}) =>
     RustLib.instance.api.crateApiSshPortCheck(sourceId: sourceId, host: host, port: port, udp: udp);
 
+/// Read the root page of one explicitly selected service from the saved SSH source.
+Future<String> portWebPreview({
+  required String sourceId,
+  required String host,
+  required int port,
+  required bool https,
+}) => RustLib.instance.api.crateApiSshPortWebPreview(sourceId: sourceId, host: host, port: port, https: https);
+
+/// Process names visible to the destination account for a selected socket.
+Future<List<String>> socketOwners({String? hostId, required int port, required bool udp}) =>
+    RustLib.instance.api.crateApiSshSocketOwners(hostId: hostId, port: port, udp: udp);
+
 /// Numeric ports reported by the destination's socket table, inclusive.
 Future<Uint16List> listeningPorts({String? hostId, required int low, required int high, required bool udp}) =>
     RustLib.instance.api.crateApiSshListeningPorts(hostId: hostId, low: low, high: high, udp: udp);

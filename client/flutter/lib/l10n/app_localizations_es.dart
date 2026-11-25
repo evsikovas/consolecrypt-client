@@ -41,8 +41,51 @@ class AppLocalizationsEs extends AppLocalizations {
   String get portCheckList => 'Mostrar puertos';
 
   @override
-  String get portCheckRangeHelp =>
-      'Muestra los sockets del destino. Pulsa ▶ junto a un puerto para comprobarlo desde el origen seleccionado.';
+  String get portCheckRangeHelp => 'Selecciona un puerto para comprobar la conexión y ver los detalles del servicio.';
+
+  @override
+  String portTypicalService(String service) {
+    return 'Uso habitual del puerto: $service';
+  }
+
+  @override
+  String portOwner(String names) {
+    return 'Proceso que escucha: $names';
+  }
+
+  @override
+  String get portOwnerUnavailable =>
+      'El nombre del proceso no está disponible con los permisos o herramientas actuales.';
+
+  @override
+  String get portOwnerReading => 'Consultando el proceso…';
+
+  @override
+  String get portReasonRefused =>
+      'El destino rechazó la conexión. El servicio puede escuchar en otra dirección o el cortafuegos puede rechazarla.';
+
+  @override
+  String get portReasonUnreachable =>
+      'Comprueba la ruta desde el origen seleccionado y las reglas del cortafuegos para este puerto.';
+
+  @override
+  String get portWebsite => 'Servicio web';
+
+  @override
+  String get portWebsiteReading => 'Leyendo la página de inicio…';
+
+  @override
+  String get portWebsiteTls => 'No se pudo establecer una conexión TLS de confianza.';
+
+  @override
+  String get portWebsiteUnavailable => 'El servicio no devolvió una respuesta web con este protocolo.';
+
+  @override
+  String get portRemoteLoopback =>
+      'Esta dirección es local al servidor SSH. Utiliza un reenvío de puerto para abrirla en este dispositivo.';
+
+  @override
+  String get portBrowserFailed => 'No se pudo abrir el navegador. Puedes copiar la dirección de arriba.';
 
   @override
   String get portCheckNeedsTarget =>

@@ -157,8 +157,80 @@ abstract class AppLocalizations {
   /// How to check the services listed in the interval
   ///
   /// In en, this message translates to:
-  /// **'Lists sockets on the destination. Use ▶ next to a port to test it from the selected source.'**
+  /// **'Select a port to check its connection and see service details.'**
   String get portCheckRangeHelp;
+
+  /// Port details. Common use for this port: {service}
+  ///
+  /// In en, this message translates to:
+  /// **'Common use for this port: {service}'**
+  String portTypicalService(String service);
+
+  /// Port details. Listening process: {names}
+  ///
+  /// In en, this message translates to:
+  /// **'Listening process: {names}'**
+  String portOwner(String names);
+
+  /// Port details. Process name unavailable with current permissions or system tools.
+  ///
+  /// In en, this message translates to:
+  /// **'Process name unavailable with current permissions or system tools.'**
+  String get portOwnerUnavailable;
+
+  /// Port details. Reading the process name…
+  ///
+  /// In en, this message translates to:
+  /// **'Reading the process name…'**
+  String get portOwnerReading;
+
+  /// Port details. The destination rejected the connection. The service may be bound to another address or a firewall may reject it.
+  ///
+  /// In en, this message translates to:
+  /// **'The destination rejected the connection. The service may be bound to another address or a firewall may reject it.'**
+  String get portReasonRefused;
+
+  /// Port details. Check the route from the selected source and the firewall rules for this port.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the route from the selected source and the firewall rules for this port.'**
+  String get portReasonUnreachable;
+
+  /// Port details. Web service
+  ///
+  /// In en, this message translates to:
+  /// **'Web service'**
+  String get portWebsite;
+
+  /// Port details. Reading the home page…
+  ///
+  /// In en, this message translates to:
+  /// **'Reading the home page…'**
+  String get portWebsiteReading;
+
+  /// Port details. Could not establish a trusted TLS connection.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not establish a trusted TLS connection.'**
+  String get portWebsiteTls;
+
+  /// Port details. No readable web response for this protocol.
+  ///
+  /// In en, this message translates to:
+  /// **'No readable web response for this protocol.'**
+  String get portWebsiteUnavailable;
+
+  /// Port details. This address is local to the SSH server. Use port forwarding to open it on this device.
+  ///
+  /// In en, this message translates to:
+  /// **'This address is local to the SSH server. Use port forwarding to open it on this device.'**
+  String get portRemoteLoopback;
+
+  /// Port details. Could not open the browser. You can copy the address above.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the browser. You can copy the address above.'**
+  String get portBrowserFailed;
 
   /// Shown when the destination has no matching SSH host
   ///

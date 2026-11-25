@@ -46,6 +46,18 @@ cat /tmp/cc-port-check-test"#).unwrap();
     let port = port.trim().parse().unwrap();
     assert_eq!(app.listening_ports(Some(saved.id.clone()), port, port, true).await.unwrap(), vec![port]);
     assert_eq!(check(port, true).await.unwrap(), "reply");
+    let http = tb.exec_in(&tb.bastion1, r#"mkdir -p /tmp/cc-web
+printf '%s' '<html><head><title>SSH fixture</title></head></html>' >/tmp/cc-web/index.html
+cd /tmp/cc-web && python3 -c 'from http.server import HTTPServer,SimpleHTTPRequestHandler; s=HTTPServer(("127.0.0.1",0),SimpleHTTPRequestHandler); print(s.server_port,flush=True); s.handle_request()' </dev/null >/tmp/cc-web-port 2>/dev/null &
+for i in 1 2 3 4 5; do test -s /tmp/cc-web-port && break; sleep 1; done
+cat /tmp/cc-web-port"#).unwrap().trim().parse().unwrap();
+    let json = app.remote_web_preview(saved.id.clone(), "127.0.0.1".into(), http, false).await.unwrap();
+    let page: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(page["status"], 200);
+    assert_eq!(page["mime"], "text/html");
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    let body = STANDARD.decode(page["body"].as_str().unwrap()).unwrap();
+    assert!(String::from_utf8(body).unwrap().contains("<title>SSH fixture</title>"));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

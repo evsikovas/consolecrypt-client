@@ -40,8 +40,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get portCheckList => 'Show ports';
 
   @override
-  String get portCheckRangeHelp =>
-      'Lists sockets on the destination. Use ▶ next to a port to test it from the selected source.';
+  String get portCheckRangeHelp => 'Select a port to check its connection and see service details.';
+
+  @override
+  String portTypicalService(String service) {
+    return 'Common use for this port: $service';
+  }
+
+  @override
+  String portOwner(String names) {
+    return 'Listening process: $names';
+  }
+
+  @override
+  String get portOwnerUnavailable => 'Process name unavailable with current permissions or system tools.';
+
+  @override
+  String get portOwnerReading => 'Reading the process name…';
+
+  @override
+  String get portReasonRefused =>
+      'The destination rejected the connection. The service may be bound to another address or a firewall may reject it.';
+
+  @override
+  String get portReasonUnreachable => 'Check the route from the selected source and the firewall rules for this port.';
+
+  @override
+  String get portWebsite => 'Web service';
+
+  @override
+  String get portWebsiteReading => 'Reading the home page…';
+
+  @override
+  String get portWebsiteTls => 'Could not establish a trusted TLS connection.';
+
+  @override
+  String get portWebsiteUnavailable => 'No readable web response for this protocol.';
+
+  @override
+  String get portRemoteLoopback =>
+      'This address is local to the SSH server. Use port forwarding to open it on this device.';
+
+  @override
+  String get portBrowserFailed => 'Could not open the browser. You can copy the address above.';
 
   @override
   String get portCheckNeedsTarget =>

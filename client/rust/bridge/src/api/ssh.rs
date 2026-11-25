@@ -124,6 +124,16 @@ pub async fn port_check(source_id: Option<String>, host: String, port: u16, udp:
     with_core(move |core| async move { Ok(core.port_check(source_id, host, port, udp).await?.to_owned()) }).await
 }
 
+/// Read the root page of one explicitly selected service from the saved SSH source.
+pub async fn port_web_preview(source_id: String, host: String, port: u16, https: bool) -> Result<String, BridgeError> {
+    with_core(move |core| async move { Ok(core.remote_web_preview(source_id, host, port, https).await?) }).await
+}
+
+/// Process names visible to the destination account for a selected socket.
+pub async fn socket_owners(host_id: Option<String>, port: u16, udp: bool) -> Result<Vec<String>, BridgeError> {
+    with_core(move |core| async move { Ok(core.socket_owners(host_id, port, udp).await?) }).await
+}
+
 /// Numeric ports reported by the destination's socket table, inclusive.
 pub async fn listening_ports(host_id: Option<String>, low: u16, high: u16, udp: bool) -> Result<Vec<u16>, BridgeError> {
     with_core(move |core| async move { Ok(core.listening_ports(host_id, low, high, udp).await?) }).await

@@ -13,7 +13,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 240
     env:
-      CC_BUILD_NUMBER: '93018'
+      CC_BUILD_NUMBER: '93019'
       CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
       CARGO_BUILD_JOBS: '3'
     steps:
@@ -37,6 +37,9 @@ jobs:
                   output = subprocess.check_output(["/bin/sh", "client/rust/app-core/src/listening_ports.sh",
                                                     protocol, port, port], text=True)
                   assert output.splitlines() == [port], (protocol, port, output)
+                  owners = subprocess.check_output(["/bin/sh", "client/rust/app-core/src/socket_owner.sh",
+                                                    protocol, port], text=True)
+                  assert owners.strip(), (protocol, port, "missing process name")
           PY
       - name: Build and verify the universal disk image
         shell: bash
@@ -64,5 +67,5 @@ jobs:
           retention-days: 7
           compression-level: 0
           path: |
-            dist/macos/ConsoleCrypt-1.2.5+93018-macos-universal.dmg
+            dist/macos/ConsoleCrypt-1.2.5+93019-macos-universal.dmg
             dist/macos/SHA256SUMS-macos.txt

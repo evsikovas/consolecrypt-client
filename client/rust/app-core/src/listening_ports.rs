@@ -68,6 +68,98 @@ async fn local(low: u16, high: u16, udp: bool) -> AppResult<Vec<u16>> {
 }
 
 impl AppCore {
+    pub async fn socket_owners(
+        &self,
+        host_id: Option<String>,
+        port: u16,
+        udp: bool,
+    ) -> AppResult<Vec<String>> {
+        if port == 0 {
+            return Err(AppError::invalid("port", "invalid port"));
+        }
+        let script = include_str!("socket_owner.sh").replace("\r\n", "\n");
+        let protocol = if udp { "udp" } else { "tcp" };
+        let names = |data: &[u8]| -> Vec<String> {
+            String::from_utf8_lossy(data)
+                .lines()
+                .map(str::trim)
+                .filter(|line| {
+                    !line.is_empty()
+                        && line.chars().count() <= 120
+                        && !line.chars().any(char::is_control)
+                })
+                .take(16)
+                .map(str::to_owned)
+                .collect()
+        };
+        if let Some(id) = host_id {
+            let prepared = self.sharing_prepare_connection(&id).await?;
+            let quoted = script.replace('\'', "'\\''");
+            let command = format!("/bin/sh -c '{quoted}' cc-owner {protocol} {port}");
+            return prepared
+                .run(async {
+                    let ssh = prepared
+                        .unlocked
+                        .ssh
+                        .connector
+                        .connect(&prepared.plan)
+                        .await?;
+                    let result = ssh
+                        .exec_bounded(&command, 4096, tokio::time::sleep(TIMEOUT))
+                        .await;
+                    let _ = timeout(Duration::from_secs(1), ssh.disconnect()).await;
+                    Ok(result?
+                        .filter(|r| r.exit_status == Some(0))
+                        .map_or_else(Vec::new, |r| names(&r.stdout)))
+                })
+                .await;
+        }
+        let (_, unlocked) = self.unlocked().await?;
+        let mut shutdown = unlocked.sharing_shutdown.subscribe();
+        if *shutdown.borrow() {
+            return Err(AppError::VaultLocked);
+        }
+        let mut command = if cfg!(windows) {
+            let root = std::env::var_os("SystemRoot")
+                .ok_or_else(|| AppError::Io("missing Windows system directory".into()))?;
+            let mut cmd = Command::new(
+                std::path::PathBuf::from(root)
+                    .join(r"System32\WindowsPowerShell\v1.0\powershell.exe"),
+            );
+            let list = if udp {
+                "Get-NetUDPEndpoint"
+            } else {
+                "Get-NetTCPConnection -State Listen"
+            };
+            cmd.args(["-NoProfile", "-NonInteractive", "-Command", &format!(
+                "[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); {list} -LocalPort {port} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object {{ (Get-Process -Id $_ -ErrorAction SilentlyContinue).ProcessName }} | Sort-Object -Unique"
+            )]);
+            #[cfg(windows)]
+            cmd.creation_flags(0x08000000);
+            cmd
+        } else if cfg!(any(
+            target_os = "macos",
+            target_os = "linux",
+            target_os = "freebsd"
+        )) {
+            let mut cmd = Command::new("/bin/sh");
+            cmd.args(["-c", &script, "cc-owner", protocol, &port.to_string()]);
+            cmd
+        } else {
+            return Ok(vec![]);
+        };
+        let out = tokio::select! {
+            biased;
+            _ = shutdown.changed() => return Err(AppError::VaultLocked),
+            result = timeout(TIMEOUT, command.kill_on_drop(true).output()) => result,
+        };
+        Ok(out
+            .ok()
+            .and_then(Result::ok)
+            .filter(|o| o.status.success())
+            .map_or_else(Vec::new, |o| names(&o.stdout)))
+    }
+
     /// Read listening TCP sockets or bound UDP sockets on the chosen destination.
     pub async fn listening_ports(
         &self,
