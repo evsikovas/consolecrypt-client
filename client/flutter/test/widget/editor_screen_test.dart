@@ -82,6 +82,67 @@ void main() {
     expect(field, findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
+  testWidgets('close tab shortcut cancels or saves dirty files and closes a clean Markdown preview immediately', (
+    tester,
+  ) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend);
+    await tapKey(tester, 'nav-editor');
+    await tester.tap(find.text('Open SSH folder'));
+    await settle(tester);
+    await pickHost(tester, 'prod-web-1');
+    final picker = tester.widget<SshFolderPicker>(find.byType(SshFolderPicker));
+    await tester.tap(find.widgetWithText(FilledButton, 'Open'));
+    await settle(tester);
+
+    final tree = find.byType(ProjectTree);
+    for (final name in ['README.md', 'notes.txt']) {
+      final row = find.descendant(of: tree, matching: find.text(name));
+      await tester.ensureVisible(row);
+      await tester.tap(row);
+      await settle(tester);
+    }
+    final path = '${picker.home}/notes.txt';
+    final field = find.byKey(ValueKey(path));
+    final original = await backend.sftpBrowser.readPreview(picker.session, path);
+    await tester.enterText(field, 'save this SSH draft');
+    final modifier = Theme.of(tester.element(tree)).platform == TargetPlatform.macOS
+        ? LogicalKeyboardKey.metaLeft
+        : LogicalKeyboardKey.controlLeft;
+    Future<void> closeShortcut() async {
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyW);
+      await tester.sendKeyUpEvent(modifier);
+      await settle(tester);
+    }
+
+    await closeShortcut();
+    expect(find.text('Save changes to this file?'), findsOneWidget);
+    expect(find.descendant(of: findDialog(), matching: find.text(path)), findsOneWidget);
+    await tapKey(tester, 'confirm-cancel');
+    expect(tester.widget<TextField>(field).controller!.text, 'save this SSH draft');
+    expect((await backend.sftpBrowser.readPreview(picker.session, path)).bytes, original.bytes);
+
+    // Allow the shared native-menu / keyboard duplicate-event interval to elapse.
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 260)));
+    await closeShortcut();
+    await tapKey(tester, 'confirm-ok');
+    expect(field, findsNothing);
+    expect(
+      String.fromCharCodes((await backend.sftpBrowser.readPreview(picker.session, path)).bytes),
+      'save this SSH draft',
+    );
+    expect(find.byType(Markdown), findsOneWidget);
+
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 260)));
+    await closeShortcut();
+    expect(findDialog(), findsNothing);
+    expect(find.byType(WorkspaceCodeEditor), findsNothing);
+    expect(tree, findsOneWidget);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS}));
+
   testWidgets('opens a saved SSH host, saves a file and starts a terminal for its directory', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
@@ -367,7 +428,7 @@ void main() {
     final tab = find.ancestor(of: inside(find.text('• server.py')), matching: find.byType(Row)).first;
     await tester.tap(find.descendant(of: tab, matching: find.byType(IconButton)).first);
     await settle(tester);
-    expect(find.text('Несохранённые файлы'), findsOneWidget);
+    expect(find.text('Сохранить изменения в файле?'), findsOneWidget);
     await tapKey(tester, 'confirm-cancel');
     expect(code().controller.text, 'unsaved edit');
 
@@ -463,8 +524,14 @@ void main() {
     expect(tabs().tabs.map((tab) => tab.title), ['service-api']);
     expect(code().controller.text, 'unsaved edit');
     expect(inside(find.byType(TerminalPane)), findsNothing);
-    await saveActive();
+    await tester.tap(surface);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyW);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await settle(tester);
+    await tapKey(tester, 'confirm-ok');
     await waitFor(() => find.text(tester.element(editor).l10n.editorChanged).evaluate().isNotEmpty);
+    expect(code().controller.text, 'unsaved edit');
     expect(moved.readAsStringSync(), 'changed externally while locked');
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));

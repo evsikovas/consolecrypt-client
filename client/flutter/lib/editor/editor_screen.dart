@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:consolecrypt/app/commands.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart' show hostFromJson, hostToJson;
 import 'package:consolecrypt/core/glass/glass_tab_strip.dart';
@@ -108,6 +109,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   void initState() {
     super.initState();
     resume = ref.read(editorResumeProvider);
+    ref.listenManual(editorCloseTabRequestsProvider, (_, _) {
+      final folder = selected;
+      final doc = folder?.active;
+      if (folder != null && doc != null) unawaited(_close(folder, doc));
+    });
     ref.listenManual(appStageProvider, (previous, next) {
       if (next != AppStage.unlocked) {
         final key = _resumeKey;
@@ -486,7 +492,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
   Future<void> _save(_Folder folder) => _run(() async {
     final doc = folder.active;
-    if (doc == null || !doc.dirty) return;
+    if (doc != null && doc.dirty) await _writeDocument(doc);
+  });
+
+  Future<void> _writeDocument(_Document doc) async {
     final text = doc.controller.text;
     final result = await doc.files.save(doc.source, text);
     if (!mounted) return;
@@ -495,10 +504,22 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       doc.saved = text;
       doc.dirty = doc.controller.text != text;
     });
-  });
+  }
 
   Future<void> _close(_Folder folder, _Document doc) => _run(() async {
-    if (!await _discard([doc]) || !mounted) return;
+    if (doc.dirty) {
+      final l = context.l10n;
+      final save = await showConfirmDialog(
+        context,
+        title: l.automationUnsaved,
+        message: doc.source.path,
+        confirmLabel: l.commonSave,
+      );
+      if (!mounted || !save) return;
+      await _writeDocument(doc);
+      // The buffer can still be edited while a remote save is in flight.
+      if (!mounted || doc.dirty) return;
+    }
     setState(() {
       folder.documents.remove(doc);
       if (folder.active == doc) folder.active = folder.documents.lastOrNull;

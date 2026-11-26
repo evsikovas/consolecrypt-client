@@ -172,7 +172,7 @@ final class AppCommand {
   String label(AppLocalizations l) => switch (id) {
     AppCommandId.commandPalette => l.commandPalette,
     AppCommandId.newTerminalTab => l.commandNewTerminalTab,
-    AppCommandId.closeTerminalTab => l.commandCloseTerminalTab,
+    AppCommandId.closeTerminalTab => l.glassCloseTab,
     AppCommandId.newHost => l.commandNewHost,
     AppCommandId.lockVault => l.commandLockVault,
     AppCommandId.openSettings => l.commandOpenSettings,
@@ -237,6 +237,17 @@ final class ShortcutCapture extends Notifier<bool> {
 AppCommand commandFor(AppCommandId id, [List<AppCommand> commands = appCommands]) =>
     commands.firstWhere((c) => c.id == id);
 
+// The document is owned by the mounted editor. Keyboard and native menu
+// dispatch use the same request and keep the existing user shortcut binding.
+final editorCloseTabRequestsProvider = NotifierProvider<EditorCloseTabRequests, int>(EditorCloseTabRequests.new);
+
+class EditorCloseTabRequests extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void request() => state++;
+}
+
 class AppCommandIntent extends Intent {
   const AppCommandIntent(this.id);
 
@@ -288,7 +299,11 @@ final class AppCommandDispatcher {
       case AppCommandId.newTerminalTab:
         if (context != null) unawaited(_newTab(context));
       case AppCommandId.closeTerminalTab:
-        if (router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
+        if (router.state.matchedLocation == AppRoutes.editor) {
+          if (rootNavigatorKey.currentState?.canPop() == false) {
+            _ref.read(editorCloseTabRequestsProvider.notifier).request();
+          }
+        } else if (router.state.matchedLocation.startsWith(AppRoutes.terminal)) {
           unawaited(_ref.read(terminalTabsProvider.notifier).closeActive());
         }
       case AppCommandId.newHost:
