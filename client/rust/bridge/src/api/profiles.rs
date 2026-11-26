@@ -376,3 +376,11 @@ pub async fn vault_reset_passphrase_with_recovery_key(
     })
     .await
 }
+
+/// Ephemeral encryption key for this unlocked profile's editor workspace.
+pub async fn vault_workspace_resume_key(
+    profile_id: String,
+    nonce: Vec<u8>,
+) -> Result<Vec<u8>, BridgeError> {
+    with_core(move |c| async move { Ok(c.editor_resume_key(profile_id, nonce).await?) }).await
+}

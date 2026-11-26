@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/mock/mock_config.dart';
@@ -8,6 +11,7 @@ import 'package:consolecrypt/core/security/passphrase_strength.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
+import 'package:crypto/crypto.dart';
 
 final class MockVaultService implements VaultService {
   MockVaultService(this._cloud) {
@@ -16,6 +20,22 @@ final class MockVaultService implements VaultService {
   }
 
   final MockCloud _cloud;
+  final _editorRoots = <VaultId, Uint8List>{};
+
+  @override
+  Future<Uint8List> editorResumeKey(ProfileId profile, Uint8List nonce) async {
+    final record = _cloud.activeRecord;
+    if (record == null || record.profile.id != profile || record.phase != VaultPhase.unlocked) {
+      throw const AppException(AppErrorCode.notFound, 'Unlock the vault first', reason: AppErrorReason.vaultLocked);
+    }
+    final random = Random.secure();
+    final root = _editorRoots.putIfAbsent(
+      record.vault!.vaultId,
+      () => Uint8List.fromList(List.generate(32, (_) => random.nextInt(256))),
+    );
+    return Uint8List.fromList(Hmac(sha256, root).convert([...utf8.encode(profile.value), ...nonce]).bytes);
+  }
+
   final ValueStreamController<VaultStatus> _status = ValueStreamController(VaultStatus.none);
   late final StreamSubscription<void> _sub;
   Timer? _autoApprove;
@@ -431,6 +451,10 @@ final class MockVaultService implements VaultService {
   }
 
   Future<void> dispose() async {
+    for (final key in _editorRoots.values) {
+      key.fillRange(0, key.length, 0);
+    }
+    _editorRoots.clear();
     _autoApprove?.cancel();
     await _sub.cancel();
     await _status.close();

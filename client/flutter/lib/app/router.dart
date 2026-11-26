@@ -8,10 +8,12 @@ import 'package:consolecrypt/automation/automation_screen.dart';
 import 'package:consolecrypt/backups/backups_screen.dart';
 import 'package:consolecrypt/backups/restore_screen.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/credentials/credentials_screen.dart';
 import 'package:consolecrypt/db/databases_screen.dart';
 import 'package:consolecrypt/devices/devices_screen.dart';
 import 'package:consolecrypt/docker/docker_screen.dart';
+import 'package:consolecrypt/editor/editor_resume.dart';
 import 'package:consolecrypt/editor/editor_screen.dart';
 import 'package:consolecrypt/groups/groups_screen.dart';
 import 'package:consolecrypt/hosts/host_editor_screen.dart';
@@ -81,17 +83,28 @@ StatefulShellBranch _branch(String path, Widget child, {List<RouteBase> routes =
 
 final routerProvider = Provider<GoRouter>((ref) {
   final stage = ValueNotifier<AppStage>(ref.read(appStageProvider));
-  ref.listen(appStageProvider, (_, next) => stage.value = next);
+  // Keep the vault/profile boundary active while the editor branch is unmounted.
+  ref.listen(editorResumeProvider, (_, _) {});
+  ProfileId? resumeEditor;
+  ref.listen(activeProfileProvider.select((p) => p?.id), (_, _) => resumeEditor = null);
 
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.hosts,
     refreshListenable: stage,
-    redirect: (context, state) =>
-        redirectFor(stage.value, state.matchedLocation) ??
-        (!kubernetesEnabled && state.matchedLocation.startsWith(AppRoutes.kubernetes) ? AppRoutes.hosts : null) ??
-        (!databasesEnabled && state.matchedLocation.startsWith(AppRoutes.databases) ? AppRoutes.hosts : null) ??
-        (!dockerEnabled && state.matchedLocation.startsWith(AppRoutes.docker) ? AppRoutes.hosts : null),
+    redirect: (context, state) {
+      if (stage.value == AppStage.unlocked &&
+          state.matchedLocation == AppRoutes.unlock &&
+          resumeEditor != null &&
+          ref.read(activeProfileProvider)?.id == resumeEditor) {
+        resumeEditor = null;
+        return AppRoutes.editor;
+      }
+      return redirectFor(stage.value, state.matchedLocation) ??
+          (!kubernetesEnabled && state.matchedLocation.startsWith(AppRoutes.kubernetes) ? AppRoutes.hosts : null) ??
+          (!databasesEnabled && state.matchedLocation.startsWith(AppRoutes.databases) ? AppRoutes.hosts : null) ??
+          (!dockerEnabled && state.matchedLocation.startsWith(AppRoutes.docker) ? AppRoutes.hosts : null);
+    },
     routes: [
       _gate(AppRoutes.loading, (_) => const _SplashScreen()),
       _gate(AppRoutes.welcome, (_) => const WelcomeScreen()),
@@ -173,11 +186,29 @@ final routerProvider = Provider<GoRouter>((ref) {
           _branch(AppRoutes.tcpdump, const TcpdumpScreen()),
           _branch(AppRoutes.portCheck, const PortCheckScreen()),
           _branch(AppRoutes.monitoring, const MonitoringScreen()),
-          _branch(AppRoutes.editor, const EditorScreen()),
+          _branch(
+            AppRoutes.editor,
+            Consumer(
+              builder: (_, ref, _) {
+                final owner = ref.watch(activeProfileProvider.select((p) => p?.id));
+                return EditorScreen(key: ValueKey(owner));
+              },
+            ),
+          ),
         ],
       ),
     ],
   );
+  ref.listen(appStageProvider, (previous, next) {
+    if (previous == AppStage.unlocked && next == AppStage.locked) {
+      resumeEditor = router.routerDelegate.currentConfiguration.uri.path == AppRoutes.editor
+          ? ref.read(activeProfileProvider)?.id
+          : null;
+    } else if (next != AppStage.locked && next != AppStage.unlocked) {
+      resumeEditor = null;
+    }
+    stage.value = next;
+  });
   ref.onDispose(() {
     router.dispose();
     stage.dispose();

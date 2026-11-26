@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:consolecrypt/automation/ansible_code_editor.dart';
 import 'package:consolecrypt/core/glass/glass_tab_strip.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/mock/mock_cloud.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
@@ -26,6 +27,61 @@ import '../helpers/automation_ui_proof.dart';
 import '../helpers/test_app.dart';
 
 void main() {
+  testWidgets('unlock restores both SSH projects, the selected draft and caret only for the original profile', (
+    tester,
+  ) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend);
+    await tapKey(tester, 'nav-editor');
+    final editor = find.byType(EditorScreen);
+    Finder inside(Finder finder) => find.descendant(of: editor, matching: finder);
+    final sessions = <SftpSessionId>[];
+    for (final name in ['prod-web-1', 'prod-db-1']) {
+      final open = sessions.isEmpty ? find.text('Open SSH folder') : inside(find.byTooltip('Open SSH folder'));
+      await tester.tap(open);
+      await settle(tester);
+      await pickHost(tester, name);
+      sessions.add(tester.widget<SshFolderPicker>(find.byType(SshFolderPicker)).session);
+      await tester.tap(find.widgetWithText(FilledButton, 'Open'));
+      await settle(tester);
+      final notes = inside(find.text('notes.txt')).first;
+      await tester.ensureVisible(notes);
+      await tester.tap(notes);
+      await settle(tester);
+    }
+    final field = inside(find.byType(WorkspaceCodeEditor));
+    final before = tester.widget<WorkspaceCodeEditor>(field).controller;
+    const expected = TextSelection(baseOffset: 2, extentOffset: 6);
+    await tester.enterText(inside(find.byType(TextField)).hitTestable().last, 'unsaved editor draft');
+    before.selection = expected;
+    await settle(tester);
+    for (var i = 0; i < 2; i++) {
+      await tapKey(tester, 'lock-vault');
+      expect(editor, findsNothing);
+      for (final id in sessions) {
+        expect(backend.sftp.isConnected(id), isFalse);
+      }
+      await enterKey(tester, 'unlock-passphrase', MockCloud.demoPassphrase);
+      await tapKey(tester, 'unlock-submit');
+      final tabs = tester.widget<GlassTabStrip>(inside(find.byType(GlassTabStrip)));
+      expect(tabs.tabs.map((tab) => tab.subtitle), ['prod-web-1', 'prod-db-1']);
+      expect(tabs.activeIndex, 1);
+      final restored = tester.widget<WorkspaceCodeEditor>(field).controller;
+      expect(restored.text, 'unsaved editor draft');
+      expect(restored.selection, expected);
+      expect(inside(find.text('• notes.txt')), findsOneWidget);
+    }
+    await tapKey(tester, 'lock-vault');
+    await backend.debugCreateUnlockedLocalProfile(name: 'Other profile');
+    await settle(tester);
+    expect(editor, findsNothing);
+    await tapKey(tester, 'nav-editor');
+    expect(inside(find.text('Open SSH folder')), findsOneWidget);
+    expect(field, findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('opens a saved SSH host, saves a file and starts a terminal for its directory', (tester) async {
     final backend = testBackend();
     addTearDown(backend.dispose);
@@ -260,7 +316,8 @@ void main() {
     await tester.enterText(inside(find.byKey(ValueKey(external.resolveSymbolicLinksSync()))), 'changed outside');
     await settle(tester);
     await saveActive();
-    await waitFor(() => external.readAsStringSync() == 'changed outside');
+    await waitFor(() => inside(find.text('• extra.txt')).evaluate().isEmpty);
+    expect(external.readAsStringSync(), 'changed outside');
     expect(imported.readAsStringSync(), 'outside');
     await waitFor(() => tester.widget<OsFileDropTarget>(treeDrop).enabled);
     await tester.tap(inside(find.text('server.py')).last);
@@ -281,7 +338,8 @@ void main() {
     await waitFor(() => tester.widget<OsFileDropTarget>(treeDrop).enabled);
     expect(code().controller.text, 'dirty text while moving');
     await saveActive();
-    await waitFor(() => moved.readAsStringSync() == 'dirty text while moving');
+    await waitFor(() => inside(find.text('• server.py')).evaluate().isEmpty);
+    expect(moved.readAsStringSync(), 'dirty text while moving');
     await tester.tap(inside(find.text('Терминал')).last);
     await settle(tester);
     await tapKey(tester, 'pick-local-windows:cmd');
@@ -394,6 +452,20 @@ void main() {
     expect(tabs().tabs.length, 1);
     expect(code().controller.text, 'unsaved edit');
     expect(tester.widget<TerminalPane>(inside(find.byType(TerminalPane))).tab, same(pane.tab));
+    await tapKey(tester, 'nav-hosts');
+    await tapKey(tester, 'lock-vault');
+    moved.writeAsStringSync('changed externally while locked');
+    await enterKey(tester, 'unlock-passphrase', MockCloud.demoPassphrase);
+    await tapKey(tester, 'unlock-submit');
+    expect(editor, findsNothing);
+    await tapKey(tester, 'nav-editor');
+    await waitFor(() => inside(find.byType(WorkspaceCodeEditor)).hitTestable().evaluate().isNotEmpty);
+    expect(tabs().tabs.map((tab) => tab.title), ['service-api']);
+    expect(code().controller.text, 'unsaved edit');
+    expect(inside(find.byType(TerminalPane)), findsNothing);
+    await saveActive();
+    await waitFor(() => find.text(tester.element(editor).l10n.editorChanged).evaluate().isNotEmpty);
+    expect(moved.readAsStringSync(), 'changed externally while locked');
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 }

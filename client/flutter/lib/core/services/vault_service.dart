@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 
@@ -8,6 +10,9 @@ abstract interface class VaultService {
   Stream<VaultStatus> watchStatus();
 
   VaultStatus get currentStatus;
+
+  /// Ephemeral, profile-bound key for restoring editor buffers after a lock.
+  Future<Uint8List> editorResumeKey(ProfileId profile, Uint8List nonce);
 
   /// Creates VRK, password + recovery envelopes and this device's trust
   /// marker, uploads the vault.

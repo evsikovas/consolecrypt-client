@@ -279,6 +279,24 @@ impl AppCore {
         Ok((s, u))
     }
 
+    /// Derive an editor-only session key after verifying the active, unlocked profile.
+    pub async fn editor_resume_key(&self, profile: String, nonce: Vec<u8>) -> AppResult<Vec<u8>> {
+        let nonce: [u8; 32] = nonce
+            .try_into()
+            .map_err(|_| AppError::internal("invalid editor nonce"))?;
+        let (session, unlocked) = self.unlocked().await?;
+        let _active = self.hold_session(&session).await?;
+        let _unlocked = session.hold_unlocked(&unlocked).await?;
+        if session.profile_id.to_string() != profile {
+            return Err(AppError::VaultLocked);
+        }
+        Ok(unlocked
+            .vault()?
+            .keys()
+            .editor_resume_key(profile.as_bytes(), &nonce)
+            .to_vec())
+    }
+
     /// Fence an approved, bounded commit to the profile that produced its
     /// preview. Profile activation waits until the guard is dropped.
     pub(crate) async fn hold_session(

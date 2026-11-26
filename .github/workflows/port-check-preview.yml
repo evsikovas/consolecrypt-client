@@ -13,7 +13,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 240
     env:
-      CC_BUILD_NUMBER: '93028'
+      CC_BUILD_NUMBER: '93029'
       CC_CODESIGN_IDENTITY: ${{ vars.CC_CODESIGN_IDENTITY }}
       CARGO_BUILD_JOBS: '3'
     steps:
@@ -74,7 +74,7 @@ jobs:
           retention-days: 7
           compression-level: 0
           path: |
-            dist/macos/ConsoleCrypt-1.2.5+93028-macos-universal.dmg
+            dist/macos/ConsoleCrypt-1.2.5+93029-macos-universal.dmg
             dist/macos/SHA256SUMS-macos.txt
 
   android:
@@ -83,7 +83,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64, consolecrypt, client]
     timeout-minutes: 180
     env:
-      CC_BUILD_NUMBER: '93028'
+      CC_BUILD_NUMBER: '93029'
       CARGO_BUILD_JOBS: '3'
       ANDROID_HOME: ${{ vars.ANDROID_HOME }}
       JAVA_HOME: ${{ vars.JAVA_HOME }}
@@ -103,11 +103,11 @@ jobs:
           set -euo pipefail
           cd dist/android
           version=$(cat ConsoleCrypt.version)
-          [[ "$version" == '1.2.5+93028' ]]
+          [[ "$version" == '1.2.5+93029' ]]
           apk=ConsoleCrypt-android-arm64.apk
           tools="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}/build-tools/36.0.0"
           badging=$("$tools/aapt" dump badging "$apk")
-          grep -Fq "package: name='io.consolecrypt.consolecrypt' versionCode='93028' versionName='1.2.5'" <<< "$badging"
+          grep -Fq "package: name='io.consolecrypt.consolecrypt' versionCode='93029' versionName='1.2.5'" <<< "$badging"
           grep -Eq "^native-code: 'arm64-v8a'[[:space:]]*$" <<< "$badging"
           signatures=$("$tools/apksigner" verify --print-certs "$apk")
           signer=$(sed -nE 's/^Signer #[0-9]+ certificate SHA-256 digest: ([0-9a-f]+)$/\1/p' <<< "$signatures")
@@ -117,11 +117,11 @@ jobs:
           shasum -a 256 "$package" > SHA256SUMS-android.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: android-preview-93028
+          name: android-preview-93029
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
           path: |
-            dist/android/ConsoleCrypt-1.2.5+93028-android-arm64.apk
+            dist/android/ConsoleCrypt-1.2.5+93029-android-arm64.apk
             dist/android/SHA256SUMS-android.txt
             dist/android/ConsoleCrypt.version

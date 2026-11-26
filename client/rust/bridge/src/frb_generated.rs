@@ -43,7 +43,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -805774687;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1237398056;
 
 // Section: executor
 
@@ -24411,6 +24411,47 @@ fn wire__crate__api__profiles__vault_verify_user_presence_with_material_impl(
         },
     )
 }
+fn wire__crate__api__profiles__vault_workspace_resume_key_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "vault_workspace_resume_key",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_profile_id = <String>::sse_decode(&mut deserializer);
+            let api_nonce = <Vec<u8>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::error::BridgeError>(
+                    (move || async move {
+                        let output_ok = crate::api::profiles::vault_workspace_resume_key(
+                            api_profile_id,
+                            api_nonce,
+                        )
+                        .await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__wslc__wslc_close_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -26165,10 +26206,11 @@ fn pde_ffi_dispatcher_primary_impl(
 617 => wire__crate__api__profiles__vault_verify_passphrase_impl(port, ptr, rust_vec_len, data_len),
 618 => wire__crate__api__profiles__vault_verify_user_presence_impl(port, ptr, rust_vec_len, data_len),
 619 => wire__crate__api__profiles__vault_verify_user_presence_with_material_impl(port, ptr, rust_vec_len, data_len),
-620 => wire__crate__api__wslc__wslc_close_impl(port, ptr, rust_vec_len, data_len),
-621 => wire__crate__api__wslc__wslc_open_impl(port, ptr, rust_vec_len, data_len),
-623 => wire__crate__api__wslc__wslc_registry_login_impl(port, ptr, rust_vec_len, data_len),
-624 => wire__crate__api__wslc__wslc_request_impl(port, ptr, rust_vec_len, data_len),
+620 => wire__crate__api__profiles__vault_workspace_resume_key_impl(port, ptr, rust_vec_len, data_len),
+621 => wire__crate__api__wslc__wslc_close_impl(port, ptr, rust_vec_len, data_len),
+622 => wire__crate__api__wslc__wslc_open_impl(port, ptr, rust_vec_len, data_len),
+624 => wire__crate__api__wslc__wslc_registry_login_impl(port, ptr, rust_vec_len, data_len),
+625 => wire__crate__api__wslc__wslc_request_impl(port, ptr, rust_vec_len, data_len),
                         _ => unreachable!(),
                     }
 }
@@ -26224,7 +26266,7 @@ fn pde_ffi_dispatcher_sync_impl(
             data_len,
         ),
         413 => wire__crate__api__app__os_auth_report_impl(ptr, rust_vec_len, data_len),
-        622 => wire__crate__api__wslc__wslc_preview_impl(ptr, rust_vec_len, data_len),
+        623 => wire__crate__api__wslc__wslc_preview_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

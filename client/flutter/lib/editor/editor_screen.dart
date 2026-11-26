@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/core/bridge/mapping.dart' show hostFromJson, hostToJson;
 import 'package:consolecrypt/core/glass/glass_tab_strip.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -9,6 +12,7 @@ import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
+import 'package:consolecrypt/editor/editor_resume.dart';
 import 'package:consolecrypt/editor/project_files.dart';
 import 'package:consolecrypt/editor/project_move_dialog.dart';
 import 'package:consolecrypt/editor/project_terminal.dart';
@@ -19,11 +23,14 @@ import 'package:consolecrypt/editor/workspace_code_editor.dart';
 import 'package:consolecrypt/hosts/host_picker.dart';
 import 'package:consolecrypt/sftp/sftp_providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as p;
+
+part 'editor_workspace_state.dart';
 
 final editorFolderPickerProvider = Provider<Future<String?> Function()>((ref) => getDirectoryPath);
 
@@ -35,12 +42,14 @@ class _Document {
   final TextEditingController controller;
   String saved;
   bool dirty = false;
+  bool markdownPreview = true;
 }
 
 class _Folder {
   _Folder(this.project) : branches = project.branches();
   final ProjectFiles project;
   final documents = <_Document>[];
+  final expanded = <String>{};
   _Document? active;
   int revision = 0;
   ProjectChange? change;
@@ -90,6 +99,67 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   _Folder? selected;
   bool busy = false;
   final _terminalOverrides = [terminalTabsProvider.overrideWith(TerminalTabsController.new)];
+
+  late final EditorResume resume;
+  SecretKeyData? _resumeKey;
+  Object? _resumeError;
+
+  @override
+  void initState() {
+    super.initState();
+    resume = ref.read(editorResumeProvider);
+    ref.listenManual(appStageProvider, (previous, next) {
+      if (next != AppStage.unlocked) {
+        final key = _resumeKey;
+        _resumeKey = null;
+        if (key == null) return;
+        try {
+          if (next == AppStage.locked && ref.read(activeProfileProvider)?.id == resume.owner) {
+            if (folders.isEmpty) {
+              resume.clear();
+            } else {
+              resume.save(key, _workspaceSnapshot(folders, selected));
+            }
+          }
+        } finally {
+          key.destroy();
+        }
+      }
+    });
+    busy = true;
+    unawaited(_restoreWorkspace());
+  }
+
+  Future<void> _restoreWorkspace() async {
+    final profile = resume.owner;
+    if (profile == null) return;
+    SecretKeyData? key;
+    try {
+      final vault = ref.read(vaultServiceProvider);
+      final bytes = await vault.editorResumeKey(profile, resume.nonce);
+      key = SecretKeyData(bytes, overwriteWhenDestroyed: true);
+      if (!mounted ||
+          !vault.currentStatus.isUnlocked ||
+          ref.read(activeProfileProvider)?.id != profile ||
+          ref.read(appStageProvider) != AppStage.unlocked) {
+        return;
+      }
+      final state = resume.open(key);
+      if (state != null) {
+        folders.addAll(_restoreFolders(state, ref));
+        selected = _atIndex(folders, state['selected'] as int);
+        resume.clear();
+      }
+      _resumeKey = key;
+      key = null;
+      _resumeError = null;
+    } catch (error) {
+      if (mounted) _resumeError = error;
+    } finally {
+      key?.destroy();
+      if (mounted) setState(() => busy = false);
+    }
+  }
 
   Future<void> _run(Future<void> Function() task) async {
     if (busy) return;
@@ -252,9 +322,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
         final original = doc.files;
         if (!original.paths.isWithin(original.root, result)) {
           final parent = original.paths.dirname(result);
-          doc.files = original is SshProject
-              ? SshProject(parent, original.host, original.session, original.sftp, original.browser)
-              : LocalProjectFiles(parent);
+          doc.files = original is SshProject ? original.at(parent) : LocalProjectFiles(parent);
         }
       }
       if (_sameHost(project, other)) {
@@ -487,6 +555,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
   @override
   void dispose() {
+    _resumeKey?.destroy();
     for (final folder in folders) {
       folder.dispose();
     }
@@ -497,6 +566,26 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   Widget build(BuildContext context) {
     final l = context.l10n, theme = Theme.of(context);
     final folder = selected;
+    if (_resumeError case final error?) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_errorMessage(l, error)),
+            TextButton.icon(
+              onPressed: busy
+                  ? null
+                  : () {
+                      setState(() => busy = true);
+                      unawaited(_restoreWorkspace());
+                    },
+              icon: const Icon(Icons.refresh),
+              label: Text(l.commonRetry),
+            ),
+          ],
+        ),
+      );
+    }
     Widget choose() => TextButton.icon(
       onPressed: busy ? null : _project,
       icon: const Icon(Icons.folder_open_outlined, size: 18),
@@ -620,6 +709,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     final active = folder.active;
     final tree = ProjectTree(
       project: current,
+      expandedPaths: folder.expanded,
       active: active != null && (active.files is SshProject) == (current is SshProject) ? active.source.path : null,
       enabled: !busy && folder == selected,
       change: folder.change,
@@ -769,6 +859,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                     key: ObjectKey(item),
                     fieldKey: ValueKey(item.source.path),
                     path: item.name,
+                    initialMarkdownPreview: item.markdownPreview,
+                    onMarkdownPreview: (value) => item.markdownPreview = value,
                     onOpenFileLink: (href) => _run(() async {
                       final origin = item.files;
                       final path = resolveMarkdownFile(origin.paths, origin.root, item.source.path, href);

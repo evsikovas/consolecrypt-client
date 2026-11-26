@@ -153,6 +153,20 @@ pub fn vrk_commitment(vrk: &Vrk, vault_id: VaultId) -> [u8; 32] {
 }
 
 impl KeyHierarchy {
+    /// Ephemeral editor buffers, scoped to this vault, installation session and profile.
+    pub fn editor_resume_key(
+        &self,
+        profile: &[u8],
+        nonce: &[u8; 32],
+    ) -> zeroize::Zeroizing<[u8; 32]> {
+        let key = hkdf_sha256_32(
+            self.settings.expose(),
+            nonce,
+            &[b"cc-editor-resume-v1", profile],
+        );
+        zeroize::Zeroizing::new(*key.expose_secret())
+    }
+
     /// Derive every KEK and the VAK:
     /// `HKDF-SHA256(ikm = VRK, salt = vault_id (16 raw bytes), info = label)`.
     pub fn derive(vrk: &Vrk, vault_id: VaultId) -> Self {
@@ -213,6 +227,24 @@ impl fmt::Debug for KeyHierarchy {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn editor_resume_keys_are_scoped_to_vault_profile_and_process() {
+        let vrk = generate_vrk().unwrap();
+        let id = VaultId::new();
+        let keys = KeyHierarchy::derive(&vrk, id);
+        let key = keys.editor_resume_key(b"profile", &[1; 32]);
+        assert_eq!(
+            key,
+            KeyHierarchy::derive(&vrk, id).editor_resume_key(b"profile", &[1; 32])
+        );
+        assert_ne!(key, keys.editor_resume_key(b"other", &[1; 32]));
+        assert_ne!(key, keys.editor_resume_key(b"profile", &[2; 32]));
+        assert_ne!(
+            key,
+            KeyHierarchy::derive(&vrk, VaultId::new()).editor_resume_key(b"profile", &[1; 32])
+        );
+    }
 
     #[test]
     fn debug_is_redacted() {

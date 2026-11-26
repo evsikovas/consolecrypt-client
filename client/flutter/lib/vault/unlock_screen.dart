@@ -61,8 +61,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> with WidgetsBinding
       _error = null;
     });
     try {
-      await action();
-      if (mounted) context.go(AppRoutes.hosts);
+      await action(); // The vault stage redirects to the workspace after unlock.
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e);
     } finally {

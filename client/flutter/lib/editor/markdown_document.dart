@@ -22,9 +22,13 @@ class MarkdownDocument extends ConsumerStatefulWidget {
     required this.codeStyle,
     required this.onCopy,
     this.onOpenFileLink,
+    this.initialPreview = true,
+    this.onPreview,
     super.key,
   });
 
+  final bool initialPreview;
+  final ValueChanged<bool>? onPreview;
   final TextEditingController controller;
   final Widget source;
   final TextStyle codeStyle;
@@ -36,8 +40,8 @@ class MarkdownDocument extends ConsumerStatefulWidget {
 }
 
 class _MarkdownDocumentState extends ConsumerState<MarkdownDocument> {
-  bool preview = true;
-  bool openedSource = false;
+  late bool preview = widget.initialPreview;
+  late bool openedSource = !widget.initialPreview;
 
   Future<void> _openLink(String? href) async {
     if (href == null || href.isEmpty) return;
@@ -80,6 +84,7 @@ class _MarkdownDocumentState extends ConsumerState<MarkdownDocument> {
               ],
               onChanged: (value) => setState(() {
                 preview = value;
+                widget.onPreview?.call(value);
                 if (!value) openedSource = true;
               }),
             ),

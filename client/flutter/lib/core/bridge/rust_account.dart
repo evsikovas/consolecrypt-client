@@ -433,6 +433,10 @@ final class RustVaultService implements VaultService {
   @override
   VaultStatus get currentStatus => _hub.vaultStatus.value;
 
+  @override
+  Future<Uint8List> editorResumeKey(ProfileId profile, Uint8List nonce) =>
+      guard(() => rs_prof.vaultWorkspaceResumeKey(profileId: profile.value, nonce: nonce));
+
   bool get _joining => _hub.activeInfo?['vault_state'] == 'no_vault' && _hub.remoteVaults.isNotEmpty;
 
   @override

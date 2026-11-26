@@ -226,3 +226,7 @@ Future<void> vaultChangePassphrase({required List<int> current, required List<in
 /// Forgot passphrase, Recovery Key: unlock + set a new passphrase.
 Future<void> vaultResetPassphraseWithRecoveryKey({required List<int> recoveryInput, required List<int> next}) =>
     RustLib.instance.api.crateApiProfilesVaultResetPassphraseWithRecoveryKey(recoveryInput: recoveryInput, next: next);
+
+/// Ephemeral encryption key for this unlocked profile's editor workspace.
+Future<Uint8List> vaultWorkspaceResumeKey({required String profileId, required List<int> nonce}) =>
+    RustLib.instance.api.crateApiProfilesVaultWorkspaceResumeKey(profileId: profileId, nonce: nonce);

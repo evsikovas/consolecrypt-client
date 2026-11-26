@@ -24,11 +24,13 @@ class ProjectTree extends StatefulWidget {
     required this.onImport,
     required this.onAction,
     this.change,
+    this.expandedPaths,
     super.key,
   });
   final ProjectFiles project;
   final String? active;
   final ProjectChange? change;
+  final Set<String>? expandedPaths;
   final void Function(ProjectEntry, ProjectAction) onAction;
   final ValueChanged<String> onOpen;
   final int revision;
@@ -40,7 +42,7 @@ class ProjectTree extends StatefulWidget {
 }
 
 class _ProjectTreeState extends State<ProjectTree> {
-  final expanded = <String>{};
+  late final expanded = widget.expandedPaths ?? <String>{};
   final contents = <String, List<ProjectEntry>>{};
   final loading = <String>{};
   final errors = <String, String>{};

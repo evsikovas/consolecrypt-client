@@ -24,6 +24,8 @@ class WorkspaceCodeEditor extends ConsumerWidget {
     this.readOnly = false,
     this.onChanged,
     this.onOpenFileLink,
+    this.initialMarkdownPreview = true,
+    this.onMarkdownPreview,
     this.foldTooltip,
     this.limitMessage,
     required this.fieldKey,
@@ -31,7 +33,8 @@ class WorkspaceCodeEditor extends ConsumerWidget {
   });
   final TextEditingController controller;
   final String? path, limitMessage;
-  final bool readOnly;
+  final bool readOnly, initialMarkdownPreview;
+  final ValueChanged<bool>? onMarkdownPreview;
   final int maxBytes;
   final Key fieldKey;
   final ValueChanged<String>? onChanged, onOpenFileLink;
@@ -74,6 +77,8 @@ class WorkspaceCodeEditor extends ConsumerWidget {
       key: ValueKey(path),
       controller: controller,
       source: source,
+      initialPreview: initialMarkdownPreview,
+      onPreview: onMarkdownPreview,
       onCopy: onCopySelection,
       onOpenFileLink: onOpenFileLink,
       codeStyle: TextStyle(fontSize: size.toDouble(), fontFamily: font.family, fontFamilyFallback: font.fallback),
