@@ -9,8 +9,9 @@ import 'package:material_ui/material_ui.dart';
 
 /// Owns a separate tab controller so an editor PTY has exactly one terminal view.
 class ProjectTerminal extends ConsumerStatefulWidget {
-  const ProjectTerminal({required this.directory, required this.child, this.host, super.key});
+  const ProjectTerminal({required this.directory, required this.active, required this.child, this.host, super.key});
   final String directory;
+  final bool active;
   final Host? host;
   final Widget child;
   @override
@@ -115,7 +116,9 @@ class _ProjectTerminalState extends ConsumerState<ProjectTerminal> {
                 children: [
                   if (selected.message != null && !selected.isConnected)
                     Text(selected.message!, maxLines: 2, overflow: TextOverflow.ellipsis),
-                  Expanded(child: TerminalSessionPane(pane: selected, active: true)),
+                  Expanded(
+                    child: TerminalSessionPane(pane: selected, active: widget.active),
+                  ),
                 ],
               ),
             ),

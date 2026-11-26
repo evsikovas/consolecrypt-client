@@ -1,6 +1,8 @@
 import 'package:consolecrypt/automation/ansible_code_editor.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/editor/editor_language.dart';
+import 'package:consolecrypt/editor/markdown_document.dart';
 import 'package:consolecrypt/terminal/terminal_fonts.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,7 +43,7 @@ class WorkspaceCodeEditor extends ConsumerWidget {
     final size =
         ref.watch(localSettingsProvider.select((s) => s.value?.editorFontSize)) ?? settings.currentLocal.editorFontSize;
     final font = ref.watch(editorFontProvider);
-    return AnsibleCodeEditor(
+    final source = AnsibleCodeEditor(
       controller: controller,
       path: path,
       fieldKey: fieldKey,
@@ -62,6 +64,13 @@ class WorkspaceCodeEditor extends ConsumerWidget {
         );
         if (next != current.editorFontSize) settings.updateLocal(current.copyWith(editorFontSize: next));
       },
+    );
+    if (path == null || editorLanguage(path!) != 'markdown') return source;
+    return MarkdownDocument(
+      key: ValueKey(path),
+      controller: controller,
+      source: source,
+      codeStyle: TextStyle(fontSize: size.toDouble(), fontFamily: font.family, fontFamilyFallback: font.fallback),
     );
   }
 }

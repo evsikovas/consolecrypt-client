@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:consolecrypt/automation/ansible_code_editor.dart';
+import 'package:consolecrypt/core/glass/glass_tab_strip.dart';
+import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/editor_screen.dart';
@@ -9,6 +11,7 @@ import 'package:consolecrypt/editor/workspace_code_editor.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -56,10 +59,33 @@ void main() {
     expect((pane.tab.target as SshTerminalTarget).host.id, host.id);
     expect(pane.tab.isConnected, isTrue);
     expect(pane.tab.terminal.buffer.getText(), contains("cd '${picker.home}'"));
+    await tester.tap(find.descendant(of: scope, matching: find.byTooltip('Open SSH folder')));
+    await settle(tester);
+    await tester.enterText(find.byKey(const ValueKey('host-picker-search')), host.name);
+    await settle(tester);
+    await tapKey(tester, 'pick-prod-web-1');
+    final duplicate = tester.widget<SshFolderPicker>(find.byType(SshFolderPicker));
+    await tester.tap(find.widgetWithText(FilledButton, 'Open'));
+    await settle(tester);
+    final strip = find.descendant(of: scope, matching: find.byType(GlassTabStrip));
+    expect(tester.widget<GlassTabStrip>(strip).tabs, hasLength(1));
+    expect(backend.sftp.isConnected(picker.session), isTrue);
+    expect(backend.sftp.isConnected(duplicate.session), isFalse);
+    await tester.tap(find.descendant(of: strip, matching: find.byTooltip(tester.element(strip).l10n.glassCloseTab)));
+    await settle(tester);
+    expect(backend.sftp.isConnected(picker.session), isFalse);
+    expect(find.descendant(of: scope, matching: find.byType(TerminalPane)), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
   testWidgets('Редактор opens a project, edits a tab and launches the selected shell below the file', (tester) async {
     final scratch = Directory.systemTemp.createTempSync('cc-editor-');
     final root = Directory(p.join(scratch.path, 'service-api'))..createSync();
+    final docs = Directory(p.join(scratch.path, 'docs'))..createSync();
+    var folderToOpen = root;
+    final readme = File(p.join(docs.path, 'README.MD'))
+      ..writeAsStringSync(
+        '# Manual\n\n| Name | Value | Description |\n| --- | --- | --- |\n'
+        '| Bind | 8080 | ${'very long description ' * 10} |\n\n```sh\necho ok\n```',
+      );
     addTearDown(() => scratch.deleteSync(recursive: true));
     expect(Process.runSync('git', ['-C', root.path, 'init', '-b', 'main']).exitCode, 0);
     final file = File(p.join(root.path, 'server.py'))..writeAsStringSync('def run(port):\n    return port\n');
@@ -78,7 +104,7 @@ void main() {
       backend,
       locale: AppLocale.ru,
       captureBoundary: true,
-      overrides: [editorFolderPickerProvider.overrideWithValue(() async => root.path)],
+      overrides: [editorFolderPickerProvider.overrideWithValue(() async => folderToOpen.path)],
     );
     final parent = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
     await tapKey(tester, 'nav-editor');
@@ -154,6 +180,62 @@ void main() {
     expect(find.text('Несохранённые файлы'), findsOneWidget);
     await tapKey(tester, 'confirm-cancel');
     expect(code().controller.text, 'unsaved edit');
+
+    folderToOpen = docs;
+    await tester.tap(inside(find.text('Открыть папку')));
+    await waitFor(() => inside(find.text('README.MD')).evaluate().isNotEmpty);
+    final strip = inside(find.byType(GlassTabStrip));
+    GlassTabStrip tabs() => tester.widget<GlassTabStrip>(strip);
+    expect(tabs().tabs.map((tab) => tab.title), ['service-api', 'docs']);
+    expect(inside(find.byType(TerminalPane)).hitTestable(), findsNothing);
+
+    await tester.tap(inside(find.text('README.MD')));
+    await waitFor(() => inside(find.byType(Markdown)).evaluate().isNotEmpty);
+    final preview = inside(find.byType(Markdown));
+    expect(find.descendant(of: preview, matching: find.byType(Table)), findsOneWidget);
+    expect(find.descendant(of: preview, matching: find.text('echo ok', findRichText: true)), findsWidgets);
+    final desktop = tester.view.physicalSize;
+    tester.view.physicalSize = const Size(410, 760);
+    await settle(tester);
+    final table = find.descendant(of: preview, matching: find.byType(Table));
+    final scroll = find.ancestor(of: table, matching: find.byType(Scrollable)).first;
+    expect(tester.state<ScrollableState>(scroll).position.maxScrollExtent, greaterThan(0));
+    expect(tester.takeException(), isNull);
+    tester.view.physicalSize = desktop;
+    await settle(tester);
+    await tester.tap(inside(find.text(tester.element(strip).l10n.notesEdit)));
+    await settle(tester);
+    final readmeField = inside(find.byKey(ValueKey(readme.resolveSymbolicLinksSync())));
+    await tester.enterText(readmeField, '# Новый заголовок');
+    await tester.tap(inside(find.text('Просмотр')));
+    await settle(tester);
+    expect(find.descendant(of: preview, matching: find.text('Новый заголовок', findRichText: true)), findsWidgets);
+    expect(readme.readAsStringSync(), startsWith('# Manual'));
+
+    Future<void> selectFolder(Directory directory) async {
+      final tab = find.descendant(of: strip, matching: find.byTooltip(directory.resolveSymbolicLinksSync()));
+      await tester.tap(tab);
+      await settle(tester);
+    }
+
+    await selectFolder(root);
+    expect(code().controller.text, 'unsaved edit');
+    expect(tester.widget<TerminalPane>(inside(find.byType(TerminalPane))).tab, same(pane.tab));
+    await tester.tap(inside(find.text('Открыть папку')));
+    await waitFor(() => tabs().activeIndex == 1);
+    expect(tabs().tabs.length, 2);
+    final close = find.descendant(of: strip, matching: find.byTooltip(tester.element(strip).l10n.glassCloseTab));
+    await tester.tap(close.last);
+    await settle(tester);
+    expect(find.text('Несохранённые файлы'), findsOneWidget);
+    await tapKey(tester, 'confirm-cancel');
+    expect(tabs().tabs.length, 2);
+    await tester.tap(close.last);
+    await settle(tester);
+    await tapKey(tester, 'confirm-ok');
+    expect(tabs().tabs.length, 1);
+    expect(code().controller.text, 'unsaved edit');
+    expect(tester.widget<TerminalPane>(inside(find.byType(TerminalPane))).tab, same(pane.tab));
     expect(tester.takeException(), isNull);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 }

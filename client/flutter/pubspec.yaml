@@ -81,6 +81,7 @@ dependencies:
   timezone: ^0.11.2
   re_editor: ^0.10.0
   re_highlight: ^0.0.3
+  flutter_markdown_plus: ^1.0.12
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/core/glass/glass_tab_strip.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
@@ -31,6 +32,35 @@ class _Document {
   bool dirty = false;
 }
 
+class _Folder {
+  _Folder(this.project) : branches = project.branches();
+  final ProjectFiles project;
+  final documents = <String, _Document>{};
+  _Document? active;
+  int revision = 0;
+  bool showTree = true;
+  Future<ProjectBranches?> branches;
+
+  String get name {
+    final basename = project.paths.basename(project.root);
+    return basename.isEmpty ? project.root : basename;
+  }
+
+  bool matches(ProjectFiles other) {
+    final current = project;
+    if (!current.paths.equals(current.root, other.root)) return false;
+    if (current is SshProject) return other is SshProject && current.host.id == other.host.id;
+    return other is! SshProject;
+  }
+
+  void dispose() {
+    for (final doc in documents.values) {
+      doc.controller.dispose();
+    }
+    unawaited(project.close());
+  }
+}
+
 String _errorMessage(AppLocalizations l, Object error) => switch (error) {
   AppException() => errorMessage(l, error),
   EditorIssue.changed => l.editorChanged,
@@ -47,12 +77,9 @@ class EditorScreen extends ConsumerStatefulWidget {
 }
 
 class _EditorScreenState extends ConsumerState<EditorScreen> {
-  ProjectFiles? project;
-  final documents = <String, _Document>{};
-  _Document? active;
-  int revision = 0;
-  bool busy = false, showTree = false;
-  Future<ProjectBranches?>? branches;
+  final folders = <_Folder>[];
+  _Folder? selected;
+  bool busy = false;
   final _terminalOverrides = [terminalTabsProvider.overrideWith(TerminalTabsController.new)];
 
   Future<void> _run(Future<void> Function() task) async {
@@ -80,10 +107,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     );
   }
 
-  void _refresh() {
+  void _refresh(_Folder folder) {
     setState(() {
-      revision++;
-      branches = project!.branches();
+      folder.revision++;
+      folder.branches = folder.project.branches();
     });
   }
 
@@ -91,7 +118,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     final path = await ref.read(editorFolderPickerProvider)();
     if (!mounted || path == null) return;
     final next = await ProjectFiles.open(path);
-    await _switchProject(next);
+    _openFolder(next);
   });
 
   Future<void> _remoteProject() => _run(() async {
@@ -109,54 +136,54 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       );
       if (!mounted || root == null) return;
       final next = SshProject(root, host, session, sftp, browser);
-      adopted = await _switchProject(next);
+      adopted = _openFolder(next);
     } finally {
       if (!adopted) await sftp.disconnect(session);
     }
   });
 
-  Future<bool> _switchProject(ProjectFiles next) async {
-    final previous = project;
-    if (!mounted ||
-        previous != null &&
-            previous.runtimeType == next.runtimeType &&
-            next.paths.equals(previous.root, next.root) &&
-            (next is! SshProject || previous is SshProject && previous.host.id == next.host.id)) {
-      return false;
-    }
-    if (!await _discard(documents.values) || !mounted) return false;
-    final old = documents.values.toList();
-    setState(() {
-      documents.clear();
-      active = null;
-      project = next;
-      showTree = true;
-    });
-    _refresh();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      for (final doc in old) {
-        doc.controller.dispose();
+  bool _openFolder(ProjectFiles project) {
+    if (!mounted) return false;
+    for (final folder in folders) {
+      if (folder.matches(project)) {
+        setState(() => selected = folder);
+        return false;
       }
+    }
+    final folder = _Folder(project);
+    setState(() {
+      folders.add(folder);
+      selected = folder;
     });
-    if (previous != null) unawaited(previous.close());
     return true;
   }
 
-  Future<void> _open(String path) async {
-    final doc = documents[path] ?? _Document(await project!.read(path), project!.paths.basename(path));
+  Future<void> _closeFolder(_Folder folder) => _run(() async {
+    if (!await _discard(folder.documents.values) || !mounted) return;
+    setState(() {
+      final index = folders.indexOf(folder);
+      folders.removeAt(index);
+      if (selected == folder) selected = folders.isEmpty ? null : folders[index.clamp(0, folders.length - 1)];
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => folder.dispose());
+  });
+
+  Future<void> _open(_Folder folder, String path) async {
+    final existing = folder.documents[path];
+    final doc = existing ?? _Document(await folder.project.read(path), folder.project.paths.basename(path));
     if (!mounted) {
-      if (!documents.containsKey(path)) doc.controller.dispose();
+      if (existing == null) doc.controller.dispose();
       return;
     }
     setState(() {
-      documents[path] = doc;
-      active = doc;
-      showTree = false;
+      folder.documents[path] = doc;
+      folder.active = doc;
+      folder.showTree = false;
     });
   }
 
-  Future<void> _newFile() => _run(() async {
-    final current = project!;
+  Future<void> _newFile(_Folder folder) => _run(() async {
+    final current = folder.project;
     final String path;
     if (current is SshProject) {
       final name = await showTextInputDialog(context, title: context.l10n.editorNew, label: context.l10n.commonName);
@@ -170,15 +197,15 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     }
     final file = await current.createPath(path);
     if (!mounted) return;
-    _refresh();
-    await _open(file);
+    _refresh(folder);
+    await _open(folder, file);
   });
 
-  Future<void> _save() => _run(() async {
-    final doc = active;
+  Future<void> _save(_Folder folder) => _run(() async {
+    final doc = folder.active;
     if (doc == null || !doc.dirty) return;
     final text = doc.controller.text;
-    final result = await project!.save(doc.source, text);
+    final result = await folder.project.save(doc.source, text);
     if (!mounted) return;
     setState(() {
       doc.source = result;
@@ -187,18 +214,18 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     });
   });
 
-  Future<void> _close(_Document doc) => _run(() async {
+  Future<void> _close(_Folder folder, _Document doc) => _run(() async {
     if (!await _discard([doc]) || !mounted) return;
     setState(() {
-      documents.remove(doc.source.path);
-      if (active == doc) active = documents.values.lastOrNull;
+      folder.documents.remove(doc.source.path);
+      if (folder.active == doc) folder.active = folder.documents.values.lastOrNull;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => doc.controller.dispose());
   });
 
-  Future<void> _git() async {
-    _refresh();
-    final loaded = branches!;
+  Future<void> _git(_Folder folder) async {
+    _refresh(folder);
+    final loaded = folder.branches;
     final l = context.l10n;
     await showDialog<void>(
       context: context,
@@ -245,10 +272,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
   @override
   void dispose() {
-    final current = project;
-    if (current != null) unawaited(current.close());
-    for (final doc in documents.values) {
-      doc.controller.dispose();
+    for (final folder in folders) {
+      folder.dispose();
     }
     super.dispose();
   }
@@ -256,13 +281,13 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n, theme = Theme.of(context);
-    final current = project;
+    final folder = selected;
     Widget choose() => TextButton.icon(
       onPressed: busy ? null : _project,
       icon: const Icon(Icons.folder_open_outlined, size: 18),
       label: Text(l.editorOpen),
     );
-    if (current == null) {
+    if (folder == null) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -292,125 +317,76 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     return LayoutBuilder(
       builder: (context, box) {
         final compact = box.maxWidth < 650;
-        final tree = ProjectTree(
-          key: ObjectKey(current),
-          project: current,
-          active: active?.source.path,
-          revision: revision,
-          onOpen: (path) => _run(() => _open(path)),
-        );
         return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Row(
-                children: [
-                  if (compact)
-                    IconButton(
-                      tooltip: l.editorFiles,
-                      onPressed: () => setState(() => showTree = !showTree),
-                      icon: const Icon(Icons.folder_outlined),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: GlassTabStrip(
+                tabs: [
+                  for (final item in folders)
+                    GlassTab(
+                      key: ObjectKey(item),
+                      title: item.name,
+                      subtitle: item.project is SshProject ? (item.project as SshProject).host.name : null,
+                      tooltip: item.project.root,
                     ),
-                  Expanded(
-                    child: Text(
-                      current is SshProject ? current.host.name : l.editorTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium,
-                    ),
-                  ),
-                  if (!compact)
-                    choose()
-                  else
-                    IconButton(
-                      tooltip: l.editorOpen,
-                      onPressed: busy ? null : _project,
-                      icon: const Icon(Icons.folder_open_outlined),
-                    ),
-                  IconButton(
-                    tooltip: l.editorOpenSsh,
-                    onPressed: busy ? null : _remoteProject,
-                    icon: const Icon(Icons.dns_outlined, size: 18),
-                  ),
-                  IconButton(
-                    tooltip: l.editorNew,
-                    onPressed: busy ? null : _newFile,
-                    icon: const Icon(Icons.note_add_outlined),
-                  ),
-                  IconButton(
-                    tooltip: l.sftpRefresh,
-                    onPressed: busy ? null : _refresh,
-                    icon: const Icon(Icons.refresh),
-                  ),
-                  IconButton(
-                    tooltip: l.commonSave,
-                    onPressed: busy || active?.dirty != true ? null : _save,
-                    icon: const Icon(Icons.save_outlined),
-                  ),
                 ],
+                activeIndex: folders.indexOf(folder),
+                onSelect: (i) => setState(() => selected = folders[i]),
+                onClose: busy ? null : (i) => _closeFolder(folders[i]),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (compact)
+                      IconButton(
+                        tooltip: l.editorFiles,
+                        onPressed: () => setState(() => folder.showTree = !folder.showTree),
+                        icon: const Icon(Icons.folder_outlined),
+                      ),
+                    if (!compact)
+                      choose()
+                    else
+                      IconButton(
+                        tooltip: l.editorOpen,
+                        onPressed: busy ? null : _project,
+                        icon: const Icon(Icons.folder_open_outlined),
+                      ),
+                    IconButton(
+                      tooltip: l.editorOpenSsh,
+                      onPressed: busy ? null : _remoteProject,
+                      icon: const Icon(Icons.dns_outlined, size: 18),
+                    ),
+                    IconButton(
+                      tooltip: l.editorNew,
+                      onPressed: busy ? null : () => _newFile(folder),
+                      icon: const Icon(Icons.note_add_outlined),
+                    ),
+                    IconButton(
+                      tooltip: l.sftpRefresh,
+                      onPressed: busy ? null : () => _refresh(folder),
+                      icon: const Icon(Icons.refresh),
+                    ),
+                    IconButton(
+                      tooltip: l.commonSave,
+                      onPressed: busy || folder.active?.dirty != true ? null : () => _save(folder),
+                      icon: const Icon(Icons.save_outlined),
+                    ),
+                  ],
+                ),
               ),
             ),
             const Divider(height: 1),
             Expanded(
-              child: Row(
+              child: IndexedStack(
+                sizing: StackFit.expand,
+                index: folders.indexOf(folder),
                 children: [
-                  if (!compact) ...[
-                    SizedBox(width: (box.maxWidth * 0.22).clamp(185, 300).toDouble(), child: tree),
-                    const VerticalDivider(width: 1),
-                  ],
-                  Expanded(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        ProviderScope(
-                          key: ObjectKey(current),
-                          overrides: _terminalOverrides,
-                          child: ProjectTerminal(
-                            directory: current.root,
-                            host: current is SshProject ? current.host : null,
-                            child: _codeArea(l, theme),
-                          ),
-                        ),
-                        if (compact && showTree) Material(color: theme.colorScheme.surface, child: tree),
-                      ],
+                  for (final item in folders)
+                    ExcludeFocus(
+                      key: ObjectKey(item),
+                      excluding: item != folder,
+                      child: TickerMode(enabled: item == folder, child: _workspace(item, box, compact)),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      active == null
-                          ? current.paths.basename(current.root)
-                          : current.paths.relative(active!.source.path, from: current.root),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (!compact && active != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(editorLanguage(active!.name) ?? l.editorPlain),
-                    ),
-                  FutureBuilder<ProjectBranches?>(
-                    future: branches,
-                    builder: (context, snap) => Tooltip(
-                      message: l.editorBranches,
-                      child: TextButton.icon(
-                        onPressed: _git,
-                        icon: const Icon(Icons.account_tree_outlined, size: 16),
-                        label: ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: box.maxWidth * 0.32),
-                          child: Text(snap.data?.current ?? l.editorBranches, overflow: TextOverflow.ellipsis),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -420,13 +396,98 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     );
   }
 
-  Widget _codeArea(AppLocalizations l, ThemeData theme) {
-    final doc = active;
+  Widget _workspace(_Folder folder, BoxConstraints box, bool compact) {
+    final l = context.l10n;
+    final current = folder.project;
+    final active = folder.active;
+    final tree = ProjectTree(
+      project: current,
+      active: active?.source.path,
+      revision: folder.revision,
+      onOpen: (path) => _run(() => _open(folder, path)),
+    );
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              if (!compact) ...[
+                SizedBox(width: (box.maxWidth * 0.22).clamp(185, 300).toDouble(), child: tree),
+                const VerticalDivider(width: 1),
+              ],
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ProviderScope(
+                      key: ObjectKey(current),
+                      overrides: _terminalOverrides,
+                      child: ProjectTerminal(
+                        directory: current.root,
+                        active: folder == selected,
+                        host: current is SshProject ? current.host : null,
+                        child: _codeArea(folder, l, Theme.of(context)),
+                      ),
+                    ),
+                    if (compact)
+                      Offstage(
+                        offstage: !folder.showTree,
+                        child: Material(color: Theme.of(context).colorScheme.surface, child: tree),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  active == null
+                      ? current.paths.basename(current.root)
+                      : current.paths.relative(active.source.path, from: current.root),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (!compact && active != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(editorLanguage(active.name) ?? l.editorPlain),
+                ),
+              FutureBuilder<ProjectBranches?>(
+                future: folder.branches,
+                builder: (context, snap) => Tooltip(
+                  message: l.editorBranches,
+                  child: TextButton.icon(
+                    onPressed: () => _git(folder),
+                    icon: const Icon(Icons.account_tree_outlined, size: 16),
+                    label: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: box.maxWidth * 0.32),
+                      child: Text(snap.data?.current ?? l.editorBranches, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _codeArea(_Folder folder, AppLocalizations l, ThemeData theme) {
+    final doc = folder.active;
+    final documents = folder.documents;
     if (doc == null) return Center(child: Text(l.editorPick));
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true): _save,
-        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): _save,
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => _save(folder),
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () => _save(folder),
       },
       child: Column(
         children: [
@@ -454,13 +515,13 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                                 ? theme.colorScheme.onSurface
                                 : theme.colorScheme.onSurfaceVariant,
                           ),
-                          onPressed: () => setState(() => active = item),
+                          onPressed: () => setState(() => folder.active = item),
                           child: Tooltip(message: item.source.path, child: Text((item.dirty ? '• ' : '') + item.name)),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, size: 14),
                           tooltip: l.commonClose,
-                          onPressed: busy ? null : () => _close(item),
+                          onPressed: busy ? null : () => _close(folder, item),
                         ),
                       ],
                     ),
