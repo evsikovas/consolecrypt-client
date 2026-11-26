@@ -54,6 +54,50 @@ void main() {
     await expectLater(project.moveFile(target.path, root.parent.path), throwsA(EditorIssue.outside));
   });
 
+  Future<void> exerciseTree(ProjectFiles files) async {
+    final root = files.root, paths = files.paths;
+    final src = paths.join(root, 'src'), dest = paths.join(root, 'dest');
+    await files.createDirectory(src);
+    await files.createDirectory(dest);
+    final a = await files.createPath(paths.join(src, 'before.txt'));
+    final b = paths.join(src, 'after.md');
+    await files.relocate((path: a, directory: false), b);
+    final folder = (path: src, directory: true);
+    await files.duplicate(folder, 'src-copy');
+    expect((await files.children(paths.join(root, 'src-copy'))).single.path, paths.join(root, 'src-copy', 'after.md'));
+    await expectLater(files.duplicate(folder, 'src-copy'), throwsA(anything));
+    await expectLater(files.relocate(folder, paths.join(src, 'nested')), throwsA(EditorIssue.outside));
+    await expectLater(files.relocate(folder, dest), throwsA(anything));
+    await expectLater(files.remove((path: root, directory: true)), throwsA(EditorIssue.outside));
+    await expectLater(files.remove((path: src, directory: false)), throwsA(EditorIssue.changed));
+    expect(() => files.namedChild(src, '../escape'), throwsA(EditorIssue.invalidName));
+    final newDir = paths.join(dest, 'renamed');
+    await files.relocate(folder, newDir);
+    expect((await files.children(newDir)).single.path, paths.join(newDir, 'after.md'));
+    await files.remove((path: dest, directory: true));
+    expect((await files.children(root)).where((e) => e.path == dest || e.path == src), isEmpty);
+  }
+
+  test('local file and folder actions preserve contents and guard conflicts', () => exerciseTree(project));
+  test('case-only rename changes the spelling on disk', () async {
+    final source = await project.createPath(p.join(project.root, 'readme.txt'));
+    await project.relocate((path: source, directory: false), p.join(project.root, 'README.txt'));
+    expect((await project.children(project.root)).map((e) => p.basename(e.path)), ['README.txt']);
+  });
+
+  test('remote file and folder actions operate inside the selected SSH project', () async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final host = backend.inventory.currentHosts.first;
+    final session = await backend.sftp.connect(host.id);
+    final dir = p.posix.join(await backend.sftp.remoteHome(session), 'menu-test');
+    await backend.sftp.makeRemoteDirectory(session, dir);
+    final files = SshProject(dir, host, session, backend.sftp, backend.sftpBrowser);
+    addTearDown(files.close);
+    await exerciseTree(files);
+  });
+
   test('resolves document links within local and SSH projects', () {
     for (final paths in [p.windows, p.posix]) {
       final root = paths.style == p.Style.windows ? r'C:\project' : '/project';

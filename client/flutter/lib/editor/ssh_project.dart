@@ -73,15 +73,49 @@ class SshProject extends ProjectFiles {
   }
 
   @override
-  Future<String> moveFile(String path, String directory) async {
+  Future<void> createDirectory(String path) async {
     await _checkFilePath(path);
-    await _directory(directory);
-    if ((await browser.stat(session, path)).kind != RemoteEntryKind.file) throw EditorIssue.unsupported;
-    final target = paths.join(directory, paths.basename(path));
-    if (target == path) return path;
+    await _requireFree(path);
+    await sftp.makeRemoteDirectory(session, path);
+  }
+
+  Future<void> _checkEntry(ProjectEntry entry) async {
+    await _checkFilePath(entry.path);
+    final kind = (await browser.stat(session, entry.path)).kind;
+    if (kind != (entry.directory ? RemoteEntryKind.directory : RemoteEntryKind.file)) throw EditorIssue.changed;
+    if (entry.directory) await _directory(entry.path);
+  }
+
+  @override
+  Future<void> relocate(ProjectEntry entry, String target) async {
+    await _checkEntry(entry);
+    await _checkFilePath(target);
+    if (target == entry.path) return;
+    if (entry.directory && paths.isWithin(entry.path, target)) throw EditorIssue.outside;
     await _requireFree(target);
-    await sftp.renameRemote(session, path, target);
-    return target;
+    await sftp.renameRemote(session, entry.path, target);
+  }
+
+  @override
+  Future<void> duplicate(ProjectEntry entry, String name) async {
+    await _checkEntry(entry);
+    final parent = paths.dirname(entry.path), target = namedChild(parent, name);
+    await _requireFree(target);
+    final staging = paths.join(parent, '.consolecrypt-copy-${generateUuidV4()}');
+    await sftp.makeRemoteDirectory(session, staging);
+    try {
+      final staged = paths.join(staging, name);
+      await browser.duplicate(session, entry.path, staged);
+      await sftp.renameRemote(session, staged, target);
+    } finally {
+      await sftp.deleteRemote(session, staging, recursive: true);
+    }
+  }
+
+  @override
+  Future<void> remove(ProjectEntry entry) async {
+    await _checkEntry(entry);
+    await sftp.deleteRemote(session, entry.path, recursive: entry.directory);
   }
 
   @override

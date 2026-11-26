@@ -704,6 +704,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get monitorDetailed => 'Включить подробный вид';
 
   @override
+  String get editorMoveTo => 'Переместить в папку…';
+
+  @override
+  String get editorMoveHere => 'Переместить сюда';
+
+  @override
+  String get editorDeleteFolder => 'Удалить эту папку со всем содержимым без возможности восстановления?';
+
+  @override
+  String get editorDeleteFile => 'Удалить этот файл без возможности восстановления?';
+
+  @override
+  String get editorInvalidName => 'Введите допустимое имя файла или папки.';
+
+  @override
+  String get editorBrowserFailed => 'Не удалось открыть ссылку в браузере.';
+
+  @override
   String get editorOpenSsh => 'Открыть папку по SSH';
 
   @override

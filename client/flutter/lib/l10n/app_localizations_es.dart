@@ -706,6 +706,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get monitorDetailed => 'Cambiar a la vista detallada';
 
   @override
+  String get editorMoveTo => 'Mover a una carpeta…';
+
+  @override
+  String get editorMoveHere => 'Mover aquí';
+
+  @override
+  String get editorDeleteFolder => '¿Eliminar definitivamente esta carpeta y todo su contenido?';
+
+  @override
+  String get editorDeleteFile => '¿Eliminar este archivo definitivamente?';
+
+  @override
+  String get editorInvalidName => 'Introduce un nombre válido de archivo o carpeta.';
+
+  @override
+  String get editorBrowserFailed => 'No se pudo abrir el enlace en el navegador.';
+
+  @override
   String get editorOpenSsh => 'Abrir carpeta por SSH';
 
   @override

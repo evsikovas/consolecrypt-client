@@ -688,6 +688,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get monitorDetailed => '切换到详细视图';
 
   @override
+  String get editorMoveTo => '移动到文件夹…';
+
+  @override
+  String get editorMoveHere => '移动到此处';
+
+  @override
+  String get editorDeleteFolder => '要永久删除此文件夹及其全部内容吗？';
+
+  @override
+  String get editorDeleteFile => '要永久删除此文件吗？';
+
+  @override
+  String get editorInvalidName => '请输入有效的文件或文件夹名称。';
+
+  @override
+  String get editorBrowserFailed => '无法在浏览器中打开链接。';
+
+  @override
   String get editorOpenSsh => '打开 SSH 文件夹';
 
   @override

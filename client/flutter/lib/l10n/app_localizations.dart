@@ -1348,6 +1348,42 @@ abstract class AppLocalizations {
   /// **'Switch to detailed view'**
   String get monitorDetailed;
 
+  /// Project editor. Move to folder…
+  ///
+  /// In en, this message translates to:
+  /// **'Move to folder…'**
+  String get editorMoveTo;
+
+  /// Project editor. Move here
+  ///
+  /// In en, this message translates to:
+  /// **'Move here'**
+  String get editorMoveHere;
+
+  /// Project editor. Permanently delete this folder and all its contents?
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete this folder and all its contents?'**
+  String get editorDeleteFolder;
+
+  /// Project editor. Permanently delete this file?
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete this file?'**
+  String get editorDeleteFile;
+
+  /// Project editor. Enter a valid file or folder name.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid file or folder name.'**
+  String get editorInvalidName;
+
+  /// Project editor. Could not open the link in your browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the link in your browser.'**
+  String get editorBrowserFailed;
+
   /// Open SSH folder
   ///
   /// In en, this message translates to:

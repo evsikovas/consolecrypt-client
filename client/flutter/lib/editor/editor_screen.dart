@@ -10,6 +10,7 @@ import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/project_files.dart';
+import 'package:consolecrypt/editor/project_move_dialog.dart';
 import 'package:consolecrypt/editor/project_terminal.dart';
 import 'package:consolecrypt/editor/project_tree.dart';
 import 'package:consolecrypt/editor/ssh_folder_picker.dart';
@@ -27,12 +28,10 @@ import 'package:path/path.dart' as p;
 final editorFolderPickerProvider = Provider<Future<String?> Function()>((ref) => getDirectoryPath);
 
 class _Document {
-  _Document(this.files, this.source, this.name)
-    : controller = TextEditingController(text: source.text),
-      saved = source.text;
+  _Document(this.files, this.source) : controller = TextEditingController(text: source.text), saved = source.text;
   ProjectFiles files;
   ProjectText source;
-  final String name;
+  String get name => files.paths.basename(source.path);
   final TextEditingController controller;
   String saved;
   bool dirty = false;
@@ -44,6 +43,7 @@ class _Folder {
   final documents = <_Document>[];
   _Document? active;
   int revision = 0;
+  ProjectChange? change;
   bool showTree = true;
   Future<ProjectBranches?> branches;
 
@@ -52,18 +52,10 @@ class _Folder {
     return basename.isEmpty ? project.root : basename;
   }
 
-  _Document? findDocument(ProjectFiles files, String path) => documents.where((doc) {
-    final owner = doc.files;
-    if (owner is SshProject && (files is! SshProject || owner.host.id != files.host.id)) return false;
-    return (owner is SshProject) == (files is SshProject) && files.paths.equals(doc.source.path, path);
-  }).firstOrNull;
+  _Document? findDocument(ProjectFiles files, String path) =>
+      documents.where((doc) => _sameHost(doc.files, files) && files.paths.equals(doc.source.path, path)).firstOrNull;
 
-  bool matches(ProjectFiles other) {
-    final current = project;
-    if (!current.paths.equals(current.root, other.root)) return false;
-    if (current is SshProject) return other is SshProject && current.host.id == other.host.id;
-    return other is! SshProject;
-  }
+  bool matches(ProjectFiles other) => _sameHost(project, other) && project.paths.equals(project.root, other.root);
 
   void dispose() {
     for (final doc in documents) {
@@ -73,9 +65,13 @@ class _Folder {
   }
 }
 
+bool _sameHost(ProjectFiles a, ProjectFiles b) =>
+    a is SshProject ? b is SshProject && a.host.id == b.host.id : b is! SshProject;
+
 String _errorMessage(AppLocalizations l, Object error) => switch (error) {
   AppException() => errorMessage(l, error),
   PathExistsException(:final path) => l.errorReasonAlreadyExists(p.basename(path ?? '')),
+  EditorIssue.invalidName => l.editorInvalidName,
   EditorIssue.changed => l.editorChanged,
   EditorIssue.unsupported => l.editorUnsupported,
   EditorIssue.gitMissing => l.editorNoGitTool,
@@ -184,7 +180,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   Future<void> _open(_Folder folder, String path, {ProjectFiles? origin}) async {
     final files = origin ?? folder.project;
     final existing = folder.findDocument(files, path);
-    final doc = existing ?? _Document(files, await files.read(path), files.paths.basename(path));
+    final doc = existing ?? _Document(files, await files.read(path));
     if (!mounted) {
       if (existing == null) doc.controller.dispose();
       return;
@@ -225,29 +221,34 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     }),
   );
 
-  Future<void> _move(_Folder folder, String path, String directory) => _run(() async {
-    final project = folder.project;
-    final destination = project.paths.join(directory, project.paths.basename(path));
-    if (project.paths.equals(path, destination)) return;
-    if (folders.any((tab) => tab.findDocument(project, destination) != null)) {
-      throw AppException(
-        AppErrorCode.conflict,
-        'Destination already open',
-        reason: AppErrorReason.alreadyExists,
-        args: {'name': project.paths.basename(destination)},
-      );
+  Future<void> _relocate(ProjectFiles project, ProjectEntry entry, String to) async {
+    if (entry.path == to) return;
+    final change = ProjectChange(entry, to);
+    for (final tab in folders) {
+      for (final doc in tab.documents.where((d) => _sameHost(d.files, project))) {
+        final path = doc.source.path;
+        if (!change.affects(project.paths, path) &&
+            (project.paths.equals(to, path) || entry.directory && project.paths.isWithin(to, path))) {
+          throw AppException(
+            AppErrorCode.conflict,
+            'Destination already open',
+            reason: AppErrorReason.alreadyExists,
+            args: {'name': project.paths.basename(path)},
+          );
+        }
+      }
     }
-    final result = await project.moveFile(path, directory);
+    await project.relocate(entry, to);
     if (!mounted) return;
     for (final tab in folders) {
-      final sameHost = project is SshProject
-          ? tab.project is SshProject && (tab.project as SshProject).host.id == project.host.id
-          : true;
-      if (!sameHost) continue;
-      final doc = tab.findDocument(project, path);
-      if (doc != null) {
+      final other = tab.project;
+      if (_sameHost(project, other)) {
+        other.root = change.remap(other.paths, other.root)!;
+      }
+      for (final doc in tab.documents.where((d) => _sameHost(d.files, project))) {
+        if (!change.affects(project.paths, doc.source.path)) continue;
+        final result = change.remap(project.paths, doc.source.path)!;
         doc.source = ProjectText(result, doc.source.bytes, doc.source.original);
-        // Another folder tab may own a different SSH connection. Keep its session alive independently.
         final original = doc.files;
         if (!original.paths.isWithin(original.root, result)) {
           final parent = original.paths.dirname(result);
@@ -256,11 +257,125 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
               : LocalProjectFiles(parent);
         }
       }
-      final other = tab.project;
-      if ((project is SshProject) == (other is SshProject) &&
-          (other.paths.isWithin(other.root, result) || other.paths.isWithin(other.root, path))) {
+      if (_sameHost(project, other)) {
+        tab.change = change;
         _refresh(tab);
       }
+    }
+  }
+
+  Future<void> _delete(ProjectFiles project, ProjectEntry entry) async {
+    final change = ProjectChange(entry, null);
+    final closing = folders
+        .where((f) => _sameHost(f.project, project) && change.affects(project.paths, f.project.root))
+        .toSet();
+    final removing = <_Document>{
+      for (final tab in folders)
+        for (final doc in tab.documents)
+          if (closing.contains(tab) || _sameHost(doc.files, project) && change.affects(project.paths, doc.source.path))
+            doc,
+    };
+    final l = context.l10n;
+    final dirty = removing.where((doc) => doc.dirty).map((doc) => doc.source.path).toSet();
+    final confirmed = await showConfirmDialog(
+      context,
+      title: l.sftpDeleteTitle(project.paths.basename(entry.path)),
+      message: [
+        entry.directory ? l.editorDeleteFolder : l.editorDeleteFile,
+        entry.path,
+        if (dirty.isNotEmpty) ...[l.editorUnsaved, ...dirty],
+      ].join('\n'),
+      confirmLabel: l.commonDelete,
+      destructive: true,
+    );
+    if (!mounted || !confirmed) return;
+    await project.remove(entry);
+    if (!mounted) return;
+    folders.removeWhere(closing.contains);
+    if (closing.contains(selected)) selected = folders.lastOrNull;
+    final detached = <_Document>[];
+    for (final tab in folders) {
+      detached.addAll(tab.documents.where(removing.contains));
+      tab.documents.removeWhere(removing.contains);
+      if (removing.contains(tab.active)) tab.active = tab.documents.lastOrNull;
+      if (_sameHost(project, tab.project)) {
+        tab.change = change;
+        _refresh(tab);
+      }
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final doc in detached) {
+        doc.controller.dispose();
+      }
+      for (final tab in closing) {
+        tab.dispose();
+      }
+    });
+  }
+
+  Future<void> _treeAction(_Folder folder, ProjectEntry entry, ProjectAction action) => _run(() async {
+    final project = folder.project, paths = project.paths, l = context.l10n;
+    final parent = paths.dirname(entry.path);
+    switch (action) {
+      case ProjectAction.open:
+        await _open(folder, entry.path);
+      case ProjectAction.copyPath:
+      case ProjectAction.copyRelativePath:
+        final text = action == ProjectAction.copyPath ? entry.path : paths.relative(entry.path, from: project.root);
+        await copyPlainWithNotice(context, ref, text, what: l.sftpCopyWhatPath);
+      case ProjectAction.delete:
+        await _delete(project, entry);
+      case ProjectAction.move:
+        final directory = await showDialog<String>(
+          context: context,
+          builder: (_) => ProjectMoveDialog(project: project, entry: entry),
+        );
+        if (mounted && directory != null) {
+          await _relocate(project, entry, paths.join(directory, paths.basename(entry.path)));
+        }
+      case ProjectAction.rename:
+      case ProjectAction.duplicate:
+      case ProjectAction.newFile:
+      case ProjectAction.newFolder:
+        final title = switch (action) {
+          ProjectAction.rename => l.commonRename,
+          ProjectAction.duplicate => l.sftpActionDuplicate,
+          ProjectAction.newFolder => l.sftpNewFolder,
+          _ => l.sftpActionNewFile,
+        };
+        final sibling = action == ProjectAction.rename || action == ProjectAction.duplicate;
+        final basename = paths.basename(entry.path);
+        final suffix = entry.directory ? '' : paths.extension(basename);
+        final initial = action == ProjectAction.duplicate
+            ? '${basename.substring(0, basename.length - suffix.length)}-copy$suffix'
+            : basename;
+        final name = await showTextInputDialog(
+          context,
+          title: title,
+          label: l.commonName,
+          initial: sibling ? initial : '',
+          confirmLabel: sibling ? title : l.commonCreate,
+        );
+        if (!mounted || name == null) return;
+        final target = project.namedChild(sibling || !entry.directory ? parent : entry.path, name);
+        if (action == ProjectAction.rename) {
+          await _relocate(project, entry, target);
+        } else {
+          if (action == ProjectAction.duplicate) {
+            await project.duplicate(entry, name);
+          } else if (action == ProjectAction.newFolder) {
+            await project.createDirectory(target);
+          } else {
+            await project.createPath(target);
+          }
+          if (!mounted) return;
+          for (final tab in folders.where(
+            (f) => _sameHost(f.project, project) && paths.isWithin(f.project.root, target),
+          )) {
+            _refresh(tab);
+          }
+          if (action == ProjectAction.newFile) await _open(folder, target);
+        }
     }
   });
 
@@ -507,7 +622,14 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       project: current,
       active: active != null && (active.files is SshProject) == (current is SshProject) ? active.source.path : null,
       enabled: !busy && folder == selected,
-      onMove: (path, directory) => _move(folder, path, directory),
+      change: folder.change,
+      onAction: (entry, action) => _treeAction(folder, entry, action),
+      onMove: (path, directory) => _run(
+        () => _relocate(current, (
+          path: path,
+          directory: false,
+        ), current.paths.join(directory, current.paths.basename(path))),
+      ),
       onImport: (paths, directory) => _import(folder, paths, directory),
       revision: folder.revision,
       onOpen: (path) => _run(() => _open(folder, path)),

@@ -4,11 +4,28 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
-enum EditorIssue implements Exception { unsupported, changed, outside, gitMissing }
+enum EditorIssue implements Exception { unsupported, changed, outside, gitMissing, invalidName }
 
 const editorFileLimit = 4 * 1024 * 1024;
 
 typedef ProjectEntry = ({String path, bool directory});
+
+/// Maps paths in open buffers and expanded folders after a filesystem mutation.
+class ProjectChange {
+  const ProjectChange(this.entry, this.target);
+  final ProjectEntry entry;
+  final String? target;
+
+  bool affects(p.Context paths, String path) =>
+      paths.equals(entry.path, path) || (entry.directory && paths.isWithin(entry.path, path));
+
+  String? remap(p.Context paths, String path) {
+    if (!affects(paths, path)) return path;
+    final dest = target;
+    if (dest == null || paths.equals(entry.path, path)) return dest;
+    return paths.join(dest, paths.relative(path, from: entry.path));
+  }
+}
 
 String? resolveMarkdownFile(p.Context paths, String root, String source, String href) {
   final uri = Uri.tryParse(href);
@@ -25,13 +42,45 @@ String? resolveMarkdownFile(p.Context paths, String root, String source, String 
 
 abstract class ProjectFiles {
   ProjectFiles(this.root, this.paths);
-  final String root;
+  String root;
   final p.Context paths;
   static Future<LocalProjectFiles> open(String path) async =>
       LocalProjectFiles(await Directory(path).resolveSymbolicLinks());
   Future<List<ProjectEntry>> children(String path);
   Future<String> createPath(String path);
-  Future<String> moveFile(String path, String directory);
+  Future<void> createDirectory(String path);
+  Future<void> relocate(ProjectEntry entry, String target);
+  Future<void> remove(ProjectEntry entry);
+  Future<void> duplicate(ProjectEntry entry, String name);
+
+  Future<String> moveFile(String path, String directory) async {
+    final target = paths.join(directory, paths.basename(path));
+    await relocate((path: path, directory: false), target);
+    return target;
+  }
+
+  String namedChild(String parent, String name) {
+    if (name.trim().isEmpty ||
+        name == '.' ||
+        name == '..' ||
+        name == '.git' ||
+        name.contains('/') ||
+        name.contains('\x00') ||
+        paths.basename(name) != name ||
+        (paths.style == p.Style.windows &&
+            (name.contains(RegExp(r'[<>:"\\|?*\x00-\x1f]')) ||
+                name.endsWith('.') ||
+                name.endsWith(' ') ||
+                RegExp(r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)', caseSensitive: false).hasMatch(name)))) {
+      throw EditorIssue.invalidName;
+    }
+    return paths.join(parent, name);
+  }
+
+  void checkChild(String path) {
+    if (!paths.isWithin(root, path) || paths.normalize(path) != path) throw EditorIssue.outside;
+  }
+
   Future<void> importFile(String localPath, String directory);
   Future<ProjectText> read(String path);
   Future<ProjectText> save(ProjectText original, String text);
@@ -49,20 +98,102 @@ class LocalProjectFiles extends ProjectFiles {
   Future<String> createPath(String path) async => (await create(path)).path;
 
   @override
-  Future<String> moveFile(String path, String directory) async {
-    await _check(path);
-    await _check(directory);
-    await requireRegularFile(path);
-    final target = p.join(directory, p.basename(path));
-    if (p.equals(path, target)) return path;
-    final reserved = await create(target);
-    try {
-      await File(path).rename(target);
-    } catch (_) {
-      await reserved.delete();
-      rethrow;
+  Future<void> createDirectory(String path) async {
+    checkChild(path);
+    await _check(paths.dirname(path));
+    await _requireFree(path);
+    await Directory(path).create();
+  }
+
+  Future<void> _requireFree(String path) async {
+    // ignore: avoid_slow_async_io
+    if (await FileSystemEntity.type(path, followLinks: false) != FileSystemEntityType.notFound) {
+      throw PathExistsException(path, const OSError('Destination exists'));
     }
-    return target;
+  }
+
+  Future<FileSystemEntity> _entry(ProjectEntry entry) async {
+    checkChild(entry.path);
+    await _check(entry.path);
+    // ignore: avoid_slow_async_io
+    final type = await FileSystemEntity.type(entry.path, followLinks: false);
+    if (entry.directory && type == FileSystemEntityType.directory) return Directory(entry.path);
+    if (!entry.directory && type == FileSystemEntityType.file) return File(entry.path);
+    throw EditorIssue.changed;
+  }
+
+  @override
+  Future<void> relocate(ProjectEntry entry, String target) async {
+    final source = await _entry(entry);
+    checkChild(target);
+    await _check(paths.dirname(target));
+    if (entry.path == target) return;
+    if (entry.directory && paths.isWithin(entry.path, target)) throw EditorIssue.outside;
+    final parent = source.parent;
+    final name = paths.basename(target);
+    if (paths.equals(parent.path, paths.dirname(target)) &&
+        paths.basename(entry.path).toLowerCase() == name.toLowerCase() &&
+        // A project may be on a network share. Keep the check off the UI thread.
+        // ignore: avoid_slow_async_io
+        await (entry.directory ? Directory(target) : File(target)).exists() &&
+        await FileSystemEntity.identical(entry.path, target)) {
+      // Case-insensitive volumes resolve both spellings to one entry. Distinct hard links also
+      // share an inode, so only use a direct rename if the new spelling is absent from the listing.
+      final listed = await parent.list(followLinks: false).any((child) => paths.basename(child.path) == name);
+      if (!listed) {
+        await source.rename(target);
+        return;
+      }
+    }
+    if (entry.directory) {
+      await _requireFree(target);
+      await source.rename(target);
+    } else {
+      final reserved = await create(target);
+      try {
+        await source.rename(target);
+      } catch (_) {
+        await reserved.delete();
+        rethrow;
+      }
+    }
+  }
+
+  @override
+  Future<void> duplicate(ProjectEntry entry, String name) async {
+    final source = await _entry(entry);
+    final target = namedChild(paths.dirname(entry.path), name);
+    await _requireFree(target);
+    final staging = await source.parent.createTemp('.consolecrypt-copy-');
+    final staged = paths.join(staging.path, name);
+    try {
+      await _copyEntry(source, staged);
+      await relocate((path: staged, directory: entry.directory), target);
+    } finally {
+      await staging.delete(recursive: true);
+    }
+  }
+
+  Future<void> _copyEntry(FileSystemEntity source, String dest) async {
+    if (source is Link) {
+      await Link(dest).create(await source.target());
+    } else if (source is Directory) {
+      await Directory(dest).create();
+      await for (final child in source.list(followLinks: false)) {
+        await _copyEntry(child, paths.join(dest, paths.basename(child.path)));
+      }
+    } else if (source is File) {
+      await requireRegularFile(source.path);
+      await source.copy(dest);
+    } else {
+      throw EditorIssue.unsupported;
+    }
+  }
+
+  @override
+  Future<void> remove(ProjectEntry entry) async {
+    final source = await _entry(entry);
+    await source.delete(recursive: entry.directory);
   }
 
   @override

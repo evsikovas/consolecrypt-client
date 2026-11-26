@@ -7,6 +7,9 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/editor_screen.dart';
+import 'package:consolecrypt/editor/markdown_document.dart';
+import 'package:consolecrypt/editor/project_move_dialog.dart';
+import 'package:consolecrypt/editor/project_tree.dart';
 import 'package:consolecrypt/editor/ssh_folder_picker.dart';
 import 'package:consolecrypt/editor/workspace_code_editor.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
@@ -78,6 +81,79 @@ void main() {
     expect(backend.sftp.isConnected(picker.session), isFalse);
     expect(find.descendant(of: scope, matching: find.byType(TerminalPane)), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  testWidgets('tree context actions keep dirty buffers during rename and move, confirm before deleting', (
+    tester,
+  ) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    await pumpApp(tester, backend);
+    await tapKey(tester, 'nav-editor');
+    await tester.tap(find.text('Open SSH folder'));
+    await settle(tester);
+    await tester.enterText(find.byKey(const ValueKey('host-picker-search')), 'prod-web-1');
+    await settle(tester);
+    await tapKey(tester, 'pick-prod-web-1');
+    final picker = tester.widget<SshFolderPicker>(find.byType(SshFolderPicker));
+    await tester.tap(find.widgetWithText(FilledButton, 'Open'));
+    await settle(tester);
+    final tree = find.byType(ProjectTree);
+    Future<void> menu(String name, String action) async {
+      final row = find.descendant(of: tree, matching: find.text(name));
+      await tester.ensureVisible(row);
+      if (Theme.of(tester.element(row)).platform == TargetPlatform.macOS) {
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await tester.tap(row, kind: PointerDeviceKind.mouse);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      } else {
+        await tester.tap(row, kind: PointerDeviceKind.mouse, buttons: kSecondaryMouseButton);
+      }
+      await settle(tester);
+      await tester.tap(find.text(action).last);
+      await settle(tester);
+    }
+
+    Future<void> nameDialog(String value, String submit) async {
+      await tester.enterText(find.byKey(const ValueKey('text-input-dialog-field')), value);
+      await tester.tap(find.text(submit).last);
+      await settle(tester);
+    }
+
+    final rootName = p.posix.basename(picker.home);
+    await menu(rootName, 'New folder');
+    await nameDialog('drafts', 'Create');
+    await menu('drafts', 'New file');
+    await nameDialog('before.md.txt', 'Create');
+    await tester.enterText(find.byKey(ValueKey('${picker.home}/drafts/before.md.txt')), 'unsaved buffer');
+    await settle(tester);
+    await menu('drafts', 'Rename');
+    await nameDialog('renamed', 'Rename');
+    final path = '${picker.home}/renamed/before.md.txt';
+    expect(tester.widget<TextField>(find.byKey(ValueKey(path))).controller!.text, 'unsaved buffer');
+    await tester.tap(find.descendant(of: tree, matching: find.text('renamed')));
+    await settle(tester);
+    await menu('before.md.txt', 'Move to folder…');
+    final dialog = find.byType(ProjectMoveDialog);
+    await tester.tap(find.descendant(of: dialog, matching: find.byIcon(Icons.arrow_upward)));
+    await settle(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Move here'));
+    await settle(tester);
+    final target = '${picker.home}/before.md.txt';
+    expect(tester.widget<TextField>(find.byKey(ValueKey(target))).controller!.text, 'unsaved buffer');
+    await menu('before.md.txt', 'Delete');
+    expect(find.textContaining('Unsaved files'), findsOneWidget);
+    await tapKey(tester, 'confirm-cancel');
+    expect(find.byKey(ValueKey(target)), findsOneWidget);
+    await menu('before.md.txt', 'Delete');
+    await tapKey(tester, 'confirm-ok');
+    expect(find.byKey(ValueKey(target)), findsNothing);
+    expect(
+      (await backend.sftpBrowser.listDirectory(picker.session, picker.home)).map((e) => e.name),
+      isNot(contains('before.md.txt')),
+    );
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS}));
+
   testWidgets('Редактор opens a project, edits a tab and launches the selected shell below the file', (tester) async {
     final scratch = Directory.systemTemp.createTempSync('cc-editor-');
     final root = Directory(p.join(scratch.path, 'service-api'))..createSync();
@@ -86,9 +162,10 @@ void main() {
     final external = File(p.join(scratch.path, 'extra.txt'))..writeAsStringSync('outside');
     final linked = File(p.join(docs.path, 'setup guide.txt'))..writeAsStringSync('linked content');
     var folderToOpen = root;
+    final launched = <Uri>[];
     final readme = File(p.join(docs.path, 'README.MD'))
       ..writeAsStringSync(
-        '# Manual\n\n| Name | Value | Description |\n| --- | --- | --- |\n'
+        '# Manual\n\nFormat: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [SemVer](https://semver.org/).\n\n| Name | Value | Description |\n| --- | --- | --- |\n'
         '| Bind | 8080 | ${'very long description ' * 10} |\n\n[Setup](setup%20guide.txt#part)\n\n```sh\necho ok\n```\n\n'
         '`inline`\n\n~~~text\n  first & <one>\n\n    second\n~~~',
       );
@@ -110,7 +187,13 @@ void main() {
       backend,
       locale: AppLocale.ru,
       captureBoundary: true,
-      overrides: [editorFolderPickerProvider.overrideWithValue(() async => folderToOpen.path)],
+      overrides: [
+        editorFolderPickerProvider.overrideWithValue(() async => folderToOpen.path),
+        markdownBrowserProvider.overrideWithValue((uri) async {
+          launched.add(uri);
+          return true;
+        }),
+      ],
     );
     final parent = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
     await tapKey(tester, 'nav-editor');
@@ -241,6 +324,10 @@ void main() {
     await tester.tap(inside(find.text('README.MD')));
     await waitFor(() => inside(find.byType(Markdown)).evaluate().isNotEmpty);
     final preview = inside(find.byType(Markdown));
+    await tester.tapOnText(find.textRange.ofSubstring('Keep a Changelog'));
+    await tester.tapOnText(find.textRange.ofSubstring('SemVer'));
+    expect(launched, [Uri.parse('https://keepachangelog.com/en/1.1.0/'), Uri.parse('https://semver.org/')]);
+    expect(preview, findsOneWidget);
     expect(find.descendant(of: preview, matching: find.byType(Table)), findsOneWidget);
     expect(find.descendant(of: preview, matching: find.text('echo ok', findRichText: true)), findsWidgets);
     String? copied;

@@ -2,12 +2,20 @@ import 'dart:async';
 
 import 'package:consolecrypt/core/glass/glass_segmented.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:material_ui/material_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+final markdownBrowserProvider = Provider<Future<bool> Function(Uri)>(
+  (ref) =>
+      (uri) => launchUrl(uri, mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank'),
+);
 
 /// Preview and source use the same buffer, including edits still on the device.
-class MarkdownDocument extends StatefulWidget {
+class MarkdownDocument extends ConsumerStatefulWidget {
   const MarkdownDocument({
     required this.controller,
     required this.source,
@@ -24,12 +32,30 @@ class MarkdownDocument extends StatefulWidget {
   final Future<bool> Function(String) onCopy;
 
   @override
-  State<MarkdownDocument> createState() => _MarkdownDocumentState();
+  ConsumerState<MarkdownDocument> createState() => _MarkdownDocumentState();
 }
 
-class _MarkdownDocumentState extends State<MarkdownDocument> {
+class _MarkdownDocumentState extends ConsumerState<MarkdownDocument> {
   bool preview = true;
   bool openedSource = false;
+
+  Future<void> _openLink(String? href) async {
+    if (href == null || href.isEmpty) return;
+    var uri = Uri.tryParse(href);
+    if (uri == null) return;
+    if (!uri.hasScheme && !uri.hasAuthority) {
+      widget.onOpenFileLink?.call(href);
+      return;
+    }
+    if (!uri.hasScheme) uri = uri.replace(scheme: 'https');
+    if ((uri.scheme != 'http' && uri.scheme != 'https') || uri.host.isEmpty) return;
+    try {
+      if (await ref.read(markdownBrowserProvider)(uri)) return;
+    } catch (_) {
+      // The platform may have no browser registered.
+    }
+    if (mounted) showSnack(context, context.l10n.editorBrowserFailed, error: true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,9 +99,7 @@ class _MarkdownDocumentState extends State<MarkdownDocument> {
                   valueListenable: widget.controller,
                   builder: (context, value, _) => Markdown(
                     data: value.text,
-                    onTapLink: (_, href, _) {
-                      if (href != null) widget.onOpenFileLink?.call(href);
-                    },
+                    onTapLink: (_, href, _) => _openLink(href),
                     builders: {
                       'pre': _CodeBlockBuilder(widget.codeStyle.copyWith(color: colors.onSurface), widget.onCopy),
                     },
