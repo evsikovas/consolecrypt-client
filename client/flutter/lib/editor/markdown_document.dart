@@ -1,15 +1,27 @@
+import 'dart:async';
+
 import 'package:consolecrypt/core/glass/glass_segmented.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:material_ui/material_ui.dart';
 
 /// Preview and source use the same buffer, including edits still on the device.
 class MarkdownDocument extends StatefulWidget {
-  const MarkdownDocument({required this.controller, required this.source, required this.codeStyle, super.key});
+  const MarkdownDocument({
+    required this.controller,
+    required this.source,
+    required this.codeStyle,
+    required this.onCopy,
+    this.onOpenFileLink,
+    super.key,
+  });
 
   final TextEditingController controller;
   final Widget source;
   final TextStyle codeStyle;
+  final ValueChanged<String>? onOpenFileLink;
+  final Future<bool> Function(String) onCopy;
 
   @override
   State<MarkdownDocument> createState() => _MarkdownDocumentState();
@@ -61,6 +73,12 @@ class _MarkdownDocumentState extends State<MarkdownDocument> {
                   valueListenable: widget.controller,
                   builder: (context, value, _) => Markdown(
                     data: value.text,
+                    onTapLink: (_, href, _) {
+                      if (href != null) widget.onOpenFileLink?.call(href);
+                    },
+                    builders: {
+                      'pre': _CodeBlockBuilder(widget.codeStyle.copyWith(color: colors.onSurface), widget.onCopy),
+                    },
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     // A document can come from SSH. Opening it must not read local files or contact image hosts.
                     imageBuilder: (uri, title, alt) => Text(alt?.isNotEmpty == true ? alt! : title ?? uri.toString()),
@@ -97,4 +115,70 @@ class _MarkdownDocumentState extends State<MarkdownDocument> {
       ],
     );
   }
+}
+
+class _CodeBlockBuilder extends MarkdownElementBuilder {
+  _CodeBlockBuilder(this.style, this.copy);
+  final TextStyle style;
+  final Future<bool> Function(String) copy;
+
+  @override
+  Widget visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    // Markdown terminates each block with a newline, including single-line commands.
+    final raw = element.textContent;
+    final code = raw.endsWith('\n') ? raw.substring(0, raw.length - 1) : raw;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(code, style: style),
+          ),
+        ),
+        _CopyCodeButton(key: ValueKey(code), code: code, copy: copy),
+      ],
+    );
+  }
+}
+
+class _CopyCodeButton extends StatefulWidget {
+  const _CopyCodeButton({required super.key, required this.code, required this.copy});
+  final String code;
+  final Future<bool> Function(String) copy;
+
+  @override
+  State<_CopyCodeButton> createState() => _CopyCodeButtonState();
+}
+
+class _CopyCodeButtonState extends State<_CopyCodeButton> {
+  Timer? reset;
+  bool copied = false;
+
+  Future<void> _copy() async {
+    if (!await widget.copy(widget.code) || !mounted) return;
+    reset?.cancel();
+    setState(() => copied = true);
+    reset = Timer(const Duration(seconds: 2), () => setState(() => copied = false));
+  }
+
+  @override
+  void dispose() {
+    reset?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: context.l10n.commonCopy,
+    onPressed: _copy,
+    iconSize: 16,
+    icon: Icon(copied ? Icons.check : Icons.copy_outlined),
+  );
 }

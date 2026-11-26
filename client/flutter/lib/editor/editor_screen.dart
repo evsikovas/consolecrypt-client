@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:consolecrypt/core/glass/glass_tab_strip.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
@@ -6,6 +7,7 @@ import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/project_files.dart';
 import 'package:consolecrypt/editor/project_terminal.dart';
@@ -20,11 +22,15 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:path/path.dart' as p;
 
 final editorFolderPickerProvider = Provider<Future<String?> Function()>((ref) => getDirectoryPath);
 
 class _Document {
-  _Document(this.source, this.name) : controller = TextEditingController(text: source.text), saved = source.text;
+  _Document(this.files, this.source, this.name)
+    : controller = TextEditingController(text: source.text),
+      saved = source.text;
+  ProjectFiles files;
   ProjectText source;
   final String name;
   final TextEditingController controller;
@@ -35,7 +41,7 @@ class _Document {
 class _Folder {
   _Folder(this.project) : branches = project.branches();
   final ProjectFiles project;
-  final documents = <String, _Document>{};
+  final documents = <_Document>[];
   _Document? active;
   int revision = 0;
   bool showTree = true;
@@ -46,6 +52,12 @@ class _Folder {
     return basename.isEmpty ? project.root : basename;
   }
 
+  _Document? findDocument(ProjectFiles files, String path) => documents.where((doc) {
+    final owner = doc.files;
+    if (owner is SshProject && (files is! SshProject || owner.host.id != files.host.id)) return false;
+    return (owner is SshProject) == (files is SshProject) && files.paths.equals(doc.source.path, path);
+  }).firstOrNull;
+
   bool matches(ProjectFiles other) {
     final current = project;
     if (!current.paths.equals(current.root, other.root)) return false;
@@ -54,7 +66,7 @@ class _Folder {
   }
 
   void dispose() {
-    for (final doc in documents.values) {
+    for (final doc in documents) {
       doc.controller.dispose();
     }
     unawaited(project.close());
@@ -63,6 +75,7 @@ class _Folder {
 
 String _errorMessage(AppLocalizations l, Object error) => switch (error) {
   AppException() => errorMessage(l, error),
+  PathExistsException(:final path) => l.errorReasonAlreadyExists(p.basename(path ?? '')),
   EditorIssue.changed => l.editorChanged,
   EditorIssue.unsupported => l.editorUnsupported,
   EditorIssue.gitMissing => l.editorNoGitTool,
@@ -159,7 +172,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   }
 
   Future<void> _closeFolder(_Folder folder) => _run(() async {
-    if (!await _discard(folder.documents.values) || !mounted) return;
+    if (!await _discard(folder.documents) || !mounted) return;
     setState(() {
       final index = folders.indexOf(folder);
       folders.removeAt(index);
@@ -168,19 +181,106 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => folder.dispose());
   });
 
-  Future<void> _open(_Folder folder, String path) async {
-    final existing = folder.documents[path];
-    final doc = existing ?? _Document(await folder.project.read(path), folder.project.paths.basename(path));
+  Future<void> _open(_Folder folder, String path, {ProjectFiles? origin}) async {
+    final files = origin ?? folder.project;
+    final existing = folder.findDocument(files, path);
+    final doc = existing ?? _Document(files, await files.read(path), files.paths.basename(path));
     if (!mounted) {
       if (existing == null) doc.controller.dispose();
       return;
     }
     setState(() {
-      folder.documents[path] = doc;
+      if (existing == null) folder.documents.add(doc);
       folder.active = doc;
       folder.showTree = false;
     });
   }
+
+  Future<void> _eachDroppedFile(List<String> paths, Future<void> Function(String) action) async {
+    final errors = <String>[];
+    for (final path in paths) {
+      if (!mounted) return;
+      try {
+        await action(path);
+      } catch (error) {
+        if (mounted) errors.add('${p.basename(path)} — ${_errorMessage(context.l10n, error)}');
+      }
+    }
+    if (errors.isNotEmpty && mounted) showSnack(context, errors.join('\n'), error: true);
+  }
+
+  Future<void> _openDropped(_Folder? workspace, List<String> paths) => _run(
+    () => _eachDroppedFile(paths, (path) async {
+      await requireRegularFile(path);
+      final canonical = await File(path).resolveSymbolicLinks();
+      if (!mounted) return;
+      final parent = LocalProjectFiles(p.dirname(canonical));
+      if (workspace == null) {
+        _openFolder(parent);
+        workspace = selected!;
+      }
+      final folder = workspace!, project = folder.project;
+      final origin = project is LocalProjectFiles && project.paths.isWithin(project.root, canonical) ? project : parent;
+      await _open(folder, canonical, origin: origin);
+    }),
+  );
+
+  Future<void> _move(_Folder folder, String path, String directory) => _run(() async {
+    final project = folder.project;
+    final destination = project.paths.join(directory, project.paths.basename(path));
+    if (project.paths.equals(path, destination)) return;
+    if (folders.any((tab) => tab.findDocument(project, destination) != null)) {
+      throw AppException(
+        AppErrorCode.conflict,
+        'Destination already open',
+        reason: AppErrorReason.alreadyExists,
+        args: {'name': project.paths.basename(destination)},
+      );
+    }
+    final result = await project.moveFile(path, directory);
+    if (!mounted) return;
+    for (final tab in folders) {
+      final sameHost = project is SshProject
+          ? tab.project is SshProject && (tab.project as SshProject).host.id == project.host.id
+          : true;
+      if (!sameHost) continue;
+      final doc = tab.findDocument(project, path);
+      if (doc != null) {
+        doc.source = ProjectText(result, doc.source.bytes, doc.source.original);
+        // Another folder tab may own a different SSH connection. Keep its session alive independently.
+        final original = doc.files;
+        if (!original.paths.isWithin(original.root, result)) {
+          final parent = original.paths.dirname(result);
+          doc.files = original is SshProject
+              ? SshProject(parent, original.host, original.session, original.sftp, original.browser)
+              : LocalProjectFiles(parent);
+        }
+      }
+      final other = tab.project;
+      if ((project is SshProject) == (other is SshProject) &&
+          (other.paths.isWithin(other.root, result) || other.paths.isWithin(other.root, path))) {
+        _refresh(tab);
+      }
+    }
+  });
+
+  Future<void> _import(_Folder folder, List<String> paths, String directory) => _run(() async {
+    await _eachDroppedFile(paths, (path) => folder.project.importFile(path, directory));
+    if (mounted) _refresh(folder);
+  });
+
+  Widget _openDropTarget(_Folder? folder, Widget child) => OsFileDropTarget(
+    key: const ValueKey('editor-open-drop'),
+    enabled: !busy && selected == folder,
+    onDrop: (paths, _) {
+      if (mounted && selected == folder) _openDropped(folder, paths);
+    },
+    child: DragTarget<ProjectFileDrag>(
+      onWillAcceptWithDetails: (d) => !busy && folder != null && identical(d.data.project, folder.project),
+      onAcceptWithDetails: (d) => _run(() => _open(folder!, d.data.path)),
+      builder: (_, _, _) => child,
+    ),
+  );
 
   Future<void> _newFile(_Folder folder) => _run(() async {
     final current = folder.project;
@@ -205,7 +305,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     final doc = folder.active;
     if (doc == null || !doc.dirty) return;
     final text = doc.controller.text;
-    final result = await folder.project.save(doc.source, text);
+    final result = await doc.files.save(doc.source, text);
     if (!mounted) return;
     setState(() {
       doc.source = result;
@@ -217,8 +317,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   Future<void> _close(_Folder folder, _Document doc) => _run(() async {
     if (!await _discard([doc]) || !mounted) return;
     setState(() {
-      folder.documents.remove(doc.source.path);
-      if (folder.active == doc) folder.active = folder.documents.values.lastOrNull;
+      folder.documents.remove(doc);
+      if (folder.active == doc) folder.active = folder.documents.lastOrNull;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => doc.controller.dispose());
   });
@@ -288,29 +388,32 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       label: Text(l.editorOpen),
     );
     if (folder == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.code_rounded, size: 36),
-            const SizedBox(height: 12),
-            Text(l.editorTitle, style: theme.textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text(l.editorStart),
-            const SizedBox(height: 16),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 12,
-              children: [
-                choose(),
-                TextButton.icon(
-                  onPressed: busy ? null : _remoteProject,
-                  icon: const Icon(Icons.dns_outlined, size: 18),
-                  label: Text(l.editorOpenSsh),
-                ),
-              ],
-            ),
-          ],
+      return _openDropTarget(
+        null,
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.code_rounded, size: 36),
+              const SizedBox(height: 12),
+              Text(l.editorTitle, style: theme.textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Text(l.editorStart),
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                children: [
+                  choose(),
+                  TextButton.icon(
+                    onPressed: busy ? null : _remoteProject,
+                    icon: const Icon(Icons.dns_outlined, size: 18),
+                    label: Text(l.editorOpenSsh),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -402,7 +505,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     final active = folder.active;
     final tree = ProjectTree(
       project: current,
-      active: active?.source.path,
+      active: active != null && (active.files is SshProject) == (current is SshProject) ? active.source.path : null,
+      enabled: !busy && folder == selected,
+      onMove: (path, directory) => _move(folder, path, directory),
+      onImport: (paths, directory) => _import(folder, paths, directory),
       revision: folder.revision,
       onOpen: (path) => _run(() => _open(folder, path)),
     );
@@ -426,7 +532,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                         directory: current.root,
                         active: folder == selected,
                         host: current is SshProject ? current.host : null,
-                        child: _codeArea(folder, l, Theme.of(context)),
+                        child: _openDropTarget(folder, _codeArea(folder, l, Theme.of(context))),
                       ),
                     ),
                     if (compact)
@@ -449,7 +555,9 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                 child: Text(
                   active == null
                       ? current.paths.basename(current.root)
-                      : current.paths.relative(active.source.path, from: current.root),
+                      : identical(active.files, current)
+                      ? current.paths.relative(active.source.path, from: current.root)
+                      : active.source.path,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -496,7 +604,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                for (final item in documents.values)
+                for (final item in documents)
                   DecoratedBox(
                     decoration: BoxDecoration(
                       color: item == doc ? theme.colorScheme.surface : Colors.transparent,
@@ -531,20 +639,30 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
           ),
           Expanded(
             child: IndexedStack(
-              index: documents.values.toList().indexOf(doc),
+              index: documents.indexOf(doc),
               sizing: StackFit.expand,
               children: [
-                for (final item in documents.values)
+                for (final item in documents)
                   WorkspaceCodeEditor(
                     key: ObjectKey(item),
                     fieldKey: ValueKey(item.source.path),
                     path: item.name,
+                    onOpenFileLink: (href) => _run(() async {
+                      final origin = item.files;
+                      final path = resolveMarkdownFile(origin.paths, origin.root, item.source.path, href);
+                      if (path != null) await _open(folder, path, origin: origin);
+                    }),
                     controller: item.controller,
                     maxBytes: editorFileLimit,
                     limitMessage: l.editorUnsupported,
                     onCopySelection: (value) async {
-                      await Clipboard.setData(ClipboardData(text: value));
-                      return true;
+                      try {
+                        await Clipboard.setData(ClipboardData(text: value));
+                        return true;
+                      } on PlatformException catch (error) {
+                        if (mounted) showSnack(context, _errorMessage(l, error), error: true);
+                        return false;
+                      }
                     },
                     onChanged: (value) {
                       final dirty = value != item.saved;

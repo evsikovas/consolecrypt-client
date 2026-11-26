@@ -50,6 +50,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/editor/project_files.dart' show EditorIssue, resolveMarkdownFile;
 import 'package:consolecrypt/editor/workspace_code_editor.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_editor.dart';
 import 'package:consolecrypt/kubernetes/kube_yaml_syntax.dart';
@@ -57,6 +58,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:path/path.dart' as p;
 
 class AutomationScreen extends ConsumerWidget {
   const AutomationScreen({super.key});
@@ -1237,6 +1239,19 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
       if (current && token == request && originalCurrent?.call() != false) setState(() => error = e);
     } finally {
       if (current && token == request) setState(() => busy = false);
+    }
+  }
+
+  void _openMarkdownLink(String href) {
+    final source = file?.path ?? newPath;
+    if (source == null || busy) return;
+    // Automation services accept portable paths relative to the project.
+    const root = '/project';
+    try {
+      final target = resolveMarkdownFile(p.posix, root, p.posix.join(root, source), href);
+      if (target != null) unawaited(_read(p.posix.relative(target, from: root)));
+    } on EditorIssue {
+      showSnack(context, context.l10n.editorOutside, error: true);
     }
   }
 
@@ -2952,6 +2967,7 @@ class _ProjectWorkspaceState extends ConsumerState<_ProjectWorkspace> {
                                       key: ObjectKey(display),
                                       controller: display,
                                       onCopySelection: _copyEditorSelection,
+                                      onOpenFileLink: _openMarkdownLink,
                                       readOnly: busy || masked,
                                       path: file?.path ?? newPath,
                                       foldTooltip: (collapsed, count) => collapsed

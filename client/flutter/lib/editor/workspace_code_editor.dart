@@ -23,6 +23,7 @@ class WorkspaceCodeEditor extends ConsumerWidget {
     required this.onCopySelection,
     this.readOnly = false,
     this.onChanged,
+    this.onOpenFileLink,
     this.foldTooltip,
     this.limitMessage,
     required this.fieldKey,
@@ -33,7 +34,7 @@ class WorkspaceCodeEditor extends ConsumerWidget {
   final bool readOnly;
   final int maxBytes;
   final Key fieldKey;
-  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onChanged, onOpenFileLink;
   final String Function(bool, int)? foldTooltip;
   final Future<bool> Function(String) onCopySelection;
 
@@ -53,6 +54,9 @@ class WorkspaceCodeEditor extends ConsumerWidget {
       foldTooltip: foldTooltip,
       limitMessage: limitMessage,
       maxBytes: maxBytes,
+      softWrap:
+          ref.watch(localSettingsProvider.select((s) => s.value?.editorSoftWrap)) ??
+          settings.currentLocal.editorSoftWrap,
       fontSize: size,
       fontFamily: font.family,
       fontFallback: font.fallback,
@@ -70,6 +74,8 @@ class WorkspaceCodeEditor extends ConsumerWidget {
       key: ValueKey(path),
       controller: controller,
       source: source,
+      onCopy: onCopySelection,
+      onOpenFileLink: onOpenFileLink,
       codeStyle: TextStyle(fontSize: size.toDouble(), fontFamily: font.family, fontFamilyFallback: font.fallback),
     );
   }

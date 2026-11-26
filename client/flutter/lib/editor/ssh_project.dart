@@ -57,6 +57,62 @@ class SshProject extends ProjectFiles {
     return path;
   }
 
+  Future<void> _requireFree(String target) async {
+    try {
+      await browser.stat(session, target);
+    } on AppException catch (error) {
+      if (error.code == AppErrorCode.notFound) return;
+      rethrow;
+    }
+    throw AppException(
+      AppErrorCode.conflict,
+      'Destination exists',
+      reason: AppErrorReason.alreadyExists,
+      args: {'name': paths.basename(target)},
+    );
+  }
+
+  @override
+  Future<String> moveFile(String path, String directory) async {
+    await _checkFilePath(path);
+    await _directory(directory);
+    if ((await browser.stat(session, path)).kind != RemoteEntryKind.file) throw EditorIssue.unsupported;
+    final target = paths.join(directory, paths.basename(path));
+    if (target == path) return path;
+    await _requireFree(target);
+    await sftp.renameRemote(session, path, target);
+    return target;
+  }
+
+  @override
+  Future<void> importFile(String localPath, String directory) async {
+    await requireRegularFile(localPath);
+    await _directory(directory);
+    final name = p.basename(localPath);
+    if (name.contains('\\')) throw EditorIssue.unsupported;
+    final target = paths.join(directory, name);
+    await _requireFree(target);
+    final staging = paths.join(directory, '.consolecrypt-import-${generateUuidV4()}');
+    await _requireFree(staging);
+    await sftp.makeRemoteDirectory(session, staging);
+    await _directory(staging);
+    final stagedFile = paths.join(staging, name);
+    try {
+      final id = (await browser.uploadItems(session, [localPath], staging)).single;
+      final jobs = await sftp.watchTransfers().firstWhere((jobs) => jobs.any((job) => job.id == id && !job.isActive));
+      final job = jobs.firstWhere((job) => job.id == id);
+      if (job.state != TransferState.completed) throw StateError(job.error ?? job.state.name);
+      await sftp.renameRemote(session, stagedFile, target);
+    } finally {
+      try {
+        await sftp.deleteRemote(session, stagedFile);
+      } on AppException catch (error) {
+        if (error.code != AppErrorCode.notFound) rethrow;
+      }
+      await sftp.deleteRemote(session, staging);
+    }
+  }
+
   @override
   Future<ProjectText> read(String path) async {
     await _checkFilePath(path);

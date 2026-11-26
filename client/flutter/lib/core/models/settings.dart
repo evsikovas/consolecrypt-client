@@ -215,6 +215,7 @@ final class LocalSettings {
     this.terminalColorScheme = TerminalColorScheme.system,
     this.customTerminalColors,
     this.reopenLastProfile = false,
+    this.editorSoftWrap = false,
     this.editorFontSize = 14,
     this.editorFontFamily,
     this.terminalFontSize = 13,
@@ -280,6 +281,7 @@ final class LocalSettings {
   final List<Map<String, String>> externalVaultConnections;
   final List<SavedForward> savedForwards;
   static const editorMinFontSize = 8.0, editorMaxFontSize = 32.0;
+  final bool editorSoftWrap;
   final double editorFontSize;
   final String? editorFontFamily;
   final double terminalFontSize;
@@ -385,6 +387,7 @@ final class LocalSettings {
     TerminalColorScheme? terminalColorScheme,
     TerminalColors? customTerminalColors,
     bool? reopenLastProfile,
+    bool? editorSoftWrap,
     double? editorFontSize,
     String? editorFontFamily,
     bool resetEditorFontFamily = false,
@@ -436,6 +439,7 @@ final class LocalSettings {
     customTerminalColors: customTerminalColors ?? this.customTerminalColors,
     reopenLastProfile: reopenLastProfile ?? this.reopenLastProfile,
     editorFontFamily: resetEditorFontFamily ? null : (editorFontFamily ?? this.editorFontFamily),
+    editorSoftWrap: editorSoftWrap ?? this.editorSoftWrap,
     editorFontSize: (editorFontSize ?? this.editorFontSize).clamp(editorMinFontSize, editorMaxFontSize),
     terminalFontSize: terminalFontSize ?? this.terminalFontSize,
     terminalFontFamily: resetTerminalFontFamily ? null : (terminalFontFamily ?? this.terminalFontFamily),

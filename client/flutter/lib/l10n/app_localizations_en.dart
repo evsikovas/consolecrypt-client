@@ -706,6 +706,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorProjectFolder => 'Project folder';
 
   @override
+  String get editorSoftWrap => 'Wrap long lines';
+
+  @override
   String get editorFontPreview => 'Editor font preview';
 
   @override

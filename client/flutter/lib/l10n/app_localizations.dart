@@ -1360,6 +1360,12 @@ abstract class AppLocalizations {
   /// **'Project folder'**
   String get editorProjectFolder;
 
+  /// Editor setting for visual wrapping at the viewport edge.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrap long lines'**
+  String get editorSoftWrap;
+
   /// Editor font preview
   ///
   /// In en, this message translates to:

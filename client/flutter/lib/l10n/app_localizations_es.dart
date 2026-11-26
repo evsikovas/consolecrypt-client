@@ -712,6 +712,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get editorProjectFolder => 'Carpeta del proyecto';
 
   @override
+  String get editorSoftWrap => 'Ajustar las líneas largas';
+
+  @override
   String get editorFontPreview => 'Vista previa de la fuente';
 
   @override

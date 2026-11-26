@@ -710,6 +710,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get editorProjectFolder => 'Каталог проекта';
 
   @override
+  String get editorSoftWrap => 'Переносить длинные строки';
+
+  @override
   String get editorFontPreview => 'Предпросмотр шрифта редактора';
 
   @override

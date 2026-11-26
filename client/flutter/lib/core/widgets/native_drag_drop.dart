@@ -207,13 +207,14 @@ class OsFileDropTarget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!nativeDragDrop || !enabled) return child;
+    if (!nativeDragDrop) return child;
+    // Keep the editor and its undo/scroll state mounted while a transfer disables drops.
     return DropRegion(
       formats: const [Formats.fileUri],
       hitTestBehavior: HitTestBehavior.opaque,
       onDropOver: (event) {
         final session = event.session;
-        if (_fromThisApp(session) || !session.items.any((item) => item.canProvide(Formats.fileUri))) {
+        if (!enabled || _fromThisApp(session) || !session.items.any((item) => item.canProvide(Formats.fileUri))) {
           return DropOperation.none;
         }
         onHover?.call(event.position.local);
@@ -222,6 +223,7 @@ class OsFileDropTarget extends StatelessWidget {
       onDropLeave: (_) => onExit?.call(),
       onPerformDrop: (event) async {
         onExit?.call();
+        if (!enabled || _fromThisApp(event.session)) return;
         final paths = <String>[];
         for (final item in event.session.items) {
           final reader = item.dataReader;
@@ -229,7 +231,7 @@ class OsFileDropTarget extends StatelessWidget {
           final uri = await _fileUri(reader);
           if (uri != null && uri.isScheme('file')) paths.add(uri.toFilePath());
         }
-        if (paths.isNotEmpty) onDrop(paths, event.position.local);
+        if (context.mounted && paths.isNotEmpty) onDrop(paths, event.position.local);
       },
       child: child,
     );

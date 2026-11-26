@@ -63,6 +63,11 @@ class EditorSettingsSection extends ConsumerWidget {
               ],
             ),
           ),
+          SwitchListTile.adaptive(
+            title: Text(l.editorSoftWrap),
+            value: local.editorSoftWrap,
+            onChanged: (value) => settings.updateLocal(settings.currentLocal.copyWith(editorSoftWrap: value)),
+          ),
           Semantics(
             label: l.editorFontPreview,
             child: Container(

@@ -211,6 +211,7 @@
   "monitorDetailed": "切换到详细视图",
   "editorOpenSsh": "打开 SSH 文件夹",
   "editorProjectFolder": "项目文件夹",
+  "editorSoftWrap": "自动折行",
   "editorFontPreview": "编辑器字体预览",
   "editorTitle": "编辑器",
   "editorOpen": "打开文件夹",

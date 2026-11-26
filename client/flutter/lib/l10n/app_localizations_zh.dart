@@ -694,6 +694,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorProjectFolder => '项目文件夹';
 
   @override
+  String get editorSoftWrap => '自动折行';
+
+  @override
   String get editorFontPreview => '编辑器字体预览';
 
   @override

@@ -211,6 +211,7 @@
   "monitorDetailed": "Cambiar a la vista detallada",
   "editorOpenSsh": "Abrir carpeta por SSH",
   "editorProjectFolder": "Carpeta del proyecto",
+  "editorSoftWrap": "Ajustar las líneas largas",
   "editorFontPreview": "Vista previa de la fuente",
   "editorTitle": "Editor",
   "editorOpen": "Abrir carpeta",

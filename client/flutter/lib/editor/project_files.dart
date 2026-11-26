@@ -10,6 +10,19 @@ const editorFileLimit = 4 * 1024 * 1024;
 
 typedef ProjectEntry = ({String path, bool directory});
 
+String? resolveMarkdownFile(p.Context paths, String root, String source, String href) {
+  final uri = Uri.tryParse(href);
+  if (uri == null || uri.hasScheme || uri.hasAuthority || uri.path.isEmpty) return null;
+  final parts = uri.pathSegments;
+  if (parts.any((part) => part.contains('/') || part.contains('\\') || part.contains('\x00'))) {
+    throw EditorIssue.outside;
+  }
+  final base = uri.hasAbsolutePath ? root : paths.dirname(source);
+  final path = paths.normalize(paths.joinAll([base, ...parts]));
+  if (!paths.isWithin(root, path)) throw EditorIssue.outside;
+  return path;
+}
+
 abstract class ProjectFiles {
   ProjectFiles(this.root, this.paths);
   final String root;
@@ -18,6 +31,8 @@ abstract class ProjectFiles {
       LocalProjectFiles(await Directory(path).resolveSymbolicLinks());
   Future<List<ProjectEntry>> children(String path);
   Future<String> createPath(String path);
+  Future<String> moveFile(String path, String directory);
+  Future<void> importFile(String localPath, String directory);
   Future<ProjectText> read(String path);
   Future<ProjectText> save(ProjectText original, String text);
   Future<ProjectBranches?> branches();
@@ -32,6 +47,37 @@ class LocalProjectFiles extends ProjectFiles {
 
   @override
   Future<String> createPath(String path) async => (await create(path)).path;
+
+  @override
+  Future<String> moveFile(String path, String directory) async {
+    await _check(path);
+    await _check(directory);
+    await requireRegularFile(path);
+    final target = p.join(directory, p.basename(path));
+    if (p.equals(path, target)) return path;
+    final reserved = await create(target);
+    try {
+      await File(path).rename(target);
+    } catch (_) {
+      await reserved.delete();
+      rethrow;
+    }
+    return target;
+  }
+
+  @override
+  Future<void> importFile(String localPath, String directory) async {
+    await requireRegularFile(localPath);
+    await _check(directory);
+    final target = p.join(directory, p.basename(localPath));
+    final reserved = await create(target);
+    try {
+      await File(localPath).copy(target);
+    } catch (_) {
+      await reserved.delete();
+      rethrow;
+    }
+  }
 
   Future<void> _check(String path) async {
     if (!p.equals(path, root) && !p.isWithin(root, path)) throw EditorIssue.outside;
@@ -62,6 +108,7 @@ class LocalProjectFiles extends ProjectFiles {
   @override
   Future<ProjectText> read(String path) async {
     await _check(path);
+    await requireRegularFile(path);
     final handle = await File(path).open();
     late Uint8List bytes;
     try {
@@ -90,6 +137,12 @@ class LocalProjectFiles extends ProjectFiles {
       await temporary.delete(recursive: true);
     }
   }
+}
+
+Future<void> requireRegularFile(String path) async {
+  // Network-backed local projects must not block the UI thread.
+  // ignore: avoid_slow_async_io
+  if (await FileSystemEntity.type(path, followLinks: false) != FileSystemEntityType.file) throw EditorIssue.unsupported;
 }
 
 class ProjectText {

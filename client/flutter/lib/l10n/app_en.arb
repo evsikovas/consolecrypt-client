@@ -421,6 +421,8 @@
   "@editorOpenSsh": {"description": "Open SSH folder"},
   "editorProjectFolder": "Project folder",
   "@editorProjectFolder": {"description": "Project folder"},
+  "editorSoftWrap": "Wrap long lines",
+  "@editorSoftWrap": {"description": "Editor setting for visual wrapping at the viewport edge."},
   "editorFontPreview": "Editor font preview",
   "@editorFontPreview": {"description": "Editor font preview"},
   "editorTitle": "Editor",

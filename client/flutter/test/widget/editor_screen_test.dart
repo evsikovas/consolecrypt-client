@@ -4,12 +4,14 @@ import 'package:consolecrypt/automation/ansible_code_editor.dart';
 import 'package:consolecrypt/core/glass/glass_tab_strip.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/editor_screen.dart';
 import 'package:consolecrypt/editor/ssh_folder_picker.dart';
 import 'package:consolecrypt/editor/workspace_code_editor.dart';
 import 'package:consolecrypt/terminal/terminal_pane.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -80,11 +82,15 @@ void main() {
     final scratch = Directory.systemTemp.createTempSync('cc-editor-');
     final root = Directory(p.join(scratch.path, 'service-api'))..createSync();
     final docs = Directory(p.join(scratch.path, 'docs'))..createSync();
+    final nested = Directory(p.join(root.path, 'nested'))..createSync();
+    final external = File(p.join(scratch.path, 'extra.txt'))..writeAsStringSync('outside');
+    final linked = File(p.join(docs.path, 'setup guide.txt'))..writeAsStringSync('linked content');
     var folderToOpen = root;
     final readme = File(p.join(docs.path, 'README.MD'))
       ..writeAsStringSync(
         '# Manual\n\n| Name | Value | Description |\n| --- | --- | --- |\n'
-        '| Bind | 8080 | ${'very long description ' * 10} |\n\n```sh\necho ok\n```',
+        '| Bind | 8080 | ${'very long description ' * 10} |\n\n[Setup](setup%20guide.txt#part)\n\n```sh\necho ok\n```\n\n'
+        '`inline`\n\n~~~text\n  first & <one>\n\n    second\n~~~',
       );
     addTearDown(() => scratch.deleteSync(recursive: true));
     expect(Process.runSync('git', ['-C', root.path, 'init', '-b', 'main']).exitCode, 0);
@@ -120,6 +126,12 @@ void main() {
       fail('Editor did not reach the expected state');
     }
 
+    Future<void> saveActive() async {
+      final button = find.ancestor(of: inside(find.byIcon(Icons.save_outlined)), matching: find.byType(IconButton));
+      await waitFor(() => button.evaluate().length == 1 && tester.widget<IconButton>(button).onPressed != null);
+      await tester.tap(button);
+    }
+
     expect(inside(find.text('Редактор')), findsOneWidget);
     await tester.tap(inside(find.text('Открыть папку')));
     await waitFor(() => inside(find.text('server.py')).evaluate().isNotEmpty);
@@ -141,7 +153,7 @@ void main() {
     await tester.enterText(surface, 'def run(port):\n    return port + 1\n');
     await settle(tester);
     expect(inside(find.text('• server.py')), findsOneWidget);
-    await tester.tap(inside(find.byTooltip('Сохранить')));
+    await saveActive();
     await waitFor(() => inside(find.text('• server.py')).evaluate().isEmpty);
     expect(file.readAsStringSync(), contains('port + 1'));
     await tester.tap(inside(find.text('config.yaml')));
@@ -150,6 +162,43 @@ void main() {
     await tester.tap(inside(find.text('server.py')).last);
     await settle(tester);
     expect(code().controller.text, contains('port + 1'));
+    final treeDrop = inside(find.byKey(const ValueKey('editor-tree-drop')));
+    final nestedRow = inside(find.text('nested'));
+    final dropPosition = tester.getCenter(nestedRow);
+    tester.widget<OsFileDropTarget>(treeDrop).onDrop([external.path], dropPosition - tester.getTopLeft(treeDrop));
+    final imported = File(p.join(nested.path, 'extra.txt'));
+    await waitFor(() => imported.existsSync() && imported.readAsStringSync() == 'outside');
+    await waitFor(() => tester.widget<OsFileDropTarget>(treeDrop).enabled);
+    final openDrop = inside(find.byKey(const ValueKey('editor-open-drop')));
+    tester.widget<OsFileDropTarget>(openDrop).onDrop([external.path], Offset.zero);
+    await waitFor(
+      () => inside(find.byKey(ValueKey(external.resolveSymbolicLinksSync()))).hitTestable().evaluate().isNotEmpty,
+    );
+    await tester.enterText(inside(find.byKey(ValueKey(external.resolveSymbolicLinksSync()))), 'changed outside');
+    await settle(tester);
+    await saveActive();
+    await waitFor(() => external.readAsStringSync() == 'changed outside');
+    expect(imported.readAsStringSync(), 'outside');
+    await waitFor(() => tester.widget<OsFileDropTarget>(treeDrop).enabled);
+    await tester.tap(inside(find.text('server.py')).last);
+    await settle(tester);
+    await tester.enterText(surface, 'dirty text while moving');
+    await settle(tester);
+    await waitFor(() => tester.widget<OsFileDropTarget>(treeDrop).enabled);
+    final start = tester.getCenter(find.descendant(of: treeDrop, matching: find.text('server.py')));
+    final target = tester.getCenter(nestedRow);
+    final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+    for (var step = 1; step <= 8; step++) {
+      await drag.moveTo(Offset.lerp(start, target, step / 8)!);
+      await tester.pump();
+    }
+    await drag.up();
+    final moved = File(p.join(nested.path, 'server.py'));
+    await waitFor(() => moved.existsSync() && !file.existsSync());
+    await waitFor(() => tester.widget<OsFileDropTarget>(treeDrop).enabled);
+    expect(code().controller.text, 'dirty text while moving');
+    await saveActive();
+    await waitFor(() => moved.readAsStringSync() == 'dirty text while moving');
     await tester.tap(inside(find.text('Терминал')).last);
     await settle(tester);
     await tapKey(tester, 'pick-local-windows:cmd');
@@ -194,6 +243,28 @@ void main() {
     final preview = inside(find.byType(Markdown));
     expect(find.descendant(of: preview, matching: find.byType(Table)), findsOneWidget);
     expect(find.descendant(of: preview, matching: find.text('echo ok', findRichText: true)), findsWidgets);
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String;
+      return null;
+    });
+    final copies = find.descendant(of: preview, matching: find.byTooltip('Копировать'));
+    expect(copies, findsNWidgets(2));
+    await tester.tap(copies.first);
+    await settle(tester);
+    expect(copied, 'echo ok');
+    await tester.ensureVisible(copies.last);
+    await tester.tap(copies.last);
+    await settle(tester);
+    expect(copied, '  first & <one>\n\n    second');
+    await tester.ensureVisible(find.descendant(of: preview, matching: find.text('Setup', findRichText: true)));
+    await tester.tap(find.descendant(of: preview, matching: find.text('Setup', findRichText: true)));
+    await waitFor(
+      () => inside(find.byKey(ValueKey(linked.resolveSymbolicLinksSync()))).hitTestable().evaluate().isNotEmpty,
+    );
+    expect(code().controller.text, 'linked content');
+    await tester.tap(inside(find.text('README.MD')).last);
+    await settle(tester);
     final desktop = tester.view.physicalSize;
     tester.view.physicalSize = const Size(410, 760);
     await settle(tester);

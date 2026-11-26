@@ -1,6 +1,10 @@
+import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
+import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/editor/project_files.dart';
 import 'package:material_ui/material_ui.dart';
+
+typedef ProjectFileDrag = ({ProjectFiles project, String path});
 
 class ProjectTree extends StatefulWidget {
   const ProjectTree({
@@ -8,12 +12,18 @@ class ProjectTree extends StatefulWidget {
     required this.active,
     required this.onOpen,
     required this.revision,
+    required this.enabled,
+    required this.onMove,
+    required this.onImport,
     super.key,
   });
   final ProjectFiles project;
   final String? active;
   final ValueChanged<String> onOpen;
   final int revision;
+  final bool enabled;
+  final void Function(String path, String directory) onMove;
+  final void Function(List<String> paths, String directory) onImport;
   @override
   State<ProjectTree> createState() => _ProjectTreeState();
 }
@@ -24,6 +34,29 @@ class _ProjectTreeState extends State<ProjectTree> {
   final loading = <String>{};
   final errors = <String, String>{};
   int generation = 0;
+  final viewport = GlobalKey();
+  final scroll = ScrollController();
+  String? hoveredDirectory;
+
+  @override
+  void dispose() {
+    scroll.dispose();
+    super.dispose();
+  }
+
+  void _hover(String? path) {
+    if (mounted && path != hoveredDirectory) setState(() => hoveredDirectory = path);
+  }
+
+  String _destination(Offset global, List<(String, int, bool)> rows) {
+    final box = viewport.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !scroll.hasClients) return widget.project.root;
+    final y = box.globalToLocal(global).dy;
+    final index = ((scroll.offset + y) / 32).floor();
+    if (y < 0 || y >= box.size.height || index < 0 || index >= rows.length) return widget.project.root;
+    final (path, _, folder) = rows[index];
+    return folder ? path : widget.project.paths.dirname(path);
+  }
 
   @override
   void initState() {
@@ -73,10 +106,11 @@ class _ProjectTreeState extends State<ProjectTree> {
     final root = widget.project.root;
     final rows = _rows(root, 0).toList();
     final theme = Theme.of(context);
-    return Column(
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
+        Container(
+          color: hoveredDirectory == root ? theme.colorScheme.secondaryContainer : null,
           padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
           child: Tooltip(
             message: root,
@@ -98,13 +132,17 @@ class _ProjectTreeState extends State<ProjectTree> {
           Padding(padding: const EdgeInsets.all(12), child: Text(context.l10n.editorNoFiles)),
         Expanded(
           child: ListView.builder(
+            key: viewport,
+            controller: scroll,
             itemCount: rows.length,
             itemExtent: 32,
             itemBuilder: (context, index) {
               final (path, depth, folder) = rows[index];
               final selected = path == widget.active;
-              return Material(
-                color: selected ? theme.colorScheme.secondaryContainer : Colors.transparent,
+              final row = Material(
+                color: (selected || folder && path == hoveredDirectory)
+                    ? theme.colorScheme.secondaryContainer
+                    : Colors.transparent,
                 child: InkWell(
                   onTap: () {
                     if (!folder) {
@@ -146,10 +184,55 @@ class _ProjectTreeState extends State<ProjectTree> {
                   ),
                 ),
               );
+              if (folder || !widget.enabled) return row;
+              final ProjectFileDrag data = (project: widget.project, path: path);
+              final feedback = Material(
+                elevation: 3,
+                child: Padding(padding: const EdgeInsets.all(8), child: Text(widget.project.paths.basename(path))),
+              );
+              return AppPlatform.isMobile
+                  ? LongPressDraggable<ProjectFileDrag>(
+                      data: data,
+                      feedback: feedback,
+                      dragAnchorStrategy: pointerDragAnchorStrategy,
+                      child: row,
+                    )
+                  : Draggable<ProjectFileDrag>(
+                      data: data,
+                      feedback: feedback,
+                      dragAnchorStrategy: pointerDragAnchorStrategy,
+                      child: row,
+                    );
             },
           ),
         ),
       ],
+    );
+    String destination(Offset local) {
+      final box = context.findRenderObject()! as RenderBox;
+      return _destination(box.localToGlobal(local), rows);
+    }
+
+    return OsFileDropTarget(
+      key: const ValueKey('editor-tree-drop'),
+      enabled: widget.enabled,
+      onHover: (pos) => _hover(destination(pos)),
+      onExit: () => _hover(null),
+      onDrop: (paths, pos) {
+        if (mounted && widget.enabled) widget.onImport(paths, destination(pos));
+      },
+      child: DragTarget<ProjectFileDrag>(
+        onWillAcceptWithDetails: (d) => widget.enabled && identical(d.data.project, widget.project),
+        onMove: (d) {
+          if (widget.enabled && identical(d.data.project, widget.project)) _hover(_destination(d.offset, rows));
+        },
+        onLeave: (_) => _hover(null),
+        onAcceptWithDetails: (d) {
+          _hover(null);
+          widget.onMove(d.data.path, _destination(d.offset, rows));
+        },
+        builder: (_, _, _) => content,
+      ),
     );
   }
 }

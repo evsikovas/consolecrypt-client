@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:consolecrypt/app/theme.dart';
 import 'package:consolecrypt/automation/ansible_code_editor.dart';
@@ -29,6 +30,7 @@ Future<bool> protectedCopy(String text) async {
 Widget harness(
   TextEditingController controller, {
   bool readOnly = false,
+  bool softWrap = false,
   AnsibleEditorViewController? commands,
   ValueChanged<String>? onChanged,
   bool copyEnabled = true,
@@ -44,6 +46,7 @@ Widget harness(
       body: AnsibleCodeEditor(
         controller: controller,
         readOnly: readOnly,
+        softWrap: softWrap,
         viewController: commands,
         onChanged: onChanged,
         onCopySelection: copyEnabled ? (onCopySelection ?? protectedCopy) : null,
@@ -118,6 +121,26 @@ void main() {
       null,
     );
   });
+  testWidgets('soft wrap keeps the next logical line aligned and preserves the selected source', (tester) async {
+    final line = 'some code ' * 18;
+    final controller = TextEditingController(text: '$line\nnext')
+      ..selection = TextSelection(baseOffset: 2, extentOffset: line.length + 1);
+    final selection = controller.selection;
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(harness(controller));
+    final label = find.byKey(const ValueKey('ansible-line-1'));
+    final firstTop = tester.getTopLeft(label).dy;
+    await tester.pumpWidget(harness(controller, softWrap: true));
+    await tester.pump();
+    expect(tester.getTopLeft(label).dy, greaterThan(firstTop));
+    expect(tester.widget<TextField>(find.byType(TextField)).selectionWidthStyle, ui.BoxWidthStyle.tight);
+    final editable = tester.state<EditableTextState>(find.byType(EditableText)).renderEditable;
+    final caret = editable.getLocalRectForCaret(TextPosition(offset: line.length + 1));
+    expect((editable.localToGlobal(caret.topLeft).dy - tester.getTopLeft(label).dy).abs(), lessThan(5));
+    expect(controller.text, '$line\nnext');
+    expect(controller.selection, selection);
+  });
+
   testWidgets('source copy honors protected secret clearing and never writes ordinary clipboard', (tester) async {
     final raw = TextEditingController(text: 'ansible_password: revealed-fixture-secret\n');
     addTearDown(raw.dispose);

@@ -211,6 +211,7 @@
   "monitorDetailed": "Включить подробный вид",
   "editorOpenSsh": "Открыть папку по SSH",
   "editorProjectFolder": "Каталог проекта",
+  "editorSoftWrap": "Переносить длинные строки",
   "editorFontPreview": "Предпросмотр шрифта редактора",
   "editorTitle": "Редактор",
   "editorOpen": "Открыть папку",

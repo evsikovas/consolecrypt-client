@@ -866,6 +866,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'update_feed_issued_at': s.updateFeedIssuedAt?.toUtc().toIso8601String(),
   'prefer_device_local_ai': s.preferDeviceLocalAi,
   'rdp_mobile': s.rdpMobile.toJson(),
+  'editor_soft_wrap': s.editorSoftWrap,
   'editor_font_size': s.editorFontSize,
   'editor_font_family': s.editorFontFamily,
   'terminal_font_size': s.terminalFontSize,
@@ -956,6 +957,7 @@ LocalSettings localSettingsFromJson(Json j) {
     preferDeviceLocalAi: j['prefer_device_local_ai'] != false,
     rdpMobile: RdpMobileSettings.fromJson(j['rdp_mobile']),
     sftpDefaultEditor: _appRefFromJson(j['sftp_default_editor']),
+    editorSoftWrap: j['editor_soft_wrap'] == true,
     editorFontSize: switch (j['editor_font_size']) {
       final num size when size.isFinite => size.toDouble().clamp(
         LocalSettings.editorMinFontSize, LocalSettings.editorMaxFontSize,
