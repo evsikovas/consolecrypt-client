@@ -49,7 +49,7 @@ class _SudoPasswordDialogState extends State<SudoPasswordDialog> {
           const SizedBox(height: 8),
           GlassField(
             key: const ValueKey('sudo-password'),
-            placeholder: l.captureSudoPassword,
+            placeholder: widget.path == null ? null : l.captureSudoPassword,
             controller: controller,
             secret: true,
             autofocus: true,
