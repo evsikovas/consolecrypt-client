@@ -761,6 +761,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorBrowserFailed => '无法在浏览器中打开链接。';
 
   @override
+  String get editorShowTerminal => '显示项目终端';
+
+  @override
+  String get editorHideTerminal => '隐藏项目终端';
+
+  @override
+  String get editorMoveTerminal => '在终端工作区中打开';
+
+  @override
+  String get shortcutQuickNavigation => '快速导航';
+
+  @override
   String get editorOpenSsh => '打开 SSH 文件夹';
 
   @override

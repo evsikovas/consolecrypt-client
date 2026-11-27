@@ -777,6 +777,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get editorBrowserFailed => 'Не удалось открыть ссылку в браузере.';
 
   @override
+  String get editorShowTerminal => 'Открыть терминал проекта';
+
+  @override
+  String get editorHideTerminal => 'Скрыть терминал проекта';
+
+  @override
+  String get editorMoveTerminal => 'Открыть в разделе «Терминал»';
+
+  @override
+  String get shortcutQuickNavigation => 'Быстрая навигация';
+
+  @override
   String get editorOpenSsh => 'Открыть папку по SSH';
 
   @override

@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/editor_screen.dart';
+import 'package:consolecrypt/editor/editor_toolbar_button.dart';
 import 'package:consolecrypt/editor/markdown_document.dart';
 import 'package:consolecrypt/editor/project_move_dialog.dart';
 import 'package:consolecrypt/editor/project_tree.dart';
@@ -178,7 +179,7 @@ void main() {
     await settle(tester);
     final saved = await backend.sftpBrowser.readPreview(picker.session, '${picker.home}/notes.txt');
     expect(String.fromCharCodes(saved.bytes), 'Changed on the server.');
-    await tester.tap(find.descendant(of: scope, matching: find.text('Terminal')).last);
+    await tester.tap(find.descendant(of: scope, matching: find.byTooltip('Show project terminal')));
     await settle(tester);
     final trust = find.byKey(const ValueKey('accept-host-key'));
     if (trust.evaluate().isNotEmpty) {
@@ -335,8 +336,13 @@ void main() {
     }
 
     Future<void> saveActive() async {
-      final button = find.ancestor(of: inside(find.byIcon(Icons.save_outlined)), matching: find.byType(IconButton));
-      await waitFor(() => button.evaluate().length == 1 && tester.widget<IconButton>(button).onPressed != null);
+      final button = find.ancestor(
+        of: inside(find.byIcon(Icons.save_outlined)),
+        matching: find.byType(EditorToolbarButton),
+      );
+      await waitFor(
+        () => button.evaluate().length == 1 && tester.widget<EditorToolbarButton>(button).onPressed != null,
+      );
       await tester.tap(button);
     }
 
@@ -409,7 +415,7 @@ void main() {
     await saveActive();
     await waitFor(() => inside(find.text('• server.py')).evaluate().isEmpty);
     expect(moved.readAsStringSync(), 'dirty text while moving');
-    await tester.tap(inside(find.text('Терминал')).last);
+    await tester.tap(inside(find.byKey(const ValueKey('editor-terminal-toggle'))));
     await settle(tester);
     await tapKey(tester, 'pick-local-windows:cmd');
     await waitFor(() => inside(find.byType(TerminalPane)).evaluate().isNotEmpty);
@@ -441,7 +447,7 @@ void main() {
     expect(code().controller.text, 'unsaved edit');
 
     folderToOpen = docs;
-    await tester.tap(inside(find.text('Открыть папку')));
+    await tester.tap(inside(find.byTooltip('Открыть папку')));
     await waitFor(() => inside(find.text('README.MD')).evaluate().isNotEmpty);
     final strip = inside(find.byType(GlassTabStrip));
     GlassTabStrip tabs() => tester.widget<GlassTabStrip>(strip);
@@ -506,7 +512,7 @@ void main() {
     await selectFolder(root);
     expect(code().controller.text, 'unsaved edit');
     expect(tester.widget<TerminalPane>(inside(find.byType(TerminalPane))).tab, same(pane.tab));
-    await tester.tap(inside(find.text('Открыть папку')));
+    await tester.tap(inside(find.byTooltip('Открыть папку')));
     await waitFor(() => tabs().activeIndex == 1);
     expect(tabs().tabs.length, 2);
     final close = find.descendant(of: strip, matching: find.byTooltip(tester.element(strip).l10n.glassCloseTab));
@@ -521,6 +527,12 @@ void main() {
     expect(tabs().tabs.length, 1);
     expect(code().controller.text, 'unsaved edit');
     expect(tester.widget<TerminalPane>(inside(find.byType(TerminalPane))).tab, same(pane.tab));
+    await tester.tap(inside(find.byKey(const ValueKey('editor-terminal-move'))));
+    await settle(tester);
+    expect(parent.read(terminalTabsProvider).active, same(pane.tab));
+    expect(find.byType(TerminalPane).hitTestable(), findsOneWidget);
+    await tapKey(tester, 'nav-editor');
+    expect(inside(find.byType(TerminalPane)).hitTestable(), findsNothing);
     await tapKey(tester, 'nav-hosts');
     await tapKey(tester, 'lock-vault');
     moved.writeAsStringSync('changed externally while locked');

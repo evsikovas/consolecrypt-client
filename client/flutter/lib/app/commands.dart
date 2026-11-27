@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:consolecrypt/ai/command_palette.dart';
 import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/navigation_customization.dart';
+import 'package:consolecrypt/app/navigation_registry.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/sidebar_state.dart';
@@ -34,6 +35,29 @@ enum AppCommandId {
   nextTerminalTab,
   toggleTerminalMinimalMode,
   customizeSidebar,
+  goTerminal(ShellBranch.terminal),
+  goEditor(ShellBranch.editor),
+  goPasswords(ShellBranch.passwords),
+  goKubernetes(ShellBranch.kubernetes),
+  goHosts(ShellBranch.hosts),
+  goDocker(ShellBranch.docker),
+  goSftp(ShellBranch.sftp),
+  goMonitoring(ShellBranch.monitoring),
+  goDatabases(ShellBranch.databases),
+  goAutomation(ShellBranch.automation),
+  goCredentials(ShellBranch.credentials),
+  goKnownHosts(ShellBranch.knownHosts),
+  goSharing(ShellBranch.sharing),
+  goRdp(ShellBranch.rdp),
+  goTcpdump(ShellBranch.tcpdump),
+  goPortCheck(ShellBranch.portCheck),
+  goTunnels(ShellBranch.tunnels),
+  goDevices(ShellBranch.devices),
+  goSync(ShellBranch.sync),
+  goBackups(ShellBranch.backups);
+
+  const AppCommandId([this.section]);
+  final ShellBranch? section;
 }
 
 /// A key combination: the platform primary modifier (⌘ on macOS, Ctrl
@@ -185,6 +209,7 @@ final class AppCommand {
     AppCommandId.previousTerminalTab => l.terminalPreviousTab,
     AppCommandId.nextTerminalTab => l.terminalNextTab,
     AppCommandId.toggleTerminalMinimalMode => l.terminalMinimalMode,
+    _ => shellBranchLabel(id.section!, l),
   };
 }
 
@@ -206,22 +231,57 @@ const appCommands = [
   AppCommand(AppCommandId.previousTerminalTab, ShortcutBinding(LogicalKeyboardKey.arrowLeft)),
   AppCommand(AppCommandId.nextTerminalTab, ShortcutBinding(LogicalKeyboardKey.arrowRight)),
   AppCommand(AppCommandId.toggleTerminalMinimalMode, ShortcutBinding(LogicalKeyboardKey.keyM, shift: true)),
+  AppCommand(AppCommandId.goTerminal, ShortcutBinding(LogicalKeyboardKey.digit1)),
+  AppCommand(AppCommandId.goEditor, ShortcutBinding(LogicalKeyboardKey.digit2)),
+  AppCommand(AppCommandId.goPasswords, ShortcutBinding(LogicalKeyboardKey.digit3)),
+  AppCommand(AppCommandId.goKubernetes, ShortcutBinding(LogicalKeyboardKey.digit4)),
+  AppCommand(AppCommandId.goHosts, ShortcutBinding(LogicalKeyboardKey.digit5)),
+  AppCommand(AppCommandId.goDocker, ShortcutBinding(LogicalKeyboardKey.digit6)),
+  AppCommand(AppCommandId.goSftp, ShortcutBinding(LogicalKeyboardKey.digit7)),
+  AppCommand(AppCommandId.goMonitoring, ShortcutBinding(LogicalKeyboardKey.digit8)),
+  AppCommand(AppCommandId.goDatabases, ShortcutBinding(LogicalKeyboardKey.digit9)),
+  AppCommand(AppCommandId.goAutomation, null),
+  AppCommand(AppCommandId.goCredentials, null),
+  AppCommand(AppCommandId.goKnownHosts, null),
+  AppCommand(AppCommandId.goSharing, null),
+  AppCommand(AppCommandId.goRdp, null),
+  AppCommand(AppCommandId.goTcpdump, null),
+  AppCommand(AppCommandId.goPortCheck, null),
+  AppCommand(AppCommandId.goTunnels, null),
+  AppCommand(AppCommandId.goDevices, null),
+  AppCommand(AppCommandId.goSync, null),
+  AppCommand(AppCommandId.goBackups, null),
 ];
 
 /// Commands with the user's overrides (`id → encoded binding`, empty =
 /// turned off); unknown or invalid values fall back to the factory one.
-List<AppCommand> resolveAppCommands(Map<String, String> overrides) => [
-  for (final command in appCommands)
-    switch (overrides[command.id.name]) {
-      null => command,
-      '' => AppCommand(command.id, null),
-      final value => AppCommand(command.id, ShortcutBinding.decode(value) ?? command.binding),
-    },
-];
+List<AppCommand> resolveAppCommands(Map<String, String> overrides) {
+  // Existing user bindings take priority over defaults introduced in an update.
+  final custom = {
+    for (final command in appCommands)
+      if (ShortcutBinding.decode(overrides[command.id.name] ?? '') case final ShortcutBinding binding)
+        command.id: binding,
+  };
+  final assigned = custom.values.toSet();
+  return [
+    for (final command in appCommands)
+      switch (overrides[command.id.name]) {
+        '' => AppCommand(command.id, null),
+        _ when custom.containsKey(command.id) => AppCommand(command.id, custom[command.id]),
+        _ => assigned.contains(command.binding) ? AppCommand(command.id, null) : command,
+      },
+  ];
+}
 
-final appCommandsProvider = Provider<List<AppCommand>>(
-  (ref) => resolveAppCommands(ref.watch(localSettingsProvider.select((s) => s.value?.shortcutOverrides)) ?? const {}),
-);
+final appCommandsProvider = Provider<List<AppCommand>>((ref) {
+  final overrides = ref.watch(localSettingsProvider.select((s) => s.value?.shortcutOverrides)) ?? const {};
+  final synced = ref.watch(activeProfileProvider.select((p) => p?.isSynced ?? false));
+  final available = {
+    for (final item in ref.watch(availableNavigationSectionsProvider))
+      if (!item.syncedOnly || synced) item.branch,
+  };
+  return resolveAppCommands(overrides).where((c) => c.id.section == null || available.contains(c.id.section)).toList();
+});
 
 /// True while the settings capture a new shortcut: app shortcuts and the
 /// macOS menu key equivalents step aside so the combination can be read.
@@ -337,6 +397,12 @@ final class AppCommandDispatcher {
             final step = id == AppCommandId.nextTerminalTab ? 1 : -1;
             _ref.read(terminalTabsProvider.notifier).activate((tabs.activeIndex + step) % tabs.tabs.length);
           }
+        }
+      default:
+        final section = id.section;
+        if (section == null || rootNavigatorKey.currentState?.canPop() == true) return;
+        if (_ref.read(appCommandsProvider).any((command) => command.id == id)) {
+          router.go(navigationBranchRoute(section));
         }
     }
   }

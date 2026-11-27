@@ -120,6 +120,54 @@ void main() {
     expect(service.closed, [service.id]);
   });
 
+  test('promoting an SSH tab preserves its streams, buffer and queued input after the editor closes', () async {
+    final backend = MockBackend(config: const MockConfig.test());
+    addTearDown(backend.dispose);
+    await backend.debugSignInDemoAndUnlock();
+    final host = (await backend.inventory.watchHosts().first).firstWhere((host) => host.name == 'raspberry-pi');
+    final service = _DelayedTerminal();
+    ProviderContainer scope() => ProviderContainer(
+      overrides: [
+        appServicesProvider.overrideWithValue(backend.services),
+        terminalServiceProvider.overrideWithValue(service),
+      ],
+    );
+    final editor = scope();
+    final workspace = scope();
+    addTearDown(workspace.dispose);
+    final source = editor.read(terminalTabsProvider.notifier);
+    final destination = workspace.read(terminalTabsProvider.notifier);
+    final output = StreamController<Uint8List>();
+    final events = StreamController<TerminalEvent>();
+    addTearDown(output.close);
+    addTearDown(events.close);
+    final opening = source.open(host);
+    service.opened.complete(TerminalSessionHandle(id: service.id, output: output.stream, events: events.stream));
+    final tab = await opening;
+    final terminal = tab.terminal;
+    output.add(Uint8List.fromList('first '.codeUnits));
+    source.runInTab(tab, 'pwd');
+    await pumpEventQueue();
+    expect(source.moveEditorTabTo(tab, destination), isTrue);
+    expect(editor.read(terminalTabsProvider).tabs, isEmpty);
+    editor.dispose();
+    expect(workspace.read(terminalTabsProvider).active, same(tab));
+    expect(tab.terminal, same(terminal));
+    events.add(const TerminalStateChanged(SessionConnectionState.connected));
+    events.add(const TerminalTitleChanged('live'));
+    output.add(Uint8List.fromList('second'.codeUnits));
+    await pumpEventQueue();
+    expect(tab.title, 'live');
+    expect(tab.terminal.buffer.getText(), contains('first second'));
+    expect(service.writes, ['pwd\r']);
+    tab.terminal.onOutput!('more');
+    await pumpEventQueue();
+    expect(service.writes.last, 'more');
+    expect(service.closed, isEmpty);
+    await destination.close(tab);
+    expect(service.closed, [service.id]);
+  });
+
   test('late runtime attachment after lock is closed and never opens a tab', () async {
     final backend = MockBackend(config: const MockConfig.test());
     final service = _DelayedTerminal();
@@ -162,7 +210,8 @@ final class _DelayedTerminal implements TerminalService, LocalTerminalService, R
   }
 
   @override
-  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size, String? directory}) => opened.future;
+  Future<TerminalSessionHandle> openLocal({required String profileId, required TerminalSize size, String? directory}) =>
+      opened.future;
   @override
   Future<LocalShellProfiles> listLocalProfiles() async => const LocalShellProfiles(profiles: [ubuntu]);
   @override

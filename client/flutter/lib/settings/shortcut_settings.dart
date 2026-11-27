@@ -19,6 +19,7 @@ class ShortcutSettingsSection extends ConsumerWidget {
     final l = context.l10n;
     final tokens = GlassTokens.of(context);
     final commands = ref.watch(appCommandsProvider);
+    final firstNavigation = commands.where((command) => command.id.section != null).firstOrNull;
     final overrides = ref.watch(localSettingsProvider.select((s) => s.value?.shortcutOverrides)) ?? const {};
     final settings = ref.read(settingsServiceProvider);
     Future<void> save(Map<String, String> next) =>
@@ -38,10 +39,18 @@ class ShortcutSettingsSection extends ConsumerWidget {
         ),
         child: Column(
           children: [
-            for (final command in commands)
+            for (final command in commands) ...[
+              if (command == firstNavigation)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 8),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(l.shortcutQuickNavigation, style: tokens.typography.bodyEmph),
+                  ),
+                ),
               Builder(
                 builder: (context) {
-                  final factory = commandFor(command.id).binding!;
+                  final factory = commandFor(command.id).binding;
                   final changed = overrides.containsKey(command.id.name);
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: GlassSpacing.s4),
@@ -95,7 +104,7 @@ class ShortcutSettingsSection extends ConsumerWidget {
                               ? GlassIconButton(
                                   key: ValueKey('shortcut-reset-${command.id.name}'),
                                   icon: Icons.undo_rounded,
-                                  tooltip: l.settingsShortcutResetOne(factory.label),
+                                  tooltip: l.settingsShortcutResetOne(factory?.label ?? l.settingsShortcutOff),
                                   style: GlassIconButtonStyle.plain,
                                   onPressed: () => save({...overrides}..remove(command.id.name)),
                                 )
@@ -106,6 +115,7 @@ class ShortcutSettingsSection extends ConsumerWidget {
                   );
                 },
               ),
+            ],
           ],
         ),
       ),

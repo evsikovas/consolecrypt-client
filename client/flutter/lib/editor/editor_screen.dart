@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:consolecrypt/app/commands.dart';
 import 'package:consolecrypt/app/gate.dart';
+import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/core/bridge/mapping.dart' show hostFromJson, hostToJson;
 import 'package:consolecrypt/core/glass/glass_tab_strip.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
@@ -17,6 +18,7 @@ import 'package:consolecrypt/core/widgets/sudo_password_dialog.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/editor_resume.dart';
 import 'package:consolecrypt/editor/editor_sftp_requests.dart';
+import 'package:consolecrypt/editor/editor_toolbar_button.dart';
 import 'package:consolecrypt/editor/project_files.dart';
 import 'package:consolecrypt/editor/project_move_dialog.dart';
 import 'package:consolecrypt/editor/project_terminal.dart';
@@ -755,40 +757,39 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                 onClose: busy ? null : (i) => _closeFolder(folders[i]),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
+                  spacing: 4,
                   children: [
                     if (compact)
-                      IconButton(
+                      EditorToolbarButton(
                         tooltip: l.editorFiles,
+                        selected: folder.showTree,
                         onPressed: () => setState(() => folder.showTree = !folder.showTree),
-                        icon: const Icon(Icons.folder_outlined),
+                        icon: Icons.folder_outlined,
                       ),
-                    if (!compact)
-                      choose()
-                    else
-                      IconButton(
-                        tooltip: l.editorOpen,
-                        onPressed: busy ? null : _project,
-                        icon: const Icon(Icons.folder_open_outlined),
-                      ),
-                    IconButton(
+                    EditorToolbarButton(
+                      tooltip: l.editorOpen,
+                      onPressed: busy ? null : _project,
+                      icon: Icons.folder_open_outlined,
+                    ),
+                    EditorToolbarButton(
                       tooltip: l.editorOpenSsh,
                       onPressed: busy ? null : _remoteProject,
-                      icon: const Icon(Icons.dns_outlined, size: 18),
+                      icon: Icons.dns_outlined,
                     ),
-                    IconButton(
+                    EditorToolbarButton(
                       tooltip: l.editorNew,
                       onPressed: busy ? null : () => _newFile(folder),
-                      icon: const Icon(Icons.note_add_outlined),
+                      icon: Icons.note_add_outlined,
                     ),
-                    IconButton(
+                    EditorToolbarButton(
                       tooltip: l.sftpRefresh,
                       onPressed: busy ? null : () => _refresh(folder),
-                      icon: const Icon(Icons.refresh),
+                      icon: Icons.refresh,
                     ),
-                    IconButton(
+                    EditorToolbarButton(
                       tooltip: l.commonSave,
                       onPressed: busy || folder.active?.dirty != true ? null : () => _save(folder),
-                      icon: const Icon(Icons.save_outlined),
+                      icon: Icons.save_outlined,
                     ),
                   ],
                 ),
@@ -872,6 +873,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                       key: ObjectKey(current),
                       overrides: _terminalOverrides,
                       child: ProjectTerminal(
+                        onMoveToTerminal: (source, tab) {
+                          if (source.moveEditorTabTo(tab, ref.read(terminalTabsProvider.notifier))) {
+                            ref.read(routerProvider).go(AppRoutes.terminal);
+                          }
+                        },
                         directory: current.root,
                         active: folder == selected,
                         host: current is SshProject ? current.host : null,

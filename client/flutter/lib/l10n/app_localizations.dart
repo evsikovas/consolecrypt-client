@@ -1486,6 +1486,30 @@ abstract class AppLocalizations {
   /// **'Could not open the link in your browser.'**
   String get editorBrowserFailed;
 
+  /// Show or open the terminal docked below the editor
+  ///
+  /// In en, this message translates to:
+  /// **'Show project terminal'**
+  String get editorShowTerminal;
+
+  /// Collapse the terminal dock without closing the session
+  ///
+  /// In en, this message translates to:
+  /// **'Hide project terminal'**
+  String get editorHideTerminal;
+
+  /// Move the active project terminal to the Terminal workspace
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Terminal workspace'**
+  String get editorMoveTerminal;
+
+  /// Settings group and menu for workspace navigation shortcuts
+  ///
+  /// In en, this message translates to:
+  /// **'Quick navigation'**
+  String get shortcutQuickNavigation;
+
   /// Open SSH folder
   ///
   /// In en, this message translates to:

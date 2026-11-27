@@ -175,6 +175,13 @@ class AppCommandsScope extends ConsumerWidget {
             menus: [
               item(AppCommandId.commandPalette),
               item(AppCommandId.snippets),
+              PlatformMenu(
+                label: l10n.shortcutQuickNavigation,
+                menus: [
+                  for (final command in commands)
+                    if (command.id.section != null) item(command.id),
+                ],
+              ),
               item(AppCommandId.toggleSidebar),
               item(AppCommandId.customizeSidebar),
               item(AppCommandId.toggleTerminalMinimalMode),

@@ -24,6 +24,7 @@ final class TerminalTab {
     : title = target.label;
 
   final TerminalSessionId sessionId;
+  late TerminalTabsController _manager;
   final _metrics = TerminalHostMetrics();
   ValueListenable<HostMetricsHistory> get hostMetrics => tmuxParent?._metrics ?? _metrics;
   final TerminalTarget target;
@@ -345,37 +346,65 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
     final service = ref.read(terminalServiceProvider);
     final scrollback = ref.read(settingsServiceProvider).currentLocal.terminalScrollback;
     final terminal = Terminal(maxLines: scrollback, platform: _platform);
-    final tab = TerminalTab(sessionId: handle.id, target: target, terminal: terminal, controller: TerminalController());
+    final tab = TerminalTab(sessionId: handle.id, target: target, terminal: terminal, controller: TerminalController())
+      .._manager = this;
     _bindTerminal(tab, service);
     // Reset markers share the byte queue: old buffered data drains first,
     // then the parser and view reset before the new snapshot is replayed.
     tab
-      .._output =
-          yieldingTerminalFrames(
-            handle.framedOutput ?? handle.output.map(TerminalOutputFrame.new),
-            encoding: () => tab.encoding,
-          ).listen((frame) {
-            if (!_open.contains(tab)) return;
-            if (frame.reset) {
-              final previous = tab.terminal;
-              previous.onOutput = null;
-              previous.onResize = null;
-              previous.onTitleChange = null;
-              tab.controller.clearSelection();
-              tab.terminal = Terminal(maxLines: previous.maxLines, platform: _platform)
-                ..resize(previous.viewWidth, previous.viewHeight);
-              tab.renderGeneration++;
-              _bindTerminal(tab, service);
-              _touch();
-            } else {
-              tab.terminal.write(frame.text);
-              final visible = visibleTerminalText(frame.text);
-              _noteActivity(tab, bell: visible.contains('\x07'), text: visible.trim().isNotEmpty);
-            }
-          })
-      .._events = handle.events.listen((e) => _onEvent(tab, e));
+      .._output = yieldingTerminalFrames(
+        handle.framedOutput ?? handle.output.map(TerminalOutputFrame.new),
+        encoding: () => tab.encoding,
+      ).listen((frame) => tab._manager._render(tab, frame))
+      .._events = handle.events.listen((event) => tab._manager._onEvent(tab, event));
     _open.add(tab);
     return tab;
+  }
+
+  void _render(TerminalTab tab, TerminalRenderFrame frame) {
+    if (!_open.contains(tab)) return;
+    if (frame.reset) {
+      final previous = tab.terminal;
+      previous.onOutput = null;
+      previous.onResize = null;
+      previous.onTitleChange = null;
+      tab.controller.clearSelection();
+      tab.terminal = Terminal(maxLines: previous.maxLines, platform: _platform)
+        ..resize(previous.viewWidth, previous.viewHeight);
+      tab.renderGeneration++;
+      _bindTerminal(tab, _service);
+      _touch();
+    } else {
+      tab.terminal.write(frame.text);
+      final visible = visibleTerminalText(frame.text);
+      _noteActivity(tab, bell: visible.contains('\x07'), text: visible.trim().isNotEmpty);
+    }
+  }
+
+  /// Hand off the live editor PTY, including its subscriptions and scrollback.
+  bool moveEditorTabTo(TerminalTab tab, TerminalTabsController workspace) {
+    if (identical(this, workspace) ||
+        workspace._disposed ||
+        !identical(_service, workspace._service) ||
+        !state.tabs.contains(tab) ||
+        tab.panes.isNotEmpty ||
+        tab.tmuxParent != null) {
+      return false;
+    }
+    final remaining = [...state.tabs]..remove(tab);
+    final active = remaining.indexOf(state.activeTab ?? tab);
+    _open.remove(tab);
+    _seen(tab);
+    tab._manager = workspace;
+    workspace._open.add(tab);
+    workspace._bindTerminal(tab, workspace._service);
+    state = state.copyWith(
+      tabs: remaining,
+      activeIndex: active >= 0 ? active : state.activeIndex.clamp(0, remaining.isEmpty ? 0 : remaining.length - 1),
+    );
+    final tabs = [...workspace.state.tabs, tab];
+    workspace.state = workspace.state.copyWith(tabs: tabs, activeIndex: tabs.length - 1);
+    return true;
   }
 
   /// Most panes in one tab.
@@ -546,18 +575,21 @@ class TerminalTabsController extends Notifier<TerminalTabsState> {
   // Await the native write before dispatching the next input event. Otherwise
   // async bridge calls can deliver a later key (including Enter) first.
   Future<void> _drainInput(TerminalTab tab, int generation) async {
-    while (_open.contains(tab) && tab.isConnected && generation == tab._inputGeneration && tab._input.isNotEmpty) {
+    while (tab._manager._open.contains(tab) &&
+        tab.isConnected &&
+        generation == tab._inputGeneration &&
+        tab._input.isNotEmpty) {
       final bytes = tab._input.removeFirst();
       try {
         await _service.write(tab.sessionId, bytes);
       } catch (_) {
-        if (_open.contains(tab) && generation == tab._inputGeneration) {
+        if (tab._manager._open.contains(tab) && generation == tab._inputGeneration) {
           _invalidateInput(tab);
           tab
             ..state = SessionConnectionState.disconnected
             ..message = null;
-          _updateMetrics(tab);
-          _touch();
+          tab._manager._updateMetrics(tab);
+          tab._manager._touch();
         }
       } finally {
         bytes.fillRange(0, bytes.length, 0);

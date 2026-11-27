@@ -773,6 +773,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorBrowserFailed => 'Could not open the link in your browser.';
 
   @override
+  String get editorShowTerminal => 'Show project terminal';
+
+  @override
+  String get editorHideTerminal => 'Hide project terminal';
+
+  @override
+  String get editorMoveTerminal => 'Open in Terminal workspace';
+
+  @override
+  String get shortcutQuickNavigation => 'Quick navigation';
+
+  @override
   String get editorOpenSsh => 'Open SSH folder';
 
   @override
