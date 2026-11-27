@@ -498,7 +498,9 @@ impl AppCore {
                 Ok(total == data.len() as u64 && saved == data)
             }
             Some(3) => Ok(false),
-            Some(4) => Err(AppError::PermissionDenied(path)),
+            Some(4) => Err(AppError::InvalidCredentials),
+            Some(5) => Err(AppError::PermissionDenied(path)),
+            Some(6) => Err(AppError::EditorWritableDirectory),
             Some(127 | 126) => Err(AppError::Unsupported(
                 "sudoedit requires python3 and sudo on the SSH host".into(),
             )),

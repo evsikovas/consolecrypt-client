@@ -155,6 +155,7 @@ enum AppErrorReason {
   /// A file that can run code opens only as text, and no text editor was
   /// found (security audit H4): offer "Choose an Editor…".
   noTextEditor('no_text_editor'),
+  editorWritableDirectory('editor_writable_directory'),
   applicationPickerFailed('application_picker_failed'),
 
   /// `args['path']`.

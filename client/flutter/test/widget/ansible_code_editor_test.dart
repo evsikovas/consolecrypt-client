@@ -121,6 +121,29 @@ void main() {
       null,
     );
   });
+  for (final wrap in [false, true]) {
+    testWidgets('click below the last line focuses the editor and appends at EOF (wrap=$wrap)', (tester) async {
+      final raw = TextEditingController(text: 'first\nsecond\nthird')
+        ..selection = const TextSelection.collapsed(offset: 0);
+      addTearDown(raw.dispose);
+      await tester.pumpWidget(harness(raw, softWrap: wrap));
+      final frame = tester.getRect(find.byKey(const ValueKey('ansible-editor-frame')));
+      final field = tester.widget<TextField>(find.byType(TextField));
+      for (final dx in [4.0, frame.width - 16]) {
+        field.focusNode!.unfocus();
+        raw.selection = const TextSelection.collapsed(offset: 0);
+        await tester.pump();
+        await tester.tapAt(Offset(frame.left + dx, frame.bottom - 16));
+        await tester.pump();
+        expect(field.focusNode!.hasPrimaryFocus, isTrue);
+        expect(raw.selection, TextSelection.collapsed(offset: raw.text.length));
+      }
+      tester.testTextInput.updateEditingValue(field.controller!.value.replaced(field.controller!.selection, '!'));
+      await tester.pump();
+      expect(raw.text, 'first\nsecond\nthird!');
+    });
+  }
+
   testWidgets('soft wrap keeps the next logical line aligned and preserves the selected source', (tester) async {
     final line = 'some code ' * 18;
     final controller = TextEditingController(text: '$line\nnext')

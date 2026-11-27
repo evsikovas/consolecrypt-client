@@ -6260,8 +6260,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get editorSudoRequired => 'Se denegó la escritura. Introduce la contraseña de sudo de este servidor.';
 
   @override
-  String get editorSudoDenied =>
-      'sudoedit denegó el guardado. Comprueba la contraseña y los permisos de esta cuenta para editar el archivo.';
+  String get editorSudoDenied => 'sudo no aceptó la contraseña. Inténtalo de nuevo.';
+
+  @override
+  String get editorSudoPolicyDenied => 'El servidor no permite que tu cuenta guarde este archivo con sudo.';
+
+  @override
+  String get editorSudoWritableDir =>
+      'Tienes permiso de escritura en este directorio. El servidor no pudo conservar el propietario y los permisos al guardar. Tus cambios siguen abiertos.';
 
   @override
   String get editorSudoUnavailable => 'Para guardar con sudo, el servidor SSH necesita Python 3 y sudoedit.';

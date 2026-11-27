@@ -6216,8 +6216,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorSudoRequired => 'Write access was denied. Enter the sudo password for this host.';
 
   @override
-  String get editorSudoDenied =>
-      'sudoedit denied the save. Check the password and whether this account can edit this file.';
+  String get editorSudoDenied => 'sudo did not accept the password. Try again.';
+
+  @override
+  String get editorSudoPolicyDenied => 'The server denied this sudo save for your account.';
+
+  @override
+  String get editorSudoWritableDir =>
+      'The directory is writable by your account. The server could not preserve the owner and permissions when saving here. Your edits are still open.';
 
   @override
   String get editorSudoUnavailable => 'Saving with sudo requires Python 3 and sudoedit on the SSH host.';

@@ -344,106 +344,127 @@ class _AnsibleCodeEditorState extends State<AnsibleCodeEditor> {
                 double lineTop(int i) => tops != null && i < tops.length ? tops[i] : i * lineHeight;
                 return Scrollbar(
                   controller: vertical,
-                  child: SingleChildScrollView(
+                  child: CustomScrollView(
                     controller: vertical,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (gutterWidth > 0)
-                          SizedBox(
-                            width: gutterWidth.toDouble(),
-                            height: lineTop(count) + 16,
-                            child: AnimatedBuilder(
-                              animation: vertical,
-                              builder: (context, _) {
-                                final offset = (vertical.hasClients ? vertical.offset : 0.0) - 8;
-                                final first = _firstVisible(offset, count, lineTop);
-                                return Stack(
-                                  children: [
-                                    for (
-                                      var i = first;
-                                      i < count && lineTop(i) < offset + bounds.maxHeight + lineHeight;
-                                      i++
-                                    )
-                                      Positioned(
-                                        top: 8 + lineTop(i),
-                                        left: 0,
-                                        right: 0,
-                                        child: _gutter(context, i, lineHeight, style),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (gutterWidth > 0)
+                              SizedBox(
+                                width: gutterWidth.toDouble(),
+                                height: lineTop(count) + 16,
+                                child: AnimatedBuilder(
+                                  animation: vertical,
+                                  builder: (context, _) {
+                                    final offset = (vertical.hasClients ? vertical.offset : 0.0) - 8;
+                                    final first = _firstVisible(offset, count, lineTop);
+                                    return Stack(
+                                      children: [
+                                        for (
+                                          var i = first;
+                                          i < count && lineTop(i) < offset + bounds.maxHeight + lineHeight;
+                                          i++
+                                        )
+                                          Positioned(
+                                            top: 8 + lineTop(i),
+                                            left: 0,
+                                            right: 0,
+                                            child: _gutter(context, i, lineHeight, style),
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                controller: horizontal,
+                                scrollDirection: Axis.horizontal,
+                                child: SizedBox(
+                                  width: width,
+                                  child: Shortcuts(
+                                    shortcuts: const {
+                                      SingleActivator(LogicalKeyboardKey.equal, control: true): _EditorZoomIntent(1),
+                                      SingleActivator(LogicalKeyboardKey.equal, control: true, shift: true):
+                                          _EditorZoomIntent(1),
+                                      SingleActivator(LogicalKeyboardKey.add, control: true): _EditorZoomIntent(1),
+                                      SingleActivator(LogicalKeyboardKey.add, control: true, shift: true):
+                                          _EditorZoomIntent(1),
+                                      SingleActivator(LogicalKeyboardKey.numpadAdd, control: true): _EditorZoomIntent(
+                                        1,
                                       ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            controller: horizontal,
-                            scrollDirection: Axis.horizontal,
-                            child: SizedBox(
-                              width: width,
-                              child: Shortcuts(
-                                shortcuts: const {
-                                  SingleActivator(LogicalKeyboardKey.equal, control: true): _EditorZoomIntent(1),
-                                  SingleActivator(LogicalKeyboardKey.equal, control: true, shift: true):
-                                      _EditorZoomIntent(1),
-                                  SingleActivator(LogicalKeyboardKey.add, control: true): _EditorZoomIntent(1),
-                                  SingleActivator(LogicalKeyboardKey.add, control: true, shift: true):
-                                      _EditorZoomIntent(1),
-                                  SingleActivator(LogicalKeyboardKey.numpadAdd, control: true): _EditorZoomIntent(1),
-                                  SingleActivator(LogicalKeyboardKey.minus, control: true): _EditorZoomIntent(-1),
-                                  SingleActivator(LogicalKeyboardKey.numpadSubtract, control: true): _EditorZoomIntent(
-                                    -1,
-                                  ),
-                                  SingleActivator(LogicalKeyboardKey.equal, meta: true): _EditorZoomIntent(1),
-                                  SingleActivator(LogicalKeyboardKey.equal, meta: true, shift: true): _EditorZoomIntent(
-                                    1,
-                                  ),
-                                  SingleActivator(LogicalKeyboardKey.add, meta: true): _EditorZoomIntent(1),
-                                  SingleActivator(LogicalKeyboardKey.add, meta: true, shift: true): _EditorZoomIntent(
-                                    1,
-                                  ),
-                                  SingleActivator(LogicalKeyboardKey.numpadAdd, meta: true): _EditorZoomIntent(1),
-                                  SingleActivator(LogicalKeyboardKey.minus, meta: true): _EditorZoomIntent(-1),
-                                  SingleActivator(LogicalKeyboardKey.numpadSubtract, meta: true): _EditorZoomIntent(-1),
-                                },
-                                child: Actions(
-                                  actions: actions,
-                                  child: TextField(
-                                    key: widget.fieldKey,
-                                    controller: document.display,
-                                    focusNode: widget.focusNode ?? ownFocus,
-                                    readOnly: widget.readOnly,
-                                    selectionWidthStyle: ui.BoxWidthStyle.tight,
-                                    maxLines: null,
-                                    minLines: 1,
-                                    style: style,
-                                    strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
-                                    textAlignVertical: TextAlignVertical.top,
-                                    textDirection: TextDirection.ltr,
-                                    autocorrect: false,
-                                    enableSuggestions: false,
-                                    enableIMEPersonalizedLearning: false,
-                                    smartDashesType: SmartDashesType.disabled,
-                                    smartQuotesType: SmartQuotesType.disabled,
-                                    contextMenuBuilder: _toolbar,
-                                    decoration: const InputDecoration(
-                                      filled: false,
-                                      border: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      disabledBorder: InputBorder.none,
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      SingleActivator(LogicalKeyboardKey.minus, control: true): _EditorZoomIntent(-1),
+                                      SingleActivator(LogicalKeyboardKey.numpadSubtract, control: true):
+                                          _EditorZoomIntent(-1),
+                                      SingleActivator(LogicalKeyboardKey.equal, meta: true): _EditorZoomIntent(1),
+                                      SingleActivator(LogicalKeyboardKey.equal, meta: true, shift: true):
+                                          _EditorZoomIntent(1),
+                                      SingleActivator(LogicalKeyboardKey.add, meta: true): _EditorZoomIntent(1),
+                                      SingleActivator(LogicalKeyboardKey.add, meta: true, shift: true):
+                                          _EditorZoomIntent(1),
+                                      SingleActivator(LogicalKeyboardKey.numpadAdd, meta: true): _EditorZoomIntent(1),
+                                      SingleActivator(LogicalKeyboardKey.minus, meta: true): _EditorZoomIntent(-1),
+                                      SingleActivator(LogicalKeyboardKey.numpadSubtract, meta: true): _EditorZoomIntent(
+                                        -1,
+                                      ),
+                                    },
+                                    child: Actions(
+                                      actions: actions,
+                                      child: TextField(
+                                        key: widget.fieldKey,
+                                        controller: document.display,
+                                        focusNode: widget.focusNode ?? ownFocus,
+                                        readOnly: widget.readOnly,
+                                        selectionWidthStyle: ui.BoxWidthStyle.tight,
+                                        maxLines: null,
+                                        minLines: 1,
+                                        style: style,
+                                        strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
+                                        textAlignVertical: TextAlignVertical.top,
+                                        textDirection: TextDirection.ltr,
+                                        autocorrect: false,
+                                        enableSuggestions: false,
+                                        enableIMEPersonalizedLearning: false,
+                                        smartDashesType: SmartDashesType.disabled,
+                                        smartQuotesType: SmartQuotesType.disabled,
+                                        contextMenuBuilder: _toolbar,
+                                        decoration: const InputDecoration(
+                                          filled: false,
+                                          border: InputBorder.none,
+                                          enabledBorder: InputBorder.none,
+                                          focusedBorder: InputBorder.none,
+                                          disabledBorder: InputBorder.none,
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.text,
+                          child: GestureDetector(
+                            excludeFromSemantics: true,
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              document.display.selection = TextSelection.collapsed(
+                                offset: document.display.text.length,
+                              );
+                              (widget.focusNode ?? ownFocus).requestFocus();
+                            },
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 );
               },

@@ -241,6 +241,8 @@ pub enum AppError {
     /// The server / OS refused access (code `permission_denied`).
     #[error("permission denied: {0}")]
     PermissionDenied(String),
+    #[error("cannot preserve file ownership and permissions in this writable directory")]
+    EditorWritableDirectory,
     /// A size limit was exceeded (code `payload_too_large`, args `size` /
     /// `limit` in bytes).
     #[error("{what} too large: {size} bytes (limit {limit})")]
@@ -363,7 +365,7 @@ impl AppError {
             AppError::Sftp(_) => "sftp",
             AppError::RemoteNotFound { .. } => "not_found",
             AppError::RemoteExists { .. } => "already_exists",
-            AppError::PermissionDenied(_) => "permission_denied",
+            AppError::PermissionDenied(_) | AppError::EditorWritableDirectory => "permission_denied",
             AppError::TooLarge { .. } => "payload_too_large",
             AppError::Terminal(_) => "terminal",
             AppError::EditorLaunch(_) | AppError::NoTextEditor => "io",
@@ -421,6 +423,7 @@ impl AppError {
             AppError::SshPassphraseRequired(_) => "key_passphrase_required",
             AppError::EditorLaunch(_) => "editor_launch_failed",
             AppError::NoTextEditor => "no_text_editor",
+            AppError::EditorWritableDirectory => "editor_writable_directory",
             AppError::UnresolvedPlaceholders(_) => "missing_variables",
             AppError::AiNotConfigured => "provider_not_found",
             AppError::Quota { quota, .. } => return quota_reason(quota),

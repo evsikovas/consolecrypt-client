@@ -182,6 +182,7 @@ String? _reasonMessage(AppLocalizations l, AppException e) {
     AppErrorReason.teamUntrusted => l.teamsErrorUntrusted,
     AppErrorReason.editorLaunchFailed => l.errorEditorLaunchFailed(args['detail'] ?? ''),
     AppErrorReason.noTextEditor => l.errorNoTextEditor,
+    AppErrorReason.editorWritableDirectory => l.editorSudoWritableDir,
     AppErrorReason.applicationPickerFailed => l.errorApplicationPickerFailed(args['detail'] ?? ''),
     AppErrorReason.directoryNotFound => l.errorReasonDirectoryNotFound(args['path'] ?? ''),
     AppErrorReason.directoryNotEmpty => l.errorReasonDirectoryNotEmpty,

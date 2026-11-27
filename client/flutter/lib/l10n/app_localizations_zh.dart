@@ -6031,7 +6031,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorSudoRequired => '没有写入权限。请输入此主机的 sudo 密码。';
 
   @override
-  String get editorSudoDenied => 'sudoedit 拒绝保存。请检查密码以及此账户编辑该文件的权限。';
+  String get editorSudoDenied => 'sudo 未接受密码。请重试。';
+
+  @override
+  String get editorSudoPolicyDenied => '服务器不允许当前账户通过 sudo 保存此文件。';
+
+  @override
+  String get editorSudoWritableDir => '当前账户可写入此目录。服务器无法在保留所有者和权限的情况下保存文件。你的修改仍保留在编辑器中。';
 
   @override
   String get editorSudoUnavailable => '通过 sudo 保存需要 SSH 主机安装 Python 3 和 sudoedit。';

@@ -11041,8 +11041,20 @@ abstract class AppLocalizations {
   /// Remote editor sudoedit save dialog.
   ///
   /// In en, this message translates to:
-  /// **'sudoedit denied the save. Check the password and whether this account can edit this file.'**
+  /// **'sudo did not accept the password. Try again.'**
   String get editorSudoDenied;
+
+  /// Remote editor save denied after sudo authentication.
+  ///
+  /// In en, this message translates to:
+  /// **'The server denied this sudo save for your account.'**
+  String get editorSudoPolicyDenied;
+
+  /// Remote editor save denied after sudo authentication.
+  ///
+  /// In en, this message translates to:
+  /// **'The directory is writable by your account. The server could not preserve the owner and permissions when saving here. Your edits are still open.'**
+  String get editorSudoWritableDir;
 
   /// Remote editor sudoedit save dialog.
   ///

@@ -6416,8 +6416,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get editorSudoRequired => 'Нет прав на запись. Введите пароль sudo для этого хоста.';
 
   @override
-  String get editorSudoDenied =>
-      'sudoedit отклонил запись. Проверьте пароль и право этой учётной записи редактировать файл.';
+  String get editorSudoDenied => 'sudo не принял пароль. Попробуйте ещё раз.';
+
+  @override
+  String get editorSudoPolicyDenied => 'Сервер не разрешил вашей учётной записи сохранить этот файл через sudo.';
+
+  @override
+  String get editorSudoWritableDir =>
+      'Этот каталог доступен вам на запись. Сервер не смог сохранить файл с прежним владельцем и правами. Ваши правки остались в редакторе.';
 
   @override
   String get editorSudoUnavailable => 'Для сохранения через sudo на SSH-сервере нужны Python 3 и sudoedit.';

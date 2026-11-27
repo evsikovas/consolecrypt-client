@@ -91,6 +91,7 @@ String _errorMessage(AppLocalizations l, Object error) => switch (error) {
   EditorIssue.gitMissing => l.editorNoGitTool,
   EditorIssue.outside => l.editorOutside,
   EditorIssue.sudoUnavailable => l.editorSudoUnavailable,
+  EditorIssue.sudoPolicyDenied => l.editorSudoPolicyDenied,
   _ => error.toString(),
 };
 
@@ -586,7 +587,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
         return await files.save(source, text, sudoPassword: secret);
       } on AppException catch (error) {
         if (error.code == AppErrorCode.unsupported) throw EditorIssue.sudoUnavailable;
-        if (error.code != AppErrorCode.forbidden) rethrow;
+        if (error.code == AppErrorCode.forbidden && error.reason == null) throw EditorIssue.sudoPolicyDenied;
+        if (error.code != AppErrorCode.invalidCredentials) rethrow;
         retry = true;
       } finally {
         secret.wipe();

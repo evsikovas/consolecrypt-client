@@ -1,6 +1,9 @@
-"""Run as the connected SSH user. sudoedit owns the privileged copy-back."""
+"""Save an SSH editor buffer as the connected user, with explicit sudo authorization."""
+from contextlib import contextmanager
+import hashlib
 import os
 from pathlib import Path
+import secrets
 import selectors
 import shutil
 import stat
@@ -34,15 +37,19 @@ copy.write_bytes((work / 'document').read_bytes())
 """
 
 
-def run_sudoedit(sudo, path, env, password):
+# These are protocol outcomes, never raw sudo output or remote file contents.
+CHANGED, BAD_PASSWORD, DENIED, WRITABLE_DIR = 3, 4, 5, 6
+
+
+def run_sudo(sudo, args, env, password, deadline, cwd=None):
     # With NOPASSWD, sudo never reads stdin. Only send the password in
     # response to sudo's prompt, so it cannot become input to an editor.
     prompt = b'[consolecrypt-sudo]'
-    args = [sudo, '-S', '-k', '-p', prompt.decode('ascii'), '-e', '--', str(path)]
-    with subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+    args = [sudo, '-S', '-k', '-p', prompt.decode('ascii'), *args]
+    with subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, cwd=cwd,
                           stderr=subprocess.PIPE, env=env) as proc:
-        deadline = time.monotonic() + 45
         tail = b''
+        failure = DENIED
         try:
             with selectors.DefaultSelector() as poll:
                 poll.register(proc.stderr, selectors.EVENT_READ)
@@ -51,16 +58,90 @@ def run_sudoedit(sudo, path, env, password):
                         break
                     chunk = os.read(proc.stderr.fileno(), 4096)
                     if not chunk:
-                        return proc.wait(timeout=max(0, deadline - time.monotonic()))
+                        status = proc.wait(timeout=max(0, deadline - time.monotonic()))
+                        return failure if status else 0
                     tail += chunk
+                    if (b'editing files in a writable directory is not permitted' in tail
+                            or b'cannot open a file in a path writable by the user' in tail):
+                        failure = WRITABLE_DIR
+                    elif any(msg in tail.lower() for msg in (
+                            b'sorry, try again', b'incorrect password', b'incorrect authentication',
+                            b'authentication failure', b'authentication failed')):
+                        failure = BAD_PASSWORD
                     if prompt in tail and not proc.stdin.closed:
                         proc.stdin.write(password)
                         proc.stdin.close()
-                    tail = tail[-(len(prompt) - 1):]
+                    tail = tail[-96:]
             return 1
         finally:
             if proc.poll() is None:
                 proc.kill()
+
+
+@contextmanager
+def open_directory(path):
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        yield fd
+    finally:
+        os.close(fd)
+
+
+def file_attrs(fd):
+    return {key: os.getxattr(fd, key) for key in os.listxattr(fd)}
+
+
+def save_in_writable_directory(sudo, path, digest, data, password, deadline):
+    # The SSH user can replace an entry in this directory. Only assigning the
+    # original owner to our staging file needs separate sudo authorization.
+    chown = shutil.which('chown', path=os.defpath)
+    if not chown or not sys.platform.startswith('linux') or not os.path.isdir('/proc/self/fd'):
+        return WRITABLE_DIR
+    if not os.access(path.parent, os.W_OK | os.X_OK):
+        return WRITABLE_DIR
+    with open_directory(path.parent) as parent:
+        fd = os.open(path.name, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW, dir_fd=parent)
+        with os.fdopen(fd, 'rb') as original:
+            info = os.fstat(fd)
+            if (not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_nlink != 1
+                    or info.st_mode & 0o7000):
+                return WRITABLE_DIR
+            if info.st_size > LIMIT or hashlib.sha256(original.read(LIMIT + 1)).hexdigest() != digest:
+                return CHANGED
+            attrs = file_attrs(fd)
+            with tempfile.TemporaryDirectory(prefix='.consolecrypt-', dir=f'/proc/self/fd/{parent}') as tmp:
+                with open_directory(tmp) as private:
+                    return replace_from_stage(sudo, chown, parent, private, path, info, attrs, data, password, deadline)
+
+
+def replace_from_stage(sudo, chown, parent, private, path, original, attrs, data, password, deadline):
+    name = secrets.token_hex(16)
+    fd = os.open(name, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600, dir_fd=private)
+    with os.fdopen(fd, 'wb') as out:
+        out.write(data)
+        out.flush()
+        os.fchmod(fd, stat.S_IMODE(original.st_mode))
+        # Do not silently strip an ACL, capability, or security label.
+        if file_attrs(fd) != attrs:
+            return WRITABLE_DIR
+        # The privileged utility works in the pinned private directory and
+        # never receives the user's destination path or follows a symlink.
+        args = ['--', chown, '-h', f'--from={os.getuid()}', f'{original.st_uid}:{original.st_gid}', name]
+        result = run_sudo(sudo, args, dict(os.environ, LC_ALL='C'), password, deadline, cwd=f'/proc/self/fd/{private}')
+        if result:
+            return BAD_PASSWORD if result == BAD_PASSWORD else WRITABLE_DIR
+        staged = os.fstat(fd)
+        if ((staged.st_uid, staged.st_gid, staged.st_mode) !=
+                (original.st_uid, original.st_gid, original.st_mode) or file_attrs(fd) != attrs):
+            return WRITABLE_DIR
+        os.fsync(fd)
+        current = os.stat(path.name, dir_fd=parent, follow_symlinks=False)
+        if (not os.path.samestat(current, original) or current.st_ctime_ns != original.st_ctime_ns
+                or not os.path.samestat(path.parent.stat(), os.fstat(parent))
+                or not os.path.samestat(os.stat(name, dir_fd=private, follow_symlinks=False), staged)):
+            return CHANGED
+        os.replace(name, path.name, src_dir_fd=private, dst_dir_fd=parent)
+        return 0
 
 
 def save(path, digest):
@@ -81,13 +162,16 @@ def save(path, digest):
         (work / 'document').write_bytes(data)
         editor = work / 'edit.py'
         editor.write_text(EDITOR, encoding='utf-8')
-        env = dict(os.environ, SUDO_EDITOR=f'{sys.executable} -I {editor}',
+        env = dict(os.environ, LC_ALL='C', SUDO_EDITOR=f'{sys.executable} -I {editor}',
                    CC_SUDOEDIT_SOURCE=str(path), CC_SUDOEDIT_DIGEST=digest)
-        status = run_sudoedit(sudo, path, env, password)
+        deadline = time.monotonic() + 45
+        status = run_sudo(sudo, ['-e', '--', str(path)], env, password, deadline)
         if (work / 'changed').exists():
             return 3
+        if status == WRITABLE_DIR:
+            return save_in_writable_directory(sudo, path, digest, data, password, deadline)
         if status or not (work / 'edited').exists():
-            return 4
+            return status or DENIED
         with path.open('rb') as stream:
             return 0 if stream.read(LIMIT + 1) == data else 3
 
