@@ -7,6 +7,7 @@ import 'package:consolecrypt/core/mock/mock_inventory_service.dart';
 import 'package:consolecrypt/core/mock/mock_sftp_fs.dart';
 import 'package:consolecrypt/core/mock/mock_sftp_service.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:crypto/crypto.dart';
@@ -172,10 +173,21 @@ final class MockSftpBrowserService implements SftpBrowserService, SftpBrowserDeb
   }
 
   @override
-  Future<bool> saveEditorFile(SftpSessionId session, String path, String digest, Uint8List bytes) async {
+  Future<bool> saveEditorFile(
+    SftpSessionId session,
+    String path,
+    String digest,
+    Uint8List bytes, {
+    SecretText? sudoPassword,
+  }) async {
     _checkAccess(session, path, list: false);
     final node = mockResolve(_root(session), path, followLast: false);
     if (node == null) throw _notFound(path);
+    final user = _sftp.connection(session).user;
+    final writable = node.mode & (node.owner == user ? 0x80 : 0x2) != 0;
+    if (!writable && user != 'root' && sudoPassword == null) {
+      throw AppException(AppErrorCode.forbidden, 'Permission denied', args: {'path': path});
+    }
     if (!node.isFile || digest != sha256.convert(mockGeneratedContent(node, node.size)).toString()) return false;
     node.content = Uint8List.fromList(bytes);
     node.touch();

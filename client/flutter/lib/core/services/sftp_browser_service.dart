@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/models/sftp_browser.dart';
 import 'package:consolecrypt/core/models/sftp_edit.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/sftp_service.dart';
 
@@ -73,7 +74,13 @@ abstract interface class SftpBrowserService {
   Future<SftpPreview> readPreview(SftpSessionId session, String path, {int maxBytes = defaultPreviewBytes});
 
   /// Compare the opened SHA-256 revision and atomically replace a regular text file.
-  Future<bool> saveEditorFile(SftpSessionId session, String path, String digest, Uint8List bytes);
+  Future<bool> saveEditorFile(
+    SftpSessionId session,
+    String path,
+    String digest,
+    Uint8List bytes, {
+    SecretText? sudoPassword,
+  });
   Future<String?> editorGitRefs(SftpSessionId session, String directory);
 
   // Transfers --------------------------------------------------------------------
@@ -251,8 +258,13 @@ final class SftpBrowserFallback implements SftpBrowserService {
   }) async => _unsupported('preview');
 
   @override
-  Future<bool> saveEditorFile(SftpSessionId session, String path, String digest, Uint8List bytes) async =>
-      _unsupported('editor save');
+  Future<bool> saveEditorFile(
+    SftpSessionId session,
+    String path,
+    String digest,
+    Uint8List bytes, {
+    SecretText? sudoPassword,
+  }) async => _unsupported('editor save');
   @override
   Future<String?> editorGitRefs(SftpSessionId session, String directory) async => _unsupported('Git');
 

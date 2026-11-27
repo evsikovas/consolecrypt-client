@@ -5,6 +5,7 @@ import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/app/router.dart';
 import 'package:consolecrypt/app/workspace_tools_controller.dart';
+import 'package:consolecrypt/core/glass/glass.dart';
 import 'package:consolecrypt/hosts/systemd_journal.dart';
 import 'package:consolecrypt/hosts/systemd_services.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
@@ -192,7 +193,7 @@ void main() {
           expect(host.name, 'prod-web-1');
           operations.add(request);
           final output = switch (request['action']) {
-            'list' => 'demo.service loaded active running Example\nother.service loaded inactive dead Other unit\nzeta.service loaded failed failed Failed unit\n',
+            'list' => 'demo.service loaded active running Example\nother.service loaded inactive dead Other unit\nzeta.service loaded failed failed Failed unit\nonce.service loaded active exited Completed\nstart.service loaded activating start Starting\n',
             'unit_path' => '/etc/systemd/system/demo.service',
             'unit_text' => '# /etc/systemd/system/demo.service\n[Service]\nExecStart=/opt/demo\n# /etc/systemd/system/demo.service.d/override.conf',
             'journal' => [
@@ -209,6 +210,13 @@ void main() {
     await enterKey(tester, 'hosts-search', 'prod-web');
     await tapKey(tester, 'connect-prod-web-1');
     await tapKey(tester, 'nav-systemd');
+    final tokens = GlassTokens.of(tester.element(find.byType(SystemServicesPanel)));
+    Color? statusColor(String status) => tester.widget<Text>(find.text(status)).style?.color;
+    expect(statusColor('active · running'), tokens.palette.success);
+    expect(statusColor('active · exited'), tokens.palette.success);
+    expect(statusColor('inactive · dead'), tokens.palette.danger);
+    expect(statusColor('failed · failed'), tokens.palette.danger);
+    expect(statusColor('activating · start'), tokens.palette.warning);
     await tapKey(tester, 'systemd-sort');
     await tester.tap(find.text('State · failed first'));
     await settle(tester);
@@ -220,6 +228,7 @@ void main() {
     expect(find.text('zeta.service'), findsNothing);
     await tester.tap(find.text('demo.service'));
     await settle(tester);
+    expect(statusColor('active · running'), tokens.palette.success);
     expect(find.text('log entry #1'), findsOneWidget);
     expect(operations.last, {'action': 'journal', 'unit': 'demo.service'});
     expect(find.text('/etc/systemd/system/demo.service'), findsOneWidget);

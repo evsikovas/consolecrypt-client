@@ -49,9 +49,14 @@ void main() {
       const AppRef(AppRefKind.bundleId, 'dev.zed.Zed'),
       const AppRef(AppRefKind.name, 'code'),
     ]) {
-      final value = const LocalSettings().copyWith(sftpDefaultEditor: editor);
+      final value = const LocalSettings().copyWith(sftpDefaultEditor: editor, sftpUseBuiltinEditor: true);
       final back = localSettingsFromJson(decodeObject(encodeJson(localSettingsToJson(value))));
       expect(back.sftpDefaultEditor, editor);
+      expect(back.copyWith(terminalFontSize: 15).sftpUseBuiltinEditor, isTrue);
+      expect(
+        localSettingsFromJson(localSettingsToJson(value)..remove('sftp_use_builtin_editor')).sftpUseBuiltinEditor,
+        isFalse,
+      );
       expect(back.copyWith(terminalFontSize: 15).sftpDefaultEditor, editor);
       expect(back.copyWith(resetSftpDefaultEditor: true).sftpDefaultEditor, isNull);
     }

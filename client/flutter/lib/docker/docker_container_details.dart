@@ -235,8 +235,8 @@ class _DockerContainerDetailsState extends ConsumerState<DockerContainerDetails>
                       Row(
                         children: [
                           GlassBadge(
-                            label: dockerStateLabel(l, container.state),
-                            tone: dockerStateTone(container.state),
+                            label: dockerStateLabel(l, container.displayState),
+                            tone: dockerStateTone(container.displayState),
                             dense: true,
                           ),
                           const SizedBox(width: 6),
@@ -536,7 +536,7 @@ class _DockerOverview extends StatelessWidget {
     final health = dockerHealth(l, container.health);
     final info = <(String, String)>[
       (l.dockerImage, text(config['Image']).isEmpty ? container.image : text(config['Image'])),
-      (l.dockerStatus, container.status.isEmpty ? dockerStateLabel(l, container.state) : container.status),
+      (l.dockerStatus, container.status.isEmpty ? dockerStateLabel(l, container.displayState) : container.status),
       if (health != null) (l.dockerHealth, health.$1),
       if (created != null) (l.dockerCreated, formatDateTime(l, created)),
       if (command.isNotEmpty) (l.dockerCommand, command),

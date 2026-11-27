@@ -9,11 +9,14 @@ import 'package:consolecrypt/core/glass/glass_tab_strip.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
 import 'package:consolecrypt/core/providers.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
 import 'package:consolecrypt/core/widgets/native_drag_drop.dart';
+import 'package:consolecrypt/core/widgets/sudo_password_dialog.dart';
 import 'package:consolecrypt/editor/editor_language.dart';
 import 'package:consolecrypt/editor/editor_resume.dart';
+import 'package:consolecrypt/editor/editor_sftp_requests.dart';
 import 'package:consolecrypt/editor/project_files.dart';
 import 'package:consolecrypt/editor/project_move_dialog.dart';
 import 'package:consolecrypt/editor/project_terminal.dart';
@@ -26,6 +29,7 @@ import 'package:consolecrypt/sftp/sftp_providers.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:cryptography/cryptography.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -86,6 +90,7 @@ String _errorMessage(AppLocalizations l, Object error) => switch (error) {
   EditorIssue.unsupported => l.editorUnsupported,
   EditorIssue.gitMissing => l.editorNoGitTool,
   EditorIssue.outside => l.editorOutside,
+  EditorIssue.sudoUnavailable => l.editorSudoUnavailable,
   _ => error.toString(),
 };
 
@@ -99,6 +104,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   final folders = <_Folder>[];
   _Folder? selected;
   bool busy = false;
+  double? _treeWidth;
   final _terminalOverrides = [terminalTabsProvider.overrideWith(TerminalTabsController.new)];
 
   late final EditorResume resume;
@@ -109,6 +115,9 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   void initState() {
     super.initState();
     resume = ref.read(editorResumeProvider);
+    ref.listenManual(editorSftpRequestsProvider, (_, requests) {
+      if (requests.isNotEmpty) scheduleMicrotask(_handleSftpRequest);
+    });
     ref.listenManual(editorCloseTabRequestsProvider, (_, _) {
       final folder = selected;
       final doc = folder?.active;
@@ -163,7 +172,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       if (mounted) _resumeError = error;
     } finally {
       key?.destroy();
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+        _handleSftpRequest();
+      }
     }
   }
 
@@ -175,8 +187,48 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     } catch (error) {
       if (mounted) showSnack(context, _errorMessage(context.l10n, error), error: true);
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+        _handleSftpRequest();
+      }
     }
+  }
+
+  void _handleSftpRequest() {
+    if (!mounted || busy || _resumeKey == null || ref.read(editorSftpRequestsProvider).isEmpty) return;
+    final request = ref.read(editorSftpRequestsProvider.notifier).takeFirst();
+    unawaited(
+      _run(() async {
+        final path = request.path;
+        _Folder? target;
+        for (final folder in folders) {
+          final project = folder.project;
+          if (project is! SshProject ||
+              project.host.id != request.host.id ||
+              !project.paths.isWithin(project.root, path)) {
+            continue;
+          }
+          if (folder.findDocument(project, path) != null) {
+            target = folder;
+            break;
+          }
+          if (target == null || project.root.length > target.project.root.length) target = folder;
+        }
+        if (target == null) {
+          final project = SshProject.resume(
+            p.posix.dirname(path),
+            request.host,
+            ref.read(sftpServiceProvider),
+            ref.read(sftpBrowserServiceProvider),
+          );
+          _openFolder(project);
+          target = selected!;
+        } else {
+          setState(() => selected = target);
+        }
+        await _open(target, path);
+      }),
+    );
   }
 
   Future<bool> _discard(Iterable<_Document> docs) async {
@@ -497,13 +549,50 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
   Future<void> _writeDocument(_Document doc) async {
     final text = doc.controller.text;
-    final result = await doc.files.save(doc.source, text);
+    final files = doc.files;
+    late final ProjectText result;
+    try {
+      result = await files.save(doc.source, text);
+    } on AppException catch (error) {
+      if (error.code != AppErrorCode.forbidden || files is! SshProject) rethrow;
+      final saved = await _retrySudo(files, doc.source, text);
+      if (saved == null) return;
+      result = saved;
+    }
     if (!mounted) return;
     setState(() {
       doc.source = result;
       doc.saved = text;
       doc.dirty = doc.controller.text != text;
     });
+  }
+
+  Future<ProjectText?> _retrySudo(SshProject files, ProjectText source, String text) async {
+    bool current() =>
+        mounted &&
+        _resumeKey != null &&
+        ref.read(activeProfileProvider)?.id == resume.owner &&
+        ref.read(appStageProvider) == AppStage.unlocked;
+    var retry = false;
+    while (current()) {
+      final secret = await showAppDialog<SecretText>(
+        context,
+        secure: true,
+        builder: (_) => SudoPasswordDialog(host: files.host.name, path: source.path, retry: retry),
+      );
+      if (secret == null) return null;
+      try {
+        if (!current()) return null;
+        return await files.save(source, text, sudoPassword: secret);
+      } on AppException catch (error) {
+        if (error.code == AppErrorCode.unsupported) throw EditorIssue.sudoUnavailable;
+        if (error.code != AppErrorCode.forbidden) rethrow;
+        retry = true;
+      } finally {
+        secret.wipe();
+      }
+    }
+    return null;
   }
 
   Future<void> _close(_Folder folder, _Document doc) => _run(() async {
@@ -728,6 +817,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     final l = context.l10n;
     final current = folder.project;
     final active = folder.active;
+    const minTree = 140.0;
+    final maxTree = (box.maxWidth - 320 - 12).clamp(minTree, double.infinity);
+    final defaultTree = (box.maxWidth * .22).clamp(185.0, 300.0);
+    double treeWidth() => (_treeWidth ?? defaultTree).clamp(minTree, maxTree);
+    void resize(double delta) => setState(() => _treeWidth = (treeWidth() + delta).clamp(minTree, maxTree));
     final tree = ProjectTree(
       project: current,
       expandedPaths: folder.expanded,
@@ -751,8 +845,22 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
           child: Row(
             children: [
               if (!compact) ...[
-                SizedBox(width: (box.maxWidth * 0.22).clamp(185, 300).toDouble(), child: tree),
-                const VerticalDivider(width: 1),
+                SizedBox(width: treeWidth(), child: tree),
+                Semantics(
+                  label: l.keepassResizeGroups,
+                  onIncrease: () => resize(24),
+                  onDecrease: () => resize(-24),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.resizeColumn,
+                    child: GestureDetector(
+                      key: const ValueKey('editor-tree-divider'),
+                      behavior: HitTestBehavior.opaque,
+                      dragStartBehavior: DragStartBehavior.down,
+                      onHorizontalDragUpdate: (d) => resize(d.delta.dx),
+                      child: const VerticalDivider(width: 12, thickness: 1),
+                    ),
+                  ),
+                ),
               ],
               Expanded(
                 child: Stack(

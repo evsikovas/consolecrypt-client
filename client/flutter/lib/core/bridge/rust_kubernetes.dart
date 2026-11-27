@@ -563,6 +563,7 @@ final class RustKubeService
     String? labelSelector,
     String? continueToken,
     int limit = 200,
+    bool includeObjects = false,
   }) async => KubeResourcePage.fromJson(
     decodeObject(
       await guard(
@@ -575,6 +576,7 @@ final class RustKubeService
         ),
       ),
     ),
+    includeObjects: includeObjects,
   );
 
   @override

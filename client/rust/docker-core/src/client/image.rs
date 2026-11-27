@@ -115,16 +115,47 @@ fn candidates(image: &Value, id: &str, source: &str) -> Result<Vec<String>, Dock
 }
 
 impl DockerClient {
+    /// Join by immutable image ID, including containers that have stopped.
+    async fn image_consumers(
+        &self,
+    ) -> Result<std::collections::BTreeMap<String, Vec<Value>>, DockerError> {
+        let rows = self
+            .json(Method::GET, "/containers/json?all=1", None)
+            .await?;
+        let mut consumers = std::collections::BTreeMap::<String, Vec<Value>>::new();
+        for c in rows.as_array().ok_or(DockerError::Protocol)? {
+            let image = c["ImageID"]
+                .as_str()
+                .filter(|s| !s.is_empty())
+                .ok_or(DockerError::Protocol)?;
+            let name = c["Names"][0]
+                .as_str()
+                .or_else(|| c["Id"].as_str())
+                .ok_or(DockerError::Protocol)?;
+            let labels = &c["Labels"];
+            consumers.entry(image.to_owned()).or_default().push(serde_json::json!({
+                "name": name.trim_start_matches('/'), "state": c["State"],
+                "pod": labels["io.kubernetes.pod.name"], "namespace": labels["io.kubernetes.pod.namespace"]
+            }));
+        }
+        Ok(consumers)
+    }
+
     /// Inventory metadata only. Engine labels and build configuration can contain secrets.
     pub async fn images(&self) -> Result<Vec<Value>, DockerError> {
-        let list = self.json(Method::GET, "/images/json?digests=true", None).await?;
+        let list = self
+            .json(Method::GET, "/images/json?digests=true", None)
+            .await?;
         let items = list.as_array().ok_or(DockerError::Protocol)?;
+        let consumers = self.image_consumers().await.ok();
         Ok(items
             .iter()
             .map(|image| {
                 serde_json::json!({
                     "id": image["Id"], "tags": image["RepoTags"], "digests": image["RepoDigests"],
                     "size": image["Size"], "created": image["Created"],
+                    "consumers": consumers.as_ref().and_then(|by_image| image["Id"].as_str()
+                        .map(|id| by_image.get(id).map(Vec::as_slice).unwrap_or_default())),
                 })
             })
             .collect())
@@ -162,6 +193,9 @@ impl DockerClient {
         } else {
             image_id
         };
+        if self.image_consumers().await?.contains_key(image_id) {
+            return Ok(false);
+        }
         let path = format!("/images/{reference}?force=false&noprune=true");
         match self.json(Method::DELETE, &path, None).await {
             Ok(_) | Err(DockerError::NotFound) => Ok(true),

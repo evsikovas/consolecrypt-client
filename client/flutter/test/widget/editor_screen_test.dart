@@ -98,6 +98,14 @@ void main() {
     await settle(tester);
 
     final tree = find.byType(ProjectTree);
+    final divider = find.byKey(const ValueKey('editor-tree-divider'));
+    final initialWidth = tester.getSize(tree).width;
+    await tester.drag(divider, const Offset(80, 0));
+    await settle(tester);
+    expect(tester.getSize(tree).width, greaterThan(initialWidth));
+    await tester.drag(divider, const Offset(-120, 0));
+    await settle(tester);
+    expect(tester.getSize(tree).width, lessThan(initialWidth));
     for (final name in ['README.md', 'notes.txt']) {
       final row = find.descendant(of: tree, matching: find.text(name));
       await tester.ensureVisible(row);

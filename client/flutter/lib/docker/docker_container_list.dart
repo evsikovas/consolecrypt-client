@@ -443,7 +443,7 @@ class DockerContainerRow extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(compact ? 10 : 30, 8, 6, 8),
             child: Row(
               children: [
-                StatusDot(color: p.tone(dockerStateTone(container.state)), size: 9),
+                StatusDot(color: p.tone(dockerStateTone(container.displayState)), size: 9),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -486,8 +486,8 @@ class DockerContainerRow extends StatelessWidget {
                         children: [
                           GlassBadge(
                             key: ValueKey('docker-state-${container.id}'),
-                            label: dockerStateLabel(l, container.state),
-                            tone: dockerStateTone(container.state),
+                            label: dockerStateLabel(l, container.displayState),
+                            tone: dockerStateTone(container.displayState),
                             dense: true,
                           ),
                           if (health != null)

@@ -24,6 +24,7 @@ import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_system_views.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
 import 'package:consolecrypt/docker/docker_volume_list.dart';
+import 'package:consolecrypt/kubernetes/kube_providers.dart';
 import 'package:consolecrypt/notes/note_models.dart';
 import 'package:consolecrypt/notes/notes_providers.dart';
 import 'package:flutter/foundation.dart';
@@ -75,6 +76,19 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
   DockerStateFilter _filter = DockerStateFilter.all;
   var _inventory = _DockerTab.containers;
   bool _images = false;
+  DockerContainerState? _panelState;
+  bool _sortByState = true;
+  static const _stateOrder = [
+    DockerContainerState.failed,
+    DockerContainerState.dead,
+    DockerContainerState.restarting,
+    DockerContainerState.running,
+    DockerContainerState.paused,
+    DockerContainerState.exited,
+    DockerContainerState.created,
+    DockerContainerState.removing,
+    DockerContainerState.unknown,
+  ];
   final _diskView = GlobalKey<DockerDiskUsageState>();
   final _eventsView = GlobalKey<DockerEventJournalState>();
   final _networkList = GlobalKey<DockerNetworkListState>();
@@ -498,6 +512,22 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     final containers = _containers.value;
     if (widget.sessionPanel) {
       final observer = widget.service;
+      final visible =
+          containers
+              .where(
+                (c) =>
+                    _panelState == null ||
+                    c.displayState == _panelState ||
+                    (_panelState == DockerContainerState.failed && c.displayState == DockerContainerState.dead),
+              )
+              .toList()
+            ..sort((a, b) {
+              if (_sortByState) {
+                final rank = _stateOrder.indexOf(a.displayState).compareTo(_stateOrder.indexOf(b.displayState));
+                if (rank != 0) return rank;
+              }
+              return a.name.compareTo(b.name);
+            });
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -541,10 +571,42 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                 onChanged: (v) => setState(() => _images = v),
               ),
             ),
+          if (!_images)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  GlassSelect<DockerContainerState?>(
+                    key: const ValueKey('docker-panel-filter'),
+                    semanticLabel: l.dockerStateFilter,
+                    value: _panelState,
+                    items: [
+                      GlassSelectItem(value: null, label: l.systemdAll),
+                      for (final state in _stateOrder.where((s) => s != DockerContainerState.dead))
+                        GlassSelectItem(value: state, label: dockerStateLabel(l, state)),
+                    ],
+                    onChanged: (state) => setState(() => _panelState = state),
+                  ),
+                  GlassSelect<bool>(
+                    key: const ValueKey('docker-panel-sort'),
+                    semanticLabel: l.dockerContainerSort,
+                    value: _sortByState,
+                    items: [
+                      GlassSelectItem(value: true, label: l.systemdSortState),
+                      GlassSelectItem(value: false, label: l.systemdSortName),
+                    ],
+                    onChanged: (value) => setState(() => _sortByState = value),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: _images
                 ? DockerImageList(
                     key: _imageList,
+                    kubernetes: ref.watch(kubeServiceProvider),
                     service: observer as DockerObservationService,
                     session: widget.session,
                   )
@@ -552,29 +614,27 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
                 ? Center(child: Text(dockerErrorText(l, _error!)))
                 : !_loaded
                 ? const Center(child: CircularProgressIndicator())
-                : containers.isEmpty
-                ? Center(child: Text(l.dockerNoContainers))
+                : visible.isEmpty
+                ? Center(child: Text(containers.isEmpty ? l.dockerNoContainers : l.dockerNoMatches))
                 : ListView.separated(
-                    itemCount: containers.length,
+                    itemCount: visible.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, i) {
-                      final c = containers[i], tokens = GlassTokens.of(context);
+                      final c = visible[i], tokens = GlassTokens.of(context);
+                      final color = tokens.palette.tone(dockerStateTone(c.displayState));
                       return ListTile(
                         dense: true,
                         visualDensity: VisualDensity.compact,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                        leading: Icon(
-                          ToolIcons.docker,
-                          size: 18,
-                          color: c.state == DockerContainerState.running
-                              ? tokens.palette.success
-                              : tokens.secondaryLabel,
-                        ),
+                        leading: Icon(ToolIcons.docker, size: 18, color: color),
                         title: Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                         subtitle: Text(c.image, maxLines: 1, overflow: TextOverflow.ellipsis),
                         trailing: Tooltip(
                           message: c.status,
-                          child: Text(dockerStateLabel(l, c.state), style: tokens.typography.caption),
+                          child: Text(
+                            dockerStateLabel(l, c.displayState),
+                            style: tokens.typography.caption.copyWith(color: color),
+                          ),
                         ),
                         onTap: () => _open(c),
                       );
@@ -593,6 +653,7 @@ class _DockerWorkspaceState extends ConsumerState<DockerWorkspace> with WidgetsB
     final list = _inventory == _DockerTab.images && observation is DockerObservationService
         ? DockerImageList(
             key: _imageList,
+            kubernetes: ref.watch(kubeServiceProvider),
             service: observation as DockerObservationService,
             session: widget.session,
             query: _query,

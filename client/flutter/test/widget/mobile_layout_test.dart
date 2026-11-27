@@ -157,7 +157,8 @@ void main() {
     expect(bounds.left, greaterThanOrEqualTo(0));
     expect(bounds.right, lessThanOrEqualTo(360));
     expect(find.byKey(const ValueKey('sftp-preview-line-numbers')), findsOneWidget);
-    await tester.binding.handlePopRoute();
+    await tapKey(tester, 'sftp-quicklook-edit');
+    expect(find.byKey(const ValueKey('/home/deploy/notes.txt')), findsOneWidget);
     c.read(routerProvider).go(AppRoutes.settings);
     await settle(tester);
     expect(find.byKey(const ValueKey('sftp-default-editor-choose')), findsNothing);

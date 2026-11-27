@@ -92,7 +92,7 @@ final class DockerPort {
   );
 }
 
-enum DockerContainerState { created, running, paused, restarting, removing, exited, dead, unknown }
+enum DockerContainerState { created, running, paused, restarting, removing, exited, dead, unknown, failed }
 
 final class DockerContainer {
   const DockerContainer({
@@ -123,6 +123,10 @@ final class DockerContainer {
 
   /// `healthy`, `unhealthy`, `starting` or null.
   final String? health;
+  static final _exitError = RegExp(r'^Exited\s+\(([1-9][0-9]*)\)', caseSensitive: false);
+  DockerContainerState get displayState =>
+      state == DockerContainerState.exited && _exitError.hasMatch(status) ? DockerContainerState.failed : state;
+
   String get shortId => id.length > 12 ? id.substring(0, 12) : id;
   factory DockerContainer.fromJson(DockerJson json) => DockerContainer(
     id: json['id'] as String,
@@ -441,12 +445,28 @@ final class DockerImage {
     : id = json['id'] as String,
       tags = references(json['tags']),
       digests = references(json['digests']),
+      consumers = (json['consumers'] as List?)
+          ?.cast<DockerJson>()
+          .map(
+            (item) => (
+              name: item['name'] as String,
+              state:
+                  DockerContainerState.values.where((s) => s.name == item['state']).firstOrNull ??
+                  DockerContainerState.unknown,
+              pod: item['pod'] as String?,
+              namespace: item['namespace'] as String?,
+            ),
+          )
+          .toList(),
       size = json['size'] as int?,
       created = json['created'] is int
           ? DateTime.fromMillisecondsSinceEpoch((json['created'] as int) * 1000, isUtc: true)
           : null;
   final String id;
   final List<String> tags, digests;
+
+  /// Null when the engine could not enumerate container references.
+  final List<({String name, DockerContainerState state, String? pod, String? namespace})>? consumers;
   final int? size;
   final DateTime? created;
 

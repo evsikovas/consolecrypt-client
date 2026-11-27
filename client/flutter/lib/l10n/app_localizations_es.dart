@@ -10,6 +10,61 @@ class AppLocalizationsEs extends AppLocalizations {
   AppLocalizationsEs([String locale = 'es']) : super(locale);
 
   @override
+  String monitorConnectSsh(String host) {
+    return 'Conectar a $host por SSH';
+  }
+
+  @override
+  String get dockerExitError => 'Con error';
+
+  @override
+  String get dockerContainerSort => 'Ordenar contenedores';
+
+  @override
+  String get dockerImageUsage => 'Uso en este host Docker';
+
+  @override
+  String get dockerImageAll => 'Todas las imágenes';
+
+  @override
+  String get dockerImageUsed => 'En uso';
+
+  @override
+  String get dockerImageUnused => 'Sin usar';
+
+  @override
+  String get dockerImageUsageUnknown => 'Uso desconocido';
+
+  @override
+  String get dockerImageOldest => 'Más antiguas primero';
+
+  @override
+  String get dockerImageSelectUnused => 'Seleccionar las visibles sin usar';
+
+  @override
+  String dockerImageDeleteSelected(int count) {
+    return 'Eliminar selección ($count)';
+  }
+
+  @override
+  String get dockerImageRetained => 'Se conservan en este host';
+
+  @override
+  String get dockerImagePodCheck => 'Consultar pods en Kubernetes';
+
+  @override
+  String get dockerImageNoPods => 'No hay pods coincidentes en el ámbito seleccionado';
+
+  @override
+  String get dockerImagePodTag => 'Referencia por etiqueta';
+
+  @override
+  String get dockerImagePodDigest => 'Coincidencia de digest';
+
+  @override
+  String get dockerImageNoContexts => 'No hay contextos de Kubernetes guardados';
+
+  @override
   String get systemdOriginal => 'Mensaje original';
 
   @override
@@ -6199,8 +6254,27 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sftpSystemEditor => 'Por defecto del sistema';
 
   @override
+  String get editorSaveSudo => 'Guardar con sudo';
+
+  @override
+  String get editorSudoRequired => 'Se denegó la escritura. Introduce la contraseña de sudo de este servidor.';
+
+  @override
+  String get editorSudoDenied =>
+      'sudoedit denegó el guardado. Comprueba la contraseña y los permisos de esta cuenta para editar el archivo.';
+
+  @override
+  String get editorSudoUnavailable => 'Para guardar con sudo, el servidor SSH necesita Python 3 y sudoedit.';
+
+  @override
+  String get sftpBuiltinEditor => 'Editor integrado';
+
+  @override
+  String get sftpExternalEditor => 'Editor externo';
+
+  @override
   String get sftpDefaultEditorHelp =>
-      'Abrir y abrir en editor utilizar esta aplicación. Abrir Con permite elegir otra aplicación para un archivo. Guardado sólo en este dispositivo.';
+      'Elige dónde abrir los archivos SFTP. Usa «Abrir con» para elegir otra aplicación para un archivo.';
 
   @override
   String get terminalContextMenu => 'Acciones terminales';

@@ -89,6 +89,9 @@ impl DockerConnector for Engine {
                     200,
                     json!([{"Id":id,"RepoTags":["demo:test"],"RepoDigests":[],"Size":65,"Created":99,"Labels":{"fixture":"private"}}]),
                 )
+            } else if path == "/containers/json?all=1" {
+                (200, json!([{"Id":"stopped","Names":["/old"],"ImageID":if status == 423 { &id } else { "another-image" },"State":"exited",
+                              "Labels":{"io.kubernetes.pod.name":"worker","io.kubernetes.pod.namespace":"ops"}}]))
             } else if path == "/networks" {
                 (200, json!([{"Name":"unused","Id":"0123","Driver":"bridge","Scope":"local","Options":{"token":"private"},"IPAM":{"Config":[{"Subnet":"10.42.0.0/16","Gateway":"10.42.0.1"}]}}]))
             } else if path == "/images/demo:test/json" {
@@ -177,9 +180,10 @@ async fn network_inventory_includes_unattached_networks_and_only_public_metadata
 async fn image_inventory_and_removal_use_exact_references_without_force() {
     let id = format!("sha256:{}", "a".repeat(64));
     for (reported, status, outcome, calls) in [
-        (id.clone(), 200, Some(true), 3),
-        (id.clone(), 409, Some(false), 3),
-        (format!("sha256:{}", "b".repeat(64)), 200, None, 2),
+        (id.clone(), 423, Some(false), 4),
+        (id.clone(), 200, Some(true), 5),
+        (id.clone(), 409, Some(false), 5),
+        (format!("sha256:{}", "b".repeat(64)), 200, None, 3),
     ] {
         let engine = Arc::new(Engine {
             id: id.clone(),
@@ -191,6 +195,13 @@ async fn image_inventory_and_removal_use_exact_references_without_force() {
         let client = DockerClient::new(engine.clone());
         let rows = client.images().await.unwrap();
         assert_eq!(rows[0]["size"], 65);
+        if status == 423 {
+            assert_eq!(rows[0]["consumers"], json!([{
+                "name":"old","state":"exited","pod":"worker","namespace":"ops"
+            }]));
+        } else {
+            assert_eq!(rows[0]["consumers"], json!([]));
+        }
         assert!(rows[0].get("Labels").is_none());
         assert!(client
             .remove_image(&id, Some("demo:test?force=true"))

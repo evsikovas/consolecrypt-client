@@ -10,6 +10,61 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String monitorConnectSsh(String host) {
+    return '通过 SSH 连接到 $host';
+  }
+
+  @override
+  String get dockerExitError => '故障';
+
+  @override
+  String get dockerContainerSort => '容器排序';
+
+  @override
+  String get dockerImageUsage => '此 Docker 主机上的使用情况';
+
+  @override
+  String get dockerImageAll => '所有镜像';
+
+  @override
+  String get dockerImageUsed => '使用中';
+
+  @override
+  String get dockerImageUnused => '未使用';
+
+  @override
+  String get dockerImageUsageUnknown => '使用情况未知';
+
+  @override
+  String get dockerImageOldest => '最旧优先';
+
+  @override
+  String get dockerImageSelectUnused => '选中当前可见的未使用镜像';
+
+  @override
+  String dockerImageDeleteSelected(int count) {
+    return '删除所选项（$count）';
+  }
+
+  @override
+  String get dockerImageRetained => '保留在此主机';
+
+  @override
+  String get dockerImagePodCheck => '检查 Kubernetes Pod';
+
+  @override
+  String get dockerImageNoPods => '所选范围内没有匹配的 Pod';
+
+  @override
+  String get dockerImagePodTag => '标签引用';
+
+  @override
+  String get dockerImagePodDigest => '摘要匹配';
+
+  @override
+  String get dockerImageNoContexts => '没有已保存的 Kubernetes 上下文';
+
+  @override
   String get systemdOriginal => '原始消息';
 
   @override
@@ -5970,7 +6025,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sftpSystemEditor => '系统默认';
 
   @override
-  String get sftpDefaultEditorHelp => '在编辑器中打开和打开此应用程序。打开时允许您为一个文件选择另一个应用程序。只保存在这个设备上。';
+  String get editorSaveSudo => '使用 sudo 保存';
+
+  @override
+  String get editorSudoRequired => '没有写入权限。请输入此主机的 sudo 密码。';
+
+  @override
+  String get editorSudoDenied => 'sudoedit 拒绝保存。请检查密码以及此账户编辑该文件的权限。';
+
+  @override
+  String get editorSudoUnavailable => '通过 sudo 保存需要 SSH 主机安装 Python 3 和 sudoedit。';
+
+  @override
+  String get sftpBuiltinEditor => '内置编辑器';
+
+  @override
+  String get sftpExternalEditor => '外部编辑器';
+
+  @override
+  String get sftpDefaultEditorHelp => '选择打开 SFTP 文件的方式。要为单个文件选择其他应用，请使用“打开方式”。';
 
   @override
   String get terminalContextMenu => '终端动作';

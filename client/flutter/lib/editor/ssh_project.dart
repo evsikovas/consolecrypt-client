@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/editor/project_files.dart';
 import 'package:crypto/crypto.dart';
@@ -170,7 +171,7 @@ class SshProject extends ProjectFiles {
   }
 
   @override
-  Future<ProjectText> save(ProjectText original, String text) async {
+  Future<ProjectText> save(ProjectText original, String text, {SecretText? sudoPassword}) async {
     await _checkFilePath(original.path);
     final next = ProjectText.decode(original.path, original.encode(text));
     if (!await browser.saveEditorFile(
@@ -178,6 +179,7 @@ class SshProject extends ProjectFiles {
       original.path,
       sha256.convert(original.bytes).toString(),
       next.bytes,
+      sudoPassword: sudoPassword,
     )) {
       throw EditorIssue.changed;
     }

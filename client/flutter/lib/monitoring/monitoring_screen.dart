@@ -8,6 +8,7 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/host_metrics_service.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/hosts/hosts_screen.dart' show connectToHost;
 import 'package:consolecrypt/monitoring/monitoring_card.dart';
 import 'package:consolecrypt/monitoring/monitoring_inventory.dart';
 import 'package:consolecrypt/monitoring/monitoring_picker.dart';
@@ -93,6 +94,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> with Widget
       inventory: inventory,
       selection: selection,
       reader: ref.watch(dashboardMetricsProvider),
+      connect: (host) => connectToHost(context, ref, host),
       onInterval: (v) => save(profile, (p) => p.copyWith(seconds: v)),
       onMinimal: (v) => save(profile, (p) => p.copyWith(minimal: v)),
       onPercent: (v) => save(profile, (p) => p.copyWith(percent: v)),
@@ -114,6 +116,7 @@ class _Dashboard extends StatefulWidget {
     required this.selection,
     required this.reader,
     required this.choose,
+    required this.connect,
     required this.onInterval,
     required this.onPercent,
     required this.onMinimal,
@@ -122,6 +125,7 @@ class _Dashboard extends StatefulWidget {
   final MonitoringPreferences selection;
   final DashboardMetricsReader reader;
   final VoidCallback choose;
+  final ValueChanged<Host> connect;
   final ValueChanged<int> onInterval;
   final ValueChanged<bool> onPercent, onMinimal;
   @override
@@ -259,6 +263,7 @@ class _DashboardState extends State<_Dashboard> {
                                     reading: poller.readings[host.id],
                                     percent: prefs.percent,
                                     minimal: prefs.minimal,
+                                    onConnect: () => widget.connect(host),
                                   ),
                                 ),
                             ],

@@ -181,8 +181,8 @@ final class SftpActions {
         } else {
           for (final e in sel.where((e) => !e.isDirectory).take(10)) {
             if (!context.mounted) return;
-            if (AppPlatform.isMobile) {
-              await showQuickLook(context, e);
+            if (AppPlatform.isMobile && !ref.read(settingsServiceProvider).currentLocal.sftpUseBuiltinEditor) {
+              await showQuickLook(context, e, onOpenInEditor: (file) => unawaited(openInEditor(context, ref, file)));
             } else {
               await openInEditor(context, ref, e);
             }
@@ -191,11 +191,7 @@ final class SftpActions {
       case SftpAction.openWith:
         await openInEditor(context, ref, sel.first, openWith: const OpenWithChoose());
       case SftpAction.quickLook:
-        await showQuickLook(
-          context,
-          sel.first,
-          onOpenInEditor: AppPlatform.isMobile ? null : (e) => unawaited(openInEditor(context, ref, e)),
-        );
+        await showQuickLook(context, sel.first, onOpenInEditor: (e) => unawaited(openInEditor(context, ref, e)));
       case SftpAction.download:
         if (AppPlatform.isMobile) {
           await _downloadToDocument(sel.single);

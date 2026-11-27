@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:consolecrypt/app/gate.dart';
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/l10n/error_messages.dart';
 import 'package:consolecrypt/core/l10n/l10n.dart';
@@ -8,12 +9,16 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/formatting.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/editor/editor_sftp_requests.dart';
+import 'package:consolecrypt/editor/project_files.dart';
 import 'package:consolecrypt/sftp/dialogs/edit_dialogs.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sftp/sftp_providers.dart';
 import 'package:consolecrypt/sftp/widgets/sftp_activity.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:path/path.dart' as p;
 
 /// Files whose "can run code" notice was shown in this app run, per host
 /// and path (security audit H4: once per file).
@@ -24,6 +29,24 @@ class _ActiveContentNotices extends Notifier<Set<String>> {
   Set<String> build() => const {};
 
   void add(String key) => state = {...state, key};
+}
+
+/// The editor saves to a regular file. Resolve link targets on the selected
+/// server so saving keeps the link itself intact.
+Future<String> _editorPath(SftpBrowserService browser, SftpSessionId session, RemoteFileInfo entry) async {
+  final seen = <String>{};
+  var file = entry;
+  while (file.isSymlink) {
+    final target = file.linkTarget;
+    if (file.linkTargetKind != RemoteEntryKind.file || target == null || !seen.add(file.path) || seen.length > 40) {
+      throw EditorIssue.unsupported;
+    }
+    final parent = await browser.resolveDirectory(session, p.posix.dirname(target), base: p.posix.dirname(file.path));
+    file = await browser.stat(session, p.posix.join(parent, p.posix.basename(target)));
+  }
+  if (file.kind != RemoteEntryKind.file || file.size > editorFileLimit) throw EditorIssue.unsupported;
+  final parent = await browser.resolveDirectory(session, p.posix.dirname(file.path), base: '/');
+  return p.posix.join(parent, file.name);
 }
 
 /// "Open" / "Open With…": first-use hint, size check, then an edit session
@@ -44,6 +67,27 @@ Future<void> openInEditor(
   final session = state.session;
   final profileId = ref.read(activeProfileProvider)?.id;
   if (session == null) return;
+  if (openWith is OpenWithDefault &&
+      (AppPlatform.isMobile || ref.read(settingsServiceProvider).currentLocal.sftpUseBuiltinEditor)) {
+    final host = state.host;
+    if (host == null || profileId == null) return;
+    try {
+      final path = await _editorPath(ref.read(sftpBrowserServiceProvider), session, entry);
+      if (!context.mounted ||
+          ref.read(appStageProvider) != AppStage.unlocked ||
+          ref.read(activeProfileProvider)?.id != profileId ||
+          ref.read(sftpControllerProvider).session != session) {
+        return;
+      }
+      ref.read(editorSftpRequestsProvider.notifier).open(host, path);
+      context.go(AppRoutes.editor);
+    } on EditorIssue {
+      if (context.mounted) showSnack(context, l10n.editorUnsupported, error: true);
+    } on AppException catch (e) {
+      if (context.mounted && e.code != AppErrorCode.cancelled) showSnack(context, errorMessage(l10n, e), error: true);
+    }
+    return;
+  }
   const limit = SftpBrowserService.maxEditFileSize;
   if (!entry.isSymlink && entry.size > limit) {
     showSnack(context, l10n.sftpEditTooLarge(entry.name, formatBytes(l10n, entry.size), formatBytes(l10n, limit)));

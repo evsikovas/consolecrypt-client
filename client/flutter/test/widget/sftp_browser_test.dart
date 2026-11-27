@@ -3,9 +3,11 @@ import 'dart:io';
 
 import 'package:consolecrypt/app/platform.dart';
 import 'package:consolecrypt/core/mock/mock_backend.dart';
+import 'package:consolecrypt/core/mock/mock_sftp_fs.dart';
 import 'package:consolecrypt/core/models/models.dart';
 import 'package:consolecrypt/core/services/errors.dart';
 import 'package:consolecrypt/core/services/sftp_browser_service.dart';
+import 'package:consolecrypt/editor/editor_screen.dart';
 import 'package:consolecrypt/l10n/app_localizations.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:consolecrypt/sftp/sftp_providers.dart';
@@ -92,6 +94,49 @@ String _editStatus(WidgetTester tester, String fileName) {
 }
 
 void main() {
+  testWidgets('built-in SFTP editor reuses the draft and saves to the selected remote file', (tester) async {
+    final backend = await _openBrowser(tester, editHintSeen: false);
+    final settings = backend.services.settings;
+    await settings.updateLocal(settings.currentLocal.copyWith(sftpUseBuiltinEditor: true));
+    final ref = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
+    final session = ref.read(sftpControllerProvider).session!;
+    const path = '$_home/notes.txt';
+    final field = find.byKey(const ValueKey(path));
+    await _doubleClick(tester, path);
+    expect(field, findsOneWidget);
+    expect(ref.read(editSessionsProvider).value, isEmpty);
+    await tester.enterText(field, 'Saved from SFTP');
+    await settle(tester);
+    await tapKey(tester, 'nav-sftp');
+    await _doubleClick(tester, path);
+    expect(tester.widget<TextField>(field).controller!.text, 'Saved from SFTP');
+    await tester.tap(find.descendant(of: find.byType(EditorScreen), matching: find.byTooltip('Save')));
+    await settle(tester);
+    expect(String.fromCharCodes((await backend.sftpBrowser.readPreview(session, path)).bytes), 'Saved from SFTP');
+    await backend.sftpBrowser.setPermissions(session, path, 292); // 0444
+    await tester.enterText(field, 'Privileged edit');
+    await settle(tester);
+    final save = find.descendant(of: find.byType(EditorScreen), matching: find.byTooltip('Save'));
+    await tester.tap(save);
+    await settle(tester);
+    expect(find.textContaining('Write access was denied'), findsOneWidget);
+    await tester.tap(find.text('Cancel').last);
+    await settle(tester);
+    expect(tester.widget<TextField>(field).controller!.text, 'Privileged edit');
+    expect(String.fromCharCodes((await backend.sftpBrowser.readPreview(session, path)).bytes), 'Saved from SFTP');
+    await tester.tap(save);
+    await settle(tester);
+    await tester.enterText(find.byKey(const ValueKey('sudo-password')), 'fixture');
+    await tapKey(tester, 'sudo-confirm');
+    expect(String.fromCharCodes((await backend.sftpBrowser.readPreview(session, path)).bytes), 'Privileged edit');
+    await tapKey(tester, 'nav-sftp');
+    final logs = mockResolve(backend.sftp.connection(session).root, '$_home/logs')!;
+    logs.children['app.log'] = MockFsNode.file('app.log', text: 'A small log');
+    await _doubleClick(tester, '$_home/latest.log');
+    expect(find.byKey(const ValueKey('$_home/logs/app.log')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('Linux Open With selects an executable, reuses it and preserves the saved editor', (tester) async {
     final backend = await _openBrowser(tester);
     const savedEditor = AppRef(AppRefKind.path, '/usr/bin/code');
@@ -101,6 +146,7 @@ void main() {
     final container = ProviderScope.containerOf(tester.element(find.byType(Navigator).first));
     expect(container.read(editSessionsProvider).requireValue.single.app, savedEditor);
     expect(backend.files.applicationChoices, 0);
+    await settings.updateLocal(settings.currentLocal.copyWith(sftpUseBuiltinEditor: true));
 
     backend.files.applicationPath = '/usr/bin/zed';
     await _click(tester, '$_home/notes.txt');
@@ -699,7 +745,7 @@ void main() {
     await settle(tester);
     expect(find.byKey(const ValueKey('transfer-notes.txt')), findsOneWidget);
     expect(tester.takeException(), isNull);
-   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('a file dragged to Finder/Explorer leaves no staging folder when the download fails', (tester) async {
     await _openBrowser(tester);

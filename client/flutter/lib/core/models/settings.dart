@@ -241,6 +241,7 @@ final class LocalSettings {
     this.glassMode = GlassMode.standard,
     this.sidebarStyle = SidebarStyle.floating,
     this.workspacePanelStyle = WorkspacePanelStyle.floating,
+    this.sftpUseBuiltinEditor = false,
     this.sftpDefaultEditor,
     this.checkUpdatesAutomatically = true,
     this.updateFeedIssuedAt,
@@ -342,7 +343,9 @@ final class LocalSettings {
 
   final WorkspacePanelStyle workspacePanelStyle;
 
-  /// Device-local editor for SFTP Open; null uses the OS file association.
+  final bool sftpUseBuiltinEditor;
+
+  /// External application for SFTP Open; null uses the OS file association.
   /// Application paths must never travel in vault sync.
   final AppRef? sftpDefaultEditor;
 
@@ -415,6 +418,7 @@ final class LocalSettings {
     GlassMode? glassMode,
     SidebarStyle? sidebarStyle,
     WorkspacePanelStyle? workspacePanelStyle,
+    bool? sftpUseBuiltinEditor,
     AppRef? sftpDefaultEditor,
     bool resetSftpDefaultEditor = false,
     bool? checkUpdatesAutomatically,
@@ -464,6 +468,7 @@ final class LocalSettings {
     glassMode: glassMode ?? this.glassMode,
     sidebarStyle: sidebarStyle ?? this.sidebarStyle,
     workspacePanelStyle: workspacePanelStyle ?? this.workspacePanelStyle,
+    sftpUseBuiltinEditor: sftpUseBuiltinEditor ?? this.sftpUseBuiltinEditor,
     sftpDefaultEditor: resetSftpDefaultEditor ? null : (sftpDefaultEditor ?? this.sftpDefaultEditor),
     checkUpdatesAutomatically: checkUpdatesAutomatically ?? this.checkUpdatesAutomatically,
     updateFeedIssuedAt: updateFeedIssuedAt ?? this.updateFeedIssuedAt,

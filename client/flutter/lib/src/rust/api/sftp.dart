@@ -44,6 +44,21 @@ Future<bool> sftpEditorSave({
   required List<int> data,
 }) => RustLib.instance.api.crateApiSftpSftpEditorSave(sftpId: sftpId, path: path, digest: digest, data: data);
 
+/// Explicit sudoedit retry on the existing SSH transport. The password never enters argv.
+Future<bool> sftpEditorSaveSudo({
+  required String sftpId,
+  required String path,
+  required String digest,
+  required List<int> data,
+  required List<int> password,
+}) => RustLib.instance.api.crateApiSftpSftpEditorSaveSudo(
+  sftpId: sftpId,
+  path: path,
+  digest: digest,
+  data: data,
+  password: password,
+);
+
 /// Read branch metadata through the SSH connection that owns this SFTP session.
 Future<String?> sftpEditorGit({required String sftpId, required String directory}) =>
     RustLib.instance.api.crateApiSftpSftpEditorGit(sftpId: sftpId, directory: directory);

@@ -56,6 +56,19 @@ enum _ServiceFilter { all, running, active, inactive, failed, changing }
 
 enum _ServiceSort { name, reverseName, state }
 
+const _changingStates = {'activating', 'deactivating', 'reloading', 'refreshing'};
+
+Text _unitStatus(_Unit unit, GlassTokens tokens) {
+  final color = switch (unit.active) {
+    'active' => tokens.palette.success,
+    'inactive' || 'failed' => tokens.palette.danger,
+    'maintenance' => tokens.palette.warning,
+    final state when _changingStates.contains(state) => tokens.palette.warning,
+    _ => tokens.secondaryLabel,
+  };
+  return Text('${unit.active} · ${unit.sub}', style: tokens.typography.caption.copyWith(color: color));
+}
+
 final _unitLine = RegExp(r'^(\S+\.service)\s+\S+\s+(\S+)\s+(\S+)(?:\s+(.*))?$');
 
 List<_Unit> _units(String output) => [
@@ -370,10 +383,7 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                                 Text(latest.description),
                                 const SizedBox(height: GlassSpacing.s4),
                               ],
-                              Text(
-                                '${latest.active} · ${latest.sub}',
-                                style: t.typography.caption.copyWith(color: t.secondaryLabel),
-                              ),
+                              _unitStatus(latest, t),
                             ],
                             if (failure != null) SelectableText(failure),
                             const SizedBox(height: GlassSpacing.s12),
@@ -460,12 +470,7 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                         _ServiceFilter.active => u.active == 'active',
                         _ServiceFilter.inactive => u.active == 'inactive',
                         _ServiceFilter.failed => u.active == 'failed',
-                        _ServiceFilter.changing => const {
-                          'activating',
-                          'deactivating',
-                          'reloading',
-                          'refreshing',
-                        }.contains(u.active),
+                        _ServiceFilter.changing => _changingStates.contains(u.active),
                       },
                     )
                     .where((u) => [u.name, u.description].any((s) => s.toLowerCase().contains(query)))
@@ -489,7 +494,7 @@ class _SystemServicesState extends ConsumerState<SystemServicesPanel> {
                       final u = filtered[index];
                       return ListTile(
                         title: Text(u.name),
-                        subtitle: Text('${u.active} · ${u.sub}'),
+                        subtitle: _unitStatus(u, t),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => open(u),
                       );

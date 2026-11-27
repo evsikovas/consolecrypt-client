@@ -15,8 +15,10 @@ class MonitoringCard extends StatelessWidget {
     required this.reading,
     required this.percent,
     this.minimal = false,
+    required this.onConnect,
   });
   final Host host;
+  final VoidCallback onConnect;
   final MonitorReading? reading;
   final bool percent, minimal;
 
@@ -47,6 +49,14 @@ class MonitoringCard extends StatelessWidget {
             ? tokens.secondaryLabel
             : tokens.palette.success,
       ),
+    );
+    final connect = GlassIconButton(
+      key: ValueKey('monitor-connect-${host.id.value}'),
+      tooltip: l.monitorConnectSsh(host.name),
+      style: GlassIconButtonStyle.plain,
+      icon: Icons.terminal_rounded,
+      size: 28,
+      onPressed: onConnect,
     );
     final diagnostic = error == null
         ? null
@@ -102,6 +112,7 @@ class MonitoringCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                connect,
                 if (sample == null && diagnostic == null) Text(state, style: tokens.typography.caption),
               ],
             ),
@@ -128,6 +139,7 @@ class MonitoringCard extends StatelessWidget {
                   ],
                 ),
               ),
+              connect,
             ],
           ),
           const SizedBox(height: 6),

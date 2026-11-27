@@ -39,54 +39,74 @@ class _SftpSettingsSectionState extends ConsumerState<SftpSettingsSection> {
 
   @override
   Widget build(BuildContext context) {
-    if (AppPlatform.isMobile) return const SizedBox.shrink();
     final l = context.l10n;
-    final editor = ref.watch(localSettingsProvider).value?.sftpDefaultEditor;
     final settings = ref.read(settingsServiceProvider);
+    final local = ref.watch(localSettingsProvider).value ?? settings.currentLocal;
+    final editor = local.sftpDefaultEditor;
     return SectionCard(
       key: const ValueKey('settings-sftp'),
       title: l.sftpDefaultEditorTitle,
       icon: Icons.folder_open_rounded,
-      subtitle: l.sftpDefaultEditorHelp,
+      subtitle: AppPlatform.isMobile ? null : l.sftpDefaultEditorHelp,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          LabeledValue(
-            label: l.sftpDefaultEditor,
-            value: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(editor?.displayName ?? l.sftpSystemEditor, key: const ValueKey('sftp-default-editor-name')),
-                if (editor != null) Text(editor.value, style: Theme.of(context).textTheme.bodySmall),
-              ],
+          GlassSegmented<bool>(
+            semanticLabel: l.sftpDefaultEditor,
+            inChrome: false,
+            selected: local.sftpUseBuiltinEditor,
+            segments: [
+              GlassSegment(value: true, label: l.sftpBuiltinEditor, key: const ValueKey('sftp-editor-builtin')),
+              GlassSegment(
+                value: false,
+                label: AppPlatform.isMobile ? l.sftpToolbarQuickLook : l.sftpExternalEditor,
+                key: const ValueKey('sftp-editor-external'),
+              ),
+            ],
+            onChanged: (value) => runWithFeedback(
+              context,
+              () => settings.updateLocal(settings.currentLocal.copyWith(sftpUseBuiltinEditor: value)),
             ),
           ),
-          const SizedBox(height: GlassSpacing.s12),
-          Wrap(
-            spacing: GlassSpacing.s8,
-            runSpacing: GlassSpacing.s8,
-            children: [
-              GlassButton(
-                key: const ValueKey('sftp-default-editor-choose'),
-                busy: _busy,
-                icon: Icons.apps_rounded,
-                label: l.sftpChooseApplication,
-                onPressed: _busy ? null : _choose,
+          if (!AppPlatform.isMobile && !local.sftpUseBuiltinEditor) ...[
+            const SizedBox(height: GlassSpacing.s12),
+            LabeledValue(
+              label: l.sftpDefaultEditor,
+              value: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(editor?.displayName ?? l.sftpSystemEditor, key: const ValueKey('sftp-default-editor-name')),
+                  if (editor != null) Text(editor.value, style: Theme.of(context).textTheme.bodySmall),
+                ],
               ),
-              if (editor != null)
-                GlassButton.plain(
-                  key: const ValueKey('sftp-default-editor-reset'),
-                  icon: Icons.restore_rounded,
-                  label: l.sftpSystemEditor,
-                  onPressed: _busy
-                      ? null
-                      : () => runWithFeedback(
-                          context,
-                          () => settings.updateLocal(settings.currentLocal.copyWith(resetSftpDefaultEditor: true)),
-                        ),
+            ),
+            const SizedBox(height: GlassSpacing.s12),
+            Wrap(
+              spacing: GlassSpacing.s8,
+              runSpacing: GlassSpacing.s8,
+              children: [
+                GlassButton(
+                  key: const ValueKey('sftp-default-editor-choose'),
+                  busy: _busy,
+                  icon: Icons.apps_rounded,
+                  label: l.sftpChooseApplication,
+                  onPressed: _busy ? null : _choose,
                 ),
-            ],
-          ),
+                if (editor != null)
+                  GlassButton.plain(
+                    key: const ValueKey('sftp-default-editor-reset'),
+                    icon: Icons.restore_rounded,
+                    label: l.sftpSystemEditor,
+                    onPressed: _busy
+                        ? null
+                        : () => runWithFeedback(
+                            context,
+                            () => settings.updateLocal(settings.currentLocal.copyWith(resetSftpDefaultEditor: true)),
+                          ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

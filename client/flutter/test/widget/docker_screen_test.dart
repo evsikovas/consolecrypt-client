@@ -16,11 +16,15 @@ import 'package:consolecrypt/docker/docker_container_list.dart';
 import 'package:consolecrypt/docker/docker_format.dart';
 import 'package:consolecrypt/docker/docker_host_path.dart';
 import 'package:consolecrypt/docker/docker_image_list.dart';
+import 'package:consolecrypt/docker/docker_image_pods.dart';
 import 'package:consolecrypt/docker/docker_providers.dart';
 import 'package:consolecrypt/docker/docker_screen.dart';
 import 'package:consolecrypt/docker/docker_service.dart';
 import 'package:consolecrypt/docker/docker_terminal.dart';
+import 'package:consolecrypt/docker/docker_workspace.dart';
+import 'package:consolecrypt/kubernetes/kube_browser_service.dart';
 import 'package:consolecrypt/kubernetes/kube_providers.dart';
+import 'package:consolecrypt/kubernetes/kube_service.dart';
 import 'package:consolecrypt/sftp/sftp_controller.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kSecondaryMouseButton;
@@ -76,6 +80,7 @@ class _ObservedDocker extends _Docker implements DockerObservationService {
     if (removed.isEmpty)
       DockerImage.fromJson({
         'id': 'sha256:abcd',
+        'consumers': <DockerJson>[],
         'tags': null,
         'digests': ['registry.example/project/server@sha256:abcd'],
         'created': DateTime.now().subtract(const Duration(days: 28)).millisecondsSinceEpoch ~/ 1000,
@@ -99,6 +104,85 @@ class _ObservedDocker extends _Docker implements DockerObservationService {
       ['42', 'app', '2.0', '0.4', '3:08', 'worker'],
     ],
   };
+}
+
+class _PodUsageKube extends Fake implements KubeService, KubeBrowserService {
+  final pages = <(String?, String?, bool)>[];
+  final disconnected = <String>[];
+
+  @override
+  Future<List<KubeConnection>> inventory() async => [
+    KubeConnection.fromJson({'id': 'cluster', 'name': 'Cluster', 'namespace': 'apps'}, null),
+  ];
+
+  @override
+  Future<KubeSession> connect(String contextId) async =>
+      KubeSession(id: 'lookup', contextId: contextId, serverVersion: '', production: false);
+
+  @override
+  Future<void> disconnect(String sessionId) async => disconnected.add(sessionId);
+
+  @override
+  Future<KubeResourcePage> listResources(
+    String sessionId,
+    KubeResourceKind kind, {
+    String? namespace,
+    String? labelSelector,
+    String? continueToken,
+    int limit = 200,
+    bool includeObjects = false,
+  }) async {
+    pages.add((namespace, continueToken, includeObjects));
+    return KubeResourcePage.fromJson({
+      'continue_token': continueToken == null ? 'next' : null,
+      'items': [
+        if (continueToken != null)
+          {
+            'name': 'web-1',
+            'namespace': 'apps',
+            'object': {
+              'spec': {
+                'containers': [
+                  {'image': 'server@sha256:abcd'},
+                ],
+              },
+              'status': {'phase': 'Running'},
+            },
+          },
+      ],
+    }, includeObjects: includeObjects);
+  }
+}
+
+class _UsageDocker extends _ObservedDocker {
+  @override
+  Future<List<DockerImage>> images(String sessionId) async => [
+    for (final (id, consumers) in [
+      ('old', <Object>[]),
+      ('older', <Object>[]),
+      (
+        'used',
+        [
+          {'name': 'db', 'state': 'exited', 'namespace': 'ops', 'pod': 'postgres-0'},
+        ],
+      ),
+    ])
+      if (!removed.any((record) => record.$2 == id))
+        DockerImage.fromJson({
+          'id': id,
+          'tags': ['app:$id'],
+          'consumers': consumers,
+        }),
+  ];
+  @override
+  Future<List<DockerContainer>> containers(String sessionId, {bool all = true}) async => [
+    for (final (name, state, status) in [
+      ('api', DockerContainerState.running, 'Up 2 hours'),
+      ('old', DockerContainerState.exited, 'Exited (0) 1 week ago'),
+      ('worker', DockerContainerState.exited, 'Exited (137) 2 minutes ago'),
+    ])
+      DockerContainer(id: name, name: name, image: 'app:$name', state: state, status: status),
+  ];
 }
 
 class _PortRangeDocker extends _Docker {
@@ -360,6 +444,7 @@ String _id(WidgetTester tester, String name) => tester
 void main() {
   testWidgets('image list shows compact names, size and age, and confirms deletion', (tester) async {
     final service = _ObservedDocker();
+    final kubernetes = _PodUsageKube();
     const session = DockerSessionInfo(id: 'fixture', hostId: 'local', hostName: 'Test', engineVersion: 'test');
     await tester.pumpWidget(
       MaterialApp(
@@ -369,7 +454,7 @@ void main() {
         home: Scaffold(
           body: SizedBox(
             width: 320,
-            child: DockerImageList(service: service, session: session),
+            child: DockerImageList(service: service, session: session, kubernetes: kubernetes),
           ),
         ),
       ),
@@ -383,8 +468,13 @@ void main() {
     await tester.tap(name);
     await settle(tester);
     expect(find.text('sha256:abcd'), findsOneWidget);
-    await tester.tap(find.text('Close'));
+    expect(find.textContaining('apps/web-1 · Running'), findsOneWidget);
+    expect(kubernetes.pages, [('apps', null, true), ('apps', 'next', true)]);
+    expect(kubernetes.disconnected, ['lookup']);
+    await tester.tap(find.widgetWithText(GlassButton, 'Delete'));
     await settle(tester);
+    await tapKey(tester, 'confirm-cancel');
+    expect(service.removed, isEmpty);
     Future<void> remove() async {
       final gesture = await tester.startGesture(
         tester.getCenter(name),
@@ -406,6 +496,109 @@ void main() {
     expect(service.removed, [('fixture', 'sha256:abcd', null)]);
     expect(name, findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  test('Pod references distinguish immutable content and mutable tags', () {
+    final image = DockerImage.fromJson({
+      'id': 'sha256:config',
+      'tags': ['docker.io/library/nginx:latest'],
+      'digests': ['nginx@sha256:manifest'],
+    });
+    expect(
+      matchPodImage(image, {
+        'spec': {
+          'initContainers': [
+            {'image': 'nginx'},
+          ],
+        },
+      }),
+      PodImageMatch.tag,
+    );
+    expect(
+      matchPodImage(image, {
+        'status': {
+          'ephemeralContainerStatuses': [
+            {'imageID': 'docker-pullable://nginx@sha256:manifest'},
+          ],
+        },
+      }),
+      PodImageMatch.digest,
+    );
+    expect(
+      matchPodImage(image, {
+        'spec': {
+          'containers': [
+            {'image': 'another/nginx:latest'},
+          ],
+        },
+      }),
+      isNull,
+    );
+  });
+
+  testWidgets('SSH container filters distinguish a failed exit from a stopped container', (tester) async {
+    final backend = testBackend();
+    addTearDown(backend.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appServicesProvider.overrideWithValue(backend.services)],
+        child: MaterialApp(
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [AppLocalizations.delegate, ...GlobalMaterialLocalizations.delegates],
+          home: Scaffold(
+            body: DockerWorkspace(
+              sessionPanel: true,
+              onDisconnect: () {},
+              service: _UsageDocker(),
+              session: const DockerSessionInfo(id: 'test', hostId: 'ssh', hostName: 'Test', engineVersion: 'test'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await settle(tester);
+    expect(tester.getTopLeft(find.text('worker')).dy, lessThan(tester.getTopLeft(find.text('api')).dy));
+    await tapKey(tester, 'docker-panel-sort');
+    await tester.tap(find.text('Name A–Z'));
+    await settle(tester);
+    expect(tester.getTopLeft(find.text('api')).dy, lessThan(tester.getTopLeft(find.text('worker')).dy));
+    await tapKey(tester, 'docker-panel-filter');
+    await tester.tap(find.text('Failed').last);
+    await settle(tester);
+    expect(find.text('worker'), findsOneWidget);
+    expect(find.text('old'), findsNothing);
+    expect(find.text('api'), findsNothing);
+  });
+
+  testWidgets('image details show stopped consumers and bulk cleanup deletes only selected unused references', (
+    tester,
+  ) async {
+    final service = _UsageDocker();
+    await _pump(tester, service: service);
+    await _connectLocal(tester);
+    await tapKey(tester, 'docker-view-images');
+    await tester.tap(find.text('app:used'));
+    await settle(tester);
+    expect(find.textContaining('Pod ops/postgres-0', findRichText: true), findsOneWidget);
+    final delete = find.widgetWithText(GlassButton, 'Delete');
+    expect(tester.widget<GlassButton>(delete).onPressed, isNull);
+    await tester.tap(find.text('Close'));
+    await settle(tester);
+    await tapKey(tester, 'docker-image-filter');
+    await tester.tap(find.text('Unused').last);
+    await settle(tester);
+    expect(find.text('app:used'), findsNothing);
+    await tester.tap(find.byTooltip('Select visible unused images'));
+    await settle(tester);
+    await tester.tap(find.text('Delete selected (2)'));
+    await settle(tester);
+    await tapKey(tester, 'confirm-cancel');
+    expect(service.removed, isEmpty);
+    await tester.tap(find.text('Delete selected (2)'));
+    await settle(tester);
+    await tapKey(tester, 'confirm-ok');
+    expect(service.removed.map((v) => v.$2), unorderedEquals(['old', 'older']));
   });
 
   testWidgets('main engine inventory lists images and networks including empty networks', (tester) async {
@@ -517,8 +710,10 @@ void main() {
       'docker.io/example/shop-api:2.4.1',
     );
     await tapKey(tester, 'docker-kube-pin');
-    expect(tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text,
-        contains('@sha256:'));
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('docker-kube-image'))).controller!.text,
+      contains('@sha256:'),
+    );
     expect(find.text('AI provider'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });

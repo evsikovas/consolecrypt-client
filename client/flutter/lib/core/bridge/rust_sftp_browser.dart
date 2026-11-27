@@ -5,6 +5,7 @@ import 'package:consolecrypt/core/bridge/mapping.dart';
 import 'package:consolecrypt/core/bridge/rust_backend.dart';
 import 'package:consolecrypt/core/bridge/rust_sessions.dart';
 import 'package:consolecrypt/core/models/models.dart';
+import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/services/app_services.dart';
 import 'package:consolecrypt/core/util/value_stream.dart';
 import 'package:consolecrypt/src/rust/api/sftp.dart' as rs_sftp;
@@ -99,8 +100,31 @@ final class RustSftpBrowserService implements SftpBrowserService {
   }
 
   @override
-  Future<bool> saveEditorFile(SftpSessionId session, String path, String digest, Uint8List bytes) =>
-      guard(() => rs_sftp.sftpEditorSave(sftpId: session.value, path: path, digest: digest, data: bytes));
+  Future<bool> saveEditorFile(
+    SftpSessionId session,
+    String path,
+    String digest,
+    Uint8List bytes, {
+    SecretText? sudoPassword,
+  }) async {
+    if (sudoPassword == null) {
+      return guard(() => rs_sftp.sftpEditorSave(sftpId: session.value, path: path, digest: digest, data: bytes));
+    }
+    final secret = sudoPassword.exposeBytes();
+    try {
+      return await guard(
+        () => rs_sftp.sftpEditorSaveSudo(
+          sftpId: session.value,
+          path: path,
+          digest: digest,
+          data: bytes,
+          password: secret,
+        ),
+      );
+    } finally {
+      secret.fillRange(0, secret.length, 0);
+    }
+  }
 
   @override
   Future<String?> editorGitRefs(SftpSessionId session, String directory) =>

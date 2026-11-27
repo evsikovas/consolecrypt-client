@@ -10,6 +10,61 @@ class AppLocalizationsRu extends AppLocalizations {
   AppLocalizationsRu([String locale = 'ru']) : super(locale);
 
   @override
+  String monitorConnectSsh(String host) {
+    return 'Подключиться к $host по SSH';
+  }
+
+  @override
+  String get dockerExitError => 'Со сбоем';
+
+  @override
+  String get dockerContainerSort => 'Сортировка контейнеров';
+
+  @override
+  String get dockerImageUsage => 'Использование на этом Docker-хосте';
+
+  @override
+  String get dockerImageAll => 'Все образы';
+
+  @override
+  String get dockerImageUsed => 'Используется';
+
+  @override
+  String get dockerImageUnused => 'Не используется';
+
+  @override
+  String get dockerImageUsageUnknown => 'Использование неизвестно';
+
+  @override
+  String get dockerImageOldest => 'Сначала старые';
+
+  @override
+  String get dockerImageSelectUnused => 'Выбрать видимые неиспользуемые';
+
+  @override
+  String dockerImageDeleteSelected(int count) {
+    return 'Удалить выбранные ($count)';
+  }
+
+  @override
+  String get dockerImageRetained => 'Остались на хосте';
+
+  @override
+  String get dockerImagePodCheck => 'Проверить Pod’ы в Kubernetes';
+
+  @override
+  String get dockerImageNoPods => 'Среди выбранных Pod’ов совпадений нет';
+
+  @override
+  String get dockerImagePodTag => 'Ссылка по тегу';
+
+  @override
+  String get dockerImagePodDigest => 'Совпадает digest';
+
+  @override
+  String get dockerImageNoContexts => 'Нет сохранённых Kubernetes-контекстов';
+
+  @override
   String get systemdOriginal => 'Исходное сообщение';
 
   @override
@@ -6355,8 +6410,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sftpSystemEditor => 'Системный редактор';
 
   @override
+  String get editorSaveSudo => 'Сохранить через sudo';
+
+  @override
+  String get editorSudoRequired => 'Нет прав на запись. Введите пароль sudo для этого хоста.';
+
+  @override
+  String get editorSudoDenied =>
+      'sudoedit отклонил запись. Проверьте пароль и право этой учётной записи редактировать файл.';
+
+  @override
+  String get editorSudoUnavailable => 'Для сохранения через sudo на SSH-сервере нужны Python 3 и sudoedit.';
+
+  @override
+  String get sftpBuiltinEditor => 'Встроенный редактор';
+
+  @override
+  String get sftpExternalEditor => 'Внешний редактор';
+
+  @override
   String get sftpDefaultEditorHelp =>
-      '«Открыть» и «Открыть в редакторе» используют эту программу. Через «Открыть в программе…» можно выбрать другую для отдельного файла. Настройка сохраняется только на этом устройстве.';
+      'Выберите, где открывать файлы с SFTP-сервера. Через «Открыть в программе…» можно выбрать другое приложение для одного файла.';
 
   @override
   String get terminalContextMenu => 'Действия терминала';

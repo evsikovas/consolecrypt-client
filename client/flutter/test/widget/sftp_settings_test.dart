@@ -27,6 +27,12 @@ void main() {
     await tapKey(tester, 'nav-hosts');
     await tapKey(tester, 'nav-settings');
     expect(find.text('Zed'), findsOneWidget);
+    await tapKey(tester, 'sftp-editor-builtin');
+    expect(settings.currentLocal.sftpUseBuiltinEditor, isTrue);
+    expect(find.byKey(const ValueKey('sftp-default-editor-choose')), findsNothing);
+    await tapKey(tester, 'sftp-editor-external');
+    expect(settings.currentLocal.sftpUseBuiltinEditor, isFalse);
+    expect(find.text('Zed'), findsOneWidget);
     await tapKey(tester, 'sftp-default-editor-reset');
     expect(settings.currentLocal.sftpDefaultEditor, isNull);
     expect(find.byKey(const ValueKey('sftp-default-editor-reset')), findsNothing);

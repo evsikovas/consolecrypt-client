@@ -897,6 +897,7 @@ Json localSettingsToJson(LocalSettings s) => {
   'db_code_wrap': s.dbCodeWrap,
   'screen_capture_protection': s.screenCaptureProtection.wireName,
   'db_fetch_sizes': s.dbFetchSizes,
+  'sftp_use_builtin_editor': s.sftpUseBuiltinEditor,
   'sftp_default_editor': s.sftpDefaultEditor == null
       ? null
       : {'kind': s.sftpDefaultEditor!.kind.wireName, 'value': s.sftpDefaultEditor!.value},
@@ -956,6 +957,7 @@ LocalSettings localSettingsFromJson(Json j) {
     },
     preferDeviceLocalAi: j['prefer_device_local_ai'] != false,
     rdpMobile: RdpMobileSettings.fromJson(j['rdp_mobile']),
+    sftpUseBuiltinEditor: j['sftp_use_builtin_editor'] == true,
     sftpDefaultEditor: _appRefFromJson(j['sftp_default_editor']),
     editorSoftWrap: j['editor_soft_wrap'] == true,
     editorFontSize: switch (j['editor_font_size']) {

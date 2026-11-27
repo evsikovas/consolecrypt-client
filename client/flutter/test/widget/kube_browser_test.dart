@@ -1844,6 +1844,7 @@ class _Service implements KubeService, KubeBrowserService, KubeWatchService {
     String? labelSelector,
     String? continueToken,
     int limit = 200,
+    bool includeObjects = false,
   }) async {
     requests.add((kind: kind, namespace: namespace, continueToken: continueToken));
     if (listError != null) throw listError!;

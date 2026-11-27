@@ -102,6 +102,24 @@ pub async fn sftp_editor_save(
         .await
 }
 
+/// Explicit sudoedit retry on the existing SSH transport. The password never enters argv.
+pub async fn sftp_editor_save_sudo(
+    sftp_id: String,
+    path: String,
+    digest: String,
+    data: Vec<u8>,
+    password: Vec<u8>,
+) -> Result<bool, BridgeError> {
+    let password = zeroize::Zeroizing::new(password);
+    with_core(move |c| async move {
+        Ok(
+            c.sftp_editor_save_sudo(sftp_id, path, digest, data, password)
+                .await?,
+        )
+    })
+    .await
+}
+
 /// Read branch metadata through the SSH connection that owns this SFTP session.
 pub async fn sftp_editor_git(
     sftp_id: String,

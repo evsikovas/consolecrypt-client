@@ -58,6 +58,7 @@ void main() {
             child: SizedBox(
               width: 310,
               child: MonitoringCard(
+                onConnect: () {},
                 host: host,
                 reading: (sample: sample, error: null),
                 percent: true,
@@ -128,6 +129,8 @@ void main() {
     expect(find.byTooltip('Включить подробный вид'), findsOneWidget);
     expect(tester.getSize(find.byKey(ValueKey(second.id))).height, lessThan(detailedHeight));
     await captureAutomationWorkspace(tester, 'monitoring-minimal-ru');
+    await tapKey(tester, 'monitor-connect-${selected.id.value}');
+    expect(container.read(routerProvider).state.matchedLocation, AppRoutes.terminal);
     container.read(routerProvider).go(AppRoutes.hosts);
     await settle(tester);
   });

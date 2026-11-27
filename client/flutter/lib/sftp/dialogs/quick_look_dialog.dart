@@ -111,6 +111,11 @@ class _QuickLookDialogState extends ConsumerState<QuickLookDialog> {
     final kind = fileKindOf(e);
     final size = MediaQuery.sizeOf(context);
     final compact = size.width < 600;
+    void edit() {
+      Navigator.of(context).pop();
+      widget.onOpenInEditor!(e);
+    }
+
     return Dialog(
       key: const ValueKey('sftp-quicklook'),
       insetPadding: EdgeInsets.all(compact ? 12 : 32),
@@ -142,15 +147,20 @@ class _QuickLookDialogState extends ConsumerState<QuickLookDialog> {
                       ),
                     ),
                     if (widget.onOpenInEditor != null && !e.isDirectory)
-                      TextButton.icon(
-                        key: const ValueKey('sftp-quicklook-edit'),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          widget.onOpenInEditor!(e);
-                        },
-                        icon: const Icon(Icons.open_in_new, size: 16),
-                        label: Text(l10n.sftpQuickLookOpenInEditor),
-                      ),
+                      if (compact)
+                        IconButton(
+                          key: const ValueKey('sftp-quicklook-edit'),
+                          tooltip: l10n.sftpQuickLookOpenInEditor,
+                          icon: const Icon(Icons.edit_outlined),
+                          onPressed: edit,
+                        )
+                      else
+                        TextButton.icon(
+                          key: const ValueKey('sftp-quicklook-edit'),
+                          onPressed: edit,
+                          icon: const Icon(Icons.open_in_new, size: 16),
+                          label: Text(l10n.sftpQuickLookOpenInEditor),
+                        ),
                     IconButton(
                       tooltip: l10n.commonClose,
                       icon: const Icon(Icons.close),

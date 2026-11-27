@@ -18,6 +18,7 @@ abstract interface class KubeBrowserService {
     String? labelSelector,
     String? continueToken,
     int limit = 200,
+    bool includeObjects = false,
   });
   Future<KubeResourceDetail> getResource(String sessionId, KubeResourceRef resource);
   Future<String> logs(
@@ -152,8 +153,8 @@ final class KubeResourceRow {
     status: json['status'] as String? ?? '',
     createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
     cells: List<String>.unmodifiable((json['cells'] as List? ?? const []).map((e) => e?.toString() ?? '')),
-    // Tables and watch caches need only summary fields. Retain full redacted
-    // objects only for the separately bounded diagnostic response.
+    // Tables and watch caches use summaries. Diagnostics and image usage
+    // explicitly request the redacted objects for a bounded page.
     object: includeObject ? Map<String, dynamic>.unmodifiable(json['object'] as KubeJson? ?? const {}) : const {},
   );
 }
@@ -163,8 +164,10 @@ final class KubeResourcePage {
   final List<KubeResourceRow> items;
   final String resourceVersion;
   final String? continueToken;
-  factory KubeResourcePage.fromJson(KubeJson json) => KubeResourcePage(
-    items: List.unmodifiable((json['items'] as List).map((e) => KubeResourceRow.fromJson(e as KubeJson))),
+  factory KubeResourcePage.fromJson(KubeJson json, {bool includeObjects = false}) => KubeResourcePage(
+    items: List.unmodifiable(
+      (json['items'] as List).map((e) => KubeResourceRow.fromJson(e as KubeJson, includeObject: includeObjects)),
+    ),
     resourceVersion: json['resource_version'] as String? ?? '',
     continueToken: json['continue_token'] as String?,
   );

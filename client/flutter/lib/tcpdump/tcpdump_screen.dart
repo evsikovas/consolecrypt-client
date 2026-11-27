@@ -9,11 +9,11 @@ import 'package:consolecrypt/core/providers.dart';
 import 'package:consolecrypt/core/security/secret_text.dart';
 import 'package:consolecrypt/core/widgets/common.dart';
 import 'package:consolecrypt/core/widgets/dialogs.dart';
+import 'package:consolecrypt/core/widgets/sudo_password_dialog.dart';
 import 'package:consolecrypt/hosts/host_picker.dart';
 import 'package:consolecrypt/tcpdump/capture.dart';
 import 'package:consolecrypt/tcpdump/capture_run.dart';
 import 'package:consolecrypt/tcpdump/connection_details.dart';
-import 'package:consolecrypt/tcpdump/sudo_dialog.dart';
 import 'package:consolecrypt/terminal/terminal_tabs_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -65,7 +65,7 @@ class _TcpdumpScreenState extends ConsumerState<TcpdumpScreen> {
         builder: (ctx) {
           sudoRoute = ModalRoute.of(ctx);
           if (!mounted || run != owner || owner.sudoPrompt != request) closeSudoDialog();
-          return CaptureSudoDialog(host: '${host.name} · ${host.address}', retry: request > 1);
+          return SudoPasswordDialog(host: '${host.name} · ${host.address}', retry: request > 1);
         },
       );
       prompting = false;

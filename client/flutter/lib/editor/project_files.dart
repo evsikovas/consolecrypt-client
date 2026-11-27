@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
-enum EditorIssue implements Exception { unsupported, changed, outside, gitMissing, invalidName }
+enum EditorIssue implements Exception { unsupported, changed, outside, gitMissing, invalidName, sudoUnavailable }
 
 const editorFileLimit = 4 * 1024 * 1024;
 

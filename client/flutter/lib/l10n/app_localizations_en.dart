@@ -10,6 +10,61 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String monitorConnectSsh(String host) {
+    return 'Connect to $host via SSH';
+  }
+
+  @override
+  String get dockerExitError => 'Failed';
+
+  @override
+  String get dockerContainerSort => 'Sort containers';
+
+  @override
+  String get dockerImageUsage => 'Used on this Docker host';
+
+  @override
+  String get dockerImageAll => 'All images';
+
+  @override
+  String get dockerImageUsed => 'In use';
+
+  @override
+  String get dockerImageUnused => 'Unused';
+
+  @override
+  String get dockerImageUsageUnknown => 'Usage unknown';
+
+  @override
+  String get dockerImageOldest => 'Oldest first';
+
+  @override
+  String get dockerImageSelectUnused => 'Select visible unused images';
+
+  @override
+  String dockerImageDeleteSelected(int count) {
+    return 'Delete selected ($count)';
+  }
+
+  @override
+  String get dockerImageRetained => 'Kept on this host';
+
+  @override
+  String get dockerImagePodCheck => 'Check Pods in Kubernetes';
+
+  @override
+  String get dockerImageNoPods => 'No matching Pods in the selected scope';
+
+  @override
+  String get dockerImagePodTag => 'Tag reference';
+
+  @override
+  String get dockerImagePodDigest => 'Digest match';
+
+  @override
+  String get dockerImageNoContexts => 'No saved Kubernetes contexts';
+
+  @override
   String get systemdOriginal => 'Original message';
 
   @override
@@ -6155,8 +6210,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sftpSystemEditor => 'System default';
 
   @override
+  String get editorSaveSudo => 'Save with sudo';
+
+  @override
+  String get editorSudoRequired => 'Write access was denied. Enter the sudo password for this host.';
+
+  @override
+  String get editorSudoDenied =>
+      'sudoedit denied the save. Check the password and whether this account can edit this file.';
+
+  @override
+  String get editorSudoUnavailable => 'Saving with sudo requires Python 3 and sudoedit on the SSH host.';
+
+  @override
+  String get sftpBuiltinEditor => 'Built-in editor';
+
+  @override
+  String get sftpExternalEditor => 'External editor';
+
+  @override
   String get sftpDefaultEditorHelp =>
-      'Open and Open in editor use this application. Open With lets you choose another application for one file. Saved only on this device.';
+      'Choose where to open SFTP files. Use Open With to pick an application for a single file.';
 
   @override
   String get terminalContextMenu => 'Terminal actions';

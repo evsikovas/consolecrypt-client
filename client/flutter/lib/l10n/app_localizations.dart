@@ -94,6 +94,108 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en'), Locale('es'), Locale('ru'), Locale('zh')];
 
+  /// Connect to {host} via SSH
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to {host} via SSH'**
+  String monitorConnectSsh(String host);
+
+  /// Failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get dockerExitError;
+
+  /// Sort containers
+  ///
+  /// In en, this message translates to:
+  /// **'Sort containers'**
+  String get dockerContainerSort;
+
+  /// Used on this Docker host
+  ///
+  /// In en, this message translates to:
+  /// **'Used on this Docker host'**
+  String get dockerImageUsage;
+
+  /// All images
+  ///
+  /// In en, this message translates to:
+  /// **'All images'**
+  String get dockerImageAll;
+
+  /// In use
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get dockerImageUsed;
+
+  /// Unused
+  ///
+  /// In en, this message translates to:
+  /// **'Unused'**
+  String get dockerImageUnused;
+
+  /// Usage unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Usage unknown'**
+  String get dockerImageUsageUnknown;
+
+  /// Oldest first
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest first'**
+  String get dockerImageOldest;
+
+  /// Select visible unused images
+  ///
+  /// In en, this message translates to:
+  /// **'Select visible unused images'**
+  String get dockerImageSelectUnused;
+
+  /// Delete selected ({count})
+  ///
+  /// In en, this message translates to:
+  /// **'Delete selected ({count})'**
+  String dockerImageDeleteSelected(int count);
+
+  /// Kept on this host
+  ///
+  /// In en, this message translates to:
+  /// **'Kept on this host'**
+  String get dockerImageRetained;
+
+  /// Check Pods in Kubernetes
+  ///
+  /// In en, this message translates to:
+  /// **'Check Pods in Kubernetes'**
+  String get dockerImagePodCheck;
+
+  /// No matching Pods in the selected scope
+  ///
+  /// In en, this message translates to:
+  /// **'No matching Pods in the selected scope'**
+  String get dockerImageNoPods;
+
+  /// Tag reference
+  ///
+  /// In en, this message translates to:
+  /// **'Tag reference'**
+  String get dockerImagePodTag;
+
+  /// Digest match
+  ///
+  /// In en, this message translates to:
+  /// **'Digest match'**
+  String get dockerImagePodDigest;
+
+  /// No saved Kubernetes contexts
+  ///
+  /// In en, this message translates to:
+  /// **'No saved Kubernetes contexts'**
+  String get dockerImageNoContexts;
+
   /// Original application message in a journal entry
   ///
   /// In en, this message translates to:
@@ -10924,10 +11026,46 @@ abstract class AppLocalizations {
   /// **'System default'**
   String get sftpSystemEditor;
 
+  /// Remote editor sudoedit save dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Save with sudo'**
+  String get editorSaveSudo;
+
+  /// Remote editor sudoedit save dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Write access was denied. Enter the sudo password for this host.'**
+  String get editorSudoRequired;
+
+  /// Remote editor sudoedit save dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'sudoedit denied the save. Check the password and whether this account can edit this file.'**
+  String get editorSudoDenied;
+
+  /// Remote editor sudoedit save dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving with sudo requires Python 3 and sudoedit on the SSH host.'**
+  String get editorSudoUnavailable;
+
+  /// Open a remote file in the ConsoleCrypt editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in editor'**
+  String get sftpBuiltinEditor;
+
+  /// Open a remote file using the configured desktop application.
+  ///
+  /// In en, this message translates to:
+  /// **'External editor'**
+  String get sftpExternalEditor;
+
   /// SFTP default editor preference in device-local settings.
   ///
   /// In en, this message translates to:
-  /// **'Open and Open in editor use this application. Open With lets you choose another application for one file. Saved only on this device.'**
+  /// **'Choose where to open SFTP files. Use Open With to pick an application for a single file.'**
   String get sftpDefaultEditorHelp;
 
   /// Terminal context menu or its selected-text attachment.

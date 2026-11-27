@@ -157,6 +157,7 @@ final class GuideKubeService
     String? labelSelector,
     String? continueToken,
     int limit = 200,
+    bool includeObjects = false,
   }) async => KubeResourcePage(
     resourceVersion: '4210',
     items: kind.resource == 'deployments'

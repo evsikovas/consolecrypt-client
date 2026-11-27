@@ -1386,6 +1386,26 @@ impl SshSession {
         result
     }
 
+    /// Pipe a single bounded editor request into a non-PTY channel. On timeout
+    /// close only this channel, leaving other users of the SSH session connected.
+    pub async fn exec_editor_input(
+        &self,
+        command: &str,
+        password_line: &[u8],
+        document: &[u8],
+    ) -> Result<ExecOutput, SshError> {
+        let mut ch = self.open_exec(command).await?;
+        let result = tokio::time::timeout(Duration::from_secs(60), async {
+            ch.data(password_line).await?;
+            ch.data(document).await?;
+            ch.eof().await?;
+            Self::collect_exec(&mut ch, 4096).await
+        })
+        .await;
+        let _ = tokio::time::timeout(Duration::from_millis(500), ch.close()).await;
+        result.map_err(|_| SshError::Channel("editor save timed out".into()))?
+    }
+
     /// A bounded command with no input on a shared connection. Cancellation
     /// closes just the exec channel, so the interactive PTY stays connected.
     pub async fn exec_bounded(

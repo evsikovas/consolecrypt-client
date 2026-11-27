@@ -423,9 +423,8 @@ impl AppCore {
                 return Ok(false);
             }
             if staged.uid != current.uid || staged.gid != current.gid {
-                return Err(AppError::Unsupported(
-                    "cannot preserve the file owner and group".into(),
-                ));
+                // Saving as the current user would change ownership. Offer sudoedit instead.
+                return Err(AppError::PermissionDenied(path.clone()));
             }
             let (bytes, total) = c.read_head(&path, LIMIT as u64 + 1).await?;
             if total > LIMIT as u64 || hex::encode(Sha256::digest(bytes)) != digest {
@@ -445,6 +444,66 @@ impl AppCore {
             let _ = c.remove_file(&tmp).await;
         }
         result
+    }
+
+    pub async fn sftp_editor_save_sudo(
+        &self,
+        id: String,
+        path: String,
+        digest: String,
+        data: Vec<u8>,
+        mut password: zeroize::Zeroizing<Vec<u8>>,
+    ) -> AppResult<bool> {
+        use cc_docker_core::compose::shell_quote;
+        use sha2::{Digest, Sha256};
+
+        const LIMIT: usize = 4 * 1024 * 1024;
+        let path = remote_path_arg("path", &path)?;
+        if !path.starts_with('/')
+            || digest.len() != 64
+            || !digest.bytes().all(|b| b.is_ascii_hexdigit())
+            || data.len() > LIMIT
+            || password.len() > 4096
+            || password.iter().any(|b| matches!(b, 0 | 10 | 13))
+        {
+            return Err(AppError::invalid("file", "invalid editor request"));
+        }
+        let (_, unlocked) = self.unlocked().await?;
+        let sftp = unlocked.ssh.sftp(&id).await?;
+        let ssh = unlocked.ssh.sftp_transport(&id).await?;
+        let _commit = unlocked.ssh.editor_save_commit.lock().await;
+        let entry = sftp.lstat(&path).await?;
+        if entry.kind != EntryKind::File
+            || sftp.canonicalize(&path).await? != path
+            || entry.size > LIMIT as u64
+            || !entry.permissions.is_some_and(|m| m & 0o7000 == 0)
+        {
+            return Ok(false);
+        }
+        let (original, total) = sftp.read_head(&path, LIMIT as u64 + 1).await?;
+        if total > LIMIT as u64 || hex::encode(Sha256::digest(original)) != digest {
+            return Ok(false);
+        }
+        let command = format!(
+            "exec python3 -I -c {} {} {}",
+            shell_quote(include_str!("sftp_sudoedit.py")),
+            shell_quote(&path),
+            shell_quote(&digest)
+        );
+        password.push(b'\n');
+        let outcome = ssh.exec_editor_input(&command, &password, &data).await?;
+        match outcome.exit_status {
+            Some(0) => {
+                let (saved, total) = sftp.read_head(&path, LIMIT as u64 + 1).await?;
+                Ok(total == data.len() as u64 && saved == data)
+            }
+            Some(3) => Ok(false),
+            Some(4) => Err(AppError::PermissionDenied(path)),
+            Some(127 | 126) => Err(AppError::Unsupported(
+                "sudoedit requires python3 and sudo on the SSH host".into(),
+            )),
+            _ => Err(AppError::Io("remote sudoedit failed".into())),
+        }
     }
 
     pub async fn sftp_editor_git(

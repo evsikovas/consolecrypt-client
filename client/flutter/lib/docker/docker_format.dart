@@ -142,6 +142,7 @@ String dockerStateLabel(AppLocalizations l, DockerContainerState state) => switc
   DockerContainerState.removing => l.dockerStateRemoving,
   DockerContainerState.exited => l.dockerStateExited,
   DockerContainerState.dead => l.dockerStateDead,
+  DockerContainerState.failed => l.dockerExitError,
   DockerContainerState.unknown => l.dockerStateUnknown,
 };
 
@@ -149,7 +150,7 @@ GlassTone dockerStateTone(DockerContainerState state) => switch (state) {
   DockerContainerState.running => GlassTone.success,
   DockerContainerState.paused || DockerContainerState.restarting || DockerContainerState.removing => GlassTone.warning,
   DockerContainerState.created => GlassTone.info,
-  DockerContainerState.dead => GlassTone.danger,
+  DockerContainerState.dead || DockerContainerState.failed => GlassTone.danger,
   DockerContainerState.exited => GlassTone.neutral,
   DockerContainerState.unknown => GlassTone.unknown,
 };
